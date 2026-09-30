@@ -198,8 +198,11 @@ final class PortmanUITests: XCTestCase {
         XCTAssertTrue(app.staticTexts["Enter a whole number from 1 to 72."].exists)
         servers.click()
         settings.click()
-        search.click()
-        search.typeText("idle")
+        XCTAssertEqual(search.value as? String, "idle", "Settings search did not survive the tab switch")
+        guard idle.waitForExistence(timeout: 5) else {
+            XCTFail("The saved idle-hours field is missing after returning to Settings")
+            return
+        }
         XCTAssertEqual(Double((idle.value as? String) ?? ""), 6,
                        "Out-of-range cleanup input replaced the saved value")
         idle.click()
