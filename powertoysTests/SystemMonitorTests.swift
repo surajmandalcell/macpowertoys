@@ -545,30 +545,39 @@ final class SystemMonitorTests: XCTestCase {
         let defaults = try XCTUnwrap(UserDefaults(suiteName: suiteName))
         defer { defaults.removePersistentDomain(forName: suiteName) }
         defer { SystemMonitorService.shared.stopDetailed(owner: "tray") }
-        for page in ["home", "cpu", "gpu", "memory", "network", "disk", "battery", "sensors", "processes"] {
-            defaults.set(page, forKey: "systemMonitor.trayPage")
-            let host = NSHostingView(rootView: SystemMonitorMenuPopoverView(
-                remoteProfiles: Self.renderRemoteProfiles
-            ).defaultAppStorage(defaults))
-            host.appearance = NSAppearance(named: .darkAqua)
-            host.frame = NSRect(
-                x: 0, y: 0,
-                width: TaskManagerMenuLayout.width,
-                height: (NSScreen.main?.visibleFrame.height ?? 800) * OnePlusMenuMetrics.heightFraction
-            )
-            host.layoutSubtreeIfNeeded()
-            RunLoop.current.run(until: Date().addingTimeInterval(1.2))
-            host.frame.size = host.fittingSize
-            host.layoutSubtreeIfNeeded()
+        for scheme in [ColorScheme.dark, .light] {
+            for page in ["home", "cpu", "gpu", "memory", "network", "disk", "battery", "sensors", "processes"] {
+                defaults.set(page, forKey: "systemMonitor.trayPage")
+                var measuredHeight: CGFloat = 0
+                let host = NSHostingView(rootView: SystemMonitorMenuPopoverView(
+                    remoteProfiles: Self.renderRemoteProfiles,
+                    onPreferredHeight: { measuredHeight = $0 }
+                ).defaultAppStorage(defaults).environment(\.colorScheme, scheme))
+                host.appearance = NSAppearance(named: scheme == .dark ? .darkAqua : .aqua)
+                host.frame = NSRect(
+                    x: 0, y: 0,
+                    width: TaskManagerMenuLayout.width,
+                    height: (NSScreen.main?.visibleFrame.height ?? 800) * OnePlusMenuMetrics.heightFraction
+                )
+                host.layoutSubtreeIfNeeded()
+                RunLoop.current.run(until: Date().addingTimeInterval(1.2))
+                let size = host.fittingSize
+                XCTAssertEqual(size.width, TaskManagerMenuLayout.width, accuracy: 1)
+                XCTAssertGreaterThan(size.height, 100, "\(page): \(scheme)")
+                XCTAssertLessThanOrEqual(size.height, (NSScreen.main?.visibleFrame.height ?? 800) * OnePlusMenuMetrics.heightFraction + 1)
+                XCTAssertEqual(measuredHeight, size.height, accuracy: 1)
+                host.frame.size = size
+                host.layoutSubtreeIfNeeded()
 
-            let representation = try XCTUnwrap(host.bitmapImageRepForCachingDisplay(in: host.bounds))
-            host.cacheDisplay(in: host.bounds, to: representation)
-            let image = NSImage(size: host.bounds.size)
-            image.addRepresentation(representation)
-            let attachment = XCTAttachment(image: image)
-            attachment.name = "Task Manager Menu — \(page.capitalized)"
-            attachment.lifetime = .keepAlways
-            add(attachment)
+                let representation = try XCTUnwrap(host.bitmapImageRepForCachingDisplay(in: host.bounds))
+                host.cacheDisplay(in: host.bounds, to: representation)
+                let image = NSImage(size: host.bounds.size)
+                image.addRepresentation(representation)
+                let attachment = XCTAttachment(image: image)
+                attachment.name = "Task Manager Menu — \(page.capitalized) — \(scheme)"
+                attachment.lifetime = .keepAlways
+                add(attachment)
+            }
         }
     }
 
