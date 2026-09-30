@@ -391,11 +391,11 @@ struct SystemCareWindowView: View {
     private var recentActivityCard: some View {
         OnePlusCard {
             OnePlusCardHeader("Recent activity", systemImage: "clock.arrow.circlepath")
-            OnePlusSettingRow("Cleanup scan", separator: false) {
+            OnePlusSettingRow("Cleanup scan") {
                 Text(manager.cleanupScanDate?.formatted(date: .abbreviated, time: .shortened) ?? "Not run")
                     .onePlusText(.control)
             }
-            OnePlusSettingRow("Last recovery", separator: false) {
+            OnePlusSettingRow("Last recovery") {
                 Text(manager.lastRecoveredBytes == 0 ? "No items moved" : manager.lastRecoveredBytes.formattedByteCount)
                     .onePlusText(.control)
             }
