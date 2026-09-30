@@ -62,17 +62,30 @@ final class OnePlusMenuSizingTests: XCTestCase {
         layout()
         XCTAssertEqual(host.fittingSize.height, 48 + 48 + 37, accuracy: 0.5)
     }
-    func testPanelShrinksAfterSwitchingFromLongToShortContent() {
+    func testTabSwitchCommitsOnlyTheDestinationHeight() {
         let model = MenuSizingModel()
-        let host = NSHostingView(rootView: MenuSizingContent(model: model))
-        host.frame.size = NSSize(width: 356, height: 600)
-        for height in [CGFloat(900), 120, 400, 0, 80] {
+        let window = NSWindow(contentRect: NSRect(x: -10000, y: -10000, width: 356, height: 600),
+                              styleMask: .borderless, backing: .buffered, defer: false)
+        var committedHeights: [CGFloat] = []
+        let host = NSHostingView(rootView: MenuSizingContent(model: model)
+            .onOnePlusMenuHeightChange { [weak window] height in
+                committedHeights.append(height)
+                if window?.contentView?.frame.height != height {
+                    window?.setContentSize(NSSize(width: 356, height: height))
+                }
+            })
+        window.contentView = host
+        host.layoutSubtreeIfNeeded()
+        for height in [CGFloat(120), 900, 400, 0, 80, 900, 120] {
+            committedHeights.removeAll()
             model.height = height
             host.layoutSubtreeIfNeeded()
-            RunLoop.main.run(until: Date(timeIntervalSinceNow: 0.05))
-            host.layoutSubtreeIfNeeded()
+            let expected = min(600, 48 + 11 + height)
             XCTAssertEqual(host.fittingSize.width, 356, accuracy: 0.5)
-            XCTAssertEqual(host.fittingSize.height, min(600, 48 + 11 + height), accuracy: 0.5)
+            XCTAssertEqual(host.fittingSize.height, expected, accuracy: 0.5)
+            XCTAssertFalse(committedHeights.isEmpty)
+            XCTAssertTrue(committedHeights.allSatisfy { abs($0 - expected) < 0.5 }, "Intermediate heights: \(committedHeights)")
+            XCTAssertEqual(window.contentView!.frame.height, expected, accuracy: 0.5)
         }
     }
 
@@ -91,7 +104,7 @@ final class OnePlusMenuSizingTests: XCTestCase {
         XCTAssertEqual(host.fittingSize.height, screenHeight * 0.9, accuracy: 0.5)
     }
 
-    func testClosedPanelDoesNotConstructItsContent() {
+    func testClosedPanelKeepsItsLayoutMounted() {
         let counter = MenuContentCounter()
         let hidden = NSHostingView(rootView: OnePlusMenuPanelShell(
             maximumHeight: 600, tabs: EmptyView(), actions: EmptyView(),
@@ -99,7 +112,7 @@ final class OnePlusMenuSizingTests: XCTestCase {
             content: { counter.content() }
         ).environment(\.onePlusIsVisible, false))
         hidden.layoutSubtreeIfNeeded()
-        XCTAssertEqual(counter.buildCount, 0)
+        XCTAssertGreaterThan(counter.buildCount, 0)
 
         let visible = NSHostingView(rootView: OnePlusMenuPanelShell(
             maximumHeight: 600, tabs: EmptyView(), actions: EmptyView(),

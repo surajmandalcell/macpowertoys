@@ -191,7 +191,7 @@ final class DeepLinkHandler {
                 let toolId = route.tool
                 let prefill = toolId == "nettoys" ? NetToysScanPrefill.parse(url) : nil
                 if let prefill { pendingNetToysPrefill = prefill }
-                ToolActionRouter.shared.open(toolID: toolId, page: route.page)
+                ToolActionRouter.shared.open(toolID: toolId, page: route.page, activateApp: NSApp.isActive)
                 if let prefill {
                     NotificationCenter.default.post(name: .netToysPrefill, object: prefill)
                 }

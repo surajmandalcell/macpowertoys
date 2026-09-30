@@ -34,7 +34,6 @@ final class DiagnosticsMenuPanels: NSObject {
     static let shared = DiagnosticsMenuPanels()
     weak var mainWindow: NSWindow?
     private let popovers = NSHashTable<NSPopover>.weakObjects()
-    private var openTask: Task<Void, Never>?
     private(set) var captureWindow: NSPanel?
     var makeCaptureContent: ((DiagnosticsPanel) -> AnyView?)?
     private let defaults: UserDefaults
@@ -46,14 +45,13 @@ final class DiagnosticsMenuPanels: NSObject {
                                                name: NSPopover.didShowNotification, object: nil)
     }
 
-    isolated deinit { openTask?.cancel(); NotificationCenter.default.removeObserver(self) }
+    isolated deinit { NotificationCenter.default.removeObserver(self) }
 
     @objc private func didShow(_ notification: Notification) {
         if let popover = notification.object as? NSPopover { popovers.add(popover) }
     }
 
     func close() {
-        openTask?.cancel(); openTask = nil
         captureWindow?.orderOut(nil)
         captureWindow?.contentViewController = nil
         captureWindow = nil
@@ -65,41 +63,20 @@ final class DiagnosticsMenuPanels: NSObject {
     }
 
     func open(_ panel: DiagnosticsPanel, tab: String?) {
-        close()
-        if let content = makeCaptureContent?(panel) {
-            presentCapturePanel(content, panel: panel)
-            openTask = Task { @MainActor [weak self] in
-                await Task.yield()
-                guard !Task.isCancelled else { return }
-                panel.selectTab(tab, defaults: self?.defaults ?? .standard)
-                self?.openTask = nil
-            }
+        panel.selectTab(tab, defaults: defaults)
+        if captureWindow?.identifier?.rawValue == "diagnostics-panel.\(panel.rawValue)",
+           captureWindow?.isVisible == true { return }
+        if panel == .portman {
+            PortmanMenuController.shared.show(initialPage: tab.flatMap(PortmanPanelView.Page.init(panelID:)),
+                                              activateApp: false)
             return
         }
-        openTask = Task { @MainActor [weak self] in
-            guard let self else { return }
-            defer { if !Task.isCancelled { self.openTask = nil } }
-            var clicked = false
-            // Status items can still be attaching when a background URL arrives.
-            // This request has a two-second deadline and no idle work.
-            for _ in 0..<40 {
-                guard !Task.isCancelled else { return }
-                if !clicked, let button = panel.statusButton {
-                    button.performClick(nil)
-                    clicked = true
-                }
-                let shown = panel == .main ? self.mainWindow?.isVisible == true
-                    : self.popovers.allObjects.contains { $0.isShown }
-                if clicked && shown {
-                    await Task.yield()
-                    guard !Task.isCancelled else { return }
-                    panel.selectTab(tab, defaults: self.defaults)
-                    return
-                }
-                do { try await Task.sleep(for: .milliseconds(50)) } catch { return }
-            }
-            LogManager.shared.warning("Panel did not open: \(panel.rawValue)", source: "DeepLinkHandler")
+        close()
+        guard let content = makeCaptureContent?(panel) else {
+            LogManager.shared.warning("Panel content is not ready: \(panel.rawValue)", source: "DeepLinkHandler")
+            return
         }
+        presentCapturePanel(content, panel: panel)
     }
 
     private func presentCapturePanel(_ content: AnyView, panel: DiagnosticsPanel) {
@@ -124,11 +101,21 @@ final class DiagnosticsMenuPanels: NSObject {
         let x = min(max(visible.minX, (anchor?.midX ?? visible.maxX) - OnePlusMenuMetrics.width / 2),
                     visible.maxX - OnePlusMenuMetrics.width)
         window.setFrameTopLeftPoint(CGPoint(x: x, y: top))
-        window.contentViewController = NSHostingController(rootView: DiagnosticsCaptureContent(content: content) { [weak window] height in
+        let hosting = NSHostingController(rootView: content
+            .fixedSize(horizontal: false, vertical: true).frame(width: OnePlusMenuMetrics.width)
+            .onePlusFocusPolicy().onOnePlusMenuHeightChange { [weak window] height in
             guard let window, height.isFinite, height > 0, abs(window.frame.height - height) > 0.5 else { return }
             window.setContentSize(CGSize(width: OnePlusMenuMetrics.width, height: height))
             window.setFrameTopLeftPoint(CGPoint(x: x, y: top))
         })
+        window.contentViewController = hosting
+        let size = hosting.sizeThatFits(in: NSSize(width: OnePlusMenuMetrics.width,
+                                                   height: visible.height * OnePlusMenuMetrics.heightFraction))
+        hosting.view.setFrameSize(size)
+        hosting.view.layoutSubtreeIfNeeded()
+        window.setContentSize(size)
+        window.setFrameTopLeftPoint(CGPoint(x: x, y: top))
+        OnePlusFocusPolicy.shared.configure(window)
         captureWindow = window
         window.orderFrontRegardless()
     }
@@ -137,24 +124,6 @@ final class DiagnosticsMenuPanels: NSObject {
 private final class DiagnosticsCapturePanel: NSPanel {
     override var canBecomeKey: Bool { false }
     override var canBecomeMain: Bool { false }
-}
-
-private struct DiagnosticsCaptureHeight: PreferenceKey {
-    static let defaultValue: CGFloat = 0
-    static func reduce(value: inout CGFloat, nextValue: () -> CGFloat) { value = nextValue() }
-}
-
-private struct DiagnosticsCaptureContent: View {
-    let content: AnyView
-    let heightChanged: (CGFloat) -> Void
-    var body: some View {
-        content.fixedSize(horizontal: false, vertical: true)
-            .frame(width: OnePlusMenuMetrics.width)
-            .background(GeometryReader { proxy in
-                Color.clear.preference(key: DiagnosticsCaptureHeight.self, value: proxy.size.height)
-            })
-            .onPreferenceChange(DiagnosticsCaptureHeight.self, perform: heightChanged)
-    }
 }
 
 struct DiagnosticsMainMenuWindow: NSViewRepresentable {

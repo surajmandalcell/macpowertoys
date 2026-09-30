@@ -23,14 +23,6 @@ public enum OnePlusMenuMetrics {
     }
 }
 
-private struct OnePlusMenuHeightKey: PreferenceKey {
-    static let defaultValue: CGFloat = -1
-    static func reduce(value: inout CGFloat, nextValue: () -> CGFloat) {
-        let next = nextValue()
-        if next.isFinite { value = max(value, next) }
-    }
-}
-
 public struct OnePlusMenuPanel<Tabs: View, Actions: View, Body: View>: View {
     let tabs: Tabs
     let actions: Actions
@@ -61,9 +53,7 @@ struct OnePlusMenuPanelShell<Tabs: View, Actions: View, Body: View>: View {
     let content: () -> Body
     let toolbar: (() -> AnyView)?
     let footer: (() -> AnyView)?
-    @Environment(\.onePlusIsVisible) private var isVisible
-    @State private var contentHeight: CGFloat?
-    @State private var regionHeights: [String: CGFloat] = [:]
+    @Environment(\.onePlusMenuHeightChanged) private var heightChanged
 
     init(maximumHeight: CGFloat?, tabs: Tabs, actions: Actions,
          toolbar: (() -> AnyView)? = nil, footer: (() -> AnyView)? = nil,
@@ -81,53 +71,152 @@ struct OnePlusMenuPanelShell<Tabs: View, Actions: View, Body: View>: View {
         let defaultHeight = screenHeight.isFinite ? max(0, screenHeight) * OnePlusMenuMetrics.heightFraction : 720
         let requestedHeight = maximumHeight.flatMap { $0.isFinite ? max(0, $0) : nil } ?? defaultHeight
         let cap = max(OnePlusMenuMetrics.topBar, min(requestedHeight, defaultHeight))
-        let bodyCap = max(0, cap - OnePlusMenuMetrics.topBar - (regionHeights["toolbar"] ?? 0) - (regionHeights["footer"] ?? 0))
-        VStack(spacing: 0) {
+        OnePlusMenuPanelLayout(maximumHeight: cap - 2) {
             HStack(spacing: 7) {
                 tabs
                 Spacer(minLength: 0)
                 HStack(spacing: 2) { actions }.fixedSize()
             }.padding(.horizontal, 8).padding(.top, OnePlusMenuMetrics.topBarTop).padding(.bottom, OnePlusMenuMetrics.topBarBottom)
-            if isVisible, let toolbar {
-                fixedRegion(toolbar(), name: "toolbar", top: 3, bottom: 5)
-            }
-            ScrollView {
-                if isVisible {
-                    VStack(alignment: .leading, spacing: 5) { content() }
-                        .frame(width: 338).padding(.horizontal, 8)
-                        .padding(.top, (regionHeights["toolbar"] ?? 0) > 0 ? 0 : 3)
-                        .padding(.bottom, (regionHeights["footer"] ?? 0) > 0 ? 0 : 8)
-                        .background(GeometryReader { proxy in Color.clear.preference(key: OnePlusMenuHeightKey.self, value: proxy.size.height) })
-                }
-            }
-            .onePlusScrollIndicators().frame(height: isVisible ? min(contentHeight ?? bodyCap, bodyCap) : 0)
-            .onPreferenceChange(OnePlusMenuHeightKey.self) { if $0.isFinite, $0 >= 0 { contentHeight = $0 } }
-            if isVisible, let footer {
-                fixedRegion(footer(), name: "footer", top: 5, bottom: 8)
-            }
-        }.padding(1).frame(width: 356).background(OnePlusColor.sidebar)
+                .frame(height: OnePlusMenuMetrics.topBar - 2)
+            fixedRegion(toolbar?() ?? AnyView(EmptyView()), top: 3, bottom: 5)
+            OnePlusMenuScrollContent(content: VStack(alignment: .leading, spacing: 5) { content() }
+                .frame(width: OnePlusMenuMetrics.bodyWidth).padding(.horizontal, OnePlusMenuMetrics.bodyInset))
+            fixedRegion(footer?() ?? AnyView(EmptyView()), top: 5, bottom: 8)
+        }.padding(1).frame(width: 356).fixedSize(horizontal: false, vertical: true)
+            .background(OnePlusMenuHeightReporter(changed: heightChanged))
+            .background(OnePlusColor.sidebar)
             .clipShape(RoundedRectangle(cornerRadius: 11))
             .overlay { RoundedRectangle(cornerRadius: 11).strokeBorder(OnePlusColor.line, lineWidth: 1) }
             .onePlusDensity(.compact)
             .environment(\.onePlusCardPadding, OnePlusMetrics.cardPadding)
             .onePlusNeutralControls()
             .onePlusFocusPolicy()
-            .onPreferenceChange(OnePlusMenuRegionHeightKey.self) { if regionHeights != $0 { regionHeights = $0 } }
+            .transaction { $0.animation = nil }
     }
 
-    private func fixedRegion(_ view: AnyView, name: String, top: CGFloat, bottom: CGFloat) -> some View {
+    private func fixedRegion(_ view: AnyView, top: CGFloat, bottom: CGFloat) -> some View {
         OnePlusFixedRegionLayout(gutter: 0, bottomInset: bottom, emptyInset: 0, topInset: top) { view }
             .frame(width: OnePlusMenuMetrics.bodyWidth).padding(.horizontal, OnePlusMenuMetrics.bodyInset)
-            .background(GeometryReader { proxy in
-                Color.clear.preference(key: OnePlusMenuRegionHeightKey.self, value: [name: proxy.size.height])
-            })
     }
 }
 
-private struct OnePlusMenuRegionHeightKey: PreferenceKey {
-    static let defaultValue: [String: CGFloat] = [:]
-    static func reduce(value: inout [String: CGFloat], nextValue: () -> [String: CGFloat]) {
-        value.merge(nextValue().filter { $0.value.isFinite }) { _, new in new }
+private struct OnePlusMenuHeightChangedKey: EnvironmentKey {
+    static var defaultValue: (CGFloat) -> Void { { _ in } }
+}
+
+private extension EnvironmentValues {
+    var onePlusMenuHeightChanged: (CGFloat) -> Void {
+        get { self[OnePlusMenuHeightChangedKey.self] }
+        set { self[OnePlusMenuHeightChangedKey.self] = newValue }
+    }
+}
+
+public extension View {
+    /// Called with the final natural or capped height during the panel's layout pass.
+    func onOnePlusMenuHeightChange(_ action: @escaping (CGFloat) -> Void) -> some View {
+        transformEnvironment(\.onePlusMenuHeightChanged) { inherited in
+            let parent = inherited
+            inherited = { height in parent(height); action(height) }
+        }
+    }
+}
+
+private struct OnePlusMenuHeightReporter: NSViewRepresentable {
+    let changed: (CGFloat) -> Void
+    func makeNSView(context: Context) -> HeightView { HeightView(changed: changed) }
+    func updateNSView(_ view: HeightView, context: Context) { view.changed = changed }
+    final class HeightView: NSView {
+        var changed: (CGFloat) -> Void
+        init(changed: @escaping (CGFloat) -> Void) {
+            self.changed = changed
+            super.init(frame: .zero)
+        }
+        @available(*, unavailable) required init?(coder: NSCoder) { fatalError() }
+        override func hitTest(_ point: NSPoint) -> NSView? { nil }
+        override func setFrameSize(_ newSize: NSSize) {
+            let previous = frame.height
+            super.setFrameSize(newSize)
+            if newSize.height > 0, previous != newSize.height { changed(newSize.height) }
+        }
+    }
+}
+
+private struct OnePlusMenuPanelLayout: Layout {
+    let maximumHeight: CGFloat
+    private func heights(_ subviews: Subviews, width: CGFloat) -> [CGFloat] {
+        let natural = subviews.map { $0.sizeThatFits(.init(width: width, height: nil)).height }
+        let topGap: CGFloat = natural[1] > 0 ? 0 : 3
+        let bottomGap: CGFloat = natural[3] > 0 ? 0 : 8
+        let bodyCap = max(0, maximumHeight - natural[0] - natural[1] - natural[3] - topGap - bottomGap)
+        return [natural[0], natural[1], topGap, min(natural[2], bodyCap), bottomGap, natural[3]]
+    }
+
+    func sizeThatFits(proposal: ProposedViewSize, subviews: Subviews, cache: inout ()) -> CGSize {
+        let width = OnePlusMenuMetrics.width - 2
+        return CGSize(width: width, height: heights(subviews, width: width).reduce(0, +))
+    }
+
+    func placeSubviews(in bounds: CGRect, proposal: ProposedViewSize, subviews: Subviews, cache: inout ()) {
+        let sizes = heights(subviews, width: bounds.width)
+        var y = bounds.minY
+        let indices: [Int?] = [0, 1, nil, 2, nil, 3]
+        for (index, height) in sizes.enumerated() {
+            if let viewIndex = indices[index] {
+                subviews[viewIndex].place(at: CGPoint(x: bounds.minX, y: y), proposal: .init(width: bounds.width, height: height))
+            }
+            y += height
+        }
+    }
+}
+
+private struct OnePlusMenuScrollContent<Content: View>: NSViewRepresentable {
+    let content: Content
+
+    func makeNSView(context: Context) -> NSScrollView {
+        let scroll = OnePlusMenuScrollView()
+        scroll.drawsBackground = false
+        let host = OnePlusMenuHostingView(rootView: AnyView(content.environment(\.self, context.environment)))
+        host.scroll = scroll
+        scroll.documentView = host
+        scroll.configureOnePlusScrollIndicators(axes: .vertical)
+        return scroll
+    }
+
+    func updateNSView(_ scroll: NSScrollView, context: Context) {
+        guard let host = scroll.documentView as? NSHostingView<AnyView> else { return }
+        host.rootView = AnyView(content.environment(\.self, context.environment))
+    }
+
+    func sizeThatFits(_ proposal: ProposedViewSize, nsView scroll: NSScrollView, context: Context) -> CGSize? {
+        guard let host = scroll.documentView else { return nil }
+        let width = proposal.width ?? OnePlusMenuMetrics.width - 2
+        host.frame.size.width = width
+        let height = host.fittingSize.height
+        host.frame.size.height = height
+        return CGSize(width: width, height: min(height, proposal.height ?? height))
+    }
+}
+
+private final class OnePlusMenuScrollView: NSScrollView {
+    override var intrinsicContentSize: NSSize {
+        NSSize(width: NSView.noIntrinsicMetric, height: documentView?.fittingSize.height ?? 0)
+    }
+}
+
+private final class OnePlusMenuHostingView<Content: View>: NSHostingView<Content> {
+    weak var scroll: NSScrollView?
+    private var measuredHeight: CGFloat?
+    override func layout() {
+        super.layout()
+        let height = fittingSize.height
+        if measuredHeight != height {
+            measuredHeight = height
+            scroll?.invalidateIntrinsicContentSize()
+        }
+    }
+    override func invalidateIntrinsicContentSize() {
+        super.invalidateIntrinsicContentSize()
+        scroll?.invalidateIntrinsicContentSize()
     }
 }
 

@@ -286,7 +286,7 @@ struct PortmanPanelView: View {
             }
             .frame(maxWidth: .infinity, alignment: .topLeading)
         }
-        .onGeometryChange(for: CGFloat.self) { $0.size.height } action: {
+        .onOnePlusMenuHeightChange {
             PortmanMenuController.shared.setHeight($0)
         }
     }

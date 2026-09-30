@@ -147,7 +147,7 @@ struct ToolPageRouterTests {
         #expect(DiagnosticsPanel.main.matchingButton(in: [monitor, portman, individual]) == nil)
     }
 
-    @MainActor @Test func diagnosticsPresentCaptureContentBeforeSelectingItsTab() async throws {
+    @MainActor @Test func diagnosticsSelectAndMeasureBeforePresentingCaptureContent() throws {
         let suite = "DiagnosticPanelTests.\(UUID().uuidString)"
         let defaults = try #require(UserDefaults(suiteName: suite))
         defer { defaults.removePersistentDomain(forName: suite) }
@@ -157,6 +157,8 @@ struct ToolPageRouterTests {
         var built: [DiagnosticsPanel] = []
         router.makeCaptureContent = { panel in
             built.append(panel)
+            #expect(defaults.string(forKey: panel == .main ? "tray.selectedTab.v2" : "systemMonitor.trayPage")
+                == (panel == .main ? "rclone" : "memory"))
             return AnyView(Text("Panel body").frame(width: 356, height: 160))
         }
         let wasActive = NSApp.isActive
@@ -164,13 +166,11 @@ struct ToolPageRouterTests {
         #expect(built == [.main])
         #expect(router.captureWindow?.isVisible == true)
         #expect(router.captureWindow?.canBecomeKey == false)
-        #expect(defaults.string(forKey: "tray.selectedTab.v2") == "home")
-        try await Task.sleep(for: .milliseconds(30))
+        #expect(router.captureWindow?.contentView?.frame.height == 160)
         #expect(defaults.string(forKey: "tray.selectedTab.v2") == "rclone")
         #expect(NSApp.isActive == wasActive)
         let firstWindow = try #require(router.captureWindow)
         router.open(.systemMonitor, tab: "memory")
-        try await Task.sleep(for: .milliseconds(30))
         #expect(built == [.main, .systemMonitor])
         #expect(firstWindow.isVisible == false)
         #expect(firstWindow.contentViewController == nil)
