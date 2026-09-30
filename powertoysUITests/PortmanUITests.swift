@@ -1,6 +1,29 @@
 import XCTest
 
 final class PortmanUITests: XCTestCase {
+    override func record(_ issue: XCTIssue) {
+        let process = Process()
+        let pipe = Pipe()
+        process.executableURL = URL(fileURLWithPath: "/usr/bin/log")
+        process.arguments = ["show", "--last", "2m", "--style", "compact", "--predicate",
+                             "process == \"MacPowerToys\" AND eventMessage CONTAINS \"[DEBUG-ci14]\""]
+        process.standardOutput = pipe
+        process.standardError = pipe
+        if (try? process.run()) != nil {
+            let deadline = Date().addingTimeInterval(5)
+            while process.isRunning && Date() < deadline { Thread.sleep(forTimeInterval: 0.05) }
+            if process.isRunning { process.terminate() }
+            process.waitUntilExit()
+            let output = String(decoding: pipe.fileHandleForReading.readDataToEndOfFile(), as: UTF8.self)
+            print(output)
+            let attachment = XCTAttachment(string: output)
+            attachment.name = "Portman startup diagnostics"
+            attachment.lifetime = .keepAlways
+            add(attachment)
+        }
+        super.record(issue)
+    }
+
     @MainActor
     func testFourServerRowsMatchMemoryBarAndShowFooter() throws {
         var listeners: [Process] = []
