@@ -619,15 +619,23 @@
   formatter for disk values. A second Sensors card repeated thermal pressure.
 - **Invariant:** Disk and Network plot ticks are numeric MB/s values on one
   line. Show the unit once above the 64pt plot. Keep the time axis outside and
-  legends on the card's inner leading edge. System Care and Task Manager panel
-  disk labels share decimal `TrayPopoverLayout.diskBytes`. RAM keeps binary
-  formatting. Sensors puts the existing Fan row directly after the hero at
-  the 8pt detail gap. Add no temperature values without reported readings.
+  legends on the card's inner leading edge. Task Manager window and panel
+  disk capacities, used, free, and cumulative reads share decimal
+  `TrayPopoverLayout.diskBytes`, matching System Care. Disk rates use decimal
+  `SystemMonitorDisplayFormat.byteRate`. Remote storage uses the same disk
+  formatter. System Report retains the values supplied by `system_profiler`.
+  RAM keeps binary formatting. Sensors puts the existing Fan row directly
+  after the hero at the 8pt detail gap. Add no temperature values without
+  reported readings.
   Offline remote bodies say No disk data and retain CPU, RAM, and Network
   dashes. Foundation owns header/metric glyph APIs and muted offline readings
   in `OnePlusMenuItemCard`; callers must not replace that shared card locally.
 - **Check:** `tmp/redesign/logs/27r10-panels-check.py` checks actual panel
   formatting, captured high-rate tick widths, and network identity fallbacks.
+  Run `testDiskByteFormatterUsesDecimalUnits` on hosted CI. It checks decimal
+  KB, MB, GB, and TB thresholds. The standalone check reproduces 953.7 MB
+  for one decimal GB through the former window formatter; the shared formatter
+  returns 1 GB. Check that 1,073,741,824 RAM bytes still display as 1 GB.
   Review Disk, Network, Sensors, and Home in both signed appearances. Compare
   startup disk cards from the same sample. Execute hosted panel measurement
   and permission-route checks. Local verification remains compile-only.
