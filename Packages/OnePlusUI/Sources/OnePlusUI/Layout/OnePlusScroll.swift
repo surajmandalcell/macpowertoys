@@ -31,7 +31,7 @@ private struct OnePlusScrollConfigurator: NSViewRepresentable {
     func updateNSView(_ view: NSView, context: Context) { (view as? OnePlusScrollProbe)?.configure() }
 }
 
-private final class OnePlusScrollProbe: NSView {
+final class OnePlusScrollProbe: NSView {
     private weak var configured: NSScrollView?
     private var pending: DispatchWorkItem?
     isolated deinit { pending?.cancel() }
@@ -51,6 +51,11 @@ private final class OnePlusScrollProbe: NSView {
         DispatchQueue.main.async(execute: work)
     }
     private func apply() {
+        if let scroll = enclosingScrollView {
+            scroll.configureOnePlusScrollIndicators()
+            configured = scroll
+            return
+        }
         if let configured, configured.window != nil {
             configured.configureOnePlusScrollIndicators()
             return
@@ -66,15 +71,13 @@ private final class OnePlusScrollProbe: NSView {
             }
             ancestor = view.superview
         }
-        if let scroll = enclosingScrollView {
-            scroll.configureOnePlusScrollIndicators()
-            configured = scroll
-        }
     }
     private func find(in view: NSView, point: NSPoint) -> NSScrollView? {
         for child in view.subviews {
-            if let scroll = child as? NSScrollView, !isDescendant(of: scroll),
-               scroll.convert(scroll.bounds, to: nil).contains(point) { return scroll }
+            if let scroll = child as? NSScrollView {
+                if scroll.convert(scroll.bounds, to: nil).contains(point) { return scroll }
+                continue
+            }
             if let result = find(in: child, point: point) { return result }
         }
         return nil
@@ -92,6 +95,10 @@ public extension NSScrollView {
         horizontalScroller?.controlSize = .mini
         (verticalScroller as? OnePlusOverlayScroller)?.observeScrolling(in: self)
         (horizontalScroller as? OnePlusOverlayScroller)?.observeScrolling(in: self)
+        let overlayWidth = NSScrollView.contentSize(forFrameSize: bounds.size,
+            horizontalScrollerClass: nil, verticalScrollerClass: nil, borderType: borderType,
+            controlSize: .mini, scrollerStyle: .overlay).width - contentInsets.left - contentInsets.right
+        if abs(contentView.frame.width - overlayWidth) > 0.5 { tile() }
     }
 }
 
@@ -99,8 +106,12 @@ public extension NSScrollView {
 private final class OnePlusScrollPolicy {
     private static var key: UInt8 = 0
     private var observations: [NSKeyValueObservation] = []
+    private var frameObserver: (any NSObjectProtocol)?
     private var pending: DispatchWorkItem?
-    isolated deinit { pending?.cancel() }
+    isolated deinit {
+        pending?.cancel()
+        if let frameObserver { NotificationCenter.default.removeObserver(frameObserver) }
+    }
 
     static func install(on scroll: NSScrollView) {
         guard objc_getAssociatedObject(scroll, &key) == nil else { return }
@@ -117,6 +128,11 @@ private final class OnePlusScrollPolicy {
                 MainActor.assumeIsolated { policy?.schedule(scroll) }
             }
         ]
+        scroll.contentView.postsFrameChangedNotifications = true
+        policy.frameObserver = NotificationCenter.default.addObserver(forName: NSView.frameDidChangeNotification,
+            object: scroll.contentView, queue: .main) { [weak policy, weak scroll] _ in
+                MainActor.assumeIsolated { if let scroll { policy?.schedule(scroll) } }
+            }
     }
 
     private func schedule(_ scroll: NSScrollView) {
