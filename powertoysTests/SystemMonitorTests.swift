@@ -50,14 +50,27 @@ final class SystemMonitorTests: XCTestCase {
         defer { SystemMonitorService.shared.stopDetailed(owner: "tray") }
 
         var preferredHeight: CGFloat = 0
-        let screenCap = (NSScreen.main?.visibleFrame.height ?? 800) * OnePlusMenuMetrics.heightFraction
+        let screen = try XCTUnwrap(NSScreen.main).visibleFrame
+        let screenCap = screen.height * OnePlusMenuMetrics.heightFraction
         let host = NSHostingView(rootView: SystemMonitorTrayView(remoteProfiles: Self.renderRemoteProfiles) {
             preferredHeight = $0
         }
             .defaultAppStorage(defaults)
             .frame(width: TaskManagerMenuLayout.width, height: screenCap))
+        host.frame = NSRect(x: screen.minX + 32, y: screen.minY + 32,
+                            width: TaskManagerMenuLayout.width, height: screenCap)
+        let window = NSWindow(contentRect: host.frame, styleMask: [.titled], backing: .buffered, defer: false)
+        window.isReleasedWhenClosed = false
+        window.contentView = host
+        NSApp.activate(ignoringOtherApps: true)
+        window.makeKeyAndOrderFront(nil)
+        defer { window.close(); window.contentView = nil }
         host.layoutSubtreeIfNeeded()
-        RunLoop.current.run(until: Date().addingTimeInterval(0.1))
+        let deadline = Date().addingTimeInterval(2)
+        while preferredHeight <= 300 && Date() < deadline {
+            RunLoop.current.run(until: Date().addingTimeInterval(0.05))
+            host.layoutSubtreeIfNeeded()
+        }
         XCTAssertGreaterThan(preferredHeight, 300)
         XCTAssertLessThanOrEqual(
             preferredHeight,
@@ -554,13 +567,24 @@ final class SystemMonitorTests: XCTestCase {
                     onPreferredHeight: { measuredHeight = $0 }
                 ).defaultAppStorage(defaults).environment(\.colorScheme, scheme))
                 host.appearance = NSAppearance(named: scheme == .dark ? .darkAqua : .aqua)
+                let screen = try XCTUnwrap(NSScreen.main).visibleFrame
                 host.frame = NSRect(
-                    x: 0, y: 0,
+                    x: screen.minX + 32, y: screen.minY + 32,
                     width: TaskManagerMenuLayout.width,
-                    height: (NSScreen.main?.visibleFrame.height ?? 800) * OnePlusMenuMetrics.heightFraction
+                    height: screen.height * OnePlusMenuMetrics.heightFraction
                 )
+                let window = NSWindow(contentRect: host.frame, styleMask: [.titled], backing: .buffered, defer: false)
+                window.isReleasedWhenClosed = false
+                window.contentView = host
+                NSApp.activate(ignoringOtherApps: true)
+                window.makeKeyAndOrderFront(nil)
+                defer { window.close(); window.contentView = nil }
                 host.layoutSubtreeIfNeeded()
-                RunLoop.current.run(until: Date().addingTimeInterval(1.2))
+                let deadline = Date().addingTimeInterval(2)
+                while host.fittingSize.height <= 100 && Date() < deadline {
+                    RunLoop.current.run(until: Date().addingTimeInterval(0.05))
+                    host.layoutSubtreeIfNeeded()
+                }
                 let size = host.fittingSize
                 XCTAssertEqual(size.width, TaskManagerMenuLayout.width, accuracy: 1)
                 XCTAssertGreaterThan(size.height, 100, "\(page): \(scheme)")

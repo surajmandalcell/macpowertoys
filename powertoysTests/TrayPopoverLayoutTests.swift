@@ -159,7 +159,7 @@ final class TrayPopoverLayoutTests: XCTestCase {
     func testTrayCorrectionPassKeepsGroupsAlignedAndErrorsOnDemand() throws {
         let source = try sourceFile("Views/TrayPopoverView.swift")
 
-        XCTAssertTrue(source.contains("Spacer(minLength: 8)"))
+        XCTAssertTrue(source.contains("Spacer(minLength: OnePlusMetrics.actionSpacing)"))
         XCTAssertTrue(source.contains("@State private var showsError = false"))
         XCTAssertTrue(source.contains("if showsError, let error = job.errorMessage"))
         XCTAssertTrue(source.contains("symbol: \"text.viewfinder\""))
