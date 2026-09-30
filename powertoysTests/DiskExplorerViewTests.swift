@@ -1,3 +1,5 @@
+import AppKit
+import OnePlusUI
 import SwiftUI
 import XCTest
 @testable import powertoys
@@ -64,6 +66,44 @@ final class DiskExplorerViewTests: XCTestCase {
                                              column: 2, ascending: false, apparent: false, showsFileCount: false)
         XCTAssertTrue(original.hasSamePresentation(as: refreshed))
         XCTAssertFalse(original.hasSamePresentation(as: searched))
+    }
+
+    func testNativeTableUpdatesColumnsBeforeLiveCells() throws {
+        let base: [OnePlusGridColumn] = [.init("Name", width: 300), .init("Size", width: 100)]
+        func view(_ columns: [OnePlusGridColumn]) -> OnePlusNativeTable {
+            OnePlusNativeTable(columns: columns,
+                rows: [.init(id: "file", cells: columns.map(\.title), symbol: "doc")],
+                selection: .constant(["file"]), sort: { _, _ in }, open: { _ in },
+                preview: { _ in }, remove: { _ in }, actions: { _ in [.init("Open") {}] })
+        }
+        let host = NSHostingView(rootView: view(base))
+        let window = NSWindow(contentRect: NSRect(x: -10000, y: -10000, width: 680, height: 180),
+                              styleMask: .borderless, backing: .buffered, defer: false)
+        window.isReleasedWhenClosed = false
+        window.contentView = host
+        defer { window.close(); window.contentView = nil }
+        func findTable(in parent: NSView) -> NSTableView? {
+            if let table = parent as? NSTableView { return table }
+            return parent.subviews.lazy.compactMap { findTable(in: $0) }.first
+        }
+        host.layoutSubtreeIfNeeded()
+        let original = try XCTUnwrap(findTable(in: host))
+        for columns in [base, base + [.init("Files", width: 80)], base] {
+            host.rootView = view(columns)
+            let deadline = Date().addingTimeInterval(2)
+            repeat {
+                host.layoutSubtreeIfNeeded()
+                RunLoop.main.run(until: Date().addingTimeInterval(0.01))
+            } while original.numberOfColumns != columns.count + 1 && Date() < deadline
+            XCTAssertTrue(findTable(in: host) === original)
+            XCTAssertEqual(original.tableColumns.dropLast().map(\.title), columns.map(\.title))
+            XCTAssertEqual(original.numberOfColumns, columns.count + 1)
+            XCTAssertEqual(original.selectedRowIndexes, IndexSet(integer: 0))
+            let cell = try XCTUnwrap(original.view(atColumn: columns.count - 1, row: 0, makeIfNecessary: true) as? NSTableCellView)
+            XCTAssertEqual(cell.textField?.stringValue, columns.last?.title)
+            let action = try XCTUnwrap(original.view(atColumn: columns.count, row: 0, makeIfNecessary: true) as? NSButton)
+            XCTAssertTrue(action.isEnabled)
+        }
     }
 
     func testDiskLockPresentationUsesCachedState() {
