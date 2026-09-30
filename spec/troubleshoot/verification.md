@@ -42,6 +42,21 @@
   fan row in both appearances. They do not prove native menu-bar placement or
   live fan hardware. A passing build alone does not count as an executed test.
 
+## Native Table Pixel Samples, 2026-09-30
+
+- **Symptom:** A light table render fails a separator-versus-row-fill check,
+  while header height and first-row origin pass.
+- **Cause:** The sample at the row origin reads AppKit's scroll-edge effect.
+  Hosted captures show the actual table fill below it. Hiding the native
+  scroll pocket changes only the boundary pixel to the expected panel color.
+- **Invariant:** Check native header and row geometry separately from colors.
+  Sample row fill inside the row. Resolve both pixels and expected tokens in
+  sRGB under the window's current appearance. Keep exact separator, header,
+  and row palette checks. Do not change native styles to fit a boundary sample.
+- **Check:** `testHeaderSeparatorAndFirstRowKeepTheirOriginsAcrossAppearancesAndLayout`
+  forces header and border layout changes during dark/light/dark and
+  light/dark/light transitions. It checks origins, extent, palette, and contrast.
+
 ## Menu Bar UI Test Starting Surface
 
 - **Symptom:** The fan setup test passes alone but cannot find its button after
