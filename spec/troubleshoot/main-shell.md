@@ -257,10 +257,9 @@
   menu-bar panel, despite a large blank area in a fixed-size offscreen capture.
 - **Cause:** Eight 88pt summary cards plus the new secondary tab row exceeded
   the tray body's 70-percent screen-height cap on a short display.
-- **Invariant:** At 440pt width, the dedicated Monitor popup shows all eight
-  summary values in a 560pt panel. Fan appears only on Monitor Sensors. Detail
-  tabs keep their natural content height and the panel still scrolls on smaller
-  screens.
+- **Invariant:** The shared 356pt Task Manager panel sizes each destination
+  naturally. Its 90-percent screen limit is a ceiling. Fan appears on Home
+  and Sensors. Only overflowing content scrolls on smaller screens.
 - **Check:** Measure the natural Home height against the short-screen cap and
   inspect light and dark production-width renders. The first hosted render at
   `294c5a2` exposed the cutoff; hosted run `36152200305` passed the
@@ -278,17 +277,20 @@
   also made its row taller. The native Awake picker draws its visible edge
   about 12pt inside its frame, so giving it another 12pt outer trailing inset
   leaves its buttons visibly short of the Home action edge.
-- **Invariant:** Compact Fan appears on Monitor Sensors only, never on the main
-  combined menu, Monitor Home, or other Monitor pages. It uses the plain
-  Awake-row pattern, a 16pt leading inset, a 12pt trailing inset, and a native
-  three-option control. Fan, RPM, and utilization share one line; its icon stays
+- **Invariant:** Compact Fan appears on Task Manager Home and Sensors, never
+  on the main combined menu or other Task Manager pages. It uses the shared
+  menu control row and compact 24pt three-option control.
+  Fan, RPM, and utilization share one line; its icon stays
   neutral. Auto, Cool, and Max remain visible while unavailable options are
   disabled. When control is unavailable, a bare amber warning glyph opens the
   built-in-helper approval flow. There is no separate package or Terminal
-  command. The popup keeps a 34pt action target and 18pt bottom clearance.
+  command. If manual control is unavailable but automatic recovery works,
+  Restore Auto remains available in that popup. Independent availability in
+  the segmented control needs a foundation API. The popup keeps its action
+  clearance.
 - **Check:** Inspect global Home, Monitor Home, and Sensors at production popup
-  width in light and dark. Only Sensors shows Fan. Check live RPM, disabled
-  controls, and the bounded approval explanation
+  width in light and dark. Task Manager Home and Sensors show Fan. Check live
+  RPM, disabled controls, and the bounded approval explanation
   without clipping. The app never approves
   its own macOS background item.
 

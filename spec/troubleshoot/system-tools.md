@@ -445,10 +445,12 @@
 - **Cause:** A padded panel wrapper was embedded inside an already padded page,
   and the whole card stack owned one outer scroll view.
 - **Invariant:** `InputDevicesSettingsContent()` is the one card implementation.
-  A main-window host embeds it directly with regular density. The compact panel
-  uses `InputDevicesSettingsView`. The Scrolling page uses one 24pt page gutter,
-  keeps `InputScrollDeviceBar` fixed below its row scroller, and adds no second
-  horizontal or top inset. Every selector uses `OnePlusSelect`.
+  A main-window host embeds it directly with regular density. Main and separate
+  menu panels embed the same cards directly with inherited compact density.
+  `OnePlusMenuPanel` owns their only 8pt body inset. The Scrolling page uses
+  one 24pt page gutter, keeps `InputScrollDeviceBar` fixed below its row
+  scroller, and adds no second horizontal or top inset. Every selector uses
+  `OnePlusSelect`.
 - **Check:** Open the Scrolling page and the launcher Input Devices detail and
   confirm both card stacks start on the page title's leading edge. Scroll the
   profiles and confirm the Scroll device footer stays fixed.
@@ -574,6 +576,32 @@
 - **Check:** Run `testHistoryChartsStayInsideTheirRequestedPlotHeight` on
   hosted CI. It checks painted bounds at 72pt, 138pt, and compact 19pt in
   both appearances. Recapture Battery and CPU from the signed build.
+
+- **Symptom:** Compact CPU and Sensors cards are too tall, Fan loses Cool and
+  Max without helper access, and offline hosts show an empty storage track.
+- **Cause:** Menu plots requested 96pt. Fan replaced its segmented control
+  with one Auto button. The remote card drew a placeholder storage row.
+- **Invariant:** Compact menu plots request 64pt and size their cards naturally.
+  Keep time labels outside the plot. Fan always shows the shared 24pt Auto,
+  Cool, and Max control. Its warning action owns helper setup and Restore Auto
+  when automatic recovery is available without manual control. The shared
+  segmented API currently disables the whole control. Foundation must provide
+  per-choice availability before Auto alone can remain enabled there.
+  Offline hosts keep unavailable CPU, RAM, and Network values but no empty
+  storage row or track. Retain their OS in the host's accessibility identity.
+- **Check:** Run `testTaskManagerMenuMeasuresTabsAndAsyncProfiles` on hosted CI.
+  It bounds CPU at 410pt and Sensors at 330pt. Recapture Home, CPU, and Sensors
+  in both appearances. Exercise helper setup and automatic recovery.
+
+- **Symptom:** Fan can keep polling after a menu panel closes.
+- **Cause:** The shared panel retains its mounted layout. An appearance-only
+  subscription remains active while that layout is hidden.
+- **Invariant:** Fan starts and stops its existing service owner from
+  `onePlusIsVisible`. Hiding also dismisses setup. Disappearance releases the
+  owner again. Do not add another poller.
+- **Check:** Run `testFanViewStopsPollingWhileItsLayoutStaysMounted` on hosted
+  CI. It toggles retained content visibility twice and checks poller release.
+  Measure idle CPU with every panel closed in the signed app.
 
 - **Symptom:** Task Manager declares a 220pt sidebar, but its visible surface
   ends at 175pt and becomes 220pt only in the native strip below the SwiftUI
