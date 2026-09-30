@@ -122,6 +122,7 @@ struct DiskEntryTable: View {
     let actions: ([DiskEntry]) -> [OnePlusTableAction]
     let remove: ([DiskEntry]) -> Void
     var showsFileCount = false
+    var isWaitingForScan = false
     @State private var column = 2
     @State private var ascending = false
     @State private var projections: [DiskEntryTableRequest: DiskEntryTableProjection] = [:]
@@ -188,7 +189,7 @@ struct DiskEntryTable: View {
                            actions: { actions($0.sorted().compactMap { current.entriesByID[$0] }) })
             .thinScrollIndicators()
             .overlay {
-                if cached == nil && !keepsPreviousRows {
+                if isWaitingForScan || (cached == nil && !keepsPreviousRows) {
                     OnePlusEmptyState(sourceID == "largest-files" ? "Loading largest files" : "Loading results",
                                       systemImage: "arrow.triangle.2.circlepath",
                                       caption: "Preparing file rows.") {
@@ -235,7 +236,7 @@ nonisolated struct DiskInspectorProjection: Sendable {
 
 struct DiskSelectionInspector: View {
     let entry: DiskEntry?
-    let parent: DiskEntry
+    let parent: DiskEntry?
     let apparent: Bool
     let revision: Date
     let select: (DiskEntry) -> Void
@@ -245,6 +246,7 @@ struct DiskSelectionInspector: View {
     let preview: (DiskEntry) -> Void
     let actions: ([DiskEntry]) -> [OnePlusTableAction]
     var availableBytes: Int64?
+    var pendingURL: URL?
     @State private var projection = DiskInspectorProjection.empty
 
     var body: some View {
@@ -259,16 +261,27 @@ struct DiskSelectionInspector: View {
                         facts(entry, folderCount: current.folderCount)
                         if entry.kind == .directory { children(current.children) }
                     }
-                    Spacer(minLength: 0)
-                    HStack(spacing: OnePlusMetrics.actionSpacing) {
-                        Button("View contents") { explore(entry) }.buttonStyle(OnePlusButtonStyle(.neutral))
-                            .disabled(entry.kind != .directory)
-                        Spacer(minLength: 0)
-                        Button { copy(entry) } label: { Image(systemName: "doc.on.doc") }
-                            .buttonStyle(OnePlusButtonStyle(.icon)).help("Copy Path").accessibilityLabel("Copy Path")
+                } else if let pendingURL {
+                    Label(pendingURL.lastPathComponent, systemImage: "folder").onePlusText(.sectionTitle)
+                    Text(pendingURL.path).onePlusText(.mono).lineLimit(2).truncationMode(.middle)
+                    Text("-").onePlusText(.metric)
+                    OnePlusUsageBar(value: 0)
+                    VStack(spacing: 0) {
+                        OnePlusKeyValueRow("Kind", value: "Folder")
+                        OnePlusKeyValueRow("Files", value: "-")
+                        OnePlusKeyValueRow("Contents", value: "-")
                     }
                 } else {
                     OnePlusEmptyState("Select an item", systemImage: "cursorarrow", caption: "Click a tile to see its details.")
+                }
+                Spacer(minLength: 0)
+                HStack(spacing: OnePlusMetrics.actionSpacing) {
+                    Button("View contents") { if let entry { explore(entry) } }
+                        .buttonStyle(OnePlusButtonStyle()).disabled(entry?.kind != .directory)
+                    Spacer(minLength: 0)
+                    Button { if let entry { copy(entry) } } label: { Image(systemName: "doc.on.doc") }
+                        .buttonStyle(OnePlusButtonStyle(.icon)).disabled(entry == nil)
+                        .help("Copy Path").accessibilityLabel("Copy Path")
                 }
             }.padding(OnePlusMetrics.cardPadding).frame(maxHeight: .infinity, alignment: .topLeading)
         }
@@ -295,7 +308,7 @@ struct DiskSelectionInspector: View {
         }
     }
     private func identity(_ entry: DiskEntry, path: String) -> some View {
-        let share = DiskChartGeometry.fraction(Double(entry.bytes(apparent: apparent)), of: Double(parent.bytes(apparent: apparent)))
+        let share = DiskChartGeometry.fraction(Double(entry.bytes(apparent: apparent)), of: Double(parent?.bytes(apparent: apparent) ?? 0))
         return VStack(alignment: .leading, spacing: OnePlusMetrics.actionSpacing) {
             Label(entry.name, systemImage: DiskEntryPresentation.symbol(entry)).onePlusText(.sectionTitle).lineLimit(2).help(entry.name)
             Text(path).onePlusText(.mono).lineLimit(2).truncationMode(.middle).textSelection(.enabled).help(path)
