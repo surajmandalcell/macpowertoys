@@ -12,18 +12,23 @@ struct MacTweaksNotice: Equatable {
 struct MacTweaksPanel<Content: View>: View {
     let title: String
     let glyph: MacTweaksGlyphName
+    let fillsHeight: Bool
     let content: Content
 
-    init(_ title: String, glyph: MacTweaksGlyphName, @ViewBuilder content: () -> Content) {
+    init(_ title: String, glyph: MacTweaksGlyphName, fillsHeight: Bool = false, @ViewBuilder content: () -> Content) {
         self.title = title
         self.glyph = glyph
+        self.fillsHeight = fillsHeight
         self.content = content()
     }
 
     var body: some View {
         OnePlusCard {
-            OnePlusCardHeader(title, systemImage: glyph.systemImage)
-            content
+            VStack(alignment: .leading, spacing: 0) {
+                OnePlusCardHeader(title, systemImage: glyph.systemImage)
+                content
+            }
+            .frame(maxHeight: fillsHeight ? .infinity : nil, alignment: .topLeading)
         }
         .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topLeading)
     }
@@ -32,6 +37,8 @@ struct MacTweaksPanel<Content: View>: View {
 struct MacTweaksPreferenceRows: View {
     let itemID: String
     let fields: [TweakPreferenceField]
+    let controlWidth: CGFloat
+    let separator: Bool
     let summary: String
     let revision: Int
     let selections: [String: Int]
@@ -41,14 +48,12 @@ struct MacTweaksPreferenceRows: View {
     let onError: (String) -> Void
 
     var body: some View {
-        let controlWidth = fields.contains { $0.choices.count == 2 }
-            ? OnePlusMetrics.wideControlColumn
-            : OnePlusMetrics.controlColumn
         ForEach(Array(fields.enumerated()), id: \.element.identity) { index, field in
             MacTweaksPreferenceRow(
                 itemID: itemID,
                 field: field,
                 controlWidth: controlWidth,
+                separator: separator || index < fields.count - 1,
                 help: fields.count == 1 || index == 0 ? summary : "This companion key keeps the same behavior in alternate native dialogs.",
                 revision: revision,
                 selection: selections[field.identity] ?? -1,
@@ -57,7 +62,6 @@ struct MacTweaksPreferenceRows: View {
                 onChanged: onChanged,
                 onError: onError
             )
-            if index < fields.count - 1 { MacTweaksRowDivider() }
         }
     }
 }
@@ -66,6 +70,7 @@ struct MacTweaksPreferenceRow: View {
     let itemID: String
     let field: TweakPreferenceField
     let controlWidth: CGFloat
+    let separator: Bool
     let help: String
     let revision: Int
     let selection: Int
@@ -87,9 +92,9 @@ struct MacTweaksPreferenceRow: View {
             help: help,
             reset: resetAction,
             controlWidth: controlWidth,
-            separator: false
+            separator: separator
         ) {
-            MacTweaksChoiceControl(field: field, selection: selection, isEnabled: canWrite, onSelection: apply)
+            MacTweaksChoiceControl(field: field, selection: selection, controlWidth: controlWidth, isEnabled: canWrite, onSelection: apply)
         }
         .accessibilityIdentifier("mac-tweaks.setting.\(field.key)")
     }
@@ -120,6 +125,7 @@ struct MacTweaksPreferenceRow: View {
 private struct MacTweaksChoiceControl: View {
     let field: TweakPreferenceField
     let selection: Int
+    let controlWidth: CGFloat
     let isEnabled: Bool
     let onSelection: (Int) -> Void
 
@@ -127,10 +133,11 @@ private struct MacTweaksChoiceControl: View {
         Group {
             if field.choices.count > 20 {
                 MacTweaksTimingField(field: field, selection: selection, onSelection: onSelection)
+                    .frame(width: controlWidth)
             } else if field.choices.count == 2 {
                 MacTweaksSegmentedControl(field: field, selection: selection, onSelection: onSelection)
             } else {
-                MacTweaksMenuControl(field: field, selection: selection, onSelection: onSelection)
+                MacTweaksMenuControl(field: field, selection: selection, controlWidth: controlWidth, onSelection: onSelection)
             }
         }
         .disabled(!isEnabled)
@@ -160,12 +167,14 @@ private struct MacTweaksSegmentedControl: View {
 private struct MacTweaksMenuControl: View {
     let field: TweakPreferenceField
     let selection: Int
+    let controlWidth: CGFloat
     let onSelection: (Int) -> Void
 
     var body: some View {
         OnePlusSelect(
             choices: [(-1, defaultLabel)] + field.choices.indices.map { ($0, field.choices[$0].label) },
             selection: Binding(get: { selection }, set: onSelection),
+            width: controlWidth,
             accessibilityLabel: field.label
         )
     }
