@@ -77,8 +77,11 @@ struct FanControlView: View {
         OnePlusMenuControlRow("Fan", systemImage: "fanblades", status: compactStatus) {
             HStack(spacing: 2) {
                 if service.errorMessage != nil || (service.hasCompletedRead && !service.canControl) {
-                    Button("Set up") { showsSetup = true }
-                    .buttonStyle(OnePlusButtonStyle(.ghost, size: .small))
+                    Button { showsSetup = true } label: {
+                        Image(systemName: "exclamationmark.triangle")
+                            .foregroundStyle(OnePlusColor.warn)
+                    }
+                    .buttonStyle(OnePlusButtonStyle(.icon, size: .small))
                     .accessibilityLabel(service.errorMessage == nil ? "Set up fan control" : "Fan control issue")
                     .accessibilityHint(detail)
                     .accessibilityIdentifier("fan-control.setup")
@@ -91,12 +94,6 @@ struct FanControlView: View {
     }
 
     private var compactStatus: String {
-        if service.errorMessage != nil { return "Fan issue" }
-        if service.hasCompletedRead && !service.canControl {
-            if service.needsApproval { return "Approval needed" }
-            if service.needsHelperUpdate { return "Update needed" }
-            return "Helper needed"
-        }
         return "\(rpm) · \(utilization)"
     }
 
@@ -112,6 +109,12 @@ struct FanControlView: View {
                 .font(.system(size: 11))
                 .foregroundStyle(.secondary)
                 .fixedSize(horizontal: false, vertical: true)
+            if service.canRestoreAutomatic && !service.canControl {
+                Button("Restore Auto") { service.select(.auto) }
+                    .taskManagerControl()
+                    .disabled(service.isChanging)
+                    .help("Return fan control to macOS")
+            }
             HStack(spacing: 8) {
                 if service.needsApproval {
                     Button("Open Login Items") { SMAppService.openSystemSettingsLoginItems() }
@@ -199,31 +202,22 @@ struct FanControlView: View {
         )
     }
 
-    @ViewBuilder
     private var presetButtons: some View {
-        if compact && !service.canControl && service.canRestoreAutomatic {
-            Button("Auto") { service.select(.auto) }
-                .buttonStyle(OnePlusButtonStyle(.neutral, size: .small))
-                .disabled(service.isChanging)
-                .accessibilityLabel("Fan Auto")
-                .help("Return fan control to macOS")
-        } else {
-            OnePlusSegmented(
-                choices: FanPreset.allCases.map { (Optional($0), $0.rawValue) },
-                selection: presetBinding,
-                accessibilityLabel: "Fan preset"
-            )
-            .onePlusDensity(.compact)
-            .disabled(service.isChanging || !service.canControl)
-            .help("Auto follows macOS. Cool boosts cooling for 10 minutes. Max runs fans at their hardware maximum.")
-            .accessibilityRepresentation {
-                Picker("Fan preset", selection: presetBinding) {
-                    ForEach(FanPreset.allCases) { preset in
-                        Text("Fan \(preset.rawValue)").tag(Optional(preset))
-                    }
+        OnePlusSegmented(
+            choices: FanPreset.allCases.map { (Optional($0), $0.rawValue) },
+            selection: presetBinding,
+            accessibilityLabel: "Fan preset"
+        )
+        .onePlusDensity(.compact)
+        .disabled(service.isChanging || !service.canControl)
+        .help("Auto follows macOS. Cool boosts cooling for 10 minutes. Max runs fans at their hardware maximum.")
+        .accessibilityRepresentation {
+            Picker("Fan preset", selection: presetBinding) {
+                ForEach(FanPreset.allCases) { preset in
+                    Text("Fan \(preset.rawValue)").tag(Optional(preset))
                 }
-                .pickerStyle(.segmented)
             }
+            .pickerStyle(.segmented)
         }
     }
 }
