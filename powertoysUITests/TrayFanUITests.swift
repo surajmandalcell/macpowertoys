@@ -89,16 +89,19 @@ final class TrayFanUITests: XCTestCase {
         tabsCapture.name = "Dedicated Task Manager popup"
         tabsCapture.lifetime = .keepAlways
         add(tabsCapture)
+        let cpuLoad = app.descendants(matching: .any).matching(NSPredicate(
+            format: "label BEGINSWITH %@", "Load · 1 minute"
+        )).firstMatch
         app.buttons["system-monitor.tray.cpu"].click()
-        XCTAssertTrue(app.staticTexts["Load · 1 minute"].waitForExistence(timeout: 5))
+        XCTAssertTrue(cpuLoad.waitForExistence(timeout: 5))
 
         home.click()
         app.buttons["system-monitor.tray.summary.cpu"].click()
-        XCTAssertTrue(app.staticTexts["Load · 1 minute"].waitForExistence(timeout: 5))
+        XCTAssertTrue(cpuLoad.waitForExistence(timeout: 5))
 
         monitor.click()
         monitor.click()
-        XCTAssertTrue(app.staticTexts["Load · 1 minute"].waitForExistence(timeout: 5))
+        XCTAssertTrue(cpuLoad.waitForExistence(timeout: 5))
 
         let capture = XCTAttachment(screenshot: app.screenshot())
         capture.name = "Task Manager CPU after reopening tray"
