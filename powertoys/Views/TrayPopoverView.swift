@@ -1640,9 +1640,10 @@ struct SystemMonitorTrayView: View {
                 GeometryReader { proxy in
                     ForEach(scaleLabels.indices, id: \.self) { index in
                         let fraction = CGFloat(index) / CGFloat(scaleLabels.count - 1)
+                        let y = min((fraction * proxy.size.height).rounded(.down), (proxy.size.height - 1).rounded(.down)) + 0.5
                         Text(scaleLabels[index])
                             .frame(width: proxy.size.width, alignment: .trailing)
-                            .position(x: proxy.size.width / 2, y: proxy.size.height * fraction)
+                            .position(x: proxy.size.width / 2, y: y)
                     }
                 }.onePlusText(.tableHeader).lineLimit(1)
                 .frame(width: [.sensors, .network, .disk].contains(page)
