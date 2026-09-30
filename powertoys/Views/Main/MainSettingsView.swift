@@ -115,14 +115,18 @@ private struct MainGeneralSettings: View {
         OnePlusPanel {
             VStack(spacing: 0) {
                 OnePlusCardHeader("iCloud", systemImage: "icloud")
-                OnePlusSettingRow("Sync settings via iCloud",
-                                  caption: "Syncs safe preferences and marketplace sources. Credentials, histories, file paths, and installed apps stay on this Mac.",
-                                  separator: false) {
+                OnePlusSettingRow("Sync settings via iCloud", separator: false) {
                     Toggle("Sync settings via iCloud", isOn: Binding(get: { sync.isEnabled }, set: { enabled in
                         if enabled { showSyncConflict = sync.enable() == .conflict }
                         else { sync.disable() }
                     })).labelsHidden().toggleStyle(OnePlusSwitchStyle())
                 }
+                Text("Syncs safe preferences and marketplace sources. Credentials, histories, file paths, and installed apps stay on this Mac.")
+                    .onePlusText(.caption)
+                    .fixedSize(horizontal: false, vertical: true)
+                    .frame(maxWidth: .infinity, alignment: .leading)
+                    .padding(.horizontal, OnePlusMetrics.cardPadding)
+                    .padding(.bottom, OnePlusMetrics.cardPadding)
                 Spacer(minLength: 0)
             }
         }
