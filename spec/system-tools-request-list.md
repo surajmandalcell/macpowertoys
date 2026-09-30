@@ -178,3 +178,29 @@ The orchestrator owns signed installation and final interaction review.
 | Done | Confirm restoration with multiple displays. | `cf5c975` prevents SwiftUI's initial frame from replacing saved state before restoration. All 400 unit tests pass. In the normal signed build, Input Devices and System Monitor restored at 1891 × 1065 on the built-in display, and System Care restored at 1078 × 699 on the same display after a full app quit and relaunch. The Window menu and the unchanged saved display identifier confirmed the display. The three windows then returned to their normal 980 × 700, 1080 × 720, and 1180 × 780 frames on the main display. | None. |
 | Done | Use quiet structural dividers and compact aligned top actions in all three workspaces. | `81de8b1` reduces the shared visual divider to 0.22 opacity, or 0.44 with Increased Contrast. `6247587` preserves every action's native width on the centered 24-point row. The normal signed builds confirmed the divider and every System Care action at the compact limit. The shared Increased Contrast and Reduce Motion checks pass. | None. |
 | Done | Give launcher detail tabs more top space and move them 2pt toward the leading edge. | The shared tool detail uses an exact 6pt top inset and 18pt leading inset for Settings and How to Use. One shared implementation covers every launcher detail, and its deterministic regression checks both constants. | None. |
+
+
+## Reference and dependency boundaries
+
+NetToys implements the scanner workflow independently. Do not copy or adapt
+Angry IP Scanner Java/SWT source, tests, strings, translations, layouts,
+artwork, plugin ABI, serialized preferences, or bundled vendor data.
+Use native APIs, system OpenSSH, and MacPowerToys-owned fixtures and formats.
+The reference is behavior only. IPv6 and Java plugins remain outside the
+current native scope. The current four-page contract and verification rows
+above replace the older three-page research plan.
+
+Mole is an optional external CLI. Detect its installed binary and use visible
+Terminal actions for interactive or privileged work. Never scrape ANSI/TUI
+output into a native destructive plan or collect a sudo password. Do not
+bundle its GPL payload by default. Packaging a Mole-derived fork needs a
+separate license, trademark, source-distribution, signing, and update review.
+Use System Care as the product name and attribute Mole CLI as the dependency.
+
+The earlier research documents are replaced by the current request rows,
+README limits, and `spec/troubleshoot/system-tools.md`. Native input control
+uses event characteristics, not guaranteed per-device scroll provenance.
+Detailed collectors follow their visible owners; opt-in background features
+keep only their required work. Do not restore the old monitor interval,
+three-page NetToys layout, no-Location plan, external fan helper, or material
+styling from those research notes.
