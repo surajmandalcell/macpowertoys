@@ -856,7 +856,7 @@ private struct DockPreviewBar: View {
         }
         .padding(.horizontal, 12)
         .frame(height: 49)
-        .background(.ultraThinMaterial.opacity(0.82), in: RoundedRectangle(cornerRadius: 13))
+        .background(Color(white: 0.22).opacity(0.82), in: RoundedRectangle(cornerRadius: 13))
         .overlay(RoundedRectangle(cornerRadius: 13).stroke(Color.white.opacity(0.20), lineWidth: 0.8))
         .shadow(color: .black.opacity(0.36), radius: 12, y: 7)
     }
