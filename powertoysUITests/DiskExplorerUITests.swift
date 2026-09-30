@@ -171,6 +171,10 @@ final class DiskExplorerUITests: XCTestCase {
         XCTAssertTrue(window.staticTexts["Files scanned"].exists)
         attach(app.screenshot(), named: "Diskman Scan Statistics")
 
+        let completed = XCTNSPredicateExpectation(
+            predicate: NSPredicate(format: "exists == true AND enabled == true"), object: window.buttons["Rescan"])
+        XCTAssertEqual(XCTWaiter.wait(for: [completed], timeout: 180), .completed)
+
         let treemap = window.descendants(matching: .any)
             .matching(identifier: "diskExplorer.treemap").firstMatch
         XCTAssertTrue(treemap.waitForExistence(timeout: 10))
