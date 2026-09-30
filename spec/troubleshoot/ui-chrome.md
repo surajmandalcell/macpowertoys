@@ -1,5 +1,23 @@
 # UI Chrome Troubleshooting
 
+## Menu Hosts Ignore App Appearance, 2026-09-30
+
+- **Symptom:** Round 6 dark captures show light main and Task Manager panels.
+  The tool windows in the same pass are dark.
+- **Cause:** Diagnostics copy the app-level environment, including its light
+  color scheme. Independent native hosts can also retain an appearance set
+  when they open. Setting only `NSApp.appearance` does not replace these values.
+- **Invariant:** Shared window, panel, popup, and sheet roots use
+  `onePlusAppAppearance()`. It observes the app's effective appearance, sets
+  the SwiftUI scheme, clears pinned ancestor-view overrides, and updates native
+  windows. Automatic follows system changes. Keep diagnostic action routing.
+  Use one app-lifetime observer and weak window references. Do not poll.
+- **Check:** `testPresentationRootsFollowAppAppearanceAndLiveChanges` failed
+  before the fix. It now passes for dark, light, dark again, and Automatic.
+  It checks native appearances, rendered pixels, and nested menu-body schemes.
+  All 73 package tests pass. Signed status-item, diagnostic, popup, and sheet
+  interaction checks remain with the orchestrator.
+
 ## Nested Menu Body Accessibility, 2026-09-30
 
 - **Symptom:** Portman paints its empty state, but XCTest cannot find it.
@@ -86,6 +104,20 @@
   difference between card padding and the shared table cell inset.
 - **Check:** Compare Setting, Current, and Original text-frame edges in both
   appearances. Keep the header fixed while only the setting rows scroll.
+
+## Color Picker Settings Natural Height, 2026-09-30
+
+- **Symptom:** Round 6 Settings stays 460pt tall with a large gap after its
+  final card. Projects already fits its shorter content.
+- **Cause:** The applet's page switch returns the maximum canvas height for
+  Settings. The cards' natural height never reaches that decision.
+- **Invariant:** Use the Settings stack's measured height, the titlebar,
+  the shared top gap, and the floating-settings reserve. Clamp the result
+  to the Color Picker canvas range. Keep measurement in the applet host so
+  embedded Settings still inherits its caller's geometry and density.
+- **Check:** The 296pt card stack requests a 404pt window. Empty and long
+  content stay within 250 to 460pt. Check both appearances, permission
+  notices, the gear's 8pt edge inset, and scrolling at the upper cap.
 
 ## Applet Settings Embedding, 2026-09-29
 
