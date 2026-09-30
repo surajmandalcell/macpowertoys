@@ -20,7 +20,6 @@ final class PortmanUITests: XCTestCase {
         let app = XCUIApplication()
         app.launchArguments = ["-ApplePersistenceIgnoreState", "YES", "--open", "portman"]
         app.launch()
-        app.activate()
         defer { app.terminate() }
 
         let servers = app.buttons["portman.page.Servers"]
@@ -59,7 +58,6 @@ final class PortmanUITests: XCTestCase {
         let app = XCUIApplication()
         app.launchArguments = ["-ApplePersistenceIgnoreState", "YES", "--open", "portman"]
         app.launch()
-        app.activate()
         defer { app.terminate() }
 
         let servers = app.buttons["portman.page.Servers"]
@@ -96,7 +94,6 @@ final class PortmanUITests: XCTestCase {
         let app = XCUIApplication()
         app.launchArguments = ["-ApplePersistenceIgnoreState", "YES", "--open", "portman"]
         app.launch()
-        app.activate()
         defer { app.terminate() }
 
         let forward = app.buttons["portman.page.Forward"]
@@ -223,7 +220,6 @@ final class PortmanUITests: XCTestCase {
         let app = XCUIApplication()
         app.launchArguments = ["-ApplePersistenceIgnoreState", "YES", "--open", "portman"]
         app.launch()
-        app.activate()
         defer { app.terminate() }
 
         let forward = app.buttons["portman.page.Forward"]

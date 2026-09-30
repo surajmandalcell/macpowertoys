@@ -1080,3 +1080,16 @@
   label, and `Circle()` fills tinted green, orange, or red. Inspect the
   launcher, Cloud Sync, and System Monitor sidebars and the Cloud Sync menu-bar
   tab in the installed build.
+
+
+## Shared Control Accessibility After The Redesign, 2026-09-30
+
+- **Symptom:** Task Manager lost its title identifier. Segment clicks missed
+  the visible choice, and Mac Tweaks choices lost their identifiers.
+- **Cause:** The sidebar's parent identifier replaced child metadata. A fake
+  accessibility Picker used geometry different from the visible buttons.
+- **Invariant:** Make the sidebar a child-containing accessibility group.
+  Preserve each title and choice identifier. Expose the real segment buttons
+  with selected traits, a group label, and the existing arrow-key behavior.
+- **Check:** Hosted run `36705631910` passes Mac Tweaks and Tray Fan UI.
+  Diskman run `36703912801` passes Treemap and Rings selection.

@@ -5,9 +5,10 @@ direct user correction or verified result changes a status.
 
 ## OnePlusUI redesign, 2026-09-29
 
-Hosted run `36700937546` at `d835bea3` passed `ColorPickerTests`, including
-the v14 28pt history search control. The complete suite failed in tray-render
-teardown. Signed Color Picker interaction checks remain with the orchestrator.
+Hosted run `36705631910` at `2302e3dd` passed `ColorPickerTests`, including
+the v14 28pt history search control. All 976 executed unit tests passed, with
+five skips and no failures. Signed Color Picker interaction checks remain
+with the orchestrator.
 
 Round 3a uses one cards-only ColorPickerSettingsView. The applet supplies
 OnePlusPage; the launcher supplies its existing page, gutters, and scrolling.
@@ -37,6 +38,7 @@ remain with the orchestrator.
 
 | Status | Request | Evidence | Remaining work |
 |---|---|---|---|
+| Verify | Fill the shortcut control column and use the control text role. | Signed `8cf8c02` round 4 captures confirm the full Settings gutters, complete minimum Projects row, Clear all copy, and aligned History rows. The shared recorder still paints a 116pt bezel inside the 160pt column and uses mono type. | Foundation must expose a fill-width recorder with control text and controlInk. Adopt it in the shared settings card and verify idle, recording, disabled, and cancel states. |
 | Verify | Pair the short embedded settings cards and use sentence case for clearing. | Round 3 review reuses the Global shortcut and Saved colors cards in equal columns when both fit; the applet keeps full-width stacked cards. The action and confirmation use `Clear all`. | Verify both hosts and clear confirmation in the signed build. |
 | Verify | Show complete project rows and use native list anatomy for history. | `projectsHeight` includes each project row and the 60pt project editor before the 460pt cap. History uses one card with stable row ids and `lineSoft` separators. | Verify the minimum and maximum window heights in the signed build. |
 | Verify | Keep Color Picker controls fixed and scroll only the rows. | History scrolls below fixed tabs, search, and format controls. Projects scrolls only its rows below the fixed card header and new-project field. Row presentation is cached by the current history request. | Verify smooth scrolling and page switches within 100ms in the signed build. |

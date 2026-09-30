@@ -376,3 +376,14 @@ References: Apple's
 [SwiftUI suppressed launch behavior](https://developer.apple.com/documentation/swiftui/scenelaunchbehavior/suppressed)
 and
 [AppKit state-restoration sample](https://developer.apple.com/documentation/appkit/restoring-your-app-s-state-with-appkit).
+
+
+## Dotted Preference Keys Do Not Notify KVO, 2026-09-30
+
+- **Symptom:** A tool settings page did not observe a changed dotted key.
+- **Cause:** UserDefaults KVO treats the key as a key path.
+- **Invariant:** Observe UserDefaults changes, then compare snapshots of the
+  watched literal keys. Notify only when a watched value changes. Remove the
+  notification token on stop and deinitialization.
+- **Check:** Hosted run `36705631910` passes the unchanged watched-key,
+  same-value, unrelated-key, and stopped-observer regression.

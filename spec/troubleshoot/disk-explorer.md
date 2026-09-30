@@ -368,3 +368,14 @@
   with status 0 and left both ExFAT partitions. Supplying `y` completed the
   merge, erased the marker on the first partition, and passed `verifyVolume`.
   The card was restored to one mounted `DISKMAN` ExFAT volume.
+
+
+## Blocker Labels And Review Scrolling, 2026-09-30
+
+- **Symptom:** The blocker PID read `12,345`, and review clicks missed the map.
+- **Cause:** SwiftUI localized the interpolated PID. The test scrolled the
+  sidebar, and offscreen map buttons could still report as hittable.
+- **Invariant:** Expose one combined process and verbatim PID label. Scroll
+  the Modify body until the target is inside its viewport before clicking.
+- **Check:** Hosted run `36703912801` passes blocker dismissal, partition and
+  whole-disk selection, merge review, chart selection, hover, and drill-in.

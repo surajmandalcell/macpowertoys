@@ -39,9 +39,9 @@ Update this list whenever Ruler requirements or verification results change.
 
 ## Verification record
 
-- Hosted redesign run `36700937546` at `d835bea3` passed
-  `RulerCoreTests`. The complete suite failed in
-  tray-render teardown. Signed Ruler window checks remain with the orchestrator.
+- Hosted redesign run `36705631910` at `2302e3dd` passed
+  `RulerCoreTests`. All 976 executed unit tests passed, with five skips
+  and no failures. Signed Ruler window checks remain with the orchestrator.
 - A fresh pinned upstream run passed 125 tests with zero failures or skipped
   tests.
 - The host adapters add on-demand routing, independent Settings placement,
