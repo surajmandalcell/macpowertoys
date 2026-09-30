@@ -31,6 +31,7 @@ public enum OnePlusColor {
     public static let muted = Color(nsColor: dynamic("muted", dark: 0x8A8A8A, light: 0x707070))
     public static let controlInk = Color(nsColor: dynamic("controlInk", dark: 0xDEDEDE, light: 0x343434))
     public static let accent = Color(nsColor: dynamic("accent", dark: 0xEE5B50, light: 0xD94F45))
+    public static let dataBlue = Color(nsColor: dynamic("dataBlue", dark: 0x8AAEEA, light: 0x3564A4))
     public static let primaryFill = Color(nsColor: dynamic("primaryFill", dark: 0xDDDDDD, light: 0x383838))
     public static let primaryHover = Color(nsColor: dynamic("primaryHover", dark: 0xCCCCCC, light: 0x303030))
     public static let primaryPressed = Color(nsColor: dynamic("primaryPressed", dark: 0xBCBCBC, light: 0x292929))

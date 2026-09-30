@@ -23,6 +23,7 @@ colors:
   muted: { dark: "#8A8A8A", light: "#707070" }  # at least 4.5:1 on panel and window
   control-ink: { dark: "#DEDEDE", light: "#343434" }
   accent: { dark: "#EE5B50", light: "#D94F45" }
+  data-blue: { dark: "#8AAEEA", light: "#3564A4" } # Cloud Sync progress and network data
   primary-fill: { dark: "#DDDDDD", light: "#383838" }
   primary-ink: { dark: "#252525", light: "#FFFFFF" }
   ok: { dark: "#7FA889", light: "#3F7A4E" }
