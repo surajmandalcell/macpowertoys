@@ -3,6 +3,7 @@ import Darwin
 import Foundation
 import IOKit
 import IOKit.ps
+import OnePlusUI
 import SwiftUI
 
 nonisolated enum SystemMonitorMenuMode: String, Codable, CaseIterable, Identifiable {
@@ -1575,18 +1576,20 @@ final class SystemMonitorMenuController: NSObject {
             return
         }
         popover.behavior = .transient
-        popover.contentViewController = NSHostingController(rootView: SystemMonitorMenuPopoverView { [weak self] height in
+        popover.animates = false
+        if defaults.object(forKey: "systemMonitor.rememberTrayPage") != nil,
+           !defaults.bool(forKey: "systemMonitor.rememberTrayPage") {
+            defaults.set(SystemMonitorTrayPage.home.rawValue, forKey: "systemMonitor.trayPage")
+        }
+        let hosting = NSHostingController(rootView: SystemMonitorMenuPopoverView(defaults: defaults) { [weak self] height in
             guard let self,
                   abs(self.popover.contentSize.height - height) > 0.5 else { return }
-            self.popover.contentSize = NSSize(width: TaskManagerMenuLayout.width, height: height)
+            self.popover.contentSize = NSSize(width: OnePlusMenuMetrics.width, height: height)
         })
-        popover.contentSize = NSSize(
-            width: TaskManagerMenuLayout.width,
-            height: TaskManagerMenuLayout.initialHeight(
-                profileCount: 0,
-                defaults: defaults
-            )
-        )
+        hosting.view.appearance = NSApp.appearance
+        let ceiling = (sender.window?.screen?.visibleFrame.height ?? 800) * OnePlusMenuMetrics.heightFraction
+        hosting.view.setFrameSize(hosting.sizeThatFits(in: NSSize(width: OnePlusMenuMetrics.width, height: ceiling)))
+        popover.contentViewController = hosting
         popover.show(relativeTo: sender.bounds, of: sender, preferredEdge: .minY)
     }
 }

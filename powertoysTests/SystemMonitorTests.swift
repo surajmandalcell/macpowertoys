@@ -56,9 +56,9 @@ final class SystemMonitorTests: XCTestCase {
             preferredHeight = $0
         }
             .defaultAppStorage(defaults)
-            .frame(width: TaskManagerMenuLayout.width, height: screenCap))
+            .frame(width: OnePlusMenuMetrics.width, height: screenCap))
         host.frame = NSRect(x: screen.minX + 32, y: screen.minY + 32,
-                            width: TaskManagerMenuLayout.width, height: screenCap)
+                            width: OnePlusMenuMetrics.width, height: screenCap)
         let window = NSWindow(contentRect: host.frame, styleMask: [.titled], backing: .buffered, defer: false)
         window.isReleasedWhenClosed = false
         window.contentView = host
@@ -79,25 +79,60 @@ final class SystemMonitorTests: XCTestCase {
         )
     }
 
-    func testTaskManagerMenuHeightMatchesEachPageAndHostCount() {
-        XCTAssertEqual(TaskManagerMenuLayout.preferredHeight(for: .home, profileCount: 0), 334)
-        XCTAssertEqual(TaskManagerMenuLayout.preferredHeight(for: .home, profileCount: 2), 503)
-        XCTAssertEqual(TaskManagerMenuLayout.preferredHeight(for: .home, profileCount: 4), 733)
-        XCTAssertEqual(TaskManagerMenuLayout.preferredHeight(for: .cpu, profileCount: 0), 392)
-        XCTAssertEqual(TaskManagerMenuLayout.preferredHeight(for: .processes, profileCount: 0), 407)
-    }
-
-    func testTaskManagerMenuInitialHeightRestoresLastPage() throws {
-        let suiteName = "TaskManagerMenuInitialHeight.\(UUID().uuidString)"
+    @MainActor
+    func testTaskManagerMenuMeasuresTabsAndAsyncProfiles() async throws {
+        let suiteName = "TaskManagerMenuHeight.\(UUID().uuidString)"
         let defaults = try XCTUnwrap(UserDefaults(suiteName: suiteName))
         defer { defaults.removePersistentDomain(forName: suiteName) }
+        defer { SystemMonitorService.shared.stopDetailed(owner: "tray") }
         defaults.set(true, forKey: "systemMonitor.rememberTrayPage")
-        defaults.set(SystemMonitorTrayPage.processes.rawValue, forKey: "systemMonitor.trayPage")
+        defaults.set(SystemMonitorTrayPage.home.rawValue, forKey: "systemMonitor.trayPage")
+        SystemMonitorRemoteProfiles.save(Self.renderRemoteProfiles, defaults: defaults)
 
-        XCTAssertEqual(
-            TaskManagerMenuLayout.initialHeight(profileCount: 2, defaults: defaults),
-            TaskManagerMenuLayout.preferredHeight(for: .processes, profileCount: 2)
-        )
+        let screen = try XCTUnwrap(NSScreen.main).visibleFrame
+        let proposal = NSSize(width: OnePlusMenuMetrics.width, height: screen.height * OnePlusMenuMetrics.heightFraction)
+        let emptyHost = NSHostingController(rootView: SystemMonitorMenuPopoverView(remoteProfiles: [], defaults: defaults))
+        let emptyHeight = emptyHost.sizeThatFits(in: proposal).height
+        let popover = NSPopover()
+        popover.animates = false
+        let host = NSHostingController(rootView: SystemMonitorMenuPopoverView(defaults: defaults) { [weak popover] height in
+            popover?.contentSize = NSSize(width: OnePlusMenuMetrics.width, height: height)
+        })
+        let initial = host.sizeThatFits(in: proposal)
+        XCTAssertGreaterThan(initial.height, 100, "The layout tree must exist before presentation")
+        host.view.setFrameSize(initial)
+        popover.contentViewController = host
+        XCTAssertEqual(popover.contentSize.height, initial.height, accuracy: 1)
+
+        let window = NSWindow(contentRect: NSRect(x: screen.minX + 32, y: screen.minY + 32, width: 400, height: 40),
+                              styleMask: [.titled], backing: .buffered, defer: false)
+        window.isReleasedWhenClosed = false
+        let anchor = NSView(frame: NSRect(x: 0, y: 0, width: 400, height: 40))
+        window.contentView = anchor
+        window.makeKeyAndOrderFront(nil)
+        popover.show(relativeTo: anchor.bounds, of: anchor, preferredEdge: .minY)
+        defer { popover.close(); popover.contentViewController = nil; window.close(); window.contentView = nil }
+        func settle() async throws {
+            for _ in 0..<10 {
+                host.view.layoutSubtreeIfNeeded()
+                try await Task.sleep(for: .milliseconds(20))
+            }
+            host.view.layoutSubtreeIfNeeded()
+        }
+        try await settle()
+        let homeHeight = popover.contentSize.height
+        XCTAssertGreaterThan(homeHeight, emptyHeight, "The asynchronous profiles must increase Home height")
+        for page in [SystemMonitorTrayPage.cpu, .processes, .sensors, .home] {
+            defaults.set(page.rawValue, forKey: "systemMonitor.trayPage")
+            try await settle()
+            let measured = host.sizeThatFits(in: proposal)
+            XCTAssertEqual(popover.contentSize.width, OnePlusMenuMetrics.width, accuracy: 1)
+            XCTAssertEqual(popover.contentSize.height, measured.height, accuracy: 1, page.rawValue)
+            XCTAssertGreaterThan(measured.height, 100, page.rawValue)
+            XCTAssertLessThanOrEqual(measured.height, proposal.height + 1, page.rawValue)
+            if page == .cpu { XCTAssertLessThan(measured.height, homeHeight) }
+            if page == .home { XCTAssertEqual(measured.height, homeHeight, accuracy: 1) }
+        }
     }
 
     func testMonitorSubprocessOutputIsBounded() async throws {
@@ -564,13 +599,14 @@ final class SystemMonitorTests: XCTestCase {
                 var measuredHeight: CGFloat = 0
                 let host = NSHostingView(rootView: SystemMonitorMenuPopoverView(
                     remoteProfiles: Self.renderRemoteProfiles,
+                    defaults: defaults,
                     onPreferredHeight: { measuredHeight = $0 }
-                ).defaultAppStorage(defaults).environment(\.colorScheme, scheme))
+                ).environment(\.colorScheme, scheme))
                 host.appearance = NSAppearance(named: scheme == .dark ? .darkAqua : .aqua)
                 let screen = try XCTUnwrap(NSScreen.main).visibleFrame
                 host.frame = NSRect(
                     x: screen.minX + 32, y: screen.minY + 32,
-                    width: TaskManagerMenuLayout.width,
+                    width: OnePlusMenuMetrics.width,
                     height: screen.height * OnePlusMenuMetrics.heightFraction
                 )
                 let window = NSWindow(contentRect: host.frame, styleMask: [.titled], backing: .buffered, defer: false)
@@ -586,7 +622,7 @@ final class SystemMonitorTests: XCTestCase {
                     host.layoutSubtreeIfNeeded()
                 }
                 let size = host.fittingSize
-                XCTAssertEqual(size.width, TaskManagerMenuLayout.width, accuracy: 1)
+                XCTAssertEqual(size.width, OnePlusMenuMetrics.width, accuracy: 1)
                 XCTAssertGreaterThan(size.height, 100, "\(page): \(scheme)")
                 XCTAssertLessThanOrEqual(size.height, (NSScreen.main?.visibleFrame.height ?? 800) * OnePlusMenuMetrics.heightFraction + 1)
                 XCTAssertEqual(measuredHeight, size.height, accuracy: 1)
