@@ -13,7 +13,7 @@ struct MainToolCard: View {
     @FocusState private var focusedPart: String?
 
     var body: some View {
-        OnePlusCard(textured: true) {
+        OnePlusCard {
             Button(action: select) {
                 VStack(alignment: .leading, spacing: OnePlusMetrics.actionSpacing) {
                     HStack(spacing: OnePlusCatalogMetrics.gap) {
@@ -21,8 +21,7 @@ struct MainToolCard: View {
                         MainToolIdentity(tool: tool)
                         Spacer(minLength: OnePlusMetrics.compactControlHeight)
                     }
-                    Text(tool.summary).onePlusText(.row)
-                        .foregroundStyle(OnePlusColor.secondary)
+                    Text(tool.summary).onePlusText(.row, color: OnePlusColor.secondary)
                         .lineLimit(2).help(tool.description)
                         .frame(maxWidth: .infinity, alignment: .leading)
                     Spacer(minLength: 0)
@@ -51,10 +50,10 @@ struct MainToolCard: View {
         }
         .overlay(alignment: .bottom) {
             HStack(spacing: OnePlusCatalogMetrics.smallGap) {
-                MainToolEnableSwitch(tool: tool, showsCaption: true)
+                MainToolEnableSwitch(tool: tool, catalog: true)
                     .focused($focusedPart, equals: "enable")
                 Spacer(minLength: OnePlusCatalogMetrics.smallGap)
-                MainOpenToolButton(toolID: tool.id, toolName: tool.name, showsArrow: true)
+                MainOpenToolButton(toolID: tool.id, toolName: tool.name, catalog: true)
                     .focused($focusedPart, equals: "open")
             }.padding(OnePlusCatalogMetrics.cardInset)
         }
@@ -97,9 +96,9 @@ struct MainToolListRow: View {
             .accessibilityLabel("\(tool.name) settings")
             MainFavoriteButton(toolName: tool.name, isFavorite: $favorite)
                 .focused($focusedPart, equals: "favorite")
-            MainToolEnableSwitch(tool: tool, showsCaption: true)
+            MainToolEnableSwitch(tool: tool, catalog: true)
                 .focused($focusedPart, equals: "enable")
-            MainOpenToolButton(toolID: tool.id, toolName: tool.name, showsArrow: true)
+            MainOpenToolButton(toolID: tool.id, toolName: tool.name, catalog: true)
                 .focused($focusedPart, equals: "open")
         }
         .padding(.horizontal, OnePlusCatalogMetrics.cardInset)
