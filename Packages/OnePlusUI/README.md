@@ -151,7 +151,7 @@ with `textColor: OnePlusColor.ink` for primary identity text.
 | `OnePlusTab` / `OnePlusTabStrip` | Bind selection to underline tabs with counts and trailing tools. |
 | `OnePlusPage` | Keep header, tabs, toolbar, and footer fixed; use `scrolls: false` for a table that fills the remaining height. |
 | `OnePlusCard` | Group natural-height content with a shared fill, line, and radius. |
-| `OnePlusPanel` | Use the compatible card that fills available height. |
+| `OnePlusPanel` | Use the compatible natural-height card. Flexible content such as tables, scroll views, or inspector spacers still fills its proposed height. Pair cards in a top-aligned `HStack`. |
 | `OnePlusCardHeader` | Add a 40 pt title row with an optional icon and accessory. |
 | `OnePlusSettingRow` | Supply label, caption, help, reset, and a 160 or 180 pt control column. |
 | `OnePlusSectionTitle` | Label a section with an optional trailing link action. |

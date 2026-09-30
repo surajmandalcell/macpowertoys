@@ -5,6 +5,69 @@ import XCTest
 
 @MainActor
 final class OnePlusPageTests: XCTestCase {
+    func testPairedPanelsKeepTheirNaturalHeightAndTopAlignment() throws {
+        let host = NSHostingView(rootView: HStack(alignment: .top, spacing: 16) {
+            OnePlusPanel {
+                VStack(spacing: 0) {
+                    OnePlusCardHeader("Sync engine")
+                    ForEach(0..<3) { _ in
+                        OnePlusSettingRow("Setting", caption: "Description") { Text("On") }
+                    }
+                }
+            }.overlay { PageRegionProbe("short-card") }
+            OnePlusPanel {
+                VStack(spacing: 0) {
+                    OnePlusCardHeader("Transfers")
+                    ForEach(0..<3) { _ in
+                        OnePlusSettingRow("Setting", caption: "Description") { Text("On") }
+                    }
+                    OnePlusSettingRow("Default operation") { Text("Copy") }
+                }
+            }.overlay { PageRegionProbe("tall-card") }
+        }.fixedSize(horizontal: false, vertical: true).frame(maxHeight: .infinity, alignment: .top))
+        host.frame = CGRect(x: 0, y: 0, width: 1000, height: 500)
+        host.layoutSubtreeIfNeeded()
+        let short = try XCTUnwrap(descendants(host).first { $0.identifier?.rawValue == "short-card" })
+        let tall = try XCTUnwrap(descendants(host).first { $0.identifier?.rawValue == "tall-card" })
+        let shortFrame = short.convert(short.bounds, to: host)
+        let tallFrame = tall.convert(tall.bounds, to: host)
+        XCTAssertEqual(shortFrame.height, 208, accuracy: 0.01)
+        XCTAssertEqual(tallFrame.height, 252, accuracy: 0.01)
+        XCTAssertEqual(shortFrame.minY, tallFrame.minY, accuracy: 0.01)
+    }
+
+    func testPanelsWithFlexibleTablesAndInspectorsStillFillFixedPages() throws {
+        let host = NSHostingView(rootView: OnePlusPage(scrolls: false) {
+            Color.clear.frame(height: 50)
+        } content: {
+            HStack(alignment: .top, spacing: 16) {
+                OnePlusPanel {
+                    OnePlusCardHeader("Records")
+                    OnePlusNativeTable(columns: [.init("Name", width: 300)],
+                        rows: [.init(id: "1", cells: ["Record"], symbol: "doc")], selection: .constant([]),
+                        sort: { _, _ in }, open: { _ in }, preview: { _ in }, remove: { _ in }, actions: { _ in [] })
+                }.overlay { PageRegionProbe("table-card") }
+                OnePlusPanel {
+                    OnePlusCardHeader("Inspector")
+                    VStack {
+                        Text("Record details")
+                        Spacer(minLength: 0)
+                    }
+                }.frame(width: 220).overlay { PageRegionProbe("inspector-card") }
+            }
+        })
+        let window = NSWindow(contentRect: CGRect(x: -10000, y: -10000, width: 800, height: 500),
+                              styleMask: .borderless, backing: .buffered, defer: false)
+        window.contentView = host
+        host.layoutSubtreeIfNeeded()
+        for name in ["table-card", "inspector-card"] {
+            let view = try XCTUnwrap(descendants(host).first { $0.identifier?.rawValue == name })
+            let frame = view.convert(view.bounds, to: host)
+            XCTAssertEqual(frame.minY, 66, accuracy: 0.01)
+            XCTAssertEqual(frame.maxY, 476, accuracy: 0.01)
+        }
+    }
+
     func testTabCountSlotStaysThreeDigitsWhileDataArrives() {
         let tab = OnePlusTab("largest", "Largest files", count: 0)
         let widths = [0, 1, 99, 100].map { count in
