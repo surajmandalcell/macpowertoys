@@ -58,20 +58,9 @@ private struct OnePlusAppAppearanceReader: NSViewRepresentable {
     func updateNSView(_ view: NSView, context: Context) {}
 
     private final class AppearanceView: NSView {
-        private var applying = false
         override func hitTest(_ point: NSPoint) -> NSView? { nil }
         override func viewDidMoveToWindow() {
             super.viewDidMoveToWindow()
-            apply()
-        }
-        override func viewDidChangeEffectiveAppearance() {
-            super.viewDidChangeEffectiveAppearance()
-            apply()
-        }
-        private func apply() {
-            guard !applying else { return }
-            applying = true
-            defer { applying = false }
             OnePlusAppAppearance.shared.configure(self)
         }
     }
