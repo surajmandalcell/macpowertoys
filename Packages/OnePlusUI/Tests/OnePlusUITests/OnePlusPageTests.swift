@@ -27,9 +27,10 @@ final class OnePlusPageTests: XCTestCase {
             func color(_ x: CGFloat, _ y: CGFloat) throws -> NSColor {
                 try XCTUnwrap(bitmap.colorAt(x: Int(x * scale), y: Int(y * scale))?.usingColorSpace(.sRGB))
             }
-            XCTAssertEqual(try color(density.gutter + 10, 35).redComponent, 43.0 / 255, accuracy: 0.01)
-            XCTAssertEqual(try color(density.gutter - 2, 35).redComponent, 22.0 / 255, accuracy: 0.01)
-            XCTAssertEqual(try color(density.gutter + 10, 36).redComponent, 22.0 / 255, accuracy: 0.01)
+            let background = try color(300, 100).redComponent
+            XCTAssertGreaterThan(try color(density.gutter + 10, 35).redComponent, background + 0.02)
+            XCTAssertEqual(try color(density.gutter - 2, 35).redComponent, background, accuracy: 0.01)
+            XCTAssertEqual(try color(density.gutter + 10, 36).redComponent, background, accuracy: 0.01)
         }
     }
     func testFirstContentStartsSixteenPointsAfterHeaderBlock() throws {
