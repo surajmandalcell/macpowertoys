@@ -99,7 +99,7 @@ struct RcloneSettingsView: View {
             OnePlusCardHeader("Ignore patterns")
             VStack(alignment: .leading, spacing: OnePlusMetrics.spacing[2]) {
                 OnePlusTextEditor("Ignore patterns", text: $ignorePatterns)
-                    .frame(height: OnePlusMetrics.spacing[8] * 5)
+                    .frame(height: OnePlusMetrics.spacing[6] * 8)
                 Text("One glob per line. Used as an exclude rule.")
                     .onePlusText(.caption)
             }
