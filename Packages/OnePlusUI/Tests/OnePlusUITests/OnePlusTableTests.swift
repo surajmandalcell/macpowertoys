@@ -47,6 +47,9 @@ final class OnePlusTableTests: XCTestCase {
                 let separator = try XCTUnwrap(bitmap.colorAt(x: x, y: Int(27 * scale)))
                 let headerFill = try XCTUnwrap(bitmap.colorAt(x: x, y: Int(26 * scale)))
                 let rowFill = try XCTUnwrap(bitmap.colorAt(x: x, y: Int(28 * scale)))
+                print("CI header pixels", appearance.rawValue, "scale", scale,
+                      "header", headerFrame, "row", rowFrame,
+                      "samples", (24...32).map { bitmap.colorAt(x: x, y: Int(CGFloat($0) * scale))?.description ?? "nil" })
                 XCTAssertGreaterThan(abs(separator.redComponent - headerFill.redComponent), 0.01)
                 XCTAssertGreaterThan(abs(separator.redComponent - rowFill.redComponent), 0.01)
             }
