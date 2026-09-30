@@ -482,7 +482,11 @@ private struct OnePlusUIShowcase: View {
                     Toggle("Awake", isOn: $enabled).labelsHidden().toggleStyle(OnePlusSwitchStyle())
                 }
                 OnePlusMenuSectionHeader("Remote hosts", actionTitle: "Manage") { announce("Remote hosts selected") }
-                OnePlusMenuItemCard("Home server", status: "Connected", metrics: [.init("CPU", value: "4.2", unit: "%"), .init("Memory", value: "8.4", unit: "GB"), .init("Disk", value: "42", unit: "%")]) {
+                OnePlusMenuItemCard("Home server", systemImage: "server.rack", status: "Connected", metrics: [
+                    .init("CPU", systemImage: "cpu", value: "4.2", unit: "%"),
+                    .init("Memory", systemImage: "memorychip", value: "8.4", unit: "GB"),
+                    .init("Disk", systemImage: "internaldrive", value: "42", unit: "%")
+                ]) {
                     VStack(alignment: .leading, spacing: 5) {
                         Text("Mac mini · Ethernet").onePlusText(.caption)
                         OnePlusUsageBar(value: 0.42)
@@ -490,6 +494,17 @@ private struct OnePlusUIShowcase: View {
                 } actions: {
                     Button("Details") { announce("Home server selected") }
                     Button("Refresh") { announce("Host refreshed") }
+                }
+                OnePlusMenuItemCard("Offline sample host", systemImage: "server.rack", status: "Offline",
+                                    online: false, metrics: [
+                    .init("CPU", systemImage: "cpu", value: "—"),
+                    .init("RAM", systemImage: "memorychip", value: "—"),
+                    .init("Network", systemImage: "arrow.up.arrow.down", value: "—")
+                ]) {
+                    Text("No disk data").onePlusText(.caption)
+                } actions: {
+                    Button("Open SSH") { announce("This is a sample host") }
+                    Button("Open App") { page = "Task Manager" }
                 }
             }
             VStack(alignment: .leading, spacing: 16) {
