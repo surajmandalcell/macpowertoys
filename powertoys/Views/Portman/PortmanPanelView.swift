@@ -1,5 +1,6 @@
 import AppKit
 import Charts
+import Observation
 import SwiftUI
 import OnePlusUI
 
@@ -110,6 +111,23 @@ struct PortmanPanelView: View {
 
     enum Page: String, CaseIterable {
         case local = "Servers", forward = "Forward", settings = "Settings"
+
+        init?(panelID: String) {
+            switch panelID {
+            case "home", "servers": self = .local
+            case "forward": self = .forward
+            case "settings": self = .settings
+            default: return nil
+            }
+        }
+
+        var panelID: String {
+            switch self {
+            case .local: "servers"
+            case .forward: "forward"
+            case .settings: "settings"
+            }
+        }
     }
 
     init(initialPage: Page? = nil, initialHost: String? = nil, initialPortID: String? = nil,
@@ -126,6 +144,7 @@ struct PortmanPanelView: View {
 
     @State private var service = PortmanService.shared
     @State private var page = Page.local
+    @State private var settingsState = PortmanSettingsState()
     @State private var settingsSearch = ""
     @State private var focusSettingsSearch = 0
     @State private var selectedPortID: String?
@@ -227,6 +246,9 @@ struct PortmanPanelView: View {
 
     var body: some View {
         panelDialogs
+            .onOpenToolPage("portman") { id in
+                if let destination = Page(panelID: id) { navigate(to: destination) }
+            }
     }
 
     private var panel: some View {
@@ -259,7 +281,7 @@ struct PortmanPanelView: View {
                     if let selectedPort { localDetail(selectedPort) }
                     else { localOverview }
                 case .forward: forwardingPage
-                case .settings: PortmanSettingsView(search: settingsSearch)
+                case .settings: PortmanSettingsView(search: settingsSearch, state: settingsState)
                 }
             }
             .frame(maxWidth: .infinity, alignment: .topLeading)
@@ -1455,11 +1477,24 @@ private struct PortmanPasswordSheet: View {
     }
 }
 
+@MainActor @Observable
+final class PortmanSettingsState {
+    var pendingAutomaticCleanup = false
+    var installedEditors: [(id: String, name: String)]?
+
+    func loadEditors() async {
+        guard installedEditors == nil else { return }
+        let work = Task.detached(priority: .utility) { PortmanEditor.installed }
+        let editors = await withTaskCancellationHandler { await work.value } onCancel: { work.cancel() }
+        guard !Task.isCancelled else { return }
+        installedEditors = editors
+    }
+}
+
 struct PortmanSettingsView: View {
     var search = ""
+    @State var state = PortmanSettingsState()
     @Environment(\.onePlusDensity) private var density
-    @State private var pendingAutomaticCleanup = false
-    @State private var installedEditors: [(id: String, name: String)] = []
     @AppStorage("portman.scanLowerPort") private var lowerPort = 3000
     @AppStorage("portman.scanUpperPort") private var upperPort = 9999
     @AppStorage("portman.scanInterval") private var scanInterval = 2.0
@@ -1523,7 +1558,7 @@ struct PortmanSettingsView: View {
                     }
                     if shows("Open folders in", "editor") {
                         OnePlusSettingRow("Open folders in", separator: false) {
-                            OnePlusSelect(choices: [("auto", "Automatic")] + installedEditors.map { ($0.id, $0.name) } + [("finder", "Finder")],
+                            OnePlusSelect(choices: [("auto", "Automatic")] + (state.installedEditors ?? []).map { ($0.id, $0.name) } + [("finder", "Finder")],
                                           selection: $editor, accessibilityLabel: "Open folders in")
                                 .accessibilityIdentifier("portman.settings.editor")
                         }
@@ -1534,18 +1569,14 @@ struct PortmanSettingsView: View {
             if cleanupVisible { cleanupSettings }
             if integrationsVisible { integrationSettings }
         }
-        .confirmationDialog("Stop eligible servers automatically?", isPresented: $pendingAutomaticCleanup) {
+        .confirmationDialog("Stop eligible servers automatically?", isPresented: $state.pendingAutomaticCleanup) {
             Button("Enable Automatic", role: .destructive) {
                 cleanupMode = PortmanCleanupMode.automatic.rawValue
             }
         } message: {
             Text("Portman will send stop requests for eligible servers, including long-running ones, without asking again.")
         }
-        .task {
-            installedEditors = await Task.detached(priority: .utility) {
-                PortmanEditor.installed
-            }.value
-        }
+        .task { await state.loadEditors() }
     }
 
     private var portSettings: some View {
@@ -1597,7 +1628,7 @@ struct PortmanSettingsView: View {
                     OnePlusSegmented(choices: [("off", "Off"), ("ask", "Ask"), ("automatic", "Auto")],
                                      selection: Binding(get: { cleanupMode }, set: { value in
                         if value == PortmanCleanupMode.automatic.rawValue && cleanupMode != value {
-                            pendingAutomaticCleanup = true
+                            state.pendingAutomaticCleanup = true
                         } else { cleanupMode = value }
                     }), accessibilityLabel: "Cleanup mode", width: OnePlusMetrics.controlColumn)
                     .accessibilityIdentifier("portman.settings.cleanupMode")
@@ -1731,19 +1762,30 @@ final class PortmanMenuController: NSObject {
         PortmanService.shared.endMonitoring()
     }
 
-    func show() {
-        let createdStatusItem = item == nil
+    func show(initialPage: PortmanPanelView.Page? = nil, activateApp: Bool = true) {
         start()
         showTask?.cancel()
+        if popover.isShown {
+            if let initialPage {
+                ToolPageRouter.shared.post(tool: "portman", page: initialPage.panelID)
+            }
+            return
+        }
         showTask = Task { @MainActor [weak self] in
-            if createdStatusItem { try? await Task.sleep(for: .milliseconds(200)) }
             guard let self else { return }
-            NSApp.activate(ignoringOtherApps: true)
+            if activateApp { NSApp.activate(ignoringOtherApps: true) }
+            var destination = initialPage
             for _ in 0..<200 {
                 guard !Task.isCancelled, let button = self.item?.button, !self.popover.isShown else { return }
                 if button.window?.isVisible == true && !button.visibleRect.isEmpty && button.bounds.width > 0 {
                     self.popover.appearance = NSApp.appearance
-                    let hosting = NSHostingController(rootView: PortmanPanelView().utilityMotionPolicy())
+                    if let request = ToolPageRouter.shared.take(tool: "portman"),
+                       let requestedPage = PortmanPanelView.Page(panelID: request.page) {
+                        destination = initialPage ?? requestedPage
+                    }
+                    let hosting = NSHostingController(rootView: PortmanPanelView(
+                        initialPage: destination
+                    ).utilityMotionPolicy())
                     hosting.view.appearance = NSApp.appearance
                     let ceiling = (button.window?.screen?.visibleFrame.height ?? 800) * OnePlusMenuMetrics.heightFraction
                     let size = hosting.sizeThatFits(in: NSSize(width: OnePlusMenuMetrics.width, height: ceiling))
@@ -1752,8 +1794,10 @@ final class PortmanMenuController: NSObject {
                     self.popover.contentSize = size
                     self.popover.show(relativeTo: button.bounds, of: button, preferredEdge: .minY)
                     self.popover.contentViewController?.view.window?.appearance = NSApp.appearance
-                    NSApp.activate(ignoringOtherApps: true)
-                    self.popover.contentViewController?.view.window?.makeKey()
+                    if activateApp {
+                        NSApp.activate(ignoringOtherApps: true)
+                        self.popover.contentViewController?.view.window?.makeKey()
+                    }
                     if AppRuntime.isUITesting { NSLog("Portman popover shown: \(self.popover.isShown)") }
                     if self.popover.isShown { return }
                 }
