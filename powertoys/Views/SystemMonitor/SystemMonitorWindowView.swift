@@ -292,7 +292,6 @@ struct SystemMonitorWindowView: View {
                     .menuStyle(.borderlessButton)
                     .menuIndicator(.hidden)
                     .fixedSize()
-                    .focusEffectDisabled()
                     .help("Export system report")
                     .accessibilityLabel("Export system report")
                 }
@@ -479,7 +478,6 @@ struct SystemMonitorWindowView: View {
             .contentShape(Rectangle())
         }
         .buttonStyle(UtilityInteractionButtonStyle(cornerRadius: TaskManagerTheme.panelRadius))
-        .focusEffectDisabled()
         .accessibilityLabel("Open \(title ?? metric.title), \(value)")
     }
 
@@ -538,7 +536,7 @@ struct SystemMonitorWindowView: View {
                     }
                     .frame(height: 58)
                 }
-                .buttonStyle(.plain).focusEffectDisabled()
+                .buttonStyle(.plain)
             } else if remoteProfiles.count == 1, let profile = remoteProfiles.first {
                 TaskManagerRemoteCard(
                     profile: profile,
@@ -1508,7 +1506,6 @@ struct SystemMonitorSettingsContent: View {
         }
         .menuStyle(.borderlessButton)
         .menuIndicator(.hidden)
-        .focusEffectDisabled()
         .fixedSize()
         .accessibilityLabel("Reorder \(metric.title)")
         .accessibilityIdentifier("system-monitor.menu.item.\(metric.rawValue).reorder")

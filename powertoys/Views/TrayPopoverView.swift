@@ -1556,7 +1556,6 @@ struct SystemMonitorTrayView: View {
             content.contentShape(Rectangle())
         }
         .buttonStyle(OnePlusInteractionStyle(radius: OnePlusMetrics.menuTileRadius))
-        .focusEffectDisabled()
         .accessibilityHint("Show \(destination.title) details")
         .accessibilityIdentifier("system-monitor.tray.summary.\(destination.rawValue)")
     }

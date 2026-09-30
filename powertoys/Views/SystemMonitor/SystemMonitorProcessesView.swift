@@ -218,7 +218,6 @@ struct SystemMonitorOverviewProcessesView: View {
                             .contentShape(Rectangle())
                         }
                         .buttonStyle(UtilityInteractionButtonStyle(cornerRadius: 0))
-                        .focusEffectDisabled()
                         .onePlusTableRow()
                     }
                     if rows.isEmpty {
@@ -436,7 +435,6 @@ struct SystemMonitorProcessesView: View {
             .foregroundStyle(activeColumn == column ? TaskManagerTheme.secondary : TaskManagerTheme.muted)
         }
         .buttonStyle(.plain)
-        .focusEffectDisabled()
         .accessibilityLabel("Sort by \(column.title), \(activeColumn == column ? (descending ? "descending" : "ascending") : "inactive")")
     }
 
@@ -546,7 +544,6 @@ private struct SystemMonitorProcessRow: View, Equatable {
                 .contentShape(Rectangle())
             }
             .buttonStyle(.plain)
-            .focusEffectDisabled()
             .accessibilityLabel("Inspect \(process.name), PID \(process.pid)")
             .accessibilityIdentifier("task-manager.process.row.\(process.pid)")
 
@@ -570,7 +567,6 @@ private struct SystemMonitorProcessRow: View, Equatable {
             .menuIndicator(.hidden)
             .fixedSize()
             .frame(width: 24)
-            .focusEffectDisabled()
             .accessibilityIdentifier("task-manager.process.actions.\(process.pid)")
         }
         .onePlusTableRow(selected: selected)

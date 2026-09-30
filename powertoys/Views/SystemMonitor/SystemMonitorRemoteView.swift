@@ -416,7 +416,6 @@ struct TaskManagerRemoteCard: View {
             .contentShape(Rectangle())
         }
         .buttonStyle(UtilityInteractionButtonStyle(cornerRadius: 0))
-        .focusEffectDisabled()
     }
 
     private var memoryReading: String {
