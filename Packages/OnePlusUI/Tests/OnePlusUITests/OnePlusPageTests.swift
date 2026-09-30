@@ -5,6 +5,33 @@ import XCTest
 
 @MainActor
 final class OnePlusPageTests: XCTestCase {
+    func testTabRuleStaysInsideItsFrameOnThePageGutters() throws {
+        for density in OnePlusDensity.allCases {
+            let host = NSHostingView(rootView: OnePlusPage(scrolls: false) {
+                EmptyView()
+            } tabs: {
+                OnePlusTabStrip(tabs: [OnePlusTab<String>](), selection: .constant("home"))
+            } content: {
+                PageRegionProbe("card").frame(height: 40)
+            }.background(OnePlusColor.window).onePlusDensity(density))
+            let window = NSWindow(contentRect: CGRect(x: -10000, y: -10000, width: 600, height: 200),
+                                  styleMask: .borderless, backing: .buffered, defer: false)
+            window.appearance = NSAppearance(named: .darkAqua)
+            window.contentView = host
+            host.layoutSubtreeIfNeeded()
+            let card = try XCTUnwrap(descendants(host).first { $0.identifier?.rawValue == "card" })
+            XCTAssertEqual(card.convert(card.bounds, to: host).minY, 36 + 16, accuracy: 0.5)
+            let bitmap = try XCTUnwrap(host.bitmapImageRepForCachingDisplay(in: host.bounds))
+            host.cacheDisplay(in: host.bounds, to: bitmap)
+            let scale = CGFloat(bitmap.pixelsWide) / host.bounds.width
+            func color(_ x: CGFloat, _ y: CGFloat) throws -> NSColor {
+                try XCTUnwrap(bitmap.colorAt(x: Int(x * scale), y: Int(y * scale))?.usingColorSpace(.sRGB))
+            }
+            XCTAssertEqual(try color(density.gutter + 10, 35).redComponent, 43.0 / 255, accuracy: 0.01)
+            XCTAssertEqual(try color(density.gutter - 2, 35).redComponent, 22.0 / 255, accuracy: 0.01)
+            XCTAssertEqual(try color(density.gutter + 10, 36).redComponent, 22.0 / 255, accuracy: 0.01)
+        }
+    }
     func testFirstContentStartsSixteenPointsAfterHeaderBlock() throws {
         let header = OnePlusPageHeader(title: "Processes", subtitle: "Live system activity")
         let headerHeight = NSHostingView(rootView: header.frame(width: 600)).fittingSize.height
