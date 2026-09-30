@@ -705,6 +705,20 @@
   Color Picker tabs and projects, Awake modes, transfer-detail tabs, and AI
   History bookmark chips. Every enabled item shows hover and pressed feedback.
 
+## Switch Daily Activity Preparation, 2026-09-30
+
+- **Symptom:** One appearance shows an empty chart and zero totals while the
+  other shows populated activity. The card grows after preparation finishes.
+- **Cause:** An empty initial presentation collapsed the chart and supplied
+  zero totals before the detached preparation task returned.
+- **Invariant:** Reserve all seven chart rows and 16pt inner padding. Show
+  dashes and a named loading state until grid and totals are ready together.
+  Keep the last prepared data during refresh. Reset the cache when the
+  account changes. Empty and failed states keep the same card bounds.
+- **Check:** Run the hosted Daily activity bounds regression. Capture pending,
+  loaded, refreshing, empty, and failed states in both appearances. Change
+  periods and accounts. No pending state may report measured zero usage.
+
 ## NetToys Round 3 Screenshot Review, 2026-09-30
 
 - **Symptom:** Permission actions truncate, Automatic enrollment sits at the
