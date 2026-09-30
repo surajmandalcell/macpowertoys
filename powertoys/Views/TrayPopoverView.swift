@@ -2034,12 +2034,13 @@ private struct TaskManagerRemoteMenuCard: View {
     private func remoteCard(_ profile: SystemMonitorRemoteProfile) -> some View {
         OnePlusMenuItemCard(
             profile.name,
+            systemImage: "server.rack",
             status: "Offline",
             online: false,
             metrics: [
-                OnePlusMenuMetric("CPU", value: "—"),
-                OnePlusMenuMetric("RAM", value: "—"),
-                OnePlusMenuMetric("Network", value: "—"),
+                OnePlusMenuMetric("CPU", systemImage: "cpu", value: "—"),
+                OnePlusMenuMetric("RAM", systemImage: "memorychip", value: "—"),
+                OnePlusMenuMetric("Network", systemImage: "arrow.up.arrow.down", value: "—"),
             ]
         ) {
             Text("No disk data").onePlusText(.caption)
