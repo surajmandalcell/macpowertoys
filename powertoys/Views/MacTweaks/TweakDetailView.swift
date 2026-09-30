@@ -135,7 +135,7 @@ private struct MacTweaksChoiceControl: View {
                 MacTweaksTimingField(field: field, selection: selection, onSelection: onSelection)
                     .frame(width: controlWidth)
             } else if field.choices.count == 2 {
-                MacTweaksSegmentedControl(field: field, selection: selection, onSelection: onSelection)
+                MacTweaksSegmentedControl(field: field, selection: selection, controlWidth: controlWidth, onSelection: onSelection)
             } else {
                 MacTweaksMenuControl(field: field, selection: selection, controlWidth: controlWidth, onSelection: onSelection)
             }
@@ -148,6 +148,7 @@ private struct MacTweaksChoiceControl: View {
 private struct MacTweaksSegmentedControl: View {
     let field: TweakPreferenceField
     let selection: Int
+    let controlWidth: CGFloat
     let onSelection: (Int) -> Void
     private var choices: [(Int, String)] {
         [(-1, "Default\(field.defaultLabel.map { " (\($0))" } ?? "")")] +
@@ -159,7 +160,8 @@ private struct MacTweaksSegmentedControl: View {
             choices: choices,
             selection: Binding(get: { selection }, set: onSelection),
             accessibilityLabel: field.label,
-            accessibilityIdentifierPrefix: "mac-tweaks.choice.\(field.key)"
+            accessibilityIdentifierPrefix: "mac-tweaks.choice.\(field.key)",
+            width: controlWidth
         )
     }
 }
