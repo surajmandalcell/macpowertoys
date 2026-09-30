@@ -128,12 +128,14 @@ private struct OnePlusButtonBody<Label: View>: View {
 public struct OnePlusInteractionStyle: ButtonStyle {
     let selected: Bool
     let radius: CGFloat
-    public init(selected: Bool = false, radius: CGFloat = 5) {
+    let disabledOpacity: Double
+    public init(selected: Bool = false, radius: CGFloat = 5, disabledOpacity: Double = OnePlusMetrics.disabledOpacity) {
         self.selected = selected
         self.radius = radius
+        self.disabledOpacity = disabledOpacity
     }
     public func makeBody(configuration: Configuration) -> some View {
-        OnePlusInteractionBody(label: configuration.label, pressed: configuration.isPressed, selected: selected, radius: radius)
+        OnePlusInteractionBody(label: configuration.label, pressed: configuration.isPressed, selected: selected, radius: radius, disabledOpacity: disabledOpacity)
     }
 }
 
@@ -146,13 +148,14 @@ private struct OnePlusInteractionBody<Label: View>: View {
     let pressed: Bool
     let selected: Bool
     let radius: CGFloat
+    let disabledOpacity: Double
     var body: some View {
         label
             .tint(OnePlusColor.secondary)
             .background(enabled && pressed ? OnePlusColor.pressed : selected || (enabled && focused) ? OnePlusColor.selection : enabled && hover ? OnePlusColor.raised : .clear,
                         in: RoundedRectangle(cornerRadius: radius))
             .overlay { RoundedRectangle(cornerRadius: radius).strokeBorder(enabled && focused ? OnePlusColor.focus : .clear, lineWidth: 1) }
-            .opacity(enabled ? 1 : OnePlusMetrics.disabledOpacity)
+            .opacity(enabled ? 1 : disabledOpacity)
             .contentShape(RoundedRectangle(cornerRadius: radius))
             .onHover { hover = $0 }
             .animation(OnePlusMotion.animation(reduceMotion: reduceMotion), value: hover || pressed)

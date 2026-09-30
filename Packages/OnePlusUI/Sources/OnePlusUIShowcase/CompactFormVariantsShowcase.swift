@@ -16,7 +16,7 @@ struct CompactFormVariantsShowcase: View {
                 OnePlusStepperField("Seconds", value: $value, in: 1...60, unit: "sec")
             }
             OnePlusSettingRow("Mode") {
-                OnePlusSegmented(choices: [("Off", "Off"), ("Ask", "Ask"), ("Auto", "Auto")], selection: $mode)
+                OnePlusSegmented(choices: [("Off", "Off"), ("Ask", "Ask"), ("Auto", "Auto")], selection: $mode, width: 160)
             }
             NativeFormSample().frame(height: 80).padding(OnePlusMetrics.cardPadding)
         }
