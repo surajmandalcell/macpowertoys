@@ -184,7 +184,7 @@ public struct OnePlusNativeTable: NSViewRepresentable {
             return cell
         }
         private func makeActionButton() -> NSButton {
-            let button = NSButton(image: Self.ellipsis, target: self, action: #selector(showActions(_:)))
+            let button = StorageActionButton(image: Self.ellipsis, target: self, action: #selector(showActions(_:)))
             button.identifier = Self.actionCellID
             button.isBordered = false
             button.setAccessibilityLabel("File actions")
@@ -292,14 +292,21 @@ private final class StorageTable: NSTableView {
 private final class StorageRow: NSTableRowView {
     private var hovering = false
     private var hoverArea: NSTrackingArea?
+    override var isSelected: Bool { didSet { updateActionVisibility() } }
+    override func layout() { super.layout(); updateActionVisibility() }
     override func updateTrackingAreas() {
         super.updateTrackingAreas()
         if let hoverArea { removeTrackingArea(hoverArea) }
         let area = NSTrackingArea(rect: .zero, options: [.mouseEnteredAndExited, .activeInKeyWindow, .inVisibleRect], owner: self)
         addTrackingArea(area); hoverArea = area
     }
-    override func mouseEntered(with event: NSEvent) { hovering = true; needsDisplay = true }
-    override func mouseExited(with event: NSEvent) { hovering = false; needsDisplay = true }
+    override func mouseEntered(with event: NSEvent) { hovering = true; needsDisplay = true; updateActionVisibility() }
+    override func mouseExited(with event: NSEvent) { hovering = false; needsDisplay = true; updateActionVisibility() }
+    func updateActionVisibility() {
+        guard numberOfColumns > 0, let button = view(atColumn: numberOfColumns - 1) as? StorageActionButton else { return }
+        let opacity: CGFloat = hovering || isSelected || button.keyboardFocused ? 1 : 0
+        if button.alphaValue != opacity { button.alphaValue = opacity }
+    }
     override func drawBackground(in dirtyRect: NSRect) {
         NSColor(hovering ? OnePlusColor.raised : OnePlusColor.panel).setFill(); bounds.fill()
     }
@@ -309,6 +316,27 @@ private final class StorageRow: NSTableRowView {
     override func drawSeparator(in dirtyRect: NSRect) {
         NSColor(OnePlusColor.lineSoft).setFill()
         NSRect(x: 0, y: bounds.maxY - 1, width: bounds.width, height: 1).fill()
+    }
+}
+
+private final class StorageActionButton: NSButton {
+    private(set) var keyboardFocused = false
+    override init(frame frameRect: NSRect) { super.init(frame: frameRect); alphaValue = 0 }
+    required init?(coder: NSCoder) { super.init(coder: coder); alphaValue = 0 }
+    override func becomeFirstResponder() -> Bool {
+        guard super.becomeFirstResponder() else { return false }
+        keyboardFocused = true; alphaValue = 1
+        return true
+    }
+    override func resignFirstResponder() -> Bool {
+        guard super.resignFirstResponder() else { return false }
+        keyboardFocused = false
+        var ancestor = superview
+        while let view = ancestor {
+            if let row = view as? StorageRow { row.updateActionVisibility(); break }
+            ancestor = view.superview
+        }
+        return true
     }
 }
 

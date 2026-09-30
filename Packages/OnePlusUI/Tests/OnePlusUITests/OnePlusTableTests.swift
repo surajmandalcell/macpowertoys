@@ -153,6 +153,15 @@ final class OnePlusTableTests: XCTestCase {
         XCTAssertNil(primary.textField?.toolTip)
         XCTAssertNil(action.toolTip)
         XCTAssertEqual(action.accessibilityLabel(), "File actions")
+        XCTAssertEqual(action.alphaValue, 0)
+        row.isSelected = true
+        XCTAssertEqual(action.alphaValue, 1)
+        row.isSelected = false
+        XCTAssertEqual(action.alphaValue, 0)
+        XCTAssertTrue(action.becomeFirstResponder())
+        XCTAssertEqual(action.alphaValue, 1)
+        XCTAssertTrue(action.resignFirstResponder())
+        XCTAssertEqual(action.alphaValue, 0)
     }
 
     func testSwiftUIOwnsTableStyleAndGridColorDuringRowUpdates() throws {
