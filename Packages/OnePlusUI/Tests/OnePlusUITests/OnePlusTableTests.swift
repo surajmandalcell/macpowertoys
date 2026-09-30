@@ -44,9 +44,19 @@ final class OnePlusTableTests: XCTestCase {
                 host.cacheDisplay(in: host.bounds, to: bitmap)
                 let scale = CGFloat(bitmap.pixelsHigh) / host.bounds.height
                 let x = Int(250 * scale)
-                let separator = try XCTUnwrap(bitmap.colorAt(x: x, y: Int(27 * scale)))
-                let headerFill = try XCTUnwrap(bitmap.colorAt(x: x, y: Int(26 * scale)))
-                let rowFill = try XCTUnwrap(bitmap.colorAt(x: x, y: Int(28 * scale)))
+                let separator = try XCTUnwrap(bitmap.colorAt(x: x, y: Int(27 * scale))?.usingColorSpace(.sRGB))
+                let headerFill = try XCTUnwrap(bitmap.colorAt(x: x, y: Int(26 * scale))?.usingColorSpace(.sRGB))
+                // AppKit paints its scroll edge at the row origin. Sample the fill inside the row.
+                let rowFill = try XCTUnwrap(bitmap.colorAt(x: x, y: Int(rowFrame.midY * scale))?.usingColorSpace(.sRGB))
+                try window.effectiveAppearance.performAsCurrentDrawingAppearance {
+                    for (pixel, color) in [(separator, OnePlusColor.lineSoft),
+                                           (headerFill, OnePlusColor.sidebar), (rowFill, OnePlusColor.panel)] {
+                        let expected = try XCTUnwrap(NSColor(color).usingColorSpace(.sRGB))
+                        XCTAssertEqual(pixel.redComponent, expected.redComponent, accuracy: 0.01)
+                        XCTAssertEqual(pixel.greenComponent, expected.greenComponent, accuracy: 0.01)
+                        XCTAssertEqual(pixel.blueComponent, expected.blueComponent, accuracy: 0.01)
+                    }
+                }
                 XCTAssertGreaterThan(abs(separator.redComponent - headerFill.redComponent), 0.01)
                 XCTAssertGreaterThan(abs(separator.redComponent - rowFill.redComponent), 0.01)
             }
