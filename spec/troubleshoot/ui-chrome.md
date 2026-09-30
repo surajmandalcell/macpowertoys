@@ -694,6 +694,24 @@
   Color Picker tabs and projects, Awake modes, transfer-detail tabs, and AI
   History bookmark chips. Every enabled item shows hover and pressed feedback.
 
+## NetToys Round 3 Screenshot Review, 2026-09-30
+
+- **Symptom:** Permission actions truncate, Automatic enrollment sits at the
+  far edge of its form, and secondary History cards leave too few transitions
+  visible.
+- **Cause:** Long action names shared a narrow control column with status
+  text. A leading spacer pushed Automatic enrollment right. One uptime
+  scroller combined chart, summary, and outages in an oversized region.
+- **Invariant:** Keep one 180-point permission column with short visible
+  actions and full accessibility names. Align each Anchor label with the
+  first control text line. Keep the uptime chart and time labels fixed. Give
+  outages a 56-point row viewport and scans at most two visible rows. Keep at
+  least three 56-point transition rows and their separators visible inside
+  the shared page bottom gutter. All remaining rows stay scrollable.
+- **Check:** Inspect both appearances with two outages, three scans, multiple
+  network names, and each permission state. Scroll each row region and confirm
+  chart, headers, search, Export, and Clear stay fixed.
+
 ## NetToys Dynamic Form Stability
 
 - **Symptom:** SSH Anchor labels, fields, metadata, and actions move when the
