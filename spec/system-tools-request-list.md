@@ -10,6 +10,12 @@ native-table regressions. Tray Fan and Portman UI passed in `36741797887`
 at `b3d55c3c`, including saved CPU reopen, empty servers, and SSH validation.
 The orchestrator owns signed installation and final interaction review.
 
+Production pass, 2026-10-01: menu-panel types now live in
+`powertoys/Views/MenuPanels/`, one cohesive file per panel part. This is a pure
+move with only the required cross-file access changes. Debug compilation and
+the complete type-body comparison pass. Test execution and signed installation
+remain with the orchestrator. File map: `tmp/redesign/logs/w1-split-tray.md`.
+
 Foundation round 10 gives the Task Manager panel a synchronous shared height
 callback. Its native opener owns the remember-page reset; the view no longer
 replaces an explicit diagnostic page on appear. Hidden layout stays mounted.
