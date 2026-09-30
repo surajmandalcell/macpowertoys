@@ -1658,6 +1658,7 @@ struct SystemMonitorTrayView: View {
                     Label(page == .network ? "Upload" : "Write", systemImage: "minus")
                         .foregroundStyle(OnePlusColor.accent)
                 }.onePlusText(.caption)
+                    .frame(maxWidth: .infinity, alignment: .leading)
             }
         }
     }
