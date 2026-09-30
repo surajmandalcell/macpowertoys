@@ -66,15 +66,9 @@ struct MacPowerToysApp: App {
                 DeepLinkHandler.shared.handleCLIArguments()
                 return
             }
-            #if DEBUG
-            NSLog("[DEBUG-ci14] startup tests=\(AppRuntime.isRunningTests) active=\(NSApp.isActive)")
-            #endif
             guard !AppRuntime.isRunningTests else { return }
             await AppInitializer.shared.initialize(modelContext: modelContainer.mainContext)
             appearance.apply()
-            #if DEBUG
-            NSLog("[DEBUG-ci14] initialized active=\(NSApp.isActive)")
-            #endif
             DeepLinkHandler.shared.handleCLIArguments()
         }
     }
