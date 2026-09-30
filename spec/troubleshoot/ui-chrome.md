@@ -1,5 +1,21 @@
 # UI Chrome Troubleshooting
 
+## Portman Requested Page And Retained State, 2026-09-30
+
+- **Symptom:** A diagnostic request for Servers showed the saved Settings tab.
+  Switching away from Settings also repeated editor discovery.
+- **Cause:** Diagnostics wrote the page preference after presentation. The
+  panel held its page in local State. The Settings branch owned its editor
+  list and confirmation state, so replacing the branch discarded both.
+- **Invariant:** Select the requested page before constructing the panel host.
+  Consume queued tool-page requests before presentation. Deliver requests to
+  the existing view when it is already visible. Keep Settings state in the
+  panel owner and reuse its completed editor discovery. Keep Forward's
+  required scan cancellation and pending-selection reset on exit.
+- **Check:** Compile the Portman page-routing and Settings-state regressions.
+  Execute them on hosted CI. Compare every requested tab with the first
+  signed rendered frame. Native tab latency still needs measurement.
+
 ## Portman Identity Colors, 2026-09-30
 
 - **Symptom:** The owner reports that Portman lost its color and looks stale.

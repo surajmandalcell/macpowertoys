@@ -48,6 +48,34 @@ final class PortmanTests: XCTestCase {
         XCTAssertEqual(count, 64)
     }
 
+    @MainActor
+    func testPortmanPageRequestsReachTheDestinationBeforeHosting() {
+        let router = ToolPageRouter.shared
+        defer { _ = router.take(tool: "portman") }
+        for page in PortmanPanelView.Page.allCases {
+            router.post(tool: "portman", page: page.panelID)
+            let destination = router.take(tool: "portman")
+                .flatMap { PortmanPanelView.Page(panelID: $0.page) }
+            XCTAssertEqual(destination, page)
+            XCTAssertNil(router.take(tool: "portman"))
+        }
+        XCTAssertEqual(PortmanPanelView.Page(panelID: "home"), .local)
+        XCTAssertNil(PortmanPanelView.Page(panelID: "unknown"))
+    }
+
+    @MainActor
+    func testSettingsStateSurvivesPageReplacementWithoutReloadingEditors() async {
+        let state = PortmanSettingsState()
+        state.pendingAutomaticCleanup = true
+        state.installedEditors = [("cached.editor", "Cached editor")]
+        let first = PortmanSettingsView(search: "Scan", state: state)
+        let reopened = PortmanSettingsView(search: "", state: state)
+        XCTAssertTrue(first.state === reopened.state)
+        XCTAssertTrue(reopened.state.pendingAutomaticCleanup)
+        await reopened.state.loadEditors()
+        XCTAssertEqual(state.installedEditors?.map(\.id), ["cached.editor"])
+    }
+
     func testEditorChoiceUsesOnlyKnownAppsAndPrefersSelectedApp() {
         let available = PortmanEditor.choices.map(\.id)
         XCTAssertEqual(PortmanEditor.bundleIDs(for: "com.microsoft.VSCode").first,
