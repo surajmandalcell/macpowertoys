@@ -225,6 +225,25 @@ final class SystemMonitorTests: XCTestCase {
         )
     }
 
+    func testVersionOnlyProcessNamesUseTheirBundleOrParent() {
+        let process = SystemMonitorProcess(
+            pid: 42, started: 1, name: "2.1.284", cpuPercent: 0,
+            residentBytes: 1, virtualBytes: 1, threads: 1, parentPID: 1, userID: 501,
+            executablePath: "/Applications/Orca.app/Contents/MacOS/2.1.284"
+        )
+        let row = SystemMonitorProcessHierarchy.Row(process: process, depth: 0, parentName: "Parent")
+        XCTAssertEqual(row.displayName, "Orca (2.1.284)")
+        XCTAssertEqual(row.symbol, "app")
+        let protected = SystemMonitorProcess(
+            pid: 43, started: 0, name: "2.1.282", cpuPercent: nil,
+            residentBytes: 0, virtualBytes: 0, threads: 0, parentPID: 42, userID: 501,
+            executablePath: "Protected process"
+        )
+        let child = SystemMonitorProcessHierarchy.Row(process: protected, depth: 1, parentName: "Orca")
+        XCTAssertEqual(child.displayName, "Orca (2.1.282)")
+        XCTAssertEqual(child.symbol, "lock")
+    }
+
     func testSelectedProcessCountersRefreshAcrossSamples() async throws {
         let sampler = SystemMonitorProcessSampler()
         let firstRows = await sampler.sample()
