@@ -1630,26 +1630,30 @@ struct SystemMonitorTrayView: View {
         case .memory: max(sample?.memoryTotal.map { Double($0) / 1_073_741_824 } ?? 1, 1)
         default: 100
         }
+        let scaleLabels = [chartScale(ceiling), chartScale(ceiling / 2), page == .sensors ? "Nominal" : "0"]
         return VStack(spacing: OnePlusMetrics.navRowGap) {
             if page == .network {
                 Text("MB/s").onePlusText(.caption)
                     .frame(maxWidth: .infinity, alignment: .trailing)
             }
             HStack(spacing: OnePlusMenuMetrics.tileGap) {
-                VStack(alignment: .trailing) {
-                    Text(chartScale(ceiling))
-                    Spacer()
-                    Text(chartScale(ceiling / 2))
-                    Spacer()
-                    Text(page == .sensors ? "Nominal" : "0")
+                GeometryReader { proxy in
+                    ForEach(scaleLabels.indices, id: \.self) { index in
+                        let fraction = CGFloat(index) / CGFloat(scaleLabels.count - 1)
+                        Text(scaleLabels[index])
+                            .frame(width: proxy.size.width, alignment: .trailing)
+                            .position(x: proxy.size.width / 2, y: proxy.size.height * fraction)
+                    }
                 }.onePlusText(.tableHeader).lineLimit(1)
                 .frame(width: [.sensors, .network, .disk].contains(page)
                     ? OnePlusMetrics.titleRow : OnePlusMetrics.compactControlHeight)
+                .allowsHitTesting(false)
                 TaskManagerHistoryChart(values: primary, secondary: secondary, range: 0...ceiling,
                                         unit: page == .memory ? "GB" : page == .network || page == .disk ? "B/s" : page == .sensors ? "" : "%",
                                         compact: true, stepped: page == .sensors,
                                         primaryColor: page == .memory ? OnePlusColor.accent : OnePlusColor.chartLine)
             }.frame(height: OnePlusMetrics.searchHeight * 2)
+                .padding(.vertical, 6)
             HStack { Text("−2 min"); Spacer(); Text("Now") }.onePlusText(.tableHeader)
             if page == .network || page == .disk {
                 HStack(spacing: OnePlusMetrics.actionSpacing) {
