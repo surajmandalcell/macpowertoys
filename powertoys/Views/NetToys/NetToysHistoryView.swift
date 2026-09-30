@@ -741,8 +741,14 @@ struct NetToysSettingsView: View {
                                   controlWidth: OnePlusMetrics.wideControlColumn) {
                     HStack(spacing: OnePlusMetrics.actionSpacing) {
                         OnePlusStatus(locationStatusTitle, state: locationActionTitle == nil ? .online : .offline)
+                            .fixedSize()
                         if let title = locationActionTitle {
-                            Button(title) { model.resolveSSIDAccess(forceSettings: helperNeedsAccess) }
+                            Button(title == "Allow Location Access" ? "Allow access" : "Settings") {
+                                model.resolveSSIDAccess(forceSettings: helperNeedsAccess)
+                            }
+                            .fixedSize()
+                            .help(title)
+                            .accessibilityLabel(title)
                         }
                     }
                 }
@@ -750,13 +756,15 @@ struct NetToysSettingsView: View {
                                   controlWidth: OnePlusMetrics.wideControlColumn) {
                     HStack(spacing: OnePlusMetrics.actionSpacing) {
                         OnePlusStatus(localNetworkStatusTitle, state: localNetworkAccess.state == .allowed ? .online : .offline)
+                            .fixedSize()
                         if localNetworkAccess.state == .denied {
-                            Button("Open Settings", systemImage: "arrow.up.right") { localNetworkAccess.openSettings() }
-                                .buttonStyle(OnePlusButtonStyle(.link))
+                            Button("Settings") { localNetworkAccess.openSettings() }
+                                .fixedSize()
                                 .help("Open Local Network Settings")
                                 .accessibilityLabel("Open Local Network Settings")
                         } else if localNetworkAccess.state == .unavailable {
                             Button("Try Again") { localNetworkAccess.request() }
+                                .fixedSize()
                         }
                     }
                 }
@@ -764,8 +772,14 @@ struct NetToysSettingsView: View {
                                   controlWidth: OnePlusMetrics.wideControlColumn, separator: false) {
                     HStack(spacing: OnePlusMetrics.actionSpacing) {
                         OnePlusStatus(macAccessStatusTitle, state: neighborService.isEnabled ? .online : .offline)
+                            .fixedSize()
                         if !neighborService.isEnabled {
-                            Button(macAccessActionTitle) { neighborService.enable() }
+                            Button(neighborService.status == .requiresApproval ? "Settings" : "Enable") {
+                                neighborService.enable()
+                            }
+                            .fixedSize()
+                            .help(macAccessActionTitle)
+                            .accessibilityLabel(macAccessActionTitle)
                         }
                     }
                 }
