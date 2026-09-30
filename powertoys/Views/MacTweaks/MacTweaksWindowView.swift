@@ -73,22 +73,110 @@ private struct MacTweaksModifiedEntry: Identifiable {
 }
 
 struct MacTweaksSettingsContent: View {
+    private static let preferences = ["dialogs.expanded-save", "windows.scroll-animation"].compactMap { id in
+        TweakCatalog.items.first { $0.id == id }.map { (item: $0, fields: TweakPreferences.fields(for: id)) }
+    }
+    private static let fields = preferences.flatMap(\.fields)
+
+    @State private var revision = 0
+    @State private var selections: [String: Int] = [:]
+    @State private var modifiedIdentities: Set<String> = []
+    @State private var backedUpIdentities: Set<String> = []
+    @State private var isLoaded = false
+    @State private var notice: MacTweaksNotice?
+
     var body: some View {
         VStack(spacing: OnePlusMetrics.cardGap) {
+            HStack(alignment: .top, spacing: OnePlusMetrics.cardGap) {
+                OnePlusCard {
+                    OnePlusCardHeader("Window", systemImage: "macwindow.on.rectangle")
+                    ForEach(Self.preferences, id: \.item.id) { preference in
+                        if isLoaded {
+                            MacTweaksPreferenceRows(
+                                itemID: preference.item.id,
+                                fields: preference.fields,
+                                controlWidth: OnePlusMetrics.wideControlColumn,
+                                separator: preference.item.id != Self.preferences.last?.item.id,
+                                summary: preference.item.summary,
+                                revision: revision,
+                                selections: selections,
+                                modifiedIdentities: modifiedIdentities,
+                                backedUpIdentities: backedUpIdentities,
+                                onChanged: { _ in
+                                    revision += 1
+                                    notice = .init(message: "Saved. Newly opened apps will use this setting.")
+                                },
+                                onError: { notice = .init(message: $0, isError: true) }
+                            )
+                        } else {
+                            ForEach(preference.fields, id: \.identity) { field in
+                                OnePlusSettingRow(
+                                    field.label,
+                                    controlWidth: OnePlusMetrics.wideControlColumn,
+                                    separator: field.identity != Self.fields.last?.identity
+                                ) {
+                                    Text("Loading…").onePlusText(.caption)
+                                }
+                            }
+                        }
+                    }
+                }
+                OnePlusCard {
+                    OnePlusCardHeader("Safety", systemImage: "lock.shield")
+                    OnePlusSettingRow("Keep original values") {
+                        Text("On").onePlusText(.control)
+                    }
+                    OnePlusSettingRow("Managed preferences") {
+                        Text("Protected").onePlusText(.control)
+                    }
+                    OnePlusSettingRow("Changes made elsewhere", separator: false) {
+                        Text("Protected").onePlusText(.control)
+                    }
+                }
+            }
+            .fixedSize(horizontal: false, vertical: true)
             OnePlusCard {
                 OnePlusCardHeader("Preferences", systemImage: "slider.horizontal.3")
                 OnePlusSettingRow(
-                    "System preferences",
-                    caption: "Adjust input, Dock, Finder, windows, screenshots, apps, power, and menu bar.",
+                    "Modified preferences",
+                    caption: "Review and restore changes.",
                     separator: false
                 ) {
-                    Button("Open Mac Tweaks") {
-                        ToolActionRouter.shared.open(toolID: "mac-tweaks")
+                    Button("Review changes") {
+                        ToolActionRouter.shared.open(toolID: "mac-tweaks", page: "modified")
                     }
                     .buttonStyle(OnePlusButtonStyle(.neutral))
                 }
+                if let notice {
+                    OnePlusBanner(notice.message, tone: notice.isError ? .error : .information)
+                        .padding(OnePlusMetrics.cardPadding)
+                }
             }
         }
+        .task(id: revision) { await reloadPreferences() }
+        .onReceive(NotificationCenter.default.publisher(for: NSApplication.didBecomeActiveNotification)) { _ in
+            revision += 1
+        }
+    }
+
+    private func reloadPreferences() async {
+        let fields = Self.fields
+        let snapshot = await Task.detached(priority: .utility) {
+            let store = TweakPreferenceStore()
+            let originals = store.storedOriginalChoices(for: fields)
+            let selections = Dictionary(uniqueKeysWithValues: fields.map {
+                ($0.identity, TweakPreferenceStore.readSelectedChoice(for: $0))
+            })
+            return (originals, selections)
+        }.value
+        guard !Task.isCancelled else { return }
+        assert(fields.allSatisfy { snapshot.1[$0.identity] != nil }, "Every displayed preference must have a real value")
+        selections = snapshot.1
+        backedUpIdentities = Set(snapshot.0.keys)
+        modifiedIdentities = Set(fields.compactMap {
+            $0.differsFromDefault(snapshot.1[$0.identity] ?? -1) ? $0.identity : nil
+        })
+        isLoaded = true
     }
 }
 
