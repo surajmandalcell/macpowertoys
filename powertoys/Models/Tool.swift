@@ -418,7 +418,7 @@ struct PortmanTool: Tool {
 struct MacTweaksTool: Tool {
     let id = "mac-tweaks"
     let name = "Mac Tweaks"
-    let summary = "Keep your chosen microphone active with Mic Lock."
+    let summary = "Tune input, Dock, Finder, windows, apps, and power."
     let description = "Find and control small Mac settings, starting with Mic Lock for Bluetooth headphone sound."
     let icon = "slider.horizontal.3"
     let logoAsset = "MacTweaksLogo"
