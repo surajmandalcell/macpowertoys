@@ -5,6 +5,51 @@ import XCTest
 
 @MainActor
 final class OnePlusTableTests: XCTestCase {
+    func testHeaderSeparatorAndFirstRowKeepTheirOriginsAcrossAppearancesAndLayout() throws {
+        for initial in [NSAppearance.Name.darkAqua, .aqua] {
+            let rows = [OnePlusTableItem(id: "1", cells: [], symbol: "doc")]
+            let host = NSHostingView(rootView: Table(rows) {
+                TableColumn("Name", value: \.id).width(300)
+            }.onePlusNativeTable())
+            let window = NSWindow(contentRect: NSRect(x: -10000, y: -10000, width: 300, height: 160),
+                                  styleMask: .borderless, backing: .buffered, defer: false)
+            window.appearance = NSAppearance(named: initial)
+            window.contentView = host
+            for appearance in [initial, initial == .aqua ? .darkAqua : .aqua, initial] {
+                window.appearance = NSAppearance(named: appearance)
+                host.frame.size.width += 1
+                host.layoutSubtreeIfNeeded()
+                RunLoop.main.run(until: Date(timeIntervalSinceNow: 0.05))
+                host.layoutSubtreeIfNeeded()
+                let table = try XCTUnwrap(findTable(in: host))
+                let header = try XCTUnwrap(table.headerView as? OnePlusTableHeaderView)
+                let scroll = try XCTUnwrap(table.enclosingScrollView)
+                // Reproduce a late native layout changing the declared extent.
+                if appearance == .aqua {
+                    header.frame.size.height = 28.5
+                } else {
+                    header.setFrameSize(NSSize(width: header.frame.width, height: 29))
+                }
+                scroll.tile()
+                host.layoutSubtreeIfNeeded()
+                let headerFrame = header.convert(header.bounds, to: host)
+                let rowFrame = table.convert(table.rect(ofRow: 0), to: host)
+                XCTAssertEqual(headerFrame.minY, 0, accuracy: 0.01)
+                XCTAssertEqual(headerFrame.height, 28, accuracy: 0.01)
+                XCTAssertEqual(rowFrame.minY, 28, accuracy: 0.01)
+                let bitmap = try XCTUnwrap(host.bitmapImageRepForCachingDisplay(in: host.bounds))
+                host.cacheDisplay(in: host.bounds, to: bitmap)
+                let scale = CGFloat(bitmap.pixelsHigh) / host.bounds.height
+                let x = Int(250 * scale)
+                let separator = try XCTUnwrap(bitmap.colorAt(x: x, y: Int(27 * scale)))
+                let headerFill = try XCTUnwrap(bitmap.colorAt(x: x, y: Int(26 * scale)))
+                let rowFill = try XCTUnwrap(bitmap.colorAt(x: x, y: Int(28 * scale)))
+                XCTAssertGreaterThan(abs(separator.redComponent - headerFill.redComponent), 0.01)
+                XCTAssertGreaterThan(abs(separator.redComponent - rowFill.redComponent), 0.01)
+            }
+        }
+    }
+
     func testNativeColumnRolesKeepMonoPathsAndPrimaryIdentityInk() throws {
         for density in OnePlusDensity.allCases {
             let host = NSHostingView(rootView: OnePlusNativeTable(columns: [
