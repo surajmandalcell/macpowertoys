@@ -479,6 +479,9 @@
   allocated size of each bundle without following symbolic links. Cache the
   result and the real `NSWorkspace` icon, then fill each row as it arrives. Show
   a muted dash only while loading, never `Unknown` or `Zero KB` as a final size.
+  A symbolic-link bundle is not scanned. A final size failure has a visible
+  error caption, a full reason in the fixed inspector, and a Retry Size action.
+  Retries use a window-owned task and stop when the window disappears.
 - **Invariant:** Before a scan, center the cleanup icon and message across the
   full body width. A leading stack must not collapse the empty state to its
   intrinsic width.

@@ -1,5 +1,12 @@
 # Mac Tweaks request list
 
+## Round 6 screenshot corrections, 2026-09-30
+
+- [x] Keep the Input Test or Live label visible beside a flexible shared meter in a 180pt control column.
+- [x] Put rules inside 44pt setting rows. Choose one control width per card and stretch the lower Dock pair to one height. Shorten Alternate Save panels and widen microphone selects.
+- [x] Replace the last appearance-dependent preview material with a fixed dark Dock fill. Title the embedded card Preferences, describe the full scope, and use a regular neutral Open Mac Tweaks button.
+- [~] Verify the signed build. Foundation owns fixed-page bottom clearance, exact segmented widths, and the SYSTEM section-start gap. See `tmp/redesign/logs/16r6-tweaks.md`.
+
 ## Round 5 screenshot corrections, 2026-09-29
 
 - [x] Derive Modified from live values versus declared defaults, including values changed outside Mac Tweaks. Keep exact-value restore for backed-up changes and return untracked changes to the system default.
