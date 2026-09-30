@@ -631,7 +631,7 @@ struct PortmanPanelView: View {
                                 Circle().fill(portColor(port)).frame(width: 3, height: 3)
                             }
                             Text(String(port.port))
-                                .onePlusText(.mono)
+                                .onePlusText(.mono, color: portColor(port))
                         }
                         .foregroundStyle(portColor(port))
                         .frame(width: 52, alignment: .leading)

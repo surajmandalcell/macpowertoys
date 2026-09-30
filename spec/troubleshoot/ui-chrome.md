@@ -35,10 +35,13 @@
 ## Portman Identity Colors, 2026-09-30
 
 - **Symptom:** The owner reports that Portman lost its color and looks stale.
+  Round 5 shows gray port numbers beside restored colored bars and sparklines.
 - **Cause:** The redesign replaced the five-color server palette with the
-  shared neutral chart series.
+  shared neutral chart series. The port's mono text role also sets its own
+  secondary color, which overrides the enclosing row's identity color.
 - **Invariant:** Port labels, memory segments, and server sparklines use the
   same stable port-to-color mapping from `OnePlusColor.portmanSeries`.
+  Pass that color to the port text's `onePlusText` modifier itself.
   Detail plots and process bars retain data color. Light inks are darker
   versions of the original hues. The approved Servers composition stays.
   Tabs and ordinary controls keep neutral chrome.
