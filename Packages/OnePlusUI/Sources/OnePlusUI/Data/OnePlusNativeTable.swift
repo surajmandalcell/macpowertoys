@@ -294,6 +294,10 @@ private final class StorageRow: NSTableRowView {
     private var hoverArea: NSTrackingArea?
     override var isSelected: Bool { didSet { updateActionVisibility() } }
     override func layout() { super.layout(); updateActionVisibility() }
+    override func draw(_ dirtyRect: NSRect) {
+        super.draw(dirtyRect)
+        drawSeparator(in: dirtyRect)
+    }
     override func updateTrackingAreas() {
         super.updateTrackingAreas()
         if let hoverArea { removeTrackingArea(hoverArea) }
