@@ -212,10 +212,10 @@ struct TaskManagerHistoryChart: View {
     private func drawGrid(context: inout GraphicsContext, size: CGSize) {
         for fraction in gridFractions {
             var path = Path()
-            let y = fraction * size.height
+            let y = min((fraction * size.height).rounded(.down), (size.height - 1).rounded(.down)) + 0.5
             path.move(to: CGPoint(x: 0, y: y))
             path.addLine(to: CGPoint(x: size.width, y: y))
-            context.stroke(path, with: .color(TaskManagerTheme.lineSoft), lineWidth: 0.65)
+            context.stroke(path, with: .color(OnePlusColor.chartGrid), lineWidth: 1)
         }
     }
 
