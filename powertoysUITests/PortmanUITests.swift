@@ -60,7 +60,7 @@ final class PortmanUITests: XCTestCase {
         defer { app.terminate() }
 
         let servers = app.buttons["portman.page.Servers"]
-        XCTAssertTrue(servers.waitForExistence(timeout: 20))
+        XCTAssertTrue(servers.waitForExistence(timeout: 20), app.debugDescription)
         servers.click()
         let row = app.buttons["portman.local.7265"]
         XCTAssertTrue(row.waitForExistence(timeout: 20), "Portman did not discover the test listener")
@@ -96,7 +96,7 @@ final class PortmanUITests: XCTestCase {
         defer { app.terminate() }
 
         let forward = app.buttons["portman.page.Forward"]
-        XCTAssertTrue(forward.waitForExistence(timeout: 20), "Portman did not open from the CLI route")
+        XCTAssertTrue(forward.waitForExistence(timeout: 20), "Portman did not open from the CLI route.\n\(app.debugDescription)")
         let servers = app.buttons["portman.page.Servers"]
         let settings = app.buttons["portman.page.Settings"]
         servers.click()

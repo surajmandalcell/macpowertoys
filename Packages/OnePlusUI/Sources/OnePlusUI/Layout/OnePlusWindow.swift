@@ -71,6 +71,7 @@ public struct OnePlusSidebar<Search: View, Navigation: View, Bottom: View>: View
                     .padding(.horizontal, 10).padding(.top, 10).padding(.bottom, 12)
             }
         }.background(OnePlusColor.sidebar)
+            .accessibilityElement(children: .contain)
     }
 }
 

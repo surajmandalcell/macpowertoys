@@ -5,6 +5,10 @@ direct user correction or verified result changes a status.
 
 ## OnePlusUI redesign, 2026-09-29
 
+Hosted run `36700937546` at `d835bea3` passed `ColorPickerTests`, including
+the v14 28pt history search control. The complete suite failed in tray-render
+teardown. Signed Color Picker interaction checks remain with the orchestrator.
+
 Round 3a uses one cards-only ColorPickerSettingsView. The applet supplies
 OnePlusPage; the launcher supplies its existing page, gutters, and scrolling.
 
