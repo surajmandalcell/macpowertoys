@@ -427,7 +427,7 @@ struct TaskManagerSystemReportView: View {
             ScrollView {
                 LazyVStack(alignment: .leading, spacing: 0) {
                     ForEach(category.sections) { section in
-                        reportSection(section)
+                        reportSection(section, showsHeading: category.sections.count != 1 || section.title != category.title)
                     }
                 }
             }
@@ -435,15 +435,17 @@ struct TaskManagerSystemReportView: View {
         }
     }
 
-    private func reportSection(_ section: TaskManagerReportSection) -> some View {
+    private func reportSection(_ section: TaskManagerReportSection, showsHeading: Bool) -> some View {
         LazyVStack(spacing: 0) {
-            HStack {
-                Text(section.title).font(.system(size: 10, weight: .medium))
-                Spacer()
+            if showsHeading {
+                HStack {
+                    Text(section.title).font(.system(size: 10, weight: .medium))
+                    Spacer()
+                }
+                .padding(.horizontal, 12)
+                .frame(height: 34)
+                .background(Color.white.opacity(0.018))
             }
-            .padding(.horizontal, 12)
-            .frame(height: 34)
-            .background(Color.white.opacity(0.018))
             ForEach(section.rows.indices, id: \.self) { index in
                 let row = section.rows[index]
                 HStack(alignment: .top, spacing: 20) {
