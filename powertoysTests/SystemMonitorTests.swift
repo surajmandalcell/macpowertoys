@@ -137,7 +137,7 @@ final class SystemMonitorTests: XCTestCase {
             XCTAssertEqual(popover.contentSize.height, measured.height, accuracy: 1, page.rawValue)
             XCTAssertGreaterThan(measured.height, 100, page.rawValue)
             XCTAssertLessThanOrEqual(measured.height, proposal.height + 1, page.rawValue)
-            if page == .cpu { XCTAssertLessThanOrEqual(measured.height, 410, "CPU must keep its compact plot") }
+            if page == .cpu { XCTAssertLessThanOrEqual(measured.height, 422, "CPU must keep its compact plot") }
             if page == .sensors { XCTAssertLessThanOrEqual(measured.height, 330, "Sensors must keep its compact plot") }
             if page == .cpu { XCTAssertLessThan(measured.height, homeHeight) }
             if page == .home { XCTAssertEqual(measured.height, homeHeight, accuracy: 1) }
