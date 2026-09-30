@@ -50,12 +50,12 @@
   Hosted captures show the actual table fill below it. Hiding the native
   scroll pocket changes only the boundary pixel to the expected panel color.
 - **Invariant:** Check native header and row geometry separately from colors.
-  Sample row fill inside the row. Resolve both pixels and expected tokens in
-  sRGB under the window's current appearance. Keep exact separator, header,
-  and row palette checks. Do not change native styles to fit a boundary sample.
+  Sample row fill inside the row. Compare separator, header, and row pixels
+  in the same captured color space. Keep both contrast checks. Do not change
+  native styles to fit a boundary sample.
 - **Check:** `testHeaderSeparatorAndFirstRowKeepTheirOriginsAcrossAppearancesAndLayout`
   forces header and border layout changes during dark/light/dark and
-  light/dark/light transitions. It checks origins, extent, palette, and contrast.
+  light/dark/light transitions. It checks origins, extent, and contrast.
 
 ## Menu Bar UI Test Starting Surface
 
