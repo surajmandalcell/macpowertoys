@@ -9,6 +9,13 @@ with five skips and no failures. Tray Fan UI passed Task Manager geometry,
 sidebar navigation, Remote Stats actions, process controls, and Fan setup.
 The orchestrator owns signed installation and final interaction review.
 
+Foundation round 10 gives the Task Manager panel a synchronous shared height
+callback. Its native opener owns the remember-page reset; the view no longer
+replaces an explicit diagnostic page on appear. Hidden layout stays mounted.
+All 72 package tests, Debug, and desktop build-for-testing pass. App-hosted
+routing tests compile. Signed short/tall tab frames and latency remain open.
+Report: `tmp/redesign/logs/02f-fix10-report.md`.
+
 ## NetToys
 
 | Status | Request | Evidence | Remaining work |

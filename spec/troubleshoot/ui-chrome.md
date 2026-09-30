@@ -689,13 +689,16 @@
   a large blue rectangular outline that does not match its shape.
 - **Cause:** A plain or borderless SwiftUI control kept the default focus effect
   after it replaced the native control surface.
-- **Invariant:** Every custom plain and borderless button or menu disables only
-  its focus effect. Keep the control focusable, named, and keyboard-operable.
-  Native text fields and standard controls keep their native editing state.
-- **Check:** Search every SwiftUI source for plain and borderless button styles.
-  Each custom control must apply `focusEffectDisabled()`. Tab through every
-  window, sheet, popover, and sidebar. Confirm no blue rectangular outline and
-  confirm that Return or Space still activates each control.
+- **Invariant:** Apply `onePlusFocusPolicy()` at the shared root. Gate custom
+  focus paint on `OnePlusFocusPolicy.shared.showsFocus`. Do not add local
+  unconditional `focusEffectDisabled()` overrides. Keep controls named and
+  keyboard operable. Text clicks keep only the caret when accessibility focus
+  modes are off.
+- **Check:** `OnePlusFocusPolicyTests` checks mode changes, native rings,
+  hidden-host responder ownership, pointer rules, and button paint. Run signed
+  interaction checks with both modes off, Full Keyboard Access on, and
+  VoiceOver on. The protected `OnePlusMenuLabel` focus paint still needs its
+  owning worker's policy gate.
 
 ## Pointer Click Focus Release
 
@@ -705,7 +708,8 @@
   accept focus.
 - **Invariant:** A left click outside a text editor clears the old first
   responder before the target handles the click. Clicking in a text field keeps
-  editing intact; Tab still focuses controls and shows their keyboard indicator.
+  editing intact. Tab still operates controls. Focus indicators appear only
+  with Full Keyboard Access or VoiceOver.
 - **Check:** Tab to a control in a workspace, compact applet, and tray. Click
   blank content and another button; the old outline disappears. Click and edit
   a search field without losing its insertion point.
@@ -716,12 +720,33 @@
   and menu-bar popups even after clearing the clicked window's first responder.
 - **Cause:** SwiftUI focus effects are controlled by the view environment and
   may remain on descendants regardless of the AppKit click-time responder reset.
-- **Invariant:** The shared root view policy suppresses default SwiftUI focus
-  effects in every app window and menu-bar popup, including Portman. The native
-  search field suppresses its AppKit focus ring; controls remain keyboard
-  operable and text editing keeps its insertion point.
-- **Check:** Tab and click away in a workspace, compact applet, combined tray,
-  and Portman popup. No rectangular ring remains. Search still accepts text.
+- **Invariant:** The shared root policy enables focus visuals only when Full
+  Keyboard Access or VoiceOver is on. Refresh on keyboard-mode notifications,
+  VoiceOver observation, app activation, defaults changes, and input events.
+  Register each native window once. Keep its opening responder on the window.
+  Reject pointer focus for nontext controls and keep text editing intact.
+- **Check:** All 72 package tests pass at foundation round 10. Debug and desktop
+  build-for-testing pass. Signed window, sheet, popup, and panel checks remain
+  with the orchestrator. Selection and tab strip overrides are protected by
+  the worker prompt and still need the first foundation worker's review.
+
+## Menu Panel First Layout, 2026-09-30
+
+- **Symptom:** Portman first appeared at 74pt, then grew to 977pt. Tab changes
+  first used the prior content height.
+- **Cause:** Visibility mounted the body later. Geometry preferences changed
+  height in a later SwiftUI update. Requested pages were selected after show.
+- **Invariant:** Keep layout mounted. Visibility gates live work only. Measure
+  natural body height synchronously with fixed regions outside the scroller.
+  Cap scrolling at 90 percent of the visible screen. Disable layout animation.
+  Native hosts consume `onOnePlusMenuHeightChange` in the final layout pass.
+  Select pages and measure the native host before presentation. Diagnostic
+  Portman opens use `activateApp: false` and deliver pages to the live host.
+- **Check:** `testTabSwitchCommitsOnlyTheDestinationHeight` switches between
+  short, tall, and empty bodies. Every native resize callback equals the
+  destination height without a settling delay. Hidden layout, fixed regions,
+  and screen-cap tests pass. App-hosted routing tests compile. Signed first
+  rendered frames, live tab latency, and foreground preservation remain open.
 
 ## Custom Selectable Interaction States
 
