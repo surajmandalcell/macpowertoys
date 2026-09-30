@@ -62,6 +62,19 @@
   Execute them on hosted CI. Compare every requested tab with the first
   signed rendered frame. Native tab latency still needs measurement.
 
+## Portman Server Row Identity, 2026-09-30
+
+- **Symptom:** A server row repeats node as its title and subtitle prefix.
+- **Cause:** The title selects branch or process name, while the subtitle
+  repeats project or process name before uptime.
+- **Invariant:** Use the project folder or launch command as the title. If
+  neither exists, keep the process name. Use uptime in the subtitle and
+  include a branch only when it is nonempty and distinct from the title.
+  Prepare these strings in the existing background overview projection.
+- **Check:** Verify project titles, command fallback, root-folder fallback,
+  and duplicate branch names. Compare both signed appearances without
+  changing the port lane, sparkline, memory slot, or row height.
+
 ## Portman Identity Colors, 2026-09-30
 
 - **Symptom:** The owner reports that Portman lost its color and looks stale.
