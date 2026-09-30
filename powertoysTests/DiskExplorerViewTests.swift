@@ -181,6 +181,20 @@ final class DiskExplorerViewTests: XCTestCase {
         XCTAssertEqual(before.outer, after.outer)
     }
 
+    func testSubpointRingSectorsKeepMembershipWithoutSpokes() throws {
+        let root = entry("/tmp/Diskman", kind: .directory)
+        let large = entry("/tmp/Diskman/Library", bytes: 1_000_000)
+        let small = entry("/tmp/Diskman/tiny", bytes: 1)
+        root.replaceChildren([large, small])
+        let rings = DiskSunburstView.segments(for: root, apparent: false, measure: .space,
+                                              radius: 250, scanComplete: false)
+        let tiny = try XCTUnwrap(rings.first { $0.entry === small })
+        XCTAssertFalse(tiny.showsOutline)
+        XCTAssertTrue(try XCTUnwrap(rings.first { $0.entry === large }).showsOutline)
+        XCTAssertEqual(rings.reduce(0) { $0 + $1.end - $1.start }, 2 * .pi, accuracy: 0.000001)
+        XCTAssertTrue(tiny.contains(angle: (tiny.start + tiny.end) / 2, radius: (tiny.inner + tiny.outer) / 2))
+    }
+
     func testLiveRingShowsTheLargestTopLevelFolders() {
         let root = entry("/tmp/Diskman", kind: .directory)
         let small = (0..<30).map { entry("/tmp/Diskman/small-\($0)", bytes: 1) }
