@@ -138,23 +138,42 @@ public struct OnePlusPage<Header: View, Tabs: View, Content: View>: View {
                 }
             } else {
                 bodyContent.frame(maxHeight: .infinity, alignment: .topLeading)
-                    .environment(\.onePlusPageScrollBottomInset, scrollBottomInset)
+                    .padding(.bottom, footer == nil ? bottomInset : 0)
             }
             if let footer {
-                footer.frame(maxWidth: .infinity, alignment: .leading)
-                    .padding(.horizontal, gutter).padding(.top, OnePlusMetrics.contentGap)
-                    .padding(.bottom, bottomInset).fixedSize(horizontal: false, vertical: true)
+                OnePlusPageFooterLayout(gutter: gutter, bottomInset: bottomInset,
+                                        emptyInset: scrolls ? 0 : bottomInset) {
+                    footer
+                }.fixedSize(horizontal: false, vertical: true)
             }
         }.frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topLeading)
     }
     private var gutter: CGFloat { layout == .applet ? OnePlusMetrics.appletGutter : density.gutter }
-    private var bottomInset: CGFloat { layout == .applet ? 0 : OnePlusMetrics.gutter }
+    private var bottomInset: CGFloat { layout == .applet ? 0 : scrolls ? OnePlusMetrics.gutter : density.gutter }
     private var scrollBottomInset: CGFloat { footer == nil ? bottomInset : 0 }
     private var bodyContent: some View {
         VStack(alignment: .leading, spacing: OnePlusMetrics.cardGap) { content }
             .frame(maxWidth: .infinity, maxHeight: scrolls ? nil : .infinity, alignment: .topLeading)
             .padding(.horizontal, gutter)
             .padding(.top, OnePlusMetrics.contentGap)
+    }
+}
+
+private struct OnePlusPageFooterLayout: Layout {
+    let gutter: CGFloat
+    let bottomInset: CGFloat
+    let emptyInset: CGFloat
+    func sizeThatFits(proposal: ProposedViewSize, subviews: Subviews, cache: inout ()) -> CGSize {
+        let width = proposal.width ?? 0
+        let height = subviews.first?.sizeThatFits(.init(width: max(0, width - 2 * gutter), height: nil)).height ?? 0
+        return CGSize(width: width, height: height > 0 ? height + OnePlusMetrics.contentGap + bottomInset : emptyInset)
+    }
+    func placeSubviews(in bounds: CGRect, proposal: ProposedViewSize, subviews: Subviews, cache: inout ()) {
+        let width = max(0, bounds.width - 2 * gutter)
+        let height = subviews.first?.sizeThatFits(.init(width: width, height: nil)).height ?? 0
+        subviews.first?.place(at: CGPoint(x: bounds.minX + gutter,
+                                         y: bounds.minY + (height > 0 ? OnePlusMetrics.contentGap : 0)),
+                              proposal: .init(width: width, height: height))
     }
 }
 

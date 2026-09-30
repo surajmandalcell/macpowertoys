@@ -21,7 +21,8 @@ final class OnePlusPageTests: XCTestCase {
                        OnePlusMetrics.contentGap, accuracy: 0.5)
     }
 
-    func testNestedPageScrollReachesBottomWithInsetInsideItsContent() throws {
+    func testFixedPageReservesItsDensityGutterBelowTheRowViewport() throws {
+        for density in OnePlusDensity.allCases {
         let host = NSHostingView(rootView: OnePlusPage(scrolls: false) {
             PageRegionProbe("header").frame(height: 50)
         } content: {
@@ -33,7 +34,7 @@ final class OnePlusPageTests: XCTestCase {
             }
             .onePlusScrollIndicators()
             .overlay { PageRegionProbe("scroll-frame") }
-        })
+        }.onePlusDensity(density))
         let window = NSWindow(contentRect: CGRect(x: -2000, y: -2000, width: 600, height: 500),
                               styleMask: .borderless, backing: .buffered, defer: false)
         window.contentView = host
@@ -44,8 +45,26 @@ final class OnePlusPageTests: XCTestCase {
         let views = descendants(host)
         let scrollFrame = try XCTUnwrap(views.first { $0.identifier?.rawValue == "scroll-frame" })
         let scroll = try XCTUnwrap(views.compactMap { $0 as? NSScrollView }.first)
-        XCTAssertEqual(scrollFrame.convert(scrollFrame.bounds, to: host).maxY, host.bounds.maxY, accuracy: 0.5)
-        XCTAssertEqual(scroll.contentInsets.bottom, OnePlusMetrics.gutter, accuracy: 0.5)
+        XCTAssertEqual(scrollFrame.convert(scrollFrame.bounds, to: host).maxY, host.bounds.maxY - density.gutter, accuracy: 0.5)
+        XCTAssertEqual(scroll.contentInsets.bottom, 0, accuracy: 0.5)
+        }
+    }
+
+    func testConditionalEmptyFooterDoesNotAddAContentGap() throws {
+        for showsNotice in [false, true] {
+            let host = NSHostingView(rootView: OnePlusPage(scrolls: false) {
+                Color.clear.frame(height: 50)
+            } footer: {
+                if showsNotice { PageRegionProbe("footer").frame(height: 44) }
+            } content: {
+                PageRegionProbe("table")
+            })
+            host.frame = CGRect(x: 0, y: 0, width: 600, height: 500)
+            host.layoutSubtreeIfNeeded()
+            let table = try XCTUnwrap(descendants(host).first { $0.identifier?.rawValue == "table" })
+            XCTAssertEqual(table.convert(table.bounds, to: host).maxY,
+                           500 - 24 - (showsNotice ? 60 : 0), accuracy: 0.5)
+        }
     }
 
     func testAppletBodyAndFixedRegionsUseSixteenPointGaps() throws {
