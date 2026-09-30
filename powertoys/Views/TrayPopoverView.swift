@@ -2028,16 +2028,7 @@ private struct TaskManagerRemoteMenuCard: View {
                 OnePlusMenuMetric("Network", value: "—"),
             ]
         ) {
-            VStack(alignment: .leading, spacing: 3) {
-                HStack {
-                    Text(profile.platform.rawValue)
-                    Spacer()
-                    Text("—").monospacedDigit()
-                }
-                .onePlusText(.caption)
-                Capsule().fill(OnePlusColor.line).frame(height: 3)
-                Text("Connect on demand").onePlusText(.caption)
-            }
+            Text("Connect on demand").onePlusText(.caption)
         } actions: {
             Button("Open SSH") { SystemMonitorRemoteTerminal.open(profile) }
                 .frame(maxWidth: .infinity, maxHeight: .infinity)
