@@ -178,56 +178,29 @@ struct FanControlView: View {
         service.selectedPreset != nil && service.selectedPreset != .auto
     }
 
-    private var fanIdentity: some View {
-        HStack(spacing: 7) {
-            Image(systemName: "fanblades")
-                .font(.system(size: compact ? 11 : 12, weight: .medium))
-                .foregroundStyle(TaskManagerTheme.secondary)
-                .frame(width: compact ? 13 : 16)
-            Text("Fan")
-                .font(.system(size: compact ? 10 : 12, weight: .medium))
-            Text("\(rpm) · \(utilization)")
-                .font(.system(size: 10))
-                .foregroundStyle(.secondary)
-                .monospacedDigit()
-                .contentTransition(.numericText())
-                .utilityAnimation(value: rpm + utilization)
-                .lineLimit(1)
-                .minimumScaleFactor(0.8)
-        }
-        .accessibilityElement(children: .combine)
-        .accessibilityLabel("Fan, \(rpm), \(utilization) of maximum speed")
-        .accessibilityHint(detail)
-        .help(detail)
-    }
-
+    @ViewBuilder
     private var presetButtons: some View {
-        HStack(spacing: 3) {
-            ForEach(FanPreset.allCases) { preset in
-                Button(preset.rawValue) { service.select(preset) }
-                    .font(.system(size: 10, weight: .medium))
-                    .foregroundStyle(service.selectedPreset == preset ? Color.primary : Color.secondary)
-                    .padding(.horizontal, compact ? 5 : 8)
-                    .frame(maxWidth: compact ? .infinity : nil, minHeight: compact ? 20 : 26)
-                    .background(
-                        service.selectedPreset == preset ? Color.white.opacity(0.11) : .clear,
-                        in: RoundedRectangle(cornerRadius: compact ? 3 : 6)
-                    )
-                    .buttonStyle(.plain)
-                    .focusEffectDisabled()
-                    .disabled(service.isChanging || !(service.canControl ||
-                              (preset == .auto && service.canRestoreAutomatic)))
-                    .accessibilityLabel("Fan \(preset.rawValue)")
-                    .accessibilityAddTraits(service.selectedPreset == preset ? .isSelected : [])
-                    .help(preset == .cool ? "Maximum cooling for 10 minutes, then Auto" :
-                          preset == .max ? "Run fans at their hardware maximum" : "Return fan control to macOS")
-            }
+        if compact && !service.canControl && service.canRestoreAutomatic {
+            Button("Auto") { service.select(.auto) }
+                .buttonStyle(OnePlusButtonStyle(.neutral, size: .small))
+                .disabled(service.isChanging)
+                .accessibilityLabel("Fan Auto")
+                .help("Return fan control to macOS")
+        } else {
+            OnePlusSegmented(
+                choices: FanPreset.allCases.map { (Optional($0), $0.rawValue) },
+                selection: Binding(
+                    get: {
+                        service.selectedPreset ?? (service.snapshot?.fans.isEmpty == false
+                            && service.snapshot?.hasExternalManualControl == false ? .auto : nil)
+                    },
+                    set: { if let preset = $0 { service.select(preset) } }
+                ),
+                accessibilityLabel: "Fan preset"
+            )
+            .onePlusDensity(.compact)
+            .disabled(service.isChanging || !service.canControl)
+            .help("Auto follows macOS. Cool boosts cooling for 10 minutes. Max runs fans at their hardware maximum.")
         }
-        .frame(width: compact ? 118 : 160)
-        .padding(2)
-        .background(Color.black.opacity(0.18), in: RoundedRectangle(cornerRadius: compact ? 5 : 6))
-        .overlay { RoundedRectangle(cornerRadius: compact ? 5 : 6)
-            .strokeBorder(compact ? TaskManagerTheme.lineSoft : Color.clear) }
-        .utilityAnimation(value: service.selectedPreset)
     }
 }
