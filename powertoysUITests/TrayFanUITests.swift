@@ -23,7 +23,7 @@ final class TrayFanUITests: XCTestCase {
         tray.click()
         app.buttons["tray.tab.home"].click()
         XCTAssertFalse(app.buttons["tray.tab.system-monitor"].exists)
-        XCTAssertFalse(app.buttons["Fan Auto"].exists)
+        XCTAssertFalse(app.descendants(matching: .any)["Fan Auto"].exists)
 
         let homeCapture = XCTAttachment(screenshot: app.screenshot())
         homeCapture.name = "Main menu without System Monitor"
@@ -35,9 +35,9 @@ final class TrayFanUITests: XCTestCase {
         XCTAssertTrue(monitor.waitForExistence(timeout: 10), app.menuBars.debugDescription)
         monitor.click()
         app.buttons["system-monitor.tray.home"].click()
-        XCTAssertTrue(app.buttons["Fan Auto"].waitForExistence(timeout: 10))
-        XCTAssertTrue(app.buttons["Fan Cool"].exists)
-        XCTAssertTrue(app.buttons["Fan Max"].exists)
+        XCTAssertTrue(app.descendants(matching: .any)["Fan Auto"].waitForExistence(timeout: 10), app.debugDescription)
+        XCTAssertTrue(app.descendants(matching: .any)["Fan Cool"].exists)
+        XCTAssertTrue(app.descendants(matching: .any)["Fan Max"].exists)
 
         let setup = app.buttons["fan-control.setup"]
         XCTAssertTrue(setup.waitForExistence(timeout: 20))
@@ -54,9 +54,9 @@ final class TrayFanUITests: XCTestCase {
 
         app.buttons["system-monitor.tray.sensors"].click()
         XCTAssertTrue(app.staticTexts["Enable fan control"].waitForNonExistence(timeout: 5))
-        XCTAssertTrue(app.buttons["Fan Auto"].waitForExistence(timeout: 5))
-        XCTAssertTrue(app.buttons["Fan Cool"].exists)
-        XCTAssertTrue(app.buttons["Fan Max"].exists)
+        XCTAssertTrue(app.descendants(matching: .any)["Fan Auto"].waitForExistence(timeout: 5))
+        XCTAssertTrue(app.descendants(matching: .any)["Fan Cool"].exists)
+        XCTAssertTrue(app.descendants(matching: .any)["Fan Max"].exists)
     }
 
     @MainActor
@@ -120,8 +120,8 @@ final class TrayFanUITests: XCTestCase {
         XCTAssertEqual(taskManager.frame.width, 1_080, accuracy: 2)
         XCTAssertEqual(taskManager.frame.height, 660, accuracy: 2)
 
-        let sidebarTitle = app.staticTexts["task-manager.sidebar.title"]
-        XCTAssertTrue(sidebarTitle.waitForExistence(timeout: 5))
+        let sidebarTitle = taskManager.descendants(matching: .any)["task-manager.sidebar.title"]
+        XCTAssertTrue(sidebarTitle.waitForExistence(timeout: 5), taskManager.debugDescription)
         XCTAssertEqual(sidebarTitle.frame.midY, taskManager.frame.minY + 27, accuracy: 2)
         XCTAssertLessThanOrEqual(sidebarTitle.frame.maxX, taskManager.frame.minX + 200)
 

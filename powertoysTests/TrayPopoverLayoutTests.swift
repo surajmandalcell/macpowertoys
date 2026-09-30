@@ -270,10 +270,11 @@ final class TrayPopoverLayoutTests: XCTestCase {
         host.frame = NSRect(origin: screen.origin, size: NSSize(width: TrayPopoverLayout.width,
                                                               height: screen.height * TrayPopoverLayout.heightFraction))
         let window = NSWindow(contentRect: host.frame, styleMask: [.titled], backing: .buffered, defer: false)
+        window.isReleasedWhenClosed = false
         window.contentView = host
         NSApp.activate(ignoringOtherApps: true)
         window.makeKeyAndOrderFront(nil)
-        defer { window.close() }
+        defer { window.close(); window.contentView = nil }
         host.layoutSubtreeIfNeeded()
         let deadline = Date().addingTimeInterval(2)
         while host.fittingSize.height <= 100 && Date() < deadline {

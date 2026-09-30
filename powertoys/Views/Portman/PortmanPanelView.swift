@@ -1737,16 +1737,16 @@ final class PortmanMenuController: NSObject {
         showTask = Task { @MainActor [weak self] in
             if createdStatusItem { try? await Task.sleep(for: .milliseconds(200)) }
             guard let self else { return }
+            NSApp.activate(ignoringOtherApps: true)
             for _ in 0..<200 {
                 guard !Task.isCancelled, let button = self.item?.button, !self.popover.isShown else { return }
-                if button.window != nil && button.bounds.width > 0 {
+                if NSApp.isActive && button.window != nil && button.bounds.width > 0 {
                     self.popover.appearance = NSApp.appearance
                     self.popover.contentViewController = NSHostingController(rootView: PortmanPanelView().utilityMotionPolicy())
                     self.popover.contentViewController?.view.appearance = NSApp.appearance
                     self.popover.contentSize = NSSize(width: OnePlusMenuMetrics.width, height: OnePlusMenuMetrics.width)
                     self.popover.show(relativeTo: button.bounds, of: button, preferredEdge: .minY)
                     self.popover.contentViewController?.view.window?.appearance = NSApp.appearance
-                    NSApp.activate(ignoringOtherApps: true)
                     self.popover.contentViewController?.view.window?.makeKey()
                     if AppRuntime.isUITesting { NSLog("Portman popover shown: \(self.popover.isShown)") }
                     return
