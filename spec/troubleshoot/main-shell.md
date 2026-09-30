@@ -154,7 +154,8 @@
   large centered region.
 - **Check:** Open Cloud Sync with and without remotes or transfers. Require
   the remote section and New Transfer action in both appearances. The empty
-  transfer card must use only its content height.
+  transfer card must use only its content height. When configured remote cards
+  already report no transfers, omit the separate empty transfer card.
 
 ## Menu-Bar Tab Density
 
@@ -236,6 +237,26 @@
   CI. Review every tab in both appearances from the signed build. Check
   missing capacity, denied SSID access, gateway timeout, unknown battery,
   unloaded usage, compact empty states, controls, and tab-switch latency.
+
+## Compact Panel Review, 2026-09-30
+
+- **Symptom:** NetToys repeats en0 and has no Location recovery link. Cloud
+  Sync repeats its empty transfer state. Remote host action text is centered.
+- **Cause:** NetToys used the interface as its network title and its adjacent
+  tile. Empty jobs always added a second card. Remote buttons used plain titles.
+- **Invariant:** Use `NetworkIdentity.displayName` for the current network.
+  When its fallback includes the interface, the adjacent tile shows connection
+  type instead. Preserve blue identity ink. Missing Wi-Fi names offer a small
+  Location access link to NetToys Settings, which owns permission status and
+  request or recovery decisions. Missing SSID alone does not prove denial.
+  Route all panel page links through the durable tool-page router before opening.
+  Configured remotes retain their empty subtitle without another transfer card.
+  Offline host actions use leading 8.5pt text, a trailing 9pt glyph, and the
+  shared paint-only row style. Keep the 84pt action lane and native actions.
+- **Check:** Review disconnected, Wi-Fi with and without SSID, wired, and helper
+  permission states. Open Location access from a cold and an existing window.
+  Check empty and active Cloud Sync, both remote cells, keyboard focus modes,
+  natural height, and tab latency in the signed app.
 
 ## Combined Menu Icon And Tab Outline
 

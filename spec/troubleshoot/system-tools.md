@@ -613,6 +613,25 @@
   It bounds CPU at 410pt and Sensors at 330pt. Recapture Home, CPU, and Sensors
   in both appearances. Exercise helper setup and automatic recovery.
 
+- **Symptom:** Disk activity ticks wrap inside the 54pt axis. System Care and
+  Task Manager disagree on disk units. Sensors repeats its only reading.
+- **Cause:** Axis ticks each included a rate unit. Task Manager reused the RAM
+  formatter for disk values. A second Sensors card repeated thermal pressure.
+- **Invariant:** Disk and Network plot ticks are numeric MB/s values on one
+  line. Show the unit once above the 64pt plot. Keep the time axis outside and
+  legends on the card's inner leading edge. System Care and Task Manager panel
+  disk labels share decimal `TrayPopoverLayout.diskBytes`. RAM keeps binary
+  formatting. Sensors puts the existing Fan row directly after the hero at
+  the 8pt detail gap. Add no temperature values without reported readings.
+  Offline remote bodies say No disk data and retain CPU, RAM, and Network
+  dashes. Foundation owns header/metric glyph APIs and muted offline readings
+  in `OnePlusMenuItemCard`; callers must not replace that shared card locally.
+- **Check:** `tmp/redesign/logs/27r10-panels-check.py` checks actual panel
+  formatting, captured high-rate tick widths, and network identity fallbacks.
+  Review Disk, Network, Sensors, and Home in both signed appearances. Compare
+  startup disk cards from the same sample. Execute hosted panel measurement
+  and permission-route checks. Local verification remains compile-only.
+
 - **Symptom:** Fan can keep polling after a menu panel closes.
 - **Cause:** The shared panel retains its mounted layout. An appearance-only
   subscription remains active while that layout is hidden.
