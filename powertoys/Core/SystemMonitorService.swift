@@ -1590,6 +1590,7 @@ final class SystemMonitorMenuController: NSObject {
         let ceiling = (sender.window?.screen?.visibleFrame.height ?? 800) * OnePlusMenuMetrics.heightFraction
         hosting.view.setFrameSize(hosting.sizeThatFits(in: NSSize(width: OnePlusMenuMetrics.width, height: ceiling)))
         popover.contentViewController = hosting
+        popover.contentSize = hosting.view.frame.size
         popover.show(relativeTo: sender.bounds, of: sender, preferredEdge: .minY)
     }
 }

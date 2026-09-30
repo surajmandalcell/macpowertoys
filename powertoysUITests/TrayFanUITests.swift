@@ -100,8 +100,9 @@ final class TrayFanUITests: XCTestCase {
         XCTAssertTrue(cpuLoad.waitForExistence(timeout: 5))
 
         monitor.click()
+        XCTAssertTrue(cpuLoad.waitForNonExistence(timeout: 5), app.debugDescription)
         monitor.click()
-        XCTAssertTrue(cpuLoad.waitForExistence(timeout: 5))
+        XCTAssertTrue(cpuLoad.waitForExistence(timeout: 5), app.debugDescription)
 
         let capture = XCTAttachment(screenshot: app.screenshot())
         capture.name = "Task Manager CPU after reopening tray"
