@@ -1723,7 +1723,7 @@ nonisolated enum PortmanEditor {
 }
 
 @MainActor
-final class PortmanMenuController: NSObject {
+final class PortmanMenuController: NSObject, NSPopoverDelegate {
     static let shared = PortmanMenuController()
 
     private var item: NSStatusItem?
@@ -1736,6 +1736,7 @@ final class PortmanMenuController: NSObject {
         super.init()
         popover.behavior = .transient
         popover.animates = false
+        popover.delegate = self
     }
 
     func start() {
@@ -1806,6 +1807,10 @@ final class PortmanMenuController: NSObject {
             }
             if AppRuntime.isUITesting { NSLog("Portman status item has no visible anchor") }
         }
+    }
+
+    func popoverDidClose(_ notification: Notification) {
+        popover.contentViewController = nil
     }
 
     func setHeight(_ height: CGFloat) {

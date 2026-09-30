@@ -10,8 +10,10 @@
 - **Invariant:** Select the requested page before constructing the panel host.
   Consume queued tool-page requests before presentation. Deliver requests to
   the existing view when it is already visible. Keep Settings state in the
-  panel owner and reuse its completed editor discovery. Keep Forward's
-  required scan cancellation and pending-selection reset on exit.
+  panel owner and reuse its completed editor discovery. Release the native
+  hosted content on close so its hidden root cannot observe snapshots or
+  consume page links. Keep Forward's required scan cancellation and
+  pending-selection reset on exit.
 - **Check:** Compile the Portman page-routing and Settings-state regressions.
   Execute them on hosted CI. Compare every requested tab with the first
   signed rendered frame. Native tab latency still needs measurement.
