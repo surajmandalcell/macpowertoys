@@ -55,9 +55,11 @@ nonisolated enum SystemMonitorProcessHierarchy {
         let cpuText: String
         let memoryText: String
         let pidText: String
+        let displayName: String
+        let symbol: String
         var id: String { process.id }
 
-        init(process: SystemMonitorProcess, depth: Int) {
+        init(process: SystemMonitorProcess, depth: Int, parentName: String? = nil) {
             self.process = process
             self.depth = depth
             cpuText = process.cpuPercent.map {
@@ -70,6 +72,14 @@ nonisolated enum SystemMonitorProcessHierarchy {
                     countStyle: .memory
                 )
             pidText = String(process.pid)
+            let parts = process.name.split(separator: ".")
+            let isVersion = parts.count > 1 && parts.allSatisfy { Int($0) != nil }
+            let bundleName = URL(fileURLWithPath: process.executablePath).pathComponents
+                .first { $0.hasSuffix(".app") }.map { String($0.dropLast(4)) }
+            let owner = bundleName ?? parentName
+            displayName = isVersion ? owner.map { "\($0) (\(process.name))" } ?? process.name : process.name
+            symbol = bundleName != nil ? "app" : process.started == 0 ? "lock"
+                : process.executablePath.hasPrefix("/System/Library/") ? "gearshape" : "terminal"
         }
     }
 
@@ -80,6 +90,7 @@ nonisolated enum SystemMonitorProcessHierarchy {
     ) -> [Row] {
         let sorted = SystemMonitorProcessSorting.sorted(processes, by: column, descending: descending)
         let ids = Set(sorted.map(\.pid))
+        let names = Dictionary(sorted.map { ($0.pid, $0.name) }, uniquingKeysWith: { first, _ in first })
         let children = Dictionary(
             grouping: sorted.filter { ids.contains($0.parentPID) && $0.parentPID != $0.pid },
             by: \.parentPID
@@ -89,7 +100,7 @@ nonisolated enum SystemMonitorProcessHierarchy {
 
         func append(_ process: SystemMonitorProcess, depth: Int) {
             guard visited.insert(process.pid).inserted else { return }
-            rows.append(Row(process: process, depth: min(depth, 6)))
+            rows.append(Row(process: process, depth: min(depth, 6), parentName: names[process.parentPID]))
             for child in children[process.pid] ?? [] { append(child, depth: depth + 1) }
         }
 
@@ -115,15 +126,17 @@ nonisolated enum SystemMonitorProcessRows {
         descending: Bool,
         limit: Int? = nil
     ) -> Result {
+        let names = Dictionary(processes.map { ($0.pid, $0.name) }, uniquingKeysWith: { first, _ in first })
         let filtered = processes.filter {
             search.isEmpty || $0.name.localizedCaseInsensitiveContains(search)
                 || String($0.pid).contains(search)
                 || $0.executablePath.localizedCaseInsensitiveContains(search)
+                || names[$0.parentPID]?.localizedCaseInsensitiveContains(search) == true
         }
         let prepared = hierarchy
             ? SystemMonitorProcessHierarchy.rows(filtered, by: column, descending: descending)
             : SystemMonitorProcessSorting.sorted(filtered, by: column, descending: descending)
-                .map { SystemMonitorProcessHierarchy.Row(process: $0, depth: 0) }
+                .map { SystemMonitorProcessHierarchy.Row(process: $0, depth: 0, parentName: names[$0.parentPID]) }
         return Result(
             rows: limit.map { Array(prepared.prefix($0)) } ?? prepared,
             matchingCount: filtered.count
@@ -187,11 +200,11 @@ struct SystemMonitorOverviewProcessesView: View {
                         Button { onSelect(row.process) } label: {
                             HStack(spacing: 8) {
                                 HStack(spacing: 8) {
-                                    Image(systemName: "gearshape")
+                                    Image(systemName: row.symbol)
                                         .font(.system(size: 13))
                                         .foregroundStyle(TaskManagerTheme.secondary)
                                         .frame(width: 18, height: 18)
-                                    Text(row.process.name)
+                                    Text(row.displayName)
                                         .font(.system(size: 10))
                                         .foregroundStyle(TaskManagerTheme.ink)
                                         .lineLimit(1)
@@ -343,7 +356,7 @@ struct SystemMonitorProcessesView: View {
             HStack(spacing: 7) {
                 Text("Hierarchy").font(.system(size: 9)).foregroundStyle(TaskManagerTheme.secondary)
                 Toggle("Hierarchy", isOn: hierarchyBinding)
-                    .labelsHidden().toggleStyle(.switch).controlSize(.mini)
+                    .labelsHidden().toggleStyle(OnePlusSwitchStyle())
             }
             Text("\(processes.count) processes")
                 .font(.system(size: 8.5, design: .monospaced))
@@ -515,11 +528,11 @@ private struct SystemMonitorProcessRow: View, Equatable {
             Button { inspect(process) } label: {
                 HStack(spacing: 8) {
                     HStack(spacing: 8) {
-                        Image(systemName: "gearshape")
+                        Image(systemName: row.symbol)
                             .font(.system(size: 13))
                             .foregroundStyle(TaskManagerTheme.secondary)
                             .frame(width: 18, height: 18)
-                        Text(process.name).lineLimit(1)
+                        Text(row.displayName).lineLimit(1)
                     }
                     .padding(.leading, CGFloat(row.depth) * 16)
                     .frame(maxWidth: .infinity, alignment: .leading)
@@ -556,6 +569,7 @@ private struct SystemMonitorProcessRow: View, Equatable {
             .menuStyle(.borderlessButton)
             .menuIndicator(.hidden)
             .fixedSize()
+            .frame(width: 24)
             .focusEffectDisabled()
             .accessibilityIdentifier("task-manager.process.actions.\(process.pid)")
         }
