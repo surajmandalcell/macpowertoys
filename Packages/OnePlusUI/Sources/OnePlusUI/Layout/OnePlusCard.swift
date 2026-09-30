@@ -1,5 +1,16 @@
 import SwiftUI
 
+private struct OnePlusCardPaddingKey: EnvironmentKey {
+    static let defaultValue: CGFloat? = nil
+}
+
+public extension EnvironmentValues {
+    var onePlusCardPadding: CGFloat {
+        get { self[OnePlusCardPaddingKey.self] ?? (onePlusDensity == .compact ? OnePlusMetrics.compactCardPadding : OnePlusMetrics.cardPadding) }
+        set { self[OnePlusCardPaddingKey.self] = newValue }
+    }
+}
+
 public struct OnePlusCard<Content: View>: View {
     private let textured: Bool
     private let content: Content
@@ -29,16 +40,20 @@ public struct OnePlusCardHeader<Accessory: View>: View {
     private let title: String
     private let icon: String?
     private let accessory: Accessory
+    @Environment(\.onePlusCardPadding) private var cardPadding
     public init(_ title: String, systemImage: String? = nil, @ViewBuilder accessory: () -> Accessory) {
         self.title = title; icon = systemImage; self.accessory = accessory()
     }
     public var body: some View {
         HStack(spacing: 8) {
-            if let icon { Image(systemName: icon).font(.system(size: 13)).foregroundStyle(OnePlusColor.secondary).accessibilityHidden(true) }
+            if let icon {
+                Image(systemName: icon).font(.system(size: 13)).frame(width: 13)
+                    .foregroundStyle(OnePlusColor.secondary).accessibilityHidden(true)
+            }
             Text(title).onePlusText(.cardTitle).lineLimit(1).accessibilityAddTraits(.isHeader)
             Spacer(minLength: 8)
             accessory
-        }.padding(.horizontal, 16).frame(height: 40)
+        }.padding(.horizontal, cardPadding).frame(height: 40)
             .overlay(alignment: .bottom) { OnePlusColor.lineSoft.frame(height: 1) }
     }
 }
@@ -55,6 +70,7 @@ public struct OnePlusSettingRow<Control: View>: View {
     private let controlWidth: CGFloat
     private let separator: Bool
     private let control: Control
+    @Environment(\.onePlusCardPadding) private var cardPadding
     public init(_ label: String, caption: String? = nil, help: String? = nil, reset: (() -> Void)? = nil,
                 controlWidth: CGFloat = 160, separator: Bool = true, @ViewBuilder control: () -> Control) {
         self.label = label; self.caption = caption; self.help = help; self.reset = reset
@@ -76,7 +92,7 @@ public struct OnePlusSettingRow<Control: View>: View {
             }
             control.frame(width: controlWidth, alignment: .trailing)
         }
-        .padding(.horizontal, 16)
+        .padding(.horizontal, cardPadding)
         .frame(height: caption == nil ? OnePlusMetrics.settingRow : OnePlusMetrics.captionedSettingRow)
         // Keep the separator inside the row's declared pitch.
         .overlay(alignment: .bottom) { if separator { OnePlusColor.lineSoft.frame(height: 1) } }

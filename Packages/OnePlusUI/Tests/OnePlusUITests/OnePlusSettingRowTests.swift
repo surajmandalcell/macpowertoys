@@ -5,6 +5,19 @@ import XCTest
 
 @MainActor
 final class OnePlusSettingRowTests: XCTestCase {
+    func testCompactHeaderAndSettingControlShareTheTwelvePointInset() throws {
+        let host = NSHostingView(rootView: OnePlusCard {
+            OnePlusCardHeader("Fan", systemImage: "fan") { SettingControlProbe().frame(width: 40) }
+            OnePlusSettingRow("Preset") { SettingControlProbe().frame(maxWidth: .infinity) }
+        }.onePlusDensity(.compact))
+        host.frame = CGRect(x: 0, y: 0, width: 420, height: 84)
+        host.layoutSubtreeIfNeeded()
+        let controls = descendants(host).filter { $0.identifier?.rawValue == "control" }
+        XCTAssertEqual(controls.count, 2)
+        for control in controls {
+            XCTAssertEqual(control.convert(control.bounds, to: host).maxX, 420 - 12, accuracy: 0.5)
+        }
+    }
     func testCaptionUsesRemainingWidthAndControlColumnStaysFixed() throws {
         let caption = "Default: " + String(repeating: "W", count: 200)
         for width in [CGFloat(480), 976] {
