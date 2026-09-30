@@ -1176,13 +1176,6 @@ enum SystemMonitorTrayPage: String, CaseIterable, Identifiable {
     }
 }
 
-private struct TaskManagerMenuMeasuredHeightKey: PreferenceKey {
-    static let defaultValue: CGFloat = 0
-    static func reduce(value: inout CGFloat, nextValue: () -> CGFloat) {
-        value = max(value, nextValue())
-    }
-}
-
 struct SystemMonitorMenuPopoverView: View {
     private let defaults: UserDefaults
     private let loadsRemoteProfiles: Bool
@@ -1220,7 +1213,6 @@ struct SystemMonitorMenuPopoverView: View {
 
 struct SystemMonitorTrayView: View {
     @AppStorage("systemMonitor.trayPage") private var pageID = SystemMonitorTrayPage.home.rawValue
-    @AppStorage("systemMonitor.rememberTrayPage") private var rememberPage = true
     private let remoteProfiles: [SystemMonitorRemoteProfile]
     private let onPreferredHeight: (CGFloat) -> Void
     @State private var processModel = TaskManagerMenuProcessModel()
@@ -1264,16 +1256,7 @@ struct SystemMonitorTrayView: View {
             }
             .modifier(TaskManagerMenuSampling(page: page))
         }
-        .background(GeometryReader { proxy in
-            Color.clear.preference(key: TaskManagerMenuMeasuredHeightKey.self, value: proxy.size.height)
-        })
-        .onPreferenceChange(TaskManagerMenuMeasuredHeightKey.self) { height in
-            guard height > 0 else { return }
-            onPreferredHeight(height)
-        }
-        .onAppear {
-            if !rememberPage { pageID = SystemMonitorTrayPage.home.rawValue }
-        }
+        .onOnePlusMenuHeightChange(onPreferredHeight)
     }
 
     private var homePage: some View {

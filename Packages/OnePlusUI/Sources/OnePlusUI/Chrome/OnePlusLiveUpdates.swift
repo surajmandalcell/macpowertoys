@@ -32,6 +32,7 @@ enum OnePlusWindowVisibility {
 }
 
 private struct OnePlusLiveUpdatesModifier: ViewModifier {
+    // Visibility gates live work. Keep layout mounted so hosts can measure before showing.
     @State private var isVisible = false
 
     func body(content: Content) -> some View {
@@ -96,6 +97,7 @@ private final class OnePlusVisibilityView: NSView {
     }
 
     func refresh() {
+        // Defer only observation delivery, never content construction or panel measurement.
         guard pending == nil else { return }
         let work = DispatchWorkItem { [weak self] in
             guard let self else { return }

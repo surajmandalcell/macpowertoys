@@ -48,7 +48,7 @@ final class ToolActionRouter {
 
     private var openWindowAction: OpenWindowAction?
     private var pending: [ToolActionRequest] = []
-    private var pendingToolOpens: [String] = []
+    private var pendingToolOpens: [(id: String, activateApp: Bool)] = []
 
     private init() {}
 
@@ -59,7 +59,7 @@ final class ToolActionRouter {
         requests.forEach(execute)
         let toolOpens = pendingToolOpens
         pendingToolOpens.removeAll()
-        toolOpens.forEach { open(toolID: $0) }
+        toolOpens.forEach { open(toolID: $0.id, activateApp: $0.activateApp) }
     }
 
     private static let windowAliases: [String: String] = [
@@ -71,16 +71,16 @@ final class ToolActionRouter {
         "home": "main"
     ]
 
-    func open(toolID: String, page: String?) {
-        guard let page else { open(toolID: toolID); return }
+    func open(toolID: String, page: String?, activateApp: Bool = true) {
+        guard let page else { open(toolID: toolID, activateApp: activateApp); return }
         let resolved = Self.resolvedWindowID(toolID)
         guard resolved == "main" || (SettingsManager.shared.isToolEnabled(resolved)
             && ToolRegistry.builtInTools.contains(where: { $0.id == resolved })) else { return }
-        open(toolID: resolved)
         ToolPageRouter.shared.post(tool: resolved, page: page)
+        open(toolID: resolved, activateApp: activateApp)
     }
 
-    func open(toolID: String) {
+    func open(toolID: String, activateApp: Bool = true) {
         let resolved = Self.resolvedWindowID(toolID)
         guard resolved == "main" || SettingsManager.shared.isToolEnabled(resolved) else {
             LogManager.shared.info("Ignored disabled tool: \(resolved)", source: "ToolActionRouter")
@@ -88,27 +88,27 @@ final class ToolActionRouter {
         }
         if resolved == "ruler" {
             execute(ToolActionRequest(action: .rulerOpen))
-            NSApp.activate(ignoringOtherApps: true)
+            if activateApp { NSApp.activate(ignoringOtherApps: true) }
             return
         }
 
         if resolved == "portman" {
-            PortmanMenuController.shared.show()
+            PortmanMenuController.shared.show(activateApp: activateApp)
             dismissMainWindowAfterToolOpen()
             return
         }
 
         if resolved == "main" || ToolRegistry.builtInTools.contains(where: { $0.id == resolved }) {
             guard let openWindowAction else {
-                if pendingToolOpens.last != resolved {
+                if pendingToolOpens.last?.id != resolved || pendingToolOpens.last?.activateApp != activateApp {
                     if pendingToolOpens.count == Self.maximumPendingCount { pendingToolOpens.removeFirst() }
-                    pendingToolOpens.append(resolved)
+                    pendingToolOpens.append((resolved, activateApp))
                 }
                 return
             }
-            presentSingleWindow(id: resolved, using: openWindowAction)
+            presentSingleWindow(id: resolved, using: openWindowAction, activateApp: activateApp)
             if resolved != "main" { dismissMainWindowAfterToolOpen() }
-            NSApp.activate(ignoringOtherApps: true)
+            if activateApp { NSApp.activate(ignoringOtherApps: true) }
         } else if MarketplaceManager.shared.receipts.contains(where: { $0.toolID == resolved }) {
             Task {
                 do {
@@ -163,12 +163,13 @@ final class ToolActionRouter {
         if request.action == .rulerOpen { dismissMainWindowAfterToolOpen() }
     }
 
-    private func presentSingleWindow(id: String, using openWindow: OpenWindowAction) {
+    private func presentSingleWindow(id: String, using openWindow: OpenWindowAction, activateApp: Bool) {
         if let window = NSApp.windows.first(where: {
             Self.windowIdentifier($0.identifier?.rawValue, matches: id)
         }) {
             if window.isMiniaturized { window.deminiaturize(nil) }
-            window.makeKeyAndOrderFront(nil)
+            if activateApp { window.makeKeyAndOrderFront(nil) }
+            else { window.orderFrontRegardless() }
             return
         }
         openWindow(id: id)
