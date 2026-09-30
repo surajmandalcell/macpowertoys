@@ -44,6 +44,10 @@ struct PopupMenusShowcase: View {
             OnePlusSettingRow("Neutral menu") {
                 OnePlusMenuButton("Export", variant: .neutral, items: actionItems)
             }
+            OnePlusSettingRow("Bordered icon menu") {
+                OnePlusMenuButton("Export", systemImage: "square.and.arrow.up",
+                                  variant: .borderedIcon, items: actionItems)
+            }
             OnePlusSettingRow("SwiftUI commands", separator: false) {
                 OnePlusActionMenu("More") {
                     Button("Copy sample") { lastAction = "Copied sample" }

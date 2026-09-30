@@ -156,7 +156,7 @@ with `textColor: OnePlusColor.ink` for primary identity text.
 | `OnePlusSettingRow` | Supply label, caption, help, reset, and a 160 or 180 pt control column. |
 | `OnePlusSectionTitle` | Label a section with an optional trailing link action. |
 | `OnePlusButtonStyle` | Choose a variant; omitted size follows density, while regular and small force 28 or 24 pt. |
-| `OnePlusMenuButton` | Build an action menu with a ghost or neutral trigger. |
+| `OnePlusMenuButton` | Build an action menu with a ghost, neutral, or `borderedIcon` trigger. Pass `systemImage` for the icon; the title supplies its tooltip and accessible name. |
 | `.onePlusNeutralControls()` | Give native menus and template images neutral tint. |
 | `OnePlusInteractionStyle` | Add shared interaction feedback to caller-owned row geometry. |
 | `OnePlusControlLabel` | Style a native Menu label with the same button geometry. |
