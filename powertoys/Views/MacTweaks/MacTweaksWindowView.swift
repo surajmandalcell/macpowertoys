@@ -72,15 +72,16 @@ struct MacTweaksSettingsContent: View {
     var body: some View {
         VStack(spacing: OnePlusMetrics.cardGap) {
             OnePlusCard {
-                OnePlusCardHeader("Mac Tweaks", systemImage: "slider.horizontal.3")
+                OnePlusCardHeader("Preferences", systemImage: "slider.horizontal.3")
                 OnePlusSettingRow(
                     "System preferences",
-                    caption: "Manage Mic Lock, Dock, Finder, windows, and other macOS changes.",
+                    caption: "Adjust input, Dock, Finder, windows, screenshots, apps, power, and menu bar.",
                     separator: false
                 ) {
                     Button("Open Mac Tweaks") {
                         ToolActionRouter.shared.open(toolID: "mac-tweaks")
                     }
+                    .buttonStyle(OnePlusButtonStyle(.neutral))
                 }
             }
         }
@@ -282,8 +283,9 @@ struct MacTweaksWindowView: View {
             .frame(height: 344)
             HStack(alignment: .top, spacing: MacTweaksLayout.panelGap) {
                 preferencePanel("Layout & appearance", glyph: .layers,
-                                itemIDs: ["dock.lock-size", "dock.lock-contents", "dock.hidden-app-dimming", "dock.stack-selection", "dock.switcher-displays"])
-                MacTweaksPanel("Stack & app switcher", glyph: .dock) {
+                                itemIDs: ["dock.lock-size", "dock.lock-contents", "dock.hidden-app-dimming", "dock.stack-selection", "dock.switcher-displays"],
+                                fillsHeight: true)
+                MacTweaksPanel("Stack & app switcher", glyph: .dock, fillsHeight: true) {
                     MacTweaksPreviewView(kind: .layout)
                 }
             }
@@ -306,11 +308,11 @@ struct MacTweaksWindowView: View {
                     ForEach(0..<4, id: \.self) { index in
                         MacTweaksInlineRow(
                             index == 0 ? "Primary" : "Fallback \(index)",
-                            controlWidth: OnePlusMetrics.wideControlColumn
+                            controlWidth: OnePlusMetrics.wideControlColumn,
+                            separator: index < 3
                         ) {
                             microphoneMenu(index: index)
                         }
-                        if index < 3 { MacTweaksRowDivider() }
                     }
                 }
                 .overlay(alignment: .topTrailing) {
@@ -330,24 +332,21 @@ struct MacTweaksWindowView: View {
                     .padding(.trailing, OnePlusMetrics.spacing[4])
                 }
                 MacTweaksPanel("Current input", glyph: .microphone) {
-                    MacTweaksInlineRow("Microphone") {
+                    MacTweaksInlineRow("Microphone", separator: true) {
                         Text(currentMicrophoneName).lineLimit(1)
                             .onePlusText(.control)
                     }
                     if micLock.volume != nil {
-                        MacTweaksRowDivider()
-                        MacTweaksInlineRow("Input volume") { inputVolumeControl }
+                        MacTweaksInlineRow("Input volume", separator: true) { inputVolumeControl }
                     }
                     if micLock.muted != nil {
-                        MacTweaksRowDivider()
-                        MacTweaksInlineRow("Mute microphone") {
+                        MacTweaksInlineRow("Mute microphone", separator: true) {
                             Toggle("Mute microphone", isOn: Binding(get: { micLock.muted ?? false }, set: micLock.setMuted))
                                 .labelsHidden().toggleStyle(OnePlusSwitchStyle())
                                 .accessibilityLabel("Mute microphone")
                         }
                     }
-                    MacTweaksRowDivider()
-                    MacTweaksInlineRow("Input level") { inputLevelControl }
+                    MacTweaksInlineRow("Input level", controlWidth: OnePlusMetrics.wideControlColumn) { inputLevelControl }
                 }
             }
             .frame(height: 216)
@@ -373,7 +372,7 @@ struct MacTweaksWindowView: View {
     private var powerPage: some View {
         HStack(alignment: .top, spacing: MacTweaksLayout.panelGap) {
             MacTweaksPanel("Power preferences", glyph: .power) {
-                MacTweaksInlineRow("Keep this Mac awake") {
+                MacTweaksInlineRow("Keep this Mac awake", separator: true) {
                     Toggle("Keep this Mac awake", isOn: Binding(
                         get: { awake.configuration.mode != .passive },
                         set: { enabled in
@@ -383,15 +382,12 @@ struct MacTweaksWindowView: View {
                     )).labelsHidden().toggleStyle(OnePlusSwitchStyle())
                         .accessibilityLabel("Keep this Mac awake")
                 }
-                MacTweaksRowDivider()
-                MacTweaksInlineRow("Duration") { awakeDurationMenu }
-                MacTweaksRowDivider()
-                MacTweaksInlineRow("Keep display on") {
+                MacTweaksInlineRow("Duration", separator: true) { awakeDurationMenu }
+                MacTweaksInlineRow("Keep display on", separator: true) {
                     Toggle("Keep display on", isOn: Binding(get: { awake.configuration.keepDisplayOn }, set: awake.setKeepDisplayOn))
                         .labelsHidden().toggleStyle(OnePlusSwitchStyle())
                         .accessibilityLabel("Keep display on")
                 }
-                MacTweaksRowDivider()
                 MacTweaksInlineRow("Status") {
                     Text(awakeStatusText).onePlusText(.mono)
                         .foregroundStyle(awake.assertionError == nil ? MacTweaksPalette.secondary : MacTweaksPalette.accent)
@@ -565,18 +561,14 @@ struct MacTweaksWindowView: View {
                 }
                 .padding(OnePlusMetrics.cardPadding)
                 MacTweaksRowDivider()
-                aboutRow("Version", value: appVersion)
-                MacTweaksRowDivider()
-                aboutRow("Preferences", value: "Exact-value backup and restore")
-                MacTweaksRowDivider()
+                aboutRow("Version", value: appVersion, separator: true)
+                aboutRow("Preferences", value: "Exact-value backup and restore", separator: true)
                 aboutRow("System access", value: "Requested only when selected")
             }
             .frame(width: 620)
             MacTweaksPanel("Keyboard", glyph: .keyboard) {
-                aboutRow("Search", value: "⌘ K")
-                MacTweaksRowDivider()
-                aboutRow("Clear search or close a menu", value: "Esc")
-                MacTweaksRowDivider()
+                aboutRow("Search", value: "⌘ K", separator: true)
+                aboutRow("Clear search or close a menu", value: "Esc", separator: true)
                 aboutRow("Move between options", value: "←  →")
             }
             .frame(width: 620)
@@ -588,8 +580,8 @@ struct MacTweaksWindowView: View {
         }
     }
 
-    private func aboutRow(_ label: String, value: String) -> some View {
-        OnePlusSettingRow(label, separator: false) {
+    private func aboutRow(_ label: String, value: String, separator: Bool = false) -> some View {
+        OnePlusSettingRow(label, separator: separator) {
             Text(value).onePlusText(.control)
         }
     }
@@ -601,29 +593,34 @@ struct MacTweaksWindowView: View {
         preview: MacTweaksPreviewKind
     ) -> some View {
         MacTweaksPanel(title, glyph: glyph) {
-            preferenceRows(itemIDs)
-            MacTweaksRowDivider()
+            preferenceRows(itemIDs, separator: true)
             MacTweaksPreviewView(kind: preview)
         }
     }
 
-    private func preferencePanel(_ title: String, glyph: MacTweaksGlyphName, itemIDs: [String]) -> some View {
-        MacTweaksPanel(title, glyph: glyph) { preferenceRows(itemIDs) }
+    private func preferencePanel(_ title: String, glyph: MacTweaksGlyphName, itemIDs: [String], fillsHeight: Bool = false) -> some View {
+        MacTweaksPanel(title, glyph: glyph, fillsHeight: fillsHeight) { preferenceRows(itemIDs) }
     }
 
     @ViewBuilder
-    private func preferenceRows(_ itemIDs: [String]) -> some View {
+    private func preferenceRows(_ itemIDs: [String], separator: Bool = false) -> some View {
         let items = itemIDs.map(item(for:)).filter(shouldShow)
+        let controlWidth = items.flatMap { TweakPreferences.fields(for: $0.id) }.contains { $0.choices.count == 2 }
+            ? OnePlusMetrics.wideControlColumn : OnePlusMetrics.controlColumn
         ForEach(Array(items.enumerated()), id: \.element.id) { index, item in
-            preferenceRows(item)
-            if index < items.count - 1 { MacTweaksRowDivider() }
+            preferenceRows(item, controlWidth: controlWidth, separator: separator || index < items.count - 1)
         }
     }
 
-    private func preferenceRows(_ item: TweakItem) -> some View {
-        MacTweaksPreferenceRows(
+    private func preferenceRows(_ item: TweakItem, controlWidth: CGFloat? = nil, separator: Bool = false) -> some View {
+        let fields = TweakPreferences.fields(for: item.id)
+        let width = controlWidth ?? (fields.contains { $0.choices.count == 2 }
+            ? OnePlusMetrics.wideControlColumn : OnePlusMetrics.controlColumn)
+        return MacTweaksPreferenceRows(
             itemID: item.id,
-            fields: TweakPreferences.fields(for: item.id),
+            fields: fields,
+            controlWidth: width,
+            separator: separator,
             summary: item.summary,
             revision: preferenceRevision,
             selections: preferenceSelections,
@@ -824,6 +821,7 @@ struct MacTweaksWindowView: View {
                 get: { saved?.uid ?? "" },
                 set: { micLock.setSavedInput($0.isEmpty ? nil : $0, at: index) }
             ),
+            width: OnePlusMetrics.wideControlColumn,
             accessibilityLabel: index == 0 ? "Primary microphone" : "Fallback \(index) microphone"
         )
         .disabled(!micLock.isEnabled)
@@ -849,15 +847,26 @@ struct MacTweaksWindowView: View {
     @ViewBuilder
     private var inputLevelControl: some View {
         HStack(spacing: OnePlusMetrics.spacing[3]) {
-            MacTweaksLevelMeter(level: meter.permission == .authorized ? meter.level : 0)
-                .frame(width: 146, height: 9)
-        if meter.permission == .authorized {
-                MacTweaksBorderedButton(meter.level > 0 ? "Live" : "Test") { meter.start() }
-        } else if meter.permission == .notDetermined {
-            MacTweaksBorderedButton("Test") { Task { await meter.requestAndStart() } }
-        } else {
-            MacTweaksBorderedButton("Microphone Settings") { meter.openMicrophoneSettings() }
-        }
+            OnePlusSegmentBar(
+                values: Array(repeating: 1, count: 20),
+                colors: (0..<20).map { index in
+                    meter.permission == .authorized && Float(index) / 20 < meter.level
+                        ? OnePlusColor.chartLine : OnePlusColor.track
+                }
+            )
+            .accessibilityLabel("Input level")
+            .accessibilityValue("\(Int(meter.level * 100)) percent")
+            Group {
+                if meter.permission == .authorized {
+                    MacTweaksBorderedButton(meter.level > 0 ? "Live" : "Test") { meter.start() }
+                } else if meter.permission == .notDetermined {
+                    MacTweaksBorderedButton("Test") { Task { await meter.requestAndStart() } }
+                } else {
+                    MacTweaksBorderedButton("Settings") { meter.openMicrophoneSettings() }
+                        .accessibilityLabel("Microphone Settings")
+                }
+            }
+            .fixedSize(horizontal: true, vertical: false)
         }
     }
 
@@ -961,18 +970,21 @@ private struct MacTweaksStandalonePanel<Content: View>: View {
 private struct MacTweaksInlineRow<Control: View>: View {
     let title: String
     let controlWidth: CGFloat
+    let separator: Bool
     let control: Control
     init(
         _ title: String,
         controlWidth: CGFloat = OnePlusMetrics.controlColumn,
+        separator: Bool = false,
         @ViewBuilder control: () -> Control
     ) {
         self.title = title
         self.controlWidth = controlWidth
+        self.separator = separator
         self.control = control()
     }
     var body: some View {
-        OnePlusSettingRow(title, controlWidth: controlWidth, separator: false) { control }
+        OnePlusSettingRow(title, controlWidth: controlWidth, separator: separator) { control }
     }
 }
 
@@ -989,20 +1001,5 @@ private struct MacTweaksBorderedButton: View {
             else { Text(title) }
         }
         .buttonStyle(OnePlusButtonStyle(.neutral))
-    }
-}
-
-private struct MacTweaksLevelMeter: View {
-    let level: Float
-    var body: some View {
-        HStack(spacing: 2) {
-            ForEach(0..<20, id: \.self) { index in
-                RoundedRectangle(cornerRadius: OnePlusMetrics.segmentRadius)
-                    .fill(Float(index) / 20 < level ? OnePlusColor.chartLine : OnePlusColor.track)
-            }
-        }
-        .accessibilityElement(children: .ignore)
-        .accessibilityLabel("Input level")
-        .accessibilityValue("\(Int(level * 100)) percent")
     }
 }

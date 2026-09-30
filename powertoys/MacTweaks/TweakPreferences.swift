@@ -92,7 +92,7 @@ enum TweakPreferences {
         )]
         case "dialogs.expanded-save": return [
             .flag("Expanded Save panels", global, "NSNavPanelExpandedStateForSaveMode", default: true),
-            .flag("Expand alternate Save panels", global, "NSNavPanelExpandedStateForSaveMode2", default: true)
+            .flag("Alternate Save panels", global, "NSNavPanelExpandedStateForSaveMode2", default: true)
         ]
         case "windows.scroll-animation": return [.flag("Page-scroll animation", global, "NSScrollAnimationEnabled", default: true)]
         case "menubar.spacing": return [
