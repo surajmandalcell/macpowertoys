@@ -410,6 +410,13 @@ private extension OnePlusGridColumn {
 }
 
 final class OnePlusTableHeaderView: NSTableHeaderView {
+    override init(frame frameRect: NSRect) {
+        super.init(frame: frameRect)
+        wantsLayer = true
+        layer?.masksToBounds = true
+    }
+    @available(*, unavailable) required init?(coder: NSCoder) { fatalError() }
+
     override func setFrameSize(_ newSize: NSSize) {
         // AppKit retiles the floating header after native appearance/layout changes.
         // Keep its reserved extent identical to the header cells in both themes.
