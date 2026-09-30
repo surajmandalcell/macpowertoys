@@ -1176,43 +1176,6 @@ enum SystemMonitorTrayPage: String, CaseIterable, Identifiable {
     }
 }
 
-enum TaskManagerMenuLayout {
-    static let width = OnePlusMenuMetrics.width
-    static let minimumHeight: CGFloat = 220
-
-    static func initialHomeHeight(profileCount: Int) -> CGFloat {
-        profileCount == 0 ? 334 : 388 + CGFloat(profileCount - 1) * 115
-    }
-
-    static func preferredHeight(for page: SystemMonitorTrayPage, profileCount: Int) -> CGFloat {
-        switch page {
-        case .home:
-            initialHomeHeight(profileCount: profileCount)
-        case .cpu, .memory, .disk:
-            392
-        case .network, .battery:
-            363
-        case .gpu:
-            334
-        case .sensors:
-            311
-        case .processes:
-            407
-        }
-    }
-
-    static func initialHeight(
-        profileCount: Int,
-        defaults: UserDefaults = .standard
-    ) -> CGFloat {
-        let remembersPage = defaults.object(forKey: "systemMonitor.rememberTrayPage") == nil
-            || defaults.bool(forKey: "systemMonitor.rememberTrayPage")
-        let savedPage = defaults.string(forKey: "systemMonitor.trayPage")
-            .flatMap(SystemMonitorTrayPage.init(rawValue:)) ?? .home
-        return preferredHeight(for: remembersPage ? savedPage : .home, profileCount: profileCount)
-    }
-}
-
 private struct TaskManagerMenuMeasuredHeightKey: PreferenceKey {
     static let defaultValue: CGFloat = 0
     static func reduce(value: inout CGFloat, nextValue: () -> CGFloat) {
@@ -1221,14 +1184,17 @@ private struct TaskManagerMenuMeasuredHeightKey: PreferenceKey {
 }
 
 struct SystemMonitorMenuPopoverView: View {
+    private let defaults: UserDefaults
     private let loadsRemoteProfiles: Bool
     private let onPreferredHeight: (CGFloat) -> Void
     @State private var remoteProfiles: [SystemMonitorRemoteProfile]
 
     init(
         remoteProfiles: [SystemMonitorRemoteProfile]? = nil,
+        defaults: UserDefaults = .standard,
         onPreferredHeight: @escaping (CGFloat) -> Void = { _ in }
     ) {
+        self.defaults = defaults
         let profiles = remoteProfiles ?? []
         loadsRemoteProfiles = remoteProfiles == nil
         self.onPreferredHeight = onPreferredHeight
@@ -1237,12 +1203,14 @@ struct SystemMonitorMenuPopoverView: View {
 
     var body: some View {
         SystemMonitorTrayView(remoteProfiles: remoteProfiles, onPreferredHeight: onPreferredHeight)
-        .frame(width: TaskManagerMenuLayout.width)
+        .frame(width: OnePlusMenuMetrics.width)
+        .defaultAppStorage(defaults)
         .utilityMotionPolicy()
         .task {
             guard loadsRemoteProfiles else { return }
+            let defaults = defaults
             let profiles = await Task.detached(priority: .userInitiated) {
-                SystemMonitorRemoteProfiles.load()
+                SystemMonitorRemoteProfiles.load(defaults: defaults)
             }.value
             guard !Task.isCancelled else { return }
             remoteProfiles = profiles
