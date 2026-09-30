@@ -349,6 +349,11 @@ nonisolated struct DiskRingSegment: Sendable {
     let outer: CGFloat
     let style: DiskChartColor
 
+    var showsOutline: Bool {
+        let innerArc = (end - start) * Double(inner)
+        return innerArc.isFinite && innerArc >= 1
+    }
+
     func contains(angle: Double, radius: CGFloat) -> Bool {
         angle >= start && angle < end && radius >= inner && radius <= outer
     }
@@ -491,7 +496,11 @@ struct DiskSunburstView: View {
         } label: {
             shape.fill(segment.style.color)
                 .overlay { OnePlusStorageTexture(selected: selectedEntryID == segment.id).mask(shape) }
-                .overlay { shape.stroke(selectedEntryID == segment.id ? OnePlusStorageStyle.selectedLine : hoveredID == segment.id ? OnePlusStorageStyle.hoverLine : OnePlusStorageStyle.line, lineWidth: 1) }
+                .overlay {
+                    if segment.showsOutline {
+                        shape.stroke(selectedEntryID == segment.id ? OnePlusStorageStyle.selectedLine : hoveredID == segment.id ? OnePlusStorageStyle.hoverLine : OnePlusStorageStyle.line, lineWidth: 1)
+                    }
+                }
                 .overlay { ringLabel(segment) }
                 .contentShape(shape)
         }
