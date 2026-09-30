@@ -181,6 +181,7 @@ public struct OnePlusSelect<Value: Hashable>: View {
         .accessibilityLabel(label)
         .accessibilityValue(choices.first { $0.0 == selection }?.1 ?? "No selection")
         .accessibilityHint(expanded ? "Menu open" : "Opens menu")
+        .help(choices.first { $0.0 == selection }?.1 ?? "No selection")
     }
 
     private func toggle() {
