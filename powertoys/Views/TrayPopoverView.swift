@@ -1299,7 +1299,9 @@ struct SystemMonitorTrayView: View {
     private var service: SystemMonitorService { .shared }
     private var sample: SystemMonitorSample? { service.snapshot }
     private var page: SystemMonitorTrayPage { SystemMonitorTrayPage(rawValue: pageID) ?? .home }
-    private var history: [SystemMonitorSample] { Array(service.history.suffix(120)) }
+    private func history(_ metric: SystemMonitorMenuMetric) -> [SystemMonitorSample] {
+        service.history.samples(for: metric)
+    }
 
     var body: some View {
         OnePlusMenuPanel {
@@ -1364,17 +1366,17 @@ struct SystemMonitorTrayView: View {
                     metricButton(.cpu, card(
                         .cpu, value: percent(sample?.cpuUsage),
                         detail: "Load \(loadValue)",
-                        values: history.compactMap(\.cpuUsage)
+                        values: history(.cpu).compactMap(\.cpuUsage)
                     ))
                     metricButton(.gpu, card(
                         .gpu, value: percent(sample?.gpuUsage),
                         detail: "Graphics utilization",
-                        values: history.compactMap(\.gpuUsage)
+                        values: history(.gpu).compactMap(\.gpuUsage)
                     ))
                     metricButton(.memory, card(
                         .memory, value: percent(sample?.memoryUsage),
                         detail: memoryDetail,
-                        values: history.compactMap(\.memoryUsage),
+                        values: history(.memory).compactMap(\.memoryUsage),
                         accent: true
                     ))
                 }
@@ -1422,13 +1424,13 @@ struct SystemMonitorTrayView: View {
 
     private var detailHero: some View {
         let values: [Double] = switch page {
-        case .cpu: history.compactMap(\.cpuUsage)
-        case .gpu: history.compactMap(\.gpuUsage)
-        case .memory: history.compactMap(\.memoryUsage)
-        case .network: history.compactMap(\.networkDownload)
-        case .disk: history.compactMap(\.diskUsage)
-        case .battery: history.compactMap { $0.batteryPercent.map(Double.init) }
-        case .sensors: history.compactMap { Self.thermalLevel($0.thermalState) }
+        case .cpu: history(.cpu).compactMap(\.cpuUsage)
+        case .gpu: history(.gpu).compactMap(\.gpuUsage)
+        case .memory: history(.memory).compactMap(\.memoryUsage)
+        case .network: history(.network).compactMap(\.networkDownload)
+        case .disk: history(.disk).compactMap(\.diskUsage)
+        case .battery: history(.battery).compactMap { $0.batteryPercent.map(Double.init) }
+        case .sensors: history(.thermal).compactMap { Self.thermalLevel($0.thermalState) }
         case .home, .processes: []
         }
         let value: String = switch page {
@@ -1453,7 +1455,7 @@ struct SystemMonitorTrayView: View {
                 panelMetricValue(value)
                 TaskManagerHistoryChart(
                     values: values,
-                    secondary: page == .network ? history.compactMap(\.networkUpload) : [],
+                    secondary: page == .network ? history(.network).compactMap(\.networkUpload) : [],
                     range: chartRange(values),
                     unit: page == .network ? "/s" : "%",
                     compact: true,
