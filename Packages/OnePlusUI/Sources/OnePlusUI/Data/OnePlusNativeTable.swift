@@ -86,18 +86,8 @@ public struct OnePlusNativeTable: NSViewRepresentable {
     }
     public func updateNSView(_ scroll: NSScrollView, context: Context) {
         guard let table = scroll.documentView as? StorageTable else { return }
-        let changed = context.coordinator.owner.rows != rows
-        context.coordinator.owner = self
-        context.coordinator.updating = true
-        defer { context.coordinator.updating = false }
         table.items = rows
-        table.rowHeight = OnePlusTable.rowHeight(density)
-        table.backgroundColor = NSColor(OnePlusColor.panel)
-        if changed || table.numberOfRows != rows.count { table.reloadData() }
-        let selected = IndexSet(rows.indices.filter { selection.contains(rows[$0].id) })
-        if selected != table.selectedRowIndexes { table.selectRowIndexes(selected, byExtendingSelection: false) }
-        let descriptors = [NSSortDescriptor(key: String(sortColumn), ascending: ascending)]
-        if table.sortDescriptors != descriptors { table.sortDescriptors = descriptors }
+        context.coordinator.update(self, in: table, density: density)
     }
     public static func dismantleNSView(_ scroll: NSScrollView, coordinator: Coordinator) {
         guard let table = scroll.documentView as? StorageTable else { return }
@@ -110,10 +100,58 @@ public struct OnePlusNativeTable: NSViewRepresentable {
         private static let primaryCellID = NSUserInterfaceItemIdentifier("OnePlusNativeTable.primary")
         private static let rowID = NSUserInterfaceItemIdentifier("OnePlusNativeTable.row")
         private static let textCellID = NSUserInterfaceItemIdentifier("OnePlusNativeTable.text")
+        private static let ellipsis = NSImage(systemSymbolName: "ellipsis", accessibilityDescription: nil) ?? NSImage()
 
         var owner: OnePlusNativeTable
         var updating = false
+        private var density = OnePlusDensity.regular
         init(_ owner: OnePlusNativeTable) { self.owner = owner }
+        func update(_ next: OnePlusNativeTable, in table: NSTableView, density: OnePlusDensity) {
+            let previous = owner
+            let previousDensity = self.density
+            owner = next
+            self.density = density
+            updating = true
+            defer { updating = false }
+            table.rowHeight = OnePlusTable.rowHeight(density)
+            table.backgroundColor = NSColor(OnePlusColor.panel)
+            let sameOrder = previous.rows.count == owner.rows.count &&
+                zip(previous.rows, owner.rows).allSatisfy { $0.id == $1.id }
+            if !sameOrder || table.numberOfRows != owner.rows.count ||
+                previous.sortColumn != owner.sortColumn || previous.ascending != owner.ascending ||
+                previousDensity != density {
+                table.reloadData()
+            } else {
+                reloadChangedCells(previous.rows, in: table)
+            }
+            let selected = IndexSet(owner.rows.indices.filter { owner.selection.contains(owner.rows[$0].id) })
+            if selected != table.selectedRowIndexes { table.selectRowIndexes(selected, byExtendingSelection: false) }
+            let descriptors = [NSSortDescriptor(key: String(owner.sortColumn), ascending: owner.ascending)]
+            if table.sortDescriptors != descriptors { table.sortDescriptors = descriptors }
+        }
+        private func reloadChangedCells(_ previous: [OnePlusTableItem], in table: NSTableView) {
+            let visible = table.rows(in: table.visibleRect)
+            guard visible.location != NSNotFound else { return }
+            var changed: [Int: IndexSet] = [:]
+            for row in visible.location..<min(NSMaxRange(visible), owner.rows.count) {
+                let item = owner.rows[row], old = previous[row]
+                guard item != old else { continue }
+                for column in owner.columns.indices where table.rect(ofColumn: column).intersects(table.visibleRect) {
+                    let before = old.cells.indices.contains(column) ? old.cells[column] : nil
+                    let after = item.cells.indices.contains(column) ? item.cells[column] : nil
+                    if before != after || (column == 0 && old.symbol != item.symbol) {
+                        changed[column, default: []].insert(row)
+                    }
+                }
+                // Actions resolve from the current owner when opened; keep the existing button.
+                if let button = table.view(atColumn: owner.columns.count, row: row, makeIfNecessary: false) as? NSButton {
+                    button.isEnabled = !owner.actions([item.id]).isEmpty
+                }
+            }
+            for (column, rows) in changed {
+                table.reloadData(forRowIndexes: rows, columnIndexes: IndexSet(integer: column))
+            }
+        }
         public func numberOfRows(in tableView: NSTableView) -> Int { owner.rows.count }
         public func tableView(_ tableView: NSTableView, viewFor tableColumn: NSTableColumn?, row: Int) -> NSView? {
             guard owner.rows.indices.contains(row), let column = tableColumn else { return nil }
@@ -132,15 +170,14 @@ public struct OnePlusNativeTable: NSViewRepresentable {
                 ?? makeTextCell(identifier: identifier, includesIcon: index == 0)
             guard let text = cell.textField else { return cell }
             text.stringValue = item.cells[index]
-            text.font = owner.columns[index].trailing || index == 3 ? .monospacedSystemFont(ofSize: OnePlusTextRole.mono.size(for: owner.density), weight: .regular) : .systemFont(ofSize: OnePlusTextRole.row.size(for: owner.density))
+            text.font = owner.columns[index].trailing || index == 3 ? .monospacedSystemFont(ofSize: OnePlusTextRole.mono.size(for: density), weight: .regular) : .systemFont(ofSize: OnePlusTextRole.row.size(for: density))
             text.textColor = NSColor(index == 0 ? OnePlusColor.ink : OnePlusColor.secondary)
             text.alignment = owner.columns[index].nsTextAlignment
             cell.imageView?.image = NSImage(systemSymbolName: item.symbol, accessibilityDescription: nil)
             return cell
         }
         private func makeActionButton() -> NSButton {
-            let image = NSImage(systemSymbolName: "ellipsis", accessibilityDescription: nil) ?? NSImage()
-            let button = NSButton(image: image, target: self, action: #selector(showActions(_:)))
+            let button = NSButton(image: Self.ellipsis, target: self, action: #selector(showActions(_:)))
             button.identifier = Self.actionCellID
             button.isBordered = false
             button.setAccessibilityLabel("File actions")
