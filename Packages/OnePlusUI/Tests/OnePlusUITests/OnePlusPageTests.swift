@@ -174,22 +174,26 @@ final class OnePlusPageTests: XCTestCase {
         }
     }
 
-    func testTitleLineStartsBelowTheEmptyWindowTitleRow() {
-        XCTAssertEqual(OnePlusMetrics.contentTop, 58)
+    func testTitleLineStartsAtTheTrafficLightTopEdge() {
+        XCTAssertEqual(OnePlusMetrics.contentTop, 16)
         XCTAssertEqual(OnePlusMetrics.contentGap, 16)
-        XCTAssertEqual(OnePlusMetrics.contentTop - OnePlusMetrics.titleRow, 4)
+        XCTAssertEqual(OnePlusMetrics.titleRow, 54)
         for density in OnePlusDensity.allCases {
             for style in [OnePlusTitleStyle.system, .dotMatrix] {
                 let line = style.lineHeight(for: density)
                 let host = NSHostingView(rootView: OnePlusPageHeader(title: "Overview", titleStyle: style) {
-                    Color.clear.frame(width: 24, height: 24)
+                    PageRegionProbe("action").frame(width: 24, height: 24)
                 }.onePlusDensity(density).frame(width: 600))
-                XCTAssertEqual(host.fittingSize.height, 58 + line + OnePlusMetrics.pageHeaderBottom, accuracy: 0.5)
+                XCTAssertEqual(host.fittingSize.height, 16 + line + OnePlusMetrics.pageHeaderBottom, accuracy: 0.5)
+                host.frame.size = host.fittingSize
+                host.layoutSubtreeIfNeeded()
+                let action = descendants(host).first { $0.identifier?.rawValue == "action" }!
+                XCTAssertEqual(action.convert(action.bounds, to: host).midY, 16 + line / 2, accuracy: 1)
             }
         }
         let drawing = OnePlusDotGlyphs.drawing("OVERVIEW", height: OnePlusDotTitle.lineHeight, scale: 2)
-        XCTAssertGreaterThanOrEqual(drawing.path.boundingRect.minY + OnePlusMetrics.contentTop, 58)
-        XCTAssertLessThanOrEqual(drawing.path.boundingRect.maxY + OnePlusMetrics.contentTop, 78)
+        XCTAssertGreaterThanOrEqual(drawing.path.boundingRect.minY + OnePlusMetrics.contentTop, 16)
+        XCTAssertLessThanOrEqual(drawing.path.boundingRect.maxY + OnePlusMetrics.contentTop, 36)
     }
 
     func testNamedHeadersUseTheSharedTitleTopWithoutASecondOffset() {
@@ -203,7 +207,7 @@ final class OnePlusPageTests: XCTestCase {
             let catalog = NSHostingView(rootView: OnePlusToolPageHeader(title: "Tool", subtitle: "Description") {
                 Color.clear
             } actions: { EmptyView() }.onePlusDensity(density).frame(width: 600))
-            XCTAssertGreaterThanOrEqual(catalog.fittingSize.height, 58 + 40 + OnePlusMetrics.pageHeaderBottom)
+            XCTAssertGreaterThanOrEqual(catalog.fittingSize.height, 16 + 40 + OnePlusMetrics.pageHeaderBottom)
         }
     }
 }
