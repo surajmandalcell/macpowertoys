@@ -124,7 +124,7 @@ class RulerColorWell: NSColorWell {
         NSColor(OnePlusColor.line).setStroke()
         path.lineWidth = 1
         path.stroke()
-        if window?.firstResponder == self {
+        if window?.firstResponder == self, OnePlusFocusPolicy.shared.showsFocus {
             NSColor(OnePlusColor.focus).setFill()
             let dot = NSRect(x: bounds.maxX - 9, y: bounds.maxY - 9, width: 6, height: 6)
             NSBezierPath(ovalIn: dot).fill()
@@ -187,16 +187,18 @@ private func rulerPixelLength(fromDimensionValue dimensionValue: CGFloat, unit: 
     return pixelLength.rounded()
 }
 
-private func rulerDimensionString(fromPixelLength pixelLength: CGFloat, unit: Unit, screen: NSScreen?) -> String {
+private func rulerDimensionString(
+    fromPixelLength pixelLength: CGFloat, unit: Unit, screen: NSScreen?, locale: Locale
+) -> String {
     let value = rulerDimensionValue(fromPixelLength: pixelLength, unit: unit, screen: screen)
 
     switch unit {
     case .pixels:
         return "\(Int(value.rounded()))"
     case .millimeters:
-        return String(format: "%.1f", value)
+        return String(format: "%.1f", locale: locale, value)
     case .inches:
-        return String(format: "%.3f", value)
+        return String(format: "%.3f", locale: locale, value)
     }
 }
 
@@ -384,14 +386,16 @@ final class RulerSettingsControlsView: NSView, NSTextFieldDelegate {
             dimensionWidthField.stringValue = rulerDimensionString(
                 fromPixelLength: horizontalLength,
                 unit: unit,
-                screen: dimensionScreen
+                screen: dimensionScreen,
+                locale: (dimensionWidthField.formatter as? NumberFormatter)?.locale ?? .current
             )
         }
         if let verticalLength = verticalLength {
             dimensionHeightField.stringValue = rulerDimensionString(
                 fromPixelLength: verticalLength,
                 unit: unit,
-                screen: dimensionScreen
+                screen: dimensionScreen,
+                locale: (dimensionHeightField.formatter as? NumberFormatter)?.locale ?? .current
             )
         }
     }
