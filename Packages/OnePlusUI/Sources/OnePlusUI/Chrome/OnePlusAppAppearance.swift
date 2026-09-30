@@ -12,7 +12,7 @@ public extension View {
 private struct OnePlusAppAppearanceModifier: ViewModifier {
     func body(content: Content) -> some View {
         let scheme = OnePlusAppAppearance.shared.scheme
-        content.environment(\.colorScheme, scheme).preferredColorScheme(scheme)
+        content.environment(\.colorScheme, scheme)
             .background(OnePlusAppAppearanceReader())
     }
 }
