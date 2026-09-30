@@ -17,11 +17,20 @@ struct ToolAboutView: View {
                 header(tool)
             } tabs: {
                 if showsSettings { tabs(tool) }
+            } footer: {
+                if showsSettings && !showsModalCloseButton {
+                    VStack(spacing: OnePlusMetrics.contentGap) {
+                        OnePlusColor.lineSoft.frame(height: 1)
+                        HStack {
+                            Spacer(minLength: 0)
+                            MainOpenToolButton(toolID: tool.id, toolName: tool.name,
+                                               title: "Open \(tool.name)", primary: true)
+                        }
+                    }
+                }
             } content: {
                 if !showsSettings || tab == .guide {
                     ForEach(tool.manual) { section in manualCard(section) }
-                } else if tool.id == "ruler" {
-                    rulerSettings
                 } else {
                     ToolSettingsContent(toolID: tool.id, changed: changed)
                         .frame(maxWidth: .infinity, alignment: .topLeading)
@@ -44,8 +53,6 @@ struct ToolAboutView: View {
                 Button { dismiss() } label: { Image(systemName: "xmark") }
                     .buttonStyle(OnePlusButtonStyle(.icon))
                     .help("Close").accessibilityLabel("Close")
-            } else if showsSettings {
-                MainOpenToolButton(toolID: tool.id, toolName: tool.name)
             }
         }
     }
@@ -69,26 +76,6 @@ struct ToolAboutView: View {
                     }
                 }
             }.padding(OnePlusMetrics.cardPadding)
-        }
-    }
-
-    private var rulerSettings: some View {
-        HStack(alignment: .top, spacing: OnePlusMetrics.cardGap) {
-            OnePlusCard {
-                OnePlusCardHeader("Ruler", systemImage: "ruler")
-                OnePlusSettingRow("Active rulers", separator: false) {
-                    Button("Open Ruler Settings") {
-                        ToolActionRouter.shared.execute(ToolActionRequest(action: .rulerSettings))
-                    }.buttonStyle(OnePlusButtonStyle())
-                }
-            }
-            OnePlusCard {
-                OnePlusCardHeader("Defaults", systemImage: "slider.horizontal.3")
-                OnePlusSettingRow("New rulers", separator: false) {
-                    Button("Open Defaults") { AppDelegate.current?.openPreferences(self) }
-                        .buttonStyle(OnePlusButtonStyle())
-                }
-            }
         }
     }
 }
