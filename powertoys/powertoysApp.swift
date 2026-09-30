@@ -12,6 +12,7 @@ import OnePlusUI
 struct MacPowerToysApp: App {
     @NSApplicationDelegateAdaptor(AppDelegate.self) var appDelegate
     @Environment(\.openWindow) private var openWindow
+    @Environment(\.self) private var sceneEnvironment
     @AppStorage("app.showTray") private var showTray = true
     @AppStorage(AppAppearance.storageKey) private var appearance = AppAppearance.dark
 
@@ -48,7 +49,16 @@ struct MacPowerToysApp: App {
 
     @MainActor
     private func configureApplication() {
-        _ = DiagnosticsMenuPanels.shared
+        DiagnosticsMenuPanels.shared.makeCaptureContent = { panel in
+            switch panel {
+            case .main:
+                AnyView(TrayPopoverView().utilityMotionPolicy().modelContainer(modelContainer)
+                    .environment(\.self, sceneEnvironment))
+            case .systemMonitor:
+                AnyView(SystemMonitorMenuPopoverView().environment(\.self, sceneEnvironment))
+            case .portman: nil
+            }
+        }
         appearance.apply()
         appDelegate.configureApplication {
             DeepLinkHandler.shared.setOpenWindowAction(openWindow)

@@ -1,5 +1,6 @@
 import AppKit
 import Foundation
+import SwiftUI
 import Testing
 @testable import powertoys
 
@@ -144,6 +145,38 @@ struct ToolPageRouterTests {
         #expect(DiagnosticsPanel.portman.matchingButton(in: buttons) === portman)
         #expect(DiagnosticsPanel.main.matchingButton(in: [main, NSStatusBarButton(frame: .zero)]) == nil)
         #expect(DiagnosticsPanel.main.matchingButton(in: [monitor, portman, individual]) == nil)
+    }
+
+    @MainActor @Test func diagnosticsPresentCaptureContentBeforeSelectingItsTab() async throws {
+        let suite = "DiagnosticPanelTests.\(UUID().uuidString)"
+        let defaults = try #require(UserDefaults(suiteName: suite))
+        defer { defaults.removePersistentDomain(forName: suite) }
+        defaults.set("home", forKey: "tray.selectedTab.v2")
+        let router = DiagnosticsMenuPanels(defaults: defaults)
+        defer { router.close() }
+        var built: [DiagnosticsPanel] = []
+        router.makeCaptureContent = { panel in
+            built.append(panel)
+            return AnyView(Text("Panel body").frame(width: 356, height: 160))
+        }
+        let wasActive = NSApp.isActive
+        router.open(.main, tab: "cloud-sync")
+        #expect(built == [.main])
+        #expect(router.captureWindow?.isVisible == true)
+        #expect(router.captureWindow?.canBecomeKey == false)
+        #expect(defaults.string(forKey: "tray.selectedTab.v2") == "home")
+        try await Task.sleep(for: .milliseconds(30))
+        #expect(defaults.string(forKey: "tray.selectedTab.v2") == "rclone")
+        #expect(NSApp.isActive == wasActive)
+        let firstWindow = try #require(router.captureWindow)
+        router.open(.systemMonitor, tab: "memory")
+        try await Task.sleep(for: .milliseconds(30))
+        #expect(built == [.main, .systemMonitor])
+        #expect(firstWindow.isVisible == false)
+        #expect(firstWindow.contentViewController == nil)
+        #expect(defaults.string(forKey: "systemMonitor.trayPage") == "memory")
+        router.close()
+        #expect(router.captureWindow == nil)
     }
 
     @Test func parsesCaptureDiagnosticsOnlyUnderDiagnosticsHost() throws {
