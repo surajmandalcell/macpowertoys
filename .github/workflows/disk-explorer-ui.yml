@@ -79,6 +79,7 @@ jobs:
         run: |
           if [ -d "$RUNNER_TEMP/disk-explorer-ui.xcresult" ]; then
             xcrun xcresulttool export attachments --path "$RUNNER_TEMP/disk-explorer-ui.xcresult" --output-path "$RUNNER_TEMP/disk-explorer-ui-renders" --filter '*.png'
+            xcrun xcresulttool export diagnostics --path "$RUNNER_TEMP/disk-explorer-ui.xcresult" --output-path "$RUNNER_TEMP/disk-explorer-ui-renders/diagnostics"
           fi
       - name: Save window captures
         if: always()

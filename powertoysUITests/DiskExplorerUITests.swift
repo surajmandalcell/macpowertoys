@@ -1,21 +1,6 @@
 import XCTest
 
 final class DiskExplorerUITests: XCTestCase {
-    override func tearDownWithError() throws {
-        defer { try? super.tearDownWithError() }
-        guard testRun?.hasSucceeded == false else { return }
-        let reports = FileManager.default.homeDirectoryForCurrentUser
-            .appendingPathComponent("Library/Logs/DiagnosticReports")
-        let files = try FileManager.default.contentsOfDirectory(
-            at: reports, includingPropertiesForKeys: [.contentModificationDateKey])
-        for file in files where file.lastPathComponent.hasPrefix("MacPowerToys") && file.pathExtension == "ips" {
-            let modified = try file.resourceValues(forKeys: [.contentModificationDateKey]).contentModificationDate
-            guard let modified, modified > Date().addingTimeInterval(-900) else { continue }
-            let data = try Data(contentsOf: file)
-            print("[DEBUG-ci14-disk-crash] \(file.lastPathComponent)\n\(String(decoding: data.prefix(65_536), as: UTF8.self))")
-        }
-    }
-
     @MainActor func testNormalLaunchOpensDiskmanWithoutTestMode() throws {
         let app = XCUIApplication()
         app.launchArguments = ["-ApplePersistenceIgnoreState", "YES", "--open", "disk-explorer"]
