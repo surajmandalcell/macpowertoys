@@ -281,19 +281,13 @@ struct SystemMonitorWindowView: View {
                 HStack(spacing: 8) {
                     TaskManagerSearchField(prompt: "Search all system information", text: $reportSearch, width: 320)
                     reportButton("doc.on.doc", label: "Copy current report") { reportAction = .copy }
-                    Menu {
-                        Button("Save Text Report…") { reportAction = .exportText }
-                        Button("Save JSON Report…") { reportAction = .exportJSON }
-                    } label: {
-                        OnePlusControlLabel(variant: .borderedIcon, size: .small) {
-                            Image(systemName: "square.and.arrow.down")
-                        }
-                    }
-                    .menuStyle(.borderlessButton)
-                    .menuIndicator(.hidden)
-                    .fixedSize()
-                    .help("Export system report")
-                    .accessibilityLabel("Export system report")
+                    OnePlusMenuButton(
+                        "Export system report", systemImage: "square.and.arrow.down", variant: .borderedIcon,
+                        items: [
+                            .item(OnePlusPopupMenuItem("Save Text Report…") { reportAction = .exportText }),
+                            .item(OnePlusPopupMenuItem("Save JSON Report…") { reportAction = .exportJSON }),
+                        ]
+                    )
                 }
             }
         case .cpu, .gpu, .memory, .network, .disk, .battery, .sensors:
