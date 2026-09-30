@@ -3,11 +3,11 @@
 Reviewed against current source on 2026-09-24. Update this list when a direct
 user correction or verified result changes a status.
 
-Hosted redesign run `36723274846` at `db471735` passed `InputDevicesTests`,
-`SystemCareTests`, and `SystemMonitorTests`. All 984 executed unit tests passed,
+Hosted redesign run `36728308347` at `1c1d4e38` passed `InputDevicesTests`,
+`SystemCareTests`, and `SystemMonitorTests`. All 986 executed unit tests passed,
 with five skips and no failures. The unit suite passed the panel sizing and
-native-table regressions. Fan setup UI passed. The tray reopen check failed
-on missing accessibility children.
+native-table regressions. Tray Fan and Portman UI passed in `36731756842`
+at `5b60f318`, including the saved CPU reopen and empty server state.
 The orchestrator owns signed installation and final interaction review.
 
 Foundation round 10 gives the Task Manager panel a synchronous shared height

@@ -9,8 +9,8 @@
 - **Invariant:** Give the nested host its own environment. Forward the used
   public panel settings. Use the existing router for body window actions.
 - **Check:** `dd204b20` restores CPU reopen and all Tray Fan checks in
-  `36726827473`. Portman exposes its empty-state children and passes later
-  navigation. Its readiness predicate must query the exact StaticText value.
+  `36726827473`. The corrected exact StaticText value predicate passes in
+  `36727981386`. `36731756842` passes every UI job on the current app source.
 
 ## Native Table Columns During Tab Changes, 2026-09-30
 
