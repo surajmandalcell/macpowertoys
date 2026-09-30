@@ -2042,18 +2042,35 @@ private struct TaskManagerRemoteMenuCard: View {
                 OnePlusMenuMetric("Network", value: "—"),
             ]
         ) {
-            Text("Connect on demand").onePlusText(.caption)
+            Text("No disk data").onePlusText(.caption)
         } actions: {
-            Button("Open SSH") { SystemMonitorRemoteTerminal.open(profile) }
-                .frame(maxWidth: .infinity, maxHeight: .infinity)
+            Button { SystemMonitorRemoteTerminal.open(profile) } label: {
+                remoteActionLabel("Open SSH", symbol: "arrow.up.right.square")
+            }
+                .buttonStyle(OnePlusInteractionStyle(radius: 0))
                 .accessibilityLabel("Open SSH for \(profile.name)")
+                .help("Open SSH for \(profile.name)")
             OnePlusColor.lineSoft.frame(height: 1)
-            Button("Open App", action: openRemoteStats)
-                .frame(maxWidth: .infinity, maxHeight: .infinity)
+            Button(action: openRemoteStats) {
+                remoteActionLabel("Open App", symbol: "arrow.right")
+            }
+                .buttonStyle(OnePlusInteractionStyle(radius: 0))
                 .accessibilityLabel("Open Task Manager for \(profile.name)")
+                .help("Open \(profile.name) in Task Manager")
         }
         .accessibilityElement(children: .contain)
         .accessibilityLabel("\(profile.name), \(profile.platform.rawValue), offline")
+    }
+
+    private func remoteActionLabel(_ title: String, symbol: String) -> some View {
+        HStack(spacing: 4) {
+            Text(title).font(.system(size: 8.5)).lineLimit(1)
+            Spacer(minLength: 0)
+            Image(systemName: symbol).font(.system(size: 9)).accessibilityHidden(true)
+        }
+        .foregroundStyle(OnePlusColor.secondary)
+        .padding(.horizontal, 8)
+        .frame(maxWidth: .infinity, maxHeight: .infinity)
     }
 
     private func openRemoteStats() {
