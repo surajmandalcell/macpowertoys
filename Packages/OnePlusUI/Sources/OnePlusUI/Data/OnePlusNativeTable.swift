@@ -57,6 +57,17 @@ public struct OnePlusNativeTable: NSViewRepresentable {
         table.gridColor = NSColor(OnePlusColor.lineSoft)
         table.columnAutoresizingStyle = .firstColumnOnlyAutoresizingStyle
         table.headerView = OnePlusTableHeaderView(frame: NSRect(x: 0, y: 0, width: 0, height: 28))
+        configureColumns(in: table)
+        table.setDraggingSourceOperationMask(.copy, forLocal: false)
+        table.makeMenu = { [weak coordinator = context.coordinator] ids in coordinator?.menu(ids) }
+        table.keyAction = { [weak coordinator = context.coordinator] key in coordinator?.key(key) }
+        scroll.documentView = table; scroll.hasVerticalScroller = true
+        scroll.configureOnePlusScrollIndicators()
+        scroll.drawsBackground = false
+        return scroll
+    }
+    private func configureColumns(in table: NSTableView) {
+        for column in table.tableColumns { table.removeTableColumn(column) }
         for (index, item) in columns.enumerated() {
             let column = NSTableColumn(identifier: NSUserInterfaceItemIdentifier(String(index)))
             column.title = item.title; column.width = item.width
@@ -76,13 +87,6 @@ public struct OnePlusNativeTable: NSViewRepresentable {
         action.width = 40; action.minWidth = 40; action.maxWidth = 40
         action.headerCell = OnePlusTableHeaderCell(textCell: "")
         table.addTableColumn(action)
-        table.setDraggingSourceOperationMask(.copy, forLocal: false)
-        table.makeMenu = { [weak coordinator = context.coordinator] ids in coordinator?.menu(ids) }
-        table.keyAction = { [weak coordinator = context.coordinator] key in coordinator?.key(key) }
-        scroll.documentView = table; scroll.hasVerticalScroller = true
-        scroll.configureOnePlusScrollIndicators()
-        scroll.drawsBackground = false
-        return scroll
     }
     public func updateNSView(_ scroll: NSScrollView, context: Context) {
         guard let table = scroll.documentView as? StorageTable else { return }
@@ -115,9 +119,11 @@ public struct OnePlusNativeTable: NSViewRepresentable {
             defer { updating = false }
             table.rowHeight = OnePlusTable.rowHeight(density)
             table.backgroundColor = NSColor(OnePlusColor.panel)
+            let columnsChanged = previous.columns.map(\.id) != owner.columns.map(\.id)
+            if columnsChanged { owner.configureColumns(in: table) }
             let sameOrder = previous.rows.count == owner.rows.count &&
                 zip(previous.rows, owner.rows).allSatisfy { $0.id == $1.id }
-            if !sameOrder || table.numberOfRows != owner.rows.count ||
+            if columnsChanged || !sameOrder || table.numberOfRows != owner.rows.count ||
                 previous.sortColumn != owner.sortColumn || previous.ascending != owner.ascending ||
                 previousDensity != density {
                 table.reloadData()
@@ -164,7 +170,8 @@ public struct OnePlusNativeTable: NSViewRepresentable {
                 button.isEnabled = !owner.actions([item.id]).isEmpty
                 return button
             }
-            guard let index = Int(column.identifier.rawValue), item.cells.indices.contains(index) else { return nil }
+            guard let index = Int(column.identifier.rawValue), owner.columns.indices.contains(index),
+                  item.cells.indices.contains(index) else { return nil }
             let identifier = index == 0 ? Self.primaryCellID : NSUserInterfaceItemIdentifier("\(Self.textCellID.rawValue).\(index)")
             let cell = tableView.makeView(withIdentifier: identifier, owner: self) as? NSTableCellView
                 ?? makeTextCell(identifier: identifier, includesIcon: index == 0, column: owner.columns[index])
