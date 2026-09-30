@@ -229,9 +229,15 @@ nonisolated struct DiskInspectorRequest: Hashable, Sendable {
 nonisolated struct DiskInspectorProjection: Sendable {
     let request: DiskInspectorRequest?
     let path: String
-    let folderCount: Int
+    let folderCount: Int?
     let children: [DiskEntry]
-    static let empty = DiskInspectorProjection(request: nil, path: "", folderCount: 0, children: [])
+    static let empty = DiskInspectorProjection(request: nil, path: "", folderCount: nil, children: [])
+
+    func presentation(for next: DiskInspectorRequest?) -> Self {
+        guard let request, let next,
+              request.entryID == next.entryID, request.apparent == next.apparent else { return .empty }
+        return self
+    }
 }
 
 struct DiskSelectionInspector: View {
@@ -251,7 +257,7 @@ struct DiskSelectionInspector: View {
 
     var body: some View {
         let request = entry.map { DiskInspectorRequest(revision: revision, entryID: $0.id, apparent: apparent) }
-        let current = projection.request == request ? projection : .empty
+        let current = projection.presentation(for: request)
         OnePlusCard {
             VStack(alignment: .leading, spacing: OnePlusMetrics.cardGap) {
                 Text("Selection").onePlusText(.captionUpper)
@@ -259,7 +265,7 @@ struct DiskSelectionInspector: View {
                     VStack(alignment: .leading, spacing: OnePlusMetrics.cardGap) {
                         identity(entry, path: current.path).modifier(DiskChartFileActions(entry: entry, actions: actions))
                         facts(entry, folderCount: current.folderCount)
-                        if entry.kind == .directory { children(current.children) }
+                        if entry.kind == .directory { children(current.request == nil ? nil : current.children) }
                     }
                 } else if let pendingURL {
                     Label(pendingURL.lastPathComponent, systemImage: "folder").onePlusText(.sectionTitle)
@@ -304,14 +310,14 @@ struct DiskSelectionInspector: View {
                 )
             }.value
             guard !Task.isCancelled else { return }
-            projection = next
+            withTransaction(Transaction(animation: nil)) { projection = next }
         }
     }
     private func identity(_ entry: DiskEntry, path: String) -> some View {
         let share = DiskChartGeometry.fraction(Double(entry.bytes(apparent: apparent)), of: Double(parent?.bytes(apparent: apparent) ?? 0))
         return VStack(alignment: .leading, spacing: OnePlusMetrics.actionSpacing) {
             Label(entry.name, systemImage: DiskEntryPresentation.symbol(entry)).onePlusText(.sectionTitle).lineLimit(2).help(entry.name)
-            Text(path).onePlusText(.mono).lineLimit(2).truncationMode(.middle).textSelection(.enabled).help(path)
+            Text(path.isEmpty ? "-" : path).onePlusText(.mono).lineLimit(2).truncationMode(.middle).textSelection(.enabled).help(path)
             DiskSizeLabel(bytes: entry.bytes(apparent: apparent)).padding(.top, OnePlusMetrics.actionSpacing)
             HStack {
                 Text("Of parent folder")
@@ -321,20 +327,23 @@ struct DiskSelectionInspector: View {
             OnePlusUsageBar(value: share)
         }
     }
-    private func facts(_ entry: DiskEntry, folderCount: Int) -> some View {
+    private func facts(_ entry: DiskEntry, folderCount: Int?) -> some View {
         VStack(spacing: 0) {
             OnePlusKeyValueRow("Kind", value: DiskEntryPresentation.kind(entry)).monospacedDigit()
             OnePlusKeyValueRow("Files", value: entry.fileCount.formatted()).monospacedDigit()
-            OnePlusKeyValueRow("Contents", value: "\(folderCount) folders").monospacedDigit()
+            OnePlusKeyValueRow("Contents", value: folderCount.map { "\($0) folders" } ?? "-").monospacedDigit()
             if let availableBytes { OnePlusKeyValueRow("Free on disk", value: availableBytes.diskSize).monospacedDigit() }
         }
     }
-    private func children(_ children: [DiskEntry]) -> some View {
+    private func children(_ children: [DiskEntry]?) -> some View {
         VStack(alignment: .leading, spacing: 0) {
             OnePlusColor.lineSoft.frame(height: 1)
             Text("Inside this folder").onePlusText(.caption)
                 .frame(height: OnePlusMetrics.controlHeight, alignment: .leading)
-            ForEach(children) { child in
+            if children == nil {
+                Text("-").onePlusText(.caption).frame(height: OnePlusMetrics.controlHeight, alignment: .leading)
+            }
+            ForEach(children ?? []) { child in
                 Button {
                     guard child.kind != .aggregate else { return }
                     select(child)

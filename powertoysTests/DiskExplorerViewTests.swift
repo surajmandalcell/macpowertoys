@@ -68,6 +68,30 @@ final class DiskExplorerViewTests: XCTestCase {
         XCTAssertFalse(original.hasSamePresentation(as: searched))
     }
 
+    func testInspectorRetainsPreparedFactsOnlyForTheSameSelectionAndMeasure() {
+        let request = DiskInspectorRequest(revision: .distantPast, entryID: "home", apparent: false)
+        let child = entry("/tmp/Diskman/Library", kind: .directory)
+        let prepared = DiskInspectorProjection(request: request, path: "/tmp/Diskman",
+                                               folderCount: 135, children: [child])
+        let refresh = DiskInspectorRequest(revision: Date(), entryID: request.entryID, apparent: request.apparent)
+        let retained = prepared.presentation(for: refresh)
+        XCTAssertEqual(retained.path, prepared.path)
+        XCTAssertEqual(retained.folderCount, 135)
+        XCTAssertTrue(retained.children.first === child)
+
+        for pending in [DiskInspectorProjection.empty.presentation(for: request),
+                        prepared.presentation(for: .init(revision: refresh.revision, entryID: "Library", apparent: false)),
+                        prepared.presentation(for: .init(revision: refresh.revision, entryID: "home", apparent: true)),
+                        prepared.presentation(for: nil)] {
+            XCTAssertNil(pending.folderCount)
+            XCTAssertTrue(pending.path.isEmpty)
+            XCTAssertTrue(pending.children.isEmpty)
+        }
+        let measuredEmpty = DiskInspectorProjection(request: request, path: prepared.path,
+                                                    folderCount: 0, children: [])
+        XCTAssertEqual(measuredEmpty.presentation(for: refresh).folderCount, 0)
+    }
+
     func testNativeTableUpdatesColumnsBeforeLiveCells() throws {
         let base: [OnePlusGridColumn] = [.init("Name", width: 300), .init("Size", width: 100)]
         func view(_ columns: [OnePlusGridColumn]) -> OnePlusNativeTable {
