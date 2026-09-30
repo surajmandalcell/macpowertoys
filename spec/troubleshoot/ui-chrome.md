@@ -1,5 +1,17 @@
 # UI Chrome Troubleshooting
 
+## Nested Menu Body Accessibility, 2026-09-30
+
+- **Symptom:** Portman paints its empty state, but XCTest cannot find it.
+  Task Manager reopens on CPU with an empty accessibility body.
+- **Cause:** The nested `NSHostingView` copies the outer representable
+  environment in full. The body paints, but its AX group has no children.
+- **Invariant:** Give the nested host its own environment. Forward the used
+  public panel settings. Use the existing router for body window actions.
+- **Check:** `dd204b20` restores CPU reopen and all Tray Fan checks in
+  `36726827473`. Portman exposes its empty-state children and passes later
+  navigation. Its readiness predicate must query the exact StaticText value.
+
 ## Native Table Columns During Tab Changes, 2026-09-30
 
 - **Symptom:** Command-F closes Diskman during a live scan.
