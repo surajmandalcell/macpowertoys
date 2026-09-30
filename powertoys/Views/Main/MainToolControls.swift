@@ -16,7 +16,7 @@ struct MainFavoriteButton: View {
 
 struct MainToolEnableSwitch: View {
     let tool: any Tool
-    var showsCaption = false
+    var catalog = false
     @State private var settings = SettingsManager.shared
 
     var body: some View {
@@ -28,10 +28,7 @@ struct MainToolEnableSwitch: View {
             .labelsHidden().toggleStyle(OnePlusSwitchStyle())
             .disabled(settings.isToolTransitioning(tool.id))
             .accessibilityLabel("Enable \(tool.name)")
-            .accessibilityIdentifier("tool.\(tool.id).\(showsCaption ? "quick-toggle" : "enabled")")
-            if showsCaption {
-                Text(settings.isToolEnabled(tool.id) ? "Enabled" : "Disabled").onePlusText(.caption)
-            }
+            .accessibilityIdentifier("tool.\(tool.id).\(catalog ? "quick-toggle" : "enabled")")
         }.fixedSize()
     }
 }
@@ -40,7 +37,7 @@ struct MainOpenToolButton: View {
     let toolID: String?
     var toolName: String? = nil
     var title = "Open"
-    var showsArrow = false
+    var catalog = false
     @State private var settings = SettingsManager.shared
 
     var body: some View {
@@ -48,15 +45,12 @@ struct MainOpenToolButton: View {
         Button {
             guard let toolID else { return }
             ToolActionRouter.shared.open(toolID: toolID)
-        } label: {
-            HStack(spacing: OnePlusCatalogMetrics.smallGap) {
-                Text(title)
-                if showsArrow { Image(systemName: "arrow.right").accessibilityHidden(true) }
-            }
-        }
-        .buttonStyle(OnePlusButtonStyle.catalogOpen)
+        } label: { Text(title) }
+        .buttonStyle(OnePlusButtonStyle(.ghost, size: .small,
+                                      minWidth: OnePlusCatalogMetrics.openWidth,
+                                      height: OnePlusCatalogMetrics.openHeight))
         .disabled(toolID == nil || !settings.isToolEnabled(toolID ?? "") || settings.isToolTransitioning(toolID ?? ""))
-        .accessibilityIdentifier("tool.\(toolID ?? "none").\(showsArrow ? "open" : "launch")")
+        .accessibilityIdentifier("tool.\(toolID ?? "none").\(catalog ? "open" : "launch")")
         .accessibilityLabel("Open \(resolvedToolName)")
         .help("Open \(resolvedToolName)")
     }
