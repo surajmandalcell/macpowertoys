@@ -104,14 +104,25 @@ public struct OnePlusKeyValueRow: View {
 }
 
 public enum OnePlusTable {
+    public enum CellPosition { case first, middle, last }
     public static let cellInset: CGFloat = 12
-    public static let primaryTextInset: CGFloat = 35
-    static let nativeHeaderInset: CGFloat = 10
-    static let nativePrimaryHeaderInset: CGFloat = 33
+    public static let primaryIconInset: CGFloat = 16
+    public static let primaryTextInset: CGFloat = primaryIconInset + 15 + 10
+    static let nativeHeaderInset: CGFloat = cellInset - 2
+    static let nativePrimaryHeaderInset: CGFloat = primaryTextInset - 2
     public static func rowHeight(_ density: OnePlusDensity) -> CGFloat { density == .regular ? 34 : 28 }
 }
 
 public extension View {
+    /// Use the same column for this cell and `onePlusNativeTable(columns:)`.
+    func onePlusTableCell(_ column: OnePlusGridColumn, position: OnePlusTable.CellPosition = .middle) -> some View {
+        // ponytail: AppKit's bordered Table reserves 6pt at each outside edge;
+        // the native geometry regression test gates updates to that platform inset.
+        onePlusText(column.textRole ?? .row)
+            .frame(maxWidth: .infinity, alignment: column.swiftUIAlignment)
+            .padding(.leading, max(0, column.leadingInset - (position == .first ? 6 : 0)))
+            .padding(.trailing, max(0, column.trailingInset - (position == .last ? 6 : 0)))
+    }
     func onePlusTableHeader() -> some View {
         onePlusText(.tableHeader).frame(height: 28).frame(maxWidth: .infinity, alignment: .leading)
             .padding(.horizontal, OnePlusTable.cellInset).background(OnePlusColor.sidebar)
@@ -139,16 +150,27 @@ public struct OnePlusGridColumn: Identifiable, Sendable {
     public let title: String
     public let width: CGFloat
     public let alignment: Alignment
+    public let textRole: OnePlusTextRole?
+    public let leadingInset: CGFloat
+    public let trailingInset: CGFloat
+    public let headerLabelInset: CGFloat
     public var trailing: Bool { alignment == .trailing }
-    public init(_ title: String, width: CGFloat, trailing: Bool = false) {
-        self.title = title
-        self.width = width.isFinite ? max(0, width) : 0
-        self.alignment = trailing ? .trailing : .leading
+    public init(_ title: String, width: CGFloat, trailing: Bool = false, textRole: OnePlusTextRole? = nil,
+                leadingInset: CGFloat = OnePlusTable.cellInset, trailingInset: CGFloat = OnePlusTable.cellInset,
+                headerLabelInset: CGFloat = 0) {
+        self.init(title, width: width, alignment: trailing ? .trailing : .leading, textRole: textRole,
+                  leadingInset: leadingInset, trailingInset: trailingInset, headerLabelInset: headerLabelInset)
     }
-    public init(_ title: String, width: CGFloat, alignment: Alignment) {
+    public init(_ title: String, width: CGFloat, alignment: Alignment, textRole: OnePlusTextRole? = nil,
+                leadingInset: CGFloat = OnePlusTable.cellInset, trailingInset: CGFloat = OnePlusTable.cellInset,
+                headerLabelInset: CGFloat = 0) {
         self.title = title
         self.width = width.isFinite ? max(0, width) : 0
         self.alignment = alignment
+        self.textRole = textRole
+        self.leadingInset = leadingInset.isFinite ? max(0, leadingInset) : OnePlusTable.cellInset
+        self.trailingInset = trailingInset.isFinite ? max(0, trailingInset) : OnePlusTable.cellInset
+        self.headerLabelInset = headerLabelInset.isFinite ? max(0, headerLabelInset) : 0
     }
 }
 

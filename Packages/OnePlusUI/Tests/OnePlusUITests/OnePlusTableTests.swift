@@ -5,6 +5,40 @@ import XCTest
 
 @MainActor
 final class OnePlusTableTests: XCTestCase {
+    func testSharedSwiftUIColumnModelAlignsHeaderAndCellInsetsInBothAppearances() throws {
+        for appearance in [NSAppearance.Name.darkAqua, .aqua] {
+            let columns: [OnePlusGridColumn] = [
+                .init("Time", width: 116, textRole: .mono, leadingInset: 16),
+                .init("Level", width: 84, headerLabelInset: 19),
+                .init("Size", width: 100, alignment: .trailing, textRole: .mono)
+            ]
+            let markers = [NSView(), NSView(), NSView()]
+            let host = NSHostingView(rootView: Table([OnePlusTableItem(id: "1", cells: [], symbol: "doc")]) {
+                TableColumn("Time") { _ in TableCellMarker(view: markers[0]).onePlusTableCell(columns[0], position: .first) }.width(116)
+                TableColumn("Level") { _ in TableCellMarker(view: markers[1]).padding(.leading, 19).onePlusTableCell(columns[1]) }.width(84)
+                TableColumn("Size") { _ in TableCellMarker(view: markers[2]).onePlusTableCell(columns[2], position: .last) }.width(100)
+            }.onePlusNativeTable(columns: columns))
+            let window = NSWindow(contentRect: NSRect(x: -10000, y: -10000, width: 300, height: 160),
+                                  styleMask: .borderless, backing: .buffered, defer: false)
+            window.appearance = NSAppearance(named: appearance)
+            window.contentView = host
+            host.layoutSubtreeIfNeeded()
+            RunLoop.main.run(until: Date(timeIntervalSinceNow: 0.05))
+            host.layoutSubtreeIfNeeded()
+            let table = try XCTUnwrap(findTable(in: host))
+            for index in columns.indices {
+                let header = try XCTUnwrap(table.tableColumns[index].headerCell as? OnePlusTableHeaderCell)
+                let headerFrame = header.labelRect(for: try XCTUnwrap(table.headerView).headerRect(ofColumn: index))
+                let bodyFrame = markers[index].convert(markers[index].bounds, to: table)
+                switch columns[index].alignment {
+                case .leading: XCTAssertEqual(headerFrame.minX, bodyFrame.minX, accuracy: 0.5)
+                case .center: XCTAssertEqual(headerFrame.midX, bodyFrame.midX, accuracy: 0.5)
+                case .trailing: XCTAssertEqual(headerFrame.maxX, bodyFrame.maxX, accuracy: 0.5)
+                }
+            }
+            XCTAssertEqual(table.headerView?.bounds.height, 28)
+        }
+    }
     func testLiveUpdatesReloadOnlyChangedVisibleCellsAndKeepSelectionAndActions() throws {
         var selection: Set<String> = ["1"]
         var opened: Set<String> = []
@@ -49,6 +83,7 @@ final class OnePlusTableTests: XCTestCase {
         XCTAssertEqual(table.fullReloads, fullReloads + 3)
     }
     func testHeaderLabelsAndCellTextShareEachAlignmentOrigin() throws {
+        for appearance in [NSAppearance.Name.darkAqua, .aqua] {
         let columns: [OnePlusGridColumn] = [
             .init("Name", width: 180),
             .init("State", width: 120, alignment: .center),
@@ -63,6 +98,7 @@ final class OnePlusTableTests: XCTestCase {
         let window = NSWindow(contentRect: NSRect(x: -2000, y: -2000, width: 480, height: 100),
                               styleMask: .borderless, backing: .buffered, defer: false)
         window.contentView = host
+        window.appearance = NSAppearance(named: appearance)
         host.layoutSubtreeIfNeeded()
         let table = try XCTUnwrap(findTable(in: host))
         for index in columns.indices {
@@ -71,7 +107,7 @@ final class OnePlusTableTests: XCTestCase {
             let cell = try XCTUnwrap(table.view(atColumn: index, row: 0, makeIfNecessary: true) as? NSTableCellView)
             cell.layoutSubtreeIfNeeded()
             let text = try XCTUnwrap(cell.textField)
-            let textFrame = text.convert(text.bounds, to: table)
+            let textFrame = text.convert(try XCTUnwrap(text.cell).drawingRect(forBounds: text.bounds), to: table)
             let headerBounds = try XCTUnwrap(table.headerView).headerRect(ofColumn: index)
             let headerFrame = header.labelRect(for: headerBounds)
             switch columns[index].alignment {
@@ -79,6 +115,11 @@ final class OnePlusTableTests: XCTestCase {
             case .center: XCTAssertEqual(headerFrame.midX, textFrame.midX, accuracy: 0.5)
             case .trailing: XCTAssertEqual(headerFrame.maxX, textFrame.maxX, accuracy: 0.5)
             }
+            if index == 0 {
+                let image = try XCTUnwrap(cell.imageView)
+                XCTAssertEqual(image.convert(image.bounds, to: cell).minX, 16, accuracy: 0.5)
+            }
+        }
         }
     }
 
@@ -176,6 +217,12 @@ final class OnePlusTableTests: XCTestCase {
         XCTAssertTrue(table.headerView is OnePlusTableHeaderView)
         }
     }
+}
+
+private struct TableCellMarker: NSViewRepresentable {
+    let view: NSView
+    func makeNSView(context: Context) -> NSView { view }
+    func updateNSView(_ nsView: NSView, context: Context) {}
 }
 
 @MainActor private final class ReloadCountingTable: NSTableView {

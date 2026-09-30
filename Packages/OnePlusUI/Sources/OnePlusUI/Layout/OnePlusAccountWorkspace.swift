@@ -77,8 +77,8 @@ public struct OnePlusRule: View {
 }
 
 public extension View {
-    func onePlusNativeTable() -> some View {
-        modifier(OnePlusNativeTableSkin())
+    func onePlusNativeTable(columns: [OnePlusGridColumn] = []) -> some View {
+        modifier(OnePlusNativeTableSkin(columns: columns))
     }
 }
 
