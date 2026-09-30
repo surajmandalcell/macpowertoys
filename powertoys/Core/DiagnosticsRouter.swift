@@ -1,5 +1,6 @@
 import AppKit
 import SwiftUI
+import OnePlusUI
 
 nonisolated enum DiagnosticsRoute: Equatable, Sendable {
     case openPanel(DiagnosticsPanel, tab: String? = nil)
@@ -34,8 +35,12 @@ final class DiagnosticsMenuPanels: NSObject {
     weak var mainWindow: NSWindow?
     private let popovers = NSHashTable<NSPopover>.weakObjects()
     private var openTask: Task<Void, Never>?
+    private(set) var captureWindow: NSPanel?
+    var makeCaptureContent: ((DiagnosticsPanel) -> AnyView?)?
+    private let defaults: UserDefaults
 
-    override init() {
+    init(defaults: UserDefaults = .standard) {
+        self.defaults = defaults
         super.init()
         NotificationCenter.default.addObserver(self, selector: #selector(didShow(_:)),
                                                name: NSPopover.didShowNotification, object: nil)
@@ -49,6 +54,9 @@ final class DiagnosticsMenuPanels: NSObject {
 
     func close() {
         openTask?.cancel(); openTask = nil
+        captureWindow?.orderOut(nil)
+        captureWindow?.contentViewController = nil
+        captureWindow = nil
         // The native menu controllers own their popovers. Keep only weak references.
         for popover in popovers.allObjects where popover.isShown && !popover.isDetached {
             popover.performClose(nil)
@@ -58,6 +66,16 @@ final class DiagnosticsMenuPanels: NSObject {
 
     func open(_ panel: DiagnosticsPanel, tab: String?) {
         close()
+        if let content = makeCaptureContent?(panel) {
+            presentCapturePanel(content, panel: panel)
+            openTask = Task { @MainActor [weak self] in
+                await Task.yield()
+                guard !Task.isCancelled else { return }
+                panel.selectTab(tab, defaults: self?.defaults ?? .standard)
+                self?.openTask = nil
+            }
+            return
+        }
         openTask = Task { @MainActor [weak self] in
             guard let self else { return }
             defer { if !Task.isCancelled { self.openTask = nil } }
@@ -75,13 +93,67 @@ final class DiagnosticsMenuPanels: NSObject {
                 if clicked && shown {
                     await Task.yield()
                     guard !Task.isCancelled else { return }
-                    panel.selectTab(tab)
+                    panel.selectTab(tab, defaults: self.defaults)
                     return
                 }
                 do { try await Task.sleep(for: .milliseconds(50)) } catch { return }
             }
             LogManager.shared.warning("Panel did not open: \(panel.rawValue)", source: "DeepLinkHandler")
         }
+    }
+
+    private func presentCapturePanel(_ content: AnyView, panel: DiagnosticsPanel) {
+        // MenuBarExtra has no public presentation binding. Capture the same content
+        // in a nonactivating panel; native menu-bar clicks keep their existing host.
+        let screen = panel.statusButton?.window?.screen ?? NSScreen.main
+        let visible = screen?.visibleFrame ?? CGRect(x: 0, y: 0, width: 1440, height: 900)
+        let anchor = panel.statusButton?.window?.frame
+        let window = DiagnosticsCapturePanel(contentRect: CGRect(x: 0, y: 0, width: OnePlusMenuMetrics.width, height: 80),
+                                             styleMask: [.borderless, .nonactivatingPanel], backing: .buffered, defer: false)
+        window.title = panel == .main ? "MacPowerToys Menu" : "Task Manager Menu"
+        window.identifier = .init("diagnostics-panel.\(panel.rawValue)")
+        window.isReleasedWhenClosed = false
+        window.isOpaque = false
+        window.backgroundColor = .clear
+        window.hasShadow = true
+        window.hidesOnDeactivate = false
+        window.level = .popUpMenu
+        window.collectionBehavior = [.moveToActiveSpace, .fullScreenAuxiliary]
+        window.animationBehavior = .none
+        let top = anchor?.minY ?? visible.maxY
+        let x = min(max(visible.minX, (anchor?.midX ?? visible.maxX) - OnePlusMenuMetrics.width / 2),
+                    visible.maxX - OnePlusMenuMetrics.width)
+        window.setFrameTopLeftPoint(CGPoint(x: x, y: top))
+        window.contentViewController = NSHostingController(rootView: DiagnosticsCaptureContent(content: content) { [weak window] height in
+            guard let window, height.isFinite, height > 0, abs(window.frame.height - height) > 0.5 else { return }
+            window.setContentSize(CGSize(width: OnePlusMenuMetrics.width, height: height))
+            window.setFrameTopLeftPoint(CGPoint(x: x, y: top))
+        })
+        captureWindow = window
+        window.orderFrontRegardless()
+    }
+}
+
+private final class DiagnosticsCapturePanel: NSPanel {
+    override var canBecomeKey: Bool { false }
+    override var canBecomeMain: Bool { false }
+}
+
+private struct DiagnosticsCaptureHeight: PreferenceKey {
+    static let defaultValue: CGFloat = 0
+    static func reduce(value: inout CGFloat, nextValue: () -> CGFloat) { value = nextValue() }
+}
+
+private struct DiagnosticsCaptureContent: View {
+    let content: AnyView
+    let heightChanged: (CGFloat) -> Void
+    var body: some View {
+        content.fixedSize(horizontal: false, vertical: true)
+            .frame(width: OnePlusMenuMetrics.width)
+            .background(GeometryReader { proxy in
+                Color.clear.preference(key: DiagnosticsCaptureHeight.self, value: proxy.size.height)
+            })
+            .onPreferenceChange(DiagnosticsCaptureHeight.self, perform: heightChanged)
     }
 }
 
