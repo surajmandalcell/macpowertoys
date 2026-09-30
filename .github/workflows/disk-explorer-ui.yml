@@ -62,7 +62,7 @@ jobs:
           screen_id="$(displayplacer list | awk '/Persistent screen id:/ { print $4; exit }')"
           test -n "$screen_id"
           displayplacer "id:$screen_id res:1920x1080 scaling:off origin:(0,0) degree:0"
-          width="$(osascript -e 'tell application "Finder" to get item 3 of (get bounds of window of desktop)')"
+          width="$(displayplacer list | awk '/^Resolution:/ { split($2, dimensions, "x"); print dimensions[1]; exit }')"
           test "$width" -ge 1440
       - name: Run Diskman UI navigation on the hosted Mac
         run: |
