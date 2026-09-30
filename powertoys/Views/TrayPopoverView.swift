@@ -1513,7 +1513,7 @@ struct SystemMonitorTrayView: View {
                     }
                 }
             }
-            detailRows
+            if page != .sensors { detailRows }
             if page == .sensors {
                 FanControlView(owner: "system-monitor-tray-sensors", compact: true)
                     .frame(height: 30)
@@ -1711,9 +1711,7 @@ struct SystemMonitorTrayView: View {
             ]
         case .battery:
             batteryPanelRows
-        case .sensors:
-            [("Thermal pressure", sample?.thermalState ?? "—")]
-        case .home, .processes:
+        case .sensors, .home, .processes:
             []
         }
         return OnePlusMenuCard {
