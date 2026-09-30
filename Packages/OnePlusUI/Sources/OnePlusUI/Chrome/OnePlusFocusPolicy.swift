@@ -47,7 +47,7 @@ public final class OnePlusFocusPolicy {
             MainActor.assumeIsolated {
                 guard let window = NSApp.keyWindow else { return }
                 self?.configure(window)
-                window.makeFirstResponder(window)
+                if !Self.isTextInput(window.firstResponder) { window.makeFirstResponder(window) }
             }
         })
         observers.append(center.addObserver(forName: NSWindow.didUpdateNotification, object: nil, queue: .main) { [weak self] note in
