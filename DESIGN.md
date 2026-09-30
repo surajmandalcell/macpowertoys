@@ -407,6 +407,28 @@ focus line, which never changes layout or gets clipped. Text fields show
 only the caret when the person clicks into them. Keyboard operation keeps
 working in every case.
 
+## Horizontal density and native feel
+
+Owner correction 2026-10-01: surfaces stacked content into extra rows while
+horizontal space stayed empty, and wrapped controls in padded cards, so the
+apps felt like a Tailwind web app, not a Mac app.
+
+- Use the width first. Put metadata (time, date, count, size, status) on
+  the trailing side of the same row, not on a new line below.
+- Related actions sit side by side in one row (for example Review
+  Leftovers and Uninstall), never stacked one per row.
+- Do not show provenance or help text inline, such as "Updated by NetToys
+  Helper". Drop it, or put it behind a small info glyph with a tooltip or
+  popover.
+- Page toolbars (target fields, search, filters, presets, primary action)
+  sit directly on the page in one row. Never wrap a toolbar or a single row
+  of controls in a card with padding.
+- Cards group rows of content. A card never wraps one control, one value,
+  or one line of text. Use the least chrome that keeps groups clear:
+  a section title and rows first, a card only when a group needs a boundary.
+- Paddings stay at the token values. No oversized inner padding, pill
+  badges on every row, hover lifts, or web-style empty space.
+
 ## Native behavior contract
 
 A surface fails review if any of these is missing where it applies:
@@ -434,8 +456,16 @@ A surface fails review if any of these is missing where it applies:
 
 ## Motion
 
-- Hover and press: 0.10 s ease. Selection and segment indicator: 0.14 s.
-  Content swap: 0.12 s opacity. Sheets and popovers: system motion.
+Owner correction 2026-10-01: the motion felt web-like and bad. Native Mac
+controls do not move on hover.
+
+- Hover and press change only fill, line, or text color, at once, with no
+  animation. Nothing moves, nudges, scales, or slides on hover or press
+  (no arrow nudge, no lift, no offset).
+- Page, tab, and content changes are instant. No opacity, move, or scale
+  transitions on content, rows, cards, or panels. Selection indicators
+  (tab underline, segment) move at once.
+- Sheets, popovers, menus, and window open use system motion only.
 - Nothing animates while idle. Spinners, pulses, and indeterminate bars run
   only during real work and stop on completion, error, cancel, or dismissal.
 - No scale, bounce, slide, shimmer, parallax, or lifted hover panels.
