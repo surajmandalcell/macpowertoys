@@ -153,7 +153,7 @@ struct DiskModifyView: View {
                                                 }.foregroundStyle(OnePlusStorageStyle.ink).lineLimit(1)
                                             }
                                         }
-                                    }.buttonStyle(.plain).focusEffectDisabled(!NSApp.isFullKeyboardAccessEnabled).frame(width: width)
+                                    }.buttonStyle(.plain).frame(width: width)
                                         .onHover { hoveredPartitionID = $0 ? item.id : nil }
                                         .help("\(item.name) · \(item.size.diskSize)").accessibilityLabel("\(item.name), \(item.size.diskSize)")
                                         .accessibilityIdentifier("diskman.map.\(item.id)")

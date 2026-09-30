@@ -170,7 +170,6 @@ struct DiskTreemapView: View {
     @State private var hoveredID: String?
     @State private var displayedLayout: [DiskChartTile] = []
     @State private var displayedTileIDs: [String] = []
-    @FocusState private var focused: Bool
     @Environment(\.accessibilityReduceMotion) private var reduceMotion
     private var chartAnimation: Animation? { OnePlusMotion.animation(reduceMotion: reduceMotion, duration: OnePlusMotion.content) }
 
@@ -259,7 +258,7 @@ struct DiskTreemapView: View {
                     displayedLayout = next
                     displayedTileIDs = next.map(\.id)
                 }
-                .focusable().focused($focused).focusEffectDisabled(!NSApp.isFullKeyboardAccessEnabled)
+                .focusable()
                 .onMoveCommand { direction in
                     if let next = DiskChartNavigation.next(layout.compactMap(\.entry), selected: selectedEntryID, direction: direction) { select(next) }
                 }
@@ -277,7 +276,6 @@ struct DiskTreemapView: View {
         let rect = tile.rect.insetBy(dx: 1, dy: 1)
         if tile.rect.width > 2, tile.rect.height > 2, DiskChartGeometry.isDrawable(rect) {
             Button {
-                focused = true
                 guard let entry = tile.entry else { return }
                 select(entry)
                 if NSApp.currentEvent?.clickCount == 2 && entry.kind != .aggregate { open(entry) }
@@ -296,7 +294,7 @@ struct DiskTreemapView: View {
                     }
                 }
             }
-            .buttonStyle(.plain).focusEffectDisabled(!NSApp.isFullKeyboardAccessEnabled)
+            .buttonStyle(.plain)
             .modifier(DiskChartFileActions(entry: tile.entry, actions: actions))
             .accessibilityLabel("\(tile.label), \(tile.detail)")
             .accessibilityAddTraits(selectedEntryID == tile.id ? .isSelected : [])
@@ -407,7 +405,6 @@ struct DiskSunburstView: View {
     var actions: ([DiskEntry]) -> [OnePlusTableAction] = { _ in [] }
     @State private var hoveredID: String?
     @State private var displayedSegments: [DiskRingSegment] = []
-    @FocusState private var focused: Bool
 
     var body: some View {
         GeometryReader { geometry in
@@ -462,7 +459,7 @@ struct DiskSunburstView: View {
                     hoveredID = next?.id
                     onHoverDetail(next.map { "\($0.label) · \($0.detail)" })
                 }
-                .focusable().focused($focused).focusEffectDisabled(!NSApp.isFullKeyboardAccessEnabled)
+                .focusable()
                 .onMoveCommand { direction in
                     if let entry = DiskChartNavigation.next(segments.compactMap(\.entry), selected: selectedEntryID, direction: direction) { select(entry) }
                 }
@@ -487,7 +484,6 @@ struct DiskSunburstView: View {
     private func segmentView(_ segment: DiskRingSegment) -> some View {
         let shape = DiskRingShape(start: segment.start, end: segment.end, inner: segment.inner, outer: segment.outer)
         return Button {
-            focused = true
             guard let entry = segment.entry else { return }
             select(entry)
             if NSApp.currentEvent?.clickCount == 2 && entry.kind != .aggregate { open(entry) }
@@ -502,7 +498,7 @@ struct DiskSunburstView: View {
                 .overlay { ringLabel(segment) }
                 .contentShape(shape)
         }
-        .buttonStyle(.plain).focusEffectDisabled(!NSApp.isFullKeyboardAccessEnabled).contentShape(shape)
+        .buttonStyle(.plain).contentShape(shape)
         .modifier(DiskChartFileActions(entry: segment.entry, actions: actions))
         .help("\(segment.label) · \(segment.detail)")
         .accessibilityLabel("\(segment.label), \(segment.detail)")
