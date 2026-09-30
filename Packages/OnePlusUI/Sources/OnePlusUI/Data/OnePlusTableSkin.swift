@@ -2,23 +2,28 @@ import AppKit
 import SwiftUI
 
 struct OnePlusNativeTableSkin: ViewModifier {
+    let columns: [OnePlusGridColumn]
     @Environment(\.onePlusDensity) private var density
     func body(content: Content) -> some View {
         content.tableStyle(.bordered(alternatesRowBackgrounds: false))
             .environment(\.defaultMinListRowHeight, OnePlusTable.rowHeight(density))
             .scrollContentBackground(.hidden).background(OnePlusColor.panel)
             .onePlusText(.row).onePlusScrollIndicators()
-            .background(OnePlusTableConfigurator(density: density))
+            .background(OnePlusTableConfigurator(density: density, columns: columns))
     }
 }
 
 private struct OnePlusTableConfigurator: NSViewRepresentable {
     let density: OnePlusDensity
+    let columns: [OnePlusGridColumn]
     func makeNSView(context: Context) -> Probe { Probe() }
-    func updateNSView(_ view: Probe, context: Context) { view.density = density; view.configure() }
+    func updateNSView(_ view: Probe, context: Context) {
+        view.density = density; view.columns = columns; view.configure()
+    }
 
     final class Probe: NSView {
         var density = OnePlusDensity.regular
+        var columns: [OnePlusGridColumn] = []
         private weak var table: NSTableView?
         private var pending: DispatchWorkItem?
         isolated deinit { pending?.cancel() }
@@ -38,7 +43,7 @@ private struct OnePlusTableConfigurator: NSViewRepresentable {
                         ancestor = view.superview
                     }
                 }
-                if let table = self.table { Self.apply(to: table, density: self.density) }
+                if let table = self.table { Self.apply(to: table, density: self.density, columns: self.columns) }
             }
             pending = work
             DispatchQueue.main.async(execute: work)
@@ -51,7 +56,7 @@ private struct OnePlusTableConfigurator: NSViewRepresentable {
             }
             return view.subviews.lazy.compactMap { self.findTable(in: $0) }.first
         }
-        private static func apply(to table: NSTableView, density: OnePlusDensity) {
+        private static func apply(to table: NSTableView, density: OnePlusDensity, columns: [OnePlusGridColumn]) {
             // Keep SwiftUI's native style and gridColor. A custom gridColor
             // makes AppKit ask new SwiftUI rows for cells before they exist.
             if table.rowSizeStyle != .custom { table.rowSizeStyle = .custom }
@@ -67,13 +72,22 @@ private struct OnePlusTableConfigurator: NSViewRepresentable {
             if !(table.headerView is OnePlusTableHeaderView) {
                 table.headerView = OnePlusTableHeaderView(frame: NSRect(x: 0, y: 0, width: table.bounds.width, height: 28))
             }
-            for column in table.tableColumns where !(column.headerCell is OnePlusTableHeaderCell) {
+            for (index, column) in table.tableColumns.enumerated() {
+                let model = columns.indices.contains(index) ? columns[index] : nil
                 let alignment: OnePlusGridColumn.Alignment = switch column.headerCell.alignment {
                 case .center: .center
                 case .right: .trailing
                 default: .leading
                 }
-                column.headerCell = OnePlusTableHeaderCell(textCell: column.title, alignment: alignment)
+                let leading = model.map { $0.leadingInset + $0.headerLabelInset } ?? (index == 0 ? 16 : 12)
+                let trailing = model?.trailingInset ?? 12
+                let resolvedAlignment = model?.alignment ?? (column.headerCell as? OnePlusTableHeaderCell)?.columnAlignment ?? alignment
+                let header = column.headerCell as? OnePlusTableHeaderCell
+                if header == nil || header?.leadingInset != leading || header?.trailingInset != trailing ||
+                    header?.columnAlignment != resolvedAlignment {
+                    column.headerCell = OnePlusTableHeaderCell(textCell: column.title,
+                        leadingInset: leading, trailingInset: trailing, alignment: resolvedAlignment)
+                }
             }
             table.headerView?.needsDisplay = true
         }

@@ -157,6 +157,7 @@ separate row scroll region; it keeps overlay style after native replacement.
 | `OnePlusBadge` | Show a count, with an optional pending state. |
 | `OnePlusKeyValueRow` | Align a label and selectable value. |
 | `OnePlusTable` / `.onePlusTableHeader()` / `.onePlusTableRow(selected:)` | Share native Table and List row geometry. |
+| `.onePlusTableCell(column, position:)` / `.onePlusNativeTable(columns:)` | Use one `OnePlusGridColumn` model for SwiftUI cell roles, insets, alignment, and headers. |
 | `OnePlusGridColumn` / `OnePlusGridTable` | Show a small read-only table with fixed column widths. |
 | `OnePlusNativeTable` / `.onePlusNativeTable()` | Share 9 pt uppercase native headers and 34 or 28 pt rows. |
 | `OnePlusEmptyState` | Show an icon, title, explanation, and optional action. |

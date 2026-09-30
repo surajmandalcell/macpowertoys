@@ -34,6 +34,11 @@ private final class ShowcaseDelegate: NSObject, NSApplicationDelegate, NSWindowD
 }
 
 private struct OnePlusUIShowcase: View {
+    private static let tableColumns: [OnePlusGridColumn] = [
+        .init("Name", width: 170, textRole: .row, leadingInset: 16),
+        .init("MAC vendor", width: 120, textRole: .row),
+        .init("Completed", width: 110, alignment: .trailing, textRole: .mono)
+    ]
     @State private var page = "Foundation"
     @State private var query = ""
     @State private var processQuery = ""
@@ -343,7 +348,7 @@ private struct OnePlusUIShowcase: View {
                 HStack(alignment: .top, spacing: 16) {
                     OnePlusCard {
                         OnePlusCardHeader("Native table · \(density.rawValue)")
-                        OnePlusNativeTable(columns: [.init("Name", width: 170), .init("MAC vendor", width: 120), .init("Completed", width: 110)],
+                        OnePlusNativeTable(columns: Self.tableColumns,
                                            rows: tableRows, selection: $tableSelection,
                                            sortColumn: tableSortColumn, ascending: tableAscending,
                                            sort: { column, ascending in
@@ -365,10 +370,10 @@ private struct OnePlusUIShowcase: View {
                     OnePlusCard {
                         OnePlusCardHeader("SwiftUI Table · \(density.rawValue)")
                         Table(tableRows, selection: $tableSelection) {
-                            TableColumn("Name") { Text($0.cells[0]) }.width(min: 140, ideal: 170)
-                            TableColumn("MAC vendor") { Text($0.cells[1]) }.width(120)
-                            TableColumn("Completed") { Text($0.cells[2]) }.width(110)
-                        }.onePlusNativeTable().frame(height: OnePlusTable.rowHeight(density) * 4 + 28)
+                            TableColumn("Name") { Text($0.cells[0]).onePlusTableCell(Self.tableColumns[0], position: .first) }.width(min: 140, ideal: 170)
+                            TableColumn("MAC vendor") { Text($0.cells[1]).onePlusTableCell(Self.tableColumns[1]) }.width(120)
+                            TableColumn("Completed") { Text($0.cells[2]).onePlusTableCell(Self.tableColumns[2], position: .last) }.width(110)
+                        }.onePlusNativeTable(columns: Self.tableColumns).frame(height: OnePlusTable.rowHeight(density) * 4 + 28)
                     }
                 }.onePlusDensity(density)
             }
