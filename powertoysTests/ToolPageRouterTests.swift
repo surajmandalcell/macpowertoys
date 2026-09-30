@@ -77,6 +77,53 @@ struct ToolPageRouterTests {
         #expect(router.take(tool: "nettoys") == nil, "The app delegate owns scan-prefill URLs.")
     }
 
+    @MainActor @Test func nativeSceneDiagnosticsReachMeasuredBackgroundPanels() throws {
+        let panels = DiagnosticsMenuPanels.shared
+        let factory = panels.makeCaptureContent
+        let defaults = UserDefaults.standard
+        let keys = ["tray.selectedTab.v2", "systemMonitor.trayPage"]
+        let saved = keys.map { defaults.object(forKey: $0) }
+        defer {
+            panels.close()
+            panels.makeCaptureContent = factory
+            for (key, value) in zip(keys, saved) {
+                if let value { defaults.set(value, forKey: key) }
+                else { defaults.removeObject(forKey: key) }
+            }
+        }
+        let router = ToolPageRouter()
+        var built: [DiagnosticsPanel] = []
+        var resize: ((CGFloat) -> Void)?
+        panels.makeCaptureContent = { panel, onHeightChange in
+            built.append(panel)
+            resize = onHeightChange
+            #expect(defaults.string(forKey: panel == .main ? keys[0] : keys[1]) == "home")
+            return AnyView(Text("Panel body").frame(width: 356, height: 160))
+        }
+        let foreground = NSWorkspace.shared.frontmostApplication?.processIdentifier
+        for scheme in ["macpowertoys", "powertoys"] {
+            for panel in [DiagnosticsPanel.main, .systemMonitor] {
+                let url = try #require(URL(string: "\(scheme)://diagnostics/open-panel/\(panel.rawValue)?tab=home"))
+                defaults.set(panel == .main ? "rclone" : "memory", forKey: panel == .main ? keys[0] : keys[1])
+                router.handleNativeURL(url, tool: panel.rawValue)
+                #expect(built.last == panel)
+                let window = try #require(panels.captureWindow)
+                #expect(window.identifier?.rawValue == "diagnostics-panel.\(panel.rawValue)")
+                #expect(window.isVisible)
+                #expect(!window.canBecomeKey && !window.canBecomeMain)
+                #expect(window.contentView?.frame.size == NSSize(width: 356, height: 160))
+                let top = window.frame.maxY
+                resize?(240)
+                #expect(window.contentView?.frame.size == NSSize(width: 356, height: 240))
+                #expect(window.frame.maxY == top)
+                #expect(NSWorkspace.shared.frontmostApplication?.processIdentifier == foreground)
+                #expect(router.take(tool: panel.rawValue) == nil)
+                panels.close()
+            }
+        }
+        #expect(built == [.main, .systemMonitor, .main, .systemMonitor])
+    }
+
     @Test func diagnosticsStayUnderDiagnosticsHost() throws {
         for panel in ["main", "system-monitor", "portman"] {
             #expect(DiagnosticsPanel.parse(try #require(URL(string: "macpowertoys://diagnostics/open-panel/\(panel)"))) != nil)
@@ -155,7 +202,7 @@ struct ToolPageRouterTests {
         let router = DiagnosticsMenuPanels(defaults: defaults)
         defer { router.close() }
         var built: [DiagnosticsPanel] = []
-        router.makeCaptureContent = { panel in
+        router.makeCaptureContent = { panel, _ in
             built.append(panel)
             #expect(defaults.string(forKey: panel == .main ? "tray.selectedTab.v2" : "systemMonitor.trayPage")
                 == (panel == .main ? "rclone" : "memory"))

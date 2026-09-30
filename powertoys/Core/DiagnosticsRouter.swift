@@ -35,7 +35,7 @@ final class DiagnosticsMenuPanels: NSObject {
     weak var mainWindow: NSWindow?
     private let popovers = NSHashTable<NSPopover>.weakObjects()
     private(set) var captureWindow: NSPanel?
-    var makeCaptureContent: ((DiagnosticsPanel) -> AnyView?)?
+    var makeCaptureContent: ((DiagnosticsPanel, @escaping (CGFloat) -> Void) -> AnyView?)?
     private let defaults: UserDefaults
 
     init(defaults: UserDefaults = .standard) {
@@ -72,14 +72,10 @@ final class DiagnosticsMenuPanels: NSObject {
             return
         }
         close()
-        guard let content = makeCaptureContent?(panel) else {
-            LogManager.shared.warning("Panel content is not ready: \(panel.rawValue)", source: "DeepLinkHandler")
-            return
-        }
-        presentCapturePanel(content, panel: panel)
+        presentCapturePanel(panel)
     }
 
-    private func presentCapturePanel(_ content: AnyView, panel: DiagnosticsPanel) {
+    private func presentCapturePanel(_ panel: DiagnosticsPanel) {
         // MenuBarExtra has no public presentation binding. Capture the same content
         // in a nonactivating panel; native menu-bar clicks keep their existing host.
         let screen = panel.statusButton?.window?.screen ?? NSScreen.main
@@ -101,13 +97,18 @@ final class DiagnosticsMenuPanels: NSObject {
         let x = min(max(visible.minX, (anchor?.midX ?? visible.maxX) - OnePlusMenuMetrics.width / 2),
                     visible.maxX - OnePlusMenuMetrics.width)
         window.setFrameTopLeftPoint(CGPoint(x: x, y: top))
-        let hosting = NSHostingController(rootView: content
-            .fixedSize(horizontal: false, vertical: true).frame(width: OnePlusMenuMetrics.width)
-            .onePlusFocusPolicy().onOnePlusMenuHeightChange { [weak window] height in
+        let resize: (CGFloat) -> Void = { [weak window] height in
             guard let window, height.isFinite, height > 0, abs(window.frame.height - height) > 0.5 else { return }
             window.setContentSize(CGSize(width: OnePlusMenuMetrics.width, height: height))
             window.setFrameTopLeftPoint(CGPoint(x: x, y: top))
-        })
+        }
+        guard let content = makeCaptureContent?(panel, resize) else {
+            LogManager.shared.warning("Panel content is not ready: \(panel.rawValue)", source: "DeepLinkHandler")
+            return
+        }
+        let hosting = NSHostingController(rootView: content
+            .fixedSize(horizontal: false, vertical: true).frame(width: OnePlusMenuMetrics.width)
+            .onePlusFocusPolicy().onOnePlusMenuHeightChange(resize))
         window.contentViewController = hosting
         let size = hosting.sizeThatFits(in: NSSize(width: OnePlusMenuMetrics.width,
                                                    height: visible.height * OnePlusMenuMetrics.heightFraction))
