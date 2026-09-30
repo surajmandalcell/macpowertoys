@@ -623,7 +623,8 @@
   disk capacities, used, free, and cumulative reads share decimal
   `TrayPopoverLayout.diskBytes`, matching System Care. Disk rates use decimal
   `SystemMonitorDisplayFormat.byteRate`. Remote storage uses the same disk
-  formatter. System Report retains the values supplied by `system_profiler`.
+  formatter. Native status items also use it for disk used and available.
+  System Report retains the values supplied by `system_profiler`.
   RAM keeps binary formatting. Sensors puts the existing Fan row directly
   after the hero at the 8pt detail gap. Add no temperature values without
   reported readings.
@@ -639,6 +640,25 @@
   Review Disk, Network, Sensors, and Home in both signed appearances. Compare
   startup disk cards from the same sample. Execute hosted panel measurement
   and permission-route checks. Local verification remains compile-only.
+
+- **Symptom:** Overview process and memory cards start on different edges.
+  Battery Power draw reserves an empty caption. Battery details stretches.
+  Dark chart guides are barely visible.
+- **Cause:** The process lane height sat outside its content-sized panel.
+  Hero captions were unconditional. Information rows requested unlimited
+  height. Grid rules used the soft line color and a 0.65pt stroke.
+- **Invariant:** Put the stable 203pt process height inside the panel with
+  top alignment. Omit empty hero captions but retain real explanations.
+  Information panels end after their reported rows and missing-value caption.
+  Keep grid cells top-aligned. Use the shared chart grid token and 1pt rules
+  with whole-point edges inside the plot. Preserve the data strokes, dither,
+  requested plot height, 6pt endpoint reserve, time axis, and legend.
+- **Check:** Run `python3 tmp/redesign/checks/30r11-tm.py` without an app host.
+  It evaluates the actual native renderer and grid coordinates at 1x and 2x.
+  The former binary disk renderer and fractional grid stroke fail the check.
+  Debug and desktop build-for-testing pass. The orchestrator must compare
+  Overview and measured, unavailable, and extended Battery cards in both
+  signed appearances. Check guide contrast and native disk labels too.
 
 - **Symptom:** Compact chart endpoint labels sit 5pt inside their grid lines.
 - **Cause:** A spacer stack aligns label boxes inside the plot. It cannot
