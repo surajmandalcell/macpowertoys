@@ -17,7 +17,7 @@ nonisolated enum SystemMonitorMenuPlacement: String, Codable, CaseIterable, Iden
     var id: String { rawValue }
     var title: String {
         switch self {
-        case .off: "Off"
+        case .off: "None"
         case .combined: "Combined"
         case .separate: "Separate"
         }
