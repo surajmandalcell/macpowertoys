@@ -29,6 +29,7 @@ and I. Tests were compiled, not executed. Signed screenshot review remains.
 
 | Status | Request | Evidence | Remaining work |
 |---|---|---|---|
+| Verify | Pair the short embedded settings cards and use sentence case for clearing. | Round 3 review reuses the Global shortcut and Saved colors cards in equal columns when both fit; the applet keeps full-width stacked cards. The action and confirmation use `Clear all`. | Verify both hosts and clear confirmation in the signed build. |
 | Verify | Show complete project rows and use native list anatomy for history. | `projectsHeight` includes each project row and the 60pt project editor before the 460pt cap. History uses one card with stable row ids and `lineSoft` separators. | Verify the minimum and maximum window heights in the signed build. |
 | Verify | Keep Color Picker controls fixed and scroll only the rows. | History scrolls below fixed tabs, search, and format controls. Projects scrolls only its rows below the fixed card header and new-project field. Row presentation is cached by the current history request. | Verify smooth scrolling and page switches within 100ms in the signed build. |
 | Verify | Embed one cards-only settings view without nested scrolling or gutters. | `ColorPickerSettingsView()` owns only its shortcut and saved-colors cards. The applet supplies OnePlusPage with 16pt gutters. Permission and clear-history paths remain in the shared cards. Debug and build-for-testing pass. | Verify embedded and applet Settings in the signed build. |

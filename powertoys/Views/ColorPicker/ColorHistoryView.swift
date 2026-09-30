@@ -314,36 +314,53 @@ struct ColorPickerSettingsView: View {
 
     var body: some View {
         VStack(alignment: .leading, spacing: OnePlusMetrics.cardGap) {
-            OnePlusCard {
-                OnePlusCardHeader("Global shortcut", systemImage: "keyboard")
-                OnePlusSettingRow("Enable shortcut") {
-                    Toggle("Enable Pick Color shortcut", isOn: Binding(
-                        get: { shortcuts.isEnabled(.colorPicker) }, set: { shortcuts.setEnabled($0, for: .colorPicker) }
-                    )).labelsHidden().toggleStyle(OnePlusSwitchStyle())
+            ViewThatFits(in: .horizontal) {
+                HStack(alignment: .top, spacing: OnePlusMetrics.cardGap) {
+                    shortcutSettings
+                    savedColorsSettings
                 }
-                OnePlusSettingRow("Keyboard shortcut", caption: "Works in every app.", separator: false) {
-                    ShortcutRecorderField(action: .colorPicker).disabled(!shortcuts.isEnabled(.colorPicker))
-                }
-                ShortcutPermissionNotice(action: .colorPicker)
-            }
-            OnePlusCard {
-                OnePlusCardHeader("Saved colors", systemImage: "paintpalette")
-                OnePlusSettingRow("Copy format") {
-                    OnePlusSelect(choices: ColorCopyFormat.allCases.map { ($0, $0.title) },
-                                  selection: $service.defaultFormat, accessibilityLabel: "Copy format")
-                }
-                OnePlusSettingRow("Clear history", caption: "Keeps your projects.", separator: false) {
-                    Button("Clear All", role: .destructive) { isConfirmingClearAll = true }
-                        .buttonStyle(OnePlusButtonStyle(.destructive))
-                        .disabled(service.history.isEmpty).help("Clear every saved color")
-                        .accessibilityIdentifier("color-picker.clear-all")
+                .frame(minWidth: 2 * OnePlusWindowCanvas.colorPicker.size.width + OnePlusMetrics.cardGap)
+                VStack(alignment: .leading, spacing: OnePlusMetrics.cardGap) {
+                    shortcutSettings
+                    savedColorsSettings
                 }
             }
         }
         .confirmationDialog("Clear all picked colors?", isPresented: $isConfirmingClearAll) {
-            Button("Clear All", role: .destructive) { service.clearAll() }
+            Button("Clear all", role: .destructive) { service.clearAll() }
             Button("Cancel", role: .cancel) {}
         } message: { Text("This removes every saved color from History and all projects. Projects are kept.") }
+    }
+
+    private var shortcutSettings: some View {
+        OnePlusCard {
+            OnePlusCardHeader("Global shortcut", systemImage: "keyboard")
+            OnePlusSettingRow("Enable shortcut") {
+                Toggle("Enable Pick Color shortcut", isOn: Binding(
+                    get: { shortcuts.isEnabled(.colorPicker) }, set: { shortcuts.setEnabled($0, for: .colorPicker) }
+                )).labelsHidden().toggleStyle(OnePlusSwitchStyle())
+            }
+            OnePlusSettingRow("Keyboard shortcut", caption: "Works in every app.", separator: false) {
+                ShortcutRecorderField(action: .colorPicker).disabled(!shortcuts.isEnabled(.colorPicker))
+            }
+            ShortcutPermissionNotice(action: .colorPicker)
+        }
+    }
+
+    private var savedColorsSettings: some View {
+        OnePlusCard {
+            OnePlusCardHeader("Saved colors", systemImage: "paintpalette")
+            OnePlusSettingRow("Copy format") {
+                OnePlusSelect(choices: ColorCopyFormat.allCases.map { ($0, $0.title) },
+                              selection: $service.defaultFormat, accessibilityLabel: "Copy format")
+            }
+            OnePlusSettingRow("Clear history", caption: "Keeps your projects.", separator: false) {
+                Button("Clear all", role: .destructive) { isConfirmingClearAll = true }
+                    .buttonStyle(OnePlusButtonStyle(.destructive))
+                    .disabled(service.history.isEmpty).help("Clear every saved color")
+                    .accessibilityIdentifier("color-picker.clear-all")
+            }
+        }
     }
 }
 
