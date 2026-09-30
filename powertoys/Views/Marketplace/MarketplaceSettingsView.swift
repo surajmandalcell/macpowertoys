@@ -67,17 +67,20 @@ struct MarketplaceSettingsView: View {
                 Text("Built-in").onePlusText(.caption)
             }
             ForEach(sources) { source in sourceRow(source) }
-            OnePlusSettingRow("Catalog URL", controlWidth: OnePlusCatalogMetrics.placementWidth, separator: false) {
-                HStack(spacing: OnePlusMetrics.actionSpacing) {
-                    OnePlusTextField("https://raw.githubusercontent.com/user/repo/main/catalog.json", text: $newSourceText,
-                                     onSubmit: addSource)
-                        .accessibilityLabel("Catalog URL")
-                        .accessibilityHint(sourceError ?? "")
-                    Button(busyID == "add-source" ? "Adding…" : "Add source", action: addSource)
-                        .buttonStyle(OnePlusButtonStyle(.primary))
-                        .disabled(busy || newSourceText.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty)
-                }
+            HStack(spacing: OnePlusMetrics.cardGap) {
+                Text("Catalog URL").onePlusText(.row).fixedSize()
+                OnePlusTextField("https://raw.githubusercontent.com/user/repo/main/catalog.json", text: $newSourceText,
+                                 onSubmit: addSource)
+                    .frame(maxWidth: .infinity)
+                    .accessibilityLabel("Catalog URL")
+                    .accessibilityHint(sourceError ?? "")
+                Button(busyID == "add-source" ? "Adding…" : "Add source", action: addSource)
+                    .buttonStyle(OnePlusButtonStyle(.primary))
+                    .fixedSize(horizontal: true, vertical: false)
+                    .disabled(busy || newSourceText.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty)
             }
+            .padding(.horizontal, OnePlusMetrics.cardPadding)
+            .frame(height: OnePlusMetrics.settingRow)
             if let sourceError {
                 OnePlusBanner(sourceError, tone: .error).padding(OnePlusMetrics.cardPadding)
             }
