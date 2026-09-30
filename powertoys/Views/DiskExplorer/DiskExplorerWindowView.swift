@@ -403,8 +403,8 @@ struct DiskExplorerWindowView: View {
                 if nodes.isEmpty, let source = model.sourceURL {
                     Label(source.lastPathComponent, systemImage: "folder").onePlusText(.caption)
                 }
-            }
-        }.thinScrollIndicators()
+            }.frame(height: OnePlusMetrics.compactControlHeight)
+        }.thinScrollIndicators().frame(height: OnePlusMetrics.compactControlHeight)
     }
     private var emptyState: some View {
         OnePlusCard {
