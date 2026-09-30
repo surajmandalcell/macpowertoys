@@ -102,7 +102,6 @@ final class SystemMonitorTests: XCTestCase {
         XCTAssertGreaterThan(initial.height, 100, "The layout tree must exist before presentation")
         host.view.setFrameSize(initial)
         popover.contentViewController = host
-        XCTAssertEqual(popover.contentSize.height, initial.height, accuracy: 1)
 
         let window = NSWindow(contentRect: NSRect(x: screen.minX + 32, y: screen.minY + 32, width: 400, height: 40),
                               styleMask: [.titled], backing: .buffered, defer: false)
@@ -121,6 +120,7 @@ final class SystemMonitorTests: XCTestCase {
         }
         try await settle()
         let homeHeight = popover.contentSize.height
+        XCTAssertEqual(homeHeight, host.sizeThatFits(in: proposal).height, accuracy: 1)
         XCTAssertGreaterThan(homeHeight, emptyHeight, "The asynchronous profiles must increase Home height")
         for page in [SystemMonitorTrayPage.cpu, .processes, .sensors, .home] {
             defaults.set(page.rawValue, forKey: "systemMonitor.trayPage")
