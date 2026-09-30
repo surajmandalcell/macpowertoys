@@ -1,5 +1,21 @@
 # Diskman Troubleshooting
 
+## Live Root Rings Leave Empty Wedges During Updates
+
+- **Symptom:** Signed round 5 Home captures show blank root-band wedges while
+  the inspector lists positive sizes. Later Rings captures cover the circle.
+- **Cause:** The membership animation interpolated retained sector angles
+  while sectors entered, left, or changed storage colors. Prepared segment
+  arrays were complete, but the rendered transition could leave gaps.
+- **Invariant:** Keep the previous prepared ring while the next layout is
+  prepared off the main actor. Swap the full segment array without membership
+  or inherited geometry animation. Angles, membership, masks, and colors must
+  describe the same prepared layout. Keep hover, hit testing, and storage hues.
+- **Check:** The render regression replaces a top-five folder and samples the
+  root band during five early frames in both appearances. Compile locally.
+  Execute on hosted CI and inspect several signed live updates. Compilation
+  alone does not prove rendered coverage or the original failing transition.
+
 ## First Snapshot Replaces The Tab And Tiny Rings Draw Spokes
 
 - **Symptom:** Before the first scan snapshot, one loading card replaces the
@@ -16,8 +32,9 @@
   Do not add a local gutter workaround for shared page or scroller defects.
 - **Check:** Debug and build-for-testing pass. The ring regression checks tiny
   sector membership, outline suppression, total angle, and hit testing.
-  Hosted execution and signed loading, notice, and chart captures remain open.
-  Foundation must handle the empty footer gap and fixed-page bottom gutter.
+  Round 5 signed captures confirm centered breadcrumbs and faint live-sector
+  boundaries. Loaded notices retain the 24 pt bottom gutter. The shared layout
+  now omits empty footer gaps; its signed pending-state replay remains open.
 
 ## Native Redesign And Folded File Rows
 
@@ -25,7 +42,8 @@
   file selection. Folded scanner children could look like real files.
 - **Cause:** Diskman used separate page chrome and drew file rows itself.
 - **Invariant:** Use the fixed 1440 x 900 OnePlusUI shell, 216 pt sidebar,
-  27 pt title centerline, and 24 pt page gutter. First launch asks for a
+  27 pt sidebar centerline, 16 pt page title top, and 24 pt page gutter.
+  First launch asks for a
   location. Analyze uses live summary cards, three tabs, map breadcrumbs,
   and a 260 pt inspector. Click selects; double-click enters a folder.
   Native tables supply multiple selection, sorting, file menus, and drag-out.
@@ -224,9 +242,10 @@
   by path prevented that churn but could exclude the largest completed item.
 - **Invariant:** Keep entries visible from the first folder skeleton and use a
   stable path-based bounded set while scanning. After completion, select the
-  largest measured entries once, retain path order within that set, and animate
-  the change. Split by count and interpolate each tile or ring segment as
-  measured weights arrive. Keep scan status outside the plotted region;
+  largest measured entries once and retain path order within that set.
+  Split by count and interpolate treemap tiles as measured weights arrive.
+  Rings swap complete prepared segment arrays without geometry or membership
+  animation. Keep scan status outside the plotted region;
   hovered names and sizes use the map's existing footer caption.
   Reduce Motion stays immediate.
   Reserve all three ring bands during scanning so discovery cannot change
@@ -346,9 +365,10 @@
 - **Symptom:** Hosted `FocusEffectTests` reported the new Largest Files action
   buttons as using a mismatched native focus outline.
 - **Cause:** Their plain button style lacked the shared focus-effect override.
-- **Invariant:** Follow OnePlusUI's focus handling for plain actions. Suppress
-  the default outline when Full Keyboard Access is off; preserve keyboard
-  focus indication when it is on. Keep accessible names and hover help.
+- **Invariant:** Inherit the shared OnePlusUI root focus policy without local
+  overrides. Show focus only with Full Keyboard Access or VoiceOver. Mouse
+  selection must not force chart focus. Keep accessible names, keyboard
+  operation, and hover help.
 - **Check:**
   `FocusEffectTests.testCustomButtonStylesSuppressTheMismatchedSystemOutline`
   passed in hosted run `36138597977`.
