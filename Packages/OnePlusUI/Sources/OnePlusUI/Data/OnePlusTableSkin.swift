@@ -5,11 +5,16 @@ struct OnePlusNativeTableSkin: ViewModifier {
     let columns: [OnePlusGridColumn]
     @Environment(\.onePlusDensity) private var density
     func body(content: Content) -> some View {
-        content.tableStyle(.bordered(alternatesRowBackgrounds: false))
+        let table = content.tableStyle(.bordered(alternatesRowBackgrounds: false))
             .environment(\.defaultMinListRowHeight, OnePlusTable.rowHeight(density))
             .scrollContentBackground(.hidden).background(OnePlusColor.panel)
             .onePlusText(.row).onePlusScrollIndicators()
             .background(OnePlusTableConfigurator(density: density, columns: columns))
+        if #available(macOS 26.0, *) {
+            table.scrollEdgeEffectHidden()
+        } else {
+            table
+        }
     }
 }
 
