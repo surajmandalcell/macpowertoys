@@ -32,7 +32,10 @@ final class ScrollIndicatorTests: XCTestCase {
             object: scrollView.contentView
         )
         XCTAssertEqual(verticalScroller.alphaValue, 1)
-        try await Task.sleep(for: .milliseconds(1_200))
+        let hidden = XCTNSPredicateExpectation(
+            predicate: NSPredicate(format: "alphaValue <= 0.01"), object: verticalScroller
+        )
+        await fulfillment(of: [hidden], timeout: 3)
         XCTAssertEqual(verticalScroller.alphaValue, 0, accuracy: 0.01)
     }
 
