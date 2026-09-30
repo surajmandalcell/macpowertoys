@@ -1,5 +1,19 @@
 # UI Chrome Troubleshooting
 
+## Portman Identity Colors, 2026-09-30
+
+- **Symptom:** The owner reports that Portman lost its color and looks stale.
+- **Cause:** The redesign replaced the five-color server palette with the
+  shared neutral chart series.
+- **Invariant:** Port labels, memory segments, and server sparklines use the
+  same stable port-to-color mapping from `OnePlusColor.portmanSeries`.
+  Detail plots and process bars retain data color. Light inks are darker
+  versions of the original hues. The approved Servers composition stays.
+  Tabs and ordinary controls keep neutral chrome.
+- **Check:** Compare one-server and multi-server views in both appearances,
+  then inspect segment hover, row hover, and detail charts. Palette inks reach
+  at least 4.5:1 on their resting and hover backgrounds.
+
 ## Mac Tweaks Modified Column Edges, 2026-09-30
 
 - **Symptom:** Modified headings sit 4pt away from their row value edges.
