@@ -29,12 +29,13 @@ public struct OnePlusCard<Content: View>: View {
 
 public struct OnePlusMenuCard<Content: View>: View {
     private let textured: Bool
+    private let padded: Bool
     private let content: Content
-    public init(textured: Bool = false, @ViewBuilder content: () -> Content) {
-        self.textured = textured; self.content = content()
+    public init(textured: Bool = false, padded: Bool = true, @ViewBuilder content: () -> Content) {
+        self.textured = textured; self.padded = padded; self.content = content()
     }
     public var body: some View {
-        content.padding(OnePlusMenuMetrics.bodyInset)
+        content.padding(padded ? OnePlusMenuMetrics.bodyInset : 0)
             .frame(maxWidth: .infinity, alignment: .leading)
             .background(OnePlusColor.panelHover)
             .overlay { if textured { OnePlusDitherTexture(strength: 0.11) } }
