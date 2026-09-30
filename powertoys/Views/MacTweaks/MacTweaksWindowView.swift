@@ -486,7 +486,7 @@ struct MacTweaksWindowView: View {
                         Text("Original").frame(width: MacTweaksModifiedTableLayout.valueColumn, alignment: .leading)
                         Color.clear.frame(width: OnePlusMetrics.controlHeight)
                     }
-                    .padding(.horizontal, OnePlusMetrics.spacing[1])
+                    .padding(.horizontal, OnePlusMetrics.cardPadding - OnePlusTable.cellInset)
                     .onePlusTableHeader()
                     ScrollView {
                         LazyVStack(spacing: 0) {
