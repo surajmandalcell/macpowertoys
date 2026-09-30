@@ -23,9 +23,12 @@ struct FanControlView: View {
         if let error = service.errorMessage { return error }
         guard let snapshot = service.snapshot else { return "Fan data unavailable" }
         guard !snapshot.fans.isEmpty else { return "No fans detected" }
-        if !manualControlEnabled, service.canControl || service.canRestoreAutomatic {
-            return "Auto follows macOS"
+        if service.selectedPreset == nil, snapshot.hasExternalManualControl {
+            return service.canRestoreAutomatic
+                ? "Manual fan speed set elsewhere · Auto restores macOS"
+                : "Manual fan speed set elsewhere · read only"
         }
+        if activePreset == .auto { return "Auto follows macOS" }
         guard service.canControl else {
             if service.canRestoreAutomatic {
                 return snapshot.hasExternalManualControl
@@ -178,12 +181,20 @@ struct FanControlView: View {
         service.selectedPreset != nil && service.selectedPreset != .auto
     }
 
+    private var activePreset: FanPreset? {
+        Self.reportedPreset(service.snapshot, selectedPreset: service.selectedPreset)
+    }
+
+    nonisolated static func reportedPreset(_ snapshot: FanSnapshot?, selectedPreset: FanPreset?) -> FanPreset? {
+        if let selectedPreset { return selectedPreset }
+        guard let snapshot, !snapshot.fans.isEmpty else { return nil }
+        if let detected = snapshot.detectedPreset { return detected }
+        return snapshot.fans.allSatisfy { ["auto", "system"].contains($0.mode?.lowercased() ?? "") } ? .auto : nil
+    }
+
     private var presetBinding: Binding<FanPreset?> {
         Binding(
-            get: {
-                service.selectedPreset ?? (service.snapshot?.fans.isEmpty == false
-                    && service.snapshot?.hasExternalManualControl == false ? .auto : nil)
-            },
+            get: { activePreset },
             set: { if let preset = $0 { service.select(preset) } }
         )
     }
