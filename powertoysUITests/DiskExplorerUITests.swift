@@ -82,7 +82,7 @@ final class DiskExplorerUITests: XCTestCase {
         let blocker = app.descendants(matching: .any).matching(NSPredicate(
             format: "label CONTAINS %@ AND label CONTAINS %@", "Example Editor", "PID 12345"
         )).firstMatch
-        XCTAssertTrue(blocker.exists)
+        XCTAssertTrue(blocker.exists, app.debugDescription)
         XCTAssertFalse(app.buttons["diskman.quitAndEject"].isEnabled)
         XCTAssertFalse(app.buttons["diskman.forceQuitAndEject"].isEnabled)
         attach(app.screenshot(), named: "Diskman Blocked Eject Preview")
@@ -116,9 +116,11 @@ final class DiskExplorerUITests: XCTestCase {
         attach(app.screenshot(), named: "Diskman Merge Review Preview")
         app.buttons["Discard"].click()
         let modifyScroll = window.scrollViews.containing(.button, identifier: "diskman.map.disk91s3").firstMatch
-        for _ in 0..<8 where !window.buttons["diskman.map.disk91s3"].isHittable {
+        let wholeDisk = window.descendants(matching: .any)["diskman.wholeDisk"]
+        for _ in 0..<8 where wholeDisk.frame.minY < modifyScroll.frame.minY {
             modifyScroll.swipeDown()
         }
+        XCTAssertGreaterThanOrEqual(wholeDisk.frame.minY, modifyScroll.frame.minY)
         XCTAssertTrue(window.buttons["diskman.map.disk91s3"].isHittable)
         window.buttons["diskman.map.disk91s3"].click()
         let selectedTarget = window.descendants(matching: .any)["diskman.selectedTarget"]
@@ -126,7 +128,6 @@ final class DiskExplorerUITests: XCTestCase {
         XCTAssertTrue(selectedTarget.label.contains("/dev/disk91s3"), selectedTarget.label)
         XCTAssertFalse(merge.isEnabled)
         attach(window.screenshot(), named: "Diskman Map Selection")
-        let wholeDisk = window.descendants(matching: .any)["diskman.wholeDisk"]
         XCTAssertTrue(wholeDisk.exists)
         wholeDisk.click()
         XCTAssertTrue(wholeDisk.exists)
@@ -198,7 +199,7 @@ final class DiskExplorerUITests: XCTestCase {
             .matching(identifier: "diskExplorer.rings").firstMatch
         XCTAssertTrue(rings.waitForExistence(timeout: 5))
         XCTAssertFalse(window.staticTexts["Point to a ring to inspect it"].exists)
-        rings.coordinate(withNormalizedOffset: CGVector(dx: 0.65, dy: 0.5)).hover()
+        rings.coordinate(withNormalizedOffset: CGVector(dx: 0.75, dy: 0.5)).hover()
         XCTAssertTrue(hoverDetail.waitForExistence(timeout: 5))
         XCTAssertNotNil((hoverDetail.value as? String)?.range(of: #"[0-9]"#, options: .regularExpression),
                         hoverDetail.debugDescription)
