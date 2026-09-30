@@ -1691,7 +1691,7 @@ nonisolated enum PortmanEditor {
 }
 
 @MainActor
-final class PortmanMenuController: NSObject, NSPopoverDelegate {
+final class PortmanMenuController: NSObject {
     static let shared = PortmanMenuController()
 
     private var item: NSStatusItem?
@@ -1704,9 +1704,6 @@ final class PortmanMenuController: NSObject, NSPopoverDelegate {
         super.init()
         popover.behavior = .transient
         popover.animates = false
-        #if DEBUG
-        popover.delegate = self
-        #endif
     }
 
     func start() {
@@ -1735,9 +1732,6 @@ final class PortmanMenuController: NSObject, NSPopoverDelegate {
     }
 
     func show() {
-        #if DEBUG
-        NSLog("[DEBUG-ci14] request active=\(NSApp.isActive) shown=\(popover.isShown)")
-        #endif
         let createdStatusItem = item == nil
         start()
         showTask?.cancel()
@@ -1760,26 +1754,14 @@ final class PortmanMenuController: NSObject, NSPopoverDelegate {
                     self.popover.contentViewController?.view.window?.appearance = NSApp.appearance
                     NSApp.activate(ignoringOtherApps: true)
                     self.popover.contentViewController?.view.window?.makeKey()
-                    #if DEBUG
-                    NSLog("[DEBUG-ci14] shown=\(self.popover.isShown) active=\(NSApp.isActive) visible=\(self.popover.contentViewController?.view.window?.isVisible == true)")
-                    #endif
                     if AppRuntime.isUITesting { NSLog("Portman popover shown: \(self.popover.isShown)") }
                     if self.popover.isShown { return }
                 }
                 try? await Task.sleep(for: .milliseconds(50))
             }
-            #if DEBUG
-            NSLog("[DEBUG-ci14] anchor timed out active=\(NSApp.isActive) window=\(self.item?.button?.window?.isVisible == true) rect=\(self.item?.button?.visibleRect ?? .zero)")
-            #endif
             if AppRuntime.isUITesting { NSLog("Portman status item has no visible anchor") }
         }
     }
-
-    #if DEBUG
-    func popoverDidClose(_ notification: Notification) {
-        NSLog("[DEBUG-ci14] closed active=\(NSApp.isActive)")
-    }
-    #endif
 
     func setHeight(_ height: CGFloat) {
         let size = NSSize(width: OnePlusMenuMetrics.width, height: height)

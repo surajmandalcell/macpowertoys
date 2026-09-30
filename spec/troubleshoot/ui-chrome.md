@@ -113,18 +113,22 @@
   the first normal-mode UI test saw no Portman controls; later test-mode tab
   navigation passed.
 - **Cause:** Scene-driven routing could run before the item had a usable window
-  anchor. The explicit open path stopped checking after about 1.2 seconds,
-  shorter than a cold normal-mode startup may need.
+  anchor. A nonnil window and nonzero button width can precede a visible
+  status-item view. AppKit then ignores the show request. The old loop
+  returned after that rejected request.
 - **Invariant:** Route the startup argument from the app delegate and present
-  Portman only after its menu-bar button has a window and nonzero width. Keep
-  checking for up to ten seconds after an explicit open request; never show an
-  unanchored popover or start polling while the panel is idle.
+  Portman once after normal initialization. Wait for a visible button window,
+  a nonempty visible rect, and nonzero width. Keep checking for up to ten
+  seconds until the popover is shown. Never poll while the panel is idle.
 - **Check:** A fresh hosted Mac UI run opens `--open portman`, finds the Forward
   tab, and clicks blank edges of Forward and Settings. Its first normal-mode
   test must find the Servers tab before checking listener rows, so a missing
   panel is reported separately from a missing listener. Run `36138020899`
   passed the earlier route. Run `36208481934` passed the first normal-mode
   cold-launch case after the longer wait without owner-desktop UI interaction.
+  Run `36709666460` passes all four Portman UI cases after the visible-anchor
+  check and confirmed-presentation retry. It also requires the explicit tool
+  route to keep the launcher closed.
 
 ## Portman Server Overview Height
 
