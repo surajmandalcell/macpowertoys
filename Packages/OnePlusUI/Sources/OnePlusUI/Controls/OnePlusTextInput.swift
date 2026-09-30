@@ -25,7 +25,6 @@ public struct OnePlusTextField: View {
                 .overlay { RoundedRectangle(cornerRadius: 6).strokeBorder(error != nil ? OnePlusColor.dangerLine : focused && OnePlusFocusPolicy.shared.showsFocus ? OnePlusColor.focus : OnePlusColor.line, lineWidth: 1) }
                 .onHover { hover = $0 }.onSubmit(onSubmit)
                 .accessibilityLabel(title).accessibilityHint(error ?? "")
-                .focusEffectDisabled()
             if let error { Text(error).onePlusText(.caption).foregroundStyle(OnePlusColor.danger) }
         }.opacity(enabled ? 1 : OnePlusMetrics.disabledOpacity)
     }

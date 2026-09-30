@@ -46,7 +46,7 @@ public final class OnePlusFocusPolicy {
         observers.append(center.addObserver(forName: NSWindow.didBecomeKeyNotification, object: nil, queue: .main) { _ in
             MainActor.assumeIsolated {
                 guard let window = NSApp.keyWindow else { return }
-                if NSApp.currentEvent?.type != .keyDown { window.makeFirstResponder(window) }
+                window.makeFirstResponder(window)
             }
         })
         observers.append(center.addObserver(forName: NSWindow.didUpdateNotification, object: nil, queue: .main) { [weak self] note in

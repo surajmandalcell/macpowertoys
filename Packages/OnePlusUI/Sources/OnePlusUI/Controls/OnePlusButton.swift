@@ -91,7 +91,6 @@ private struct OnePlusButtonBody<Label: View>: View {
         .opacity(enabled ? 1 : OnePlusMetrics.disabledOpacity)
         .onHover { hovering = $0 }
         .animation(OnePlusMotion.animation(reduceMotion: reduceMotion), value: isHovering || isPressed)
-        .focusEffectDisabled()
     }
 
     private var foreground: Color {
@@ -160,7 +159,6 @@ private struct OnePlusInteractionBody<Label: View>: View {
             .contentShape(RoundedRectangle(cornerRadius: radius))
             .onHover { hover = $0 }
             .animation(OnePlusMotion.animation(reduceMotion: reduceMotion), value: hover || pressed)
-            .focusEffectDisabled()
     }
 }
 

@@ -1446,7 +1446,6 @@ private struct PortmanPasswordSheet: View {
     let onContinue: (String) -> Void
 
     @State private var password = ""
-    @FocusState private var passwordIsFocused: Bool
 
     var body: some View {
         OnePlusSheet("SSH password for \(host)", width: .small, close: onCancel) {
@@ -1455,7 +1454,6 @@ private struct PortmanPasswordSheet: View {
                 .onePlusText(.caption)
             SecureField("Password", text: $password)
                 .textFieldStyle(.roundedBorder)
-                .focused($passwordIsFocused)
                 .onSubmit(submit)
             if let errorMessage {
                 OnePlusBanner(errorMessage, tone: .error)
@@ -1465,7 +1463,6 @@ private struct PortmanPasswordSheet: View {
             Button("Cancel", action: onCancel).buttonStyle(OnePlusButtonStyle(.ghost))
             Button("Continue", action: submit).buttonStyle(OnePlusButtonStyle(.primary)).disabled(password.isEmpty)
         }
-        .onAppear { passwordIsFocused = true }
         .onDisappear { password = "" }
         .onExitCommand(perform: onCancel)
     }

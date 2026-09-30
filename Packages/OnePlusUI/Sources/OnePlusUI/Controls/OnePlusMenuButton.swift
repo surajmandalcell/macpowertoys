@@ -35,7 +35,6 @@ public struct OnePlusMenuButton: View {
         .environment(\.onePlusControlState, expanded ? .hover : .rest)
         .fixedSize()
         .focused($focused)
-        .focusEffectDisabled()
         .background { OnePlusPopupAnchor(reference: anchor) }
         .onMoveCommand { direction in
             if direction == .down, !expanded { toggle() }

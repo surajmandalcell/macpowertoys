@@ -28,6 +28,14 @@ final class OnePlusFocusPolicyTests: XCTestCase {
         XCTAssertNil(window.initialFirstResponder)
         XCTAssertTrue(window.firstResponder === window)
         XCTAssertFalse(window.makeFirstResponder(field), "Hidden hosts must not focus their first input.")
+        let policy = OnePlusFocusPolicy.shared
+        defer { policy.refresh() }
+        policy.update(fullKeyboardAccess: true, voiceOver: false)
+        XCTAssertEqual(field.focusRingType, .default)
+        policy.update(fullKeyboardAccess: false, voiceOver: false)
+        XCTAssertEqual(field.focusRingType, .none)
+        policy.update(fullKeyboardAccess: false, voiceOver: true)
+        XCTAssertEqual(field.focusRingType, .default)
     }
 
     func testFocusSampleHasRestingPaintWhenAccessibilityModesAreOff() throws {

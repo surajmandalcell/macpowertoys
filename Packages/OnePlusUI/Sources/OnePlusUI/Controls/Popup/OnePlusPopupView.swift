@@ -139,7 +139,6 @@ private struct OnePlusPopupItemView: View {
             .contentShape(Rectangle())
         }
         .buttonStyle(.plain)
-        .focusEffectDisabled()
         .disabled(!item.isEnabled)
         .opacity(item.isEnabled ? 1 : OnePlusMetrics.disabledOpacity)
         .onHover { hovering in
