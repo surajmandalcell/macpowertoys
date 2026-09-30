@@ -147,7 +147,7 @@ public struct OnePlusPage<Header: View, Tabs: View, Content: View>: View {
                     .padding(.bottom, footer == nil ? bottomInset : 0)
             }
             if let footer {
-                OnePlusPageFooterLayout(gutter: gutter, bottomInset: bottomInset,
+                OnePlusFixedRegionLayout(gutter: gutter, bottomInset: bottomInset,
                                         emptyInset: scrolls ? 0 : bottomInset) {
                     footer
                 }.fixedSize(horizontal: false, vertical: true)
@@ -165,20 +165,24 @@ public struct OnePlusPage<Header: View, Tabs: View, Content: View>: View {
     }
 }
 
-private struct OnePlusPageFooterLayout: Layout {
+struct OnePlusFixedRegionLayout: Layout {
     let gutter: CGFloat
     let bottomInset: CGFloat
     let emptyInset: CGFloat
+    let topInset: CGFloat
+    init(gutter: CGFloat, bottomInset: CGFloat, emptyInset: CGFloat, topInset: CGFloat = OnePlusMetrics.contentGap) {
+        self.gutter = gutter; self.bottomInset = bottomInset; self.emptyInset = emptyInset; self.topInset = topInset
+    }
     func sizeThatFits(proposal: ProposedViewSize, subviews: Subviews, cache: inout ()) -> CGSize {
         let width = proposal.width ?? 0
         let height = subviews.first?.sizeThatFits(.init(width: max(0, width - 2 * gutter), height: nil)).height ?? 0
-        return CGSize(width: width, height: height > 0 ? height + OnePlusMetrics.contentGap + bottomInset : emptyInset)
+        return CGSize(width: width, height: height > 0 ? height + topInset + bottomInset : emptyInset)
     }
     func placeSubviews(in bounds: CGRect, proposal: ProposedViewSize, subviews: Subviews, cache: inout ()) {
         let width = max(0, bounds.width - 2 * gutter)
         let height = subviews.first?.sizeThatFits(.init(width: width, height: nil)).height ?? 0
         subviews.first?.place(at: CGPoint(x: bounds.minX + gutter,
-                                         y: bounds.minY + (height > 0 ? OnePlusMetrics.contentGap : 0)),
+                                         y: bounds.minY + (height > 0 ? topInset : 0)),
                               proposal: .init(width: width, height: height))
     }
 }

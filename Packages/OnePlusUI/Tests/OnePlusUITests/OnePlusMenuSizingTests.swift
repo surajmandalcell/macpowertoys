@@ -5,6 +5,20 @@ import XCTest
 
 @MainActor
 final class OnePlusMenuSizingTests: XCTestCase {
+    func testEmptyFixedRegionBuildersDoNotReserveGaps() {
+        let host = NSHostingView(rootView: OnePlusMenuPanelShell(
+            maximumHeight: 600,
+            tabs: OnePlusMenuTabStrip(tabs: [.init("home", "Home", systemImage: "house")], selection: .constant("home")),
+            actions: OnePlusMenuOpenApp {},
+            toolbar: { AnyView(EmptyView()) }, footer: { AnyView(EmptyView()) },
+            content: { Color.clear.frame(height: 120) }
+        ).environment(\.onePlusIsVisible, true))
+        host.frame.size = NSSize(width: 356, height: 600)
+        host.layoutSubtreeIfNeeded()
+        RunLoop.main.run(until: Date(timeIntervalSinceNow: 0.05))
+        host.layoutSubtreeIfNeeded()
+        XCTAssertEqual(host.fittingSize.height, 48 + 11 + 120, accuracy: 0.5)
+    }
     func testFixedRegionsStayOutsideTheCappedBodyScroller() throws {
         let model = MenuSizingModel()
         let toolbar = NSView(), footer = NSView()
@@ -44,6 +58,9 @@ final class OnePlusMenuSizingTests: XCTestCase {
         model.height = 120
         layout()
         XCTAssertEqual(host.fittingSize.height, 48 + 48 + 120 + 37, accuracy: 0.5)
+        model.height = 0
+        layout()
+        XCTAssertEqual(host.fittingSize.height, 48 + 48 + 37, accuracy: 0.5)
     }
     func testPanelShrinksAfterSwitchingFromLongToShortContent() {
         let model = MenuSizingModel()
