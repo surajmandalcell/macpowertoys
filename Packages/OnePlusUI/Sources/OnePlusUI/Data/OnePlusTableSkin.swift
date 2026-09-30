@@ -72,10 +72,8 @@ private struct OnePlusTableConfigurator: NSViewRepresentable {
             if table.intercellSpacing != .zero { table.intercellSpacing = .zero }
             table.backgroundColor = NSColor(OnePlusColor.panel)
             if !table.gridStyleMask.isEmpty { table.gridStyleMask = [] }
-            if let scroll = table.enclosingScrollView {
-                if scroll.borderType != .noBorder { scroll.borderType = .noBorder }
-                if scroll.automaticallyAdjustsContentInsets { scroll.automaticallyAdjustsContentInsets = false }
-                if !NSEdgeInsetsEqual(scroll.contentInsets, NSEdgeInsets()) { scroll.contentInsets = NSEdgeInsets() }
+            if let scroll = table.enclosingScrollView, scroll.borderType != .noBorder {
+                scroll.borderType = .noBorder
             }
             if !table.subviews.contains(where: { $0 is OnePlusTableLines }) {
                 table.addSubview(OnePlusTableLines(table: table))
