@@ -393,27 +393,36 @@ public struct OnePlusMenuSectionHeader: View {
 public struct OnePlusMenuMetric: Identifiable, Sendable {
     public var id: String { label }
     public let label: String
+    public let systemImage: String?
     public let value: String
     public let unit: String
-    public init(_ label: String, value: String, unit: String = "") { self.label = label; self.value = value; self.unit = unit }
+    public init(_ label: String, systemImage: String? = nil, value: String, unit: String = "") {
+        self.label = label; self.systemImage = systemImage; self.value = value; self.unit = unit
+    }
 }
 
 public struct OnePlusMenuItemCard<Detail: View, Actions: View>: View {
     let title: String
+    let systemImage: String?
     let status: String
     let online: Bool
     let metrics: [OnePlusMenuMetric]
     let detail: Detail
     let actions: Actions
-    public init(_ title: String, status: String, online: Bool = true, metrics: [OnePlusMenuMetric],
+    public init(_ title: String, systemImage: String? = nil, status: String, online: Bool = true, metrics: [OnePlusMenuMetric],
                 @ViewBuilder detail: () -> Detail, @ViewBuilder actions: () -> Actions) {
-        self.title = title; self.status = status; self.online = online; self.metrics = metrics
+        self.title = title; self.systemImage = systemImage; self.status = status; self.online = online; self.metrics = metrics
         self.detail = detail(); self.actions = actions()
     }
     public var body: some View {
         VStack(spacing: 0) {
-            HStack {
-                Text(title).font(.system(size: 9, weight: .medium)).foregroundStyle(OnePlusColor.ink)
+            HStack(spacing: 6) {
+                if let systemImage {
+                    Image(systemName: systemImage).font(.system(size: 11)).frame(width: 11, height: 11)
+                        .foregroundStyle(OnePlusColor.secondary).accessibilityHidden(true)
+                }
+                Text(title).font(.system(size: 10, weight: .medium)).foregroundStyle(OnePlusColor.ink)
+                    .lineLimit(1).help(title)
                 Spacer()
                 OnePlusStatus(status, state: online ? .online : .offline)
             }.padding(.horizontal, 7).frame(height: 20).background(OnePlusColor.panelHover)
@@ -422,10 +431,18 @@ public struct OnePlusMenuItemCard<Detail: View, Actions: View>: View {
                 ForEach(metrics.indices, id: \.self) { index in
                     let metric = metrics[index]
                     VStack(alignment: .leading, spacing: 2) {
-                        Text(metric.label).font(.system(size: 8)).foregroundStyle(OnePlusColor.muted)
+                        HStack(spacing: 3) {
+                            if let systemImage = metric.systemImage {
+                                Image(systemName: systemImage).font(.system(size: 10)).frame(width: 10, height: 10)
+                                    .accessibilityHidden(true)
+                            }
+                            Text(metric.label).font(.system(size: 8)).lineLimit(1)
+                        }.foregroundStyle(OnePlusColor.muted)
                         HStack(alignment: .firstTextBaseline, spacing: 2) {
-                            Text(metric.value).font(.system(size: 11)).monospacedDigit().foregroundStyle(OnePlusColor.ink)
-                            Text(metric.unit).font(.system(size: 7.5)).foregroundStyle(OnePlusColor.secondary)
+                            Text(metric.value).font(.system(size: 12)).monospacedDigit()
+                                .foregroundStyle(online ? OnePlusColor.ink : OnePlusColor.muted)
+                            Text(metric.unit).font(.system(size: 7.5))
+                                .foregroundStyle(online ? OnePlusColor.secondary : OnePlusColor.muted)
                         }
                     }.padding(.horizontal, 7).padding(.vertical, 4).frame(maxWidth: .infinity, alignment: .leading)
                     if index < metrics.count - 1 { OnePlusColor.line.frame(width: 1) }
