@@ -5,7 +5,7 @@ public struct OnePlusMenuButton: View {
 
     private let title: String
     private let variant: Variant
-    private let items: [OnePlusPopupMenuEntry]
+    private let items: () -> [OnePlusPopupMenuEntry]
     @Environment(\.onePlusDensity) private var density
     @FocusState private var focused: Bool
     @State private var expanded = false
@@ -14,12 +14,14 @@ public struct OnePlusMenuButton: View {
     public init(_ title: String, variant: Variant = .ghost, items: [OnePlusPopupMenuEntry]) {
         self.title = title
         self.variant = variant
-        self.items = items
+        self.items = { items }
     }
 
     public init(_ title: String, variant: Variant = .ghost,
-                items: () -> [OnePlusPopupMenuEntry]) {
-        self.init(title, variant: variant, items: items())
+                items: @escaping () -> [OnePlusPopupMenuEntry]) {
+        self.title = title
+        self.variant = variant
+        self.items = items
     }
 
     public var body: some View {
@@ -44,6 +46,7 @@ public struct OnePlusMenuButton: View {
     }
 
     private func toggle() {
+        let items = items()
         let entries = items.isEmpty
             ? [.item(OnePlusPopupMenuItem("No actions", isEnabled: false) {})]
             : items

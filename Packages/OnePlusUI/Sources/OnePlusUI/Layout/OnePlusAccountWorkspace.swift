@@ -35,21 +35,42 @@ public struct OnePlusAccountNavRow<Icon: View>: View {
     }
 }
 
-/// Native action menus use the same trigger as selection menus.
+/// Existing SwiftUI menu commands use the shared action trigger and popup.
 public struct OnePlusActionMenu<Content: View>: View {
     let title: String
-    let width: CGFloat
     let content: Content
+    /// The legacy width argument remains valid. Action triggers fit their label.
     public init(_ title: String, width: CGFloat = OnePlusMetrics.controlColumn,
                 @ViewBuilder content: () -> Content) {
-        self.title = title; self.width = width; self.content = content()
+        self.title = title; self.content = content()
     }
     public var body: some View {
-        Menu { content } label: { OnePlusMenuLabel(title: title, width: width) }
-            .menuStyle(.borderlessButton).menuIndicator(.hidden).fixedSize()
-            .onePlusNeutralControls()
-            .focusEffectDisabled()
-            .accessibilityLabel(title)
+        OnePlusMenuButton(title) { OnePlusHostedActionMenu.entries(content) }
+    }
+}
+
+@MainActor
+enum OnePlusHostedActionMenu {
+    static func entries<Content: View>(_ content: Content) -> [OnePlusPopupMenuEntry] {
+        let menu = NSHostingMenu(rootView: content)
+        menu.update()
+        return entries(menu, root: menu)
+    }
+    private static func entries(_ menu: NSMenu, root: NSMenu, enabled: Bool = true) -> [OnePlusPopupMenuEntry] {
+        menu.items.filter { !$0.isHidden }.flatMap { item in
+            if item.isSeparatorItem { return [OnePlusPopupMenuEntry.separator()] }
+            if item.isSectionHeader { return [.section(item.title)] }
+            if let submenu = item.submenu {
+                // ponytail: submenus are section groups until the popup supports nested navigation.
+                return [.section(item.title)] + entries(submenu, root: root, enabled: enabled && item.isEnabled)
+            }
+            return [.item(OnePlusPopupMenuItem(item.title, isEnabled: enabled && item.isEnabled,
+                                             isSelected: item.state == .on) {
+                withExtendedLifetime(root) {
+                    if let action = item.action { NSApplication.shared.sendAction(action, to: item.target, from: item) }
+                }
+            })]
+        }
     }
 }
 

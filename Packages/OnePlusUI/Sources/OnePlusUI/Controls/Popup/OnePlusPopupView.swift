@@ -54,6 +54,7 @@ struct OnePlusPopupMenuView: View {
             if session.entries.filter({ $0.item != nil }).count > OnePlusPopupMetrics.maxVisibleItems {
                 ScrollViewReader { proxy in
                     ScrollView { entries }
+                        .onePlusScrollIndicators(axes: .vertical)
                         .onChange(of: session.highlightedID) { _, id in
                             guard let id else { return }
                             proxy.scrollTo(id, anchor: .center)

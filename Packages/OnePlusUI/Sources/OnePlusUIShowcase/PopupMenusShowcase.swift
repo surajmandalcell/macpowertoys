@@ -41,8 +41,19 @@ struct PopupMenusShowcase: View {
             OnePlusSettingRow("Ghost menu") {
                 OnePlusMenuButton("More", items: actionItems)
             }
-            OnePlusSettingRow("Neutral menu", separator: false) {
+            OnePlusSettingRow("Neutral menu") {
                 OnePlusMenuButton("Export", variant: .neutral, items: actionItems)
+            }
+            OnePlusSettingRow("SwiftUI commands", separator: false) {
+                OnePlusActionMenu("More") {
+                    Button("Copy sample") { lastAction = "Copied sample" }
+                    Button("Unavailable") {}.disabled(true)
+                    Divider()
+                    Menu("Export") {
+                        Button("Archive") { lastAction = "Export archive" }
+                        Button("Text") { lastAction = "Export text" }
+                    }
+                }
             }
         }
     }
