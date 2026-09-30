@@ -67,16 +67,20 @@ struct MarketplaceSettingsView: View {
                 Text("Built-in").onePlusText(.caption)
             }
             ForEach(sources) { source in sourceRow(source) }
-            VStack(alignment: .leading, spacing: OnePlusMetrics.actionSpacing) {
-                HStack(alignment: .top, spacing: OnePlusMetrics.actionSpacing) {
+            OnePlusSettingRow("Catalog URL", controlWidth: OnePlusCatalogMetrics.placementWidth, separator: false) {
+                HStack(spacing: OnePlusMetrics.actionSpacing) {
                     OnePlusTextField("https://raw.githubusercontent.com/user/repo/main/catalog.json", text: $newSourceText,
-                                     error: sourceError, onSubmit: addSource)
+                                     onSubmit: addSource)
                         .accessibilityLabel("Catalog URL")
+                        .accessibilityHint(sourceError ?? "")
                     Button(busyID == "add-source" ? "Adding…" : "Add source", action: addSource)
                         .buttonStyle(OnePlusButtonStyle(.primary))
                         .disabled(busy || newSourceText.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty)
                 }
-            }.padding(OnePlusMetrics.cardPadding)
+            }
+            if let sourceError {
+                OnePlusBanner(sourceError, tone: .error).padding(OnePlusMetrics.cardPadding)
+            }
         }
     }
 
