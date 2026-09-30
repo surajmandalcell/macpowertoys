@@ -5,6 +5,48 @@ import XCTest
 
 @MainActor
 final class OnePlusMenuSizingTests: XCTestCase {
+    func testOfflineHostReadingsUseMutedInkInBothAppearances() throws {
+        for name in [NSAppearance.Name.darkAqua, .aqua] {
+            for online in [false, true] {
+                let host = NSHostingView(rootView: OnePlusMenuItemCard(
+                    "Sample host", systemImage: "server.rack", status: online ? "Connected" : "Offline", online: online,
+                    metrics: [.init("CPU", systemImage: "cpu", value: "—"),
+                              .init("RAM", systemImage: "memorychip", value: "—"),
+                              .init("Network", systemImage: "arrow.up.arrow.down", value: "—")]
+                ) { Text("No disk data") } actions: { EmptyView() })
+                let window = NSWindow(contentRect: NSRect(x: -10000, y: -10000, width: 338, height: 109),
+                                      styleMask: .borderless, backing: .buffered, defer: false)
+                let appearance = try XCTUnwrap(NSAppearance(named: name))
+                window.appearance = appearance
+                window.contentView = host
+                host.layoutSubtreeIfNeeded()
+                XCTAssertEqual(host.fittingSize.height, 109, accuracy: 0.01)
+                let bitmap = try XCTUnwrap(host.bitmapImageRepForCachingDisplay(in: host.bounds))
+                host.cacheDisplay(in: host.bounds, to: bitmap)
+                let scale = CGFloat(bitmap.pixelsWide) / host.bounds.width
+                var expected: CGFloat = 0, opposite: CGFloat = 0
+                appearance.performAsCurrentDrawingAppearance {
+                    expected = NSColor(online ? OnePlusColor.ink : OnePlusColor.muted)
+                        .usingColorSpace(.sRGB)!.redComponent
+                    opposite = NSColor(online ? OnePlusColor.muted : OnePlusColor.ink)
+                        .usingColorSpace(.sRGB)!.redComponent
+                }
+                for column in 0..<3 {
+                    var reading: CGFloat = name == .darkAqua ? 0 : 1
+                    for x in Int((CGFloat(column) * 113 + 7) * scale)..<Int((CGFloat(column) * 113 + 50) * scale) {
+                        for y in Int(39 * scale)..<Int(51 * scale) {
+                            let ink = try XCTUnwrap(bitmap.colorAt(x: x, y: y)?.usingColorSpace(.sRGB)).redComponent
+                            reading = name == .darkAqua ? max(reading, ink) : min(reading, ink)
+                        }
+                    }
+                    // Text antialiasing blends the token with the panel fill.
+                    XCTAssertLessThan(abs(reading - expected), abs(reading - opposite),
+                                      "Reading ink must follow the host's availability")
+                }
+            }
+        }
+    }
+
     func testEmptyFixedRegionBuildersDoNotReserveGaps() {
         let host = NSHostingView(rootView: OnePlusMenuPanelShell(
             maximumHeight: 600,

@@ -195,7 +195,7 @@ with `textColor: OnePlusColor.ink` for primary identity text.
 | `OnePlusMenuTile` | Supply compact metric content in one, two, or three columns. |
 | `OnePlusMenuControlRow` | Place Fan or Awake controls beside an icon, label, and status. |
 | `OnePlusMenuSectionHeader` | Add a menu section line, title, and optional link. |
-| `OnePlusMenuMetric` / `OnePlusMenuItemCard` | Show a host header, metric cells, detail, and trailing actions. |
+| `OnePlusMenuMetric` / `OnePlusMenuItemCard` | Show a host header, metric cells, detail, and trailing actions. Both accept optional `systemImage` glyphs. `online: false` uses muted readings and a hollow status dot. |
 | `OnePlusMenuOpenApp` | Supply the ghost Open App action. |
 | `OnePlusAppletTitlebar` | Add a 40 pt bar with title and actions on the 22 pt centerline. |
 | `OnePlusFloatingSettingsButton` | Place a 24 pt Settings or Back button at the applet's trailing edge. |
