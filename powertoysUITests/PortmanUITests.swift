@@ -104,6 +104,10 @@ final class PortmanUITests: XCTestCase {
         XCTAssertEqual(servers.frame.width, forward.frame.width, accuracy: 1)
         XCTAssertEqual(settings.frame.width, forward.frame.width, accuracy: 1)
         XCTAssertTrue(app.buttons["portman.refresh"].exists)
+        let ready = app.descendants(matching: .any).matching(NSPredicate(
+            format: "identifier == %@ OR label == %@", "portman.sort", "No servers listening"
+        )).firstMatch
+        XCTAssertTrue(ready.waitForExistence(timeout: 10), app.debugDescription)
         if app.staticTexts["No servers listening"].exists {
             XCTAssertTrue(app.staticTexts["0 KB"].isHittable)
             XCTAssertTrue(app.staticTexts["Local development ports 3000–9999 will appear here."].isHittable,
