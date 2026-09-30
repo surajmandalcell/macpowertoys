@@ -628,8 +628,8 @@
   after the hero at the 8pt detail gap. Add no temperature values without
   reported readings.
   Offline remote bodies say No disk data and retain CPU, RAM, and Network
-  dashes. Foundation owns header/metric glyph APIs and muted offline readings
-  in `OnePlusMenuItemCard`; callers must not replace that shared card locally.
+  dashes. `OnePlusMenuItemCard` supplies header/metric glyphs and muted offline
+  readings. Callers must use these APIs rather than replace the card locally.
 - **Check:** `tmp/redesign/logs/27r10-panels-check.py` checks actual panel
   formatting, captured high-rate tick widths, and network identity fallbacks.
   Run `testDiskByteFormatterUsesDecimalUnits` on hosted CI. It checks decimal
@@ -639,6 +639,22 @@
   Review Disk, Network, Sensors, and Home in both signed appearances. Compare
   startup disk cards from the same sample. Execute hosted panel measurement
   and permission-route checks. Local verification remains compile-only.
+
+- **Symptom:** Compact chart endpoint labels sit 5pt inside their grid lines.
+- **Cause:** A spacer stack aligns label boxes inside the plot. It cannot
+  center the endpoint labels on the top and bottom grid lines.
+- **Invariant:** All seven detail scales use the shared chart's grid fractions
+  and the grid's pixel rounding for their text centers. Keep the plot at 64pt.
+  Reserve 6pt above and below the plot for endpoint labels. The time axis
+  stays outside this region.
+  Keep numeric rate ticks and leading legends. Do not change data or colors.
+- **Check:** Run `tmp/redesign/logs/30r11-panels-check.py`. It evaluates the
+  actual Swift positions against the shared grid. It checks 6.5/38.5/69.5pt
+  centers in the 76pt region. The supplied spacer-stack source fails the check.
+  The orchestrator must raise the hosted CPU height cap from 410pt to 422pt
+  for the 12pt endpoint reserve and run the native height test.
+  Verify all seven charts in both signed appearances. Local checks do not
+  prove painted glyph centers, native sizing, or first-frame switching.
 
 - **Symptom:** Fan can keep polling after a menu panel closes.
 - **Cause:** The shared panel retains its mounted layout. An appearance-only
