@@ -79,6 +79,20 @@
   then inspect segment hover, row hover, and detail charts. Palette inks reach
   at least 4.5:1 on their resting and hover backgrounds.
 
+## Mac Tweaks Finder Preview Crop, 2026-09-30
+
+- **Symptom:** The Finder preview touches the card sides and clips its status
+  row and bottom window edge.
+- **Cause:** The crop matched the 404pt by 242pt artwork exactly, but used
+  y137 as its center while the artwork is centered at y160. Scaling enlarged
+  the full window to the preview body with no space around it.
+- **Invariant:** Use a 468pt by 292pt crop centered at x300/y160. Preserve
+  uniform scale, the existing hover-only motion, and the static poster frame.
+  Do not resize or pad the card to conceal a wrong artwork crop.
+- **Check:** The 414pt by 240pt body gives 20.38pt above and 22.38pt below the
+  window. Compare Finder at rest and during hover in both appearances on the
+  next signed build. Its chrome, status row, and boundary must remain visible.
+
 ## Mac Tweaks Shared Control Callers, 2026-09-30
 
 - **Symptom:** Dock and Screenshots segments start 17pt to 19pt after their

@@ -1,11 +1,17 @@
 # Mac Tweaks request list
 
+## Round 9 screenshot corrections, 2026-09-30
+
+- [x] Expand the Finder preview crop and center it on the artwork at x300/y160. Keep uniform scaling and the full titlebar, sidebar, status row, and window boundary. The 240pt preview body has more than 20pt vertical clearance.
+- [x] Review all 20 signed `3e33de2` captures in both appearances. Mixed select and segment tracks share their 180pt painted column. System has the shared section-start gap.
+- [~] Recapture Finder at rest and during hover in the next signed build. Check the complete window and at least 20pt vertical clearance. Other live focus, permission, reset, tooltip, idle CPU, panel, and latency checks remain. See `tmp/redesign/logs/25r9-tweaks.md`.
+
 ## Round 8 screenshot corrections, 2026-09-30
 
 - [x] Pass each card's control width through `MacTweaksSegmentedControl` to the shared `OnePlusSegmented(width:)`. Selects and segments use one painted column, 180pt for three-way cards and 160pt for ordinary cards.
 - [x] Use `OnePlusNavCaption("System", spacing: .sectionStart)` after Apps. Keep Everyday's standard caption and the shared navigation row height.
 - [x] Review all 20 signed `db47173` captures in both appearances. The title starts at T=16, chrome uses C=27, Modified columns and bottom clearance match, and dark preview labels remain readable in Light.
-- [~] Recapture the two caller fixes in the next signed build. Check focus with accessibility modes off and on, select tooltips, preview hover, reset, permissions, panel first-frame layout, idle CPU, and latency. See `tmp/redesign/logs/23r8-tweaks.md`.
+- [x] Signed `3e33de2` captures confirm both caller fixes. Dock controls paint from x900 to x1080; Screenshots controls paint from x470 to x650. System starts about 25pt below Apps. Live checks remain in the Round 9 row. Earlier report: `tmp/redesign/logs/23r8-tweaks.md`.
 
 ## Round 7 screenshot corrections, 2026-09-30
 
