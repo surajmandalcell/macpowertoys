@@ -150,8 +150,11 @@
   missed the scroll container's intrinsic-width path.
 - **Invariant:** Let `OnePlusMenuPanel` give every tab its shared 338pt body
   width before measuring its natural height. The outer shell is 356pt wide.
-- **Check:** Open an empty Cloud Sync tray in the final signed build. The cloud
-  and text center inside the shared body in light and dark appearances.
+  Empty states are small cards inside useful tab content. Do not give them a
+  large centered region.
+- **Check:** Open Cloud Sync with and without remotes or transfers. Require
+  the remote section and New Transfer action in both appearances. The empty
+  transfer card must use only its content height.
 
 ## Menu-Bar Tab Density
 
@@ -205,6 +208,34 @@
 - **Check:** Compile the cleanup row-and-total regression and all nine Task
   Manager page renders in both appearances. After foundation round 10 lands,
   check short-to-tall-to-short switches, focus, and latency on the signed build.
+
+## Main menu tab snapshots, 2026-09-30
+
+- **Symptom:** System Care and Cloud Sync show large empty blocks. Input
+  Devices shows a long settings form without device data. NetToys omits the
+  active IP and gateway latency.
+- **Cause:** Empty-state views replaced each tab's operational summary.
+  Input Devices embedded a padded settings wrapper. NetToys used only the
+  helper's saved reachability state.
+- **Invariant:** System Care shows startup-volume Used, Purgeable, and Free
+  segments from one capacity snapshot. Purgeable space is separate from free
+  space. Keep unavailable capacity as a dash. Use one primary Scan action.
+  Preserve saved cleanup selection and confirmed Move to Trash.
+  Cloud Sync shows configured remotes, each remote's latest transfer state
+  and time, New Transfer, and the existing active and recent transfer controls.
+  Match both source and destination endpoints by the exact remote name.
+  NetToys reads the current route and IP once when its tab opens or Refresh
+  is used. Read SSID without asking for permission. Probe the gateway once
+  with the existing cancellable runner, a two-second deadline, and an 8KiB
+  output cap. Cancel refresh work when the native panel hides. Never reuse
+  another route's Internet state or add a poller.
+  Switch loads usage only on request. Input Devices shows detected devices,
+  reported batteries, and current profile values before its controls. Expand
+  the existing cards-only settings content without another page gutter.
+- **Check:** Run the startup-disk and remote-activity regressions on hosted
+  CI. Review every tab in both appearances from the signed build. Check
+  missing capacity, denied SSID access, gateway timeout, unknown battery,
+  unloaded usage, compact empty states, controls, and tab-switch latency.
 
 ## Combined Menu Icon And Tab Outline
 
