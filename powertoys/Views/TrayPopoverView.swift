@@ -2399,7 +2399,7 @@ private struct NetToysTrayView: View {
                     }
                 }
                 if identity.ssid == nil {
-                    networkTile("Connection", value: snapshot.route == nil ? "—" : snapshot.isWiFi ? "Wi-Fi" : "Ethernet", detail: reachability)
+                    networkTile("Connection", value: snapshot.route == nil ? "—" : snapshot.isWiFi ? "Wi-Fi" : "Active route", detail: reachability)
                 } else {
                     networkTile("Interface", value: snapshot.route?.interfaceName ?? "—", detail: reachability)
                 }
