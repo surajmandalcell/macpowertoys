@@ -6,12 +6,21 @@ enum ColorPickerLayout {
     static let bodyHorizontalInset = OnePlusMetrics.appletGutter
     static let historyBaseHeight = OnePlusWindowCanvas.colorPicker.size.height - OnePlusMetrics.appletTitlebar
     static let maximumWindowHeight = OnePlusWindowCanvas.colorPicker.heightRange!.upperBound
-    static let settingsHeight = maximumWindowHeight - OnePlusMetrics.appletTitlebar
+    static let settingsContentHeight = 2 * OnePlusMetrics.cardHeader
+        + 2 * (OnePlusMetrics.settingRow + OnePlusMetrics.captionedSettingRow)
+        + OnePlusMetrics.cardGap
     static let historyRowHeight = OnePlusMetrics.captionedSettingRow
 
     static func historyHeight(count: Int) -> CGFloat {
         min(maximumWindowHeight, historyBaseHeight + OnePlusMetrics.appletTitlebar
             + CGFloat(max(0, min(count, 5) - 1)) * historyRowHeight)
+    }
+
+    static func settingsHeight(contentHeight: CGFloat) -> CGFloat {
+        let range = OnePlusWindowCanvas.colorPicker.heightRange!
+        return min(range.upperBound, max(range.lowerBound, contentHeight
+            + OnePlusMetrics.appletTitlebar + OnePlusMetrics.contentGap
+            + OnePlusMetrics.floatingSettingsInset))
     }
 
     static func projectsHeight(projectCount: Int, isCreating: Bool) -> CGFloat {
@@ -83,6 +92,7 @@ struct ColorHistoryView: View {
     @State private var page = ColorPickerPage.history
     @State private var search = ""
     @State private var focusSearch = 0
+    @State private var settingsContentHeight = ColorPickerLayout.settingsContentHeight
     @State private var isCreatingProject = false
     @State private var newProjectName = ""
     @State private var sampleRows: [ColorSamplePresentation] = []
@@ -109,7 +119,7 @@ struct ColorHistoryView: View {
             projectCount: service.projects.count,
             isCreating: isCreatingProject
         )
-        case .settings: ColorPickerLayout.maximumWindowHeight
+        case .settings: ColorPickerLayout.settingsHeight(contentHeight: settingsContentHeight)
         }
     }
 
@@ -131,6 +141,9 @@ struct ColorHistoryView: View {
                     case .settings:
                         OnePlusPage(layout: .applet, header: { EmptyView() }) {
                             ColorPickerSettingsView()
+                                .onGeometryChange(for: CGFloat.self) { $0.size.height } action: {
+                                    settingsContentHeight = $0
+                                }
                         }
                     }
                 }
