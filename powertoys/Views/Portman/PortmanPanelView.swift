@@ -1456,6 +1456,7 @@ private struct PortmanSettingsPanelContent: View {
 
 struct PortmanSettingsView: View {
     var search = ""
+    @Environment(\.onePlusDensity) private var density
     @State private var pendingAutomaticCleanup = false
     @State private var installedEditors: [(id: String, name: String)] = []
     @AppStorage("portman.scanLowerPort") private var lowerPort = 3000
@@ -1491,10 +1492,20 @@ struct PortmanSettingsView: View {
     }
     private var cleanupCaption: String {
         switch PortmanCleanupMode(rawValue: cleanupMode) {
+        case .automatic: "Stops servers."
+        case .off: "Manual only."
+        default: "Suggests servers."
+        }
+    }
+    private var cleanupHelp: String {
+        switch PortmanCleanupMode(rawValue: cleanupMode) {
         case .automatic: "Stops eligible servers automatically."
         case .off: "Manual cleanup stays available in Servers."
         default: "Highlights eligible servers in Servers."
         }
+    }
+    private var portControlWidth: CGFloat {
+        density == .compact ? OnePlusMetrics.controlColumn : OnePlusMetrics.wideControlColumn
     }
     var body: some View {
         VStack(alignment: .leading, spacing: OnePlusMetrics.cardGap) {
@@ -1546,28 +1557,32 @@ struct PortmanSettingsView: View {
                 }
             }
             if shows("Ports & processes", "Scan ports") {
-                OnePlusSettingRow("First port") {
+                OnePlusSettingRow("First port", controlWidth: portControlWidth) {
                     OnePlusStepperField("First scan port", value: $lowerPort, in: 1...max(1, min(upperPort, 65535)))
+                        .frame(width: portControlWidth)
                 }
-                OnePlusSettingRow("Last port") {
+                OnePlusSettingRow("Last port", controlWidth: portControlWidth) {
                     OnePlusStepperField("Last scan port", value: $upperPort, in: max(1, min(lowerPort, 65535))...65535)
+                        .frame(width: portControlWidth)
                 }
             }
             if shows("Ports & processes", "Scan every") {
-                OnePlusSettingRow("Scan every") {
+                OnePlusSettingRow("Scan every", controlWidth: portControlWidth) {
                     OnePlusSelect(choices: [2.0, 5.0, 10.0, 30.0].map { ($0, "\(Int($0)) seconds") },
-                                  selection: $scanInterval, accessibilityLabel: "Scan every")
+                                  selection: $scanInterval, width: portControlWidth, accessibilityLabel: "Scan every")
                         .accessibilityIdentifier("portman.settings.interval")
                 }
             }
             if shows("Ports & processes", "Extra protected process names") {
                 OnePlusSettingRow(
                     "Protected apps",
-                    caption: "Databases, Docker, and SSH stay protected.",
-                    help: "Extra protected process names, comma-separated",
+                    caption: "Core apps stay safe.",
+                    help: "Extra protected process names, comma-separated. Databases, Docker, and SSH stay protected.",
+                    controlWidth: portControlWidth,
                     separator: false
                 ) {
                     OnePlusTextField("Process names", text: $protectedCommands)
+                        .frame(width: portControlWidth)
                 }
             }
         }
@@ -1577,7 +1592,7 @@ struct PortmanSettingsView: View {
         OnePlusCard {
             OnePlusCardHeader("Clean up")
             if shows("Clean up", "Cleanup mode") {
-                OnePlusSettingRow("Mode", caption: cleanupCaption) {
+                OnePlusSettingRow("Mode", caption: cleanupCaption, help: cleanupHelp) {
                     OnePlusSegmented(choices: [("off", "Off"), ("ask", "Ask"), ("automatic", "Auto")],
                                      selection: Binding(get: { cleanupMode }, set: { value in
                         if value == PortmanCleanupMode.automatic.rawValue && cleanupMode != value {
