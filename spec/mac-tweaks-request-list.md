@@ -1,16 +1,23 @@
 # Mac Tweaks request list
 
+## Round 8 screenshot corrections, 2026-09-30
+
+- [x] Pass each card's control width through `MacTweaksSegmentedControl` to the shared `OnePlusSegmented(width:)`. Selects and segments use one painted column, 180pt for three-way cards and 160pt for ordinary cards.
+- [x] Use `OnePlusNavCaption("System", spacing: .sectionStart)` after Apps. Keep Everyday's standard caption and the shared navigation row height.
+- [x] Review all 20 signed `db47173` captures in both appearances. The title starts at T=16, chrome uses C=27, Modified columns and bottom clearance match, and dark preview labels remain readable in Light.
+- [~] Recapture the two caller fixes in the next signed build. Check focus with accessibility modes off and on, select tooltips, preview hover, reset, permissions, panel first-frame layout, idle CPU, and latency. See `tmp/redesign/logs/23r8-tweaks.md`.
+
 ## Round 7 screenshot corrections, 2026-09-30
 
 - [x] Give Modified headings and rows the same 16pt inset, 8pt gaps, 170pt value columns, and 28pt reset lane. Derive the extra header inset from the shared table cell inset.
-- [~] Verify the signed build. Foundation owns the dark traffic-light regression, fixed-body bottom clearance, the declared-width segmented variant, and the SYSTEM section-start caption variant. Full selected-value help belongs in the shared select. See `tmp/redesign/logs/17r7-tweaks.md`.
+- [x] Signed `db47173` captures confirm Modified column edges, dark chrome, and bottom clearance. The shared segmented-width, section-start caption, and selected-value tooltip APIs landed. Round 8 adopts the first two APIs; live tooltip access remains unverified. Earlier report: `tmp/redesign/logs/17r7-tweaks.md`.
 
 ## Round 6 screenshot corrections, 2026-09-30
 
 - [x] Keep the Input Test or Live label visible beside a flexible shared meter in a 180pt control column.
 - [x] Put rules inside 44pt setting rows. Choose one control width per card and stretch the lower Dock pair to one height. Shorten Alternate Save panels and widen microphone selects.
 - [x] Replace the last appearance-dependent preview material with a fixed dark Dock fill. Title the embedded card Preferences, describe the full scope, and use a regular neutral Open Mac Tweaks button.
-- [~] Verify the signed build. Foundation owns fixed-page bottom clearance, exact segmented widths, and the SYSTEM section-start gap. See `tmp/redesign/logs/16r6-tweaks.md`.
+- [x] Signed `db47173` captures confirm the Test label and meter, card row rules, equal lower Dock heights, and dark preview surfaces. Round 8 adopts the shared width and section-start APIs. Earlier report: `tmp/redesign/logs/16r6-tweaks.md`.
 
 ## Round 5 screenshot corrections, 2026-09-29
 
@@ -22,7 +29,7 @@
 
 ## Owner review 1 corrections, 2026-09-29
 
-- [x] Keep the shared page header at `T = 58` and every card on its 24pt leading edge. Mac Tweaks draws no local page header or second body inset.
+- [x] Keep the shared page header at the owner's current `T = 16` and every card on its 24pt leading edge. Mac Tweaks draws no local page header or second body inset.
 - [x] Keep the Modified table header and Reset all action fixed. Only its lazy settings rows scroll.
 - [x] Remove preference reads from SwiftUI body evaluation. Load current values on a utility task, cache modified rows, and enumerate microphone devices away from the main actor.
 - [x] Use `OnePlusSelect` for every value selector. Keep action-only menus native until `OnePlusMenuButton` lands.

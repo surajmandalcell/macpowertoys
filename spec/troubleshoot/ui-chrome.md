@@ -61,6 +61,21 @@
   then inspect segment hover, row hover, and detail charts. Palette inks reach
   at least 4.5:1 on their resting and hover backgrounds.
 
+## Mac Tweaks Shared Control Callers, 2026-09-30
+
+- **Symptom:** Dock and Screenshots segments start 17pt to 19pt after their
+  select controls. The System sidebar caption remains too close to Apps.
+- **Cause:** The card width reached the select but not the segmented wrapper.
+  The sidebar still used standard caption spacing after a completed group.
+  Both shared APIs existed, but the callers did not adopt them.
+- **Invariant:** Pass the card width to `OnePlusSegmented(width:)` through
+  `MacTweaksSegmentedControl`. Use the shared section-start caption for System
+  only. Do not add transparent control frames or a custom sidebar spacer.
+- **Check:** Compare painted select and segment edges in Dock and Screenshots
+  in both appearances. Verify the System section gap and keyboard controls in
+  the next signed build. The existing package width regression covers 160pt
+  and 180pt tracks in both densities and enabled states.
+
 ## Mac Tweaks Modified Column Edges, 2026-09-30
 
 - **Symptom:** Modified headings sit 4pt away from their row value edges.
