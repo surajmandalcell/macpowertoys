@@ -140,7 +140,7 @@ public struct OnePlusTextEditor: NSViewRepresentable {
         scroll.drawsBackground = false
         scroll.wantsLayer = true
         scroll.layer?.cornerRadius = 6
-        scroll.layer?.borderWidth = 1
+        scroll.layer?.masksToBounds = true
         let editor = NSTextView()
         editor.isRichText = false
         editor.allowsUndo = true
@@ -158,6 +158,7 @@ public struct OnePlusTextEditor: NSViewRepresentable {
         editor.delegate = context.coordinator
         scroll.documentView = editor
         scroll.configureOnePlusScrollIndicators()
+        scroll.installBezel()
         return scroll
     }
     public func updateNSView(_ scroll: NSScrollView, context: Context) {
@@ -193,14 +194,36 @@ public struct OnePlusTextEditor: NSViewRepresentable {
 
 private final class OnePlusEditorScrollView: NSScrollView {
     var focused = false
+    private let bezel = OnePlusEditorBezel()
+    override func layout() {
+        super.layout()
+        bezel.frame = bounds
+    }
+    func installBezel() {
+        bezel.frame = bounds
+        bezel.autoresizingMask = [.width, .height]
+        bezel.setAccessibilityElement(false)
+        addSubview(bezel, positioned: .above, relativeTo: nil)
+    }
     func updateSurface() {
         guard let editor = documentView as? NSTextView else { return }
         editor.backgroundColor = NSColor(focused ? OnePlusColor.fieldFocus : OnePlusColor.track)
-        effectiveAppearance.performAsCurrentDrawingAppearance {
-            layer?.borderColor = NSColor(focused ? OnePlusColor.focus : OnePlusColor.line).cgColor
-        }
+        bezel.focused = focused
+        bezel.needsDisplay = true
     }
     override func viewDidChangeEffectiveAppearance() {
         super.viewDidChangeEffectiveAppearance(); updateSurface()
+    }
+}
+
+final class OnePlusEditorBezel: NSView {
+    var focused = false
+    override func hitTest(_ point: NSPoint) -> NSView? { nil }
+    override func viewDidChangeEffectiveAppearance() { super.viewDidChangeEffectiveAppearance(); needsDisplay = true }
+    override func draw(_ dirtyRect: NSRect) {
+        NSColor(focused ? OnePlusColor.focus : OnePlusColor.line).setStroke()
+        let path = NSBezierPath(roundedRect: bounds.insetBy(dx: 0.5, dy: 0.5), xRadius: 5.5, yRadius: 5.5)
+        path.lineWidth = 1
+        path.stroke()
     }
 }
