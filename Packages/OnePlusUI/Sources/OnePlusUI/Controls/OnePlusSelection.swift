@@ -68,6 +68,7 @@ public struct OnePlusSegmented<Value: Hashable>: View {
     }
 
     public var body: some View {
+        let padding = labelPadding
         HStack(spacing: 2) {
             ForEach(choices.indices, id: \.self) { index in
                 let choice = choices[index]
@@ -79,7 +80,7 @@ public struct OnePlusSegmented<Value: Hashable>: View {
                             Text(choice.1)
                         }
                     }.onePlusText(.control, selected: selection == choice.0)
-                        .lineLimit(1).fixedSize(horizontal: true, vertical: false).padding(.horizontal, labelPadding)
+                        .lineLimit(1).fixedSize(horizontal: true, vertical: false).padding(.horizontal, padding)
                         .frame(height: (controlHeight ?? density.controlHeight) - 4)
                         .background(selection == choice.0 ? OnePlusColor.selectedControl : .clear,
                                     in: RoundedRectangle(cornerRadius: 3))
