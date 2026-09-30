@@ -665,6 +665,7 @@ struct SystemMonitorWindowView: View {
                     scaleLabels: scaleLabels
                 )
                     .frame(height: chartHeight)
+                    .padding(.vertical, OnePlusMetrics.spacing[2])
                     .padding(.horizontal, 12)
                 HStack {
                     Text("−\(historyMinutes) min")

@@ -140,10 +140,12 @@ struct TaskManagerHistoryChart: View {
                 if let upperScaleLabel, let lowerScaleLabel {
                     let labels = scaleLabels.isEmpty
                         ? [upperScaleLabel, middleScaleLabel ?? "", lowerScaleLabel] : scaleLabels
-                    VStack(alignment: .trailing) {
+                    GeometryReader { proxy in
                         ForEach(labels.indices, id: \.self) { index in
                             Text(labels[index])
-                            if index < labels.count - 1 { Spacer() }
+                                .frame(width: proxy.size.width, alignment: .trailing)
+                                .position(x: proxy.size.width / 2,
+                                          y: proxy.size.height * gridFractions[index])
                         }
                     }
                     .font(.system(size: 8))
@@ -202,9 +204,13 @@ struct TaskManagerHistoryChart: View {
         .accessibilityLabel(values.last.map { "Latest value \($0.formatted())\(unit)" } ?? "No history")
     }
 
+    private var gridFractions: [CGFloat] {
+        let count = scaleLabels.isEmpty ? 3 : max(scaleLabels.count, 2)
+        return (0..<count).map { CGFloat($0) / CGFloat(count - 1) }
+    }
+
     private func drawGrid(context: inout GraphicsContext, size: CGSize) {
-        let fractions: [CGFloat] = scaleLabels.count == 4 ? [0, 1 / 3, 2 / 3, 1] : [0, 0.5, 1]
-        for fraction in fractions {
+        for fraction in gridFractions {
             var path = Path()
             let y = fraction * size.height
             path.move(to: CGPoint(x: 0, y: y))
