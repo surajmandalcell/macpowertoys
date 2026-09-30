@@ -391,11 +391,11 @@ private struct ColorSampleRow: View {
                 Text(row.timestamp).onePlusText(.caption).fixedSize()
             }.frame(maxWidth: .infinity, alignment: .leading)
             actions
-                .opacity(hovering || focused || NSApp.isFullKeyboardAccessEnabled ? 1 : 0)
+                .opacity(hovering || focused || OnePlusFocusPolicy.shared.showsFocus ? 1 : 0)
         }
         .padding(.horizontal, OnePlusMetrics.actionSpacing)
         .frame(height: ColorPickerLayout.historyRowHeight)
-        .background(hovering || focused ? OnePlusColor.panelHover : OnePlusColor.panel)
+        .background(hovering || (focused && OnePlusFocusPolicy.shared.showsFocus) ? OnePlusColor.panelHover : OnePlusColor.panel)
         .contentShape(Rectangle()).focusable().focused($focused)
         .onHover { hovering = $0 }
         .onKeyPress(.return) { copy(sample, defaultFormat); return .handled }
