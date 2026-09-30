@@ -1,5 +1,16 @@
 # UI Chrome Troubleshooting
 
+## Mac Tweaks Modified Column Edges, 2026-09-30
+
+- **Symptom:** Modified headings sit 4pt away from their row value edges.
+- **Cause:** The shared table header supplied 12pt insets while the owned
+  setting rows supplied 16pt. The header also left its gaps implicit.
+- **Invariant:** Header and rows use 16pt total insets, 8pt gaps, 170pt value
+  columns, and a 28pt reset lane. Derive any extra header padding from the
+  difference between card padding and the shared table cell inset.
+- **Check:** Compare Setting, Current, and Original text-frame edges in both
+  appearances. Keep the header fixed while only the setting rows scroll.
+
 ## Applet Settings Embedding, 2026-09-29
 
 - **Symptom:** Embedded settings collapse or have extra gutters when the
