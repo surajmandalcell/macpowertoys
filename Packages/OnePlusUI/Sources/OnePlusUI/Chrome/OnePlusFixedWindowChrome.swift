@@ -106,7 +106,9 @@ final class OnePlusChromeView: NSView {
         guard let window else { return }
         observedWindow = window
         let center = NotificationCenter.default
-        for name in [NSWindow.didBecomeKeyNotification, NSWindow.didResizeNotification] {
+        for name in [NSWindow.didBecomeKeyNotification, NSWindow.didResignKeyNotification,
+                     NSWindow.didResizeNotification, NSWindow.didEnterFullScreenNotification,
+                     NSWindow.didExitFullScreenNotification] {
             center.addObserver(self, selector: #selector(nativeLayoutChanged), name: name, object: window)
         }
         center.addObserver(self, selector: #selector(windowClosed), name: NSWindow.willCloseNotification, object: window)
@@ -119,7 +121,7 @@ final class OnePlusChromeView: NSView {
             // Native titlebar layout can reset buttons without resizing the window.
             button.postsFrameChangedNotifications = true
             center.addObserver(self, selector: #selector(nativeLayoutChanged), name: NSView.frameDidChangeNotification, object: button)
-            if let parent = button.superview {
+            for parent in [button.superview, button.superview?.superview].compactMap({ $0 }) {
                 parent.postsFrameChangedNotifications = true
                 center.addObserver(self, selector: #selector(nativeLayoutChanged), name: NSView.frameDidChangeNotification, object: parent)
             }
@@ -216,12 +218,21 @@ final class OnePlusChromeView: NSView {
             guard let button = window.standardWindowButton(type), let parent = button.superview else { continue }
             if button.isHidden { button.isHidden = false }
             if type == .zoomButton, button.isEnabled { button.isEnabled = false }
-            let parentRect = parent.convert(parent.bounds, to: nil)
-            let target = window.frame.height - centerline
-            let localY = parent.isFlipped ? parentRect.maxY - target : target - parentRect.minY
-            let y = localY - button.frame.height / 2
+            // Keep the widgets centered inside AppKit's shared hover container.
+            let y = parent.bounds.midY - button.frame.height / 2
             if abs(button.frame.minY - y) > 0.01 {
                 button.setFrameOrigin(NSPoint(x: button.frame.minX, y: y))
+            }
+            let delta = window.frame.height - centerline - parent.convert(parent.bounds, to: nil).midY
+            let container = parent.superview ?? parent
+            if abs(delta) > 0.01, let ancestor = container.superview {
+                container.setFrameOrigin(NSPoint(x: container.frame.minX,
+                                                 y: container.frame.minY + (ancestor.isFlipped ? -delta : delta)))
+            }
+            var trackingView: NSView? = parent
+            while let view = trackingView {
+                view.updateTrackingAreas()
+                trackingView = view.superview
             }
             if type == .zoomButton {
                 let trailing = button.convert(button.bounds, to: nil).maxX
