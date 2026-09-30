@@ -2546,11 +2546,7 @@ private struct NetToysTrayView: View {
     }
 
     private func open(_ page: NetToysPage) {
-        ToolActionRouter.shared.open(toolID: "nettoys")
-        NSApp.activate(ignoringOtherApps: true)
-        DispatchQueue.main.async {
-            NotificationCenter.default.post(name: .netToysOpenPage, object: page)
-        }
+        ToolActionRouter.shared.open(toolID: "nettoys", page: page.pageID)
     }
 
     private func save() {
