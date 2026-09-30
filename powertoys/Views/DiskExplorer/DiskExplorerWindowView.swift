@@ -196,11 +196,18 @@ struct DiskExplorerWindowView: View {
                                   .init(.largestFiles, "Largest files", count: model.result?.largestFiles.count ?? 0),
                                   .init(.results, "Results")], selection: $resultTab) { tabTools }
                 .accessibilityIdentifier("diskExplorer.resultTabs")
+        } footer: {
+            scanNotices
         } content: {
             if let current = model.current {
                 if resultTab == .visualization { visualization(current) }
                 else { results(current) }
             } else { emptyState.frame(maxHeight: .infinity) }
+        }
+    }
+
+    private var scanNotices: some View {
+        VStack(spacing: OnePlusMetrics.cardGap) {
             if let error = model.errorMessage {
                 OnePlusBanner(error, tone: .error) { Button("Try again") { rescan() } }
             } else if model.isRemoving {
