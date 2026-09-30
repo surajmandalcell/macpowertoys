@@ -373,7 +373,7 @@ struct TaskManagerSystemReportView: View {
                             .frame(height: 24)
                             .contentShape(Rectangle())
                         }
-                        .buttonStyle(UtilityInteractionButtonStyle(cornerRadius: 4)).focusEffectDisabled()
+                        .buttonStyle(UtilityInteractionButtonStyle(cornerRadius: 4))
                         if !collapsedGroups.contains(group) {
                             ForEach(groupCategories) { category in
                                 Button { selectedID = category.id; search = "" } label: {
@@ -390,7 +390,7 @@ struct TaskManagerSystemReportView: View {
                                     .background(selectedID == category.id ? OnePlusColor.selection : .clear,
                                                 in: RoundedRectangle(cornerRadius: 4))
                                 }
-                                .buttonStyle(UtilityInteractionButtonStyle(cornerRadius: 4)).focusEffectDisabled()
+                                .buttonStyle(UtilityInteractionButtonStyle(cornerRadius: 4))
                                 .accessibilityAddTraits(selectedID == category.id ? .isSelected : [])
                             }
                         }
@@ -495,7 +495,6 @@ struct TaskManagerSystemReportView: View {
                                 .contentShape(Rectangle())
                             }
                             .buttonStyle(UtilityInteractionButtonStyle(cornerRadius: 0))
-                            .focusEffectDisabled()
                             Rectangle().fill(TaskManagerTheme.lineSoft).frame(height: 1)
                         }
                     }
