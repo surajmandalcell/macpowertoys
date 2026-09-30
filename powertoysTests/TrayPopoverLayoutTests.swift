@@ -76,6 +76,24 @@ final class TrayPopoverLayoutTests: XCTestCase {
         XCTAssertEqual(visible.last?.createdAt, Date(timeIntervalSince1970: 102))
     }
 
+    func testPreparedCleanupKeepsEveryRowAndCategoryTotal() {
+        let candidates = [SystemCareCategoryID.logs, .caches, .logs].enumerated().map { index, category in
+            CleanupCandidate(url: URL(fileURLWithPath: "/scan/item-\(index)"),
+                             allowedRoot: URL(fileURLWithPath: "/scan"),
+                             category: category, size: Int64(index + 1) * 1_024)
+        }
+        let snapshot = SystemCareTraySnapshot.prepare(candidates)
+
+        XCTAssertTrue(snapshot.isPrepared)
+        XCTAssertEqual(snapshot.totalSize, 6_144)
+        XCTAssertEqual(snapshot.totals.map(\.category), [.caches, .logs])
+        XCTAssertEqual(snapshot.totals.map(\.size), [2_048, 4_096])
+        XCTAssertEqual(snapshot.groups[.logs]?.map(\.id), [candidates[0].id, candidates[2].id])
+        XCTAssertEqual(snapshot.groups[.caches]?.first?.size, SystemCarePresentationRows.cleanup([candidates[1]]).first?.size)
+        XCTAssertTrue(SystemCareTraySnapshot.prepare([]).groups.isEmpty)
+        XCTAssertEqual(SystemCareTraySnapshot.prepare([]).totalSize, 0)
+    }
+
     func testNetToysActivityListsStayBoundedAndNewestFirst() {
         let anchors = (0..<7).map { index in
             SSHAnchorConfiguration(
@@ -166,7 +184,7 @@ final class TrayPopoverLayoutTests: XCTestCase {
         XCTAssertEqual(TrayPopoverLayout.netToysDisclosureVerticalPadding, 6)
         XCTAssertTrue(tray.contains(".padding(.horizontal, TrayPopoverLayout.netToysDisclosureHorizontalPadding)"))
         XCTAssertTrue(tray.contains(".padding(.vertical, TrayPopoverLayout.netToysDisclosureVerticalPadding)"))
-        XCTAssertTrue(tray.contains(".buttonStyle(UtilityInteractionButtonStyle(cornerRadius: 6))"))
+        XCTAssertTrue(tray.contains(".buttonStyle(OnePlusInteractionStyle(radius: OnePlusMetrics.controlRadius))"))
     }
 
     func testCorrectedSharedSurfacesHaveOneTrailingAndHoverGeometry() throws {
