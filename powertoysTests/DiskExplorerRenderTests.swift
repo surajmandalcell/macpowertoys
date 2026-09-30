@@ -1,9 +1,64 @@
 import AppKit
+import OnePlusUI
 import SwiftUI
 import XCTest
 @testable import powertoys
 
 final class DiskExplorerRenderTests: XCTestCase {
+    @MainActor func testLiveRingMembershipChangesKeepTheRootBandFilled() throws {
+        func root(_ sizes: [Int64]) -> DiskEntry {
+            let children = sizes.enumerated().map { index, bytes in
+                DiskEntry(url: URL(fileURLWithPath: "/Diskman/folder-\(index)"), kind: .directory,
+                          allocatedBytes: bytes, apparentBytes: bytes, fileCount: 1, directoryCount: 1,
+                          modifiedAt: .distantPast, device: 1, inode: UInt64(index + 2))
+            }
+            return DiskEntry(url: URL(fileURLWithPath: "/Diskman"), kind: .directory,
+                             allocatedBytes: sizes.reduce(0, +), apparentBytes: sizes.reduce(0, +),
+                             fileCount: sizes.count, directoryCount: sizes.count + 1,
+                             modifiedAt: .distantPast, device: 1, inode: 1, children: children)
+        }
+        let size = CGFloat(400)
+        let radius = size / 2 - 10
+        let sampleRadius = radius * (0.30 + 0.68 / 6) - 1
+        let before = root([600, 500, 400, 300, 200, 100])
+        let after = root([600, 500, 400, 300, 200, 2_000])
+        for scheme in [ColorScheme.dark, .light] {
+            let cache = DiskChartLayoutCache()
+            func view(_ root: DiskEntry, revision: Date) -> some View {
+                let key = DiskChartCacheKey(revision: revision, tab: .sunburst,
+                    directoryID: root.id, measure: .space, apparent: false, scanComplete: false,
+                    width: Int(size), height: Int(size))
+                cache.store(DiskSunburstView.segments(for: root, apparent: false, measure: .space,
+                                                     radius: radius, scanComplete: false), for: key)
+                return DiskSunburstView(directory: root, apparent: false, measure: .space,
+                    scanComplete: false, revision: revision, cache: cache, select: { _ in })
+                    .frame(width: size, height: size).background(Color(nsColor: .magenta))
+                    .environment(\.colorScheme, scheme)
+                    .animation(.linear(duration: 1), value: revision)
+            }
+            let host = NSHostingView(rootView: view(before, revision: .distantPast))
+            host.appearance = NSAppearance(named: scheme == .dark ? .darkAqua : .aqua)
+            host.frame = NSRect(x: 0, y: 0, width: size, height: size)
+            host.layoutSubtreeIfNeeded()
+            RunLoop.current.run(until: Date().addingTimeInterval(0.2))
+            host.rootView = view(after, revision: .distantPast.addingTimeInterval(1))
+            for _ in 0..<5 {
+                RunLoop.current.run(until: Date().addingTimeInterval(0.02))
+                host.layoutSubtreeIfNeeded()
+                let bitmap = try XCTUnwrap(host.bitmapImageRepForCachingDisplay(in: host.bounds))
+                host.cacheDisplay(in: host.bounds, to: bitmap)
+                for degrees in stride(from: 1, to: 360, by: 2) {
+                    let angle = Double(degrees) * .pi / 180
+                    let x = (size / 2 + cos(angle) * sampleRadius) * CGFloat(bitmap.pixelsWide) / size
+                    let y = (size / 2 + sin(angle) * sampleRadius) * CGFloat(bitmap.pixelsHigh) / size
+                    let color = try XCTUnwrap(bitmap.colorAt(x: Int(x), y: Int(y))?.usingColorSpace(.deviceRGB))
+                    XCTAssertGreaterThan(color.greenComponent, 0.05,
+                                         "Missing root sector at \(degrees) degrees in \(scheme)")
+                }
+            }
+        }
+    }
+
     @MainActor func testModifyLayoutInBothAppearances() throws {
         let card = ManagedDisk(
             id: "disk10", name: "SDXC Reader", size: 15_634_268_160,
