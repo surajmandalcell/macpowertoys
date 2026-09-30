@@ -105,24 +105,20 @@ public extension View {
 
 public struct OnePlusSecureField: View {
     let title: String
-    private var focusOnOpen = false
     @Binding var text: String
     @FocusState private var focused: Bool
     public init(_ title: String, text: Binding<String>) { self.title = title; _text = text }
     public static func focusedOnOpen(_ title: String, text: Binding<String>) -> Self {
-        var field = Self(title, text: text)
-        field.focusOnOpen = true
-        return field
+        Self(title, text: text)
     }
     public var body: some View {
         SecureField(title, text: $text).textFieldStyle(.plain).onePlusText(.control)
             .focused($focused).padding(.horizontal, 8).frame(height: OnePlusMetrics.controlHeight)
-            .background(focused ? OnePlusColor.fieldFocus : OnePlusColor.field,
+            .background(focused && OnePlusFocusPolicy.shared.showsFocus ? OnePlusColor.fieldFocus : OnePlusColor.field,
                         in: RoundedRectangle(cornerRadius: OnePlusMetrics.controlRadius))
             .overlay { RoundedRectangle(cornerRadius: OnePlusMetrics.controlRadius)
-                .strokeBorder(focused ? OnePlusColor.focus : OnePlusColor.line, lineWidth: 1) }
+                .strokeBorder(focused && OnePlusFocusPolicy.shared.showsFocus ? OnePlusColor.focus : OnePlusColor.line, lineWidth: 1) }
             .accessibilityLabel(title)
-            .onAppear { if focusOnOpen { focused = true } }
     }
 }
 

@@ -101,6 +101,7 @@ public struct OnePlusSheet<Body: View, Footer: View>: View {
             }
         }.frame(width: width).background(OnePlusColor.window).onePlusDensity(.regular)
             .onePlusNeutralControls()
+            .onePlusFocusPolicy()
     }
 }
 

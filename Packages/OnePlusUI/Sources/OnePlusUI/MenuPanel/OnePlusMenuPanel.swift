@@ -110,7 +110,7 @@ struct OnePlusMenuPanelShell<Tabs: View, Actions: View, Body: View>: View {
             .onePlusDensity(.compact)
             .environment(\.onePlusCardPadding, OnePlusMetrics.cardPadding)
             .onePlusNeutralControls()
-            .focusEffectDisabled()
+            .onePlusFocusPolicy()
             .onPreferenceChange(OnePlusMenuRegionHeightKey.self) { if regionHeights != $0 { regionHeights = $0 } }
     }
 

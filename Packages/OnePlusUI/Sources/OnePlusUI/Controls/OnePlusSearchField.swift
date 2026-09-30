@@ -143,9 +143,9 @@ final class OnePlusSearchView: NSView, NSSearchFieldDelegate {
     override func mouseExited(with event: NSEvent) { hovered = false; needsDisplay = true }
     override func draw(_ dirtyRect: NSRect) {
         let path = NSBezierPath(roundedRect: bounds.insetBy(dx: 0.5, dy: 0.5), xRadius: 6, yRadius: 6)
-        NSColor(focused ? OnePlusColor.fieldFocus : hovered && field.isEnabled ? OnePlusColor.raised : OnePlusColor.field).setFill()
+        NSColor(focused && OnePlusFocusPolicy.shared.showsFocus ? OnePlusColor.fieldFocus : hovered && field.isEnabled ? OnePlusColor.raised : OnePlusColor.field).setFill()
         path.fill()
-        NSColor(focused ? OnePlusColor.focus : OnePlusColor.line).setStroke()
+        NSColor(focused && OnePlusFocusPolicy.shared.showsFocus ? OnePlusColor.focus : OnePlusColor.line).setStroke()
         path.lineWidth = 1
         path.stroke()
     }

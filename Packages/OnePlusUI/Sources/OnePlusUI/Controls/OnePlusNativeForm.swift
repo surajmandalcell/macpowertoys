@@ -83,7 +83,7 @@ open class OnePlusNativeSwitchButton: NSButton {
         (title as NSString).draw(in: NSRect(x: 0, y: bounds.midY - titleHeight / 2,
                                          width: max(0, track.minX - OnePlusMetrics.actionSpacing),
                                          height: titleHeight), withAttributes: attributes)
-        if window?.firstResponder === self {
+        if window?.firstResponder === self, OnePlusFocusPolicy.shared.showsFocus {
             NSColor(OnePlusColor.focus).setStroke()
             NSBezierPath(roundedRect: bounds.insetBy(dx: 1, dy: 1),
                          xRadius: OnePlusMetrics.controlRadius, yRadius: OnePlusMetrics.controlRadius).stroke()
@@ -115,7 +115,7 @@ open class OnePlusNativeStepperField: NSTextField {
     open override func draw(_ dirtyRect: NSRect) {
         super.draw(dirtyRect)
         let focused = currentEditor() != nil || window?.firstResponder === self
-        NSColor(focused ? OnePlusColor.focus : OnePlusColor.line).setStroke()
+        NSColor(focused && OnePlusFocusPolicy.shared.showsFocus ? OnePlusColor.focus : OnePlusColor.line).setStroke()
         NSBezierPath(roundedRect: bounds.insetBy(dx: 0.5, dy: 0.5),
                      xRadius: OnePlusMetrics.controlRadius, yRadius: OnePlusMetrics.controlRadius).stroke()
     }

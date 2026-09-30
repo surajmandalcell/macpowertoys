@@ -266,6 +266,7 @@ private struct OnePlusFixedCanvasModifier: ViewModifier {
             .environment(\.onePlusZoomTrailingX, zoomTrailingX)
             .onePlusDensity(canvas.density)
             .onePlusLiveUpdates()
+            .onePlusFocusPolicy()
         }
     }
 }
