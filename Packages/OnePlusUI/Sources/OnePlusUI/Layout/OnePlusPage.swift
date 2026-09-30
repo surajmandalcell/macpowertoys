@@ -87,7 +87,10 @@ public struct OnePlusTabStrip<Value: Hashable, Tools: View>: View {
             tools
         }
         .padding(.horizontal, layout == .applet ? OnePlusMetrics.appletGutter : density.gutter).frame(height: 36)
-        .overlay(alignment: .bottom) { OnePlusColor.lineSoft.frame(height: 1).offset(y: 1) }
+        .background(alignment: .bottom) {
+            OnePlusColor.lineSoft.frame(height: 1)
+                .padding(.horizontal, layout == .applet ? OnePlusMetrics.appletGutter : density.gutter)
+        }
         .onMoveCommand { direction in
             if let next = OnePlusSegmented<Value>.nextSelection(in: tabs.map(\.id), current: selection,
                                                                direction: direction == .left || direction == .up ? -1 : 1) { selection = next }
