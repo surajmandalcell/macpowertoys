@@ -2,33 +2,33 @@ import Foundation
 
 /// Watches only the stored keys used by the visible tool's preferences.
 @MainActor
-final class ToolSettingsPreferenceObserver: NSObject {
+final class ToolSettingsPreferenceObserver {
     private let defaults: UserDefaults
     private var keys: Set<String>
     private var snapshot: NSDictionary
     private let changed: () -> Void
+    private var observer: NSObjectProtocol?
 
     init(keys: Set<String>, defaults: UserDefaults = .standard, changed: @escaping () -> Void) {
         self.defaults = defaults
         self.keys = keys
         self.changed = changed
         snapshot = Self.values(keys: keys, defaults: defaults)
-        super.init()
-        for key in keys { defaults.addObserver(self, forKeyPath: key, options: [], context: nil) }
+        observer = NotificationCenter.default.addObserver(
+            forName: UserDefaults.didChangeNotification, object: defaults, queue: .main
+        ) { [weak self] _ in
+            MainActor.assumeIsolated { self?.deliverChange() }
+        }
     }
 
     deinit {
-        for key in keys { defaults.removeObserver(self, forKeyPath: key) }
+        if let observer { NotificationCenter.default.removeObserver(observer) }
     }
 
     func stop() {
-        for key in keys { defaults.removeObserver(self, forKeyPath: key) }
+        if let observer { NotificationCenter.default.removeObserver(observer) }
+        observer = nil
         keys.removeAll()
-    }
-
-    nonisolated override func observeValue(forKeyPath keyPath: String?, of object: Any?,
-                                          change: [NSKeyValueChangeKey: Any]?, context: UnsafeMutableRawPointer?) {
-        DispatchQueue.main.async { [weak self] in self?.deliverChange() }
     }
 
     private func deliverChange() {

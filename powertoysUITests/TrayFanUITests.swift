@@ -118,18 +118,17 @@ final class TrayFanUITests: XCTestCase {
         assertTaskManagerSidebarPaintsThroughBottom(overviewScreenshot)
 
         XCTAssertEqual(taskManager.frame.width, 1_080, accuracy: 2)
-        let nativeTitlebarHeight: CGFloat = 32
-        XCTAssertEqual(taskManager.frame.height, 660 + nativeTitlebarHeight, accuracy: 2)
+        XCTAssertEqual(taskManager.frame.height, 660, accuracy: 2)
 
         let sidebarTitle = app.staticTexts["task-manager.sidebar.title"]
         XCTAssertTrue(sidebarTitle.waitForExistence(timeout: 5))
-        XCTAssertEqual(sidebarTitle.frame.midY, taskManager.frame.minY + 20, accuracy: 2)
-        XCTAssertLessThanOrEqual(sidebarTitle.frame.maxX, taskManager.frame.minX + 220)
+        XCTAssertEqual(sidebarTitle.frame.midY, taskManager.frame.minY + 27, accuracy: 2)
+        XCTAssertLessThanOrEqual(sidebarTitle.frame.maxX, taskManager.frame.minX + 200)
 
         let overview = app.buttons["task-manager.sidebar.overview"]
         XCTAssertTrue(overview.waitForExistence(timeout: 5))
         XCTAssertEqual(overview.frame.minX, taskManager.frame.minX + 10, accuracy: 2)
-        XCTAssertEqual(overview.frame.maxX, taskManager.frame.minX + 210, accuracy: 2)
+        XCTAssertEqual(overview.frame.maxX, taskManager.frame.minX + 190, accuracy: 2)
 
         app.buttons["task-manager.sidebar.cpu"].click()
         XCTAssertTrue(app.staticTexts["Core activity"].waitForExistence(timeout: 5))
@@ -144,7 +143,7 @@ final class TrayFanUITests: XCTestCase {
         XCTAssertTrue(configure.waitForExistence(timeout: 5))
         XCTAssertTrue(connect.waitForExistence(timeout: 5))
         XCTAssertEqual(configure.frame.height, connect.frame.height, accuracy: 1)
-        XCTAssertGreaterThanOrEqual(connect.frame.height, 34)
+        XCTAssertEqual(connect.frame.height, 24, accuracy: 1)
         XCTAssertEqual(connect.frame.minX - configure.frame.maxX, 8, accuracy: 2)
         XCTAssertGreaterThanOrEqual(taskManager.frame.maxX - connect.frame.maxX, 28)
         XCTAssertLessThanOrEqual(taskManager.frame.maxX - connect.frame.maxX, 40)
@@ -155,7 +154,7 @@ final class TrayFanUITests: XCTestCase {
         add(remoteCapture)
 
         app.buttons["task-manager.sidebar.processes"].click()
-        let search = app.textFields.matching(NSPredicate(
+        let search = app.searchFields.matching(NSPredicate(
             format: "identifier == %@ OR label == %@",
             "task-manager.process.search",
             "Search name, path, or PID"
@@ -213,8 +212,8 @@ final class TrayFanUITests: XCTestCase {
         let scaleX = CGFloat(bitmap.pixelsWide) / screenshot.image.size.width
         let scaleY = CGFloat(bitmap.pixelsHigh) / screenshot.image.size.height
         let innerX = Int(40 * scaleX)
-        let edgeX = Int(218 * scaleX)
-        let bodyX = Int(224 * scaleX)
+        let edgeX = Int(198 * scaleX)
+        let bodyX = Int(204 * scaleX)
         let lowerY = Int(40 * scaleY)
         let middleY = bitmap.pixelsHigh / 2
         guard let inner = bitmap.colorAt(x: innerX, y: middleY)?.usingColorSpace(.sRGB),
