@@ -18,6 +18,12 @@ final class ColorPickerUITests: XCTestCase {
         let card = app.descendants(matching: .any)["tool.color-picker.card"]
         XCTAssertTrue(card.waitForExistence(timeout: 5))
         card.click()
+        let embeddedShortcut = app.staticTexts["Global shortcut"]
+        let embeddedColors = app.staticTexts["Saved colors"]
+        XCTAssertTrue(embeddedShortcut.waitForExistence(timeout: 2))
+        XCTAssertTrue(embeddedColors.waitForExistence(timeout: 2))
+        XCTAssertEqual(embeddedShortcut.frame.minY, embeddedColors.frame.minY, accuracy: 0.5)
+        XCTAssertGreaterThan(embeddedColors.frame.minX, embeddedShortcut.frame.maxX)
         let launch = app.buttons["tool.color-picker.launch"]
         XCTAssertTrue(launch.waitForExistence(timeout: 2))
         launch.click()
@@ -38,16 +44,21 @@ final class ColorPickerUITests: XCTestCase {
         XCTAssertLessThanOrEqual(window.frame.maxX - settings.frame.maxX, 10)
         XCTAssertLessThanOrEqual(window.frame.maxY - settings.frame.maxY, 10)
         settings.click()
-        XCTAssertTrue(window.staticTexts["GLOBAL SHORTCUT"].waitForExistence(timeout: 2))
+        let appletShortcut = window.staticTexts["Global shortcut"]
+        let appletColors = window.staticTexts["Saved colors"]
+        XCTAssertTrue(appletShortcut.waitForExistence(timeout: 2))
+        XCTAssertTrue(appletColors.exists)
+        XCTAssertGreaterThan(appletColors.frame.minY, appletShortcut.frame.maxY)
+        XCTAssertEqual(appletShortcut.frame.minX, appletColors.frame.minX, accuracy: 0.5)
         XCTAssertTrue(window.staticTexts["Keyboard shortcut"].exists)
-        XCTAssertTrue(window.buttons["Clear All"].exists)
+        XCTAssertEqual(window.buttons["color-picker.clear-all"].label, "Clear all")
         XCTAssertFalse(window.buttons["History"].exists)
         XCTAssertFalse(window.buttons["Projects"].exists)
 
         window.descendants(matching: .any)["color-picker.settings"].click()
         XCTAssertTrue(window.buttons["Projects"].waitForExistence(timeout: 2))
         window.buttons["Projects"].click()
-        XCTAssertTrue(window.staticTexts["COLOR PROJECTS"].waitForExistence(timeout: 2))
+        XCTAssertTrue(window.staticTexts["Color projects"].waitForExistence(timeout: 2))
         XCTAssertTrue(window.buttons["New Project"].exists)
     }
 }
