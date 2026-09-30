@@ -593,7 +593,6 @@ struct NetToysAnchorView: View {
                 caption: "Detect this device, enable monitoring, and repair its IP when the connection changes."
             ) {
                 HStack {
-                    Spacer(minLength: 0)
                     Button {
                         model.enableAutomaticAnchor()
                     } label: {
@@ -611,6 +610,7 @@ struct NetToysAnchorView: View {
                     .buttonStyle(OnePlusButtonStyle(.primary))
                     .fixedSize(horizontal: true, vertical: false)
                     .disabled(model.selectedEntry == nil || model.isInspecting)
+                    Spacer(minLength: 0)
                 }
             }
             anchorSettingRow("Identity") {
@@ -648,7 +648,7 @@ struct NetToysAnchorView: View {
         separator: Bool = true,
         @ViewBuilder content: () -> Content
     ) -> some View {
-        HStack(spacing: OnePlusMetrics.navIconGap) {
+        HStack(alignment: .firstTextBaseline, spacing: OnePlusMetrics.navIconGap) {
             Text(title).onePlusText(.row)
                 .frame(width: OnePlusMetrics.controlColumn / 2, alignment: .leading)
             VStack(alignment: .leading, spacing: OnePlusMetrics.spacing[1]) {
