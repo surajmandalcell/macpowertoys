@@ -5,6 +5,28 @@ import XCTest
 
 @MainActor
 final class OnePlusControlGeometryTests: XCTestCase {
+    func testEditorBezelPaintsAboveTheNativeClipInBothAppearances() throws {
+        for appearance in [NSAppearance.Name.darkAqua, .aqua] {
+            let host = NSHostingView(rootView: OnePlusTextEditor("Rules", text: .constant("*.tmp")))
+            let window = NSWindow(contentRect: CGRect(x: -10000, y: -10000, width: 300, height: 120),
+                                  styleMask: .borderless, backing: .buffered, defer: false)
+            window.appearance = NSAppearance(named: appearance)
+            window.contentView = host
+            host.layoutSubtreeIfNeeded()
+            func find(_ view: NSView) -> OnePlusEditorBezel? {
+                if let bezel = view as? OnePlusEditorBezel { return bezel }
+                return view.subviews.lazy.compactMap(find).first
+            }
+            let bezel = try XCTUnwrap(find(host))
+            XCTAssertTrue(bezel.superview?.subviews.last === bezel)
+            let bitmap = try XCTUnwrap(host.bitmapImageRepForCachingDisplay(in: host.bounds))
+            host.cacheDisplay(in: host.bounds, to: bitmap)
+            let edge = try XCTUnwrap(bitmap.colorAt(x: 0, y: bitmap.pixelsHigh / 2))
+            let fill = try XCTUnwrap(bitmap.colorAt(x: bitmap.pixelsWide / 2, y: bitmap.pixelsHigh / 2))
+            XCTAssertGreaterThan(abs(edge.redComponent - fill.redComponent), 0.02)
+            XCTAssertNil(bezel.hitTest(.zero))
+        }
+    }
     func testDeclaredSegmentWidthPaintsTheCompleteTrackInEveryDensityAndState() throws {
         for density in OnePlusDensity.allCases {
             for width in [CGFloat(160), 180] {
