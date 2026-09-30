@@ -125,11 +125,14 @@ public struct OnePlusNavRow: View {
 }
 
 public struct OnePlusNavCaption: View {
+    public enum Spacing { case standard, sectionStart }
     let title: String
-    public init(_ title: String) { self.title = title }
+    let spacing: Spacing
+    public init(_ title: String, spacing: Spacing = .standard) { self.title = title; self.spacing = spacing }
     public var body: some View {
         Text(title.uppercased()).onePlusText(.captionUpper)
             .frame(height: 20).padding(.horizontal, 10)
+            .padding(.top, spacing == .sectionStart ? 16 : 0)
             .frame(maxWidth: .infinity, alignment: .leading).accessibilityAddTraits(.isHeader)
     }
 }
