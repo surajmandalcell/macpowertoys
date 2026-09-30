@@ -1,5 +1,10 @@
 # Mac Tweaks request list
 
+## Round 7 screenshot corrections, 2026-09-30
+
+- [x] Give Modified headings and rows the same 16pt inset, 8pt gaps, 170pt value columns, and 28pt reset lane. Derive the extra header inset from the shared table cell inset.
+- [~] Verify the signed build. Foundation owns the dark traffic-light regression, fixed-body bottom clearance, the declared-width segmented variant, and the SYSTEM section-start caption variant. Full selected-value help belongs in the shared select. See `tmp/redesign/logs/17r7-tweaks.md`.
+
 ## Round 6 screenshot corrections, 2026-09-30
 
 - [x] Keep the Input Test or Live label visible beside a flexible shared meter in a 180pt control column.

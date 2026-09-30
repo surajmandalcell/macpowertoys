@@ -460,6 +460,14 @@
 
 ## System Care And Mole
 
+- **Symptom:** Recent activity rows lack rules while adjacent setting cards
+  retain them.
+- **Cause:** The card disabled the shared separator on every record.
+- **Invariant:** Keep separators inside the first two 44pt activity rows.
+  Omit the trailing rule after the final Mole row.
+- **Check:** Inspect Overview in both appearances. Rules sit at the row
+  boundaries without increasing the card height.
+
 - **Symptom:** A cleanup can delete outside its reviewed scope, or Mole needs an
   embedded password prompt.
 - **Cause:** Cleanup paths were not guarded, or an interactive CLI operation was
