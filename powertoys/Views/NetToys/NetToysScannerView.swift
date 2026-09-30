@@ -114,6 +114,7 @@ final class NetToysScannerViewModel {
     var completed = 0
     var total = 0
     var lastDuration: TimeInterval?
+    var lastScanTarget: String?
     var errorMessage: String?
     var isScanning = false
     var isImporting = false
@@ -165,6 +166,7 @@ final class NetToysScannerViewModel {
             ?? restoredTarget.map(Self.isSingleCIDR) ?? true
         results = latestRun?.results ?? []
         lastDuration = latestRun?.duration
+        lastScanTarget = latestRun?.target
         completed = results.count
         total = results.count
         filter = defaults.string(forKey: Self.filterKey).flatMap(NetToysResultFilter.init(rawValue:)) ?? .all
@@ -400,6 +402,8 @@ final class NetToysScannerViewModel {
                         replaceResults([])
                         selection.removeAll()
                     }
+                    lastDuration = nil
+                    lastScanTarget = nil
                     total = targets.count
                     let values = await scanner.scan(
                         targets: targets,
@@ -431,6 +435,7 @@ final class NetToysScannerViewModel {
                     values.forEach(applyScanUpdate)
                     let duration = Date().timeIntervalSince(started)
                     lastDuration = duration
+                    lastScanTarget = sourceTarget
                     isScanning = false
                     scanIdentifier = nil
                     scanTask = nil
@@ -576,6 +581,7 @@ final class NetToysScannerViewModel {
                 }.value
                 self?.replaceResults(results)
                 self?.lastDuration = nil
+                self?.lastScanTarget = nil
                 self?.errorMessage = nil
             } catch {
                 self?.errorMessage = error.localizedDescription
@@ -1152,6 +1158,10 @@ struct NetToysScannerView: View {
             }
             Spacer()
             if let duration = model.lastDuration {
+                if let target = model.lastScanTarget {
+                    Text("Last scan: \(target)").lineLimit(1).truncationMode(.middle)
+                    Text("·")
+                }
                 Text("Completed in \(duration.formatted(.number.precision(.fractionLength(1)))) s")
             }
         }
