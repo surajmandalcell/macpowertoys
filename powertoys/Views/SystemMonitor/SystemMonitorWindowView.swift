@@ -285,7 +285,7 @@ struct SystemMonitorWindowView: View {
                         Button("Save Text Report…") { reportAction = .exportText }
                         Button("Save JSON Report…") { reportAction = .exportJSON }
                     } label: {
-                        OnePlusControlLabel(variant: .icon, size: .small) {
+                        OnePlusControlLabel(variant: .borderedIcon, size: .small) {
                             Image(systemName: "square.and.arrow.down")
                         }
                     }
@@ -701,9 +701,10 @@ struct SystemMonitorWindowView: View {
             detailHero(
                 label: "CPU usage", value: service.snapshot?.cpuUsage.map(Self.decimal) ?? "—", unit: "%",
                 detail: "Across \(ProcessInfo.processInfo.activeProcessorCount) logical cores",
-                values: recentHistory(.cpu).compactMap(\.cpuUsage), range: 0...100,
+                values: recentHistory(.cpu).compactMap(\.cpuUsage),
+                secondary: recentHistory(.cpu).compactMap { $0.cpuDetails?.system }, range: 0...100,
                 upperScaleLabel: "100%", middleScaleLabel: "50%", lowerScaleLabel: "0%",
-                seriesLabels: ["Total usage"],
+                seriesLabels: ["Total usage", "System"],
                 stats: [
                     ("User", service.snapshot?.cpuDetails.map { "\(Int($0.user.rounded()))%" } ?? "—"),
                     ("System", service.snapshot?.cpuDetails.map { "\(Int($0.system.rounded()))%" } ?? "—"),
@@ -1063,7 +1064,7 @@ struct SystemMonitorWindowView: View {
             Image(systemName: symbol)
                 .font(.system(size: 11))
         }
-        .buttonStyle(OnePlusButtonStyle(.icon, size: .small))
+        .buttonStyle(OnePlusButtonStyle(.borderedIcon, size: .small))
         .help(label)
         .accessibilityLabel(label)
     }
