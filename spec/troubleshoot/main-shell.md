@@ -1,5 +1,25 @@
 # Main Shell Troubleshooting
 
+## Diagnostic Panel URLs Consumed By Native Scenes, 2026-09-30
+
+- **Symptom:** In signed `db471735`, background main and Task Manager panel
+  URLs add no window after three seconds. Portman adds a 382 x 319pt window.
+  The app log records Portman but neither failed panel request.
+- **Cause:** SwiftUI scene matching uses the complete URL. The tool name in
+  a diagnostic URL can select a native scene. Its URL callback rejected
+  manually routed URLs, so the request never reached the diagnostic opener.
+- **Invariant:** Forward valid diagnostics from every native scene callback.
+  Panel presentation does not require an OpenWindowAction. The background
+  fallback hosts the production panel views at their measured natural height.
+  Pass its resize callback into Task Manager, whose inner height modifier
+  overrides an outer callback. Keep requested selection before measurement.
+- **Check:** Compile `nativeSceneDiagnosticsReachMeasuredBackgroundPanels`.
+  Execute it on hosted CI. In the signed updated build, open both Home URLs
+  with `open -g`. Require a panel within three seconds, unchanged foreground
+  application, the requested tab, and content-sized height. Switch to short
+  and tall pages and compare with native status-item panels. The installed
+  process was preserved; updated-build checks remain with the orchestrator.
+
 ## Launcher Actions On Short Displays
 
 - **Symptom:** In a 1024pt hosted display, selecting Switch showed its detail

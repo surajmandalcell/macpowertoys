@@ -85,6 +85,9 @@ final class DeepLinkHandler {
         }
 
         switch DiagnosticsRoute.parse(url) {
+        case .openPanel(let panel, let tab):
+            DiagnosticsMenuPanels.shared.open(panel, tab: tab)
+            return
         case .appearance(let appearance):
             UserDefaults.standard.set(appearance.rawValue, forKey: AppAppearance.storageKey)
             appearance.apply()
@@ -179,10 +182,6 @@ final class DeepLinkHandler {
     }
 
     private func processURL(_ url: URL) {
-        if case .openPanel(let panel, let tab) = DiagnosticsRoute.parse(url) {
-            DiagnosticsMenuPanels.shared.open(panel, tab: tab)
-            return
-        }
         if ToolActionRouter.shared.execute(url: url) { return }
 
         switch url.host {

@@ -43,6 +43,11 @@ final class ToolPageRouter {
     private var pending: [String: ToolPageRequest] = [:]
 
     func handleNativeURL(_ url: URL, tool: String) {
+        // SwiftUI can deliver diagnostics to a scene whose tool ID occurs in the URL.
+        if DiagnosticsRoute.parse(url) != nil {
+            DeepLinkHandler.shared.handle(url: url)
+            return
+        }
         // SwiftUI opens native scenes itself. Deliver their page without reopening.
         guard !AppDelegate.requiresManualURLRouting(url),
               let route = OpenToolRoute.parse(url), route.tool == tool, let page = route.page else { return }
