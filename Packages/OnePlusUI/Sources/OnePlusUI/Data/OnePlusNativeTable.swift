@@ -178,7 +178,7 @@ public struct OnePlusNativeTable: NSViewRepresentable {
             }
             text.font = role == .mono ? .monospacedSystemFont(ofSize: role.size(for: density), weight: weight)
                 : .systemFont(ofSize: role.size(for: density), weight: weight)
-            text.textColor = NSColor(owner.columns[index].textRole.map(\.color) ?? (index == 0 ? OnePlusColor.ink : OnePlusColor.secondary))
+            text.textColor = NSColor(owner.columns[index].textColor ?? owner.columns[index].textRole.map(\.color) ?? (index == 0 ? OnePlusColor.ink : OnePlusColor.secondary))
             text.alignment = owner.columns[index].nsTextAlignment
             cell.imageView?.image = NSImage(systemSymbolName: item.symbol, accessibilityDescription: nil)
             return cell
