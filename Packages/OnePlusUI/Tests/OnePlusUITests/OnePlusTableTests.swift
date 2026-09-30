@@ -5,6 +5,28 @@ import XCTest
 
 @MainActor
 final class OnePlusTableTests: XCTestCase {
+    func testNativeTablePaintsRulesOnlyForActualRecords() throws {
+        for appearance in [NSAppearance.Name.darkAqua, .aqua] {
+            let host = NSHostingView(rootView: OnePlusNativeTable(columns: [.init("Name", width: 300)],
+                rows: [.init(id: "1", cells: ["Record"], symbol: "doc")], selection: .constant([]),
+                sort: { _, _ in }, open: { _ in }, preview: { _ in }, remove: { _ in }, actions: { _ in [] }))
+            let window = NSWindow(contentRect: NSRect(x: -10000, y: -10000, width: 380, height: 180),
+                                  styleMask: .borderless, backing: .buffered, defer: false)
+            window.appearance = NSAppearance(named: appearance)
+            window.contentView = host
+            host.layoutSubtreeIfNeeded()
+            RunLoop.main.run(until: Date(timeIntervalSinceNow: 0.02))
+            let table = try XCTUnwrap(findTable(in: host))
+            XCTAssertTrue(table.gridStyleMask.isEmpty)
+            let bitmap = try XCTUnwrap(table.bitmapImageRepForCachingDisplay(in: table.bounds))
+            table.cacheDisplay(in: table.bounds, to: bitmap)
+            let rowEdge = try XCTUnwrap(bitmap.colorAt(x: 250, y: 33))
+            let emptyEdge = try XCTUnwrap(bitmap.colorAt(x: 250, y: 67))
+            let emptyFill = try XCTUnwrap(bitmap.colorAt(x: 250, y: 80))
+            XCTAssertGreaterThan(abs(rowEdge.redComponent - emptyFill.redComponent), 0.01)
+            XCTAssertEqual(emptyEdge.redComponent, emptyFill.redComponent, accuracy: 0.001)
+        }
+    }
     func testSharedSwiftUIColumnModelAlignsHeaderAndCellInsetsInBothAppearances() throws {
         for appearance in [NSAppearance.Name.darkAqua, .aqua] {
             let columns: [OnePlusGridColumn] = [
