@@ -58,14 +58,18 @@ struct MainModifiedView: View {
     }
 
     static func groupRows(_ groups: [(id: String, count: Int)]) -> [[String]] {
-        var remaining = groups
         var rows: [[String]] = []
-        while !remaining.isEmpty {
-            let group = remaining.removeFirst()
-            guard group.count <= 3,
-                  let match = remaining.firstIndex(where: { $0.count == group.count && $0.count <= 3 })
-            else { rows.append([group.id]); continue }
-            rows.append([group.id, remaining.remove(at: match).id])
+        var index = 0
+        while index < groups.count {
+            let group = groups[index]
+            if group.count <= 3, index + 1 < groups.count,
+               groups[index + 1].count == group.count {
+                rows.append([group.id, groups[index + 1].id])
+                index += 2
+            } else {
+                rows.append([group.id])
+                index += 1
+            }
         }
         return rows
     }
