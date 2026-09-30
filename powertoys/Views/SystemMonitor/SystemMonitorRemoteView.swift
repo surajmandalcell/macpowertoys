@@ -361,15 +361,9 @@ struct TaskManagerRemoteCard: View {
     }
 
     private var header: some View {
-        HStack(spacing: 7) {
-            Image(systemName: "server.rack").font(.system(size: 10)).foregroundStyle(TaskManagerTheme.secondary)
-            Text(profile.name).font(.system(size: 11, weight: .medium)).lineLimit(1)
-            Spacer()
+        OnePlusCardHeader(profile.name, systemImage: "server.rack") {
             OnePlusStatus(state, state: reading == nil ? .offline : .online)
         }
-        .padding(.horizontal, 12)
-        .frame(height: 34)
-        .background(OnePlusColor.raised)
     }
 
     private func stat(_ title: String, symbol: String, value: String) -> some View {
