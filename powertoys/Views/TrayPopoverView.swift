@@ -2377,7 +2377,9 @@ private struct NetToysTrayView: View {
 
     private var networkTiles: some View {
         let identity = NetworkIdentity(networkID: snapshot.route?.networkID ?? "disconnected", ssid: snapshot.ssid)
-        let networkName = snapshot.isLoaded ? identity.displayName : "Loading…"
+        let networkName = snapshot.isLoaded
+            ? (snapshot.route == nil ? "Unavailable" : identity.displayName)
+            : "Loading…"
         return VStack(spacing: OnePlusMenuMetrics.tileGap) {
             HStack(spacing: OnePlusMenuMetrics.tileGap) {
                 OnePlusMenuTile(span: 2) {
