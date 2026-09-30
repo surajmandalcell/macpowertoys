@@ -441,6 +441,14 @@ private struct OnePlusUIShowcase: View {
                 OnePlusMenuTabStrip(tabs: menuTabs, selection: $menuTab) { from, to in menuTabs.swapAt(from, to) }
             } actions: {
                 OnePlusMenuOpenApp { page = "Task Manager" }
+            } toolbar: {
+                OnePlusSearchField(prompt: "Filter panel cards", text: $processQuery, width: 338, height: 28)
+            } footer: {
+                HStack {
+                    OnePlusStatus("Live while open")
+                    Spacer()
+                    Button("Refresh") { announce("Panel refreshed") }.buttonStyle(OnePlusButtonStyle(.ghost))
+                }.frame(height: 24)
             } content: {
                 if menuTab != "home" {
                     OnePlusMenuSectionHeader(menuTabs.first { $0.id == menuTab }?.title ?? "Activity")

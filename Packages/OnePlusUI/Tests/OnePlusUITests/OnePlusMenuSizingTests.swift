@@ -5,6 +5,46 @@ import XCTest
 
 @MainActor
 final class OnePlusMenuSizingTests: XCTestCase {
+    func testFixedRegionsStayOutsideTheCappedBodyScroller() throws {
+        let model = MenuSizingModel()
+        let toolbar = NSView(), footer = NSView()
+        let host = NSHostingView(rootView: OnePlusMenuPanelShell(
+            maximumHeight: 600,
+            tabs: OnePlusMenuTabStrip(tabs: [.init("home", "Home", systemImage: "house")], selection: .constant("home")),
+            actions: OnePlusMenuOpenApp {},
+            toolbar: { AnyView(MenuRegionMarker(view: toolbar).frame(height: 40)) },
+            footer: { AnyView(MenuRegionMarker(view: footer).frame(height: 24)) },
+            content: { MenuBody(model: model) }
+        ).environment(\.onePlusIsVisible, true))
+        let window = NSWindow(contentRect: NSRect(x: -10000, y: -10000, width: 356, height: 600),
+                              styleMask: .borderless, backing: .buffered, defer: false)
+        window.contentView = host
+        func layout() {
+            host.layoutSubtreeIfNeeded()
+            RunLoop.main.run(until: Date(timeIntervalSinceNow: 0.05))
+            host.layoutSubtreeIfNeeded()
+        }
+        layout()
+        XCTAssertNil(toolbar.enclosingScrollView)
+        XCTAssertNil(footer.enclosingScrollView)
+        XCTAssertEqual(host.fittingSize.height, 600, accuracy: 0.5)
+        func findScroll(_ view: NSView) -> NSScrollView? {
+            if let scroll = view as? NSScrollView { return scroll }
+            return view.subviews.lazy.compactMap(findScroll).first
+        }
+        let scroll = try XCTUnwrap(findScroll(host))
+        XCTAssertEqual(scroll.frame.height, 600 - 48 - 48 - 37, accuracy: 0.5)
+        let toolbarRect = toolbar.convert(toolbar.bounds, to: host)
+        let footerRect = footer.convert(footer.bounds, to: host)
+        scroll.contentView.scroll(to: NSPoint(x: 0, y: 200))
+        scroll.reflectScrolledClipView(scroll.contentView)
+        layout()
+        XCTAssertEqual(toolbar.convert(toolbar.bounds, to: host), toolbarRect)
+        XCTAssertEqual(footer.convert(footer.bounds, to: host), footerRect)
+        model.height = 120
+        layout()
+        XCTAssertEqual(host.fittingSize.height, 48 + 48 + 120 + 37, accuracy: 0.5)
+    }
     func testPanelShrinksAfterSwitchingFromLongToShortContent() {
         let model = MenuSizingModel()
         let host = NSHostingView(rootView: MenuSizingContent(model: model))
@@ -38,6 +78,7 @@ final class OnePlusMenuSizingTests: XCTestCase {
         let counter = MenuContentCounter()
         let hidden = NSHostingView(rootView: OnePlusMenuPanelShell(
             maximumHeight: 600, tabs: EmptyView(), actions: EmptyView(),
+            toolbar: { AnyView(counter.content()) }, footer: { AnyView(counter.content()) },
             content: { counter.content() }
         ).environment(\.onePlusIsVisible, false))
         hidden.layoutSubtreeIfNeeded()
@@ -50,6 +91,17 @@ final class OnePlusMenuSizingTests: XCTestCase {
         visible.layoutSubtreeIfNeeded()
         XCTAssertGreaterThan(counter.buildCount, 0)
     }
+}
+
+private struct MenuRegionMarker: NSViewRepresentable {
+    let view: NSView
+    func makeNSView(context: Context) -> NSView { view }
+    func updateNSView(_ nsView: NSView, context: Context) {}
+}
+
+private struct MenuBody: View {
+    @ObservedObject var model: MenuSizingModel
+    var body: some View { Color.clear.frame(height: model.height) }
 }
 
 @MainActor

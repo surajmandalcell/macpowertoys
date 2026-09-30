@@ -36,12 +36,20 @@ public struct OnePlusMenuPanel<Tabs: View, Actions: View, Body: View>: View {
     let actions: Actions
     let content: () -> Body
     let maximumHeight: CGFloat?
-    public init(maximumHeight: CGFloat? = nil, @ViewBuilder tabs: () -> Tabs,
-                @ViewBuilder actions: () -> Actions, @ViewBuilder content: @escaping () -> Body) {
+    private let toolbar: (() -> AnyView)?
+    private let footer: (() -> AnyView)?
+    public init<Toolbar: View, Footer: View>(maximumHeight: CGFloat? = nil, @ViewBuilder tabs: () -> Tabs,
+                @ViewBuilder actions: () -> Actions,
+                @ViewBuilder toolbar: @escaping () -> Toolbar = { EmptyView() },
+                @ViewBuilder footer: @escaping () -> Footer = { EmptyView() },
+                @ViewBuilder content: @escaping () -> Body) {
         self.maximumHeight = maximumHeight; self.tabs = tabs(); self.actions = actions(); self.content = content
+        self.toolbar = Toolbar.self == EmptyView.self ? nil : { AnyView(toolbar()) }
+        self.footer = Footer.self == EmptyView.self ? nil : { AnyView(footer()) }
     }
     public var body: some View {
-        OnePlusMenuPanelShell(maximumHeight: maximumHeight, tabs: tabs, actions: actions, content: content)
+        OnePlusMenuPanelShell(maximumHeight: maximumHeight, tabs: tabs, actions: actions,
+                              toolbar: toolbar, footer: footer, content: content)
             .onePlusLiveUpdates()
     }
 }
@@ -51,15 +59,21 @@ struct OnePlusMenuPanelShell<Tabs: View, Actions: View, Body: View>: View {
     let tabs: Tabs
     let actions: Actions
     let content: () -> Body
+    let toolbar: (() -> AnyView)?
+    let footer: (() -> AnyView)?
     @Environment(\.onePlusIsVisible) private var isVisible
     @State private var contentHeight: CGFloat?
+    @State private var regionHeights: [String: CGFloat] = [:]
 
     init(maximumHeight: CGFloat?, tabs: Tabs, actions: Actions,
+         toolbar: (() -> AnyView)? = nil, footer: (() -> AnyView)? = nil,
          content: @escaping () -> Body) {
         self.maximumHeight = maximumHeight
         self.tabs = tabs
         self.actions = actions
         self.content = content
+        self.toolbar = toolbar
+        self.footer = footer
     }
 
     var body: some View {
@@ -67,22 +81,29 @@ struct OnePlusMenuPanelShell<Tabs: View, Actions: View, Body: View>: View {
         let defaultHeight = screenHeight.isFinite ? max(0, screenHeight) * OnePlusMenuMetrics.heightFraction : 720
         let requestedHeight = maximumHeight.flatMap { $0.isFinite ? max(0, $0) : nil } ?? defaultHeight
         let cap = max(OnePlusMenuMetrics.topBar, min(requestedHeight, defaultHeight))
-        let bodyCap = cap - OnePlusMenuMetrics.topBar
+        let bodyCap = max(0, cap - OnePlusMenuMetrics.topBar - (regionHeights["toolbar"] ?? 0) - (regionHeights["footer"] ?? 0))
         VStack(spacing: 0) {
             HStack(spacing: 7) {
                 tabs
                 Spacer(minLength: 0)
                 HStack(spacing: 2) { actions }.fixedSize()
             }.padding(.horizontal, 8).padding(.top, OnePlusMenuMetrics.topBarTop).padding(.bottom, OnePlusMenuMetrics.topBarBottom)
+            if isVisible, let toolbar {
+                fixedRegion(toolbar(), name: "toolbar", top: 3, bottom: 5)
+            }
             ScrollView {
                 if isVisible {
                     VStack(alignment: .leading, spacing: 5) { content() }
-                        .frame(width: 338).padding(.horizontal, 8).padding(.top, 3).padding(.bottom, 8)
+                        .frame(width: 338).padding(.horizontal, 8)
+                        .padding(.top, toolbar == nil ? 3 : 0).padding(.bottom, footer == nil ? 8 : 0)
                         .background(GeometryReader { proxy in Color.clear.preference(key: OnePlusMenuHeightKey.self, value: proxy.size.height) })
                 }
             }
             .onePlusScrollIndicators().frame(height: isVisible ? min(contentHeight ?? bodyCap, bodyCap) : 0)
             .onPreferenceChange(OnePlusMenuHeightKey.self) { if $0.isFinite, $0 > 0 { contentHeight = $0 } }
+            if isVisible, let footer {
+                fixedRegion(footer(), name: "footer", top: 5, bottom: 8)
+            }
         }.padding(1).frame(width: 356).background(OnePlusColor.sidebar)
             .clipShape(RoundedRectangle(cornerRadius: 11))
             .overlay { RoundedRectangle(cornerRadius: 11).strokeBorder(OnePlusColor.line, lineWidth: 1) }
@@ -90,6 +111,23 @@ struct OnePlusMenuPanelShell<Tabs: View, Actions: View, Body: View>: View {
             .environment(\.onePlusCardPadding, OnePlusMetrics.cardPadding)
             .onePlusNeutralControls()
             .focusEffectDisabled()
+            .onPreferenceChange(OnePlusMenuRegionHeightKey.self) { if regionHeights != $0 { regionHeights = $0 } }
+    }
+
+    private func fixedRegion(_ view: AnyView, name: String, top: CGFloat, bottom: CGFloat) -> some View {
+        view.frame(width: OnePlusMenuMetrics.bodyWidth)
+            .padding(.horizontal, OnePlusMenuMetrics.bodyInset).padding(.top, top).padding(.bottom, bottom)
+            .fixedSize(horizontal: false, vertical: true)
+            .background(GeometryReader { proxy in
+                Color.clear.preference(key: OnePlusMenuRegionHeightKey.self, value: [name: proxy.size.height])
+            })
+    }
+}
+
+private struct OnePlusMenuRegionHeightKey: PreferenceKey {
+    static let defaultValue: [String: CGFloat] = [:]
+    static func reduce(value: inout [String: CGFloat], nextValue: () -> [String: CGFloat]) {
+        value.merge(nextValue().filter { $0.value.isFinite }) { _, new in new }
     }
 }
 
