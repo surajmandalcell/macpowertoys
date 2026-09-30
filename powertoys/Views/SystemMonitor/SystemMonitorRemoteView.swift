@@ -329,7 +329,6 @@ struct TaskManagerRemoteCard: View {
         TaskManagerPanel(textured: true) {
             VStack(spacing: 0) {
                 header
-                Rectangle().fill(TaskManagerTheme.lineSoft).frame(height: 1)
                 if reading != nil {
                     HStack(spacing: 0) {
                         stat("CPU", symbol: "cpu", value: reading?.cpuPercent.map { "\(Int($0.rounded()))%" } ?? "—")
