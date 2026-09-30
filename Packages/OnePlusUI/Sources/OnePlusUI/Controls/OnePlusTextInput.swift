@@ -20,9 +20,9 @@ public struct OnePlusTextField: View {
             TextField(title, text: $text)
                 .textFieldStyle(.plain).onePlusText(.control).focused($focused)
                 .padding(.horizontal, 8).frame(height: controlHeight ?? density.controlHeight)
-                .background(focused || (enabled && hover) ? OnePlusColor.fieldFocus : OnePlusColor.field,
+                .background((focused && OnePlusFocusPolicy.shared.showsFocus) || (enabled && hover) ? OnePlusColor.fieldFocus : OnePlusColor.field,
                             in: RoundedRectangle(cornerRadius: 6))
-                .overlay { RoundedRectangle(cornerRadius: 6).strokeBorder(error != nil ? OnePlusColor.dangerLine : focused ? OnePlusColor.focus : OnePlusColor.line, lineWidth: 1) }
+                .overlay { RoundedRectangle(cornerRadius: 6).strokeBorder(error != nil ? OnePlusColor.dangerLine : focused && OnePlusFocusPolicy.shared.showsFocus ? OnePlusColor.focus : OnePlusColor.line, lineWidth: 1) }
                 .onHover { hover = $0 }.onSubmit(onSubmit)
                 .accessibilityLabel(title).accessibilityHint(error ?? "")
                 .focusEffectDisabled()
@@ -62,8 +62,8 @@ public struct OnePlusStepperField: View {
                     .frame(width: 17).clipped()
             }
             .frame(height: controlHeight ?? density.controlHeight)
-            .background(focused ? OnePlusColor.fieldFocus : OnePlusColor.field, in: RoundedRectangle(cornerRadius: 6))
-            .overlay { RoundedRectangle(cornerRadius: 6).strokeBorder(error != nil ? OnePlusColor.dangerLine : focused ? OnePlusColor.focus : OnePlusColor.line, lineWidth: 1) }
+            .background(focused && OnePlusFocusPolicy.shared.showsFocus ? OnePlusColor.fieldFocus : OnePlusColor.field, in: RoundedRectangle(cornerRadius: 6))
+            .overlay { RoundedRectangle(cornerRadius: 6).strokeBorder(error != nil ? OnePlusColor.dangerLine : focused && OnePlusFocusPolicy.shared.showsFocus ? OnePlusColor.focus : OnePlusColor.line, lineWidth: 1) }
             if let error { Text(error).onePlusText(.caption).foregroundStyle(OnePlusColor.danger) }
         }
         .opacity(enabled ? 1 : OnePlusMetrics.disabledOpacity)
@@ -207,7 +207,7 @@ private final class OnePlusEditorScrollView: NSScrollView {
     }
     func updateSurface() {
         guard let editor = documentView as? NSTextView else { return }
-        editor.backgroundColor = NSColor(focused ? OnePlusColor.fieldFocus : OnePlusColor.track)
+        editor.backgroundColor = NSColor(focused && OnePlusFocusPolicy.shared.showsFocus ? OnePlusColor.fieldFocus : OnePlusColor.track)
         bezel.focused = focused
         bezel.needsDisplay = true
     }
@@ -221,7 +221,7 @@ final class OnePlusEditorBezel: NSView {
     override func hitTest(_ point: NSPoint) -> NSView? { nil }
     override func viewDidChangeEffectiveAppearance() { super.viewDidChangeEffectiveAppearance(); needsDisplay = true }
     override func draw(_ dirtyRect: NSRect) {
-        NSColor(focused ? OnePlusColor.focus : OnePlusColor.line).setStroke()
+        NSColor(focused && OnePlusFocusPolicy.shared.showsFocus ? OnePlusColor.focus : OnePlusColor.line).setStroke()
         let path = NSBezierPath(roundedRect: bounds.insetBy(dx: 0.5, dy: 0.5), xRadius: 5.5, yRadius: 5.5)
         path.lineWidth = 1
         path.stroke()

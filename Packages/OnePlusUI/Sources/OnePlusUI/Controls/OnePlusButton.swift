@@ -63,7 +63,7 @@ private struct OnePlusButtonBody<Label: View>: View {
     let style: OnePlusButtonStyle
     private var isPressed: Bool { enabled && (pressed || sample == .pressed) }
     private var isHovering: Bool { enabled && (hovering || sample == .hover) }
-    private var isFocused: Bool { enabled && (focused || sample == .focus) }
+    private var isFocused: Bool { enabled && OnePlusFocusPolicy.shared.showsFocus && (focused || sample == .focus) }
     private var height: CGFloat {
         style.height ?? style.size.map { $0 == .small ? OnePlusMetrics.compactControlHeight : OnePlusMetrics.controlHeight }
             ?? controlHeight ?? density.controlHeight
@@ -153,9 +153,9 @@ private struct OnePlusInteractionBody<Label: View>: View {
     var body: some View {
         label
             .tint(OnePlusColor.secondary)
-            .background(enabled && pressed ? OnePlusColor.pressed : selected || (enabled && focused) ? OnePlusColor.selection : enabled && hover ? OnePlusColor.raised : .clear,
+            .background(enabled && pressed ? OnePlusColor.pressed : selected || (enabled && focused && OnePlusFocusPolicy.shared.showsFocus) ? OnePlusColor.selection : enabled && hover ? OnePlusColor.raised : .clear,
                         in: RoundedRectangle(cornerRadius: radius))
-            .overlay { RoundedRectangle(cornerRadius: radius).strokeBorder(enabled && focused ? OnePlusColor.focus : .clear, lineWidth: 1) }
+            .overlay { RoundedRectangle(cornerRadius: radius).strokeBorder(enabled && focused && OnePlusFocusPolicy.shared.showsFocus ? OnePlusColor.focus : .clear, lineWidth: 1) }
             .opacity(enabled ? 1 : disabledOpacity)
             .contentShape(RoundedRectangle(cornerRadius: radius))
             .onHover { hover = $0 }

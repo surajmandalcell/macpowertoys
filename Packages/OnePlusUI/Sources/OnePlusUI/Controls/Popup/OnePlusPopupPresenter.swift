@@ -95,7 +95,7 @@ final class OnePlusPopupPresenter {
         session.close = { [weak self] restoreFocus in
             self?.close(reason: restoreFocus ? .escape : .outsideClick)
         }
-        let host = NSHostingView(rootView: OnePlusPopupMenuView(session: session))
+        let host = NSHostingView(rootView: OnePlusPopupMenuView(session: session).onePlusFocusPolicy())
         let visibleFrame = (window.screen ?? NSScreen.main)?.visibleFrame ?? window.frame
         let triggerFrame = window.convertToScreen(anchor.convert(anchor.bounds, to: nil))
         let font = NSFont.systemFont(ofSize: OnePlusTextRole.control.size(for: density))

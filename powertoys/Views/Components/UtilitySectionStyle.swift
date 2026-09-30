@@ -71,7 +71,7 @@ private struct UtilityMotionPolicyModifier: ViewModifier {
     @Environment(\.accessibilityReduceMotion) private var reduceMotion
 
     func body(content: Content) -> some View {
-        content.focusEffectDisabled(!NSApp.isFullKeyboardAccessEnabled).transaction { transaction in
+        content.onePlusFocusPolicy().transaction { transaction in
             guard reduceMotion else { return }
             transaction.animation = nil
             transaction.disablesAnimations = true
