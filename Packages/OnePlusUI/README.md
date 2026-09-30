@@ -69,6 +69,8 @@ get that gap and the 16 pt side gutters. Fixed toolbars and footers also use
 Use `scrolls: false` when the content already owns scrolling. Header, tabs,
 toolbar, and footer stay fixed. The content fills the remaining height.
 Slots are optional; the page supplies the gutters and 16 pt content gap.
+Fixed bodies end at the density gutter: 24 pt regular, 20 pt compact.
+An empty conditional footer keeps that gutter and adds no footer gap.
 
 ```swift
 OnePlusPage(scrolls: false) {
@@ -97,6 +99,17 @@ Menu panels also own their scrolling. Pass natural-height content to
 measures each active tab, shrinks for short content, and caps long content at
 90 percent of the visible screen. Apply `.onePlusScrollIndicators()` to any
 separate row scroll region; it keeps overlay style after native replacement.
+Use the optional `toolbar` and `footer` builders for search, forms, and
+summaries that must stay fixed. These slots sit outside the capped scroller.
+Empty slots reserve no height. Closed panels stop live observation.
+
+For SwiftUI `Table`, share `OnePlusGridColumn` values between
+`.onePlusTableCell(column, position: .first)` and
+`.onePlusNativeTable(columns: columns)`. Use `.last` for the final cell;
+middle cells use the default position. The model sets alignment, insets,
+`textRole`, and optional `textColor`. `headerLabelInset` reserves a glyph
+lane before a label. Keep Time at `.mono`; path columns can use `.mono`
+with `textColor: OnePlusColor.ink` for primary identity text.
 
 ## Component catalog
 
@@ -141,9 +154,9 @@ separate row scroll region; it keeps overlay style after native replacement.
 | `OnePlusSwitchStyle` | Style a native Toggle binding with the compact switch shell. |
 | `OnePlusCheckboxStyle` | Keep native checkbox behavior and shared type. |
 | `OnePlusRadio` | Bind a native radio-group Picker to typed choices. |
-| `OnePlusSegmented` | Bind typed choices with native accessibility and arrow-key selection. |
+| `OnePlusSegmented` | Bind typed choices; pass `width: 160` or `180` to fill the control column. |
 | `OnePlusSegments` | Use the compatible intrinsic-width segmented control. |
-| `OnePlusSelect` / `OnePlusMenuLabel` | Bind choices in a native Menu popup. |
+| `OnePlusSelect` / `OnePlusMenuLabel` | Bind choices in the shared neutral popup. |
 | `OnePlusStepperField` | Edit a bounded integer with validation and a non-repeating native stepper. |
 | `OnePlusTextField` | Edit a line with a label, optional error, and submit action. |
 | `OnePlusSearchField` | Bind native search with Escape-to-clear and an optional focus trigger. |
@@ -165,7 +178,7 @@ separate row scroll region; it keeps overlay style after native replacement.
 | `OnePlusToast` | Show a message and post an accessibility announcement; the caller owns its lifetime. |
 | `OnePlusSheet` / `OnePlusSheetWidth` | Supply header, body, and footer inside native `.sheet`. |
 | `OnePlusBanner` | Show an inline information, warning, or error row with an optional action. |
-| `OnePlusMenuPanel` | Supply tabs, actions, and a scrolling body capped to screen height. |
+| `OnePlusMenuPanel` | Supply tabs, actions, optional fixed toolbar/footer, and a body capped to screen height. |
 | `OnePlusMenuMetrics` | Read the 356 pt panel geometry and span-aware column widths. |
 | `OnePlusMenuTab` / `OnePlusMenuTabStrip` | Bind 26 pt tabs; use `onMove` to store their order. |
 | `OnePlusMenuTile` | Supply compact metric content in one, two, or three columns. |
@@ -177,12 +190,19 @@ separate row scroll region; it keeps overlay style after native replacement.
 | `OnePlusFloatingSettingsButton` | Place a 24 pt Settings or Back button at the applet's trailing edge. |
 | `.onePlusFloatingSettingsInset()` | Reserve 52 pt below an applet body before an existing gear overlay. |
 | `.onePlusFloatingSettings(isActive:help:action:)` | Reserve the same area and place the gear in one modifier. |
-| `.onePlusScrollIndicators()` / `OnePlusOverlayScroller` | Keep native scrolling with thin overlay thumbs. |
+| `.onePlusScrollIndicators(axes:)` / `OnePlusOverlayScroller` | Keep full viewport width and thin overlay thumbs on the requested axes. |
 
 Catalogs can use `OnePlusSegmented(iconChoices:selection:accessibilityLabel:)`
 for labeled icon segments and `OnePlusButtonStyle.catalogOpen` for 26 pt Open
 actions. `OnePlusNavRow(muted:)` dims a label while keeping navigation active.
 `OnePlusSidebarSearch(alternateShortcut:)` adds a shortcut beside Command-K.
+`OnePlusNavCaption(spacing: .sectionStart)` adds 16 pt before a later section.
+`OnePlusTab(countDigits:)` reserves three digits by default for stable counts.
+`OnePlusNavBadge(minimumDigits:)` supplies the same slot in other navigation.
+`OnePlusButtonStyle(.borderedIcon)` paints the raised square for report actions.
+`OnePlusActionMenu` keeps SwiftUI command builders and uses the shared popup.
+Its legacy width argument remains valid; the trigger fits its label. Native
+submenu commands appear under named section headers in the current popup.
 
 ## Add a variant
 
