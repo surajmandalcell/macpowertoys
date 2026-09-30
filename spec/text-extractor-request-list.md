@@ -27,6 +27,7 @@ and I. Tests were compiled, not executed. Signed screenshot review remains.
 
 | Status | Request | Evidence | Remaining work |
 |---|---|---|---|
+| Verify | Preserve full History row width in light appearance and fill the shortcut column. | Signed `8cf8c02` round 4 captures show equal 16pt outer gutters. Light History retains a 17pt inner reservation despite the shared scroll modifier. The shared recorder still paints a 116pt bezel with mono type. | Foundation must fix nested native clip/document width and supply the fill-width control-role recorder. Recapture both pages and verify scrolling and recording. |
 | Verify | Use one history list card and keep destructive clearing in Settings. | History rows share one `OnePlusCard` and stable ids. Settings owns the Clear history row and confirmation. | Verify row alignment, scrolling, and clearing in the signed build. |
 | Verify | Keep Text Extractor status and the History heading fixed while rows scroll. | The history page owns one row-only `ScrollView`. Lightweight rows receive prepared timestamps and links instead of observing the complete service. | Verify smooth scrolling and page switches within 100ms in the signed build. |
 | Verify | Embed one cards-only settings view without nested scrolling or gutters. | `TextExtractorSettingsView()` owns shortcut, recognition, language, and history cards. The applet supplies OnePlusPage with 16pt gutters. The shortcut permission notice stays inside its card. Debug and build-for-testing pass. | Verify embedded and applet Settings in the signed build. |
