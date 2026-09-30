@@ -33,12 +33,15 @@ private struct MainGeneralSettings: View {
     @State private var loginError: String?
 
     var body: some View {
-        LazyVGrid(columns: Array(repeating: GridItem(.flexible(), spacing: OnePlusMetrics.cardGap, alignment: .top), count: 2),
-                  alignment: .leading, spacing: OnePlusMetrics.cardGap) {
-            appearanceCard
-            launchCard
-            windowsCard
-            syncCard
+        VStack(spacing: OnePlusMetrics.cardGap) {
+            HStack(alignment: .top, spacing: OnePlusMetrics.cardGap) {
+                appearanceCard
+                launchCard
+            }.fixedSize(horizontal: false, vertical: true)
+            HStack(alignment: .top, spacing: OnePlusMetrics.cardGap) {
+                windowsCard
+                syncCard
+            }.fixedSize(horizontal: false, vertical: true)
         }
         .onChange(of: appearance) { _, value in value.apply(); changed() }
         .onChange(of: closeMainAfterOpen) { changed() }
@@ -58,58 +61,70 @@ private struct MainGeneralSettings: View {
     }
 
     private var appearanceCard: some View {
-        OnePlusCard {
-            OnePlusCardHeader("Appearance", systemImage: "circle.lefthalf.filled")
-            OnePlusSettingRow("Appearance", controlWidth: OnePlusCatalogMetrics.placementWidth, separator: false) {
-                OnePlusSegmented(choices: AppAppearance.allCases.map { ($0, $0.title) },
-                                 selection: $appearance, accessibilityLabel: "Appearance")
+        OnePlusPanel {
+            VStack(spacing: 0) {
+                OnePlusCardHeader("Appearance", systemImage: "circle.lefthalf.filled")
+                OnePlusSettingRow("Appearance", controlWidth: OnePlusCatalogMetrics.placementWidth, separator: false) {
+                    OnePlusSegmented(choices: AppAppearance.allCases.map { ($0, $0.title) },
+                                     selection: $appearance, accessibilityLabel: "Appearance")
+                }
+                Spacer(minLength: 0)
             }
         }
     }
 
     private var windowsCard: some View {
-        OnePlusCard {
-            OnePlusCardHeader("Windows", systemImage: "macwindow")
-            OnePlusSettingRow("Close after opening a tool") {
-                Toggle("Close main window after opening a tool", isOn: $closeMainAfterOpen)
-                    .labelsHidden().toggleStyle(OnePlusSwitchStyle())
-            }
-            OnePlusSettingRow("Show the menu-bar icon", separator: false) {
-                Toggle("Show the menu-bar icon", isOn: $showTray).labelsHidden().toggleStyle(OnePlusSwitchStyle())
+        OnePlusPanel {
+            VStack(spacing: 0) {
+                OnePlusCardHeader("Windows", systemImage: "macwindow")
+                OnePlusSettingRow("Close after opening a tool") {
+                    Toggle("Close main window after opening a tool", isOn: $closeMainAfterOpen)
+                        .labelsHidden().toggleStyle(OnePlusSwitchStyle())
+                }
+                OnePlusSettingRow("Show the menu-bar icon", separator: false) {
+                    Toggle("Show the menu-bar icon", isOn: $showTray).labelsHidden().toggleStyle(OnePlusSwitchStyle())
+                }
+                Spacer(minLength: 0)
             }
         }
     }
 
     private var launchCard: some View {
-        OnePlusCard {
-            OnePlusCardHeader("Launch", systemImage: "power")
-            OnePlusSettingRow("Open at login", separator: false) {
-                Toggle("Open at login", isOn: Binding(
-                    get: { loginStatus == .enabled || loginStatus == .requiresApproval }, set: setOpenAtLogin
-                )).labelsHidden().toggleStyle(OnePlusSwitchStyle())
-            }
-            if loginStatus == .requiresApproval {
-                OnePlusBanner("Allow MacPowerToys in Login Items to finish setup.", tone: .warning) {
-                    Button("Open Login Items") { SMAppService.openSystemSettingsLoginItems() }
-                }.padding(OnePlusMetrics.cardPadding)
-            }
-            if let loginError {
-                OnePlusBanner(loginError, tone: .error).padding(OnePlusMetrics.cardPadding)
+        OnePlusPanel {
+            VStack(spacing: 0) {
+                OnePlusCardHeader("Launch", systemImage: "power")
+                OnePlusSettingRow("Open at login", separator: false) {
+                    Toggle("Open at login", isOn: Binding(
+                        get: { loginStatus == .enabled || loginStatus == .requiresApproval }, set: setOpenAtLogin
+                    )).labelsHidden().toggleStyle(OnePlusSwitchStyle())
+                }
+                if loginStatus == .requiresApproval {
+                    OnePlusBanner("Allow MacPowerToys in Login Items to finish setup.", tone: .warning) {
+                        Button("Open Login Items") { SMAppService.openSystemSettingsLoginItems() }
+                    }.padding(OnePlusMetrics.cardPadding)
+                }
+                if let loginError {
+                    OnePlusBanner(loginError, tone: .error).padding(OnePlusMetrics.cardPadding)
+                }
+                Spacer(minLength: 0)
             }
         }
     }
 
     private var syncCard: some View {
-        OnePlusCard {
-            OnePlusCardHeader("iCloud", systemImage: "icloud")
-            OnePlusSettingRow("Sync settings via iCloud", separator: false) {
-                Toggle("Sync settings via iCloud", isOn: Binding(get: { sync.isEnabled }, set: { enabled in
-                    if enabled { showSyncConflict = sync.enable() == .conflict }
-                    else { sync.disable() }
-                })).labelsHidden().toggleStyle(OnePlusSwitchStyle())
+        OnePlusPanel {
+            VStack(spacing: 0) {
+                OnePlusCardHeader("iCloud", systemImage: "icloud")
+                OnePlusSettingRow("Sync settings via iCloud",
+                                  caption: "Syncs safe preferences and marketplace sources. Credentials, histories, file paths, and installed apps stay on this Mac.",
+                                  separator: false) {
+                    Toggle("Sync settings via iCloud", isOn: Binding(get: { sync.isEnabled }, set: { enabled in
+                        if enabled { showSyncConflict = sync.enable() == .conflict }
+                        else { sync.disable() }
+                    })).labelsHidden().toggleStyle(OnePlusSwitchStyle())
+                }
+                Spacer(minLength: 0)
             }
-            Text("Syncs safe preferences and marketplace sources. Credentials, histories, file paths, and installed apps stay on this Mac.")
-                .onePlusText(.caption).padding(OnePlusMetrics.cardPadding)
         }
     }
 
@@ -150,19 +165,25 @@ private struct MainAboutSettings: View {
                 linkRow("Contact", title: "surajmandalcell@gmail.com", url: "mailto:surajmandalcell@gmail.com")
             }
             HStack(alignment: .top, spacing: OnePlusMetrics.cardGap) {
-                OnePlusCard {
-                    OnePlusCardHeader("Links", systemImage: "link")
-                    linkRow("Repository", title: "GitHub", url: repository)
-                    linkRow("Privacy", title: "Privacy policy", url: repository + "/blob/main/PRIVACY.md")
-                    linkRow("License", title: "MIT license", url: repository + "/blob/main/LICENSE")
+                OnePlusPanel {
+                    VStack(spacing: 0) {
+                        OnePlusCardHeader("Links", systemImage: "link")
+                        linkRow("Repository", title: "GitHub", url: repository)
+                        linkRow("Privacy", title: "Privacy policy", url: repository + "/blob/main/PRIVACY.md")
+                        linkRow("License", title: "MIT license", url: repository + "/blob/main/LICENSE")
+                        Spacer(minLength: 0)
+                    }
                 }.frame(maxWidth: .infinity)
-                OnePlusCard {
-                    OnePlusCardHeader("Acknowledgements", systemImage: "book")
-                    linkRow("Cloud Sync engine", caption: "Free software by Nick Craig-Wood and contributors.",
-                            title: "Powered by rclone", url: "https://rclone.org/")
-                    linkRow("rclone license", title: "MIT license", url: "https://rclone.org/licence/")
+                OnePlusPanel {
+                    VStack(spacing: 0) {
+                        OnePlusCardHeader("Acknowledgements", systemImage: "book")
+                        linkRow("Cloud Sync engine", caption: "Free software by Nick Craig-Wood and contributors.",
+                                title: "Powered by rclone", url: "https://rclone.org/")
+                        linkRow("rclone license", title: "MIT license", url: "https://rclone.org/licence/")
+                        Spacer(minLength: 0)
+                    }
                 }.frame(maxWidth: .infinity)
-            }
+            }.fixedSize(horizontal: false, vertical: true)
         }
     }
 
