@@ -31,18 +31,20 @@ public struct OnePlusSegmented<Value: Hashable>: View {
     private let identifierPrefix: String?
     @Binding private var selection: Value
     private let label: String
+    private let width: CGFloat?
     @Environment(\.onePlusDensity) private var density
     @Environment(\.onePlusControlHeight) private var controlHeight
     @Environment(\.isEnabled) private var enabled
     @Environment(\.accessibilityReduceMotion) private var reduceMotion
 
     public init(choices: [(Value, String)], selection: Binding<Value>, accessibilityLabel: String = "Selection",
-                accessibilityIdentifierPrefix: String? = nil) {
+                accessibilityIdentifierPrefix: String? = nil, width: CGFloat? = nil) {
         self.choices = choices
         symbols = [:]
         identifierPrefix = accessibilityIdentifierPrefix
         _selection = selection
         label = accessibilityLabel
+        self.width = width.flatMap { $0.isFinite && $0 > 0 ? $0 : nil }
     }
 
     public init(iconChoices: [(Value, String, String)], selection: Binding<Value>, accessibilityLabel: String) {
@@ -51,6 +53,7 @@ public struct OnePlusSegmented<Value: Hashable>: View {
         identifierPrefix = nil
         _selection = selection
         label = accessibilityLabel
+        width = nil
     }
 
     public static func nextSelection(in values: [Value], current: Value, direction: Int) -> Value? {
@@ -63,7 +66,7 @@ public struct OnePlusSegmented<Value: Hashable>: View {
         guard !choices.isEmpty, symbols.isEmpty else { return 8 }
         let font = NSFont.systemFont(ofSize: OnePlusTextRole.control.size(for: density))
         let labelsWidth = choices.reduce(CGFloat.zero) { $0 + ceil(($1.1 as NSString).size(withAttributes: [.font: font]).width) }
-        let remaining = OnePlusMetrics.wideControlColumn - labelsWidth - 4 - CGFloat(choices.count - 1) * 2
+        let remaining = (width ?? OnePlusMetrics.wideControlColumn) - labelsWidth - 4 - CGFloat(choices.count - 1) * 2
         return min(8, max(4, floor(remaining / CGFloat(choices.count)) / 2))
     }
 
@@ -81,19 +84,21 @@ public struct OnePlusSegmented<Value: Hashable>: View {
                         }
                     }.onePlusText(.control, selected: selection == choice.0)
                         .lineLimit(1).fixedSize(horizontal: true, vertical: false).padding(.horizontal, padding)
+                        .frame(maxWidth: width == nil ? nil : .infinity)
                         .frame(height: (controlHeight ?? density.controlHeight) - 4)
                         .background(selection == choice.0 ? OnePlusColor.selectedControl : .clear,
                                     in: RoundedRectangle(cornerRadius: 3))
                 }
-                .buttonStyle(OnePlusInteractionStyle(radius: 3))
+                .buttonStyle(OnePlusInteractionStyle(radius: 3, disabledOpacity: 1))
                 .accessibilityAddTraits(selection == choice.0 ? .isSelected : [])
                 .accessibilityIdentifier(identifierPrefix.map { "\($0).\(choice.0)" } ?? "")
                 .help(choice.1)
             }
         }
-        .padding(2).fixedSize(horizontal: true, vertical: false).frame(height: controlHeight ?? density.controlHeight)
+        .padding(2).frame(width: width).fixedSize(horizontal: width == nil, vertical: false).frame(height: controlHeight ?? density.controlHeight)
         .background(OnePlusColor.track, in: RoundedRectangle(cornerRadius: 6))
         .overlay { RoundedRectangle(cornerRadius: 6).strokeBorder(OnePlusColor.line, lineWidth: 1) }
+        .opacity(enabled ? 1 : OnePlusMetrics.disabledOpacity)
         .animation(OnePlusMotion.animation(reduceMotion: reduceMotion, duration: OnePlusMotion.selection), value: selection)
         .onMoveCommand { direction in
             guard enabled else { return }
