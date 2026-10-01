@@ -105,14 +105,14 @@ struct FanControlView: View {
     }
 
     private var setupPopover: some View {
-        VStack(alignment: .leading, spacing: 11) {
+        VStack(alignment: .leading, spacing: OnePlusMetrics.spacing[5]) {
             Label(service.errorMessage == nil ? "Enable fan control" : "Fan control issue", systemImage: "fanblades")
                 .font(.system(size: 14, weight: .semibold))
             Text(detail)
                 .font(.system(size: 11))
                 .foregroundStyle(.secondary)
                 .fixedSize(horizontal: false, vertical: true)
-            Text("MacPowerToys includes fan control. macOS may ask you to allow its background item once; there is no package or Terminal command to install.")
+            Text("Enable the helper, then allow MacPowerToys under Background App Activity in Login Items.")
                 .font(.system(size: 11))
                 .foregroundStyle(.secondary)
                 .fixedSize(horizontal: false, vertical: true)
@@ -138,9 +138,11 @@ struct FanControlView: View {
             .frame(minHeight: 34)
         }
         .frame(width: 292, alignment: .leading)
-        .padding(15)
+        .padding(OnePlusMetrics.spacing[6])
         .foregroundStyle(TaskManagerTheme.ink)
         .background(TaskManagerTheme.card)
+        .onePlusFocusPolicy()
+        .onePlusAppAppearance()
     }
 
     private var expandedContent: some View {
@@ -163,12 +165,11 @@ struct FanControlView: View {
             }
             OnePlusSettingRow(
                 "Preset",
-                caption: manualControlEnabled ? service.selectedPreset?.rawValue : "Turn on fan control to choose a preset",
+                caption: activePreset?.rawValue,
                 controlWidth: 160,
                 separator: false
             ) {
                 presetButtons
-                    .disabled(!manualControlEnabled)
             }
         }
     }
@@ -185,10 +186,6 @@ struct FanControlView: View {
                 }
             }
         )
-    }
-
-    private var manualControlEnabled: Bool {
-        service.selectedPreset != nil && service.selectedPreset != .auto
     }
 
     private var activePreset: FanPreset? {
@@ -218,13 +215,6 @@ struct FanControlView: View {
         .onePlusDensity(.compact)
         .disabled(service.isChanging || !service.canControl)
         .help("Auto follows macOS. Cool boosts cooling for 10 minutes. Max runs fans at their hardware maximum.")
-        .accessibilityRepresentation {
-            Picker("Fan preset", selection: presetBinding) {
-                ForEach(FanPreset.allCases) { preset in
-                    Text("Fan \(preset.rawValue)").tag(Optional(preset))
-                }
-            }
-            .pickerStyle(.segmented)
-        }
+
     }
 }
