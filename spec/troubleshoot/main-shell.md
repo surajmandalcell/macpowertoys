@@ -281,6 +281,16 @@
   Check empty and active Cloud Sync, both remote cells, keyboard focus modes,
   natural height, and tab latency in the signed app.
 
+Production correction, 2026-10-01: use direct rows for single controls and
+empty states. Put metadata on the trailing side and helper status behind an
+info glyph with help. Apply row hover to the full content surface; an opaque
+card inside a button label hides the button's hover background. Switch has
+one header refresh icon for accounts and visible usage, one orange unloaded
+limit warning with help, and no per-account refresh hints. Keep progress and
+identity colors. Hover, press, tab, and content changes are instant. Check
+unloaded and loaded limits, account switching, nested row controls, and both
+appearances in the signed build. Report: `tmp/redesign/logs/w1-panel-main.md`.
+
 ## Combined Menu Icon And Tab Outline
 
 - **Symptom:** The MacPowerToys status glyph looks slightly too large, and an
@@ -321,8 +331,10 @@
   also made its row taller. The native Awake picker draws its visible edge
   about 12pt inside its frame, so giving it another 12pt outer trailing inset
   leaves its buttons visibly short of the Home action edge.
-- **Invariant:** Compact Fan appears on Task Manager Home and Sensors, never
-  on the main combined menu or other Task Manager pages. It uses the shared
+- **Invariant:** The 2026-10-01 owner correction restores compact Fan below
+  Awake on main Home when Task Manager is enabled. Main Home and Task Manager
+  Home and Sensors reuse `FanControlView` with distinct visibility owners.
+  Other Task Manager pages omit Fan. It uses the shared
   menu control row and compact 24pt three-option control.
   Fan, RPM, and utilization share one line; its icon stays
   neutral. Auto, Cool, and Max remain visible while unavailable options are
@@ -333,7 +345,7 @@
   the segmented control needs a foundation API. The popup keeps its action
   clearance.
 - **Check:** Inspect global Home, Monitor Home, and Sensors at production popup
-  width in light and dark. Task Manager Home and Sensors show Fan. Check live
+  width in light and dark. Main Home, Task Manager Home, and Sensors show Fan. Check live
   RPM, disabled controls, and the bounded approval explanation
   without clipping. The app never approves
   its own macOS background item.
