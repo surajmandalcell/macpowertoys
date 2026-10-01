@@ -31,6 +31,7 @@ final class ColorPickerService {
         didSet { defaults.set(defaultFormat.rawValue, forKey: formatKey) }
     }
 
+    private let pasteboard: NSPasteboard
     private let sampler: any ColorSampling
     private let defaults: UserDefaults
     private let historyKey = "color-picker.history.v1"
@@ -40,8 +41,10 @@ final class ColorPickerService {
     private let maximumHistory = 100
     @ObservationIgnored private var persistenceTask: Task<Void, Never>?
 
-    init(defaults: UserDefaults = .standard, sampler: any ColorSampling = NSColorSampler()) {
+    init(defaults: UserDefaults = .standard, sampler: any ColorSampling = NSColorSampler(),
+         pasteboard: NSPasteboard = .general) {
         self.defaults = defaults
+        self.pasteboard = pasteboard
         self.sampler = sampler
         history = defaults.data(forKey: historyKey)
             .flatMap { try? JSONDecoder().decode([ColorSample].self, from: $0) } ?? []
@@ -96,8 +99,8 @@ final class ColorPickerService {
     }
 
     func copy(_ sample: ColorSample, as format: ColorCopyFormat) {
-        NSPasteboard.general.clearContents()
-        NSPasteboard.general.setString(sample.string(format), forType: .string)
+        pasteboard.clearContents()
+        pasteboard.setString(sample.string(format), forType: .string)
     }
 
     func copyLast() {
