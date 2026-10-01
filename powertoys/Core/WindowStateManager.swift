@@ -146,14 +146,10 @@ final class WindowStateManager {
             return
         }
 
-        let sufficientlyVisible = NSScreen.screens.contains { screen in
-            let overlap = screen.visibleFrame.intersection(frame)
-            return overlap.width >= 200 && overlap.height >= 100
-        }
-
-        if sufficientlyVisible {
-            window.setFrame(frame, display: false)
-        }
+        window.setFrame(Self.frameOnSurvivingScreen(
+            frame, visibleFrames: NSScreen.screens.map(\.visibleFrame),
+            currentScreen: window.screen?.visibleFrame
+        ), display: false)
     }
 
     static func storedStateData(for storageIdentifier: String, in defaults: UserDefaults) -> Data? {
@@ -173,6 +169,19 @@ final class WindowStateManager {
             return nil
         }
         return CFUUIDCreateString(nil, uuid) as String
+    }
+
+    nonisolated static func frameOnSurvivingScreen(
+        _ frame: NSRect, visibleFrames: [NSRect], currentScreen: NSRect?
+    ) -> NSRect {
+        guard let greatestOverlap = visibleFrames.max(by: {
+            let left = frame.intersection($0)
+            let right = frame.intersection($1)
+            return left.width * left.height < right.width * right.height
+        }) else { return frame }
+        let target = frame.intersection(greatestOverlap).isEmpty
+            ? currentScreen ?? greatestOverlap : greatestOverlap
+        return clamped(frame, to: target)
     }
 
     nonisolated static func clamped(_ frame: NSRect, to visibleFrame: NSRect) -> NSRect {

@@ -82,4 +82,20 @@ final class WindowStateManagerTests: XCTestCase {
 
         XCTAssertEqual(restored, screen)
     }
+
+    func testMissingDisplayRestorationKeepsTheTitlebarOnTheGreatestOverlapScreen() {
+        let negative = NSRect(x: -1920, y: -200, width: 1920, height: 1080)
+        let primary = NSRect(x: 0, y: 0, width: 1440, height: 900)
+        let frame = NSRect(x: -1000, y: 500, width: 1240, height: 840)
+        let restored = WindowStateManager.frameOnSurvivingScreen(
+            frame, visibleFrames: [negative, primary], currentScreen: primary
+        )
+        XCTAssertEqual(restored, NSRect(x: -1240, y: 40, width: 1240, height: 840))
+        XCTAssertEqual(restored.size, frame.size)
+
+        XCTAssertEqual(WindowStateManager.frameOnSurvivingScreen(
+            NSRect(x: 9000, y: 9000, width: 1240, height: 840),
+            visibleFrames: [negative, primary], currentScreen: negative
+        ), NSRect(x: -1240, y: 40, width: 1240, height: 840))
+    }
 }
