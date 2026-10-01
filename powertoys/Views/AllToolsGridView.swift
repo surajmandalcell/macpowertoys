@@ -115,7 +115,7 @@ struct AllToolsGridView: View {
     }
 
     private func selectSettings(_ toolID: String) {
-        UserDefaults.standard.set(MainToolTab.settings.rawValue, forKey: MainToolTab.storageKey(for: toolID))
+        MainToolTab.select(.settings, for: toolID)
         selectedTool = toolID
     }
 

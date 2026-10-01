@@ -4,23 +4,24 @@ import OnePlusUI
 enum MainToolTab: String {
     case settings, guide
     static func storageKey(for toolID: String) -> String { "main.tool.\(toolID).tab" }
+    static func select(_ tab: Self, for toolID: String) {
+        UserDefaults.standard.set(tab.rawValue, forKey: storageKey(for: toolID))
+    }
 }
 
 struct ToolAboutView: View {
     let toolId: String
     var showsModalCloseButton = false
     var showsSettings = true
-    var startsWithGuide = false
     var changed: () -> Void = {}
     @Environment(\.dismiss) private var dismiss
     @AppStorage private var storedTab: String
 
     init(toolId: String, showsModalCloseButton: Bool = false, showsSettings: Bool = true,
-         startsWithGuide: Bool = false, changed: @escaping () -> Void = {}) {
+         changed: @escaping () -> Void = {}) {
         self.toolId = toolId
         self.showsModalCloseButton = showsModalCloseButton
         self.showsSettings = showsSettings
-        self.startsWithGuide = startsWithGuide
         self.changed = changed
         _storedTab = AppStorage(wrappedValue: MainToolTab.settings.rawValue, MainToolTab.storageKey(for: toolId))
     }
@@ -55,9 +56,8 @@ struct ToolAboutView: View {
                 }
             }
             .clipped()
-            .onChange(of: startsWithGuide ? "manual/" + toolId : toolId, initial: true) { _, _ in
-                if startsWithGuide { storedTab = MainToolTab.guide.rawValue }
-                else if MainToolTab(rawValue: storedTab) == nil { storedTab = MainToolTab.settings.rawValue }
+            .onChange(of: toolId, initial: true) { _, _ in
+                if MainToolTab(rawValue: storedTab) == nil { storedTab = MainToolTab.settings.rawValue }
             }
         } else {
             OnePlusEmptyState("Unknown tool", systemImage: "questionmark.circle",
