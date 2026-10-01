@@ -5,17 +5,17 @@ import XCTest
 final class MainPanelTests: XCTestCase {
     func testUsageWarningRemainsUntilAWindowHasLimits() {
         XCTAssertFalse(SwitchTrayView.hasUsageLimits(nil))
-        for values in [(nil, nil), (0, nil), (nil, 100)] as [(Int?, Int?)] {
+        for (primary, secondary, expected) in [(nil, nil, false), (0, nil, true), (nil, 100, true)] as [(Int?, Int?, Bool)] {
             let bucket = CodexRateLimitBucketSnapshot(
                 id: nil, name: nil, plan: nil, model: nil,
-                primary: .init(usedPercent: values.0, windowDurationMinutes: nil, resetsAt: nil),
-                secondary: .init(usedPercent: values.1, windowDurationMinutes: nil, resetsAt: nil),
+                primary: .init(usedPercent: primary, windowDurationMinutes: nil, resetsAt: nil),
+                secondary: .init(usedPercent: secondary, windowDurationMinutes: nil, resetsAt: nil),
                 credits: nil, spendControlReached: nil)
             let snapshot = CodexAccountUsageSnapshot(
                 account: nil, requiresOpenAIAuthentication: nil,
                 rateLimits: .init(accountID: nil, ordinaryUsageAllowed: nil, defaultBucket: bucket, buckets: [:]),
                 usage: nil, dailyUsage: [], fetchedAt: Date(timeIntervalSince1970: 0))
-            XCTAssertEqual(SwitchTrayView.hasUsageLimits(snapshot), values.0 != nil || values.1 != nil)
+            XCTAssertEqual(SwitchTrayView.hasUsageLimits(snapshot), expected)
         }
     }
 }

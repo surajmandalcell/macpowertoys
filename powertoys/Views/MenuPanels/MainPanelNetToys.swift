@@ -69,7 +69,7 @@ struct NetToysTrayView: View {
         VStack(alignment: .leading, spacing: 0) {
             TrayToolHeader(tab: .netToys)
             VStack(spacing: OnePlusMenuMetrics.tileGap) {
-                networkTiles
+                networkSummary
                 OnePlusMenuSectionHeader("Network controls", actionTitle: "Refresh", compactAction: true) {
                     refreshRequest = UUID()
                 }
@@ -114,11 +114,11 @@ struct NetToysTrayView: View {
                     if configuration.wifiPriority.ssids.isEmpty {
                         emptyActivity("No priority networks")
                     } else {
-                        ForEach(Array(configuration.wifiPriority.ssids.prefix(5).enumerated()), id: \.offset) { index, ssid in
+                        ForEach(Array(configuration.wifiPriority.ssids.prefix(5)), id: \.self) { ssid in
                             activityRow(
                                 symbol: snapshot.helperStatus?.network?.ssid == ssid ? "wifi" : "line.3.horizontal",
                                 title: ssid,
-                                detail: snapshot.helperStatus?.network?.ssid == ssid ? "Connected" : "Priority \(index + 1)"
+                                detail: snapshot.helperStatus?.network?.ssid == ssid ? "Connected" : "Priority \((configuration.wifiPriority.ssids.firstIndex(of: ssid) ?? 0) + 1)"
                             )
                         }
                     }
@@ -137,7 +137,7 @@ struct NetToysTrayView: View {
                     if snapshot.recentIssues.isEmpty {
                         emptyActivity("No recent network issues")
                     } else {
-                        ForEach(Array(snapshot.recentIssues.enumerated()), id: \.offset) { _, event in
+                        ForEach(snapshot.recentIssues, id: \.date) { event in
                             activityRow(
                                 symbol: "exclamationmark.circle",
                                 title: event.displayName,
@@ -166,43 +166,37 @@ struct NetToysTrayView: View {
         return "Updated \(status.heartbeat.formatted(date: .omitted, time: .shortened))"
     }
 
-    private var networkTiles: some View {
+    private var networkSummary: some View {
         let identity = NetworkIdentity(networkID: snapshot.route?.networkID ?? "disconnected", ssid: snapshot.ssid)
         let networkName = snapshot.isLoaded
             ? (snapshot.route == nil ? "Unavailable" : identity.displayName)
             : "Loading…"
         return VStack(spacing: OnePlusMenuMetrics.tileGap) {
-            HStack(spacing: OnePlusMenuMetrics.tileGap) {
-                OnePlusMenuTile(span: 2) {
-                    VStack(alignment: .leading, spacing: OnePlusMetrics.navRowGap) {
-                        Label("Current network", systemImage: "network").onePlusText(.caption)
-                        Text(networkName)
-                            .onePlusText(.cardTitle, color: OnePlusColor.dataBlue).lineLimit(1).help(networkName)
-                        if snapshot.isWiFi && identity.ssid == nil {
-                            HStack(spacing: OnePlusMenuMetrics.tileGap) {
-                                Text("Name unavailable").onePlusText(.caption).lineLimit(1)
-                                Button("Location access") { open(.settings) }
-                                    .buttonStyle(OnePlusButtonStyle(.link, size: .small, horizontalPadding: 0))
-                                    .accessibilityLabel("Manage Wi-Fi Location access in NetToys")
-                                    .help("Open NetToys Location status and recovery actions")
-                            }
-                        } else {
-                            Text(helperDetail).onePlusText(.caption).lineLimit(1)
-                        }
-                    }
-                }
-                if identity.ssid == nil {
-                    networkTile("Connection", value: snapshot.route == nil ? "—" : snapshot.isWiFi ? "Wi-Fi" : "Active route", detail: reachability)
-                } else {
-                    networkTile("Interface", value: snapshot.route?.interfaceName ?? "—", detail: reachability)
+            OnePlusMenuControlRow("Current network", systemImage: "network") {
+                HStack(spacing: OnePlusMenuMetrics.tileGap) {
+                    Text(networkName).onePlusText(.row, color: OnePlusColor.dataBlue).lineLimit(1).help(networkName)
+                        .frame(maxWidth: OnePlusMenuMetrics.columnWidth(), alignment: .trailing)
+                    Image(systemName: "info.circle").onePlusText(.caption).help(helperDetail)
+                        .accessibilityLabel(helperDetail)
                 }
             }
-            HStack(spacing: OnePlusMenuMetrics.tileGap) {
-                networkTile("Local IP", value: snapshot.localNetwork?.address.description ?? "—", detail: "IPv4", span: 2)
-                networkTile("Gateway", value: snapshot.gatewayMilliseconds.map {
-                    $0.formatted(.number.precision(.fractionLength(1))) + " ms"
-                } ?? (snapshot.route == nil ? "—" : "No reply"), detail: snapshot.route?.gateway ?? "—")
+            if snapshot.isWiFi && identity.ssid == nil {
+                HStack {
+                    Text("Name unavailable").onePlusText(.caption)
+                    Spacer(minLength: OnePlusMenuMetrics.tileGap)
+                    Button("Location access") { open(.settings) }
+                        .buttonStyle(OnePlusButtonStyle(.link, size: .small, horizontalPadding: 0))
+                        .accessibilityLabel("Manage Wi-Fi Location access in NetToys")
+                        .help("Open NetToys Location status and recovery actions")
+                }
             }
+            networkRow(identity.ssid == nil ? "Connection" : "Interface", symbol: snapshot.isWiFi ? "wifi" : "network",
+                       value: identity.ssid == nil ? (snapshot.route == nil ? "—" : snapshot.isWiFi ? "Wi-Fi" : "Active route") : snapshot.route?.interfaceName ?? "—",
+                       detail: reachability)
+            networkRow("Local IP", symbol: "network", value: snapshot.localNetwork?.address.description ?? "—", detail: "IPv4")
+            networkRow("Gateway", symbol: "point.3.connected.trianglepath.dotted", value: snapshot.gatewayMilliseconds.map {
+                $0.formatted(.number.precision(.fractionLength(1))) + " ms"
+            } ?? (snapshot.route == nil ? "—" : "No reply"), detail: snapshot.route?.gateway ?? "—")
             HStack(spacing: OnePlusMenuMetrics.tileGap) {
                 Button("Scan network", systemImage: "magnifyingglass") {
                     open(.scanner)
@@ -220,12 +214,11 @@ struct NetToysTrayView: View {
         }
     }
 
-    private func networkTile(_ title: String, value: String, detail: String, span: Int = 1) -> some View {
-        OnePlusMenuTile(span: span) {
-            VStack(alignment: .leading, spacing: OnePlusMenuMetrics.tileGap) {
-                Text(title).onePlusText(.caption)
-                Text(value).onePlusText(.cardTitle, color: OnePlusColor.dataBlue).lineLimit(1).help(value)
-                Text(detail).onePlusText(.caption).lineLimit(1)
+    private func networkRow(_ title: String, symbol: String, value: String, detail: String) -> some View {
+        OnePlusMenuControlRow(title, systemImage: symbol) {
+            HStack(spacing: OnePlusMenuMetrics.tileGap) {
+                Text(value).onePlusText(.row, color: OnePlusColor.dataBlue).lineLimit(1).help(value)
+                Text(detail).onePlusText(.caption).lineLimit(1).help(detail)
             }
         }
     }
@@ -258,40 +251,39 @@ struct NetToysTrayView: View {
         isExpanded: Binding<Bool>,
         @ViewBuilder content: () -> Content
     ) -> some View {
-        OnePlusMenuCard {
-            VStack(spacing: 0) {
-                HStack(spacing: 6) {
-                    Button { isExpanded.wrappedValue.toggle() } label: {
-                        HStack(spacing: 9) {
-                            Image(systemName: symbol)
-                                .onePlusText(.row, color: OnePlusColor.secondary)
-                                .frame(width: OnePlusMetrics.compactControlHeight)
-                            VStack(alignment: .leading, spacing: 2) {
-                                Text(title).onePlusText(.row)
-                                Text(detail).onePlusText(.caption).lineLimit(1).help(detail)
-                            }
-                            Spacer(minLength: 4)
-                            Image(systemName: "chevron.right")
-                                .onePlusText(.caption)
-                                .rotationEffect(.degrees(isExpanded.wrappedValue ? 90 : 0))
-                        }
-                        .padding(.horizontal, TrayPopoverLayout.netToysDisclosureHorizontalPadding)
-                        .padding(.vertical, TrayPopoverLayout.netToysDisclosureVerticalPadding)
-                        .frame(maxWidth: .infinity, alignment: .leading)
-                        .contentShape(Rectangle())
+        VStack(spacing: 0) {
+            HStack(spacing: 6) {
+                Button { isExpanded.wrappedValue.toggle() } label: {
+                    HStack(spacing: 9) {
+                        Image(systemName: symbol)
+                            .onePlusText(.row, color: OnePlusColor.secondary)
+                            .frame(width: OnePlusMetrics.compactControlHeight)
+                        Text(title).onePlusText(.row)
+                        Spacer(minLength: 4)
+                        Text(detail).onePlusText(.caption).lineLimit(1).help(detail)
+                        Image(systemName: "chevron.right")
+                            .onePlusText(.caption)
+                            .rotationEffect(.degrees(isExpanded.wrappedValue ? 90 : 0))
                     }
-                    .buttonStyle(OnePlusInteractionStyle(radius: OnePlusMetrics.controlRadius))
-                    .accessibilityLabel("\(isExpanded.wrappedValue ? "Hide" : "Show") \(title) activity")
-                    Toggle(title, isOn: isOn)
-                        .labelsHidden()
-                        .toggleStyle(OnePlusSwitchStyle())
-                        .disabled(disabled)
+                    .padding(.horizontal, TrayPopoverLayout.netToysDisclosureHorizontalPadding)
+                    .padding(.vertical, TrayPopoverLayout.netToysDisclosureVerticalPadding)
+                    .frame(maxWidth: .infinity, alignment: .leading)
+                    .contentShape(Rectangle())
                 }
-                if isExpanded.wrappedValue {
-                    VStack(spacing: 0) { content() }
-                        .padding(.leading, OnePlusMetrics.compactControlHeight + OnePlusMenuMetrics.tileGap)
-                        .padding(.bottom, OnePlusMenuMetrics.tileGap)
-                }
+                .buttonStyle(OnePlusInteractionStyle(radius: OnePlusMetrics.controlRadius))
+                .accessibilityLabel("\(isExpanded.wrappedValue ? "Hide" : "Show") \(title) activity")
+                Toggle(title, isOn: isOn)
+                    .labelsHidden()
+                    .toggleStyle(OnePlusSwitchStyle())
+                    .disabled(disabled)
+            }
+            .padding(.horizontal, 1)
+            .onePlusRowHover(radius: OnePlusMetrics.menuTileRadius)
+            if isExpanded.wrappedValue {
+                VStack(spacing: 0) { content() }
+                    .padding(.leading, OnePlusMetrics.compactControlHeight + OnePlusMenuMetrics.tileGap)
+                    .padding(.horizontal, OnePlusMenuMetrics.bodyInset)
+                    .padding(.bottom, OnePlusMenuMetrics.tileGap)
             }
         }
     }
@@ -311,13 +303,12 @@ struct NetToysTrayView: View {
             Image(systemName: symbol)
                 .onePlusText(.caption)
                 .frame(width: OnePlusMetrics.compactControlHeight)
-            VStack(alignment: .leading, spacing: 1) {
-                Text(title).onePlusText(.row).lineLimit(1).help(title)
-                Text(detail).onePlusText(.caption).lineLimit(1).help(detail)
-            }
+            Text(title).onePlusText(.row).lineLimit(1).help(title)
             Spacer(minLength: 4)
+            Text(detail).onePlusText(.caption).lineLimit(1).help(detail)
         }
         .padding(.vertical, OnePlusMenuMetrics.tileGap)
+        .onePlusRowHover(radius: OnePlusMetrics.controlRadius)
     }
 
     private func emptyActivity(_ message: String) -> some View {

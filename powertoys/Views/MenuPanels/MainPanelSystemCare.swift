@@ -42,6 +42,7 @@ nonisolated struct SystemCareTraySnapshot: Sendable {
 
 struct SystemCareTrayView: View {
     @State private var manager = SystemCareManager.shared
+    @Environment(\.onePlusIsVisible) private var isVisible
     @Binding var snapshot: SystemCareTraySnapshot
     let disk: SystemCareStartupDiskSnapshot?
     let diskLoaded: Bool
@@ -66,6 +67,9 @@ struct SystemCareTrayView: View {
                         expandedCategories.removeAll()
                     }
                 }
+                if startedScan && manager.isWorking {
+                    TrayQuietActionButton(title: "Cancel", symbol: "stop") { manager.cancel() }
+                }
                 Spacer(minLength: 0)
                 if manager.isWorking {
                     ProgressView().controlSize(.small)
@@ -85,9 +89,9 @@ struct SystemCareTrayView: View {
             }
 
             if !manager.hasCleanupScan {
-                OnePlusMenuCard { Text("Scan to measure reclaimable storage").onePlusText(.caption) }
+                Text("Scan to measure reclaimable storage").onePlusText(.caption)
             } else if manager.cleanupCandidates.isEmpty {
-                OnePlusMenuCard { Text("0 bytes reclaimable in the saved scan").onePlusText(.caption) }
+                Text("0 bytes reclaimable in the saved scan").onePlusText(.caption)
             } else if !snapshot.isPrepared {
                 ProgressView("Preparing saved scan…")
             } else {
@@ -110,6 +114,12 @@ struct SystemCareTrayView: View {
         .onDisappear {
             if startedScan && manager.isWorking { manager.cancel() }
         }
+        .onChange(of: isVisible) {
+            if !isVisible && startedScan && manager.isWorking { manager.cancel() }
+        }
+        .onChange(of: manager.isWorking) {
+            if !manager.isWorking { startedScan = false }
+        }
         .task(id: manager.cleanupCandidates) {
             let candidates = manager.cleanupCandidates
             let prepared = await Task.detached(priority: .utility) { SystemCareTraySnapshot.prepare(candidates) }.value
@@ -129,7 +139,7 @@ struct SystemCareTrayView: View {
                 }
                 OnePlusSegmentBar(values: disk.map { [Double($0.used), Double($0.purgeable ?? 0), Double($0.free)] } ?? [],
                                   colors: [OnePlusColor.dataBlue, OnePlusColor.warn, OnePlusColor.ok])
-                HStack(alignment: .top, spacing: OnePlusMenuMetrics.tileGap) {
+                HStack(spacing: OnePlusMenuMetrics.tileGap) {
                     diskValue("Used", bytes: disk?.used, color: OnePlusColor.dataBlue)
                     diskValue("Purgeable", bytes: disk?.purgeable, color: OnePlusColor.warn)
                         .help("Space macOS can make available when needed")
@@ -140,7 +150,7 @@ struct SystemCareTrayView: View {
     }
 
     private func diskValue(_ title: String, bytes: Int64?, color: Color) -> some View {
-        VStack(alignment: .leading, spacing: OnePlusMetrics.navRowGap) {
+        HStack(spacing: OnePlusMetrics.navRowGap) {
             Text(title).onePlusText(.caption, color: color)
             Text(bytes.map { Self.bytes($0) } ?? "—").onePlusText(.mono)
         }.frame(maxWidth: .infinity, alignment: .leading)
@@ -172,83 +182,87 @@ struct SystemCareTrayView: View {
     }
 
     private var selectionBar: some View {
-        VStack(spacing: OnePlusMenuMetrics.tileGap) {
-            HStack {
-                Text("\(manager.selectedCandidateIDs.count) selected · \(Self.bytes(manager.selectedSize))")
-                    .onePlusText(.caption).monospacedDigit()
-                Spacer(minLength: OnePlusMetrics.actionSpacing)
-                Button("Move to Trash", systemImage: "trash") { confirmTrash = true }
-                    .buttonStyle(OnePlusButtonStyle(.destructive, size: .small))
-                    .disabled(manager.selectedCandidateIDs.isEmpty || manager.isWorking)
+        HStack(spacing: OnePlusMenuMetrics.tileGap) {
+            Button("Move to Trash", systemImage: "trash") { confirmTrash = true }
+                .buttonStyle(OnePlusButtonStyle(.destructive, size: .small))
+                .disabled(manager.selectedCandidateIDs.isEmpty)
+            Button("Select All") {
+                manager.setCandidates(Set(manager.cleanupCandidates.map(\.id)), selected: true)
             }
-            HStack {
-                Button("Select All") {
-                    manager.setCandidates(Set(manager.cleanupCandidates.map(\.id)), selected: true)
-                }
-                Button("Select None") {
-                    manager.setCandidates(Set(manager.cleanupCandidates.map(\.id)), selected: false)
-                }
-                Spacer()
-            }.buttonStyle(OnePlusButtonStyle(.ghost, size: .small))
+            .buttonStyle(OnePlusButtonStyle(.link, size: .small, horizontalPadding: 0))
+            Button("Select None") {
+                manager.setCandidates(Set(manager.cleanupCandidates.map(\.id)), selected: false)
+            }
+            .buttonStyle(OnePlusButtonStyle(.link, size: .small, horizontalPadding: 0))
+            Spacer(minLength: 0)
+            Text("\(manager.selectedCandidateIDs.count) selected · \(Self.bytes(manager.selectedSize))")
+                .onePlusText(.caption).monospacedDigit().lineLimit(1)
+                .help("\(manager.selectedCandidateIDs.count) selected · \(Self.bytes(manager.selectedSize))")
         }
+        .disabled(manager.isWorking)
     }
 
     private func categorySection(_ category: SystemCareCategoryID) -> some View {
         let rows = snapshot.groups[category] ?? []
         return Group {
             if !rows.isEmpty {
-                OnePlusMenuCard {
-                    VStack(alignment: .leading, spacing: OnePlusMenuMetrics.tileGap) {
-                        HStack(spacing: 7) {
-                            Button {
-                                if expandedCategories.contains(category) { expandedCategories.remove(category) }
-                                else { expandedCategories.insert(category) }
-                            } label: {
+                VStack(alignment: .leading, spacing: 0) {
+                    HStack(spacing: 7) {
+                        Button {
+                            if expandedCategories.contains(category) { expandedCategories.remove(category) }
+                            else { expandedCategories.insert(category) }
+                        } label: {
+                            HStack(spacing: 7) {
                                 Image(systemName: "chevron.right")
                                     .onePlusText(.caption)
                                     .rotationEffect(.degrees(expandedCategories.contains(category) ? 90 : 0))
                                     .frame(width: OnePlusMetrics.compactControlHeight, height: OnePlusMetrics.compactControlHeight)
+                                Image(systemName: category.icon).onePlusText(.row, color: categoryColor(category))
+                                Text(category.title).onePlusText(.row).lineLimit(1).help("\(category.title): \(category.detail)")
+                                Spacer(minLength: OnePlusMenuMetrics.tileGap)
+                                Text("\(rows.count)").onePlusText(.caption).monospacedDigit()
                             }
-                            .buttonStyle(OnePlusInteractionStyle(radius: OnePlusMetrics.controlRadius))
-                            .accessibilityLabel(expandedCategories.contains(category) ? "Collapse \(category.title)" : "Expand \(category.title)")
-                            Image(systemName: category.icon).foregroundStyle(categoryColor(category))
-                            Text(category.title).onePlusText(.row).lineLimit(1).help("\(category.title): \(category.detail)")
-                            Spacer(minLength: OnePlusMenuMetrics.tileGap)
-                            Text("\(rows.count)")
-                                .onePlusText(.caption)
-                                .monospacedDigit()
-                            Toggle("Select \(category.title)", isOn: Binding(
-                                get: { rows.allSatisfy { manager.selectedCandidateIDs.contains($0.id) } },
-                                set: { manager.setCandidates(Set(rows.map(\.id)), selected: $0) }
-                            ))
-                            .toggleStyle(.checkbox)
-                            .labelsHidden()
+                            .frame(maxWidth: .infinity, alignment: .leading)
+                            .contentShape(Rectangle())
                         }
-                        if expandedCategories.contains(category) {
-                            LazyVStack(spacing: 2) {
-                                ForEach(rows) { row in
-                                    Toggle(isOn: Binding(
-                                        get: { manager.selectedCandidateIDs.contains(row.id) },
-                                        set: { manager.setCandidate(row.id, selected: $0) }
-                                    )) {
-                                        HStack(spacing: 6) {
-                                            Text(row.candidate.name).onePlusText(.caption, color: OnePlusColor.ink)
-                                                .lineLimit(1).truncationMode(.middle).help(row.candidate.url.path)
-                                            Spacer(minLength: 4)
-                                            Text(row.size)
-                                                .onePlusText(.caption)
-                                                .monospacedDigit()
-                                        }
-                                    }
-                                    .toggleStyle(.checkbox)
-                                    .padding(.leading, 29)
-                                    .padding(.vertical, 2)
-                                }
-                            }
-                        }
+                        .buttonStyle(OnePlusInteractionStyle(radius: OnePlusMetrics.controlRadius))
+                        .accessibilityLabel(expandedCategories.contains(category) ? "Collapse \(category.title)" : "Expand \(category.title)")
+                        Toggle("Select \(category.title)", isOn: Binding(
+                            get: { rows.allSatisfy { manager.selectedCandidateIDs.contains($0.id) } },
+                            set: { manager.setCandidates(Set(rows.map(\.id)), selected: $0) }
+                        ))
+                        .toggleStyle(.checkbox)
+                        .labelsHidden()
                     }
-
+                    .padding(OnePlusMenuMetrics.bodyInset)
+                    .onePlusRowHover(radius: OnePlusMetrics.menuTileRadius)
+                    if expandedCategories.contains(category) {
+                        LazyVStack(spacing: 2) {
+                            ForEach(rows) { row in
+                                Toggle(isOn: Binding(
+                                    get: { manager.selectedCandidateIDs.contains(row.id) },
+                                    set: { manager.setCandidate(row.id, selected: $0) }
+                                )) {
+                                    HStack(spacing: 6) {
+                                        Text(row.candidate.name).onePlusText(.caption, color: OnePlusColor.ink)
+                                            .lineLimit(1).truncationMode(.middle).help(row.candidate.url.path)
+                                        Spacer(minLength: 4)
+                                        Text(row.size)
+                                            .onePlusText(.caption)
+                                            .monospacedDigit()
+                                    }
+                                }
+                                .toggleStyle(.checkbox)
+                                .padding(.leading, 29)
+                                .padding(.vertical, 2)
+                                .onePlusRowHover(radius: OnePlusMetrics.controlRadius)
+                            }
+                        }
+                        .padding(.horizontal, OnePlusMenuMetrics.bodyInset)
+                        .padding(.bottom, OnePlusMenuMetrics.bodyInset)
+                    }
                 }
+                .disabled(manager.isWorking)
             }
         }
     }
