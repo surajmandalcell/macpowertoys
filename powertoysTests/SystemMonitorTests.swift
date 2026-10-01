@@ -34,6 +34,73 @@ final class SystemMonitorTests: XCTestCase {
         }
     }
 
+    func testMenuDetailsKeepEachHeroFactOnceAndPreserveStaleReadings() throws {
+        let sample = SystemMonitorSample(timestamp: .now, cpuUsage: nil, memoryUsed: nil, memoryTotal: nil,
+            gpuUsage: nil, networkDownload: nil, networkUpload: nil, diskUsed: 366_800_000_000,
+            diskTotal: 500_000_000_000, batteryPercent: 80, batteryCharging: true,
+            thermalState: nil, loadAverage: nil, unavailableMetrics: [],
+            diskDetails: .init(readPerSecond: 2_000_000, writePerSecond: 1_000_000, readTotal: 0, writeTotal: 0),
+            batteryDetails: .init(cycleCount: 50, health: "Normal", currentCapacity: nil, maximumCapacity: nil,
+                                  voltageMillivolts: 12_000, amperageMilliamps: -1_000))
+        for stale in [Set<SystemMonitorMenuMetric>(), [.disk, .battery]] {
+            let data = TaskManagerMenuProjection.prepare(sample: sample, history: .init(), staleMetrics: stale)
+            let disk = try XCTUnwrap(data[.disk])
+            let battery = try XCTUnwrap(data[.battery])
+            XCTAssertEqual(disk.rows.map(\.title), ["Read", "Write"] + (stale.isEmpty ? [] : ["Reading"]))
+            XCTAssertEqual(battery.rows.map(\.title), ["Cycle count", "Power draw"] + (stale.isEmpty ? [] : ["Reading"]))
+            XCTAssertEqual(battery.caption, stale.isEmpty ? "Connected to power" : "Stale reading. Showing the last successful sample.")
+            XCTAssertEqual(battery.accessories.first?.value, "Normal")
+            XCTAssertEqual(battery.rows.first?.value, "50")
+            XCTAssertNotEqual(disk.rows.first?.value, "—")
+        }
+        let pending = TaskManagerMenuProjection.prepare(sample: nil, history: .init())
+        XCTAssertEqual(pending[.disk]?.rows.map(\.value), ["—", "—"])
+        XCTAssertEqual(pending[.battery]?.caption, "—")
+        XCTAssertEqual(pending[.battery]?.accessories.first?.value, "—")
+        XCTAssertTrue(try XCTUnwrap(pending[.battery]).rows.isEmpty)
+    }
+
+    @MainActor
+    func testHomeMemoryKeepsTheSameFullMetricPaintAsCPUAndGPU() throws {
+        for appearance in [NSAppearance.Name.aqua, .darkAqua] {
+            var heights: [CGFloat] = []
+            for page in [SystemMonitorTrayPage.cpu, .gpu, .memory] {
+                var data = TaskManagerMenuPageData()
+                data.homeValue = "95%"
+                data.homeCaption = page == .memory ? "22.7/24 GB" : "Load 1"
+                let state = TaskManagerMenuPageState(data, history: [])
+                let width = OnePlusMenuMetrics.columnWidth(span: 1)
+                let host = NSHostingView(rootView: TaskManagerMenuHomeTile(page: page, state: state, select: { _ in })
+                    .onePlusDensity(.compact).frame(width: width, height: 70))
+                let window = NSWindow(contentRect: CGRect(x: -10000, y: -10000, width: width, height: 70),
+                                      styleMask: .borderless, backing: .buffered, defer: false)
+                window.isReleasedWhenClosed = false
+                window.appearance = NSAppearance(named: appearance)
+                window.contentView = host
+                defer { window.close() }
+                host.layoutSubtreeIfNeeded()
+                let bitmap = try XCTUnwrap(host.bitmapImageRepForCachingDisplay(in: host.bounds))
+                host.cacheDisplay(in: host.bounds, to: bitmap)
+                let scale = CGFloat(bitmap.pixelsWide) / width
+                var tallest = 0
+                var run = 0
+                for y in 0..<bitmap.pixelsHigh {
+                    var painted = false
+                    for x in Int(8 * scale)..<Int(42 * scale) {
+                        let color = try XCTUnwrap(bitmap.colorAt(x: x, y: y)?.usingColorSpace(.sRGB))
+                        if appearance == .darkAqua ? color.redComponent > 0.65 : color.redComponent < 0.35 { painted = true }
+                    }
+                    run = painted ? run + 1 : 0
+                    tallest = max(tallest, run)
+                }
+                heights.append(CGFloat(tallest) / scale)
+            }
+            XCTAssertGreaterThan(heights[2], 17)
+            XCTAssertEqual(heights[2], heights[0], accuracy: 1)
+            XCTAssertEqual(heights[2], heights[1], accuracy: 1)
+        }
+    }
+
     func testTrayPagesSampleOnlyTheirMetricFamilies() {
         XCTAssertEqual(SystemMonitorTrayPage.allCases.count, 9)
         XCTAssertEqual(SystemMonitorTrayPage.home.metrics, Set(SystemMonitorMenuMetric.allCases))

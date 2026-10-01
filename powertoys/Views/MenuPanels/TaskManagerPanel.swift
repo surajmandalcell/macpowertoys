@@ -248,7 +248,7 @@ private struct TaskManagerMenuContent: View, Equatable {
     }
 }
 
-private struct TaskManagerMenuHomeTile: View {
+struct TaskManagerMenuHomeTile: View {
     let page: SystemMonitorTrayPage
     @Bindable var state: TaskManagerMenuPageState
     let select: (SystemMonitorTrayPage) -> Void
@@ -259,15 +259,16 @@ private struct TaskManagerMenuHomeTile: View {
             switch page {
             case .cpu, .gpu, .memory:
                 OnePlusMenuTile(action: { select(page) }) {
-                    VStack(alignment: .leading, spacing: OnePlusMetrics.navRowGap) {
+                    VStack(alignment: .leading, spacing: page == .memory ? 0 : OnePlusMetrics.navRowGap) {
                         metricLabel
                         HStack(alignment: .firstTextBaseline, spacing: OnePlusMetrics.navRowGap) {
                             TaskManagerMenuValueView(parts: data.value)
                             Spacer(minLength: 0)
-                            if page != .gpu {
+                            if page == .cpu {
                                 homeCaption
                             }
                         }
+                        if page == .memory { homeCaption }
                     }
                 }
                 .historyBackground(values: data.history, color: page == .memory ? OnePlusColor.accent : OnePlusColor.chartLine)
@@ -351,7 +352,7 @@ private struct TaskManagerMenuValueView: View, Equatable {
         HStack(alignment: .firstTextBaseline, spacing: OnePlusMetrics.navRowGap) {
             Text(parts.value).onePlusText(.metric).monospacedDigit()
             if !parts.unit.isEmpty { Text(parts.unit).onePlusText(.unit) }
-        }.lineLimit(1).minimumScaleFactor(0.7)
+        }.lineLimit(1).fixedSize(horizontal: true, vertical: false)
     }
 }
 
@@ -371,7 +372,7 @@ private struct TaskManagerMenuDetailPage: View {
             }
             if page == .sensors {
                 FanControlView(owner: "system-monitor-tray-sensors", compact: true)
-            } else {
+            } else if !state.rows.isEmpty {
                 TaskManagerMenuDetailRows(page: page, state: state)
             }
         }
