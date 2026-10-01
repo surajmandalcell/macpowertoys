@@ -10,7 +10,7 @@ final class LauncherGridTests: XCTestCase {
         let width = (OnePlusWindowCanvas.main.size.width - OnePlusWindowCanvas.main.sidebarWidth
             - 2 * OnePlusMetrics.gutter - 3 * OnePlusCatalogMetrics.gap) / 4
             - 2 * OnePlusCatalogMetrics.cardInset
-        let font = NSFont.systemFont(ofSize: 12)
+        let font = NSFont.systemFont(ofSize: 11)
         let lineHeight = NSLayoutManager().defaultLineHeight(for: font)
         for tool in ToolRegistry.builtInTools {
             XCTAssertFalse(tool.summary.isEmpty, tool.id)

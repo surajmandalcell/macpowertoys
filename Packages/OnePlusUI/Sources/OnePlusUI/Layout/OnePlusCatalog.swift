@@ -6,6 +6,11 @@ public enum OnePlusCatalogMetrics {
     public static let cardHeight: CGFloat = 151
     public static let rowHeight: CGFloat = 52
     public static let iconSize: CGFloat = 40
+    public static let listIconSize: CGFloat = 29
+    public static let identityGap: CGFloat = 9
+    public static let categoryFont = Font.system(size: 9.5)
+    public static let summaryFont = Font.system(size: 11)
+    public static let summaryLineSpacing: CGFloat = 2
     public static let cardInset: CGFloat = 12
     public static let titleGap: CGFloat = 2
     public static let smallGap: CGFloat = 6

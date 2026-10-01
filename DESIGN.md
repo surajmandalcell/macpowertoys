@@ -600,13 +600,16 @@ Follows `macpowertoys-repaired.html` and its handoff comment.
   capable.`, tabs `All tools N`, `Enabled N`, and `Favorites N`, a trailing
   sort select (Default order, Name, Category), and a grid or list toggle.
   Grid: four columns and 12 pt gaps. Card height follows content, with
-  equal heights in each grid row. Keep a 40 pt tool icon, name, category
-  caption, favorite star (visible on hover or when set), and a reserved
-  two-line description. Put the footer row 12 pt below the description,
+  equal heights in each grid row. Keep a 40 pt tool icon and a 9 pt gap
+  before the identity. Use a 9.5 pt category and an 11 pt secondary summary
+  with 16 pt between baselines. Reserve two summary lines. The favorite
+  star is visible on hover or when set and keeps its 24 pt hit target.
+  Reserve that target without an extra identity spacer. Put the footer
+  row 12 pt below the description,
   with an unlabeled enable switch and a ghost `Open` text button
   without an arrow. Catalog cards have no grain texture (owner correction
   2026-10-01: the page looked too busy). List: 52 pt rows with the same
-  parts.
+  parts, with a 29 pt icon. Grid and page-header icons stay 40 pt.
 - Tool page: a header with the 40 pt icon, tool name, description, and a
   trailing enable switch. `Open <Tool>` is the primary action: a primary
   button in a fixed action bar at the bottom of the page, right-aligned on
