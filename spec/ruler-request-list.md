@@ -24,7 +24,7 @@ actions directly on one row. Single-action card wrappers are removed under
 the horizontal-density correction. The Settings button keeps the shared
 slanted Ruler glyph. Both actions follow tool enablement. `11388f43` uses this
 shared body and puts the separate "Open Ruler" action in the fixed footer.
-Build, hosted checks, and signed interaction remain with the production pass.
+Both shared compile modes pass. Hosted checks and signed interaction remain.
 
 | Status | Request | Evidence | Remaining work |
 |---|---|---|---|

@@ -3,7 +3,7 @@
 ## Production audit, 2026-10-01
 
 - [x] Main launcher follow-up, `5a3e95b5`: use `needsReset(selection, hasBackup:)` in embedded Settings. A saved original keeps reset available at the default. Put Review changes directly on the page; remove its single-row Preferences card and inline help. Keep operation notices visible.
-- [x] Main documentation follow-up, `b4fd441d`: add the README tool entry and short section. Extend How to use with all pages, search, reset, Modified, exact-value backups, OS edit gates, static previews, restart or Later, Mic Lock, and shared Awake controls. Hosted tests and signed interaction checks remain. Report: `tmp/redesign/logs/w1-main.md`.
+- [x] Main documentation follow-up, `b4fd441d`: add the README tool entry and short section. Extend How to use with all pages, search, reset, Modified, exact-value backups, OS edit gates, static previews, restart or Later, Mic Lock, and shared Awake controls. Both shared compile modes pass. Hosted tests and signed interaction checks remain. Report: `tmp/redesign/logs/w1-main.md`.
 
 ## Round 10 main-window corrections, 2026-09-30
 
