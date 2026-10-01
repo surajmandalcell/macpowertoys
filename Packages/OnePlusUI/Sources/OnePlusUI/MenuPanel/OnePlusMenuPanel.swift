@@ -368,7 +368,7 @@ private struct OnePlusMenuTabIcon: View {
     @State private var hover = false
     var body: some View {
         Group {
-            if let image { image.resizable().scaledToFit().frame(width: 13, height: 13) }
+            if let image { image.onePlusAssetGlyph(size: 13) }
             else { Image(systemName: symbol).font(.system(size: 13)) }
         }
             .foregroundStyle(selected || (enabled && (hover || sample == .hover)) ? OnePlusColor.ink : OnePlusColor.secondary)

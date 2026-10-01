@@ -74,7 +74,7 @@ public struct OnePlusCardHeader<Accessory: View>: View {
     public var body: some View {
         HStack(spacing: 8) {
             if let image {
-                image.resizable().scaledToFit().frame(width: 13, height: 13)
+                image.onePlusAssetGlyph(size: 13)
                     .foregroundStyle(OnePlusColor.secondary).accessibilityHidden(true)
             } else if let icon {
                 Image(systemName: icon).font(.system(size: 13)).rotationEffect(.degrees(iconRotation)).frame(width: 13)
