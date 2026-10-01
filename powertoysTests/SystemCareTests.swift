@@ -1,3 +1,4 @@
+import Darwin
 import XCTest
 @testable import powertoys
 
@@ -171,7 +172,7 @@ final class SystemCareTests: XCTestCase {
                     started.fulfill()
                     while !Task.isCancelled { usleep(1_000) }
                     canceled.fulfill()
-                    _ = release.wait(timeout: .now() + 3)
+                    _ = { release.wait(timeout: .now() + 3) }()
                     try Task.checkCancellation()
                     return true
                 }
@@ -302,6 +303,21 @@ final class SystemCareTests: XCTestCase {
         XCTAssertEqual(errno, ESRCH)
     }
 
+    func testUninstallRequiresOneExactNativeAndMoleBundle() throws {
+        let selected = InstalledApplication(name: "Same", url: URL(fileURLWithPath: "/Applications/Same.app"))
+        let duplicate = InstalledApplication(name: "same", url: URL(fileURLWithPath: "/Users/fixture/Applications/same.app"))
+        XCTAssertNil(SystemCareManager.uninstallRefusal(for: selected, applications: [selected]))
+        XCTAssertNotNil(SystemCareManager.uninstallRefusal(for: selected, applications: [selected, duplicate]))
+        XCTAssertNotNil(SystemCareManager.uninstallRefusal(for: selected, applications: [duplicate]))
+        let exact = Data(#"[{"name":"Same","path":"/Applications/Same.app"}]"#.utf8)
+        XCTAssertEqual(try SystemCareManager.validatedUninstallName(for: selected, inventory: exact), "Same")
+        let ambiguous = Data(#"[{"name":"Same","path":"/Applications/Same.app"},{"name":"Same","path":"/Volumes/Fixture/Applications/Same.app"}]"#.utf8)
+        XCTAssertThrowsError(try SystemCareManager.validatedUninstallName(for: selected, inventory: ambiguous))
+        let wrongBundle = Data(#"[{"name":"Same","path":"/Volumes/Fixture/Applications/Same.app"}]"#.utf8)
+        XCTAssertThrowsError(try SystemCareManager.validatedUninstallName(for: selected, inventory: wrongBundle))
+        XCTAssertThrowsError(try SystemCareManager.validatedUninstallName(for: selected, inventory: Data("[]".utf8)))
+    }
+
     private struct Fixture {
         let home: URL
         let suite = "SystemCareTests.\(UUID().uuidString)"
@@ -309,8 +325,12 @@ final class SystemCareTests: XCTestCase {
         var root: URL { SystemCareManager.cleanupRoot(for: .caches, homeDirectory: home) }
 
         init() throws {
-            home = FileManager.default.temporaryDirectory.resolvingSymlinksInPath()
-                .appendingPathComponent("SystemCareTests-\(UUID().uuidString)", isDirectory: true)
+            guard let physicalPath = realpath(FileManager.default.temporaryDirectory.path, nil) else {
+                throw NSError(domain: NSPOSIXErrorDomain, code: Int(errno))
+            }
+            let temporaryDirectory = URL(fileURLWithPath: String(cString: physicalPath), isDirectory: true)
+            free(physicalPath)
+            home = temporaryDirectory.appendingPathComponent("SystemCareTests-\(UUID().uuidString)", isDirectory: true)
             defaults = try XCTUnwrap(UserDefaults(suiteName: suite))
             try FileManager.default.createDirectory(at: root, withIntermediateDirectories: true)
         }
