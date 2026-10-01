@@ -22,13 +22,22 @@ final class DiskExplorerViewTests: XCTestCase {
 
     func testFoldedFilesStayVisibleAndCannotBeRemoved() throws {
         let root = entry("/tmp/Diskman", kind: .directory)
-        let aggregate = entry("/tmp/Diskman/folded", kind: .aggregate, bytes: 1, files: 9936)
+        let aggregate = try XCTUnwrap((0..<100).map {
+            entry("/tmp/Diskman/folded-\($0)", kind: .aggregate, bytes: 1, files: 9936)
+        }.max { $0.id < $1.id })
         let files = (0..<81).map { entry("/tmp/Diskman/file-\($0)", bytes: Int64($0 + 10)) }
+        XCTAssertGreaterThan(aggregate.id, files.sorted { $0.id < $1.id }[79].id)
         root.replaceChildren(files + [aggregate])
         XCTAssertEqual(DiskEntryPresentation.name(aggregate), "\(9936.formatted()) smaller files")
         XCTAssertEqual(DiskEntryPresentation.symbol(aggregate), "square.stack.3d.up")
         XCTAssertFalse(DiskRemoval.isAllowed(aggregate, under: root.url))
         for complete in [false, true] {
+            for measure in DiskChartMeasure.allCases {
+                let selection = measure.displayedChildren(in: root, apparent: false, limit: 80, scanComplete: complete)
+                XCTAssertEqual(selection.shown.count, 80)
+                XCTAssertTrue(selection.shown.contains { $0 === aggregate })
+                XCTAssertEqual(Set((selection.shown + selection.hidden).map(\.id)), Set(root.children.map(\.id)))
+            }
             let map = DiskTreemapView(directory: root, apparent: false, measure: .space, scanComplete: complete, select: { _ in })
             XCTAssertTrue(map.tiles.contains { $0.entry?.kind == .aggregate })
             let rings = DiskSunburstView.segments(for: root, apparent: false, measure: .space, radius: 200, scanComplete: complete)

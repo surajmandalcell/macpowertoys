@@ -60,13 +60,16 @@ nonisolated enum DiskRemoval {
 
     static func topLevel(_ entries: [DiskEntry]) -> [DiskEntry] {
         let sorted = entries.sorted { $0.url.path < $1.url.path }
-        var result: [DiskEntry] = []
-        for entry in sorted where !(result.last.map {
-            entry.url.path.hasPrefix($0.url.path + "/")
-        } ?? false) {
-            result.append(entry)
+        let paths = Set(sorted.map { $0.url.path })
+        return sorted.filter { entry in
+            var parent = entry.url.deletingLastPathComponent()
+            while parent.path != entry.url.path {
+                if paths.contains(parent.path) { return false }
+                if parent.path == "/" { break }
+                parent.deleteLastPathComponent()
+            }
+            return true
         }
-        return result
     }
 
     static func remove(_ entries: [DiskEntry], under root: DiskEntry, permanently: Bool) -> (removed: Int, errors: [String]) {
