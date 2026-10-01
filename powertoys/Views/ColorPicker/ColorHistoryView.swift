@@ -223,9 +223,6 @@ struct ColorHistoryView: View {
                     ScrollView {
                         LazyVStack(spacing: 0) {
                             ForEach(sampleRows) { row in
-                                if row.id != sampleRows.first?.id {
-                                    OnePlusColor.lineSoft.frame(height: 1)
-                                }
                                 ColorSampleRow(
                                     row: row,
                                     defaultFormat: service.defaultFormat,
@@ -233,6 +230,11 @@ struct ColorHistoryView: View {
                                     togglePin: service.togglePin,
                                     remove: service.remove
                                 )
+                                .overlay(alignment: .bottom) {
+                                    if row.id != sampleRows.last?.id {
+                                        OnePlusColor.lineSoft.frame(height: 1)
+                                    }
+                                }
                             }
                         }
                     }
