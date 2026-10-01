@@ -463,6 +463,10 @@ apps felt like a Tailwind web app, not a Mac app.
   a section title and rows first, a card only when a group needs a boundary.
 - Paddings stay at the token values. No oversized inner padding, pill
   badges on every row, hover lifts, or web-style empty space.
+- Nothing is clipped abruptly (owner correction 2026-10-01): shadows,
+  hover and selection surfaces, popups, glows, chart strokes, and text keep
+  their full shape. A scroll view clips only at its own edges and leaves
+  room for row hover and shadows; a container never cuts a child's effect.
 
 ## Native behavior contract
 
