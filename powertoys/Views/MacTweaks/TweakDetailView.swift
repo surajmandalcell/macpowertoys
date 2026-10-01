@@ -56,7 +56,7 @@ struct MacTweaksPreferenceRows: View {
                 separator: separator || index < fields.count - 1,
                 help: fields.count == 1 || index == 0 ? summary : "This companion key keeps the same behavior in alternate native dialogs.",
                 revision: revision,
-                selection: selections[field.identity] ?? -1,
+                selection: selections[field.identity] ?? -3,
                 isModified: modifiedIdentities.contains(field.identity),
                 hasBackup: backedUpIdentities.contains(field.identity),
                 onChanged: onChanged,
@@ -80,7 +80,7 @@ struct MacTweaksPreferenceRow: View {
     let onError: (String) -> Void
 
     private var canWrite: Bool {
-        TweakPreferences.supportsWrites(for: itemID) || isModified
+        TweakPreferences.supportsWrites(for: itemID)
     }
     private var resetAction: (() -> Void)? {
         isModified ? { restore() } : nil
@@ -110,11 +110,7 @@ struct MacTweaksPreferenceRow: View {
 
     private func restore() {
         do {
-            if hasBackup {
-                try TweakPreferenceStore.shared.restore([field])
-            } else {
-                try TweakPreferenceStore.shared.apply([field], selections: [field.identity: -1])
-            }
+            try TweakPreferenceStore.shared.restore([field], includingUntracked: !hasBackup)
             onChanged(itemID)
         } catch {
             onError(error.localizedDescription)
@@ -131,10 +127,12 @@ private struct MacTweaksChoiceControl: View {
 
     var body: some View {
         Group {
-            if field.choices.count > 20 {
+            if selection == -3 {
+                Text("Loading…").onePlusText(.caption).frame(width: controlWidth, alignment: .trailing)
+            } else if field.choices.count > 20 {
                 MacTweaksTimingField(field: field, selection: selection, onSelection: onSelection)
                     .frame(width: controlWidth)
-            } else if field.choices.count == 2 {
+            } else if field.choices.count == 2 && selection != -2 {
                 MacTweaksSegmentedControl(field: field, selection: selection, controlWidth: controlWidth, onSelection: onSelection)
             } else {
                 MacTweaksMenuControl(field: field, selection: selection, controlWidth: controlWidth, onSelection: onSelection)
@@ -174,8 +172,9 @@ private struct MacTweaksMenuControl: View {
 
     var body: some View {
         OnePlusSelect(
-            choices: [(-1, defaultLabel)] + field.choices.indices.map { ($0, field.choices[$0].label) },
-            selection: Binding(get: { selection }, set: onSelection),
+            choices: (selection == -2 ? [(-2, "Custom value")] : [])
+                + [(-1, defaultLabel)] + field.choices.indices.map { ($0, field.choices[$0].label) },
+            selection: Binding(get: { selection }, set: { if $0 >= -1 { onSelection($0) } }),
             width: controlWidth,
             accessibilityLabel: field.label
         )
@@ -213,7 +212,7 @@ private struct MacTweaksTimingField: View {
 
     var body: some View {
         HStack(spacing: 0) {
-            Text(selectedValue.map { String(format: "%.2f", $0) }
+            Text(selection == -2 ? "Custom value" : selectedValue.map { String(format: "%.2f", $0) }
                  ?? "Default (\(field.defaultLabel ?? String(format: "%.2f", defaultValue)))")
                 .onePlusText(.control)
                 .padding(.horizontal, OnePlusMetrics.spacing[3])
@@ -234,7 +233,7 @@ private struct MacTweaksTimingField: View {
         }
         .accessibilityElement(children: .combine)
         .accessibilityLabel(field.label)
-        .accessibilityValue(selectedValue.map { String(format: "%.2f seconds", $0) }
+        .accessibilityValue(selection == -2 ? "Custom value" : selectedValue.map { String(format: "%.2f seconds", $0) }
                             ?? "Default, \(field.defaultLabel ?? String(format: "%.2f", defaultValue)) seconds")
     }
 
