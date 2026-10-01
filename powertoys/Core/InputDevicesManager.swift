@@ -99,7 +99,9 @@ enum InputScrollPolicy {
         settings: InputDevicesSettings
     ) -> InputScrollResult? {
         let profile = profile(for: isContinuous ? .trackpad : .mouse, settings: settings)
-        guard profile.enabled, profile.speed.isFinite, (0.35...3).contains(profile.speed) else { return nil }
+        // Native stepped sliders can save one ULP beyond their endpoints.
+        guard settings.scrollControlEnabled, profile.enabled, profile.speed.isFinite,
+              ((0.35).nextDown...(3.0).nextUp).contains(profile.speed) else { return nil }
         let convert = shiftHeld && profile.shiftScrollsHorizontally && profile.horizontalEnabled
             && horizontal == 0 && vertical != 0
         let sourceVertical = convert ? 0 : vertical
