@@ -1437,7 +1437,7 @@ final class SystemMonitorService {
         samplingQueue.async { [sampler] in sampler.reset() }
         let source = DispatchSource.makeTimerSource(queue: samplingQueue)
         source.schedule(deadline: .now())
-        source.setEventHandler { [weak self, sampler] in
+        source.setEventHandler { @Sendable [weak self, sampler, settings] in
             let now = Date()
             let due = dueTracker.dueMetrics(
                 settings: settings,

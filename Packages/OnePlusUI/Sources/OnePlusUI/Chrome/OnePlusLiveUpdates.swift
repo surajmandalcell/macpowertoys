@@ -6,7 +6,7 @@ private struct OnePlusIsVisibleKey: EnvironmentKey {
 }
 
 public extension EnvironmentValues {
-    /// True only while the host window or panel is visible on screen.
+    /// True while the host is presented, subject to its occlusion policy.
     var onePlusIsVisible: Bool {
         get { self[OnePlusIsVisibleKey.self] }
         set { self[OnePlusIsVisibleKey.self] = newValue }
@@ -15,42 +15,47 @@ public extension EnvironmentValues {
 
 public extension View {
     /// Supplies `onePlusIsVisible` from native window presentation events.
-    func onePlusLiveUpdates() -> some View { modifier(OnePlusLiveUpdatesModifier()) }
+    func onePlusLiveUpdates(includeOccluded: Bool = false) -> some View {
+        modifier(OnePlusLiveUpdatesModifier(includeOccluded: includeOccluded))
+    }
 }
 
 enum OnePlusWindowVisibility {
     static func isActive(isVisible: Bool, isMiniaturized: Bool,
-                         occlusionState: NSWindow.OcclusionState) -> Bool {
-        isVisible && !isMiniaturized && occlusionState.contains(.visible)
+                         occlusionState: NSWindow.OcclusionState, includeOccluded: Bool = false) -> Bool {
+        isVisible && !isMiniaturized && (includeOccluded || occlusionState.contains(.visible))
     }
 
-    @MainActor static func isActive(window: NSWindow?) -> Bool {
+    @MainActor static func isActive(window: NSWindow?, includeOccluded: Bool = false) -> Bool {
         guard let window else { return false }
         return isActive(isVisible: window.isVisible, isMiniaturized: window.isMiniaturized,
-                        occlusionState: window.occlusionState)
+                        occlusionState: window.occlusionState, includeOccluded: includeOccluded)
     }
 }
 
 private struct OnePlusLiveUpdatesModifier: ViewModifier {
+    let includeOccluded: Bool
     // Visibility gates live work. Keep layout mounted so hosts can measure before showing.
     @State private var isVisible = false
 
     func body(content: Content) -> some View {
         content
             .environment(\.onePlusIsVisible, isVisible)
-            .background(OnePlusVisibilityReader(isVisible: $isVisible))
+            .background(OnePlusVisibilityReader(isVisible: $isVisible, includeOccluded: includeOccluded))
     }
 }
 
 private struct OnePlusVisibilityReader: NSViewRepresentable {
     @Binding var isVisible: Bool
+    let includeOccluded: Bool
 
     func makeNSView(context: Context) -> OnePlusVisibilityView {
-        OnePlusVisibilityView { isVisible = $0 }
+        OnePlusVisibilityView(includeOccluded: includeOccluded) { isVisible = $0 }
     }
 
     func updateNSView(_ view: OnePlusVisibilityView, context: Context) {
         view.changed = { isVisible = $0 }
+        view.includeOccluded = includeOccluded
         view.refresh()
     }
 
@@ -61,12 +66,14 @@ private struct OnePlusVisibilityReader: NSViewRepresentable {
 
 private final class OnePlusVisibilityView: NSView {
     var changed: (Bool) -> Void
+    var includeOccluded: Bool
     private weak var observedWindow: NSWindow?
     private var observers: [NSObjectProtocol] = []
     private var pending: DispatchWorkItem?
     private var lastValue: Bool?
 
-    init(changed: @escaping (Bool) -> Void) {
+    init(includeOccluded: Bool, changed: @escaping (Bool) -> Void) {
+        self.includeOccluded = includeOccluded
         self.changed = changed
         super.init(frame: .zero)
     }
@@ -82,12 +89,14 @@ private final class OnePlusVisibilityView: NSView {
         observedWindow = window
         if let window {
             let center = NotificationCenter.default
-            for name in [NSWindow.didChangeOcclusionStateNotification,
+            let notifications = [NSWindow.didChangeOcclusionStateNotification,
                          NSWindow.didMiniaturizeNotification,
                          NSWindow.didDeminiaturizeNotification,
                          NSWindow.didBecomeKeyNotification,
                          NSWindow.didResignKeyNotification,
-                         NSWindow.willCloseNotification] {
+                         NSWindow.willCloseNotification]
+                + (includeOccluded ? [NSWindow.didUpdateNotification] : [])
+            for name in notifications {
                 observers.append(center.addObserver(forName: name, object: window, queue: .main) { [weak self] _ in
                     MainActor.assumeIsolated { self?.refresh() }
                 })
@@ -102,7 +111,8 @@ private final class OnePlusVisibilityView: NSView {
         let work = DispatchWorkItem { [weak self] in
             guard let self else { return }
             self.pending = nil
-            let value = OnePlusWindowVisibility.isActive(window: self.observedWindow)
+            let value = OnePlusWindowVisibility.isActive(window: self.observedWindow,
+                                                         includeOccluded: self.includeOccluded)
             guard value != self.lastValue else { return }
             self.lastValue = value
             self.changed(value)
