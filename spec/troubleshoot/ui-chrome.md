@@ -672,8 +672,8 @@
   Pages, tabs, content, and selection change at once in both accessibility
   modes. OnePlusMotion returns nil, even with an explicit duration. Utility
   animation helpers are no-ops. Native presentations and real work indicators
-  keep system behavior. The overlay scroller keeps its separate 0.12-second
-  native-style hide fade and uses instant hiding with Reduce Motion.
+  keep system behavior. The overlay scroller hides at once after its existing
+  delay in both Reduce Motion modes; no custom fade remains.
 - **Check:** OnePlusMotionTests checks both modes and rejects animation,
   offset, and scale effects in shared hover sources. The source check passes
   and rejects all three isolated mutations. Ruler hotkey feedback shows and
@@ -1179,16 +1179,16 @@
   `Table` uses `.thinScrollIndicators()`. Native scroll views call
   `configureThinScrollIndicators()`. The shared AppKit scroller draws a 4pt
   thumb, or 6pt with Increased Contrast, over the content with no track. It
-  stays hidden while idle, appears during scrolling or edge hover, and fades
-  after 0.9 seconds. Keep its native-width hit region. Do not remove the
-  indicator or disable scrolling. Resolve the matching sibling synchronously
+  stays hidden while idle, appears during scrolling or edge hover, and hides
+  at once after 0.9 seconds in both Reduce Motion modes. Keep its native-width
+  hit region. Do not remove the indicator or disable scrolling. Resolve the matching sibling synchronously
   when possible and again from AppKit layout; use a deferred lookup only as a
   fallback.
 - **Check:** Inventory every scrolling source with `rg`. The surface count must
   equal the shared-modifier count, and `showsIndicators: false` must be absent.
   Exercise long content in every app family, sheet, editor, and horizontal
   strip. In a signed installed launcher, confirm no idle thumb, a thin thumb
-  during scrolling, and no thumb after the fade delay. Use a two-sibling hosted
+  during scrolling, and no thumb after the hide delay. Use a two-sibling hosted
   test to confirm immediately after layout that the modifier configures the
   surface under its own frame. Do not make this regression depend on a fixed
   main-queue delay.
@@ -1351,3 +1351,21 @@
   with selected traits, a group label, and the existing arrow-key behavior.
 - **Check:** Hosted run `36705631910` passes Mac Tweaks and Tray Fan UI.
   Diskman run `36703912801` passes Treemap and Rings selection.
+
+## Button Caps And Glyph Centers, 2026-10-01
+
+- **Symptom:** Button text sits above or below its frame center, and action
+  glyphs look larger than the adjacent text.
+- **Cause:** SwiftUI centers the full text line box, which includes descender
+  space. Local icon and arrow fonts also override the control text role.
+- **Invariant:** Shared controls center the label cap bounds and glyph visual
+  bounds. A native Label inherits one point size and weight. Icon variants
+  display the Label icon only. A 32pt action `OnePlusMenuTile` uses compact
+  control type and centers its native Label without caller font or frame
+  overrides. Preserve symbol rotation inside the Label icon. Hover, press,
+  and segment selection change color at once.
+- **Check:** From `Packages/OnePlusUI`, run
+  `swift test --filter OnePlusButtonAlignmentTests`. Offscreen bitmap checks cover both appearances
+  at 1x and 2x and require each painted cap/glyph center within 0.5pt of the
+  control frame center. They never order a window or take keyboard focus.
+  Signed caller interaction remains an orchestrator check.
