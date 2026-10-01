@@ -28,6 +28,11 @@ Build, hosted checks, and signed interaction remain with the production pass.
 | Status | Request | Evidence | Remaining work |
 |---|---|---|---|
 | Build verified; signed review pending | Show and dismiss hotkey feedback at once in both Reduce Motion modes. | `0948ba7a` removes the custom AppKit alpha animations. The existing 1.2-second dismissal and native panel ordering stay in place. The gated Debug retry compiles the app and both desktop test bundles. Ruler geometry and controls are unchanged. | Check grouping, units, float, shadow, and origin feedback in the installed app. Report: `tmp/redesign/logs/w1-motion-sweep.md`. |
+| Verify | Preserve decimal dimensions in each field's locale. | `adcf8bf2` formats millimeters and inches with the corresponding NumberFormatter locale. Foundation round trips passed German and English decimals. A native NSTextField read `25,5` back as `25.5`. `RulerDimensionLocaleTests` covers unit conversion and separate field locales. | Compile through the shared gate, run on CI, then edit both windows in German and English in the signed app. |
+| Verify | Show the color-well focus marker only under the shared keyboard focus policy. | `adcf8bf2` gates the existing first-responder marker with `OnePlusFocusPolicy.showsFocus`. | Verify mouse, Tab, VoiceOver, and Full Keyboard Access behavior in the signed app. |
+| Verify | Audit Settings and Defaults units, dimensions, color panel, opacity, border, float, shadow, reset, Save as Default, persistence, key loop, localization, independent placement, and close restoration. | Both controllers, the shared controls view, and all three XIBs were traced. Existing FreeRulerCoreTests cover routing, controls, layout, persistence, and target suspension. | Current-source install and both native windows require the orchestrator. Ruler opening activates the app, so the audit did not open it. The pinned overlay stays unchanged. S5 and A4-A7 remain open. |
+| Verify | Apply the horizontal density and instant-motion correction without changing the pinned overlay. | The native controls already use same-row values, adjacent actions, grouped multi-row content, and no custom hover or page animation. No further Ruler code or XIB change was needed. | Check both native windows after installation. |
+
 
 ## OnePlusUI redesign, 2026-09-29
 
