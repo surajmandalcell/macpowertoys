@@ -1,5 +1,49 @@
 # Main Shell Troubleshooting
 
+## Startup Readiness And Saved Data Recovery, 2026-10-01
+
+- **Symptom:** A requested built-in tool waits for archive restoration, or a
+  failed ModelContainer open terminates the app.
+- **Cause:** Startup awaited unrelated archives and created the store in the
+  App initializer. Its catch called fatalError.
+- **Invariant:** Migrate preferences before constructing settings owners.
+  Publish route and status-item readiness before archive reads and store-file
+  migration. Keep plugin-dependent work after Marketplace receipts. Open
+  storage away from the main actor and share concurrent opens. Cloud Sync
+  requires the container; built-in tools do not. Show the actual error with
+  native Retry and Reveal Data Folder. Keep files and migration inputs.
+  Retry reuses their paths. Never reset or select temporary storage after a
+  normal-run failure.
+- **Check:** The source-derived Swift 6 disposable-store check preserves all
+  files on injected failure, then reads the saved record on Retry. The actual
+  LogEntry/TransferRecord fixture keeps 10,000 rows and original inputs.
+  Legacy migration takes 210-228ms; existing-container opening takes 4.8-7.6ms.
+  These values exclude full app startup and cold OS caches. Run
+  `tmp/redesign/checks/app-lifecycle/store-check.py` and `profile-startup.py`.
+  Hosted AppLifecycleTests and signed readiness, native recovery, Finder reveal,
+  and Cloud Sync first-frame checks remain with the orchestrator.
+
+## Bounded Quit Keeps Recovery Available, 2026-10-01
+
+- **Symptom:** Quit blocks during Fan Auto, waits without a deadline, or exits
+  after a critical save failed.
+- **Cause:** Fan reset ran in applicationWillTerminate. Other cleanup stages
+  had no failure result or bounded wait.
+- **Invariant:** Use terminateLater. Await the existing Fan Auto operation and
+  throwing Color Picker and Cloud Sync drains. Check LogManager.persistenceError
+  after its flush. Deadlines are 20s for Fan, 10s for Color Picker, 10s for logs,
+  and 30s for Cloud Sync. A deadline cancels its cleanup task and quit, then
+  shows Retry and Keep Open. Retain unfinished work so Retry waits for it.
+  Save paused transfer snapshots before engine teardown. Stop UI owners after
+  critical success. Never force exit from a timeout. Keep late startup work
+  from publishing or resuming jobs after successful shutdown.
+- **Check:** `tmp/redesign/checks/app-lifecycle/shutdown-check.py` runs the actual
+  stage with a task that ignores cancellation. It proves a main-actor heartbeat,
+  bounded failure, one in-flight operation, save error, and successful retry.
+  `--mutate` rejects missing task cancellation. The orchestrator must run
+  AppLifecycleTests on hosted CI and check Fan Auto, save failure, early quit,
+  Retry/Keep Open, and continuous-job resume on the clean signed installed app.
+
 ## Tool Glyphs And Status Image Size, 2026-10-01
 
 - **Symptom:** Sidebar and panel glyphs differ from approved tool icons. Native
