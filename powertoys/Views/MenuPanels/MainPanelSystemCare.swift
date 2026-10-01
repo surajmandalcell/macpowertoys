@@ -93,6 +93,7 @@ struct SystemCareTrayView: View {
                 }
                 .buttonStyle(OnePlusButtonStyle(manager.hasCleanupScan ? .neutral : .primary, size: .small))
                 .disabled(manager.isWorking)
+                .help("Scan cleanup locations, then review the candidates before moving items to Trash.")
                 Spacer(minLength: 0)
                 if manager.hasCleanupScan {
                     Button("Clear Scan") { manager.clearCleanupScan() }
@@ -137,7 +138,9 @@ struct SystemCareTrayView: View {
             SystemCareScanCoverage(manager: manager)
         }
         if !manager.hasCleanupScan {
-            Text(manager.cleanupScanOutcome == nil ? "Scan to review cleanup candidates." : "No saved scan. Retry to review these locations.").onePlusText(.caption)
+            if manager.cleanupScanOutcome != nil {
+                Text("No saved scan. Retry to review these locations.").onePlusText(.caption)
+            }
         } else if manager.cleanupCandidates.isEmpty {
             Text(manager.cleanupScanOutcome == .completed ? "No items in these locations." : "No candidates in retained results. Review scan coverage.").onePlusText(.caption)
         } else {

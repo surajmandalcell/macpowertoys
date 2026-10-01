@@ -128,13 +128,13 @@ struct SystemCareSettingsCards: View {
             }
             OnePlusCard {
                 OnePlusCardHeader("Safety", systemImage: "lock.shield")
-                OnePlusSettingRow("Native cleanup", caption: "Moves reviewed items to macOS Trash.") {
+                OnePlusSettingRow("Native cleanup", help: "Moves reviewed items to macOS Trash.") {
                     OnePlusStatus("Recoverable")
                 }
-                OnePlusSettingRow("Cleanup locations", caption: "Caches, user logs, installers, and Xcode build files.") {
+                OnePlusSettingRow("Cleanup locations", help: "Caches, user logs, installers, and Xcode build files.") {
                     Text("Known roots").onePlusText(.control)
                 }
-                OnePlusSettingRow("Mole privileges", caption: "Requests appear only in a visible Terminal.", separator: false) {
+                OnePlusSettingRow("Mole privileges", help: "Requests appear only in a visible Terminal.", separator: false) {
                     OnePlusStatus("Visible")
                 }
             }
@@ -889,10 +889,8 @@ struct SystemCareWindowView: View {
             ForEach(MoleOperation.allCases) { operation in
                 HStack(spacing: OnePlusMetrics.actionSpacing) {
                     Image(systemName: operation.icon).onePlusText(.row)
-                    VStack(alignment: .leading, spacing: OnePlusMetrics.navRowGap) {
-                        Text(operation.title).onePlusText(.row)
-                        Text(operation.detail).onePlusText(.caption)
-                    }
+                    Text(operation.title).onePlusText(.row).help(operation.detail)
+                    SystemCareInfo(operation.detail)
                     Spacer()
                     HStack(spacing: OnePlusMetrics.actionSpacing) {
                         Button("Preview") { manager.openMole(operation, dryRun: true) }
@@ -901,11 +899,11 @@ struct SystemCareWindowView: View {
                             .help(manager.supportedMolePreviews.contains(operation) ? "mo \(operation.rawValue) --dry-run" : "Update Mole to use a verified preview for this task.")
                         Button("Open Terminal…") { pendingOperation = operation }
                     }
-                    .frame(width: OnePlusMetrics.wideControlColumn, alignment: .trailing)
+                    .fixedSize(horizontal: true, vertical: false)
                     .disabled(manager.molePath == nil || manager.isWorking)
                 }
                 .padding(.horizontal, OnePlusMetrics.cardPadding)
-                .frame(height: OnePlusMetrics.captionedSettingRow)
+                .frame(height: OnePlusMetrics.settingRow)
                 .onePlusRowHover()
                 .overlay(alignment: .bottom) { OnePlusColor.lineSoft.frame(height: 1) }
             }
