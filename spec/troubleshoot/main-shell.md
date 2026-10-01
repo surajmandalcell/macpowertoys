@@ -58,8 +58,38 @@
 - **Invariant:** The 2026-10-01 owner rule requires two-line catalog summaries
   in secondary ink. Keep full descriptions on tool pages and in help. Use the
   color parameter of `onePlusText` when a role needs a different ink.
+  Catalog-specific fonts live in OnePlusCatalogMetrics. Its 11pt summary
+  uses 2pt native line spacing for a measured 16pt baseline pitch. Category
+  text is 9.5pt; identity gaps are 9pt. Keep 40pt grid/header icons and
+  29pt list icons. Reserve only the 24pt favorite target, without another
+  spacer. A 133.94pt name fits the resulting 138pt identity width.
 - **Check:** Inspect all 14 summaries at four columns in both appearances.
   Each summary fits two lines; tool pages retain their full descriptions.
+
+## Launcher Page IDs And Manual Updates, 2026-10-01
+
+- **Symptom:** Settings always reopened General, or About had no manual
+  update check and omitted the service lifetime and menu-bar recovery help.
+- **Cause:** Main tabs were transient and host help had no update result.
+- **Invariant:** Store validated page and tab raw IDs. Main uses a non-optional
+  stored page and an optional selection binding. Removed or disabled saved
+  tools fall back to All tools. Each tool detail tab has its own key. Explicit
+  Settings and manual requests override saved tabs. Search stays in memory;
+  saved pages never open tool windows. Ordinary Settings restores its tab.
+  Keep the app menu-bar switch distinct from macOS Menu Bar permission and
+  available space. Closing windows leaves enabled services running; Quit
+  stops them. Link existing manuals. About and menu actions share bundle
+  metadata and one manual URLSession checker. Compare numeric versions off
+  main, reject invalid metadata and foreign release URLs, show checking,
+  current, available, and retryable errors, and link release notes/download.
+- **Check:** The existing resolver matrix passes in a plain Swift harness,
+  including valid tabs, invalid fallback, explicit overrides, and tool/manual
+  routes. Numeric release and URL cases pass; a reversed comparison fails.
+  OnePlusCatalogTests measures the native 16pt pitch. The shared tests gate
+  compiles the app and desktop test bundles. Hosted execution and signed
+  light/dark, relaunch, update success/failure/retry, shortcut registration,
+  launch alert, and live timing checks stay open. The main handoff lists the
+  exact remaining task flows in `tmp/redesign/logs/w3-main.md`.
 
 ## Launcher Adaptive Grid Falls To Three Columns
 
