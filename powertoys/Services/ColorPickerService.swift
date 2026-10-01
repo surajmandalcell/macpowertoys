@@ -147,13 +147,13 @@ final class ColorPickerService {
         history.filter { $0.projectID == projectID }
     }
 
-    func export(_ project: ColorProject) {
+    func export(_ project: ColorProject, from window: NSWindow? = nil) {
         let content = Self.css(for: samples(in: project.id))
         let panel = NSSavePanel()
         panel.allowedContentTypes = [.css]
         panel.nameFieldStringValue = "\(project.name).css"
         panel.message = "Export \(project.name) colors as CSS"
-        panel.begin { [weak self] response in
+        let completion: (NSApplication.ModalResponse) -> Void = { [weak self] response in
             guard response == .OK, let url = panel.url else { return }
             Task { @MainActor in
                 do {
@@ -164,6 +164,11 @@ final class ColorPickerService {
                     self?.exportError = error.localizedDescription
                 }
             }
+        }
+        if let window {
+            panel.beginSheetModal(for: window, completionHandler: completion)
+        } else {
+            panel.begin(completionHandler: completion)
         }
     }
 

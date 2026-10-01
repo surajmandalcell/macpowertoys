@@ -306,7 +306,7 @@ struct ColorHistoryView: View {
                 .contentShape(Rectangle())
             }.buttonStyle(.plain)
             if let project {
-                Button { service.export(project) } label: { Image(systemName: "square.and.arrow.up") }
+                Button { service.export(project, from: NSApp.windows.first { $0.identifier?.rawValue == "color-picker" }) } label: { Image(systemName: "square.and.arrow.up") }
                     .buttonStyle(OnePlusButtonStyle(.icon, size: .small))
                     .disabled(count == 0).accessibilityLabel("Export \(name) as CSS")
             }
@@ -315,7 +315,7 @@ struct ColorHistoryView: View {
         .onePlusRowHover(selected: selected)
         .contextMenu {
             Button("Use project") { selectProject(id) }
-            if let project { Button("Export CSS") { service.export(project) }.disabled(count == 0) }
+            if let project { Button("Export CSS") { service.export(project, from: NSApp.windows.first { $0.identifier?.rawValue == "color-picker" }) }.disabled(count == 0) }
         }
     }
 
