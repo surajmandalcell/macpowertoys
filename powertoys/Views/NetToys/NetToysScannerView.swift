@@ -1026,7 +1026,7 @@ struct NetToysScannerView: View {
                 .width(80)
                 .customizationID("nettoys.status")
 
-                TableColumn("Response", value: \NetToysScanResult.responseMilliseconds) { result in
+                TableColumn("Response", sortUsing: KeyPathComparator(\NetToysScanResult.responseMilliseconds)) { result in
                     Text(result.responseTitle.isEmpty ? "—" : "\(result.responseTitle) ms")
                         .onePlusText(.mono)
                         .lineLimit(1)
@@ -1035,7 +1035,7 @@ struct NetToysScannerView: View {
                 .width(96)
                 .customizationID("nettoys.response")
 
-                TableColumn("TTL", value: \NetToysScanResult.ttl) { result in
+                TableColumn("TTL", sortUsing: KeyPathComparator(\NetToysScanResult.ttl)) { result in
                     Text(result.ttlTitle.isEmpty ? "—" : result.ttlTitle)
                         .lineLimit(1)
                         .foregroundStyle(result.isReachable ? OnePlusColor.ink : OnePlusColor.muted)
@@ -1044,7 +1044,7 @@ struct NetToysScannerView: View {
                 .customizationID("nettoys.ttl")
                 .defaultVisibility(.hidden)
 
-                TableColumn("Loss", value: \NetToysScanResult.packetLossPercent) { result in
+                TableColumn("Loss", sortUsing: KeyPathComparator(\NetToysScanResult.packetLossPercent)) { result in
                     Text(result.packetLossTitle.isEmpty ? "—" : "\(result.packetLossTitle)%")
                         .monospacedDigit()
                         .lineLimit(1)
