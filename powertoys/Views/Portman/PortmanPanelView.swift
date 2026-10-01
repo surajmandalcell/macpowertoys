@@ -1535,28 +1535,23 @@ struct PortmanSettingsView: View {
         VStack(alignment: .leading, spacing: OnePlusMetrics.cardGap) {
             if !generalVisible && !portsVisible && !cleanupVisible && !integrationsVisible {
                 OnePlusEmptyState("No matching settings", systemImage: "magnifyingglass")
-            }
-            if generalVisible {
-                VStack(alignment: .leading, spacing: 0) {
-                    OnePlusSectionTitle("General")
-                    if shows("Keyboard shortcut") {
-                        OnePlusSettingRow("Shortcut") { ShortcutRecorderField(action: .portman) }
-                            .onePlusRowHover()
-                    }
-                    if shows("Open folders in", "editor") {
-                        OnePlusSettingRow("Open folders in", separator: false) {
-                            OnePlusSelect(choices: [("auto", "Automatic")] + (state.installedEditors ?? []).map { ($0.id, $0.name) } + [("finder", "Finder")],
-                                          selection: $editor, accessibilityLabel: "Open folders in")
-                                .accessibilityIdentifier("portman.settings.editor")
-                        }
-                        .onePlusRowHover()
-                    }
+            } else if density == .regular {
+                HStack(alignment: .top, spacing: OnePlusMetrics.cardGap) {
+                    if generalVisible { generalSettings.frame(maxWidth: .infinity) }
+                    if integrationsVisible { integrationSettings.frame(maxWidth: .infinity) }
                 }
+                HStack(alignment: .top, spacing: OnePlusMetrics.cardGap) {
+                    if portsVisible { portSettings.frame(maxWidth: .infinity) }
+                    if cleanupVisible { cleanupSettings.frame(maxWidth: .infinity) }
+                }
+            } else {
+                if generalVisible { generalSettings }
+                if portsVisible { portSettings }
+                if cleanupVisible { cleanupSettings }
+                if integrationsVisible { integrationSettings }
             }
-            if portsVisible { portSettings }
-            if cleanupVisible { cleanupSettings }
-            if integrationsVisible { integrationSettings }
         }
+        .environment(\.onePlusCardPadding, 0)
         .confirmationDialog("Stop eligible servers automatically?", isPresented: $state.pendingAutomaticCleanup) {
             Button("Enable Automatic", role: .destructive) {
                 cleanupMode = PortmanCleanupMode.automatic.rawValue
@@ -1565,6 +1560,24 @@ struct PortmanSettingsView: View {
             Text("Portman will send stop requests for eligible servers, including long-running ones, without asking again.")
         }
         .task { await state.loadEditors() }
+    }
+
+    private var generalSettings: some View {
+        VStack(alignment: .leading, spacing: 0) {
+            OnePlusSectionTitle("General")
+            if shows("Keyboard shortcut") {
+                OnePlusSettingRow("Shortcut") { ShortcutRecorderField(action: .portman) }
+                    .onePlusRowHover()
+            }
+            if shows("Open folders in", "editor") {
+                OnePlusSettingRow("Open folders in", separator: false) {
+                    OnePlusSelect(choices: [("auto", "Automatic")] + (state.installedEditors ?? []).map { ($0.id, $0.name) } + [("finder", "Finder")],
+                                  selection: $editor, accessibilityLabel: "Open folders in")
+                        .accessibilityIdentifier("portman.settings.editor")
+                }
+                .onePlusRowHover()
+            }
+        }
     }
 
     private var portSettings: some View {
@@ -1797,18 +1810,21 @@ final class PortmanMenuController: NSObject, NSPopoverDelegate {
               !button.visibleRect.isEmpty, button.bounds.width > 0 else { return false }
         if activateApp { NSApp.activate(ignoringOtherApps: true) }
         popover.appearance = NSApp.appearance
+        let ceiling = (button.window?.screen?.visibleFrame.height ?? 800) * OnePlusMenuMetrics.heightFraction
+        let content = AnyView(PortmanPanelView(initialPage: initialPage).utilityMotionPolicy()
+            .environment(\.onePlusMenuMaximumHeight, ceiling))
         let hosting: NSHostingController<AnyView>
         if let existing = cachedHosting {
             hosting = existing
+            hosting.rootView = content
             if let initialPage {
                 ToolPageRouter.shared.post(tool: "portman", page: initialPage.panelID, recordTiming: false)
             }
         } else {
-            hosting = NSHostingController(rootView: AnyView(PortmanPanelView(initialPage: initialPage).utilityMotionPolicy()))
+            hosting = NSHostingController(rootView: content)
             cachedHosting = hosting
         }
         hosting.view.appearance = NSApp.appearance
-        let ceiling = (button.window?.screen?.visibleFrame.height ?? 800) * OnePlusMenuMetrics.heightFraction
         let size = hosting.sizeThatFits(in: NSSize(width: OnePlusMenuMetrics.width, height: ceiling))
         hosting.view.setFrameSize(size)
         hosting.view.layoutSubtreeIfNeeded()

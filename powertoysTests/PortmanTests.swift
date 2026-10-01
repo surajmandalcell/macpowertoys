@@ -261,6 +261,46 @@ final class PortmanTests: XCTestCase {
         }
     }
 
+    @MainActor
+    func testSettingsPairColumnsInMainAndKeepMenuControlsOnOneEdge() throws {
+        let state = PortmanSettingsState()
+        state.installedEditors = []
+        func steppers(in view: NSView) -> [NSStepper] {
+            (view as? NSStepper).map { [$0] } ?? view.subviews.flatMap { steppers(in: $0) }
+        }
+        func visibleFrame(_ control: NSView, in host: NSView) -> NSRect {
+            var frame = control.convert(control.bounds, to: host)
+            var ancestor = control.superview
+            while let view = ancestor, view !== host {
+                frame = frame.intersection(view.convert(view.bounds, to: host))
+                ancestor = view.superview
+            }
+            return frame
+        }
+        for (density, width) in [(OnePlusDensity.regular, CGFloat(976)), (.compact, OnePlusMenuMetrics.bodyWidth)] {
+            let host = NSHostingController(rootView: PortmanSettingsView(state: state)
+                .environment(\.onePlusDensity, density))
+            let size = host.sizeThatFits(in: NSSize(width: width, height: 2_000))
+            host.view.setFrameSize(NSSize(width: width, height: size.height))
+            host.view.layoutSubtreeIfNeeded()
+            let controls = steppers(in: host.view)
+            let first = try XCTUnwrap(controls.first { $0.accessibilityLabel() == "First scan port" })
+            let idle = try XCTUnwrap(controls.first { $0.accessibilityLabel() == "Idle hours" })
+            let firstFrame = visibleFrame(first, in: host.view)
+            let idleFrame = visibleFrame(idle, in: host.view)
+            XCTAssertEqual(idleFrame.maxX, width, accuracy: 1, "Unboxed controls must reach the body edge")
+            if density == .regular {
+                XCTAssertEqual(firstFrame.maxX, 480, accuracy: 1)
+                XCTAssertEqual(idleFrame.minX - firstFrame.minX, 496, accuracy: 1)
+                XCTAssertLessThan(size.height, 420, "All four groups must fit above the main footer")
+            } else {
+                XCTAssertEqual(firstFrame.maxX, width, accuracy: 1)
+                XCTAssertEqual(firstFrame.minX, idleFrame.minX, accuracy: 1)
+                XCTAssertGreaterThan(size.height, 600, "Menu settings must keep their single column")
+            }
+        }
+    }
+
     func testServerNameFallsBackFromTheRootFolderToTheProcess() {
         XCTAssertEqual(portmanServerName(project: "macpowertoys", processName: "node"), "macpowertoys")
         XCTAssertEqual(portmanServerName(project: "/", processName: "node"), "node")
