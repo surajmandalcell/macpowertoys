@@ -5,11 +5,12 @@ public struct OnePlusTableItem: Equatable, Identifiable {
     public let id: String
     public let cells: [String]
     public let symbol: String
+    public let image: NSImage?
     public let url: URL?
     public let usage: [Int: Double]
-    public init(id: String, cells: [String], symbol: String, url: URL? = nil, usage: [Int: Double] = [:]) {
+    public init(id: String, cells: [String], symbol: String, url: URL? = nil, usage: [Int: Double] = [:], image: NSImage? = nil) {
         self.id = id; self.cells = cells; self.symbol = symbol; self.url = url
-        self.usage = usage
+        self.usage = usage; self.image = image
     }
 }
 
@@ -147,7 +148,7 @@ public struct OnePlusNativeTable: NSViewRepresentable {
                 for column in owner.columns.indices where table.rect(ofColumn: column).intersects(table.visibleRect) {
                     let before = old.cells.indices.contains(column) ? old.cells[column] : nil
                     let after = item.cells.indices.contains(column) ? item.cells[column] : nil
-                    if before != after || old.usage[column] != item.usage[column] || (column == 0 && old.symbol != item.symbol) {
+                    if before != after || old.usage[column] != item.usage[column] || (column == 0 && (old.symbol != item.symbol || old.image != item.image)) {
                         changed[column, default: []].insert(row)
                     }
                 }
@@ -195,7 +196,8 @@ public struct OnePlusNativeTable: NSViewRepresentable {
             cell.preservesSemanticInk = semantic == OnePlusColor.danger || semantic == OnePlusColor.warn
             cell.selected = tableView.selectedRowIndexes.contains(row)
             text.alignment = owner.columns[index].nsTextAlignment
-            cell.imageView?.image = NSImage(systemSymbolName: item.symbol, accessibilityDescription: nil)
+            cell.imageView?.image = item.image ?? NSImage(systemSymbolName: item.symbol, accessibilityDescription: nil)
+            cell.imageView?.contentTintColor = item.image == nil ? NSColor(OnePlusColor.secondary) : nil
             return cell
         }
         private func makeActionButton() -> NSButton {
@@ -217,6 +219,7 @@ public struct OnePlusNativeTable: NSViewRepresentable {
             if includesIcon {
                 let iconInset = max(OnePlusTable.primaryIconInset, column.leadingInset)
                 let icon = NSImageView()
+                icon.imageScaling = .scaleProportionallyUpOrDown
                 icon.contentTintColor = NSColor(OnePlusColor.secondary)
                 icon.translatesAutoresizingMaskIntoConstraints = false
                 icon.setAccessibilityElement(false)
@@ -430,8 +433,13 @@ final class OnePlusTableHeaderCell: NSTableHeaderCell {
         NSRect(x: cellFrame.minX, y: cellFrame.maxY - 1, width: cellFrame.width, height: 1).fill()
     }
     override func drawInterior(withFrame cellFrame: NSRect, in controlView: NSView) {
-        let text = label
-        text.draw(in: labelRect(for: cellFrame))
+        label.draw(in: labelRect(for: cellFrame))
+        if let header = controlView as? NSTableHeaderView, let table = header.tableView,
+           let column = table.tableColumns.first(where: { $0.headerCell === self }),
+           let descriptor = table.sortDescriptors.first, let key = descriptor.key,
+           column.sortDescriptorPrototype?.key == key {
+            drawSortIndicator(withFrame: cellFrame, in: controlView, ascending: descriptor.ascending, priority: 0)
+        }
     }
     override func highlight(_ flag: Bool, withFrame cellFrame: NSRect, in controlView: NSView) {
         draw(withFrame: cellFrame, in: controlView)
@@ -439,13 +447,21 @@ final class OnePlusTableHeaderCell: NSTableHeaderCell {
     func labelRect(for cellFrame: NSRect) -> NSRect {
         let size = label.size()
         let available = max(0, cellFrame.width - leadingInset - trailingInset)
+        let reserve = stringValue.isEmpty ? 0 : super.sortIndicatorRect(forBounds: cellFrame).width + 4
+        let width = min(size.width, max(0, available - reserve * (columnAlignment == .center ? 2 : 1)))
         let x = switch columnAlignment {
         case .leading: cellFrame.minX + leadingInset
-        case .center: cellFrame.minX + leadingInset + (available - size.width) / 2
-        case .trailing: cellFrame.maxX - trailingInset - size.width
+        case .center: cellFrame.minX + leadingInset + (available - width) / 2
+        case .trailing: cellFrame.maxX - trailingInset - width
         }
-        return NSRect(x: x, y: cellFrame.midY - size.height / 2,
-                      width: min(size.width, available), height: size.height)
+        return NSRect(x: x, y: cellFrame.midY - size.height / 2, width: width, height: size.height)
+    }
+    override func sortIndicatorRect(forBounds rect: NSRect) -> NSRect {
+        var indicator = super.sortIndicatorRect(forBounds: rect)
+        let text = labelRect(for: rect)
+        indicator.origin.x = columnAlignment == .trailing ? text.minX - indicator.width - 4 : text.maxX + 4
+        indicator.origin.y = rect.midY - indicator.height / 2
+        return indicator
     }
 }
 

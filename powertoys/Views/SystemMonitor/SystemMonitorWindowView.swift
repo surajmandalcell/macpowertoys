@@ -444,8 +444,7 @@ struct SystemMonitorWindowView: View {
                                 .font(.system(size: 13))
                                 .foregroundStyle(TaskManagerTheme.secondary)
                             Text(identity)
-                                .font(.system(size: 10, weight: .medium))
-                                .foregroundStyle(OnePlusColor.chartSeries[0])
+                                .onePlusText(.cardTitle, color: OnePlusColor.chartSeries[0])
                             Spacer()
                             Image(systemName: "chevron.right")
                                 .font(.system(size: 8, weight: .medium))
@@ -456,8 +455,7 @@ struct SystemMonitorWindowView: View {
                         metricValue(value, overview: true, thermal: metric == .thermal)
                             .padding(.top, 7)
                         Text(detail)
-                            .font(.system(size: 9))
-                            .foregroundStyle(TaskManagerTheme.secondary)
+                            .onePlusText(.caption, color: TaskManagerTheme.secondary)
                             .lineLimit(1)
                             .padding(.top, 4)
                         Spacer(minLength: 8)
@@ -916,15 +914,7 @@ struct SystemMonitorWindowView: View {
                     ("Read total", service.snapshot?.diskDetails.map { Self.diskBytes(Int64(clamping: $0.readTotal)) } ?? "—"),
                 ]
             )
-            LazyVGrid(columns: detailColumns, spacing: OnePlusMetrics.cardGap) {
-                informationPanel("Volume", rows: [("Mount point", "/"), ("Used", service.snapshot?.diskUsed.map(Self.diskBytes) ?? "—"), ("Available", diskAvailable)])
-                informationPanel("Storage", rows: [
-                    ("Capacity", service.snapshot?.diskTotal.map(Self.diskBytes) ?? "—"),
-                    ("Read", service.snapshot?.diskDetails?.readPerSecond.map(Self.rate) ?? "—"),
-                    ("Write", service.snapshot?.diskDetails?.writePerSecond.map(Self.rate) ?? "—"),
-                    ("Status", "Mounted"),
-                ])
-            }
+            informationPanel("Volume", rows: [("Mount point", "/"), ("Status", "Mounted")])
         }
     }
 
