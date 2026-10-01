@@ -520,7 +520,7 @@ struct PortmanPanelView: View {
 
     private var localOverviewHeader: some View {
         return VStack(alignment: .leading, spacing: OnePlusMetrics.cardGap) {
-            OnePlusSectionTitle(cleanupMode ? "Clean up" : "Servers")
+            if cleanupMode { OnePlusSectionTitle("Clean up") }
             HStack(alignment: .firstTextBaseline, spacing: OnePlusMetrics.actionSpacing) {
                 Text(portmanMemoryString(overviewPresentation.memoryBytes))
                     .monospaced()
@@ -537,6 +537,7 @@ struct PortmanPanelView: View {
                   : "Memory used by processes listening on scanned ports")
             memoryBreakdown
         }
+        .padding(.top, cleanupMode ? 0 : OnePlusMetrics.cardGap)
     }
 
     private var localOverview: some View {
