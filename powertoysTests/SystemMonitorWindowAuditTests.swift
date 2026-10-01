@@ -62,6 +62,37 @@ final class SystemMonitorWindowAuditTests: XCTestCase {
                        "On battery")
     }
 
+    func testMonotonicRatePairsAndPostWakeDiskRetention() {
+        let elapsed = SystemMonitorDelta.elapsedSeconds(previous: 2_000_000_000, current: 3_000_000_000)
+        XCTAssertEqual(elapsed, 1)
+        XCTAssertEqual(SystemMonitorDelta.rate(previous: 100, current: 500, seconds: elapsed), 400)
+        XCTAssertEqual(SystemMonitorDelta.elapsedSeconds(previous: 3_000_000_000, current: 2_000_000_000), 0)
+        XCTAssertNil(SystemMonitorDelta.rate(previous: 500, current: 100, seconds: elapsed))
+        let old = SystemMonitorDiskDetails(readPerSecond: 400, writePerSecond: 200, readTotal: 500, writeTotal: 300)
+        let first = SystemMonitorDiskDetails(readPerSecond: nil, writePerSecond: nil, readTotal: 900, writeTotal: 600)
+            .retainingRates(from: old)
+        XCTAssertEqual(first.readPerSecond, 400)
+        XCTAssertEqual(first.writePerSecond, 200)
+        XCTAssertEqual(first.readTotal, 900)
+        let second = SystemMonitorDiskDetails(readPerSecond: 100, writePerSecond: 50, readTotal: 1000, writeTotal: 650)
+            .retainingRates(from: first)
+        XCTAssertEqual(second.readPerSecond, 100)
+        XCTAssertEqual(second.writePerSecond, 50)
+    }
+
+    func testAggregateNetworkIdentityUsesOnlyTheDefaultRouteAddress() throws {
+        let route = try XCTUnwrap(DefaultRoute.parse("gateway: 192.168.1.1\ninterface: en7\n"))
+        let wrong = try XCTUnwrap(LocalIPv4Network(interfaceName: "awdl0", address: "192.168.1.9", netmask: "255.255.255.0"))
+        let identity = SystemMonitorNetworkIdentity(route: route, network: wrong)
+        XCTAssertEqual(SystemMonitorNetworkDetails.rateScope, "All interfaces")
+        XCTAssertEqual(identity.interfaceName, "en7")
+        XCTAssertNil(identity.localAddress)
+        let right = try XCTUnwrap(LocalIPv4Network(interfaceName: "en7", address: "192.168.1.9", netmask: "255.255.255.0"))
+        XCTAssertEqual(SystemMonitorNetworkIdentity(route: route, network: right).localAddress, "192.168.1.9")
+        XCTAssertNil(SystemMonitorNetworkIdentity(route: nil, network: right).interfaceName)
+        XCTAssertNil(SystemMonitorNetworkIdentity(route: nil, network: right).localAddress)
+    }
+
     func testWindowHistoryKeepsOneAndTwoMinuteSeriesBoundedAndMissingValuesAbsent() {
         var history = SystemMonitorHistory()
         for index in 0..<130 {
