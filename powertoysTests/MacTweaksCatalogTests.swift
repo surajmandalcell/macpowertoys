@@ -156,9 +156,17 @@ final class MacTweaksCatalogTests: XCTestCase {
         let damagedRecord = try PropertyListSerialization.data(
             fromPropertyList: [field.identity: ["original": damaged]], format: .binary, options: 0
         )
-        for backup in [damaged, damagedRecord] {
+        let damagedLastWrite = try PropertyListSerialization.data(
+            fromPropertyList: [field.identity: ["lastWritten": damaged]], format: .binary, options: 0
+        )
+        for backup in [damaged, damagedRecord, damagedLastWrite] {
             defaults.set(backup, forKey: "macTweaks.preferenceBackups.v1")
             let store = TweakPreferenceStore(defaults: defaults)
+            _ = store.storedOriginalChoices(for: [field])
+            _ = store.selectedChoice(for: field)
+            _ = store.hasBackup(for: [field])
+            _ = store.isModified(field)
+            _ = store.originalChoice(for: field)
             XCTAssertThrowsError(try store.apply([field], selections: [field.identity: 0]))
             XCTAssertThrowsError(try store.restore([field], includingUntracked: true))
             XCTAssertNil(store.value(for: field))
