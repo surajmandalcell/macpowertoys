@@ -18,6 +18,7 @@ nonisolated struct TaskManagerMenuPageData: Equatable, Sendable {
     var caption = "—"
     var homeValue = "—"
     var homeCaption = "—"
+    var homeCaptionHelp: String?
     var upload = "—"
     var charging = false
     var usage: Double = 0
@@ -59,7 +60,8 @@ nonisolated enum TaskManagerMenuProjection {
                 let allocation = SystemMonitorMemoryAllocation(used: sample?.memoryUsed, total: sample?.memoryTotal, details: sample?.memoryDetails)
                 data.value = used
                 data.homeValue = percent(sample?.memoryUsage)
-                data.homeCaption = sample?.memoryUsed != nil && sample?.memoryTotal != nil ? "\(used) / \(total)" : "—"
+                data.homeCaption = memoryPair(used: sample?.memoryUsed, total: sample?.memoryTotal)
+                data.homeCaptionHelp = sample?.memoryUsed != nil && sample?.memoryTotal != nil ? "\(used) / \(total)" : "—"
                 data.caption = sample?.memoryTotal != nil ? "\(total) unified memory" : "—"
                 data.accessories = [reading("Used", data.homeValue)]
                 data.rows = [reading("Applications", allocation.map { bytes($0.applications) } ?? "—"), reading("Wired", allocation.map { bytes($0.wired) } ?? "—"),
@@ -112,6 +114,7 @@ nonisolated enum TaskManagerMenuProjection {
                 data.rows.append(reading("Reading", "Stale"))
                 data.caption = SystemMonitorFreshness.staleHelp
                 data.homeCaption = "Stale reading"
+                data.homeCaptionHelp = SystemMonitorFreshness.staleHelp
             }
             if page != .memory { data.homeValue = data.value }
             data.chart.primary = data.chart.primary.filter(\.isFinite)
@@ -138,12 +141,20 @@ nonisolated enum TaskManagerMenuProjection {
     private static func percent(_ value: Double?) -> String { value.flatMap { $0.isFinite ? "\(Int(min(max($0.rounded(), 0), 100)))%" : nil } ?? "—" }
     private static func decimal(_ value: Double) -> String { value.isFinite ? value.formatted(.number.precision(.fractionLength(2))) : "—" }
     private static func bytes(_ value: Int64) -> String { ByteCountFormatter.string(fromByteCount: max(value, 0), countStyle: .memory) }
+    private static func memoryPair(used: Int64?, total: Int64?) -> String {
+        guard let used, let total, total > 0 else { return "—" }
+        let units = ["B", "KB", "MB", "GB", "TB", "PB", "EB"]
+        let index = units.indices.last { Double(total) >= pow(1024, Double($0)) } ?? 0
+        let divisor = pow(1024, Double(index))
+        let format = FloatingPointFormatStyle<Double>.number.grouping(.never).precision(.significantDigits(1...3))
+        return "\((Double(max(used, 0)) / divisor).formatted(format))/\((Double(total) / divisor).formatted(format)) \(units[index])"
+    }
     private static func rate(_ value: Double) -> String {
         value.isFinite ? SystemMonitorDisplayFormat.byteRate(min(max(value, 0), Double(Int64.max).nextDown)) : "—"
     }
     private static func scale(_ value: Double, page: SystemMonitorTrayPage) -> String {
         switch page {
-        case .network, .disk: (value / 1_000_000).formatted(.number.grouping(.never).precision(.fractionLength(0...1)))
+        case .network, .disk: (value / 1_000_000).formatted(.number.grouping(.never).precision(.significantDigits(1...3)))
         case .sensors: value == 100 ? "Critical" : ""
         default: value.formatted(.number.precision(.fractionLength(0)))
         }
@@ -166,6 +177,7 @@ struct TaskManagerMenuValue: Equatable {
 struct TaskManagerMenuHomeData: Equatable {
     let value: TaskManagerMenuValue
     let caption: String
+    let captionHelp: String
     let upload: TaskManagerMenuValue
     let charging: Bool
     let history: [Double]
@@ -202,7 +214,8 @@ final class TaskManagerMenuPageState {
     }
 
     private static func home(_ data: TaskManagerMenuPageData, history: [Double]) -> TaskManagerMenuHomeData {
-        .init(value: .init(data.homeValue), caption: data.homeCaption, upload: .init(data.upload), charging: data.charging, history: history)
+        .init(value: .init(data.homeValue), caption: data.homeCaption, captionHelp: data.homeCaptionHelp ?? data.homeCaption,
+              upload: .init(data.upload), charging: data.charging, history: history)
     }
     private static func hero(_ data: TaskManagerMenuPageData) -> TaskManagerMenuHeroData {
         .init(value: .init(data.value), caption: data.caption, usage: data.usage, accessories: data.accessories)
@@ -228,7 +241,7 @@ final class TaskManagerMenuPresentation {
             TaskManagerMenuPageState(data, history: [])
         }
         for (page, state) in pages {
-            state.home = .init(value: state.home.value, caption: state.home.caption, upload: state.home.upload,
+            state.home = .init(value: state.home.value, caption: state.home.caption, captionHelp: state.home.captionHelp, upload: state.home.upload,
                                charging: state.home.charging, history: TaskManagerMenuProjection.homeHistory(page, history: history))
         }
     }

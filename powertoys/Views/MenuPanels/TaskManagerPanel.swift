@@ -164,6 +164,9 @@ struct SystemMonitorTrayView: View {
         }
         .onOnePlusMenuHeightChange(onPreferredHeight)
         .onePlusPanelTimings(panel: "system-monitor", tab: pageID)
+        .focusedValue(\.appOpenSettings) {
+            ToolActionRouter.shared.open(toolID: "system-monitor", page: "settings")
+        }
         .onOpenToolPage(diagnostic ? "menu.system-monitor" : nil) { id in
             if let destination = SystemMonitorTrayPage(rawValue: id) { select(destination) }
         }
@@ -216,15 +219,19 @@ private struct TaskManagerMenuHomeTile: View {
                             TaskManagerMenuValueView(parts: data.value)
                             Spacer(minLength: 0)
                             if page != .gpu {
-                                Text(data.caption).onePlusText(.caption).lineLimit(1).minimumScaleFactor(0.7)
+                                Text(data.caption).onePlusText(.caption).lineLimit(1).minimumScaleFactor(page == .memory ? 1 : 0.7)
+                                    .fixedSize(horizontal: page == .memory, vertical: false)
+                                    .layoutPriority(page == .memory ? 1 : 0)
+                                    .accessibilityLabel(data.captionHelp)
                             }
                         }
                     }
                 }
                 .historyBackground(values: data.history)
+                .help(data.captionHelp)
             case .network:
                 OnePlusMenuTile(span: 2, height: 34, textured: false, action: { selection = page }) {
-                    HStack(spacing: OnePlusMetrics.actionSpacing) {
+                    HStack(spacing: OnePlusMetrics.navRowGap) {
                         metricLabel
                         Spacer(minLength: 0)
                         rate("↓", data.value)
@@ -277,8 +284,8 @@ private struct TaskManagerMenuHomeTile: View {
         HStack(alignment: .firstTextBaseline, spacing: OnePlusMetrics.navRowGap) {
             Text(arrow).foregroundStyle(accent ? OnePlusColor.accent : OnePlusColor.secondary)
             Text(parts.value).onePlusText(.nav, color: OnePlusColor.ink).monospacedDigit().lineLimit(1)
-            if !parts.unit.isEmpty { Text(parts.unit).onePlusText(.caption).lineLimit(1) }
-        }
+            if !parts.unit.isEmpty { Text(parts.unit).onePlusText(.caption, color: OnePlusColor.secondary).lineLimit(1) }
+        }.fixedSize(horizontal: true, vertical: false).layoutPriority(2)
     }
 }
 
@@ -301,7 +308,7 @@ private struct TaskManagerMenuDetailPage: View {
             if page == .disk {
                 OnePlusMenuCard {
                     VStack(alignment: .leading, spacing: OnePlusMenuMetrics.tileGap) {
-                        HStack { Text("Disk activity").onePlusText(.cardTitle); Spacer(); Text("MB/s").onePlusText(.caption) }
+                        HStack { Text("Disk activity").onePlusText(.cardTitle); Spacer(); Text("MB/s").onePlusText(.caption, color: OnePlusColor.secondary) }
                         TaskManagerMenuChart(page: page, state: state)
                     }
                 }
@@ -364,6 +371,9 @@ private struct TaskManagerMenuChart: View {
     var body: some View {
         let data = state.chart
         VStack(spacing: OnePlusMetrics.navRowGap) {
+            if page == .network {
+                HStack { Spacer(); Text("MB/s").onePlusText(.caption, color: OnePlusColor.secondary) }
+            }
             HStack(spacing: OnePlusMenuMetrics.tileGap) {
                 GeometryReader { proxy in
                     ForEach(data.labels.indices, id: \.self) { index in
@@ -372,7 +382,7 @@ private struct TaskManagerMenuChart: View {
                         Text(data.labels[index]).frame(width: proxy.size.width, alignment: .trailing)
                             .position(x: proxy.size.width / 2, y: y)
                     }
-                }.onePlusText(.tableHeader).lineLimit(1)
+                }.onePlusText(.caption).lineLimit(1)
                     .frame(width: [.sensors, .network, .disk].contains(page) ? OnePlusMetrics.titleRow : OnePlusMetrics.compactControlHeight)
                     .allowsHitTesting(false)
                 TaskManagerHistoryChart(values: data.primary, secondary: data.secondary, range: 0...data.ceiling,
@@ -388,8 +398,8 @@ private struct TaskManagerMenuChart: View {
                     Label(page == .network ? "Upload" : "Write", systemImage: "minus").foregroundStyle(OnePlusColor.accent)
                     Spacer(minLength: OnePlusMetrics.navRowGap)
                 }
-                Text(page == .network ? "Now · MB/s" : "Now")
-            }.onePlusText(.tableHeader)
+                Text("Now")
+            }.onePlusText(.caption)
         }
     }
 }
