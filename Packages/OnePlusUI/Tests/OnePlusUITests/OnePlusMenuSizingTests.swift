@@ -8,22 +8,30 @@ final class OnePlusMenuSizingTests: XCTestCase {
     func testOfflineHostReadingsUseMutedInkInBothAppearances() throws {
         for name in [NSAppearance.Name.darkAqua, .aqua] {
             for online in [false, true] {
-                let host = NSHostingView(rootView: OnePlusMenuItemCard(
-                    "Sample host", systemImage: "server.rack", status: online ? "Connected" : "Offline", online: online,
-                    metrics: [.init("CPU", systemImage: "cpu", value: "—"),
-                              .init("RAM", systemImage: "memorychip", value: "—"),
-                              .init("Network", systemImage: "arrow.up.arrow.down", value: "—")]
-                ) { Text("No disk data") } actions: { EmptyView() })
+                let card = { (value: String) in
+                    OnePlusMenuItemCard(
+                        "Sample host", systemImage: "server.rack", status: online ? "Connected" : "Offline", online: online,
+                        metrics: [.init("CPU", systemImage: "cpu", value: value),
+                                  .init("RAM", systemImage: "memorychip", value: value),
+                                  .init("Network", systemImage: "arrow.up.arrow.down", value: value)]
+                    ) { Text("No disk data") } actions: { EmptyView() }
+                }
+                let host = NSHostingView(rootView: card("—"))
                 let window = NSWindow(contentRect: NSRect(x: -10000, y: -10000, width: 338, height: 109),
                                       styleMask: .borderless, backing: .buffered, defer: false)
                 let appearance = try XCTUnwrap(NSAppearance(named: name))
                 window.appearance = appearance
+                window.isReleasedWhenClosed = false
+                defer { window.close() }
                 window.contentView = host
                 host.layoutSubtreeIfNeeded()
                 XCTAssertEqual(host.fittingSize.height, 109, accuracy: 0.01)
                 let bitmap = try XCTUnwrap(host.bitmapImageRepForCachingDisplay(in: host.bounds))
                 host.cacheDisplay(in: host.bounds, to: bitmap)
-                let scale = CGFloat(bitmap.pixelsWide) / host.bounds.width
+                host.rootView = card("")
+                host.layoutSubtreeIfNeeded()
+                let empty = try XCTUnwrap(host.bitmapImageRepForCachingDisplay(in: host.bounds))
+                host.cacheDisplay(in: host.bounds, to: empty)
                 var expected: CGFloat = 0, opposite: CGFloat = 0
                 appearance.performAsCurrentDrawingAppearance {
                     expected = NSColor(online ? OnePlusColor.ink : OnePlusColor.muted)
@@ -33,12 +41,19 @@ final class OnePlusMenuSizingTests: XCTestCase {
                 }
                 for column in 0..<3 {
                     var reading: CGFloat = name == .darkAqua ? 0 : 1
-                    for x in Int((CGFloat(column) * 113 + 7) * scale)..<Int((CGFloat(column) * 113 + 50) * scale) {
-                        for y in Int(39 * scale)..<Int(51 * scale) {
+                    var valuePixels = 0
+                    // Measure value paint against the same card with empty values.
+                    // This follows horizontal metadata without sampling labels.
+                    for x in (column * bitmap.pixelsWide / 3)..<((column + 1) * bitmap.pixelsWide / 3) {
+                        for y in 0..<bitmap.pixelsHigh {
                             let ink = try XCTUnwrap(bitmap.colorAt(x: x, y: y)?.usingColorSpace(.sRGB)).redComponent
+                            let background = try XCTUnwrap(empty.colorAt(x: x, y: y)?.usingColorSpace(.sRGB)).redComponent
+                            guard abs(ink - background) > 0.015 else { continue }
+                            valuePixels += 1
                             reading = name == .darkAqua ? max(reading, ink) : min(reading, ink)
                         }
                     }
+                    XCTAssertGreaterThan(valuePixels, 0)
                     // Text antialiasing blends the token with the panel fill.
                     XCTAssertLessThan(abs(reading - expected), abs(reading - opposite),
                                       "Reading ink must follow the host's availability")
