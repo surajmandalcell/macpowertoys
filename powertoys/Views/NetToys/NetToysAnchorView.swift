@@ -61,6 +61,7 @@ final class NetToysAnchorViewModel {
 
     private let scanner = NetToysScanner()
     private var keyAccessTask: Task<Void, Never>?
+    private var savedConfiguration = NetToysConfiguration()
 
     var selectedEntry: SSHConfigEntry? {
         guard let entry = entries.first(where: { $0.aliases.contains(selectedAlias) }) else {
@@ -92,6 +93,7 @@ final class NetToysAnchorViewModel {
         guard !Task.isCancelled else { return }
         entries = snapshot.entries
         configuration = snapshot.configuration
+        savedConfiguration = snapshot.configuration
         helperStatus = snapshot.helperStatus
         if !entries.contains(where: { $0.aliases.contains(selectedAlias) }) {
             selectedAlias = requestedAddress == nil ? entries.first?.aliases.first ?? "" : ""
@@ -169,7 +171,8 @@ final class NetToysAnchorViewModel {
                     try prepareHostKeyPolicy(anchor)
                     configuration.anchors.append(anchor)
                 }
-                try NetToysConfigurationStore.save(configuration)
+                configuration = try NetToysConfigurationStore.saveChanges(configuration, since: savedConfiguration)
+                savedConfiguration = configuration
                 guard await NetToysLoginItemManager.shared.setEnabled(true) else {
                     errorMessage = NetToysLoginItemManager.shared.errorMessage
                         ?? "The NetToys helper could not be enabled."
@@ -397,7 +400,8 @@ final class NetToysAnchorViewModel {
 
     private func save() {
         do {
-            try NetToysConfigurationStore.save(configuration)
+            configuration = try NetToysConfigurationStore.saveChanges(configuration, since: savedConfiguration)
+            savedConfiguration = configuration
         } catch {
             errorMessage = error.localizedDescription
         }
@@ -549,13 +553,10 @@ struct NetToysAnchorView: View {
                     }
                 }
             }
-            OnePlusCard {
-                OnePlusCardHeader("Monitoring", systemImage: "link")
-                OnePlusSettingRow("Check interval", caption: "Each anchor checks its saved SSH port.", separator: false) {
-                    OnePlusSelect(choices: [(2.0, "2 seconds"), (2.5, "2.5 seconds"), (3.0, "3 seconds")],
-                                  selection: Binding(get: { model.configuration.probeInterval }, set: model.setProbeInterval),
-                                  accessibilityLabel: "Check interval")
-                }
+            OnePlusSettingRow("Check interval", help: "Each anchor checks its saved SSH port.", separator: false) {
+                OnePlusSelect(choices: [(2.0, "2 seconds"), (2.5, "2.5 seconds"), (3.0, "3 seconds")],
+                              selection: Binding(get: { model.configuration.probeInterval }, set: model.setProbeInterval),
+                              accessibilityLabel: "Check interval")
             }
         }
     }
@@ -563,7 +564,7 @@ struct NetToysAnchorView: View {
     private var addAnchorSection: some View {
         OnePlusCard {
             OnePlusCardHeader("Add anchor", systemImage: "link.badge.plus")
-            anchorSettingRow("SSH host", caption: selectedHostDescription, captionRole: .mono) {
+            anchorSettingRow("SSH host") {
                 HStack(spacing: OnePlusMetrics.navIconGap) {
                     OnePlusSelect(choices: [("", model.entries.isEmpty ? "No SSH hosts" : "Select SSH host")]
                                   + model.entries.map { ($0.aliases[0], $0.aliases.joined(separator: ",")) },
@@ -586,11 +587,12 @@ struct NetToysAnchorView: View {
                     .fixedSize(horizontal: true, vertical: false)
                     .disabled(model.selectedEntry == nil || model.isInspecting)
                     Spacer(minLength: 0)
+                    Text(selectedHostDescription).onePlusText(.mono).lineLimit(1)
                 }
             }
             anchorSettingRow(
                 "Automatic",
-                caption: "Detect this device, enable monitoring, and repair its IP when the connection changes."
+                help: "Detect this device, enable monitoring, and repair its IP when the connection changes."
             ) {
                 HStack {
                     Button {
@@ -623,7 +625,7 @@ struct NetToysAnchorView: View {
             }
             anchorSettingRow(
                 "Device",
-                caption: model.identityMode == .stable
+                help: model.identityMode == .stable
                     ? "Match this device by its fixed hardware MAC address."
                     : "Match loosely by hostname and learned MAC addresses.",
                 separator: false
@@ -643,25 +645,24 @@ struct NetToysAnchorView: View {
 
     private func anchorSettingRow<Content: View>(
         _ title: String,
-        caption: String? = nil,
-        captionRole: OnePlusTextRole = .caption,
+        help: String? = nil,
         separator: Bool = true,
         @ViewBuilder content: () -> Content
     ) -> some View {
-        HStack(alignment: .firstTextBaseline, spacing: OnePlusMetrics.navIconGap) {
-            Text(title).onePlusText(.row)
-                .frame(width: OnePlusMetrics.controlColumn / 2, alignment: .leading)
-            VStack(alignment: .leading, spacing: OnePlusMetrics.spacing[1]) {
-                content().frame(maxWidth: .infinity, alignment: .leading)
-                if let caption {
-                    Text(caption).onePlusText(captionRole)
-                        .lineLimit(1).truncationMode(.middle)
+        HStack(spacing: OnePlusMetrics.navIconGap) {
+            HStack(spacing: OnePlusMetrics.spacing[1]) {
+                Text(title).onePlusText(.row)
+                if let help {
+                    Image(systemName: "info.circle").foregroundStyle(OnePlusColor.muted)
+                        .help(help).accessibilityLabel(help)
                 }
             }
-            .frame(maxWidth: .infinity, alignment: .leading)
+            .frame(width: OnePlusMetrics.controlColumn / 2, alignment: .leading)
+            content().frame(maxWidth: .infinity, alignment: .leading)
         }
         .padding(.horizontal, OnePlusMetrics.cardPadding)
-        .frame(height: caption == nil ? OnePlusMetrics.settingRow : OnePlusMetrics.captionedSettingRow)
+        .frame(height: OnePlusMetrics.settingRow)
+        .onePlusRowHover()
         .overlay(alignment: .bottom) {
             if separator { OnePlusRule() }
         }
@@ -693,7 +694,7 @@ struct NetToysAnchorView: View {
                     }
                 }
                 .onePlusScrollIndicators()
-                .frame(height: CGFloat(min(5, anchors.count)) * OnePlusMetrics.captionedSettingRow)
+                .frame(height: CGFloat(min(5, anchors.count)) * OnePlusMetrics.settingRow)
             }
         }
     }
@@ -706,19 +707,11 @@ struct NetToysAnchorView: View {
                 .foregroundStyle(statusColor(status?.state))
                 .frame(width: OnePlusMetrics.navIcon)
 
-            VStack(alignment: .leading, spacing: OnePlusMetrics.navRowGap) {
-                HStack(spacing: OnePlusMetrics.spacing[2]) {
-                    Text(aliasLabel)
-                        .onePlusText(.row).lineLimit(1)
-                    Text("\(status?.currentHostName ?? anchor.hostName):\(anchor.port)")
-                        .onePlusText(.mono).lineLimit(1)
-                }
-                Text(status?.message ?? identityDescription(anchor.identity))
-                    .onePlusText(.caption)
-                    .lineLimit(1)
-            }
-
+            Text(aliasLabel).onePlusText(.row).lineLimit(1)
+                .help(status?.message ?? identityDescription(anchor.identity))
             Spacer()
+            Text("\(status?.currentHostName ?? anchor.hostName):\(anchor.port)")
+                .onePlusText(.mono).lineLimit(1)
 
             OnePlusStatus(statusLabel(status?.state), state: statusState(status?.state))
                 .lineLimit(1)
@@ -778,7 +771,8 @@ struct NetToysAnchorView: View {
             .accessibilityLabel("Remove \(aliasLabel)")
         }
         .padding(.horizontal, OnePlusMetrics.cardPadding)
-        .frame(height: OnePlusMetrics.captionedSettingRow)
+        .frame(height: OnePlusMetrics.settingRow)
+        .onePlusRowHover()
         .contextMenu {
             Button("Set up key access") { model.setUpKeyAccess(for: anchor.id) }
             Button("Remove Anchor", role: .destructive) { pendingRemoval = anchor.id }
@@ -794,13 +788,9 @@ struct NetToysAnchorView: View {
                             model.chooseTailscalePeer(peer)
                         } label: {
                             HStack(spacing: OnePlusMetrics.navIconGap) {
-                                VStack(alignment: .leading, spacing: OnePlusMetrics.navRowGap) {
-                                    Text(peer.hostName)
-                                        .onePlusText(.row).lineLimit(1)
-                                    Text(peer.ipAddress)
-                                        .onePlusText(.mono).foregroundStyle(OnePlusColor.secondary)
-                                }
+                                Text(peer.hostName).onePlusText(.row).lineLimit(1)
                                 Spacer()
+                                Text(peer.ipAddress).onePlusText(.mono).foregroundStyle(OnePlusColor.secondary)
                                 OnePlusStatus(peer.isOnline ? "Online" : "Offline",
                                               state: peer.isOnline ? .online : .offline)
                             }

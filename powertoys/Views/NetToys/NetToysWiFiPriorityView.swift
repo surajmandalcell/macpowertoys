@@ -10,6 +10,7 @@ final class NetToysWiFiPriorityViewModel {
     var helperStatus: NetToysHelperStatus?
     var savedNetworks: [String] = []
     var errorMessage: String?
+    private var savedConfiguration = NetToysConfiguration()
 
     var availableNetworks: [String] {
         savedNetworks.filter { !configuration.wifiPriority.ssids.contains($0) }
@@ -23,6 +24,7 @@ final class NetToysWiFiPriorityViewModel {
         let (configuration, status) = await stored.value
         guard !Task.isCancelled else { return }
         self.configuration = configuration
+        savedConfiguration = configuration
         helperStatus = status
         savedNetworks = networks
     }
@@ -65,8 +67,10 @@ final class NetToysWiFiPriorityViewModel {
     }
 
     private func save() {
-        do { try NetToysConfigurationStore.save(configuration) }
-        catch { errorMessage = error.localizedDescription }
+        do {
+            configuration = try NetToysConfigurationStore.saveChanges(configuration, since: savedConfiguration)
+            savedConfiguration = configuration
+        } catch { errorMessage = error.localizedDescription }
     }
 }
 
@@ -119,7 +123,7 @@ struct NetToysWiFiPriorityView: View {
     private var failoverSection: some View {
         OnePlusCard {
             OnePlusCardHeader("Automatic failover", systemImage: "wifi")
-            OnePlusSettingRow("Switch when Internet access fails", caption: failoverMessage) {
+            OnePlusSettingRow("Switch when Internet access fails", help: failoverMessage) {
                 Toggle("Automatic failover", isOn: enabled).labelsHidden().toggleStyle(OnePlusSwitchStyle())
                     .disabled(model.configuration.wifiPriority.ssids.count < 2)
             }
@@ -179,6 +183,7 @@ struct NetToysWiFiPriorityView: View {
                 .accessibilityLabel("Remove \(ssid)")
         }
         .padding(.horizontal, OnePlusMetrics.cardPadding).frame(height: OnePlusMetrics.settingRow)
+        .onePlusRowHover()
         .contextMenu {
             Button("Move Up") { model.move(ssid, by: -1) }.disabled(index == 0)
             Button("Move Down") { model.move(ssid, by: 1) }
@@ -188,14 +193,11 @@ struct NetToysWiFiPriorityView: View {
     }
 
     private var hotspotSection: some View {
-        OnePlusCard {
-            OnePlusCardHeader("Final fallback", systemImage: "iphone.and.arrow.forward")
-            OnePlusSettingRow("iPhone Personal Hotspot",
-                              caption: "macOS Auto-Join Hotspot connects after saved networks are unavailable.", separator: false) {
-                Button("Wi-Fi Settings") {
-                    guard let url = URL(string: "x-apple.systempreferences:com.apple.wifi-settings-extension") else { return }
-                    NSWorkspace.shared.open(url)
-                }
+        OnePlusSettingRow("iPhone Personal Hotspot",
+                          help: "macOS Auto-Join Hotspot connects after saved networks are unavailable.", separator: false) {
+            Button("Wi-Fi Settings") {
+                guard let url = URL(string: "x-apple.systempreferences:com.apple.wifi-settings-extension") else { return }
+                NSWorkspace.shared.open(url)
             }
         }
     }

@@ -205,9 +205,10 @@ final class NetToysHistoryViewModel: NSObject, CLLocationManagerDelegate {
 
     func setRecordsHistory(_ enabled: Bool) {
         var configuration = NetToysConfigurationStore.load()
+        let original = configuration
         configuration.recordsNetworkHistory = enabled
         do {
-            try NetToysConfigurationStore.save(configuration)
+            _ = try NetToysConfigurationStore.saveChanges(configuration, since: original)
             recordsHistory = enabled
         } catch {
             errorMessage = error.localizedDescription
@@ -218,6 +219,7 @@ final class NetToysHistoryViewModel: NSObject, CLLocationManagerDelegate {
         do {
             try NetToysConfigurationStore.saveHistory(NetworkHistory())
             try NetToysScannerStore.clearArchive()
+            NotificationCenter.default.post(name: .netToysHistoryCleared, object: nil)
             history = NetworkHistory()
             scanArchive = NetToysScanArchive()
             isLoading = false
@@ -491,19 +493,17 @@ struct NetToysHistoryView: View {
                         symbol: "globe"
                     )
                     OnePlusRule(vertical: true)
-                    VStack(alignment: .leading, spacing: OnePlusMetrics.actionSpacing) {
+                    HStack(spacing: OnePlusMetrics.actionSpacing) {
                         Label("Network", systemImage: "wifi")
-                            .onePlusText(.cardTitle).foregroundStyle(OnePlusColor.secondary)
+                            .onePlusText(.row).foregroundStyle(OnePlusColor.secondary)
+                        Spacer(minLength: OnePlusMetrics.actionSpacing)
                         Text(model.helperStatus?.network?.displayName ?? "Unknown")
                             .onePlusText(.mono).lineLimit(1).truncationMode(.middle)
                             .help(model.helperStatus?.network?.displayName ?? "Unknown")
-                        Text(model.helperStatus?.network?.checkedAt.formatted(date: .omitted, time: .standard) ?? "Not checked")
-                            .onePlusText(.caption).foregroundStyle(OnePlusColor.muted)
+                        checkedTime
                     }
                     .padding(.horizontal, OnePlusMetrics.cardPadding)
-                    .frame(maxWidth: .infinity,
-                           minHeight: OnePlusMetrics.captionedSettingRow + OnePlusMetrics.navPadding,
-                           alignment: .leading)
+                    .frame(maxWidth: .infinity, minHeight: OnePlusMetrics.settingRow)
                 }
                 .fixedSize(horizontal: false, vertical: true)
             }
@@ -523,20 +523,25 @@ struct NetToysHistoryView: View {
         }
     }
 
+    private var checkedTime: some View {
+        Text(model.helperStatus?.network?.checkedAt.formatted(date: .omitted, time: .standard) ?? "Not checked")
+            .onePlusText(.caption).foregroundStyle(OnePlusColor.muted)
+            .fixedSize()
+    }
+
     private func statusCell(title: String, state: NetworkReachability, symbol: String) -> some View {
-        VStack(alignment: .leading, spacing: OnePlusMetrics.actionSpacing) {
+        HStack(spacing: OnePlusMetrics.actionSpacing) {
             Label(title, systemImage: symbol)
-                .onePlusText(.cardTitle).foregroundStyle(OnePlusColor.secondary)
+                .onePlusText(.row).foregroundStyle(OnePlusColor.secondary)
+            Spacer(minLength: OnePlusMetrics.actionSpacing)
             OnePlusStatus(state.rawValue.capitalized,
                           state: state == .reachable ? .online : state == .unreachable ? .warning : .offline,
                           textRole: .row)
-            Text("Updated by NetToys Helper")
-                .onePlusText(.caption).foregroundStyle(OnePlusColor.muted)
+                .fixedSize()
+            checkedTime
         }
         .padding(.horizontal, OnePlusMetrics.cardPadding)
-        .frame(maxWidth: .infinity,
-               minHeight: OnePlusMetrics.captionedSettingRow + OnePlusMetrics.navPadding,
-               alignment: .leading)
+        .frame(maxWidth: .infinity, minHeight: OnePlusMetrics.settingRow)
     }
 
     private var availabilityGraph: some View {
@@ -579,23 +584,23 @@ struct NetToysHistoryView: View {
                                 Image(systemName: row.isOutage ? "exclamationmark.circle.fill" : "checkmark.circle.fill")
                                     .foregroundStyle(row.isOutage ? OnePlusColor.warn : OnePlusColor.secondary)
                                     .frame(width: OnePlusMetrics.navIcon)
-                                VStack(alignment: .leading, spacing: OnePlusMetrics.navRowGap) {
-                                    Text(row.message).onePlusText(.row)
-                                    Text(row.network)
-                                        .onePlusText(.mono).foregroundStyle(OnePlusColor.secondary)
-                                }
+                                Text(row.message).onePlusText(.row).lineLimit(1).help(row.message)
                                 Spacer()
+                                Text(row.network)
+                                    .onePlusText(.mono).foregroundStyle(OnePlusColor.secondary)
+                                    .lineLimit(1).help(row.network)
                                 Text(row.time)
                                     .onePlusText(.caption).foregroundStyle(OnePlusColor.secondary)
                             }
                             .padding(.horizontal, OnePlusMetrics.cardPadding)
-                            .frame(height: OnePlusMetrics.captionedSettingRow)
+                            .frame(height: OnePlusMetrics.settingRow)
+                            .onePlusRowHover()
                             if row.id != events.last?.id { OnePlusRule() }
                         }
                     }
                 }
                 .onePlusScrollIndicators()
-                .frame(minHeight: OnePlusMetrics.captionedSettingRow * 3 + 2, maxHeight: .infinity)
+                .frame(minHeight: OnePlusMetrics.settingRow * 3 + 2, maxHeight: .infinity)
             }
         }
         .frame(maxHeight: .infinity, alignment: .top)
@@ -607,7 +612,7 @@ struct NetToysHistoryView: View {
         return OnePlusCard {
             OnePlusCardHeader("Recent IP scans")
             if rows.isEmpty {
-                OnePlusSettingRow(model.recentScansEmptyTitle, caption: "Completed IP Scanner runs appear here.", separator: false) {}
+                OnePlusSettingRow(model.recentScansEmptyTitle, help: "Completed IP Scanner runs appear here.", separator: false) {}
             } else {
                 ScrollView {
                     LazyVStack(spacing: 0) {
@@ -617,15 +622,10 @@ struct NetToysHistoryView: View {
                                 Image(systemName: "dot.radiowaves.left.and.right")
                                     .foregroundStyle(OnePlusColor.secondary)
                                     .frame(width: OnePlusMetrics.navIcon)
-                                VStack(alignment: .leading, spacing: OnePlusMetrics.navRowGap) {
-                                    Text(run.target)
-                                        .onePlusText(.mono)
-                                        .lineLimit(1)
-                                        .truncationMode(.middle)
-                                    Text(row.detail)
-                                        .onePlusText(.caption).foregroundStyle(OnePlusColor.secondary)
-                                }
+                                Text(run.target).onePlusText(.mono).lineLimit(1).truncationMode(.middle)
                                 Spacer()
+                                Text(row.detail).onePlusText(.caption).foregroundStyle(OnePlusColor.secondary)
+                                    .lineLimit(1).help(row.detail)
                                 Text(row.time)
                                     .onePlusText(.caption).foregroundStyle(OnePlusColor.secondary)
                                 Button { model.export(run) } label: {
@@ -645,7 +645,8 @@ struct NetToysHistoryView: View {
                                 .accessibilityLabel("Scan again")
                             }
                             .padding(.horizontal, OnePlusMetrics.cardPadding)
-                            .frame(height: OnePlusMetrics.captionedSettingRow)
+                            .frame(height: OnePlusMetrics.settingRow)
+                            .onePlusRowHover()
                             .contextMenu {
                                 Button("Export") { model.export(run) }
                                     .disabled(model.isExporting)
@@ -658,7 +659,7 @@ struct NetToysHistoryView: View {
                     }
                 }
                 .onePlusScrollIndicators()
-                .frame(height: CGFloat(visibleRowCount) * OnePlusMetrics.captionedSettingRow
+                .frame(height: CGFloat(visibleRowCount) * OnePlusMetrics.settingRow
                        + CGFloat(max(0, visibleRowCount - 1)))
             }
         }
@@ -714,14 +715,12 @@ struct NetToysSettingsView: View {
 
     var body: some View {
         VStack(alignment: .leading, spacing: OnePlusMetrics.cardGap) {
-            OnePlusCard {
-                OnePlusCardHeader("Background helper") {
+            OnePlusSettingRow("NetToys Helper", help: "Keep SSH Anchor, Wi-Fi failover, and network history available.", separator: false) {
+                HStack(spacing: OnePlusMetrics.actionSpacing) {
                     if model.isLoading {
-                        ProgressView("Loading network settings...").controlSize(.small)
-                            .onePlusText(.caption).accessibilityIdentifier("nettoys.settings-loading")
+                        ProgressView().controlSize(.small).accessibilityLabel("Loading network settings")
+                            .accessibilityIdentifier("nettoys.settings-loading")
                     }
-                }
-                OnePlusSettingRow("Enable NetToys", caption: "Keep SSH Anchor, Wi-Fi failover, and network history available.", separator: false) {
                     Toggle("Enable NetToys", isOn: Binding(get: { settings.isToolEnabled("nettoys") },
                            set: { settings.setToolEnabled($0, for: "nettoys") }))
                         .labelsHidden().toggleStyle(OnePlusSwitchStyle())
@@ -730,7 +729,7 @@ struct NetToysSettingsView: View {
             }
             OnePlusCard {
                 OnePlusCardHeader("Permissions")
-                OnePlusSettingRow("Wi-Fi network names", caption: locationStatusMessage,
+                OnePlusSettingRow("Wi-Fi network names", help: locationStatusMessage,
                                   controlWidth: OnePlusMetrics.wideControlColumn) {
                     HStack(spacing: OnePlusMetrics.actionSpacing) {
                         OnePlusStatus(locationStatusTitle, state: locationActionTitle == nil ? .online : .offline)
@@ -745,7 +744,7 @@ struct NetToysSettingsView: View {
                         }
                     }
                 }
-                OnePlusSettingRow("Local network", caption: localNetworkStatusMessage,
+                OnePlusSettingRow("Local network", help: localNetworkStatusMessage,
                                   controlWidth: OnePlusMetrics.wideControlColumn) {
                     HStack(spacing: OnePlusMetrics.actionSpacing) {
                         OnePlusStatus(localNetworkStatusTitle, state: localNetworkAccess.state == .allowed ? .online : .offline)
@@ -761,7 +760,7 @@ struct NetToysSettingsView: View {
                         }
                     }
                 }
-                OnePlusSettingRow("MAC addresses", caption: macAccessStatusMessage,
+                OnePlusSettingRow("MAC addresses", help: macAccessStatusMessage,
                                   controlWidth: OnePlusMetrics.wideControlColumn, separator: false) {
                     HStack(spacing: OnePlusMetrics.actionSpacing) {
                         OnePlusStatus(macAccessStatusTitle, state: neighborService.isEnabled ? .online : .offline)
@@ -777,13 +776,10 @@ struct NetToysSettingsView: View {
                     }
                 }
             }
-            OnePlusCard {
-                OnePlusCardHeader("Data")
-                OnePlusSettingRow("Network history", caption: "Remove saved uptime, transition, and IP scan records from this Mac.", separator: false) {
-                    Button("Clear History", role: .destructive) { confirmClear = true }
-                        .buttonStyle(OnePlusButtonStyle(.destructive))
-                        .disabled(!model.hasStoredHistory)
-                }
+            OnePlusSettingRow("Network history", help: "Remove saved uptime, transition, and IP scan records from this Mac.", separator: false) {
+                Button("Clear History", role: .destructive) { confirmClear = true }
+                    .buttonStyle(OnePlusButtonStyle(.destructive))
+                    .disabled(!model.hasStoredHistory)
             }
         }
         .task {
@@ -1129,6 +1125,7 @@ private struct NetworkUptimeTimeline: View {
                 availabilityBar(row.summary, accessibilityValue: row.label)
             }
             .frame(height: OnePlusMetrics.settingRow)
+            .onePlusRowHover(radius: OnePlusMetrics.controlRadius)
         }
     }
 
@@ -1153,20 +1150,20 @@ private struct NetworkUptimeTimeline: View {
                             Image(systemName: "exclamationmark.circle.fill")
                                 .foregroundStyle(OnePlusColor.warn)
                                 .frame(width: OnePlusMetrics.navIcon)
-                            VStack(alignment: .leading, spacing: OnePlusMetrics.navRowGap) {
-                                Text(row.title).onePlusText(.row).lineLimit(1)
-                                Text(row.time).onePlusText(.caption).foregroundStyle(OnePlusColor.secondary)
-                            }
+                            Text(row.title).onePlusText(.row).lineLimit(1).help(row.title)
                             Spacer()
+                            Text(row.time).onePlusText(.caption).foregroundStyle(OnePlusColor.secondary)
+                                .fixedSize()
                         }
                         .padding(.horizontal, OnePlusMetrics.cardPadding)
-                        .frame(height: OnePlusMetrics.captionedSettingRow)
+                        .frame(height: OnePlusMetrics.settingRow)
+                        .onePlusRowHover()
                         if row.id != presentation.outages.last?.id { OnePlusRule() }
                     }
                 }
             }
             .onePlusScrollIndicators()
-            .frame(height: OnePlusMetrics.captionedSettingRow)
+            .frame(height: OnePlusMetrics.settingRow)
         }
     }
 
