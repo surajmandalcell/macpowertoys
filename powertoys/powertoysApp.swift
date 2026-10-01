@@ -31,13 +31,15 @@ struct MacPowerToysApp: App {
                 AnyView(TrayPopoverView().modifier(AppStorageRecovery()).utilityMotionPolicy())
             }
         }
-        DiagnosticsMenuPanels.shared.makeCaptureContent = { panel, profiles, resize in
-            switch panel {
-            case .main:
-                AnyView(TrayPopoverView(diagnostic: true).utilityMotionPolicy())
-            case .systemMonitor:
-                AnyView(SystemMonitorMenuPopoverView(remoteProfiles: profiles, diagnostic: true, onPreferredHeight: resize))
-            case .portman: nil
+        if DiagnosticsMenuPanels.shared.makeCaptureContent == nil {
+            DiagnosticsMenuPanels.shared.makeCaptureContent = { panel, profiles, resize in
+                switch panel {
+                case .main:
+                    AnyView(TrayPopoverView(diagnostic: true).utilityMotionPolicy())
+                case .systemMonitor:
+                    AnyView(SystemMonitorMenuPopoverView(remoteProfiles: profiles, diagnostic: true, onPreferredHeight: resize))
+                case .portman: nil
+                }
             }
         }
         appearance.apply()
