@@ -2,7 +2,14 @@ import SwiftUI
 import OnePlusUI
 
 struct HomeView: View {
-    @AppStorage("main.page") private var selectedTool: String? = "all-tools"
+    @AppStorage("main.page") private var storedPage = "all-tools"
+    private var selectedTool: String? {
+        get { storedPage }
+        nonmutating set { storedPage = newValue ?? "all-tools" }
+    }
+    private var selectedToolBinding: Binding<String?> {
+        Binding(get: { storedPage }, set: { storedPage = $0 ?? "all-tools" })
+    }
     @State private var query = ""
     @State private var searchFocusTrigger = 0
     @State private var toolRouter = ToolActionRouter.shared
@@ -16,7 +23,7 @@ struct HomeView: View {
 
     var body: some View {
         OnePlusWindowRoot(canvas: .main) {
-            ToolSidebarView(selectedTool: $selectedTool, searchText: $query,
+            ToolSidebarView(selectedTool: selectedToolBinding, searchText: $query,
                             modifiedRevision: modifiedRevision, searchFocusTrigger: searchFocusTrigger)
         } content: {
             content
@@ -77,7 +84,7 @@ struct HomeView: View {
     @ViewBuilder private var content: some View {
         switch selectedTool {
         case "all-tools":
-            AllToolsGridView(selectedTool: $selectedTool, query: query, filter: $filter,
+            AllToolsGridView(selectedTool: selectedToolBinding, query: query, filter: $filter,
                              focusedToolID: $focusedToolID) { modifiedRevision += 1 }
         case "settings":
             MainSettingsView(tab: settingsTab, showManual: { openPage("manual/" + $0) }) { modifiedRevision += 1 }
