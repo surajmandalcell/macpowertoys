@@ -590,6 +590,26 @@
 
 ## System Monitor
 
+- **Symptom:** The signed window keeps CPU, GPU, Network, Disk, Thermal, Load,
+  and Top processes pending. Battery claims absence before it is sampled.
+- **Cause:** The native visibility gate rejects a presented but covered window.
+  Detailed and process samplers never start there. Battery text treats a
+  missing percentage as proof of absent hardware. A Swift 6 startup check also
+  catches actor inheritance in the utility timer callback.
+- **Invariant:** Task Manager opts into presented-window updates while covered.
+  Closed and minimized windows stop. The first utility timer deadline is now,
+  and its Sendable callback captures immutable settings. Keep the service's
+  latest snapshot on reopen. Process sampling runs before its interval sleep.
+  Pending or unrequested Battery data stays a dash; only a completed
+  unavailable Battery result can show the absence message.
+- **Check:** Run the startup and pending-Battery cases in
+  `SystemMonitorWindowAuditTests` and the package `OnePlusLiveUpdatesTests`.
+  The actual service/sampler check completes its first sample in 6 ms and
+  retains it on reopen. Delaying that first deadline by one second fails.
+  The actual process sampler returns 1,135 rows in 176 ms. Recheck the signed
+  window opened behind the owner's foreground app, warm reopen, and close
+  and minimize. Cold CPU and network rates require a second counter read.
+
 - **Symptom:** Unknown RAM shows zero allocation, a report save silently fails,
   or hover and accessibility labels format again during chart rendering.
 - **Cause:** Views substitute zero before a sample, export uses `try?`, and
