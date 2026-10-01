@@ -12,20 +12,8 @@ import OnePlusUI
 struct MacPowerToysApp: App {
     @NSApplicationDelegateAdaptor(AppDelegate.self) var appDelegate
     @Environment(\.openWindow) private var openWindow
-    @Environment(\.self) private var sceneEnvironment
     @AppStorage("app.showTray") private var showTray = true
     @AppStorage(AppAppearance.storageKey) private var appearance = AppAppearance.dark
-
-    private var trayBinding: Binding<Bool> {
-        Binding(
-            get: { showTray },
-            set: { newValue in
-                if newValue != showTray {
-                    showTray = newValue
-                }
-            }
-        )
-    }
 
     init() {
         if !AppRuntime.isRunningTests {
@@ -38,14 +26,17 @@ struct MacPowerToysApp: App {
 
     @MainActor
     private func configureApplication() {
+        if !AppRuntime.isRunningTests || AppRuntime.isUITesting {
+            MainMenuBarController.shared.configure(isInserted: showTray) {
+                AnyView(TrayPopoverView().modifier(AppStorageRecovery()).utilityMotionPolicy())
+            }
+        }
         DiagnosticsMenuPanels.shared.makeCaptureContent = { panel, profiles, resize in
             switch panel {
             case .main:
-                AnyView(TrayPopoverView(diagnostic: true).utilityMotionPolicy()
-                    .environment(\.self, sceneEnvironment))
+                AnyView(TrayPopoverView(diagnostic: true).utilityMotionPolicy())
             case .systemMonitor:
-                AnyView(SystemMonitorMenuPopoverView(remoteProfiles: profiles, diagnostic: true, onPreferredHeight: resize)
-                    .environment(\.self, sceneEnvironment))
+                AnyView(SystemMonitorMenuPopoverView(remoteProfiles: profiles, diagnostic: true, onPreferredHeight: resize))
             case .portman: nil
             }
         }
@@ -246,20 +237,6 @@ struct MacPowerToysApp: App {
         .handlesExternalEvents(matching: Set(["mac-tweaks"]))
         .restorationBehavior(.disabled)
 
-        MenuBarExtra(isInserted: trayBinding) {
-            TrayPopoverView()
-                .modifier(AppStorageRecovery())
-                .utilityMotionPolicy()
-                .background(DiagnosticsMainMenuWindow())
-        } label: {
-            Image(nsImage: StatusItemIcon.main)
-                .resizable()
-                .renderingMode(.template)
-                .frame(width: OnePlusMenuMetrics.statusIconSize, height: OnePlusMenuMetrics.statusIconSize)
-                .accessibilityLabel("MacPowerToys")
-                .accessibilityIdentifier("MenuBarIcon")
-        }
-        .menuBarExtraStyle(.window)
     }
 }
 

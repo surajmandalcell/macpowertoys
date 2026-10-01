@@ -220,34 +220,33 @@
   fixed. Disable a tool and require every launch route to stop. Run the hosted
   footer regression and inspect the accent action in both appearances.
 
-## Menu-Bar Click Routing
+## Menu-Bar Window Radius And Native Presentation, 2026-10-01
 
-- **Symptom:** Custom double-click handling makes the menu-bar popover feel
-  delayed or unreliable when the item already owns a native dropdown.
-- **Cause:** Left-click arbitration competes with `MenuBarExtra` instead of
-  letting the system own its standard interaction.
-- **Invariant:** Leave all left clicks native and immediate. Intercept only
-  right mouse-down to show Open MacPowerToys and Quit. Keep the tested
-  `StatusItemClickCoordinator` dormant so a future non-dropdown status item can
-  reuse it without changing the current menu item.
-- **Check:** Unit-check that the status-item mask contains only right
-  mouse-down. In the latest normal signed build, confirm that left-click opens
-  the popover immediately and right-click shows only Open and Quit.
-
-## Menu-Bar Popover Anchoring
-
-- **Symptom:** The combined popover appears left of the click instead of
-  perfectly centered below the menu-bar icon.
-- **Cause:** SwiftUI's window-style `MenuBarExtra` owns placement and clamps the
-  window to available screen edges. Its public scene API exposes content,
-  insertion, label, and style, but no anchor-point or frame-origin control.
-- **Invariant:** Keep the combined item as a native window-style `MenuBarExtra`.
-  Do not replace native left-click presentation or use private status-item or
-  window-server positioning APIs to force mathematical centering.
-- **Check:** Confirm the app contains no custom popover position or frame-origin
-  path and the local SwiftUI SDK exposes no `MenuBarExtra` placement control.
-  Click the item near the middle and each screen edge; require immediate native
-  presentation and accept system edge avoidance.
+- **Symptom:** The combined panel has the large system radius. The shared
+  shell uses 11pt, and native popovers add a second outline and arrow.
+- **Cause:** MenuBarExtra and NSPopover own a system frame. A SwiftUI clip
+  changes the content but cannot set that frame's radius or shadow path.
+- **Invariant:** The owner's 8pt rule supersedes the older MenuBarExtra-only
+  rule. All production status items use OnePlusMenuPresenter with one retained
+  borderless nonactivating NSPanel. Keep the native background clear and
+  nonopaque. OnePlusMenuPanel clips fill and its inset 1pt border to the
+  existing panelRadius token. AppKit derives the external shadow from that
+  alpha outline; do not clip the shadow or draw another one. Keep the shell's
+  natural height, originating-display ceiling and top edge during resizing.
+  Reuse hosts on warm open, including changed Task Manager remote profiles.
+  Left click toggles directly. Existing native context menus stay in AppDelegate.
+  Dismiss outside clicks and unmodified Escape. Keep child popups and sheets
+  inside the owning panel. Diagnostic opens do not take keyboard focus.
+- **Check:** All ten OnePlusMenuRadiusTests and OnePlusMenuSizingTests pass.
+  Light and Dark corner samples reject the former 11pt outline and check
+  the inset border. Native tests check transparency, shadow enablement, host
+  identity, resizing and negative-display placement without showing a window.
+  One shared tests-mode gate passes for the Debug app and both test bundles.
+  Logs: tmp/redesign/logs/panel-radius-package.log and panel-radius-tests.log.
+  The orchestrator must install clean signed HEAD, inspect native shadows and
+  all four panel entry paths in both appearances, check dismissal, keyboard,
+  popups, sheets, saved tabs and placement, and measure warm opens under 100ms.
+  Package geometry and compilation do not prove native shadow pixels or latency.
 
 ## Menu-Bar Popover Rhythm
 
