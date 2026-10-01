@@ -5,7 +5,7 @@ import XCTest
 @MainActor
 final class InputDevicesTests: XCTestCase {
     func testScrollProfilesStayIndependent() {
-        var settings = InputDevicesSettings()
+        var settings = InputDevicesSettings(scrollControlEnabled: true)
         settings.mouse.reverseVertical = true
         settings.mouse.reverseHorizontal = true
         settings.mouse.speed = 2
@@ -22,7 +22,7 @@ final class InputDevicesTests: XCTestCase {
     }
 
     func testMouseHorizontalScrollingPersistsAndBlocksSidewaysMovement() throws {
-        var settings = InputDevicesSettings()
+        var settings = InputDevicesSettings(scrollControlEnabled: true)
         settings.mouse.horizontalEnabled = false
 
         let restored = InputDevicesSettings.decoded(from: try XCTUnwrap(settings.encoded))
@@ -41,7 +41,7 @@ final class InputDevicesTests: XCTestCase {
     }
 
     func testShiftWheelScrollsSidewaysAndClearsWhenDisabled() throws {
-        var settings = InputDevicesSettings()
+        var settings = InputDevicesSettings(scrollControlEnabled: true)
         XCTAssertEqual(
             InputScrollPolicy.transform(vertical: -30, horizontal: 0, isContinuous: false, shiftHeld: true, settings: settings),
             InputScrollResult(vertical: 0, horizontal: -30, shouldSmooth: true, shiftConverted: true)
@@ -183,17 +183,47 @@ final class InputDevicesTests: XCTestCase {
     }
 
     func testInvalidSavedSpeedPassesThroughWithoutOverflow() throws {
-        for speed in [-1.0, 0, 0.34, 3.01, 1e308] {
-            var settings = InputDevicesSettings()
+        for speed in [-1.0, 0, 0.34, (0.35).nextDown.nextDown, (3.0).nextUp.nextUp, 3.01, 1e308] {
+            var settings = InputDevicesSettings(scrollControlEnabled: true)
             settings.mouse.speed = speed
             let restored = InputDevicesSettings.decoded(from: try XCTUnwrap(settings.encoded))
             XCTAssertNil(InputScrollPolicy.transform(vertical: 30, horizontal: 0, isContinuous: false, settings: restored))
         }
         for speed in [0.35, 1, 3] {
-            var settings = InputDevicesSettings()
+            var settings = InputDevicesSettings(scrollControlEnabled: true)
             settings.mouse.speed = speed
             XCTAssertEqual(InputScrollPolicy.transform(vertical: 30, horizontal: 0, isContinuous: false, settings: settings)?.vertical,
                            30 * speed)
+        }
+    }
+
+    func testReverseAtSavedSliderEndpointsFollowsBothGates() throws {
+        for (speed, vertical, horizontal) in [
+            ((3.0).nextUp, -90.0, 60.0), (3.0, -90.0, 60.0),
+            (0.35, -10.5, 7.0), ((0.35).nextDown, -10.5, 7.0)
+        ] {
+            for continuous in [false, true] {
+                for smooth in [false, true] {
+                    let profile = InputScrollProfile(reverseVertical: true, reverseHorizontal: true,
+                                                     speed: speed, smooth: smooth)
+                    var settings = InputDevicesSettings(scrollControlEnabled: true, mouse: profile, trackpad: profile)
+                    let restored = InputDevicesSettings.decoded(from: try XCTUnwrap(settings.encoded))
+                    let result = try XCTUnwrap(InputScrollPolicy.transform(vertical: 30, horizontal: -20,
+                                                                          isContinuous: continuous, settings: restored))
+                    XCTAssertEqual(result.vertical, vertical, accuracy: 1e-12)
+                    XCTAssertEqual(result.horizontal, horizontal, accuracy: 1e-12)
+                    XCTAssertEqual(result.shouldSmooth, smooth && !continuous)
+
+                    settings.scrollControlEnabled = false
+                    XCTAssertNil(InputScrollPolicy.transform(vertical: 30, horizontal: -20,
+                                                             isContinuous: continuous, settings: settings))
+                    settings.scrollControlEnabled = true
+                    settings.mouse.enabled = false
+                    settings.trackpad.enabled = false
+                    XCTAssertNil(InputScrollPolicy.transform(vertical: 30, horizontal: -20,
+                                                             isContinuous: continuous, settings: settings))
+                }
+            }
         }
     }
 
