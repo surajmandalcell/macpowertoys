@@ -1,5 +1,11 @@
 # Awake Request List
 
+Scroll edges, 2026-10-01: the shared floating gear overlays Home and Settings.
+Its 52pt reserve is scroll-content end padding, so it does not shrink the body.
+The 15 focused package checks pass, including both gear states at the 560x500
+canvas. The four regressions fail on the old source. Signed scrolling and gear
+interaction remain with the orchestrator. Report: `tmp/redesign/logs/w4-scroll-edges.md`.
+
 Round 48 header picks, 2026-10-01: `bd2e0963` implements Inset B
 (close x13, title 14pt after zoom) and Top B (title caps, icons, and action
 tops at y20). Applet and sheet header rows are 44pt; applet lights use C=27.

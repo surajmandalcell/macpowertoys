@@ -1,5 +1,12 @@
 # Text Extractor Request List
 
+Scroll edges, 2026-10-01: the shared floating gear overlays the full body.
+Its 52pt reserve is inside scroll content. History reaches the card's bottom;
+Settings reaches the window bottom. All 15 focused package checks pass,
+including both gear states at the applet's minimum and maximum heights.
+The four old-source regressions fail. Signed scrolling and gear interaction
+remain with the orchestrator. Report: `tmp/redesign/logs/w4-scroll-edges.md`.
+
 Round 48 header picks, 2026-10-01: `bd2e0963` implements Inset B
 (close x13, title 14pt after zoom) and Top B (title caps, icons, and action
 tops at y20). Applet and sheet header rows are 44pt; applet lights use C=27.

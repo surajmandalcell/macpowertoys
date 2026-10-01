@@ -126,7 +126,7 @@ struct InputDevicesWindowView: View {
     }
 
     private var scrollingPage: some View {
-        OnePlusPage(scrolls: false) {
+        OnePlusPage {
             OnePlusPageHeader(title: "Scrolling") {
                 OnePlusStatus(manager.interceptionActive ? "Control active" : "Control inactive",
                               state: manager.interceptionActive ? .online : .offline)
@@ -134,10 +134,7 @@ struct InputDevicesWindowView: View {
         } footer: {
             InputScrollDeviceBar()
         } content: {
-            ScrollView {
-                InputDevicesSettingsContent(includesDeviceFooter: false)
-            }
-            .onePlusScrollIndicators()
+            InputDevicesSettingsContent(includesDeviceFooter: false)
         }
     }
 

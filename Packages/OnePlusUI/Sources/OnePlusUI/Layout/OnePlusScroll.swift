@@ -24,6 +24,7 @@ private struct OnePlusScrollModifier: ViewModifier {
     @Environment(\.onePlusPageScrollBottomInset) private var bottomInset
     func body(content: Content) -> some View {
         content
+            .environment(\.onePlusPageScrollBottomInset, 0)
             .scrollIndicators(.never)
             .contentMargins(.bottom, bottomInset, for: .scrollContent)
             .background(OnePlusScrollConfigurator(axes: axes))

@@ -61,12 +61,12 @@ public struct OnePlusFloatingSettingsButton: View {
 }
 
 public extension View {
-    /// Apply to the applet body before an existing bottom-trailing gear overlay.
+    /// Reserve end space inside the applet's scroll content without shrinking its viewport.
     func onePlusFloatingSettingsInset() -> some View {
-        padding(.bottom, OnePlusMetrics.floatingSettingsInset)
+        environment(\.onePlusPageScrollBottomInset, OnePlusMetrics.floatingSettingsInset)
     }
 
-    /// Reserves the gear's area and places it at the shared eight-point inset.
+    /// Overlay the gear at the shared eight-point inset with scroll-content clearance.
     func onePlusFloatingSettings(isActive: Bool, help: String? = nil,
                                 action: @escaping () -> Void) -> some View {
         onePlusFloatingSettingsInset().overlay(alignment: .bottomTrailing) {
