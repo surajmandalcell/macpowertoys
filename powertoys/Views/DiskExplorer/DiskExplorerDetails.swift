@@ -417,31 +417,33 @@ struct DiskExplorerSettingsView: View {
                     .labelsHidden().toggleStyle(OnePlusSwitchStyle())
                     .disabled(settings.isToolTransitioning("disk-explorer"))
             }.environment(\.onePlusCardPadding, 0).help("Show Diskman in the launcher")
-            OnePlusCard {
-                OnePlusCardHeader("Display", systemImage: "square.grid.2x2")
-                OnePlusSettingRow("Visualization") {
-                    OnePlusSelect(choices: DiskChartStyle.allCases.map { ($0.rawValue, $0.rawValue) }, selection: $chartStyle, accessibilityLabel: "Visualization")
-                }
-                OnePlusSettingRow("Measure") {
-                    OnePlusSelect(choices: DiskChartMeasure.allCases.map { ($0.rawValue, $0.title) }, selection: $chartMeasure, accessibilityLabel: "Measure")
-                }
-                OnePlusSettingRow("Show apparent file size", separator: false) {
-                    Toggle("Show apparent file size", isOn: $apparentSize).labelsHidden().toggleStyle(OnePlusSwitchStyle())
-                }.help("File length before storage allocation")
-            }
-            OnePlusCard {
-                OnePlusCardHeader("Scanning", systemImage: "folder")
-                OnePlusSettingRow("Include hidden files") {
-                    Toggle("Include hidden files", isOn: $includeHidden).labelsHidden().toggleStyle(OnePlusSwitchStyle())
-                }.help("Include files and folders with hidden names.")
-                OnePlusSettingRow("Disk access", controlWidth: OnePlusMetrics.controlColumn * 2, separator: false) {
-                    HStack(spacing: OnePlusMetrics.actionSpacing) {
-                        Text(unreadableCount.map { $0 > 0 ? "Needs attention" : "No blocked folders found" } ?? "Not checked")
-                            .onePlusText(.mono)
-                        Button("Open Settings") { DiskEntryPresentation.openFullDiskAccess() }
-                            .buttonStyle(OnePlusButtonStyle(.link, horizontalPadding: 0))
+            HStack(alignment: .top, spacing: OnePlusMetrics.cardGap) {
+                OnePlusCard {
+                    OnePlusCardHeader("Display", systemImage: "square.grid.2x2")
+                    OnePlusSettingRow("Visualization") {
+                        OnePlusSelect(choices: DiskChartStyle.allCases.map { ($0.rawValue, $0.rawValue) }, selection: $chartStyle, accessibilityLabel: "Visualization")
                     }
-                }.help("A scan reports folders that macOS did not let Diskman read.")
+                    OnePlusSettingRow("Measure") {
+                        OnePlusSelect(choices: DiskChartMeasure.allCases.map { ($0.rawValue, $0.title) }, selection: $chartMeasure, accessibilityLabel: "Measure")
+                    }
+                    OnePlusSettingRow("Show apparent file size", separator: false) {
+                        Toggle("Show apparent file size", isOn: $apparentSize).labelsHidden().toggleStyle(OnePlusSwitchStyle())
+                    }.help("File length before storage allocation")
+                }
+                OnePlusCard {
+                    OnePlusCardHeader("Scanning", systemImage: "folder")
+                    OnePlusSettingRow("Include hidden files") {
+                        Toggle("Include hidden files", isOn: $includeHidden).labelsHidden().toggleStyle(OnePlusSwitchStyle())
+                    }.help("Include files and folders with hidden names.")
+                    OnePlusSettingRow("Disk access", controlWidth: OnePlusMetrics.controlColumn * 2, separator: false) {
+                        HStack(spacing: OnePlusMetrics.actionSpacing) {
+                            Text(unreadableCount.map { $0 > 0 ? "Needs attention" : "No blocked folders found" } ?? "Not checked")
+                                .onePlusText(.mono)
+                            Button("Open Settings") { DiskEntryPresentation.openFullDiskAccess() }
+                                .buttonStyle(OnePlusButtonStyle(.link, horizontalPadding: 0))
+                        }
+                    }.help("A scan reports folders that macOS did not let Diskman read.")
+                }
             }
         }
     }
