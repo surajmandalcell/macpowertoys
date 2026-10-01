@@ -582,11 +582,7 @@ struct SystemCareWindowView: View {
                 .frame(maxHeight: .infinity)
             }
         } else {
-            HStack {
-                scanButton
-                Spacer()
-                Text("Choose locations, then review the scan.").onePlusText(.caption)
-            }
+            scanButton
             cleanupLocations
             Spacer(minLength: 0)
         }
@@ -598,6 +594,7 @@ struct SystemCareWindowView: View {
         }
         .buttonStyle(OnePlusButtonStyle(manager.hasCleanupScan ? .neutral : .primary))
         .disabled(manager.isWorking || effectiveCategories.isEmpty)
+        .help("Choose cleanup locations, then scan and review the candidates before moving items to Trash.")
         .accessibilityIdentifier("system-care.cleanup.scan")
     }
 
@@ -919,22 +916,38 @@ struct SystemCareWindowView: View {
                                   caption: manager.molePath == nil ? "Install Mole to view its operation records." : "Run a Mole task, then refresh its history.")
                     .frame(maxWidth: .infinity, maxHeight: .infinity)
             } else {
-                HStack {
-                    Text("Operation").frame(width: OnePlusMetrics.wideControlColumn, alignment: .leading)
-                    Text("Details").frame(maxWidth: .infinity, alignment: .leading)
-                }.onePlusTableHeader()
+                let showTime = manager.history.contains { $0.timestamp != nil }
+                let showResult = manager.history.contains { $0.result != nil }
+                historyCells(nil, showTime: showTime, showResult: showResult).onePlusTableHeader()
                 ScrollView {
                     LazyVStack(spacing: 0) {
                         ForEach(manager.history) { item in
-                            HStack {
-                                Text(item.title).frame(width: OnePlusMetrics.wideControlColumn, alignment: .leading)
-                                Text(item.detail).onePlusText(.mono).frame(maxWidth: .infinity, alignment: .leading).lineLimit(1).help(item.detail)
-                            }.onePlusTableRow().textSelection(.enabled)
+                            historyCells(item, showTime: showTime, showResult: showResult)
+                                .onePlusTableRow().textSelection(.enabled).help(item.rawPayload)
                         }
                     }
                 }.onePlusScrollIndicators()
             }
         }.frame(maxHeight: .infinity, alignment: .top)
+    }
+
+    private func historyCells(_ item: MoleHistoryItem?, showTime: Bool, showResult: Bool) -> some View {
+        HStack(spacing: OnePlusMetrics.actionSpacing) {
+            Text(item?.title ?? "Operation")
+                .frame(width: OnePlusMetrics.wideControlColumn, alignment: .leading)
+            Text(item?.detail ?? "Summary")
+                .frame(maxWidth: .infinity, alignment: .leading)
+            if showTime {
+                Text(item?.timestamp ?? (item == nil ? "Time" : ""))
+                    .onePlusText(item == nil ? .tableHeader : .mono)
+                    .frame(width: OnePlusMetrics.wideControlColumn, alignment: .trailing)
+            }
+            if showResult {
+                Text(item?.result ?? (item == nil ? "Result" : ""))
+                    .onePlusText(item == nil ? .tableHeader : .caption)
+                    .frame(width: OnePlusMetrics.controlColumn, alignment: .trailing)
+            }
+        }.lineLimit(1)
     }
 
     private var settingsPage: some View {
