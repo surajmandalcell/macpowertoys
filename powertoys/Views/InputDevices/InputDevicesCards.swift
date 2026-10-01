@@ -204,6 +204,7 @@ struct InputScrollProfileCard: View {
             OnePlusCard { profileContent }
         } else {
             profileContent
+                .environment(\.onePlusCardPadding, 0)
         }
     }
 
@@ -326,13 +327,17 @@ struct InputDisclosureHeader: View {
     let title: String
     var detail: String? = nil
     @Binding var isExpanded: Bool
+    var refreshAction: (() -> Void)? = nil
+    @Environment(\.onePlusCardPadding) private var cardPadding
 
     var body: some View {
         Button { isExpanded.toggle() } label: {
             OnePlusCardHeader(title) {
                 if let detail { Text(detail).onePlusText(.caption).lineLimit(1).help(detail) }
+                if refreshAction != nil { Color.clear.frame(width: OnePlusMetrics.compactControlHeight) }
                 Image(systemName: isExpanded ? "chevron.down" : "chevron.right")
                     .onePlusText(.cardTitle)
+                    .frame(width: refreshAction == nil ? nil : OnePlusMetrics.compactControlHeight)
                     .accessibilityHidden(true)
             }
             .contentShape(Rectangle())
@@ -341,5 +346,13 @@ struct InputDisclosureHeader: View {
         .accessibilityLabel("\(title) section")
         .accessibilityValue(isExpanded ? "Expanded" : "Collapsed")
         .accessibilityHint(isExpanded ? "Hide controls and details" : "Show controls and details")
+        .overlay(alignment: .trailing) {
+            if let refreshAction {
+                Button("Refresh devices", systemImage: "arrow.clockwise", action: refreshAction)
+                    .buttonStyle(OnePlusButtonStyle(.icon, size: .small))
+                    .help("Refresh devices")
+                    .padding(.trailing, cardPadding + OnePlusMetrics.compactControlHeight + OnePlusMetrics.actionSpacing)
+            }
+        }
     }
 }
