@@ -27,7 +27,7 @@ struct DiskExplorerReviewSheet: View {
                                 Text(entry.allocatedBytes.diskSize).onePlusText(.mono)
                                 Button { model.toggleMark(entry) } label: { Image(systemName: "minus.circle") }
                                     .buttonStyle(OnePlusButtonStyle(.icon)).help("Remove from review").accessibilityLabel("Remove \(entry.name) from review")
-                            }.frame(height: OnePlusMetrics.captionedSettingRow)
+                            }.onePlusTableRow()
                         }
                     }
                 }.thinScrollIndicators().frame(height: OnePlusDiskmanMetrics.inspectorWidth)

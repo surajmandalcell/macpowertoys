@@ -303,13 +303,13 @@ struct DiskExplorerTool: Tool {
 
     let manual = [
         ToolManualSection(title: "Scan", points: [
-            "Your Home Folder scans when Diskman opens. Choose a volume or another folder to scan it instead.",
+            "Choose Home Folder, a mounted volume, or another folder to start a scan.",
             "The scan counts space used on disk, includes hidden files, and reports locations it could not read.",
             "Stop or rescan from the top bar. Scanning stops when the window closes."
         ]),
         ToolManualSection(title: "Explore", points: [
             "Choose Treemap or Rings, then measure space, file counts, or the age of recent changes. Your choices are remembered.",
-            "Click a folder in the chart or contents list to go inside it. Use the path above the chart to go back.",
+            "Click an item to select it. Double-click a folder to explore it. Use the breadcrumb to go back.",
             "Search the current folder, change the sort order, or use Quick Look and Show in Finder for a file."
         ]),
         ToolManualSection(title: "Remove", points: [
