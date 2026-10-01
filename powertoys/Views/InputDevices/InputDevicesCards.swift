@@ -333,12 +333,16 @@ struct InputDisclosureHeader: View {
     var body: some View {
         Button { isExpanded.toggle() } label: {
             OnePlusCardHeader(title) {
-                if let detail { Text(detail).onePlusText(.caption).lineLimit(1).help(detail) }
-                if refreshAction != nil { Color.clear.frame(width: OnePlusMetrics.compactControlHeight) }
-                Image(systemName: isExpanded ? "chevron.down" : "chevron.right")
-                    .onePlusText(.cardTitle)
-                    .frame(width: refreshAction == nil ? nil : OnePlusMetrics.compactControlHeight)
-                    .accessibilityHidden(true)
+                HStack(spacing: OnePlusMetrics.actionSpacing) {
+                    if let detail { Text(detail).onePlusText(.caption).lineLimit(1).help(detail) }
+                    if refreshAction != nil {
+                        Color.clear.frame(width: OnePlusMetrics.compactControlHeight)
+                    }
+                    Image(systemName: isExpanded ? "chevron.down" : "chevron.right")
+                        .onePlusText(.cardTitle)
+                        .frame(width: refreshAction == nil ? nil : OnePlusMetrics.compactControlHeight)
+                        .accessibilityHidden(true)
+                }
             }
             .contentShape(Rectangle())
         }
