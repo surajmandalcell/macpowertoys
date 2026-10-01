@@ -123,6 +123,9 @@ Resolve conflicts in this order:
 - Every OnePlusUI color is a dynamic color with the dark and light values in
   the front matter. Views never branch on the color scheme to pick a color.
 - Tool icons keep their approved artwork in both appearances.
+- Open surfaces follow changes to accessibility contrast, locale, calendar,
+  and time zone. Invalidate affected colors and cached formats once per
+  system notification. Do not poll.
 
 Color rules:
 
@@ -139,6 +142,8 @@ Color rules:
 - Text selection uses accent at 28% with primary text.
 - Every text token reaches at least 4.5:1 contrast on `window`, `sidebar`,
   and `panel` in its appearance. Small captions never go below `muted`.
+- Check text contrast on its actual hover, selected, and textured fill too.
+  Ordinary selected metadata uses a readable selected-text role.
 - Menus, menu buttons, icon buttons, drag handles, and shortcut hints use
   `controlInk` or `secondary`, never the system accent tint.
 
@@ -170,6 +175,8 @@ everywhere.
 - Regular density: main window, Mac Tweaks, Diskman, Cloud Sync, Logs, Input
   Devices, System Care, NetToys, Switch, compact applets, and sheets.
 - Compact density: the Task Manager window and every menu-bar panel.
+- Descriptions and metric units use `secondary`. Supporting captions and metadata use
+  `muted`. These roles must stay visibly separate from primary values.
 - The dot-matrix title is Task Manager's identity only. It is drawn from the
   5 x 7 glyph table as one cached path with one accessibility label. The Task
   Manager sidebar title uses the normal system role.
@@ -255,6 +262,8 @@ clipped to a header, tab strip, or scroll view.
   top-right corner at 0.14 (metric tiles) or 0.11 (menu tiles), clipped to
   the card. Text, icons, controls, rows, and list views
   never carry texture.
+- Grain stays above the fill and below all content. It never overlays text
+  or controls.
 - Chart dither: ordered 4 x 4 pt dots under area charts, masked to the chart,
   one cached pattern, never one view per dot.
 - Textures change luminance only. They never tint semantic color. They are
@@ -340,6 +349,12 @@ C=27  (traffic lights and sidebar title center here; title top aligns with their
   lead. The control sits in a right-aligned control column, 160 pt wide
   (180 pt only when the card's longest value needs it; one width per card). A
   reset glyph that appears never moves the column.
+- Help and reset glyphs sit beside the label, before the control column.
+  Optional help uses a reserved slot shown on row hover or keyboard focus.
+  The label also exposes tooltip and accessibility help. A help popover
+  uses a labeled button. Keep required instructions and real errors visible.
+- Navigation chevrons appear on row hover or keyboard focus only. Reserve
+  their width at rest so text never moves. Persistent menu chevrons remain.
 - A setting that needs an explanation puts one caption line under the label
   and grows the row to 56 pt. Never wrap a label inside 44 pt.
 - Cards pair in two equal columns when both are short. Long cards take the
@@ -445,6 +460,8 @@ A surface fails review if any of these is missing where it applies:
   and the app's menu bar commands, stay native `NSMenu`s.
 - Text input is native: selection, undo, IME, Return commits, and Escape
   cancels or clears. Spell checking is off in code and rule editors.
+  External updates wait until marked text commits. Preserve selection and
+  undo for the same resource; separate undo state when the resource changes.
 - Lists and tables: arrow-key selection, Return opens, Space shows Quick Look
   for files, Delete asks before removing, type-select, multiple selection
   where it helps, drag-out for files, and a context menu.
@@ -452,6 +469,13 @@ A surface fails review if any of these is missing where it applies:
   Command-1 to Command-9 select sidebar pages in order, Command-comma opens
   the tool's settings page, Command-W closes the window, and Escape dismisses
   sheets.
+- Custom key handlers act only in their owning window and on supported
+  modifier combinations. Pass unhandled keys to the native responder.
+  Reactivation retains a valid responder; it never resets keyboard work.
+- Restore only page and tab state promised by the tool. Validate saved IDs;
+  an explicit route overrides saved state. Search text stays transient
+  unless the owner approves persistence. Restore windows inside a surviving
+  screen, with the titlebar reachable.
 - Sheets attach to their window. No web-style centered overlays with a
   dimmed backdrop inside the window.
 - Tooltips use `.help`. Every icon-only control has an accessibility label.
@@ -530,6 +554,11 @@ separate tool panel.
   fill, metric cells separated by 1 pt lines, and a trailing 84 pt action
   column.
 - Each panel reopens on its last selected tab. Short pages size to content.
+- Status-item left click toggles the panel. Right click and Control-click
+  open the same native context menu. Neither path activates the app; an
+  explicit Open App action does.
+- Measure and cap the panel on the clicked status item's display before
+  its first frame. Unrelated history restoration never delays that path.
 
 ## Compact applets
 
@@ -667,6 +696,12 @@ both appearances:
    showing a live page, and a menu panel that is closed, stops redrawing
    live data (samplers may keep collecting; views stop observing). Live
    charts and progress update the UI at most 4 times per second.
+   A warm panel opens within 100 ms, a cold panel within 250 ms, and a
+   window within 250 ms. Measure input to the complete final-size frame;
+   display submission alone is not proof. Keep synchronous file, process,
+   and network work out of input and termination callbacks.
+   Startup failures show a recoverable error and preserve user data.
+   Shutdown has a time bound and reports critical save failures.
 10. Fixed regions: toolbars, inspectors, and footers stay put while rows
     scroll.
 11. A capture of the running signed build, compared at the same scale with
