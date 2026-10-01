@@ -64,7 +64,7 @@ struct MacPowerToysApp: App {
     @MainActor
     static func makeBackgroundWindow(id: String) -> NSWindow? {
         guard let canvas = OnePlusWindowCanvas.tool(id) else { return nil }
-        let window = NSWindow(contentRect: .init(origin: .zero, size: canvas.size),
+        let window = BackgroundToolWindow(contentRect: .init(origin: .zero, size: canvas.size),
                               styleMask: [.titled, .closable, .miniaturizable, .fullSizeContentView],
                               backing: .buffered, defer: false)
         window.identifier = .init(id)
@@ -77,11 +77,7 @@ struct MacPowerToysApp: App {
         window.animationBehavior = .none
         window.setFrame(.init(origin: window.frame.origin, size: canvas.size), display: false)
         window.center()
-        let host = NSHostingController(rootView: windowContent(id: id)
-            .environment(\.toolWindowID, id))
-        host.sizingOptions = [.minSize, .intrinsicContentSize, .maxSize]
-        window.contentViewController = host
-        window.contentView?.layoutSubtreeIfNeeded()
+        window.prepareContent()
         WindowStateManager.shared.restoreState(for: window)
         return window
     }
@@ -321,6 +317,39 @@ struct MacPowerToysApp: App {
         .handlesExternalEvents(matching: [])
         .restorationBehavior(.disabled)
 
+    }
+}
+
+final class BackgroundToolWindow: NSWindow {
+    func prepareContent() {
+        guard contentViewController == nil, let id = identifier?.rawValue else { return }
+        let host = NSHostingController(rootView: MacPowerToysApp.windowContent(id: id)
+            .environment(\.toolWindowID, id))
+        host.sizingOptions = [.minSize, .intrinsicContentSize, .maxSize]
+        contentViewController = host
+        contentView?.layoutSubtreeIfNeeded()
+    }
+
+    override func close() {
+        super.close()
+        let size = contentView?.frame.size ?? .zero
+        contentViewController = nil
+        contentView = NSView(frame: .init(origin: .zero, size: size))
+    }
+
+    override func orderFrontRegardless() {
+        prepareContent()
+        super.orderFrontRegardless()
+    }
+
+    override func orderFront(_ sender: Any?) {
+        prepareContent()
+        super.orderFront(sender)
+    }
+
+    override func makeKeyAndOrderFront(_ sender: Any?) {
+        prepareContent()
+        super.makeKeyAndOrderFront(sender)
     }
 }
 
