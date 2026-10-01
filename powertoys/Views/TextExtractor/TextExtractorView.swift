@@ -93,23 +93,11 @@ struct TextExtractorView: View {
 
     private var titlebar: some View {
         OnePlusAppletTitlebar(title: "Text Extractor") {
-            HStack(spacing: OnePlusMetrics.actionSpacing) {
-                OnePlusMenuButton(shortcuts.shortcut(for: .textExtractor).display) {
-                    [
-                        .item(OnePlusPopupMenuItem("Enable Extract Text shortcut",
-                                                  isSelected: shortcuts.isEnabled(.textExtractor)) {
-                            shortcuts.setEnabled(!shortcuts.isEnabled(.textExtractor), for: .textExtractor)
-                        }),
-                        .item(OnePlusPopupMenuItem("Change shortcut…") { page = .settings })
-                    ]
-                }
-                .environment(\.onePlusDensity, .compact)
-                .help("Extract Text shortcut").accessibilityLabel("Extract Text shortcut")
-                Button("Extract Text") { service.begin() }
-                    .buttonStyle(OnePlusButtonStyle(.primary, size: .small))
-                    .disabled(isExtracting).help("Select text anywhere on screen")
-                    .accessibilityIdentifier("text-extractor.extract")
-            }
+            Button("Extract Text") { service.begin() }
+                .buttonStyle(OnePlusButtonStyle(.primary, size: .small))
+                .disabled(isExtracting)
+                .help("Select text anywhere on screen (\(shortcuts.shortcut(for: .textExtractor).display))")
+                .accessibilityIdentifier("text-extractor.extract")
         }
     }
 
@@ -186,20 +174,13 @@ struct TextExtractorSettingsView: View {
     var body: some View {
         VStack(alignment: .leading, spacing: OnePlusMetrics.cardGap) {
             shortcutSettings
-            recognitionSettings
-            OnePlusSettingRow("Preferred languages", help: "Empty means automatic.", separator: false) {
-                OnePlusTextField("en-US, fr-FR", text: $languages, onSubmit: applyLanguages)
-                    .accessibilityLabel("Preferred languages")
-                    .onChange(of: languages) { applyLanguages() }
-            }
-            .environment(\.onePlusCardPadding, 0)
-            OnePlusSettingRow("Clear history", help: "Removes saved extracted text.", separator: false) {
-                Button("Clear", role: .destructive) { confirmingClear = true }
+            VStack(alignment: .leading, spacing: OnePlusMetrics.actionSpacing) {
+                recognitionSettings
+                Button("Clear history", role: .destructive) { confirmingClear = true }
                     .buttonStyle(OnePlusButtonStyle(.destructive))
-                    .disabled(service.history.isEmpty)
+                    .disabled(service.history.isEmpty).help("Removes saved extracted text.")
                     .accessibilityIdentifier("text-extractor.clear-history")
             }
-            .environment(\.onePlusCardPadding, 0)
         }
         .transaction { $0.disablesAnimations = true }
         .confirmationDialog("Clear text extraction history?", isPresented: $confirmingClear) {
@@ -217,16 +198,18 @@ struct TextExtractorSettingsView: View {
     }
 
     private var shortcutSettings: some View {
-        OnePlusCard {
-            OnePlusCardHeader("Global shortcut", systemImage: "keyboard")
-            OnePlusSettingRow("Enable shortcut") {
+        VStack(alignment: .leading, spacing: OnePlusMetrics.actionSpacing) {
+            OnePlusSectionTitle("Global shortcut")
+            HStack(spacing: OnePlusMetrics.actionSpacing) {
+                Text("Shortcut").onePlusText(.row).help("Works in every app.")
+                Spacer(minLength: OnePlusMetrics.actionSpacing)
                 Toggle("Enable Extract Text shortcut", isOn: Binding(
                     get: { shortcuts.isEnabled(.textExtractor) }, set: { shortcuts.setEnabled($0, for: .textExtractor) }
                 )).labelsHidden().toggleStyle(OnePlusSwitchStyle())
+                ShortcutRecorderField(action: .textExtractor)
+                    .disabled(!shortcuts.isEnabled(.textExtractor))
             }
-            OnePlusSettingRow("Keyboard shortcut", help: "Works in every app.", separator: false) {
-                ShortcutRecorderField(action: .textExtractor).disabled(!shortcuts.isEnabled(.textExtractor))
-            }
+            .frame(height: OnePlusMetrics.settingRow)
             ShortcutPermissionNotice(action: .textExtractor)
         }
     }
@@ -236,15 +219,21 @@ struct TextExtractorSettingsView: View {
             OnePlusCardHeader("Recognition", systemImage: "text.viewfinder")
             OnePlusSettingRow("Recognition quality") {
                 OnePlusSegmented(choices: TextRecognitionSpeed.allCases.map { ($0, $0.title) },
-                                 selection: $service.settings.speed, accessibilityLabel: "Recognition quality")
+                                 selection: $service.settings.speed, width: OnePlusMetrics.controlColumn,
+                                 accessibilityLabel: "Recognition quality")
             }
             OnePlusSettingRow("Language correction") {
                 Toggle("Use language correction", isOn: $service.settings.languageCorrection)
                     .labelsHidden().toggleStyle(OnePlusSwitchStyle())
             }
-            OnePlusSettingRow("QR codes and barcodes", separator: false) {
+            OnePlusSettingRow("QR codes and barcodes") {
                 Toggle("Detect QR codes and barcodes", isOn: $service.settings.detectCodes)
                     .labelsHidden().toggleStyle(OnePlusSwitchStyle())
+            }
+            OnePlusSettingRow("Preferred languages", help: "Empty means automatic.", separator: false) {
+                OnePlusTextField("en-US, fr-FR", text: $languages, onSubmit: applyLanguages)
+                    .accessibilityLabel("Preferred languages")
+                    .onChange(of: languages) { applyLanguages() }
             }
         }
     }
