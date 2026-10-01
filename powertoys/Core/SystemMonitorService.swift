@@ -1508,6 +1508,7 @@ final class SystemMonitorMenuController: NSObject {
     private var settings = SystemMonitorMenuSettings()
     private let popover = NSPopover()
     private var presentationTask: Task<Void, Never>?
+    private var presentedProfiles: [SystemMonitorRemoteProfile]?
     private var lastDirectOrder: [SystemMonitorMenuMetric]?
     private let defaults: UserDefaults
     private(set) var renderedWriteCount = 0
@@ -1675,29 +1676,34 @@ final class SystemMonitorMenuController: NSObject {
             defaults.set(SystemMonitorTrayPage.home.rawValue, forKey: "systemMonitor.trayPage")
         }
         OnePlusPanelTimings.shared.beginOpenIfNeeded(panel: "system-monitor")
-        if defaults.string(forKey: "systemMonitor.trayPage") == SystemMonitorTrayPage.processes.rawValue {
-            presentationTask = Task { [weak self, weak sender] in
+        let preparesProcesses = defaults.string(forKey: "systemMonitor.trayPage") == SystemMonitorTrayPage.processes.rawValue
+        let defaults = defaults
+        presentationTask = Task { [weak self, weak sender] in
+            if preparesProcesses {
                 await TaskManagerMenuProcessModel.shared.prepareForPresentation()
-                guard !Task.isCancelled, let self, let sender else { return }
-                self.presentationTask = nil
-                self.present(sender)
             }
-        } else {
-            present(sender)
+            let profiles = await Task.detached(priority: .userInitiated) {
+                SystemMonitorRemoteProfiles.load(defaults: defaults)
+            }.value
+            guard !Task.isCancelled, let self, let sender else { return }
+            self.presentationTask = nil
+            self.present(sender, profiles: profiles)
         }
     }
 
-    private func present(_ sender: NSStatusBarButton) {
+    private func present(_ sender: NSStatusBarButton, profiles: [SystemMonitorRemoteProfile]) {
         guard sender.window?.isVisible == true else { return }
         let hosting: NSHostingController<SystemMonitorMenuPopoverView>
-        if let existing = popover.contentViewController as? NSHostingController<SystemMonitorMenuPopoverView> {
+        if let existing = popover.contentViewController as? NSHostingController<SystemMonitorMenuPopoverView>,
+           presentedProfiles == profiles {
             hosting = existing
         } else {
-            hosting = NSHostingController(rootView: SystemMonitorMenuPopoverView(defaults: defaults) { [weak self] height in
+            hosting = NSHostingController(rootView: SystemMonitorMenuPopoverView(remoteProfiles: profiles, defaults: defaults) { [weak self] height in
                 guard let self,
                       abs(self.popover.contentSize.height - height) > 0.5 else { return }
                 self.popover.contentSize = NSSize(width: OnePlusMenuMetrics.width, height: height)
             })
+            presentedProfiles = profiles
         }
         hosting.view.appearance = NSApp.appearance
         let ceiling = (sender.window?.screen?.visibleFrame.height ?? 800) * OnePlusMenuMetrics.heightFraction
