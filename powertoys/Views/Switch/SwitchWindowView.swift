@@ -2,6 +2,7 @@ import AIManagerCore
 import AppKit
 import OnePlusUI
 import SwiftUI
+import UniformTypeIdentifiers
 
 enum SwitchPage: String, CaseIterable, Identifiable {
     case accounts = "Accounts"
@@ -52,6 +53,10 @@ struct SwitchWindowView: View {
     @AppStorage(SwitchTrayUsagePreferences.defaultKey) private var defaultShowTrayUsage = true
     @State private var showingDelete = false
     @State private var showingAddAccount = false
+    @State private var showingImportOptions = false
+    @State private var choosingImportSource = false
+    @State private var pendingImportSource: URL?
+    @State private var importMode: ImportMode = .authOnly
     @State private var selectedProviderID = ProviderID.codex
     @State private var copiedAuthPath = false
     @State private var trayUsageOverrides: [UUID: Bool] = [:]
@@ -62,7 +67,7 @@ struct SwitchWindowView: View {
     @State private var pendingAccountRoute: SwitchPageRoute?
 
     init() {
-        _model = State(initialValue: SwitchWorkspaceModel())
+        _model = State(initialValue: SwitchWorkspaceModel.shared)
         _page = State(initialValue: .accounts)
     }
 
@@ -92,8 +97,9 @@ struct SwitchWindowView: View {
         }
         .onOpenToolPage("switch", perform: openPage)
         .task(id: usageRequest) {
-            if page == .accounts, let id = model.selectedAccountID {
+            if page == .accounts, !model.isWorking, let id = model.selectedAccountID {
                 await model.loadUsage(id, onlyIfNeeded: true)
+                await model.loadAPIPricing()
             }
         }
         .onChange(of: model.selectedAccountID) { copiedAuthPath = false }
@@ -102,13 +108,22 @@ struct SwitchWindowView: View {
                 (model.importPlan?.conflicts ?? []).map { ($0.relativePath, .keepShared) })
         }
         .sheet(isPresented: $showingAddAccount, onDismiss: {
-            if model.login != nil { Task { await model.cancelLogin() } }
+            showingImportOptions = false
+            if let source = pendingImportSource {
+                pendingImportSource = nil
+                Task { await model.reviewImport(source: source, mode: importMode) }
+            }
         }) { addAccountSheet }
         .sheet(isPresented: Binding(get: { model.importPlan != nil },
                                    set: { if !$0 { model.dismissImport() } })) { importSheet }
         .alert("Switch needs attention", isPresented: Binding(
             get: { model.errorMessage != nil }, set: { if !$0 { model.errorMessage = nil } }
-        )) { Button("OK") { model.errorMessage = nil } } message: { Text(model.errorMessage ?? "") }
+        )) {
+            if !model.pendingRecovery.isEmpty {
+                Button("View Backup") { model.errorMessage = nil; page = .backup }
+            }
+            Button("OK") { model.errorMessage = nil }
+        } message: { Text(model.errorMessage ?? "") }
         .confirmationDialog("Remove this account?", isPresented: $showingDelete, titleVisibility: .visible) {
             if let account = model.selectedAccount {
                 if model.snapshot?.status.isDefault(account) == true {
@@ -153,7 +168,7 @@ struct SwitchWindowView: View {
         } message: { Text("Switch will back up the local edit before restoring the shared settings link.") }
     }
 
-    private var usageRequest: String { "\(page.rawValue)/\(model.selectedAccountID?.uuidString ?? "")" }
+    private var usageRequest: String { "\(page.rawValue)/\(model.selectedAccountID?.uuidString ?? "")/\(model.isWorking)" }
 
     private func openPage(_ pageID: String) {
         guard let destination = SwitchPageRoute(pageID: pageID) else { return }
@@ -248,6 +263,17 @@ struct SwitchWindowView: View {
     }
 
     @ViewBuilder private var accountContent: some View {
+        if let notice = model.noticeMessage { OnePlusBanner(notice) }
+        if model.login != nil {
+            OnePlusBanner("A sign-in is still pending.", tone: .warning) {
+                Button("Resume sign-in") { showingAddAccount = true }
+            }
+        }
+        if !model.pendingRecovery.isEmpty {
+            OnePlusBanner("An account operation needs recovery.", tone: .warning) {
+                Button("View Backup") { page = .backup }
+            }
+        }
         if model.snapshot == nil && model.isWorking {
             OnePlusCard { OnePlusEmptyState("Loading accounts", systemImage: "person.crop.circle",
                                             caption: "Reading the saved account list.") { ProgressView().controlSize(.small) } }
@@ -255,19 +281,18 @@ struct SwitchWindowView: View {
             identityCard(account)
             if account.identity.providerID == .codex {
                 accountUsage(account)
-                if account.verification.state != .needsSignIn {
-                    SwitchActivityGrid(rows: model.usage[account.id]?.dailyUsage,
-                                       updatedAt: model.usage[account.id]?.fetchedAt,
-                                       error: model.usageErrors[account.id])
-                        .id(account.id)
-                }
+                if let error = model.usageCacheError { OnePlusBanner(error, tone: .warning) }
+                SwitchActivityGrid(rows: model.dailyUsage[account.id] ?? model.usage[account.id]?.dailyUsage,
+                                   updatedAt: model.usage[account.id]?.fetchedAt,
+                                   error: model.usageErrors[account.id], apiPrice: model.apiPrice)
+                    .id(account.id)
             }
         } else {
             OnePlusCard {
                 OnePlusEmptyState("Add your first account", systemImage: "person.crop.circle.badge.plus",
                                   caption: "Sign in to a supported tool, or import an existing Codex folder.") {
                     Button("Add account") { showingAddAccount = true }
-                    Button("Advanced Import") { chooseImportFolder() }
+                    Button("Advanced Import") { beginAdvancedImport() }
                 }
             }
         }
@@ -297,9 +322,9 @@ struct SwitchWindowView: View {
 
     @ViewBuilder private func accountActions(_ account: AccountRecord) -> some View {
         let isDefault = model.snapshot?.status.isDefault(account) == true
-        Button(isDefault ? "Using as default" : "Use as default") {
+        Button("Use as default") {
             Task { await model.makeDefault(account.id) }
-        }.buttonStyle(OnePlusButtonStyle(isDefault ? .neutral : .primary)).disabled(isDefault || model.isWorking)
+        }.buttonStyle(OnePlusButtonStyle(isDefault ? .neutral : .primary)).disabled(model.isWorking)
         if account.identity.providerID == .codex {
             Toggle("Show in menu bar", isOn: Binding(get: { showsTrayUsage(account.id) }, set: { value in
                 trayUsageOverrides[account.id] = value
@@ -324,7 +349,7 @@ struct SwitchWindowView: View {
         Button(copiedAuthPath ? "Copied path" : "Copy saved path") { copyAuthPath(account) }
         if includesOrdering {
             Button("Use as default") { Task { await model.makeDefault(account.id) } }
-                .disabled(model.isWorking || model.snapshot?.status.isDefault(account) == true)
+                .disabled(model.isWorking)
             Button("Open \(account.identity.providerID.displayName)") { Task { await model.openAccount(account.id) } }
                 .disabled(model.isWorking)
             Divider()
@@ -375,7 +400,7 @@ struct SwitchWindowView: View {
                 }
                 Button { Task { await model.loadUsage(account.id) } } label: { Image(systemName: "arrow.clockwise") }
                     .buttonStyle(OnePlusButtonStyle(.icon)).help("Refresh usage").accessibilityLabel("Refresh usage")
-                    .disabled(model.usageLoading.contains(account.id) || account.verification.state == .needsSignIn)
+                    .disabled(model.isWorking || model.usageLoading.contains(account.id) || account.verification.state == .needsSignIn)
             }
             VStack(alignment: .leading, spacing: 0) {
                 if account.verification.state == .needsSignIn {
@@ -384,6 +409,9 @@ struct SwitchWindowView: View {
                     }.padding(OnePlusMetrics.cardPadding)
                 } else if let snapshot = model.usage[account.id] {
                     let buckets = usageBuckets(snapshot)
+                    if let error = model.usageErrors[account.id] {
+                        OnePlusBanner("\(error) Showing the last saved usage.", tone: .warning)
+                    }
                     usageFacts(snapshot)
                     ScrollView {
                         VStack(alignment: .leading, spacing: 0) {
@@ -473,7 +501,7 @@ struct SwitchWindowView: View {
         return VStack(alignment: .leading, spacing: OnePlusMetrics.actionSpacing) {
             HStack { Text(title).onePlusText(.row); Spacer(); Text(percentage).onePlusText(.mono) }
             if let percent = window.usedPercent {
-                OnePlusUsageBar(value: Double(min(max(percent, 0), 100)) / 100)
+                OnePlusUsageBar(value: Double(showUsageAsUsed ? min(max(percent, 0), 100) : 100 - min(max(percent, 0), 100)) / 100)
                     .accessibilityLabel("\(title), \(percentage)")
             }
             if let reset = window.resetsAt {
@@ -517,6 +545,7 @@ struct SwitchWindowView: View {
 
     private var backupContent: some View {
         Group {
+            if let notice = model.noticeMessage { OnePlusBanner(notice) }
             OnePlusCard {
                 OnePlusCardHeader("Pending operations")
                 if model.pendingRecovery.isEmpty {
@@ -527,8 +556,11 @@ struct SwitchWindowView: View {
                 } else {
                     ForEach(model.pendingRecovery) { operation in
                         OnePlusPathSettingRow(operation.kind.capitalized, path: operation.destination.path) {
-                            if operation.phase == .conflicted { Button("Resolve") { conflictToResolve = operation } }
+                            if operation.phase == .conflicted { Button("Resolve") { conflictToResolve = operation }.disabled(model.isWorking) }
                             else { OnePlusStatus(operation.phase.rawValue, state: .warning) }
+                        }
+                        OnePlusPathSettingRow("Protected backup", path: operation.backup.path) {
+                            Button("Reveal") { NSWorkspace.shared.activateFileViewerSelecting([operation.backup]) }
                         }
                     }
                 }
@@ -538,7 +570,7 @@ struct SwitchWindowView: View {
                     OnePlusCardHeader("Linked settings")
                     ForEach(model.linkedSettingsIssues) { issue in
                         OnePlusPathSettingRow("Linked setting", path: issue.localPath.path) {
-                            Button("Review repair") { linkedIssueToRepair = issue }
+                            Button("Review repair") { linkedIssueToRepair = issue }.disabled(model.isWorking)
                         }
                     }
                 }
@@ -556,6 +588,16 @@ struct SwitchWindowView: View {
                         NSWorkspace.shared.activateFileViewerSelecting([
                             FileManager.default.fileExists(atPath: folder.path) ? folder : model.paths.applicationSupport
                         ])
+                    }
+                }
+                OnePlusPathSettingRow("Claude profile backups", path: model.paths.applicationSupport.appending(path: "claude-code-profiles/backups").path) {
+                    Button("Reveal") {
+                        NSWorkspace.shared.activateFileViewerSelecting([model.paths.applicationSupport.appending(path: "claude-code-profiles")])
+                    }
+                }
+                if let backup = model.lastBackupURL {
+                    OnePlusPathSettingRow("Latest operation backup", path: backup.path) {
+                        Button("Reveal") { NSWorkspace.shared.activateFileViewerSelecting([backup]) }
                     }
                 }
             }
@@ -592,8 +634,9 @@ struct SwitchWindowView: View {
     }
 
     private var addAccountSheet: some View {
-        OnePlusSheet("Add account", close: { showingAddAccount = false }) {
-            if model.login != nil { loginContent }
+        OnePlusSheet(showingImportOptions ? "Import account" : "Add account", close: { showingAddAccount = false }) {
+            if showingImportOptions { importOptions }
+            else if model.login != nil { loginContent }
             else {
                 OnePlusCard {
                     ForEach(AccountManager.providerCatalog) { provider in
@@ -617,9 +660,16 @@ struct SwitchWindowView: View {
                 }
             }
         } footer: {
-            if model.login != nil {
-                Button("Cancel Sign-in") { showingAddAccount = false; Task { await model.cancelLogin() } }
+            if showingImportOptions {
+                Button("Back") { showingImportOptions = false }.buttonStyle(OnePlusButtonStyle(.ghost))
+                Button("Choose file or folder") { choosingImportSource = true }
+                    .buttonStyle(OnePlusButtonStyle(.primary)).disabled(model.isWorking)
+            } else if model.login != nil {
+                Button("Cancel Sign-in") {
+                    Task { await model.cancelLogin(); if model.login == nil { showingAddAccount = false } }
+                }
                     .buttonStyle(OnePlusButtonStyle(.ghost)).keyboardShortcut(.cancelAction)
+                    .disabled(model.isWorking)
                 if model.loginState == .credentialChoiceRequired {
                     Button("Keep Saved Access") { Task { await checkAccountLogin(choice: .keepShared) } }
                         .disabled(model.isWorking)
@@ -630,12 +680,29 @@ struct SwitchWindowView: View {
                         .buttonStyle(OnePlusButtonStyle(.primary)).disabled(model.isWorking)
                 }
             } else {
-                Button("Advanced Import") { showingAddAccount = false; chooseImportFolder() }
+                Button("Advanced Import") { showingImportOptions = true }
                 Button("Continue") { Task { await model.beginLogin(providerID: selectedProviderID) } }
                     .buttonStyle(OnePlusButtonStyle(.primary)).keyboardShortcut(.defaultAction)
                     .disabled(model.isWorking || AccountManager.providerCatalog.first { $0.id == selectedProviderID }?.availability != .enabled)
             }
-        }.buttonStyle(OnePlusButtonStyle())
+        }
+        .fileImporter(isPresented: $choosingImportSource, allowedContentTypes: [.folder, .json]) { result in
+            switch result {
+            case .success(let source): pendingImportSource = source; showingAddAccount = false
+            case .failure(let error): model.errorMessage = error.localizedDescription
+            }
+        }
+        .buttonStyle(OnePlusButtonStyle())
+    }
+
+    private var importOptions: some View {
+        OnePlusCard {
+            OnePlusCardHeader("Import contents")
+            OnePlusSettingRow("Include", caption: "Settings and history are available for Codex folders.", separator: false) {
+                OnePlusSelect(choices: [(ImportMode.authOnly, "Account access only"), (.full, "Access, settings, history")],
+                              selection: $importMode, accessibilityLabel: "Import contents")
+            }
+        }
     }
 
     private var loginContent: some View {
@@ -661,6 +728,10 @@ struct SwitchWindowView: View {
                 VStack(alignment: .leading, spacing: OnePlusMetrics.cardGap) {
                     OnePlusKeyValueRow("Account", value: plan.identity.email ?? plan.source.path,
                                        monospaced: plan.identity.email == nil)
+                    OnePlusKeyValueRow("Provider", value: plan.identity.providerID.displayName)
+                    OnePlusKeyValueRow("Include", value: plan.mode == .authOnly ? "Account access only" : "Account access, settings, and history")
+                    OnePlusKeyValueRow("Saved destination", value: plan.credentialDestination.path, monospaced: true)
+                    OnePlusKeyValueRow("Backup", value: plan.backup.path, monospaced: true)
                     OnePlusKeyValueRow("Import size", value: "\(plan.manifest.count) items · \(ByteCountFormatter.string(fromByteCount: plan.requiredBytes, countStyle: .file))")
                     ScrollView {
                         LazyVStack(alignment: .leading, spacing: OnePlusMetrics.cardGap) {
@@ -691,14 +762,9 @@ struct SwitchWindowView: View {
         }
     }
 
-    private func chooseImportFolder() {
-        let panel = NSOpenPanel()
-        panel.canChooseDirectories = true; panel.canChooseFiles = false; panel.allowsMultipleSelection = false
-        panel.prompt = "Review Import"
-        panel.begin { result in
-            guard result == .OK, let url = panel.url else { return }
-            Task { @MainActor in await model.reviewImport(source: url, mode: .full) }
-        }
+    private func beginAdvancedImport() {
+        showingImportOptions = true
+        showingAddAccount = true
     }
 }
 
@@ -727,11 +793,13 @@ struct SwitchActivityGrid: View {
     let rows: [CodexDailyUsageSnapshot]?
     let updatedAt: Date?
     var error: String? = nil
+    var apiPrice: CodexAPIPrice? = nil
     @State private var selectedDate: Date?
-    @State private var period: CodexTokenPeriod = .yearly
+    @AppStorage("switchActivityPeriod") private var savedPeriod = CodexTokenPeriod.yearly.rawValue
     @State private var presentation: Presentation?
+    private var period: CodexTokenPeriod { CodexTokenPeriod(rawValue: savedPeriod) ?? .yearly }
 
-    nonisolated private struct Day: Sendable {
+    nonisolated struct Day: Sendable {
         let date: Date
         let tokens: Int64
         let level: Int
@@ -740,15 +808,16 @@ struct SwitchActivityGrid: View {
         let tokenLabel: String
     }
 
-    nonisolated private struct Presentation: Sendable {
+    nonisolated struct Presentation: Sendable {
         let weeks: [[Day?]]
-        let totals: [String: String]
+        let totals: [String: Int64]
         let hasData: Bool
     }
 
-    nonisolated private struct Request: Hashable {
+    nonisolated private struct Request: Equatable {
         let period: String
         let updatedAt: Date?
+        let rows: [CodexDailyUsageSnapshot]?
     }
 
     nonisolated private static let calendar: Calendar = {
@@ -757,20 +826,30 @@ struct SwitchActivityGrid: View {
         return calendar
     }()
 
-    nonisolated private static func makePresentation(
+    nonisolated static func makePresentation(
         rows: [CodexDailyUsageSnapshot],
-        dayCount: Int,
+        period: CodexTokenPeriod,
         now: Date
     ) -> Presentation {
         let calendar = Self.calendar
-        let today = calendar.startOfDay(for: now)
-        let first = calendar.date(byAdding: .day, value: 1 - dayCount, to: today) ?? today
+        guard let range = period.dateRange(endingAt: now) else {
+            return Presentation(weeks: [], totals: [:], hasData: false)
+        }
+        let today = range.upperBound
+        let first = range.lowerBound
         let start = calendar.date(byAdding: .day, value: 1 - calendar.component(.weekday, from: first), to: first) ?? first
+        let formatter = ISO8601DateFormatter()
+        formatter.formatOptions = [.withFullDate]
+        formatter.timeZone = calendar.timeZone
         var tokens: [String: Int64] = [:]
+        var hasData = false
         for row in rows {
-            guard let date = row.startDate, let count = row.tokens else { continue }
-            let key = String(date.prefix(10))
-            let (sum, overflow) = tokens[key, default: 0].addingReportingOverflow(max(0, count))
+            guard let key = row.startDate, let date = formatter.date(from: key),
+                  formatter.string(from: date) == key,
+                  let count = row.tokens, count >= 0 else { continue }
+            hasData = true
+            guard range.contains(date) else { continue }
+            let (sum, overflow) = tokens[key, default: 0].addingReportingOverflow(count)
             tokens[key] = overflow ? Int64.max : sum
         }
         let maximum = max(Int64(1), tokens.values.max() ?? 1)
@@ -801,28 +880,30 @@ struct SwitchActivityGrid: View {
             }
             weeks.append(week)
         }
-        let totals = Dictionary(uniqueKeysWithValues: [
-            CodexTokenPeriod.today, .weekly, .monthly, .yearly
-        ].map { period in
-            (period.rawValue, period.tokens(in: rows, endingAt: now).formatted(.number.notation(.compactName)))
+        let totals = Dictionary(uniqueKeysWithValues: CodexTokenPeriod.allCases.map { period in
+            (period.rawValue, period.tokens(in: rows, endingAt: now))
         })
-        return Presentation(weeks: weeks, totals: totals, hasData: !tokens.isEmpty)
+        return Presentation(weeks: weeks, totals: totals, hasData: hasData)
     }
 
-    private var showsEmptyState: Bool { error != nil || presentation?.hasData == false }
+    private var showsEmptyState: Bool {
+        presentation?.hasData == false || (error != nil && presentation?.hasData != true)
+    }
     private var chartHeight: CGFloat { 7 * OnePlusMetrics.navPadding + 6 * OnePlusMetrics.navRowGap }
 
     var body: some View {
         OnePlusCard {
             OnePlusCardHeader("Daily activity", systemImage: "calendar") {
-                OnePlusSegmented(choices: [(CodexTokenPeriod.weekly, "7 days"), (.monthly, "1 month"), (.yearly, "1 year")],
-                                 selection: $period, accessibilityLabel: "Activity period").fixedSize()
+                OnePlusSegmented(choices: CodexTokenPeriod.allCases.map { ($0.rawValue, $0.label) },
+                                 selection: $savedPeriod, accessibilityLabel: "Activity period").fixedSize()
             }
             VStack(spacing: 0) {
                 activityChart
                 HStack(spacing: 0) {
-                    ForEach([CodexTokenPeriod.today, .weekly, .monthly, .yearly], id: \.rawValue) { period in
-                        OnePlusStatCell(period.label, value: presentation?.totals[period.rawValue] ?? "-")
+                    ForEach(CodexTokenPeriod.allCases, id: \.rawValue) { period in
+                        OnePlusStatCell(period.label, value: presentation?.totals[period.rawValue]
+                            .map { $0.formatted(.number.notation(.compactName)) } ?? "-")
+                            .help(presentation?.totals[period.rawValue].map(tokenDetail) ?? "Loading token totals")
                         if period != .yearly { OnePlusRule(vertical: true) }
                     }
                 }.fixedSize(horizontal: false, vertical: true)
@@ -831,7 +912,7 @@ struct SwitchActivityGrid: View {
             .accessibilityHidden(showsEmptyState)
             .allowsHitTesting(!showsEmptyState)
             .overlay {
-                if error != nil {
+                if error != nil && presentation?.hasData != true {
                     OnePlusEmptyState("Daily activity unavailable", systemImage: "exclamationmark.circle",
                                       caption: "Refresh usage to try again.")
                 } else if presentation?.hasData == false {
@@ -840,16 +921,28 @@ struct SwitchActivityGrid: View {
                 }
             }
         }
-        .task(id: Request(period: period.rawValue, updatedAt: updatedAt)) {
+        .task(id: Request(period: period.rawValue, updatedAt: updatedAt, rows: rows)) {
             selectedDate = nil
             guard let rows else { return }
-            let dayCount = period.dayCount
+            let period = period
             let result = await Task.detached(priority: .utility) {
-                Self.makePresentation(rows: rows, dayCount: dayCount, now: .now)
+                Self.makePresentation(rows: rows, period: period, now: .now)
             }.value
             guard !Task.isCancelled else { return }
             presentation = result
         }
+    }
+
+    private func tokenDetail(_ tokens: Int64) -> String {
+        var detail = "\(tokens.formatted()) tokens"
+        if let price = apiPrice {
+            detail += ". \(price.model) API rate equivalents: input \(price.inputEquivalent(for: tokens).formatted(.currency(code: "USD"))), output \(price.outputEquivalent(for: tokens).formatted(.currency(code: "USD")))."
+            if let cached = price.cachedInputEquivalent(for: tokens) {
+                detail += " Cached input \(cached.formatted(.currency(code: "USD")))."
+            }
+            detail += " This compares rates, not billed spend."
+        }
+        return detail
     }
 
     private var activityChart: some View {
