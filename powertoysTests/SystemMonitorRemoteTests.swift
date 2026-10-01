@@ -82,6 +82,13 @@ final class SystemMonitorRemoteTests: XCTestCase {
         XCTAssertNotNil(profile.validationMessage)
     }
 
+    func testZeroAndLongRemoteReadingsKeepNumericValues() {
+        XCTAssertEqual(TaskManagerRemoteCard.shortBytes(0), "0B")
+        XCTAssertEqual(TaskManagerRemoteCard.shortBytes(68_719_476_736), "64GB")
+        XCTAssertTrue(TaskManagerRemoteCard.shortRate(0).hasPrefix("0"))
+        XCTAssertFalse(TaskManagerRemoteCard.shortRate(987_654_321_000).isEmpty)
+    }
+
     @MainActor
     func testManualConnectionRefreshAndDisconnectClearReadings() async throws {
         let samples = RemoteSampleGate()
