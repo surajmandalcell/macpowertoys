@@ -5,6 +5,29 @@ import XCTest
 
 @MainActor
 final class OnePlusSettingRowTests: XCTestCase {
+    func testMultilineErrorKeepsFieldCenteredInItsFixedRow() throws {
+        for caption in [String?.none, "Units"] {
+            let pitch: CGFloat = caption == nil ? 44 : 56
+            let host = NSHostingView(rootView: OnePlusCard {
+                OnePlusSettingRow("Limit", caption: caption) {
+                    OnePlusTextField("Limit", text: .constant("invalid draft"),
+                                     error: String(repeating: "Enter a valid limit. ", count: 8))
+                }
+                OnePlusSettingRow("Next", separator: false) { SettingControlProbe().frame(height: 28) }
+            }.frame(maxHeight: .infinity, alignment: .top))
+            host.frame = CGRect(x: 0, y: 0, width: 420, height: 240)
+            host.layoutSubtreeIfNeeded()
+            RunLoop.main.run(until: Date(timeIntervalSinceNow: 0.05))
+            host.layoutSubtreeIfNeeded()
+            let field = try XCTUnwrap(descendants(host).compactMap { $0 as? OnePlusTextInputView }.first)
+            let frame = field.convert(field.bounds, to: host)
+            XCTAssertEqual(frame.height, field.intrinsicContentSize.height, accuracy: 0.5)
+            XCTAssertEqual(frame.midY, pitch / 2, accuracy: 0.5)
+            XCTAssertEqual(field.stringValue, "invalid draft")
+            XCTAssertGreaterThan(host.fittingSize.height, pitch + 44, "The full recovery message must remain below the fixed rows")
+        }
+    }
+
     func testHorizontalPathRowKeepsIntrinsicActionAndFixedPitch() throws {
         for width in [CGFloat(338), 976] {
             let host = NSHostingView(rootView: OnePlusPathSettingRow("Backup", path: String(repeating: "/long/path", count: 50),
@@ -57,14 +80,14 @@ final class OnePlusSettingRowTests: XCTestCase {
                     let controlRect = control.convert(control.bounds, to: host)
                     XCTAssertEqual(controlRect.width, column, accuracy: 0.5)
                     XCTAssertEqual(controlRect.maxX, width - 16, accuracy: 0.5)
-                    let captionWidth = width - 32 - column - 16 - (hasReset ? 40 : 0)
+                    let captionWidth = width - 32 - column - 16
                     let reference = NSHostingView(rootView: Text(caption).onePlusText(.caption).lineLimit(1)
                         .frame(width: captionWidth, height: 56, alignment: .leading).background(OnePlusColor.panel))
                     reference.appearance = host.appearance
                     reference.frame = CGRect(x: 0, y: 0, width: captionWidth, height: 56)
                     reference.layoutSubtreeIfNeeded()
                     let expected = try captionRightEdge(reference, in: reference.bounds) + 16
-                    let actual = try captionRightEdge(host, in: CGRect(x: 16, y: 30, width: captionWidth, height: 12))
+                    let actual = try captionRightEdge(host, in: CGRect(x: 16, y: 33, width: captionWidth, height: 20))
                     XCTAssertEqual(actual, expected, accuracy: 1)
                     XCTAssertEqual(host.fittingSize.height, 56)
                 }

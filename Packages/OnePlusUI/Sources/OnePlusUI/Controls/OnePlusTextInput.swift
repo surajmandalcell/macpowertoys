@@ -1,6 +1,22 @@
 import AppKit
 import SwiftUI
 
+private struct OnePlusGroupedErrorsKey: EnvironmentKey { static let defaultValue = false }
+
+extension EnvironmentValues {
+    var onePlusGroupedFieldErrors: Bool {
+        get { self[OnePlusGroupedErrorsKey.self] }
+        set { self[OnePlusGroupedErrorsKey.self] = newValue }
+    }
+}
+
+struct OnePlusFieldErrorPreference: PreferenceKey {
+    static let defaultValue: [String] = []
+    static func reduce(value: inout [String], nextValue: () -> [String]) {
+        for message in nextValue() where !value.contains(message) { value.append(message) }
+    }
+}
+
 public struct OnePlusTextField: View {
     private let title: String
     @Binding private var text: String
@@ -9,6 +25,7 @@ public struct OnePlusTextField: View {
     @Environment(\.onePlusDensity) private var density
     @Environment(\.onePlusControlHeight) private var controlHeight
     @Environment(\.isEnabled) private var enabled
+    @Environment(\.onePlusGroupedFieldErrors) private var groupedErrors
     @FocusState private var focused: Bool
     @State private var hover = false
 
@@ -26,8 +43,9 @@ public struct OnePlusTextField: View {
                 .overlay { RoundedRectangle(cornerRadius: 6).strokeBorder(error != nil ? OnePlusColor.dangerLine : focused && OnePlusFocusPolicy.shared.showsFocus ? OnePlusColor.focus : OnePlusColor.line, lineWidth: 1) }
                 .onHover { hover = $0 }
                 .accessibilityLabel(title).accessibilityHint(error ?? "")
-            if let error { Text(error).onePlusText(.caption).foregroundStyle(OnePlusColor.danger) }
-        }.opacity(enabled ? 1 : OnePlusMetrics.disabledOpacity)
+            if let error, !groupedErrors { Text(error).onePlusText(.caption).foregroundStyle(OnePlusColor.danger) }
+        }.preference(key: OnePlusFieldErrorPreference.self, value: groupedErrors ? error.map { ["\(title): \($0)"] } ?? [] : [])
+            .opacity(enabled ? 1 : OnePlusMetrics.disabledOpacity)
     }
 }
 
@@ -43,6 +61,7 @@ public struct OnePlusStepperField: View {
     @Environment(\.onePlusDensity) private var density
     @Environment(\.onePlusControlHeight) private var controlHeight
     @Environment(\.isEnabled) private var enabled
+    @Environment(\.onePlusGroupedFieldErrors) private var groupedErrors
 
     public init(_ title: String, value: Binding<Int>, in range: ClosedRange<Int>, step: Int = 1, unit: String? = nil) {
         self.title = title; _value = value; self.range = range; self.step = max(1, step); self.unit = unit
@@ -64,8 +83,9 @@ public struct OnePlusStepperField: View {
             .frame(height: controlHeight ?? density.controlHeight)
             .background(focused && OnePlusFocusPolicy.shared.showsFocus ? OnePlusColor.fieldFocus : OnePlusColor.field, in: RoundedRectangle(cornerRadius: 6))
             .overlay { RoundedRectangle(cornerRadius: 6).strokeBorder(error != nil ? OnePlusColor.dangerLine : focused && OnePlusFocusPolicy.shared.showsFocus ? OnePlusColor.focus : OnePlusColor.line, lineWidth: 1) }
-            if let error { Text(error).onePlusText(.caption).foregroundStyle(OnePlusColor.danger) }
+            if let error, !groupedErrors { Text(error).onePlusText(.caption).foregroundStyle(OnePlusColor.danger) }
         }
+        .preference(key: OnePlusFieldErrorPreference.self, value: groupedErrors ? error.map { ["\(title): \($0)"] } ?? [] : [])
         .opacity(enabled ? 1 : OnePlusMetrics.disabledOpacity)
         .onChange(of: value) { _, newValue in draft = String(newValue); error = nil }
         .onChange(of: focused) { _, newValue in if !newValue { commit() } }

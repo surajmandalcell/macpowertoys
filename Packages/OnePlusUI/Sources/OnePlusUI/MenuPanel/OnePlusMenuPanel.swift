@@ -439,13 +439,15 @@ public struct OnePlusMenuTile<Content: View>: View {
                    alignment: action != nil && height == 32 ? .center : .leading)
             .contentShape(Rectangle())
             .background {
-                if !historyValues.isEmpty {
-                    OnePlusAreaChart(values: historyValues, range: historyRange, color: OnePlusColor.accent)
-                        .opacity(0.45).allowsHitTesting(false).accessibilityHidden(true)
+                ZStack {
+                    (enabled && (hover || sample == .hover) && action != nil ? OnePlusColor.raisedHover : OnePlusColor.panelHover)
+                    if textured { OnePlusDitherTexture(strength: 0.11) }
+                    if !historyValues.isEmpty {
+                        OnePlusAreaChart(values: historyValues, range: historyRange, color: OnePlusColor.accent)
+                            .opacity(0.45).allowsHitTesting(false).accessibilityHidden(true)
+                    }
                 }
             }
-            .background(enabled && (hover || sample == .hover) && action != nil ? OnePlusColor.raisedHover : OnePlusColor.panelHover)
-            .overlay { if textured { OnePlusDitherTexture(strength: 0.11) } }
             .clipShape(RoundedRectangle(cornerRadius: 6))
             .overlay { RoundedRectangle(cornerRadius: 6).strokeBorder(OnePlusColor.line, lineWidth: 1) }
     }
