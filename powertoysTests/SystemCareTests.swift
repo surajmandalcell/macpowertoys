@@ -59,15 +59,23 @@ final class SystemCareTests: XCTestCase {
         let candidate = try fixture.candidate("marker")
         XCTAssertTrue(SystemCareManager.isSafe(candidate, homeDirectory: fixture.home))
 
-        let rootItself = CleanupCandidate(url: fixture.root, allowedRoot: fixture.root, category: .caches, size: 1)
+        let rootItself = CleanupCandidate(url: fixture.root, allowedRoot: fixture.root, category: .caches, size: 1,
+                                         fileIdentity: candidate.rootIdentity, rootIdentity: candidate.rootIdentity)
         XCTAssertFalse(SystemCareManager.isSafe(rootItself, homeDirectory: fixture.home))
-        let outside = CleanupCandidate(url: fixture.home.appendingPathComponent("marker"),
-                                       allowedRoot: fixture.home, category: .caches, size: 1,
-                                       fileIdentity: candidate.fileIdentity, rootIdentity: candidate.rootIdentity)
+        let outsideURL = fixture.home.appendingPathComponent("marker")
+        try Data("outside".utf8).write(to: outsideURL)
+        let outside = CleanupCandidate(url: outsideURL, allowedRoot: fixture.home, category: .caches, size: 1,
+                                       fileIdentity: try SystemCareManager.fileIdentity(at: outsideURL),
+                                       rootIdentity: try SystemCareManager.fileIdentity(at: fixture.home))
         XCTAssertFalse(SystemCareManager.isSafe(outside, homeDirectory: fixture.home))
         let wrongCategory = CleanupCandidate(url: candidate.url, allowedRoot: fixture.root, category: .logs,
                                             size: 1, fileIdentity: candidate.fileIdentity, rootIdentity: candidate.rootIdentity)
         XCTAssertFalse(SystemCareManager.isSafe(wrongCategory, homeDirectory: fixture.home))
+        let escapeURL = URL(fileURLWithPath: fixture.root.path + "/../Caches/marker")
+        let escape = CleanupCandidate(url: escapeURL, allowedRoot: fixture.root, category: .caches, size: 1,
+                                      fileIdentity: candidate.fileIdentity, rootIdentity: candidate.rootIdentity)
+        XCTAssertFalse(SystemCareManager.isSafe(escape, homeDirectory: fixture.home))
+        XCTAssertThrowsError(try SystemCareManager.fileIdentity(at: escapeURL))
 
         try FileManager.default.moveItem(at: candidate.url, to: fixture.root.appendingPathComponent("original"))
         try Data("replacement".utf8).write(to: candidate.url)
