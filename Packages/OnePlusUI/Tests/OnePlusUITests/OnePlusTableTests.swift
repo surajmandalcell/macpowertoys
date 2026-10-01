@@ -5,6 +5,125 @@ import XCTest
 
 @MainActor
 final class OnePlusTableTests: XCTestCase {
+    func testRecapTableGeometryAndFullRowPaintAcrossAppearancesAndDensities() throws {
+        for appearance in [NSAppearance.Name.aqua, .darkAqua] {
+            for density in OnePlusDensity.allCases {
+                let rows = (0..<3).map { OnePlusTableItem(id: String($0), cells: ["Item \($0)"], symbol: "doc") }
+                for native in [true, false] {
+                    let content = native
+                        ? AnyView(OnePlusNativeTable(columns: [.init("Name", width: 300)], rows: rows,
+                            selection: .constant([]), sort: { _, _ in }, actions: { _ in [] }))
+                        : AnyView(Table(rows) { TableColumn("Name", value: \.id).width(300) }.onePlusNativeTable())
+                    let host = NSHostingView(rootView: content.onePlusDensity(density))
+                    let window = NSWindow(contentRect: NSRect(x: -10000, y: -10000, width: 360, height: 180),
+                                          styleMask: .borderless, backing: .buffered, defer: false)
+                    window.isReleasedWhenClosed = false
+                    defer { window.close() }
+                    window.appearance = NSAppearance(named: appearance)
+                    window.contentView = host
+                    host.layoutSubtreeIfNeeded()
+                    RunLoop.main.run(until: Date(timeIntervalSinceNow: 0.05))
+                    host.layoutSubtreeIfNeeded()
+                    let table = try XCTUnwrap(findTable(in: host))
+                    XCTAssertEqual(table.headerView?.frame.height, 33)
+                    XCTAssertEqual(table.rowHeight, 34)
+                    let lines = table.subviews.compactMap { $0 as? OnePlusTableLines }.first
+                    lines?.updateRowBackgrounds()
+                    for index in rows.indices {
+                        let row = try XCTUnwrap(table.rowView(atRow: index, makeIfNecessary: true))
+                        XCTAssertEqual(row.frame.height, 34)
+                        let expected: UInt32 = appearance == .darkAqua
+                            ? (index.isMultiple(of: 2) ? 0x202020 : 0x242424)
+                            : (index.isMultiple(of: 2) ? 0xFAFAFA : 0xF2F2F2)
+                        try assertRowFill(row, hex: expected)
+                    }
+                    let row = try XCTUnwrap(table.rowView(atRow: 1, makeIfNecessary: true))
+                    let frame = row.frame
+                    if let lines { lines.setHoveredRow(1) }
+                    else {
+                        row.mouseEntered(with: try XCTUnwrap(NSEvent.enterExitEvent(with: .mouseEntered,
+                            location: .zero, modifierFlags: [], timestamp: 0, windowNumber: window.windowNumber,
+                            context: nil, eventNumber: 0, trackingNumber: 0, userData: nil)))
+                    }
+                    try assertRowFill(row, hex: appearance == .darkAqua ? 0x292929 : 0xFFFFFF)
+                    XCTAssertEqual(row.frame, frame)
+                    if let lines { lines.setHoveredRow(-1) }
+                    else {
+                        row.mouseExited(with: try XCTUnwrap(NSEvent.enterExitEvent(with: .mouseExited,
+                            location: .zero, modifierFlags: [], timestamp: 0, windowNumber: window.windowNumber,
+                            context: nil, eventNumber: 0, trackingNumber: 0, userData: nil)))
+                    }
+                    try assertRowFill(row, hex: appearance == .darkAqua ? 0x242424 : 0xF2F2F2)
+                    table.selectRowIndexes(IndexSet(integer: 1), byExtendingSelection: false)
+                    for emphasized in [false, true] {
+                        row.isEmphasized = emphasized
+                        lines?.updateRowBackgrounds()
+                        let expected: UInt32 = appearance == .darkAqua
+                            ? (emphasized ? 0x343434 : 0x292929)
+                            : (emphasized ? 0xD4D4D4 : 0xE0E0E0)
+                        try assertRowFill(row, hex: expected)
+                    }
+                }
+                for state in [OnePlusControlState.rest, .hover] {
+                    let host = NSHostingView(rootView: OnePlusGridTable(columns: [.init("Name", width: 300)],
+                        rows: [["First"], ["Second"]]).onePlusDensity(density)
+                        .environment(\.onePlusControlState, state))
+                    let window = NSWindow(contentRect: NSRect(x: -10000, y: -10000, width: 324, height: 101),
+                                          styleMask: .borderless, backing: .buffered, defer: false)
+                    window.isReleasedWhenClosed = false
+                    defer { window.close() }
+                    window.appearance = NSAppearance(named: appearance)
+                    window.contentView = host
+                    host.layoutSubtreeIfNeeded()
+                    XCTAssertEqual(host.fittingSize.height, 101)
+                    let bitmap = try XCTUnwrap(host.bitmapImageRepForCachingDisplay(in: host.bounds))
+                    host.cacheDisplay(in: host.bounds, to: bitmap)
+                    let scale = CGFloat(bitmap.pixelsWide) / host.bounds.width
+                    for index in 0..<2 {
+                        let hex: UInt32 = state == .hover
+                            ? (appearance == .darkAqua ? 0x292929 : 0xFFFFFF)
+                            : (appearance == .darkAqua ? (index == 0 ? 0x202020 : 0x242424) : (index == 0 ? 0xFAFAFA : 0xF2F2F2))
+                        let pixel = try XCTUnwrap(bitmap.colorAt(x: Int(2 * scale), y: Int(CGFloat(33 + index * 34 + 5) * scale)))
+                        assertColor(pixel, hex: hex)
+                    }
+                }
+            }
+        }
+    }
+
+    private func assertRowFill(_ row: NSTableRowView, hex: UInt32) throws {
+        let bitmap = try XCTUnwrap(row.bitmapImageRepForCachingDisplay(in: row.bounds))
+        row.cacheDisplay(in: row.bounds, to: bitmap)
+        let scale = CGFloat(bitmap.pixelsWide) / row.bounds.width
+        for x in [2, bitmap.pixelsWide / 2, bitmap.pixelsWide - 3] {
+            assertColor(try XCTUnwrap(bitmap.colorAt(x: x, y: Int(5 * scale))), hex: hex)
+        }
+    }
+
+    private var renderedColors: [UInt32: NSColor] = [:]
+    private func assertColor(_ color: NSColor, hex: UInt32, file: StaticString = #filePath, line: UInt = #line) {
+        if renderedColors[hex] == nil {
+            // Cache-display bitmaps use the display profile. Compare with an
+            // independent sRGB swatch rendered through the same capture path.
+            let swatch = NSHostingView(rootView: Color(.sRGB, red: Double((hex >> 16) & 255) / 255,
+                green: Double((hex >> 8) & 255) / 255, blue: Double(hex & 255) / 255, opacity: 1))
+            let window = NSWindow(contentRect: NSRect(x: -10000, y: -10000, width: 8, height: 8),
+                                  styleMask: .borderless, backing: .buffered, defer: false)
+            window.isReleasedWhenClosed = false
+            defer { window.close() }
+            window.contentView = swatch
+            swatch.layoutSubtreeIfNeeded()
+            let bitmap = swatch.bitmapImageRepForCachingDisplay(in: swatch.bounds)!
+            swatch.cacheDisplay(in: swatch.bounds, to: bitmap)
+            renderedColors[hex] = bitmap.colorAt(x: 2, y: 2)!.usingColorSpace(.sRGB)!
+        }
+        let rgb = color.usingColorSpace(.sRGB)!
+        let expected = renderedColors[hex]!
+        XCTAssertEqual(rgb.redComponent, expected.redComponent, accuracy: 0.005, file: file, line: line)
+        XCTAssertEqual(rgb.greenComponent, expected.greenComponent, accuracy: 0.005, file: file, line: line)
+        XCTAssertEqual(rgb.blueComponent, expected.blueComponent, accuracy: 0.005, file: file, line: line)
+    }
+
     func testHeaderSortIndicatorChangesDirectionWithoutMovingAlignedLabels() throws {
         for appearance in [NSAppearance.Name.aqua, .darkAqua] {
             let host = NSHostingView(rootView: OnePlusNativeTable(columns: [
@@ -23,8 +142,8 @@ final class OnePlusTableTests: XCTestCase {
             host.layoutSubtreeIfNeeded()
             let table = try XCTUnwrap(findTable(in: host))
             let header = try XCTUnwrap(table.headerView)
-            XCTAssertEqual(header.frame.height, 28)
-            XCTAssertEqual(table.rowHeight, 28)
+            XCTAssertEqual(header.frame.height, 33)
+            XCTAssertEqual(table.rowHeight, 34)
             for index in 0..<5 {
                 let cell = try XCTUnwrap(table.tableColumns[index].headerCell as? OnePlusTableHeaderCell)
                 let frame = header.headerRect(ofColumn: index)
@@ -174,14 +293,14 @@ final class OnePlusTableTests: XCTestCase {
                 let headerFrame = header.convert(header.bounds, to: host)
                 let rowFrame = table.convert(table.rect(ofRow: 0), to: host)
                 XCTAssertEqual(headerFrame.minY, 0, accuracy: 0.01)
-                XCTAssertEqual(headerFrame.height, 28, accuracy: 0.01)
-                XCTAssertEqual(rowFrame.minY, 28, accuracy: 0.01)
+                XCTAssertEqual(headerFrame.height, 33, accuracy: 0.01)
+                XCTAssertEqual(rowFrame.minY, 33, accuracy: 0.01)
                 let bitmap = try XCTUnwrap(host.bitmapImageRepForCachingDisplay(in: host.bounds))
                 host.cacheDisplay(in: host.bounds, to: bitmap)
                 let scale = CGFloat(bitmap.pixelsHigh) / host.bounds.height
                 let x = Int(250 * scale)
-                let separator = try XCTUnwrap(bitmap.colorAt(x: x, y: Int(27 * scale)))
-                let headerFill = try XCTUnwrap(bitmap.colorAt(x: x, y: Int(26 * scale)))
+                let separator = try XCTUnwrap(bitmap.colorAt(x: x, y: Int(32 * scale)))
+                let headerFill = try XCTUnwrap(bitmap.colorAt(x: x, y: Int(31 * scale)))
                 // AppKit paints its scroll edge at the row origin. Sample the fill inside the row.
                 let rowFill = try XCTUnwrap(bitmap.colorAt(x: x, y: Int(rowFrame.midY * scale)))
                 XCTAssertGreaterThan(abs(separator.redComponent - headerFill.redComponent), 0.01)
@@ -263,7 +382,7 @@ final class OnePlusTableTests: XCTestCase {
                 case .trailing: XCTAssertEqual(headerFrame.maxX, bodyFrame.maxX, accuracy: 0.5)
                 }
             }
-            XCTAssertEqual(table.headerView?.bounds.height, 28)
+            XCTAssertEqual(table.headerView?.bounds.height, 33)
         }
     }
     func testLiveUpdatesReloadOnlyChangedVisibleCellsAndKeepSelectionAndActions() throws {

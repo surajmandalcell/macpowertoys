@@ -29,7 +29,7 @@ public struct OnePlusMetricTile<Chart: View>: View {
                 Image(systemName: icon).font(.system(size: 13)).foregroundStyle(OnePlusColor.secondary).accessibilityHidden(true)
                 VStack(alignment: .leading, spacing: 2) {
                     Text(title).onePlusText(.cardTitle)
-                    if let caption { Text(caption).onePlusText(.caption).lineLimit(1).help(caption) }
+                    if let caption { Text(caption).onePlusText(.metricCaption).lineLimit(1).help(caption) }
                 }
                 Spacer(minLength: 8)
                 HStack(alignment: .firstTextBaseline, spacing: 4) {
@@ -46,7 +46,7 @@ public struct OnePlusMetricTile<Chart: View>: View {
         .padding(16).frame(maxWidth: .infinity, alignment: .leading).contentShape(Rectangle())
         .background {
             (action != nil && hovering ? OnePlusColor.panelHover : OnePlusColor.panel)
-                .overlay { OnePlusDitherTexture() }
+                .overlay { OnePlusMetricTexture() }
         }.clipShape(RoundedRectangle(cornerRadius: 8))
         .overlay { RoundedRectangle(cornerRadius: 8).strokeBorder(OnePlusColor.line, lineWidth: 1) }
         .accessibilityElement(children: .combine)
@@ -119,7 +119,9 @@ public enum OnePlusTable {
     public static let primaryIconInset: CGFloat = 16
     public static let primaryTextInset: CGFloat = primaryIconInset + 15 + 10
     static let nativeHeaderInset: CGFloat = cellInset - 2
-    public static func rowHeight(_ density: OnePlusDensity) -> CGFloat { density == .regular ? 34 : 28 }
+    public static let headerHeight: CGFloat = 33
+    public static func rowHeight(_ density: OnePlusDensity) -> CGFloat { 34 }
+    public static func rowBackground(_ index: Int) -> Color { index.isMultiple(of: 2) ? OnePlusColor.panel : OnePlusColor.tableAlternate }
 }
 
 public extension View {
@@ -133,19 +135,21 @@ public extension View {
             .padding(.trailing, max(0, column.trailingInset - (position == .last ? 6 : 0)))
     }
     func onePlusTableHeader() -> some View {
-        onePlusText(.tableHeader).frame(height: 28).frame(maxWidth: .infinity, alignment: .leading)
+        onePlusText(.tableHeader).frame(height: OnePlusTable.headerHeight).frame(maxWidth: .infinity, alignment: .leading)
             .padding(.horizontal, OnePlusTable.cellInset).background(OnePlusColor.sidebar)
             .overlay(alignment: .bottom) { OnePlusColor.lineSoft.frame(height: 1) }
     }
-    func onePlusTableRow(selected: Bool = false) -> some View { modifier(OnePlusTableRowModifier(selected: selected)) }
+    func onePlusTableRow(index: Int = 0, selected: Bool = false) -> some View { modifier(OnePlusTableRowModifier(index: index, selected: selected)) }
 }
 
 private struct OnePlusTableRowModifier: ViewModifier {
+    let index: Int
     let selected: Bool
     @Environment(\.onePlusDensity) private var density
     func body(content: Content) -> some View {
         content.onePlusText(.row).padding(.horizontal, OnePlusTable.cellInset).frame(height: OnePlusTable.rowHeight(density))
             .onePlusRowHover(selected: selected)
+            .background(OnePlusTable.rowBackground(index))
             .overlay(alignment: .bottom) { OnePlusColor.lineSoft.frame(height: 1) }
     }
 }
@@ -190,7 +194,7 @@ public struct OnePlusGridTable: View {
     public var body: some View {
         VStack(spacing: 0) {
             cells(columns.map(\.title), header: true).onePlusTableHeader()
-            ForEach(rows.indices, id: \.self) { index in cells(rows[index]).onePlusTableRow().textSelection(.enabled) }
+            ForEach(rows.indices, id: \.self) { index in cells(rows[index]).onePlusTableRow(index: index).textSelection(.enabled) }
         }
     }
     private func cells(_ values: [String], header: Bool = false) -> some View {

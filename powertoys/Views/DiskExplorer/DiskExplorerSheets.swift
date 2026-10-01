@@ -20,7 +20,8 @@ struct DiskExplorerReviewSheet: View {
                 }
                 ScrollView {
                     LazyVStack(spacing: 0) {
-                        ForEach(model.markedEntries) { entry in
+                        let entries = model.markedEntries
+                        ForEach(Array(zip(entries.indices, entries)), id: \.1.id) { index, entry in
                             HStack(spacing: OnePlusMetrics.actionSpacing) {
                                 Image(systemName: DiskEntryPresentation.symbol(entry))
                                 VStack(alignment: .leading, spacing: OnePlusMetrics.spacing[0]) {
@@ -31,7 +32,7 @@ struct DiskExplorerReviewSheet: View {
                                 Text(entry.allocatedBytes.diskSize).onePlusText(.mono)
                                 Button { model.toggleMark(entry) } label: { Image(systemName: "minus.circle") }
                                     .buttonStyle(OnePlusButtonStyle(.icon)).help("Remove from review").accessibilityLabel("Remove \(entry.name) from review")
-                            }.onePlusTableRow()
+                            }.onePlusTableRow(index: index)
                         }
                     }
                 }.thinScrollIndicators().frame(height: OnePlusDiskmanMetrics.inspectorWidth)

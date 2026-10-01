@@ -492,13 +492,11 @@ struct TaskManagerSystemReportView: View {
                     Text(section.title).font(.system(size: 10, weight: .medium))
                     Spacer()
                 }
-                .padding(.horizontal, 12)
-                .frame(height: 34)
-                .background(Color.white.opacity(0.018))
+                .onePlusTableHeader()
             }
             ForEach(section.rows.indices, id: \.self) { index in
                 let row = section.rows[index]
-                HStack(alignment: .top, spacing: 20) {
+                HStack(spacing: 20) {
                     Text(row.field)
                         .font(.system(size: 9.5)).foregroundStyle(TaskManagerTheme.secondary)
                         .frame(maxWidth: .infinity, alignment: .leading)
@@ -507,10 +505,9 @@ struct TaskManagerSystemReportView: View {
                         .textSelection(.enabled)
                         .frame(maxWidth: .infinity, alignment: .leading)
                 }
-                .padding(.horizontal, 12)
-                .padding(.vertical, 7)
-                .onePlusRowHover()
-                .overlay(alignment: .bottom) { Rectangle().fill(TaskManagerTheme.lineSoft).frame(height: 1) }
+                .lineLimit(1)
+                .onePlusTableRow(index: index)
+                .help("\(row.field): \(row.value)")
             }
         }
     }

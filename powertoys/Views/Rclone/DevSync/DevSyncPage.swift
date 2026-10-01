@@ -133,12 +133,12 @@ struct DevSyncPage: View {
                         if plan.actions.isEmpty {
                             Text("No pending changes.").onePlusText(.row)
                         }
-                        ForEach(plan.actions) { action in
+                        ForEach(Array(zip(plan.actions.indices, plan.actions)), id: \.1.id) { index, action in
                             VStack(alignment: .leading, spacing: OnePlusMetrics.spacing[0]) {
                                 Text(action.relativePath).onePlusText(.mono).lineLimit(1).truncationMode(.middle)
                                 Text(action.reason).onePlusText(.caption).fixedSize(horizontal: false, vertical: true)
                             }
-                            .onePlusTableRow()
+                            .onePlusTableRow(index: index)
                         }
                     }
                 }

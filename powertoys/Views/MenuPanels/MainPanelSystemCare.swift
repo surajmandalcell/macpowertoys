@@ -217,7 +217,9 @@ struct SystemCareTrayView: View {
                 .frame(height: OnePlusMenuMetrics.tab + OnePlusMetrics.spacing[1])
                 .onePlusRowHover()
                 if expandedCategories.contains(category) {
-                    ForEach(rows) { row in SystemCareCandidateRow(row: row, manager: manager) }
+                    ForEach(Array(zip(rows.indices, rows)), id: \.1.id) { index, row in
+                        SystemCareCandidateRow(row: row, manager: manager, rowIndex: index)
+                    }
                 }
             }
         }
