@@ -5,7 +5,8 @@
 S5 and A4-A7 remain in progress until the orchestrator installs the final
 signed build and checks the controls. The audit report is
 `tmp/redesign/logs/w1-audit-portman.md`. The binding density and motion
-correction supersedes the older card and hover-swap layouts below.
+correction removes the older card wrappers. Round 11 restores the fixed
+trailing metrics and actions slot without animation.
 
 The source fixes cleanup totals for overlapping selected process trees and
 excludes protected descendants from the forecast. Name sorting uses the
@@ -16,8 +17,8 @@ Focused tests cover these logic changes.
 
 Forward's toolbar, remote rows, tunnel rows, empty states, and Settings use
 direct sections and rows. Uptime, counts, state, and process metadata use the
-trailing side of rows. Server actions stay visible at rest. Hover changes
-color without swapping or fading content. Help stays in tooltips. Detail
+trailing side of rows. Server metrics and actions share one trailing slot.
+Hover and keyboard access switch its paint at once. Help stays in tooltips. Detail
 actions use shared controls and a shared popup. Complete rows include actions
 and values in their hover fill.
 
@@ -37,6 +38,26 @@ standalone scanner, projection, TCP metadata, cleanup policy, missing-tool,
 and disposable SSH checks pass. The prior projection fails the selected-child
 memory regression. Installed Servers, Forward, and Settings were captured in
 the background at source `36c585b4`; these are baseline captures only.
+
+## Round 11 review, 2026-10-01
+
+| Status | Request | Evidence | Remaining work |
+|---|---|---|---|
+| Source fixed | T087: recover identity width with one 134pt trailing slot. | `5447bd89` overlays adjacent Link and Stop on graph, memory, and uptime. Short distinct branches share the name baseline when they fit. `01bed768` exposes actions during keyboard focus and checks full button width in the hosted hover test. Identity colors, full-row hover, help, native context menus, and cleanup metrics remain. | Run the hosted hover test. Check rest, hover, protected rows, cleanup, Tab, Full Keyboard Access, and VoiceOver in both appearances on the signed build. |
+| Geometry verified | T088: pair direct settings sections in the main window and remove the card-only inset in both hosts. | `8801bfd9` pairs General with Integrations and Ports & processes with Clean up. The source-derived offscreen check measures 480pt columns with a 16pt gap at 976pt, a 356pt natural height, and a single 338pt column with a 724pt height in compact density. Visible native stepper bounds reach each group edge. The prior source fails the same check. Control columns remain 160/180pt. | Run the full native regression on hosted CI and inspect all sections, filtering, help, and control actions in both signed hosts. |
+
+Report: `tmp/redesign/logs/w3-audit-portman.md`. The eight supplied round 10
+Portman captures were reviewed. They show the two assigned defects and no
+additional visible Portman defect. Current native interaction and installation
+remain with the orchestrator under `40-common.md`.
+
+The T088 commit also contains a concurrent `PortmanMenuController` presenter
+hunk. It supplies the clicked display's height ceiling to the retained root.
+This is perf-panels work and requires that owner's integration review.
+
+The complete current Portman view type-checks against the built app module.
+The probe renames its overview helper to avoid an imported duplicate.
+The shared compile gates are pending after two unowned concurrent failures.
 
 ## Status glyph, 2026-10-01
 
