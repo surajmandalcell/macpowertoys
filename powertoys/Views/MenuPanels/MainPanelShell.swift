@@ -25,15 +25,7 @@ enum TrayTab: String, CaseIterable, Identifiable {
     }
 
     var symbol: String {
-        switch self {
-        case .home: "house"
-        case .cloudSync: "cloud"
-        case .inputDevices: "computermouse"
-        case .systemCare: "internaldrive"
-        case .systemMonitor: "chart.xyaxis.line"
-        case .netToys: "network"
-        case .switchAccounts: "person.2"
-        }
+        ToolGlyph(rawValue: rawValue)?.symbol ?? "house"
     }
 
     var toolID: String? { self == .home ? nil : rawValue }
@@ -235,9 +227,9 @@ struct IndividualToolMenuPanel: View {
         case .awake:
             AwakeTrayRow()
         case .colorPicker:
-            quickAction("Pick Color", symbol: "eyedropper", action: .colorPickerPick)
+            quickAction("Pick Color", symbol: ToolGlyph.colorPicker.symbol, action: .colorPickerPick)
         case .textExtractor:
-            quickAction("Extract Text", symbol: "text.viewfinder", action: .textExtractorCapture)
+            quickAction("Extract Text", symbol: ToolGlyph.textExtractor.symbol, action: .textExtractorCapture)
         case .inputDevices:
             InputDevicesTrayView(showsHeader: false)
         }
@@ -330,20 +322,7 @@ private struct TrayTabIcon: View {
 
     @ViewBuilder
     var body: some View {
-        if tab == .cloudSync {
-            ZStack {
-                Image(systemName: "cloud.fill")
-                    .font(.system(size: size * 0.84))
-                    .opacity(0.36)
-                    .offset(x: 2, y: -2)
-                Image(systemName: "cloud")
-                    .font(.system(size: size, weight: selected ? .semibold : .regular))
-                    .offset(x: -2, y: 2)
-            }
-        } else {
-            Image(systemName: tab.symbol)
-                .symbolVariant(selected ? .fill : .none)
-                .font(.system(size: size, weight: selected ? .semibold : .regular))
-        }
+        Image(systemName: tab.symbol)
+            .font(.system(size: size, weight: .regular))
     }
 }

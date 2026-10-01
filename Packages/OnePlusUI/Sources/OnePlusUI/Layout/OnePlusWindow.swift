@@ -93,22 +93,24 @@ public struct OnePlusNavRow: View {
     private let title: String
     private let systemImage: String
     private let image: Image?
+    private let iconRotation: Double
     private let selected: Bool
     private let count: Int?
     private let external: Bool
     private let muted: Bool
     private let action: () -> Void
     @Environment(\.onePlusDensity) private var density
-    public init(_ title: String, systemImage: String, image: Image? = nil, selected: Bool = false,
+    public init(_ title: String, systemImage: String, image: Image? = nil, iconRotation: Double = 0, selected: Bool = false,
                 count: Int? = nil, external: Bool = false, muted: Bool = false, action: @escaping () -> Void) {
         self.title = title; self.systemImage = systemImage; self.image = image
+        self.iconRotation = iconRotation
         self.selected = selected; self.count = count; self.external = external; self.muted = muted; self.action = action
     }
     public var body: some View {
         Button(action: action) {
             HStack(spacing: 10) {
                 if let image { image.resizable().scaledToFit().frame(width: 15, height: 15).accessibilityHidden(true) }
-                else { Image(systemName: systemImage).font(.system(size: 15, weight: .regular)).frame(width: 15).accessibilityHidden(true) }
+                else { Image(systemName: systemImage).font(.system(size: 15, weight: .regular)).rotationEffect(.degrees(iconRotation)).frame(width: 15).accessibilityHidden(true) }
                 Text(title).lineLimit(1)
                     .foregroundStyle(muted ? OnePlusColor.muted : selected ? OnePlusColor.ink : OnePlusColor.secondary)
                 Spacer(minLength: 4)

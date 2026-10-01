@@ -2,6 +2,8 @@ import AppKit
 import SwiftUI
 
 public enum OnePlusMenuMetrics {
+    public static let statusIconSize: CGFloat = 14
+    public static let statusIconInkSize: CGFloat = 11.2
     public static let width: CGFloat = 356
     public static let topBarTop: CGFloat = 10
     public static let topBarBottom: CGFloat = 6

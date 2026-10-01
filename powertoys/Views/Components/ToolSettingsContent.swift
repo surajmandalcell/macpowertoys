@@ -54,7 +54,7 @@ struct RulerLauncherSettingsView: View {
     var body: some View {
         HStack(alignment: .top, spacing: OnePlusMetrics.cardGap) {
             OnePlusCard {
-                OnePlusCardHeader("Ruler", systemImage: "ruler")
+                OnePlusCardHeader("Ruler", systemImage: ToolGlyph.ruler.symbol, iconRotation: ToolGlyph.ruler.rotation)
                 OnePlusSettingRow("Active rulers", separator: false) {
                     Button("Open Ruler Settings") {
                         ToolActionRouter.shared.execute(ToolActionRequest(action: .rulerSettings))

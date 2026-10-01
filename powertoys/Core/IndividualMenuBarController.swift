@@ -80,11 +80,11 @@ enum IndividualMenuBarTool: String, CaseIterable, Identifiable {
 
     var symbol: String {
         switch self {
-        case .cloudSync: "cloud"
-        case .awake: "cup.and.saucer"
-        case .colorPicker: "eyedropper"
-        case .textExtractor: "text.viewfinder"
-        case .inputDevices: "computermouse"
+        case .cloudSync: ToolGlyph.cloudSync.symbol
+        case .awake: ToolGlyph.awake.symbol
+        case .colorPicker: ToolGlyph.colorPicker.symbol
+        case .textExtractor: ToolGlyph.textExtractor.symbol
+        case .inputDevices: ToolGlyph.inputDevices.symbol
         }
     }
 
@@ -187,8 +187,7 @@ final class IndividualMenuBarController: NSObject {
         item.autosaveName = tool.autosaveName
         guard let button = item.button else { return item }
 
-        let image = NSImage(systemSymbolName: tool.symbol, accessibilityDescription: tool.title)
-        image?.isTemplate = true
+        let image = StatusItemIcon.symbol(tool.symbol)
         button.image = image
         button.imagePosition = .imageOnly
         button.identifier = NSUserInterfaceItemIdentifier("individual-menu.\(tool.id)")

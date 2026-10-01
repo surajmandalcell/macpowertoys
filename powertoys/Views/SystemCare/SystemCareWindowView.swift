@@ -898,7 +898,7 @@ struct SystemCareWindowView: View {
             OnePlusPageHeader(title: "About", subtitle: appVersion)
         } content: {
             OnePlusCard {
-                OnePlusCardHeader("System Care", systemImage: "sparkles")
+                OnePlusCardHeader("System Care", systemImage: ToolGlyph.systemCare.symbol)
                 OnePlusSettingRow("Native cleanup", caption: "Review and move rebuildable data to Trash.") {
                     OnePlusStatus("Included")
                 }
