@@ -64,14 +64,16 @@ open class OnePlusNativeSwitchButton: NSButton {
     }
 
     open override func draw(_ dirtyRect: NSRect) {
-        let track = NSRect(x: bounds.maxX - 30, y: bounds.midY - 8, width: 30, height: 16)
+        let track = NSRect(x: bounds.maxX - 29, y: bounds.midY - 8.5, width: 29, height: 17)
         let color = cell?.isHighlighted == true ? OnePlusColor.pressed
-            : state == .on ? OnePlusColor.primaryFill : OnePlusColor.line
+            : state == .on ? OnePlusColor.primaryFill : OnePlusColor.selection
         NSColor(color).withAlphaComponent(isEnabled ? 1 : OnePlusMetrics.disabledOpacity).setFill()
-        NSBezierPath(roundedRect: track, xRadius: 8, yRadius: 8).fill()
-        let thumb = NSRect(x: state == .on ? track.maxX - 14 : track.minX + 2,
-                          y: track.minY + 2, width: 12, height: 12)
-        NSColor(state == .on ? OnePlusColor.primaryInk : OnePlusColor.secondary).setFill()
+        NSBezierPath(roundedRect: track, xRadius: 8.5, yRadius: 8.5).fill()
+        NSColor(OnePlusColor.line).withAlphaComponent(isEnabled ? 1 : OnePlusMetrics.disabledOpacity).setStroke()
+        NSBezierPath(roundedRect: track.insetBy(dx: 0.5, dy: 0.5), xRadius: 8, yRadius: 8).stroke()
+        let thumb = NSRect(x: state == .on ? track.maxX - 14 : track.minX + 3,
+                          y: track.minY + 3, width: 11, height: 11)
+        NSColor(state == .on ? OnePlusColor.primaryInk : OnePlusColor.secondary).withAlphaComponent(isEnabled ? 1 : OnePlusMetrics.disabledOpacity).setFill()
         NSBezierPath(ovalIn: thumb).fill()
         let paragraph = NSMutableParagraphStyle()
         paragraph.lineBreakMode = .byTruncatingTail
@@ -134,7 +136,7 @@ open class OnePlusNativeStepperField: NSTextField {
         replacement.bezelStyle = .roundedBezel
         replacement.drawsBackground = true
         cell = replacement
-        stepper.controlSize = .mini
+        stepper.controlSize = .small
         stepper.valueWraps = false
         stepper.target = self
         stepper.action = #selector(step(_:))
