@@ -13,8 +13,9 @@ manager and controller. A background open only orders the overlay; user
 launches keep activation and key ordering. The actual presentation-body
 check fails on old source and passes both choices. The actual router check
 also proves queued intent. The installed `198055e4` still activates, so no
-live Ruler open was sent. Compile, signed foreground identity, capture-session
-behavior and latency remain. See `tmp/redesign/perf/w1-windows.md`.
+live Ruler open was sent. The Debug app and both test bundles compile. Signed
+foreground identity, capture-session behavior and latency remain.
+See `tmp/redesign/perf/w1-windows.md`.
 
 Reviewed against the pinned [FreeRuler](https://github.com/pascalpp/FreeRuler)
 source at commit `d38ca4f673f16c51485940e63eeee68babfbfeed` on 2026-08-31.

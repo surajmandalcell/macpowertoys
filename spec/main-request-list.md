@@ -26,7 +26,9 @@ The actual router fixture passes queued Ruler intent, early plugin readiness,
 post-await guards, failure and retry. Main's `a4e5f2fa` coalesces restoration;
 followers wait for full receipt/catalog publication. Main also provides a
 native alert with tool/error details, Retry, enabled Open Logs and Cancel.
-Compile and signed checks remain.
+The Debug app and both desktop test bundles compile. Hosted and signed checks
+remain. Logs: `tmp/redesign/logs/perf-windows-r11-tests.log` and
+`tmp/redesign/logs/app-lifecycle-tests-retry1.log`.
 API/status: `tmp/redesign/logs/app-lifecycle-routes.txt`.
 
 | Status | Request | Current evidence | Remaining work |
