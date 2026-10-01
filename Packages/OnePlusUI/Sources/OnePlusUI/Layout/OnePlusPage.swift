@@ -69,6 +69,7 @@ public struct OnePlusTabStrip<Value: Hashable, Tools: View>: View {
     @Binding private var selection: Value
     private let tools: Tools
     @Environment(\.onePlusDensity) private var density
+    @Environment(\.onePlusTimingWindow) private var timingWindow
     public init(tabs: [OnePlusTab<Value>], selection: Binding<Value>, layout: Layout = .workspace,
                 @ViewBuilder tools: () -> Tools) {
         self.tabs = tabs; _selection = selection; self.layout = layout; self.tools = tools()
@@ -76,7 +77,7 @@ public struct OnePlusTabStrip<Value: Hashable, Tools: View>: View {
     public var body: some View {
         HStack(spacing: 22) {
             ForEach(tabs) { tab in
-                Button { selection = tab.id } label: {
+                Button { select(tab.id) } label: {
                     HStack(spacing: 6) {
                         Text(tab.title)
                         if let count = tab.count { OnePlusNavBadge(count, minimumDigits: tab.countDigits) }
@@ -94,9 +95,17 @@ public struct OnePlusTabStrip<Value: Hashable, Tools: View>: View {
         }
         .onMoveCommand { direction in
             if let next = OnePlusSegmented<Value>.nextSelection(in: tabs.map(\.id), current: selection,
-                                                               direction: direction == .left || direction == .up ? -1 : 1) { selection = next }
+                                                               direction: direction == .left || direction == .up ? -1 : 1) { select(next) }
         }
         .accessibilityElement(children: .contain).accessibilityLabel("Pages")
+    }
+
+    private func select(_ id: Value) {
+        if selection != id, !timingWindow.isEmpty {
+            OnePlusPanelTimings.shared.begin(panel: timingWindow, operation: .pageSwitch,
+                                            tab: tabs.first { $0.id == id }?.title ?? "", input: "tab-strip")
+        }
+        selection = id
     }
 }
 
