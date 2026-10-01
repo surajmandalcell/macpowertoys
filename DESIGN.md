@@ -24,6 +24,9 @@ colors:
   control-ink: { dark: "#DEDEDE", light: "#343434" }
   accent: { dark: "#EE5B50", light: "#D94F45" }
   data-blue: { dark: "#8AAEEA", light: "#3564A4" } # Cloud Sync progress and network data
+  accent-primary-ink: { dark: "#161616", light: "#000000" }
+  accent-primary-hover: { dark: "#E65A4F", light: "#D34E44" }
+  accent-primary-pressed: { dark: "#DE584E", light: "#CD4D43" }
   primary-fill: { dark: "#DDDDDD", light: "#383838" }
   primary-ink: { dark: "#252525", light: "#FFFFFF" }
   ok: { dark: "#7FA889", light: "#3F7A4E" }
@@ -359,9 +362,10 @@ Use only these. Names are the package API.
 |---|---|
 | `OnePlusButtonStyle(.neutral)` | 28 pt high, radius 6, 1 pt `line`, `raised` fill, 10 pt padding, 6 pt icon gap, 12 pt `controlInk`. Hover `raisedHover`, pressed `pressed`. |
 | `.primary` | Same geometry, `primaryFill` with `primaryInk`, medium weight. One per view state. |
+| `.accentPrimary` | Opt-in accent primary action. Same geometry and medium weight, `accent` fill with `accentPrimaryInk`; use its hover and pressed tokens. |
 | `.ghost` | Same geometry, no fill or line until hover (`raised`). Text `secondary`, hover `ink`. |
 | `.destructive` | `dangerFill`, `dangerLine`, and `danger` text. Always paired with a confirmation. |
-| `.icon` | 28 pt square, radius 5, 14 pt glyph, transparent until hover. Needs `.help` and an accessibility label. |
+| `.icon` | 28 pt square, radius 5, control-role glyph size and weight, transparent until hover. Needs `.help` and an accessibility label. |
 | `.link` | Text plus a trailing 10 pt arrow ("Manage", "View all"), `secondary`, hover `ink`, no fill. |
 | `.small` size | 24 pt high, 11 pt text, radius 5. For compact and menu-panel headers. |
 | `OnePlusSwitchStyle` | A `Toggle` style. 29 x 17 capsule, 1 pt line, 11 pt knob, 12 pt travel. Off: `selection` track and `secondary` knob. On: `primaryFill` track and `primaryInk` knob. |
