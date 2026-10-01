@@ -69,7 +69,7 @@ private struct OnePlusUIShowcase: View {
                                    OnePlusMenuTab("battery", "Battery", systemImage: "battery.100"),
                                    OnePlusMenuTab("sensors", "Sensors", systemImage: "thermometer.medium"),
                                    OnePlusMenuTab("processes", "Processes", systemImage: "list.bullet")]
-    private let pages = ["Foundation", "Typography", "Buttons", "Inputs", "Popup menus", "Data", "Native tables", "Fixed regions", "Settings", "Task Manager", "Menu panel", "Applets", "Compact forms", "Feedback"]
+    private let pages = ["Foundation", "Typography", "Buttons", "Inputs", "Popup menus", "Data", "Native tables", "Fixed regions", "Settings", "Task Manager", "Menu panel", "Applets", "Compact forms", "Rows and tabs", "Feedback"]
     private let samples: [Double] = [16, 18, 15, 22, 19, 17, 24, 42, 33, 24, 22, 21, 28, 19, 24, 21, 20, 26, 24, 28]
     private var compact: Bool { page == "Task Manager" }
     private var canvas: OnePlusWindowCanvas {
@@ -165,6 +165,7 @@ private struct OnePlusUIShowcase: View {
             case "Menu panel": menuPanel
             case "Applets": applets
             case "Compact forms": CompactFormVariantsShowcase()
+            case "Rows and tabs": RowAndTabStatesShowcase()
             default: feedback
             }
         }

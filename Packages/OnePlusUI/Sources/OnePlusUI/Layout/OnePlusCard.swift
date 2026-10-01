@@ -58,12 +58,13 @@ public struct OnePlusPanel<Content: View>: View {
 
 public struct OnePlusCardHeader<Accessory: View>: View {
     private let title: String
+    private let subtitle: String?
     private let icon: String?
     private let iconRotation: Double
     private let accessory: Accessory
     @Environment(\.onePlusCardPadding) private var cardPadding
-    public init(_ title: String, systemImage: String? = nil, iconRotation: Double = 0, @ViewBuilder accessory: () -> Accessory) {
-        self.title = title; icon = systemImage; self.iconRotation = iconRotation; self.accessory = accessory()
+    public init(_ title: String, systemImage: String? = nil, iconRotation: Double = 0, subtitle: String? = nil, @ViewBuilder accessory: () -> Accessory) {
+        self.title = title; self.subtitle = subtitle; icon = systemImage; self.iconRotation = iconRotation; self.accessory = accessory()
     }
     public var body: some View {
         HStack(spacing: 8) {
@@ -71,7 +72,10 @@ public struct OnePlusCardHeader<Accessory: View>: View {
                 Image(systemName: icon).font(.system(size: 13)).rotationEffect(.degrees(iconRotation)).frame(width: 13)
                     .foregroundStyle(OnePlusColor.secondary).accessibilityHidden(true)
             }
-            Text(title).onePlusText(.cardTitle).lineLimit(1).accessibilityAddTraits(.isHeader)
+            VStack(alignment: .leading, spacing: 2) {
+                Text(title).onePlusText(.cardTitle).lineLimit(1).accessibilityAddTraits(.isHeader)
+                if let subtitle { Text(subtitle).onePlusText(.caption).lineLimit(1).help(subtitle) }
+            }
             Spacer(minLength: 8)
             accessory
         }.padding(.horizontal, cardPadding).frame(height: 40)
@@ -80,7 +84,31 @@ public struct OnePlusCardHeader<Accessory: View>: View {
 }
 
 public extension OnePlusCardHeader where Accessory == EmptyView {
-    init(_ title: String, systemImage: String? = nil, iconRotation: Double = 0) { self.init(title, systemImage: systemImage, iconRotation: iconRotation, accessory: { EmptyView() }) }
+    init(_ title: String, systemImage: String? = nil, iconRotation: Double = 0, subtitle: String? = nil) {
+        self.init(title, systemImage: systemImage, iconRotation: iconRotation, subtitle: subtitle, accessory: { EmptyView() })
+    }
+}
+
+public extension View {
+    func onePlusRowHover(selected: Bool = false, radius: CGFloat = 0) -> some View {
+        modifier(OnePlusRowHoverModifier(selected: selected, radius: radius))
+    }
+}
+
+private struct OnePlusRowHoverModifier: ViewModifier {
+    let selected: Bool
+    let radius: CGFloat
+    @Environment(\.isEnabled) private var enabled
+    @Environment(\.onePlusControlState) private var sample
+    @State private var hover = false
+    private var hovering: Bool { enabled && (hover || sample == .hover) }
+    func body(content: Content) -> some View {
+        content.frame(maxWidth: .infinity, alignment: .leading)
+            .contentShape(Rectangle())
+            .background(selected ? OnePlusColor.selection : hovering ? OnePlusColor.raised : .clear,
+                        in: RoundedRectangle(cornerRadius: radius))
+            .onHover { hover = $0 }
+    }
 }
 
 public struct OnePlusSettingRow<Control: View>: View {

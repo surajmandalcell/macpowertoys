@@ -26,7 +26,7 @@ public struct OnePlusAccountNavRow<Icon: View>: View {
                 }.frame(maxWidth: .infinity, alignment: .leading)
                 Image(systemName: "checkmark").onePlusText(.caption)
                     .opacity(isDefault ? 1 : 0).accessibilityHidden(true)
-            }.padding(.horizontal, 10).frame(height: 44).contentShape(Rectangle())
+            }.padding(.horizontal, 10).frame(maxWidth: .infinity).frame(height: 44).contentShape(Rectangle())
         }
         .buttonStyle(OnePlusInteractionStyle(selected: selected))
         .help(title + " · " + subtitle + (isDefault ? " · Default" : ""))
@@ -78,12 +78,14 @@ enum OnePlusHostedActionMenu {
 public struct OnePlusStatCell: View {
     let title: String
     let value: String
+    @Environment(\.onePlusCardPadding) private var cardPadding
     public init(_ title: String, value: String) { self.title = title; self.value = value }
     public var body: some View {
-        VStack(alignment: .leading, spacing: 6) {
+        HStack(alignment: .firstTextBaseline, spacing: 8) {
             Text(title).onePlusText(.caption).lineLimit(1).help(title)
-            Text(value).onePlusText(.cardTitle).lineLimit(2).help(value)
-        }.frame(maxWidth: .infinity, alignment: .leading).padding(16)
+            Spacer(minLength: 8)
+            Text(value).onePlusText(.cardTitle).lineLimit(1).help(value)
+        }.frame(maxWidth: .infinity, alignment: .leading).padding(cardPadding)
             .accessibilityElement(children: .combine)
     }
 }

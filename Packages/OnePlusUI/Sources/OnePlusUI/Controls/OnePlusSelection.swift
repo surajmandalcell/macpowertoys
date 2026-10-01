@@ -76,18 +76,8 @@ public struct OnePlusSegmented<Value: Hashable>: View {
             ForEach(choices.indices, id: \.self) { index in
                 let choice = choices[index]
                 Button { selection = choice.0 } label: {
-                    Group {
-                        if let symbol = symbols[choice.0] {
-                            Image(systemName: symbol).accessibilityLabel(choice.1)
-                        } else {
-                            Text(choice.1)
-                        }
-                    }.onePlusText(.control, selected: selection == choice.0)
-                        .lineLimit(1).fixedSize(horizontal: true, vertical: false).padding(.horizontal, padding)
-                        .frame(maxWidth: width == nil ? nil : .infinity)
-                        .frame(height: (controlHeight ?? density.controlHeight) - 4)
-                        .background(selection == choice.0 ? OnePlusColor.selectedControl : .clear,
-                                    in: RoundedRectangle(cornerRadius: 3))
+                    OnePlusSegmentLabel(title: choice.1, symbol: symbols[choice.0], selected: selection == choice.0,
+                                        padding: padding, expands: width != nil)
                 }
                 .buttonStyle(OnePlusInteractionStyle(radius: 3, disabledOpacity: 1))
                 .accessibilityAddTraits(selection == choice.0 ? .isSelected : [])
@@ -107,6 +97,31 @@ public struct OnePlusSegmented<Value: Hashable>: View {
         }
         .accessibilityElement(children: .contain)
         .accessibilityLabel(label)
+    }
+}
+
+private struct OnePlusSegmentLabel: View {
+    let title: String
+    let symbol: String?
+    let selected: Bool
+    let padding: CGFloat
+    let expands: Bool
+    @Environment(\.onePlusDensity) private var density
+    @Environment(\.onePlusControlHeight) private var controlHeight
+    @Environment(\.onePlusControlState) private var sample
+    @Environment(\.isEnabled) private var enabled
+    @State private var hover = false
+    private var hovering: Bool { enabled && (hover || sample == .hover) }
+    var body: some View {
+        Group {
+            if let symbol { Image(systemName: symbol).accessibilityLabel(title) }
+            else { Text(title) }
+        }.onePlusText(.control, color: selected || hovering ? OnePlusColor.ink : OnePlusColor.secondary)
+            .lineLimit(1).fixedSize(horizontal: true, vertical: false).padding(.horizontal, padding)
+            .frame(maxWidth: expands ? .infinity : nil).frame(height: (controlHeight ?? density.controlHeight) - 4)
+            .background(selected ? OnePlusColor.selectedControl : hovering ? OnePlusColor.raised : .clear,
+                        in: RoundedRectangle(cornerRadius: OnePlusMetrics.segmentRadius))
+            .contentShape(Rectangle()).onHover { hover = $0 }
     }
 }
 

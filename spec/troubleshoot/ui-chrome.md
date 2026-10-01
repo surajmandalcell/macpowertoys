@@ -1,5 +1,26 @@
 # UI Chrome Troubleshooting
 
+## Tab Paint And Complete Row Hover, 2026-10-01
+
+- **Symptom:** Tab hover hugs the label. A row hover stops before its values,
+  chart, or nested action. Single-row tile content starts at the top.
+- **Cause:** Hover uses a label-sized button background or padded content
+  instead of the complete row. Tile frames use top alignment.
+- **Invariant:** Page tabs paint a raised radius-5 surface 8pt beyond the
+  label and count horizontally and 4pt vertically. Keep tab frames and
+  underlines fixed. Keep counts muted. Shared row hover covers the complete
+  rectangle and leaves nested controls active. Caption blocks use a 2pt
+  gap and one leading edge. Center a single row in its tile.
+- **Check:** `OnePlusRowAndTabGeometryTests` checks fixed tab and action
+  frames, extended paint, complete native table rows, disabled hover, and
+  centered menu tiles. Removing the horizontal extension makes the tab
+  regression fail. Whole-tile history uses the shared area chart under the
+  content with 18 percent opacity, accent ink, and the existing radius clip.
+  Hover paint is immediate. Metric values and statuses stay trailing on the
+  label row. Menu item actions share one horizontal row.
+  Signed visual review and nested control interaction remain with the
+  orchestrator. Report: `tmp/redesign/logs/w1-components.md`.
+
 ## Menu Hosts Ignore App Appearance, 2026-09-30
 
 - **Symptom:** Round 6 dark captures show light main and Task Manager panels.
