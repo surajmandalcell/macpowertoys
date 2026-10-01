@@ -1,5 +1,13 @@
 # Awake Request List
 
+Round 17 applet correction, run 68, 2026-10-01: OnePlusUI `a02d43d`
+restores the 40pt row and C22. The title and display switch share that
+center; its 24pt action frame spans y10..34. Untabbed content starts at
+y56. All 21 focused package checks pass in both appearances at 1x/2x.
+The app and test bundles compile. The orchestrator must tag and adopt
+OnePlusUI, then verify signed Home, Settings, and display-switch states.
+Report: `tmp/redesign/logs/w10-fix17-applets.md`.
+
 Scroll edges, 2026-10-01: the shared floating gear overlays Home and Settings.
 Its 52pt reserve is scroll-content end padding, so it does not shrink the body.
 The 15 focused package checks pass, including both gear states at the 560x500

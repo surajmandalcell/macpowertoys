@@ -22,10 +22,10 @@ final class CompactAppletRedesignTests: XCTestCase {
     }
 
     func testColorSettingsWindowFitsCardsAndCapsLongContent() {
-        XCTAssertEqual(ColorPickerLayout.settingsHeight(contentHeight: 296), 408)
+        XCTAssertEqual(ColorPickerLayout.settingsHeight(contentHeight: 296), 404)
         XCTAssertEqual(ColorPickerLayout.settingsHeight(contentHeight: 0), 250)
         XCTAssertEqual(ColorPickerLayout.settingsHeight(contentHeight: 1000), 460)
-        XCTAssertEqual(ColorPickerLayout.settingsHeight(contentHeight: ColorPickerLayout.settingsContentHeight), 384)
+        XCTAssertEqual(ColorPickerLayout.settingsHeight(contentHeight: ColorPickerLayout.settingsContentHeight), 380)
     }
 
     func testColorHistoryPresentationFiltersAndFormatsOffTheViewPath() throws {

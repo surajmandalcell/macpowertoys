@@ -133,9 +133,10 @@
   Inset B puts close at x13, with the title 14pt after zoom. Preserve the
   native button frames, move the enclosing titlebar container, and refresh
   ancestor tracking. Keep deferred coalescing and repair late x/y resets.
-  Preserve title line boxes and body gaps; the body moves down 4pt. Applet
-  and sheet rows grow from 40pt to 44pt. Applet lights use C=27. Switches
-  keep their 24pt hit frame and centered 17pt capsule.
+  Workspace and sheet headers retain Top B. Round 17 restores the applet
+  exception: 40pt row, lights and title caps centered on C=22, with 24pt
+  action frames at y10..34. The 16pt body gap puts untabbed content at y56.
+  Shared sheet rows remain 44pt. Switches keep their centered 17pt capsule.
 - **Check:** OnePlusHeaderRowTests measures caption/button painted centers
   within 0.5pt in both appearances at 1x/2x. Mixed rows cover both densities,
   status dots, switches, selects, native fields, progress, and smaller buttons.
@@ -143,7 +144,8 @@
   shared page, main tool,
   all three applets, and sheet headers in both appearances at 1x and 2x.
   It measures cap strokes in linear light, actual control paint, and view
-  geometry. Native checks cover all 13 canvas recipes, x13/y20, the 14pt
+  geometry. Native checks cover all 13 canvas recipes, x13, the applet C22
+  and workspace y20 light positions, the 14pt
   zoom gap, all light tracking areas, native hit tests, and late resets.
   The exact Task Manager scene keeps its 660pt canvas and first row at
   y79.8. Signed installed captures and real hover remain with the
@@ -270,20 +272,30 @@ latency benefit still needs measurement. See `tmp/redesign/logs/w4-perf-windows.
 ## Portman Server Row Identity, 2026-09-30
 
 - **Symptom:** A server row repeats node as its title and subtitle prefix.
+  Round 17 listener rows also omit process artwork and its fixed slot.
 - **Cause:** The title selects branch or process name, while the subtitle
-  repeats project or process name before uptime.
+  repeats project or process name before uptime. The listener projection
+  also drops the executable identity needed by the process icon loader.
 - **Invariant:** Use the project folder or launch command as the title. If
   neither exists, keep the process name. Use uptime in the subtitle and
   include a branch only when it is nonempty and distinct from the title.
   Prepare these strings in the existing background overview projection.
+  Read the executable path during the existing background process scan.
+  Reuse System Monitor's bundle artwork loader. Show the terminal glyph
+  only for confirmed absolute executable paths outside app bundles.
+  Reserve a 15pt slot for unknown processes or unavailable artwork. Keep
+  the 44pt port lane, 52pt row, 134pt metrics slot, and complete-row hover.
 - **Check:** Verify project titles, command fallback, root-folder fallback,
   and duplicate branch names. Compare both signed appearances without
   changing the port lane, sparkline, memory slot, or row height.
+  Run PortmanTests for app bundles, nested helpers, command-line paths,
+  unknown paths, missing artwork, cache reuse, and cache eviction.
 
 ## Portman Identity Colors, 2026-09-30
 
 - **Symptom:** The owner reports that Portman lost its color and looks stale.
   Round 5 shows gray port numbers beside restored colored bars and sparklines.
+  Round 17 memory legends use brighter secondary ink instead of caption ink.
 - **Cause:** The redesign replaced the five-color server palette with the
   shared neutral chart series. The port's mono text role also sets its own
   secondary color, which overrides the enclosing row's identity color.
@@ -293,6 +305,8 @@ latency benefit still needs measurement. See `tmp/redesign/logs/w4-perf-windows.
   Detail plots and process bars retain data color. Light inks are darker
   versions of the original hues. The approved Servers composition stays.
   Tabs and ordinary controls keep neutral chrome.
+  Memory legends keep mono type with explicit `OnePlusColor.metricCaption`
+  ink. The ordinary mono role uses secondary ink and is too bright here.
 - **Check:** Compare one-server and multi-server views in both appearances,
   then inspect segment hover, row hover, and detail charts. Palette inks reach
   at least 4.5:1 on their resting and hover backgrounds.

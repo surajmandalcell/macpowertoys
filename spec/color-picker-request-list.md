@@ -1,5 +1,14 @@
 # Color Picker Request List
 
+Round 17 applet correction, run 68, 2026-10-01: OnePlusUI `a02d43d`
+restores the shared 40pt row and C22 for Awake, Color Picker, and Text
+Extractor. Action frames span y10..34; untabbed content begins at y56.
+All 21 focused package checks pass in both appearances at 1x/2x. The
+app and test bundles compile. The app still pins OnePlusUI 1.0.0, so its
+two corrected Settings height assertions await the orchestrator's tag
+and dependency update. Signed page and interaction checks remain open.
+Report: `tmp/redesign/logs/w10-fix17-applets.md`.
+
 Local verification, run 63, 2026-10-01: all 145 OnePlusUI tests pass.
 Header, chrome, focus, and scroll checks pass. The guarded app run stops
 after 475 passes and 5 skips when FocusEffectTests changes the foreground.
@@ -145,7 +154,7 @@ remain with the orchestrator.
 
 | Status | Request | Evidence | Remaining work |
 |---|---|---|---|
-| Verify | Size the applet Settings page to its cards within 250 to 460pt. | Round 6 shows a blank tail because Settings always requested the maximum height. The applet now uses measured card height plus the shared 44pt titlebar, 16pt top gap, and 52pt gear reserve. The 296pt content fixture gives 408pt; the two-card source budget gives 384pt. A height regression covers short content and the upper cap. | Recapture both appearances. Check the permission notice, scrolling at the cap, gear edge inset, and Settings-to-History return in the signed build. |
+| Verify | Size the applet Settings page to its cards within 250 to 460pt. | Round 6 shows a blank tail because Settings always requested the maximum height. Round 17 uses measured card height plus the shared 40pt titlebar, 16pt top gap, and 52pt gear reserve. The 296pt content fixture gives 404pt; the two-card source budget gives 380pt. A height regression covers short content and the upper cap. | Adopt the new OnePlusUI tag and rerun CompactAppletRedesignTests. Recapture both appearances. Check the permission notice, scrolling at the cap, gear edge inset, and Settings-to-History return in the signed build. |
 | Verify | Fill the shortcut control column and use the control text role. | Signed `8cf8c02` round 4 captures confirm the full Settings gutters, complete minimum Projects row, Clear all copy, and aligned History rows. The shared recorder still paints a 116pt bezel inside the 160pt column and uses mono type. | Foundation must expose a fill-width recorder with control text and controlInk. Adopt it in the shared settings card and verify idle, recording, disabled, and cancel states. |
 | Verify | Pair the short embedded settings cards and use sentence case for clearing. | Round 3 review reuses the Global shortcut and Saved colors cards in equal columns when both fit; the applet keeps full-width stacked cards. The action and confirmation use `Clear all`. | Verify both hosts and clear confirmation in the signed build. |
 | Verify | Show complete project rows and use native list anatomy for history. | `projectsHeight` includes each project row and the 60pt project editor before the 460pt cap. History uses one card with stable row ids and `lineSoft` separators. | Verify the minimum and maximum window heights in the signed build. |

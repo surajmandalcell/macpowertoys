@@ -60,8 +60,8 @@ geometry:
   title-row: 54
   centerline: 27            # traffic lights and sidebar title only
   content-top: 20           # title paint and header control tops (Top B); sidebar content starts at 54
-  applet-titlebar: 44
-  applet-centerline: 27
+  applet-titlebar: 40
+  applet-centerline: 22
   traffic-light-leading-inset: 13
   sidebar-title-gap-after-zoom: 14
   search: { height: 32, inset-x: 12, below: 14 }
@@ -254,8 +254,10 @@ first content element starts 16 pt below them (about y = 80 on a page with a
 subtitle and tabs). Header actions align to the common top line.
 The sidebar keeps its own layout: title on `C`, first element at 54.
 
-Compact applets and shared sheet headers use a 44 pt row. Applet lights
-use `C = 27`, and titles and 24 pt action frames start at y = 20.
+Compact applets use a 40 pt row with lights, title caps, and action paint
+centered on `C = 22` (round 17 assignment, 2026-10-01). Their 24 pt action
+frames run from y = 10 to 34. Keep the 16 pt body gap, so an untabbed
+body starts at y = 56. Shared sheet headers keep their 44 pt Top B row.
 
 ### Spacing and radius scales
 
@@ -657,8 +659,8 @@ separate tool panel.
 Awake, Color Picker, and Text Extractor stay compact applets with the same
 tokens, fixed sizes, and components.
 
-- One `window` surface with the ribbon texture, and a 44 pt custom titlebar:
-  traffic lights (close, minimize, disabled zoom) centered on `C = 27`, the
+- One `window` surface with the ribbon texture, and a 40 pt custom titlebar:
+  traffic lights (close, minimize, disabled zoom) centered on `C = 22`, the
   text title at 12.5 semibold 14 pt after the zoom button, and persistent page
   actions trailing 16 pt from the edge.
 - Body gutter 16 pt. Sections use `OnePlusCard` and `OnePlusSettingRow`.

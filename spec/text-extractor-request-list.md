@@ -1,5 +1,13 @@
 # Text Extractor Request List
 
+Round 17 applet correction, run 68, 2026-10-01: OnePlusUI `a02d43d`
+restores the 40pt row and C22. The title and Extract Text action share
+that center; its 24pt frame spans y10..34. Untabbed content starts at
+y56. All 21 focused package checks pass in both appearances at 1x/2x.
+The app and test bundles compile. The orchestrator must tag and adopt
+OnePlusUI, then verify signed History, Settings, and action states.
+Report: `tmp/redesign/logs/w10-fix17-applets.md`.
+
 Scroll edges, 2026-10-01: the shared floating gear overlays the full body.
 Its 52pt reserve is inside scroll content. History reaches the card's bottom;
 Settings reaches the window bottom. All 15 focused package checks pass,
