@@ -46,7 +46,7 @@ final class PortmanUITests: XCTestCase {
     }
 
     @MainActor
-    func testServerHoverKeepsActionsVisibleAndStill() throws {
+    func testServerHoverReplacesMetricsWithoutMovingTheRow() throws {
         let listener = Process()
         listener.executableURL = URL(fileURLWithPath: "/usr/bin/nc")
         listener.arguments = ["-l", "7265"]
@@ -79,16 +79,19 @@ final class PortmanUITests: XCTestCase {
 
         let link = app.buttons["portman.link.7265"]
         let stop = app.buttons["portman.stop.7265"]
-        XCTAssertTrue(link.isHittable, "The link action is missing at rest")
-        XCTAssertTrue(stop.isHittable, "The stop action is missing at rest")
+        let rowFrame = row.frame
+        row.coordinate(withNormalizedOffset: CGVector(dx: 0.05, dy: 0.5)).hover()
+        XCTAssertTrue(link.isHittable, "Hover did not expose the link action")
+        XCTAssertTrue(stop.isHittable, "Hover did not expose the stop action")
+        XCTAssertEqual(row.frame, rowFrame, "Hover changed the identity width")
         let linkFrame = link.frame
         let stopFrame = stop.frame
-        row.coordinate(withNormalizedOffset: CGVector(dx: 0.05, dy: 0.5)).hover()
-        XCTAssertEqual(link.frame, linkFrame, "Hover moved the link action")
-        XCTAssertEqual(stop.frame, stopFrame, "Hover moved the stop action")
         attach(app.screenshot(), named: "Portman server hover")
 
         link.hover()
+        XCTAssertEqual(row.frame, rowFrame)
+        XCTAssertEqual(link.frame, linkFrame)
+        XCTAssertEqual(stop.frame, stopFrame)
         attach(app.screenshot(), named: "Portman link hover")
 
         sort.click()
