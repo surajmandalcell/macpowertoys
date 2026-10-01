@@ -9,12 +9,42 @@ import XCTest
 
 final class FanControlTests: XCTestCase {
     @MainActor
+    func testPendingManualCommandIsQueuedBeforeExitAuto() async throws {
+        let requests = Mutex<[(FanPreset, @Sendable (String?) -> Void)]>([])
+        let service = FanControlService(readSnapshot: {
+            FanSnapshot(fans: [FanReading(index: 0, actualRPM: 3000, maximumRPM: 5000, mode: "auto")],
+                        profile: "auto", canControl: true)
+        }, applyPreset: { preset, completion in requests.withLock { $0.append((preset, completion)) } })
+        service.start(owner: "pending-exit-test")
+        defer { service.stop(owner: "pending-exit-test") }
+        await service.refresh()
+        service.select(.max)
+        XCTAssertEqual(requests.withLock { $0.map { $0.0 } }, [.max])
+        let exit = Task { try await service.restoreAutomaticOnExit() }
+        for _ in 0..<100 {
+            if requests.withLock({ $0.count }) == 2 { break }
+            try await Task.sleep(for: .milliseconds(5))
+        }
+        let queued = requests.withLock { $0 }
+        XCTAssertEqual(queued.map { $0.0 }, [.max, .auto])
+        queued[0].1(nil)
+        queued[1].1(nil)
+        try await exit.value
+        XCTAssertEqual(service.selectedPreset, .auto)
+    }
+
+    @MainActor
     func testExitRestorationWaitsAndRetainsControlAfterFailure() async throws {
         let writes = FanExitWrites()
         let service = FanControlService(readSnapshot: {
             FanSnapshot(fans: [FanReading(index: 0, actualRPM: 3000, maximumRPM: 5000, mode: "auto")],
                         profile: "auto", canControl: true)
-        }, applyPreset: { try await writes.apply($0) })
+        }, applyPreset: { preset, completion in
+            Task {
+                do { try await writes.apply(preset); completion(nil) }
+                catch { completion(error.localizedDescription) }
+            }
+        })
         service.start(owner: "exit-test")
         defer { service.stop(owner: "exit-test") }
         await service.refresh()
