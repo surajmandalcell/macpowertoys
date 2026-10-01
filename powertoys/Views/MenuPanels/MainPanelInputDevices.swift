@@ -13,6 +13,7 @@ struct InputDevicesTrayView: View {
             deviceSection
             InputDevicesSettingsContent(collapsible: true)
         }
+        .environment(\.onePlusCardPadding, 0)
         .onChange(of: isVisible, initial: true) { _, visible in
             if visible { manager.refresh() }
         }
@@ -21,9 +22,8 @@ struct InputDevicesTrayView: View {
     private var deviceSection: some View {
         VStack(alignment: .leading, spacing: OnePlusMenuMetrics.tileGap) {
             InputDisclosureHeader(title: "Devices", detail: "\(manager.devices.count) connected",
-                                  isExpanded: $devicesExpanded)
+                                  isExpanded: $devicesExpanded, refreshAction: { manager.refresh() })
             if devicesExpanded {
-                OnePlusMenuSectionHeader("Connected devices", actionTitle: "Refresh") { manager.refresh() }
                 if manager.devices.isEmpty {
                     Text("No pointing devices detected").onePlusText(.caption)
                 } else {

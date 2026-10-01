@@ -251,6 +251,9 @@ final class InputDevicesTests: XCTestCase {
                                               profile: .constant(InputScrollProfile()), isExpanded: .constant(true))
         XCTAssertEqual(cardHeight(collapsed), 40, accuracy: 1)
         XCTAssertEqual(cardHeight(expanded) - cardHeight(collapsed), 7 * 44, accuracy: 1)
+        let devices = InputDisclosureHeader(title: "Devices", detail: "2 connected",
+                                            isExpanded: .constant(false), refreshAction: {})
+        XCTAssertEqual(cardHeight(devices), 40, accuracy: 1)
     }
 
     func testProfileDisclosureHeaderKeepsDirectionAndSpeedWhenCollapsed() {

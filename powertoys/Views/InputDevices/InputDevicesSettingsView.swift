@@ -29,6 +29,7 @@ struct InputScrollDeviceBar: View {
                 .onePlusRowHover()
             }
         }
+        .environment(\.onePlusCardPadding, 0)
     }
 }
 
@@ -44,6 +45,7 @@ struct InputDevicesSettingsContent: View {
     var body: some View {
         VStack(alignment: .leading, spacing: OnePlusMetrics.cardGap) {
             scrollControlRows
+                .environment(\.onePlusCardPadding, 0)
             if density == .regular {
                 HStack(alignment: .top, spacing: OnePlusMetrics.cardGap) {
                     mouseProfile
