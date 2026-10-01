@@ -1211,7 +1211,7 @@ nonisolated private enum DevRsyncProcessRunner {
 
     private static func readChunks(from handle: FileHandle, receive: (Data) -> Void) {
         while true {
-            let data = handle.readData(ofLength: 64 * 1_024)
+            let data = autoreleasepool { handle.readData(ofLength: 64 * 1_024) }
             guard !data.isEmpty else { return }
             receive(data)
         }

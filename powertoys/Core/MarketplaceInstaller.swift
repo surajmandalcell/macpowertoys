@@ -217,7 +217,7 @@ actor MarketplaceInstaller {
         let handle = try FileHandle(forReadingFrom: file)
         defer { try? handle.close() }
         var hasher = SHA256()
-        while let chunk = try handle.read(upToCount: 1 << 16), !chunk.isEmpty {
+        while let chunk = try autoreleasepool(invoking: { try handle.read(upToCount: 1 << 16) }), !chunk.isEmpty {
             hasher.update(data: chunk)
         }
         return hasher.finalize().map { String(format: "%02x", $0) }.joined()
