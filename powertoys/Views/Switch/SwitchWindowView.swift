@@ -277,6 +277,13 @@ struct SwitchWindowView: View {
         if model.snapshot == nil && model.isWorking {
             OnePlusCard { OnePlusEmptyState("Loading accounts", systemImage: "person.crop.circle",
                                             caption: "Reading the saved account list.") { ProgressView().controlSize(.small) } }
+        } else if model.snapshot == nil {
+            OnePlusCard {
+                OnePlusEmptyState("Accounts unavailable", systemImage: "exclamationmark.circle",
+                                  caption: "The saved account list could not be opened.") {
+                    Button("Retry") { Task { await model.load() } }
+                }
+            }
         } else if let account = model.selectedAccount {
             identityCard(account)
             if account.identity.providerID == .codex {
@@ -344,7 +351,8 @@ struct SwitchWindowView: View {
     }
 
     @ViewBuilder private func accountMenu(_ account: AccountRecord, includesOrdering: Bool = false) -> some View {
-        Button("Verify access") { Task { await model.verify(account.id) } }.disabled(model.isWorking)
+        Button("Verify access") { Task { await model.verify(account.id) } }
+            .disabled(model.isWorking || model.usageLoading.contains(account.id))
         Button("Refresh accounts") { Task { await model.refresh() } }.disabled(model.isWorking)
         Button(copiedAuthPath ? "Copied path" : "Copy saved path") { copyAuthPath(account) }
         if includesOrdering {
