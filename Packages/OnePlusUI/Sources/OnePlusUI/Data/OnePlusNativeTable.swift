@@ -29,15 +29,15 @@ public struct OnePlusNativeTable: NSViewRepresentable {
     let sortColumn: Int
     let ascending: Bool
     let sort: (Int, Bool) -> Void
-    let open: (Set<String>) -> Void
-    let preview: (Set<String>) -> Void
-    let remove: (Set<String>) -> Void
+    let open: ((Set<String>) -> Void)?
+    let preview: ((Set<String>) -> Void)?
+    let remove: ((Set<String>) -> Void)?
     let actions: (Set<String>) -> [OnePlusTableAction]
 
     public init(columns: [OnePlusGridColumn], rows: [OnePlusTableItem], selection: Binding<Set<String>>,
                 sortColumn: Int = 0, ascending: Bool = true, sort: @escaping (Int, Bool) -> Void,
-                open: @escaping (Set<String>) -> Void, preview: @escaping (Set<String>) -> Void,
-                remove: @escaping (Set<String>) -> Void,
+                open: ((Set<String>) -> Void)? = nil, preview: ((Set<String>) -> Void)? = nil,
+                remove: ((Set<String>) -> Void)? = nil,
                 actions: @escaping (Set<String>) -> [OnePlusTableAction]) {
         self.columns = columns; self.rows = rows; _selection = selection
         self.sortColumn = sortColumn; self.ascending = ascending; self.sort = sort
@@ -60,7 +60,7 @@ public struct OnePlusNativeTable: NSViewRepresentable {
         configureColumns(in: table)
         table.setDraggingSourceOperationMask(.copy, forLocal: false)
         table.makeMenu = { [weak coordinator = context.coordinator] ids in coordinator?.menu(ids) }
-        table.keyAction = { [weak coordinator = context.coordinator] key in coordinator?.key(key) }
+        table.keyAction = { [weak coordinator = context.coordinator] key in coordinator?.key(key) ?? false }
         scroll.documentView = table; scroll.hasVerticalScroller = true
         scroll.configureOnePlusScrollIndicators()
         scroll.drawsBackground = false
@@ -202,6 +202,7 @@ public struct OnePlusNativeTable: NSViewRepresentable {
             cell.identifier = identifier
             let text = NSTextField(labelWithString: "")
             text.lineBreakMode = .byTruncatingMiddle
+            text.allowsExpansionToolTips = true
             text.translatesAutoresizingMaskIntoConstraints = false
             cell.addSubview(text); cell.textField = text
             var inset = column.leadingInset
@@ -244,12 +245,19 @@ public struct OnePlusNativeTable: NSViewRepresentable {
         public func tableView(_ tableView: NSTableView, pasteboardWriterForRow row: Int) -> (any NSPasteboardWriting)? {
             owner.rows[row].url as NSURL?
         }
-        @objc func openSelection() { owner.open(owner.selection) }
-        func key(_ key: UInt16) {
-            switch key { case 36, 76: owner.open(owner.selection)
-            case 49: owner.preview(owner.selection)
-            case 51, 117: owner.remove(owner.selection)
-            default: break }
+        @objc func openSelection() { owner.open?(owner.selection) }
+        func key(_ key: UInt16) -> Bool {
+            guard !owner.selection.isEmpty else { return false }
+            let action: ((Set<String>) -> Void)?
+            switch key {
+            case 36, 76: action = owner.open
+            case 49: action = owner.preview
+            case 51, 117: action = owner.remove
+            default: return false
+            }
+            guard let action else { return false }
+            action(owner.selection)
+            return true
         }
         func menu(_ ids: Set<String>) -> NSMenu? {
             let actions = owner.actions(ids)
@@ -279,14 +287,19 @@ private final class StorageMenuItem: NSMenuItem {
     @objc private func invoke() { perform() }
 }
 
-private final class StorageTable: NSTableView {
+final class StorageTable: NSTableView {
     var items: [OnePlusTableItem] = []
     var makeMenu: ((Set<String>) -> NSMenu?)?
-    var keyAction: ((UInt16) -> Void)?
+    var keyAction: ((UInt16) -> Bool)?
     var selectedIDs: Set<String> { Set(selectedRowIndexes.compactMap { items.indices.contains($0) ? items[$0].id : nil }) }
     override func keyDown(with event: NSEvent) {
-        if [36, 76, 49, 51, 117].contains(event.keyCode) { keyAction?(event.keyCode) }
-        else { super.keyDown(with: event) }
+        if !handleActionKey(event) { super.keyDown(with: event) }
+    }
+    func handleActionKey(_ event: NSEvent) -> Bool {
+        let modifiers = event.modifierFlags.intersection(.deviceIndependentFlagsMask)
+            .intersection([.command, .control, .option, .shift])
+        guard modifiers.isEmpty, [36, 76, 49, 51, 117].contains(event.keyCode) else { return false }
+        return keyAction?(event.keyCode) == true
     }
     override func menu(for event: NSEvent) -> NSMenu? {
         let row = row(at: convert(event.locationInWindow, from: nil))
