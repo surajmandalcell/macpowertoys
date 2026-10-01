@@ -85,8 +85,7 @@ nonisolated enum SystemMonitorProcessHierarchy {
             let owner = bundleName ?? parentName
             displayName = isVersion ? owner.map { "\($0) (\(process.name))" } ?? process.name : process.name
             tableName = String(repeating: "    ", count: depth) + displayName
-            symbol = process.started == 0 ? "lock"
-                : process.executablePath.hasPrefix("/System/Library/") ? "gearshape" : "terminal"
+            symbol = appBundlePath == nil && process.executablePath.hasPrefix("/") ? "terminal" : ""
         }
     }
 
@@ -198,7 +197,7 @@ nonisolated enum SystemMonitorProcessActions {
 }
 
 @MainActor @Observable
-private final class SystemMonitorProcessIcons {
+final class SystemMonitorProcessIcons {
     private(set) var images: [String: NSImage] = [:]
     private var loaded = Set<String>()
 
@@ -209,24 +208,27 @@ private final class SystemMonitorProcessIcons {
         let missing = paths.subtracting(loaded)
         guard !missing.isEmpty else { return }
         let worker = Task.detached(priority: .utility) {
-            var data: [String: Data] = [:]
+            var images: [String: CGImage] = [:]
             for path in missing {
                 guard !Task.isCancelled else { break }
                 var isDirectory: ObjCBool = false
                 if FileManager.default.fileExists(atPath: path, isDirectory: &isDirectory), isDirectory.boolValue {
-                    data[path] = NSWorkspace.shared.icon(forFile: path).tiffRepresentation
+                    images[path] = NSWorkspace.shared.icon(forFile: path)
+                        .cgImage(forProposedRect: nil, context: nil, hints: nil)
                 }
             }
-            return data
+            return images
         }
-        let data = await withTaskCancellationHandler {
+        let prepared = await withTaskCancellationHandler {
             await worker.value
         } onCancel: {
             worker.cancel()
         }
         guard !Task.isCancelled else { return }
         loaded.formUnion(missing)
-        for (path, bytes) in data { images[path] = NSImage(data: bytes) }
+        for (path, image) in prepared {
+            images[path] = NSImage(cgImage: image, size: NSSize(width: OnePlusMetrics.navIcon, height: OnePlusMetrics.navIcon))
+        }
     }
 }
 
@@ -271,7 +273,9 @@ struct SystemMonitorOverviewProcessesView: View {
                                     Group {
                                         if let path = row.appBundlePath, let icon = processIcons.images[path] {
                                             Image(nsImage: icon).resizable().scaledToFit()
-                                        } else { Image(systemName: row.symbol).font(.system(size: 13)) }
+                                        } else if !row.symbol.isEmpty {
+                                            Image(systemName: row.symbol).font(.system(size: 13))
+                                        } else { Color.clear }
                                     }
                                     .foregroundStyle(TaskManagerTheme.secondary)
                                     .frame(width: 18, height: 18)

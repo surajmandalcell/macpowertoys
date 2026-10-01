@@ -301,7 +301,7 @@ final class SystemMonitorTests: XCTestCase {
                                           executablePath: "/Applications/My App.app/Contents/Frameworks/Helper.app/Contents/MacOS/Helper")
         XCTAssertEqual(SystemMonitorProcessHierarchy.Row(process: nested, depth: 1).appBundlePath,
                        "/Applications/My App.app")
-        XCTAssertEqual(row.symbol, "terminal")
+        XCTAssertEqual(row.symbol, "")
         let protected = SystemMonitorProcess(
             pid: 43, started: 0, name: "2.1.282", cpuPercent: nil,
             residentBytes: 0, virtualBytes: 0, threads: 0, parentPID: 42, userID: 501,
@@ -309,8 +309,15 @@ final class SystemMonitorTests: XCTestCase {
         )
         let child = SystemMonitorProcessHierarchy.Row(process: protected, depth: 1, parentName: "Orca")
         XCTAssertEqual(child.displayName, "Orca (2.1.282)")
-        XCTAssertEqual(child.symbol, "lock")
+        XCTAssertEqual(child.symbol, "")
         XCTAssertNil(child.appBundlePath)
+        for path in ["/usr/bin/ssh", "/System/Library/CoreServices/launchservicesd", "Unavailable"] {
+            let command = SystemMonitorProcess(pid: 45, started: 0, name: "command", cpuPercent: nil,
+                residentBytes: 0, virtualBytes: 0, threads: 0, parentPID: 1, userID: 501, executablePath: path)
+            let commandRow = SystemMonitorProcessHierarchy.Row(process: command, depth: 0)
+            XCTAssertEqual(commandRow.symbol, path.hasPrefix("/") ? "terminal" : "")
+            XCTAssertNil(commandRow.appBundlePath)
+        }
     }
 
     func testSelectedProcessCountersRefreshAcrossSamples() async throws {
