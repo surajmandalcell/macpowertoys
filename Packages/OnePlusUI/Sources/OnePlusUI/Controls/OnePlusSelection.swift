@@ -164,9 +164,9 @@ public struct OnePlusMenuLabel: View {
             Image(systemName: "chevron.down").accessibilityHidden(true)
         }
         .onePlusText(.control).padding(.horizontal, 10).frame(width: width, height: controlHeight ?? density.controlHeight)
-        .background(enabled && (focused || hover || expanded) ? OnePlusColor.raisedHover : OnePlusColor.raised,
+        .background(enabled && ((focused && OnePlusFocusPolicy.shared.showsFocus) || hover || expanded) ? OnePlusColor.raisedHover : OnePlusColor.raised,
                     in: RoundedRectangle(cornerRadius: 6))
-        .overlay { RoundedRectangle(cornerRadius: 6).strokeBorder(focused ? OnePlusColor.focus : OnePlusColor.line, lineWidth: 1) }
+        .overlay { RoundedRectangle(cornerRadius: 6).strokeBorder(focused && OnePlusFocusPolicy.shared.showsFocus ? OnePlusColor.focus : OnePlusColor.line, lineWidth: 1) }
         .opacity(enabled ? 1 : OnePlusMetrics.disabledOpacity).onHover { hover = $0 }
         .contentShape(Rectangle())
     }
