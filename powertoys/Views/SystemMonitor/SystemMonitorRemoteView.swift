@@ -23,8 +23,6 @@ struct SystemMonitorRemoteView: View {
 
     var body: some View {
         VStack(alignment: .leading, spacing: OnePlusMetrics.cardGap) {
-            Text("\(profiles.filter { sessions.state(for: $0.id).phase == .connected }.count) connected · \(profiles.count) \(profiles.count == 1 ? "host" : "hosts")")
-                .onePlusText(.caption)
             if let errorMessage { OnePlusBanner(errorMessage, tone: .error) }
             ScrollViewReader { proxy in
                 ScrollView {
@@ -38,7 +36,6 @@ struct SystemMonitorRemoteView: View {
                         ForEach(profiles) { profile in
                             remoteCard(profile).id(profile.id)
                         }
-                        if !profiles.isEmpty { connectionSettings }
                     }
                 }.thinScrollIndicators()
                     .onReceive(sessions.$selectedID) { id in
@@ -75,30 +72,14 @@ struct SystemMonitorRemoteView: View {
                                   history: state.history, onTerminal: { openTerminal(profile) },
                                   primaryTitle: state.phase == .offline ? "Connect" : "Disconnect",
                                   primarySymbol: state.phase == .offline ? "play.circle" : "stop.circle",
-                                  onPrimary: { state.phase == .offline ? sessions.connect(profile) : sessions.disconnect(profile.id) })
+                                  onPrimary: { state.phase == .offline ? sessions.connect(profile) : sessions.disconnect(profile.id) },
+                                  onConfigure: { editor = profile }, onRefresh: { sessions.refresh(profile) })
             if let reading = state.reading, !reading.disks.isEmpty {
                 OnePlusCard {
                     OnePlusCardHeader("Disks")
                     ForEach(reading.disks) { disk in
                         OnePlusKeyValueRow(disk.id, value: "\(TrayPopoverLayout.diskBytes(Int64(clamping: disk.used))) / \(TrayPopoverLayout.diskBytes(Int64(clamping: disk.total)))")
                     }
-                }
-            }
-        }
-    }
-
-    private var connectionSettings: some View {
-        OnePlusCard {
-            OnePlusCardHeader("Connection settings")
-            ForEach(profiles) { profile in
-                OnePlusSettingRow(profile.name, caption: "\(profile.destination) · \(profile.platform.rawValue)") {
-                    HStack(spacing: OnePlusMetrics.actionSpacing) {
-                        Button { sessions.refresh(profile) } label: { Image(systemName: "arrow.clockwise") }
-                            .help("Refresh now").accessibilityLabel("Refresh \(profile.name) now")
-                            .disabled(sessions.state(for: profile.id).phase != .connected)
-                        Button("Configure") { editor = profile }
-                            .accessibilityIdentifier("system-monitor.remote.configure.\(profile.id)")
-                    }.buttonStyle(OnePlusButtonStyle(.neutral, size: .small))
                 }
             }
         }
@@ -130,6 +111,22 @@ struct SystemMonitorRemoteView: View {
     private func openTerminal(_ profile: SystemMonitorRemoteProfile) {
         SystemMonitorRemoteTerminal.open(profile) { error in
             if let error { errorMessage = error.localizedDescription }
+        }
+    }
+}
+
+struct SystemMonitorRemoteHeader: View {
+    let profiles: [SystemMonitorRemoteProfile]
+    let addHost: () -> Void
+    @ObservedObject private var sessions = SystemMonitorRemoteSessions.shared
+
+    var body: some View {
+        HStack(spacing: OnePlusMetrics.actionSpacing) {
+            Text("\(profiles.filter { sessions.state(for: $0.id).phase == .connected }.count) connected · \(profiles.count) \(profiles.count == 1 ? "host" : "hosts")")
+                .onePlusText(.caption)
+            Button(action: addHost) { Label("Add host", systemImage: "plus") }
+                .buttonStyle(OnePlusButtonStyle(.neutral, size: .small))
+                .accessibilityIdentifier("system-monitor.remote.add-host")
         }
     }
 }
@@ -212,14 +209,18 @@ struct TaskManagerRemoteCard: View {
 
     init(profile: SystemMonitorRemoteProfile, reading: SystemMonitorRemoteReading?, state: String,
          history: [SystemMonitorRemoteReading] = [], onTerminal: (() -> Void)? = nil,
-         primaryTitle: String, primarySymbol: String, onPrimary: @escaping () -> Void) {
+         primaryTitle: String, primarySymbol: String, onPrimary: @escaping () -> Void,
+         onConfigure: (() -> Void)? = nil, onRefresh: (() -> Void)? = nil) {
         self.profile = profile; fallbackReading = reading; fallbackState = state; fallbackHistory = history
         self.onTerminal = onTerminal; self.primaryTitle = primaryTitle; self.primarySymbol = primarySymbol; self.onPrimary = onPrimary
+        self.onConfigure = onConfigure; self.onRefresh = onRefresh
     }
     var onTerminal: (() -> Void)?
     let primaryTitle: String
     let primarySymbol: String
     let onPrimary: () -> Void
+    let onConfigure: (() -> Void)?
+    let onRefresh: (() -> Void)?
 
     var body: some View {
         TaskManagerPanel(textured: true) {
@@ -229,28 +230,16 @@ struct TaskManagerRemoteCard: View {
                     Text(reason).onePlusText(.caption).textSelection(.enabled)
                         .padding(OnePlusMetrics.cardGap).frame(maxWidth: .infinity, alignment: .leading)
                 }
-                if profile.host != profile.name {
-                    Text(profile.host).onePlusText(.mono)
-                        .lineLimit(1).padding(12).frame(maxWidth: .infinity, alignment: .leading)
-                }
                 HStack(spacing: 0) {
                     stat("CPU", symbol: "cpu", value: reading?.cpuPercent.map { "\(Int($0.rounded()))%" } ?? "—")
                     divider
                     stat("RAM", symbol: "memorychip", value: memoryReading)
                     divider
                     stat("Network", symbol: "network", value: networkReading)
-                    if !hasDiskReading {
-                        Rectangle().fill(TaskManagerTheme.lineSoft).frame(width: 1)
-                        actions.frame(width: 92)
-                    }
                 }
                 if hasDiskReading {
                     Rectangle().fill(TaskManagerTheme.lineSoft).frame(height: 1)
-                    HStack(spacing: 0) {
-                        diskSummary
-                        Rectangle().fill(TaskManagerTheme.lineSoft).frame(width: 1)
-                        actions.frame(width: 92)
-                    }
+                    diskSummary
                 }
                 if !history.isEmpty {
                     TaskManagerHistoryChart(values: history.compactMap(\.cpuPercent), range: 0...100, compact: true)
@@ -258,6 +247,8 @@ struct TaskManagerRemoteCard: View {
                         .padding(.horizontal, 12)
                         .padding(.bottom, 8)
                 }
+                actions
+                    .padding(OnePlusMetrics.cardPadding)
             }
         }
         .background(SystemMonitorRemoteWindowOwner(profileID: profile.id).frame(width: 0, height: 0))
@@ -265,7 +256,11 @@ struct TaskManagerRemoteCard: View {
 
     private var header: some View {
         OnePlusCardHeader(profile.name, systemImage: "server.rack") {
-            OnePlusStatus(state, state: reading == nil ? .offline : .online)
+            HStack(spacing: OnePlusMetrics.actionSpacing) {
+                Text("\(profile.destination) · \(profile.platform.rawValue)")
+                    .onePlusText(.mono).lineLimit(1).help("\(profile.destination) · \(profile.platform.rawValue)")
+                OnePlusStatus(state, state: reading == nil ? .offline : .online)
+            }
         }
     }
 
@@ -273,8 +268,8 @@ struct TaskManagerRemoteCard: View {
 
     private func stat(_ title: String, symbol: String, value: String) -> some View {
         VStack(alignment: .leading, spacing: 5) {
-            Label(title, systemImage: symbol).font(.system(size: 8.5)).foregroundStyle(TaskManagerTheme.secondary)
-            Text(value).font(.system(size: 15, weight: .medium)).monospacedDigit().lineLimit(1).minimumScaleFactor(0.65)
+            Label(title, systemImage: symbol).onePlusText(.caption).foregroundStyle(TaskManagerTheme.secondary)
+            Text(value).font(.system(size: 18)).monospacedDigit().lineLimit(1).minimumScaleFactor(0.65).help(value)
                 .foregroundStyle(reading == nil ? TaskManagerTheme.muted : TaskManagerTheme.ink)
         }
         .padding(.horizontal, 12)
@@ -286,46 +281,45 @@ struct TaskManagerRemoteCard: View {
     private var diskSummary: some View {
         VStack(alignment: .leading, spacing: 6) {
             HStack {
-                Text("System").font(.system(size: 8.5)).foregroundStyle(TaskManagerTheme.secondary)
+                Text("System").onePlusText(.caption).foregroundStyle(TaskManagerTheme.secondary)
                 Spacer()
-                Text(diskPercent).font(.system(size: 8.5, design: .monospaced))
+                Text(diskFree).onePlusText(.caption)
+                Text(diskPercent).onePlusText(.mono)
             }
             OnePlusUsageBar(value: Double(diskFraction))
-            Text(diskFree).font(.system(size: 8)).foregroundStyle(TaskManagerTheme.muted)
         }
         .padding(.horizontal, 12)
         .frame(maxWidth: .infinity, minHeight: 67)
     }
 
-    @ViewBuilder
     private var actions: some View {
-        VStack(spacing: 0) {
-            if let onTerminal {
-                action("Open SSH", symbol: "terminal", height: 33, perform: onTerminal)
-                Rectangle().fill(TaskManagerTheme.lineSoft).frame(height: 1)
+        HStack(spacing: OnePlusMetrics.actionSpacing) {
+            if let onConfigure {
+                Button("Configure", action: onConfigure)
+                    .accessibilityIdentifier("system-monitor.remote.configure.\(profile.id)")
             }
-            action(primaryTitle, symbol: primarySymbol, height: onTerminal == nil ? 67 : 33, perform: onPrimary)
+            if let onRefresh {
+                Button(action: onRefresh) { Image(systemName: "arrow.clockwise") }
+                    .help("Refresh now").accessibilityLabel("Refresh \(profile.name) now")
+                    .disabled(state != "Connected")
+            }
+            Spacer(minLength: 0)
+            if let onTerminal {
+                action("Open SSH", symbol: "terminal", perform: onTerminal)
+            }
+            action(primaryTitle, symbol: primarySymbol, perform: onPrimary)
                 .accessibilityIdentifier("system-monitor.remote.connect.\(profile.id)")
         }
+        .buttonStyle(OnePlusButtonStyle(.neutral, size: .small))
     }
 
-    private func action(_ title: String, symbol: String, height: CGFloat, perform: @escaping () -> Void) -> some View {
+    private func action(_ title: String, symbol: String, perform: @escaping () -> Void) -> some View {
         Button {
             if title == "Open App" { sessions.selectedID = profile.id }
             perform()
         } label: {
-            HStack {
-                Text(title)
-                Spacer()
-                Image(systemName: symbol)
-            }
-            .font(.system(size: 8.5))
-            .foregroundStyle(TaskManagerTheme.secondary)
-            .padding(.horizontal, 10)
-            .frame(maxWidth: .infinity, minHeight: height)
-            .contentShape(Rectangle())
+            Label(title, systemImage: symbol)
         }
-        .buttonStyle(UtilityInteractionButtonStyle(cornerRadius: 0))
     }
 
     private var memoryReading: String {

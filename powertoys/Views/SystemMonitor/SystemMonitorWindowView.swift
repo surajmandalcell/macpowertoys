@@ -289,13 +289,9 @@ struct SystemMonitorWindowView: View {
             TaskManagerHeader(page.title, subtitle: page.subtitle)
         case .remote:
             TaskManagerHeader(title: page.title, subtitle: page.subtitle) {
-                Button {
+                SystemMonitorRemoteHeader(profiles: remoteProfiles) {
                     remoteAddRequest &+= 1
-                } label: {
-                    Label("Add host", systemImage: "plus")
                 }
-                .buttonStyle(OnePlusButtonStyle(.neutral, size: .small))
-                .accessibilityIdentifier("system-monitor.remote.add-host")
             }
         default:
             TaskManagerHeader(page.title, subtitle: page.subtitle)

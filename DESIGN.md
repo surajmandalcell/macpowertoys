@@ -624,6 +624,13 @@ Processes, CPU, GPU, Memory, Network, Disk, Battery, Sensors, Remote stats,
 System Report, About, and Settings. The Task Manager menu panel follows the
 HTML panel exactly, except `Open App`, which uses the ghost style.
 
+Remote window cards use regular 18 pt values, approved in round 11. Host
+destination and platform sit beside the identity. Configure, Refresh,
+Open SSH, and Connect/Disconnect/Open App share a horizontal row of 24 pt
+buttons with compact control type. The connected/host count sits beside
+Add host. The menu panel keeps its 20 pt header, 36 pt metrics, and 84 pt
+trailing action column.
+
 ### Diskman
 
 Uses `diskman-fixed.html` for content, normalized to this file so it feels
