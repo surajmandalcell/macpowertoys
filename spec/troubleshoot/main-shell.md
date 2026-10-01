@@ -52,15 +52,14 @@
 
 ## Launcher Card Description Height
 
-- **Symptom:** Tool descriptions end in an ellipsis after two lines while most
-  of the launcher window remains empty.
-- **Cause:** Every card had a two-line text limit and a 110pt minimum height,
-  even though the built-in descriptions need up to five lines at four columns.
-- **Invariant:** Keep complete built-in descriptions at the standard text size
-  in the four-column launcher, without a fixed two-line limit.
-- **Check:** Hosted run `36124794622` saved dark and light 980×676 native
-  captures with complete descriptions on all 13 cards. Inspect the signed app
-  only when desktop interaction is allowed.
+- **Symptom:** Catalog summaries end in an ellipsis or compete with the title.
+- **Cause:** Cards used the full tool-page description or a text modifier that
+  overrode the caller's secondary foreground color.
+- **Invariant:** The 2026-10-01 owner rule requires two-line catalog summaries
+  in secondary ink. Keep full descriptions on tool pages and in help. Use the
+  color parameter of `onePlusText` when a role needs a different ink.
+- **Check:** Inspect all 14 summaries at four columns in both appearances.
+  Each summary fits two lines; tool pages retain their full descriptions.
 
 ## Launcher Adaptive Grid Falls To Three Columns
 
@@ -72,7 +71,7 @@
   sample cards on two rows instead of one.
 - **Invariant:** Use four flexible columns at the standard launcher width, so
   the cards share the available grid width even with the scroller reservation.
-  Keep complete descriptions and the aligned enable/Open row.
+  Keep two-line summaries and the aligned enable/Open row.
 - **Check:** `LauncherGridTests` places four cards in one row at 916pt. Hosted
   [run 36101318344](https://github.com/surajmandalcell/macpowertoys/actions/runs/36101318344)
   passed and saved a 980×676 native capture with four columns, complete
@@ -85,10 +84,10 @@
   built-in tools clipped at the bottom of the standard 980×676 launcher.
 - **Cause:** The icon/name header and the enable/Open row took separate vertical
   space above each description.
-- **Invariant:** Keep four flexible columns. Let the 48pt icon span the name
-  and action rows, with the name above the native switch and Open button.
-  Place each complete description below that header. Keep the card, switch,
-  and Open actions separate.
+- **Invariant:** The 2026-10-01 owner rule requires four flexible columns,
+  151pt cards, a 40pt icon beside the name and quiet category caption, a
+  two-line summary, and a bottom enable/Open row. Cards have no grain. Keep
+  the card, favorite, switch, and Open actions separate.
 - **Check:** Hosted [run 36124794622](https://github.com/surajmandalcell/macpowertoys/actions/runs/36124794622)
   passed and saved 980×676 dark and light native captures. All 13 cards are
   fully visible with complete descriptions and visible controls. Live action
@@ -100,10 +99,15 @@
   and another on an oversized custom Open button.
 - **Cause:** Enablement and launch were styled as separate form sections instead
   of related actions for one tool.
-- **Invariant:** Put the unlabeled native switch and native small Open button in
-  one row. Keep an accessible enable label and keep disabled launch behavior.
-- **Check:** Inspect every launcher card and tool detail. No visible `Enabled`
-  label remains, both controls share one row, and Accessibility names the tool.
+- **Invariant:** Catalog cards and list rows pair an unlabeled switch with a
+  ghost Open text button without an arrow. Tool pages keep the switch in the
+  header and put "Open <Tool>" in the fixed bottom action bar on the 24pt
+  gutter with a 1pt lineSoft divider. Keep accessible names and disabled
+  launch behavior. Ruler keeps both native settings actions in its body.
+- **Check:** Inspect grid, list, and all 14 tool pages. No enable caption or
+  catalog Open arrow remains. Scroll and switch tabs; the page action stays
+  fixed. Disable a tool and require every launch route to stop. Run the hosted
+  footer regression and inspect the accent action in both appearances.
 
 ## Menu-Bar Click Routing
 
@@ -384,7 +388,13 @@
   its existing AppKit panels instead of cloning them in SwiftUI. Mac Tweaks
   reuses its guarded preference rows and utility-task snapshots, not invented
   Window or Safety preferences. Enforced policies use neutral read-only text.
-  Embedded short cards use natural-height `OnePlusCard`, top alignment, and
+  Under the 2026-10-01 density rule, related action rows sit directly on the
+  page. Cards group multiple rows of content. Main General groups Appearance
+  with Windows and Launch with iCloud. Ruler has one direct native action
+  row. Modified uses section titles with values and Reset on the same row.
+  Marketplace puts its source-entry controls on the page and times, versions,
+  counts, and status on the trailing side. Put help and provenance behind an
+  info glyph or tooltip. Grouped cards use natural height, top alignment, and
   no final separator, height frame, or spacer that creates a false empty row.
 - **Check:** Change one setting from each launcher detail, reopen its tool
   window, and confirm the same value and control surface are present. Review

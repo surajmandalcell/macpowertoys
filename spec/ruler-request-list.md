@@ -18,6 +18,13 @@ Update this list whenever Ruler requirements or verification results change.
 
 ## Production audit, 2026-10-01
 
+Main launcher, `4ab747b9`: Settings and Defaults are two related native
+actions directly on one row. Single-action card wrappers are removed under
+the horizontal-density correction. The Settings button keeps the shared
+slanted Ruler glyph. Both actions follow tool enablement. `11388f43` uses this
+shared body and puts the separate "Open Ruler" action in the fixed footer.
+Build, hosted checks, and signed interaction remain with the production pass.
+
 | Status | Request | Evidence | Remaining work |
 |---|---|---|---|
 | Source complete; signed review pending | Show and dismiss hotkey feedback at once in both Reduce Motion modes. | `0948ba7a` removes the custom AppKit alpha animations. The existing 1.2-second dismissal and native panel ordering stay in place. Ruler geometry and controls are unchanged. | Compile through the shared gate and check grouping, units, float, shadow, and origin feedback in the installed app. Report: `tmp/redesign/logs/w1-motion-sweep.md`. |
