@@ -73,9 +73,9 @@ nonisolated enum TaskManagerMenuProjection {
             case .network:
                 data.value = sample?.networkDownload.map(rate) ?? "—"
                 data.upload = sample?.networkUpload.map(rate) ?? "—"
-                data.caption = sample?.networkDetails?.interfaceName ?? "—"
+                data.caption = SystemMonitorNetworkDetails.rateScope
                 data.accessories = [reading("Upload", data.upload)]
-                data.rows = [reading("Download", data.value), reading("Upload", data.upload), reading("Interface", data.caption),
+                data.rows = [reading("Download", data.value), reading("Upload", data.upload), reading("Current interface", sample?.networkDetails?.interfaceName ?? "—"),
                              reading("Local address", sample?.networkDetails?.localAddress ?? "—")]
                 data.chart.primary = history.samples(for: .network).compactMap(\.networkDownload)
                 data.chart.secondary = history.samples(for: .network).compactMap(\.networkUpload)

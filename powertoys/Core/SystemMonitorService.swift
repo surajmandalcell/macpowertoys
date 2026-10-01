@@ -1,6 +1,7 @@
 import AppKit
 import Darwin
 import Foundation
+import Network
 import IOKit
 import IOKit.ps
 import OnePlusUI
@@ -419,6 +420,7 @@ nonisolated struct SystemMonitorMemoryAllocation: Equatable, Sendable {
 }
 
 nonisolated struct SystemMonitorNetworkDetails: Sendable {
+    static let rateScope = "All interfaces"
     let interfaceName: String?
     let localAddress: String?
     let receivedTotal: UInt64
@@ -430,6 +432,24 @@ nonisolated struct SystemMonitorDiskDetails: Sendable {
     let writePerSecond: Double?
     let readTotal: UInt64
     let writeTotal: UInt64
+
+    func retainingRates(from previous: Self?) -> Self {
+        Self(readPerSecond: readPerSecond ?? previous?.readPerSecond,
+             writePerSecond: writePerSecond ?? previous?.writePerSecond,
+             readTotal: readTotal, writeTotal: writeTotal)
+    }
+}
+
+nonisolated struct SystemMonitorNetworkIdentity: Sendable {
+    let interfaceName: String?
+    let localAddress: String?
+
+    init(route: DefaultRoute?, network: LocalIPv4Network?) {
+        interfaceName = route?.interfaceName
+        localAddress = route.flatMap { route in
+            network?.interfaceName == route.interfaceName ? network?.address.description : nil
+        }
+    }
 }
 
 nonisolated struct SystemMonitorBatteryDetails: Sendable {
@@ -592,7 +612,7 @@ nonisolated struct SystemMonitorSample: Identifiable, Sendable {
             cpuDetails: retained(cpuDetails, previous.cpuDetails),
             memoryDetails: retained(memoryDetails, previous.memoryDetails),
             networkDetails: retained(networkDetails, previous.networkDetails),
-            diskDetails: retained(diskDetails, previous.diskDetails),
+            diskDetails: diskDetails.map { $0.retainingRates(from: previous.diskDetails) } ?? previous.diskDetails,
             batteryDetails: retained(batteryDetails, previous.batteryDetails),
             lastSuccessfulReads: previous.lastSuccessfulReads.merging(lastSuccessfulReads) { _, fresh in fresh }
         )
@@ -607,6 +627,11 @@ nonisolated enum SystemMonitorDelta {
         let idle = current.idle - previous.idle
         return min(max(Double(total - min(idle, total)) / Double(total) * 100, 0), 100)
     }
+    static func elapsedSeconds(previous: UInt64, current: UInt64) -> TimeInterval {
+        guard current > previous else { return 0 }
+        return Double(current - previous) / 1_000_000_000
+    }
+
     static func rate(previous: UInt64, current: UInt64, seconds: TimeInterval) -> Double? {
         guard seconds > 0, current >= previous else { return nil }
         return Double(current - previous) / seconds
@@ -930,8 +955,9 @@ nonisolated private final class SystemMonitorSampler: @unchecked Sendable {
     }
 
     private var previousCPU: (timestamp: Date, aggregate: CPUCounters, cores: [CPUCounters])?
-    private var previousNetwork: (timestamp: Date, received: UInt64, sent: UInt64)?
-    private var previousDisk: (timestamp: Date, read: UInt64, write: UInt64)?
+    private var previousNetwork: (timestamp: UInt64, received: UInt64, sent: UInt64)?
+    private var previousDisk: (timestamp: UInt64, read: UInt64, write: UInt64)?
+    var networkIdentity: SystemMonitorNetworkIdentity?
     private let gpuReader = SystemMonitorGPUReader()
 
     func reset() {
@@ -942,6 +968,7 @@ nonisolated private final class SystemMonitorSampler: @unchecked Sendable {
 
     func sample(detailedMetrics: Set<SystemMonitorMenuMetric>, metrics: Set<SystemMonitorMenuMetric>) -> SystemMonitorSample {
         let now = Date()
+        let uptime = DispatchTime.now().uptimeNanoseconds
         let requested = detailedMetrics.union(metrics)
         let needsCPU = requested.contains(.cpu)
         let needsMemory = requested.contains(.memory)
@@ -972,10 +999,10 @@ nonisolated private final class SystemMonitorSampler: @unchecked Sendable {
         var upload: Double?
         var networkDetails: SystemMonitorNetworkDetails?
         if needsNetwork {
-            if let current = Self.networkCounters() {
+            if let current = Self.networkCounters(identity: networkIdentity) {
                 networkDetails = current.details
                 if let previousNetwork {
-                    let elapsed = now.timeIntervalSince(previousNetwork.timestamp)
+                    let elapsed = SystemMonitorDelta.elapsedSeconds(previous: previousNetwork.timestamp, current: uptime)
                     download = SystemMonitorDelta.rate(
                         previous: previousNetwork.received,
                         current: current.received,
@@ -983,7 +1010,7 @@ nonisolated private final class SystemMonitorSampler: @unchecked Sendable {
                     )
                     upload = SystemMonitorDelta.rate(previous: previousNetwork.sent, current: current.sent, seconds: elapsed)
                 }
-                previousNetwork = (now, current.received, current.sent)
+                previousNetwork = (uptime, current.received, current.sent)
             } else {
                 unavailableMetrics.insert(.network)
             }
@@ -996,7 +1023,7 @@ nonisolated private final class SystemMonitorSampler: @unchecked Sendable {
         let disk = needsDisk ? Self.diskUsage() : nil
         var diskDetails: SystemMonitorDiskDetails?
         if needsDisk, let counters = Self.diskCounters() {
-            let elapsed = previousDisk.map { now.timeIntervalSince($0.timestamp) }
+            let elapsed = previousDisk.map { SystemMonitorDelta.elapsedSeconds(previous: $0.timestamp, current: uptime) }
             diskDetails = SystemMonitorDiskDetails(
                 readPerSecond: previousDisk.flatMap {
                     SystemMonitorDelta.rate(previous: $0.read, current: counters.read, seconds: elapsed ?? 0)
@@ -1007,7 +1034,7 @@ nonisolated private final class SystemMonitorSampler: @unchecked Sendable {
                 readTotal: counters.read,
                 writeTotal: counters.write
             )
-            previousDisk = (now, counters.read, counters.write)
+            previousDisk = (uptime, counters.read, counters.write)
         }
         if needsDisk && disk == nil { unavailableMetrics.insert(.disk) }
         let battery = needsBattery ? Self.battery() : nil
@@ -1150,62 +1177,28 @@ nonisolated private final class SystemMonitorSampler: @unchecked Sendable {
         )
     }
 
-    private static func networkCounters() -> NetworkSnapshot? {
+    private static func networkCounters(identity: SystemMonitorNetworkIdentity?) -> NetworkSnapshot? {
         var addresses: UnsafeMutablePointer<ifaddrs>?
         guard getifaddrs(&addresses) == 0, let first = addresses else { return nil }
         defer { freeifaddrs(addresses) }
         var received: UInt64 = 0
         var sent: UInt64 = 0
-        var busiestName: String?
-        var busiestBytes: UInt64 = 0
         var address: UnsafeMutablePointer<ifaddrs>? = first
         while let current = address {
             let interface = current.pointee
             if interface.ifa_addr?.pointee.sa_family == UInt8(AF_LINK),
                interface.ifa_flags & UInt32(IFF_LOOPBACK) == 0,
                let data = interface.ifa_data?.assumingMemoryBound(to: if_data.self) {
-                let incoming = UInt64(data.pointee.ifi_ibytes)
-                let outgoing = UInt64(data.pointee.ifi_obytes)
-                received += incoming
-                sent += outgoing
-                if interface.ifa_flags & UInt32(IFF_UP) != 0, incoming + outgoing > busiestBytes {
-                    busiestBytes = incoming + outgoing
-                    busiestName = String(cString: interface.ifa_name)
-                }
-            }
-            address = interface.ifa_next
-        }
-        address = first
-        var localAddress: String?
-        while let current = address, localAddress == nil {
-            let interface = current.pointee
-            if interface.ifa_addr?.pointee.sa_family == UInt8(AF_INET),
-               busiestName == String(cString: interface.ifa_name),
-               let socketAddress = interface.ifa_addr {
-                var host = [CChar](repeating: 0, count: Int(NI_MAXHOST))
-                if getnameinfo(
-                    socketAddress,
-                    socklen_t(socketAddress.pointee.sa_len),
-                    &host,
-                    socklen_t(host.count),
-                    nil,
-                    0,
-                    NI_NUMERICHOST
-                ) == 0 {
-                    localAddress = String(cString: host)
-                }
+                received += UInt64(data.pointee.ifi_ibytes)
+                sent += UInt64(data.pointee.ifi_obytes)
             }
             address = interface.ifa_next
         }
         return NetworkSnapshot(
-            received: received,
-            sent: sent,
-            details: SystemMonitorNetworkDetails(
-                interfaceName: busiestName,
-                localAddress: localAddress,
-                receivedTotal: received,
-                sentTotal: sent
-            )
+            received: received, sent: sent,
+            details: SystemMonitorNetworkDetails(interfaceName: identity?.interfaceName,
+                                                  localAddress: identity?.localAddress,
+                                                  receivedTotal: received, sentTotal: sent)
         )
     }
 
@@ -1402,6 +1395,8 @@ final class SystemMonitorService {
     private let defaults: UserDefaults
     private var freshnessTask: Task<Void, Never>?
     private var timer: DispatchSourceTimer?
+    private var networkMonitor: NWPathMonitor?
+    private var networkIdentityTask: Task<Void, Never>?
     private var wakeObserver: NSObjectProtocol?
     private var unavailableMenuMetrics = Set<SystemMonitorMenuMetric>()
     private var detailedOwners: [String: Set<SystemMonitorMenuMetric>] = [:]
@@ -1428,7 +1423,7 @@ final class SystemMonitorService {
                 object: nil,
                 queue: .main
             ) { [weak self] _ in
-                Task { @MainActor [weak self] in self?.retryUnavailableMetrics() }
+                Task { @MainActor [weak self] in self?.refreshAfterWake() }
             }
         }
         Self.current = self
@@ -1522,6 +1517,18 @@ final class SystemMonitorService {
         let unavailableMetrics = unavailableMenuMetrics
         let dueTracker = SystemMonitorDueTracker()
         let currentGeneration = generation
+        if detailedMetrics.contains(.network) || (settings.enabled && !unavailableMetrics.contains(.network)
+            && settings.enabledItems.contains(where: { $0.metric == .network })) {
+            let monitor = NWPathMonitor()
+            monitor.pathUpdateHandler = { [weak self] _ in
+                Task { @MainActor [weak self] in
+                    guard let self, self.generation == currentGeneration else { return }
+                    self.refreshNetworkIdentity(generation: currentGeneration)
+                }
+            }
+            networkMonitor = monitor
+            monitor.start(queue: samplingQueue)
+        }
         samplingQueue.async { [sampler] in sampler.reset() }
         let source = DispatchSource.makeTimerSource(queue: samplingQueue)
         source.schedule(deadline: .now())
@@ -1602,13 +1609,37 @@ final class SystemMonitorService {
         }
     }
 
-    private func retryUnavailableMetrics() {
-        guard !unavailableMenuMetrics.isEmpty else { return }
+    func refreshAfterWake() {
         unavailableMenuMetrics.removeAll()
         reconfigure()
     }
 
+    private func refreshNetworkIdentity(generation: Int) {
+        networkIdentityTask?.cancel()
+        networkIdentityTask = Task { [weak self] in
+            let data = try? await TailscalePeerCatalog.runStatusCommand(
+                executableURL: URL(fileURLWithPath: "/sbin/route"), arguments: ["-n", "get", "default"],
+                maximumOutputBytes: 8_192, timeout: 2
+            )
+            guard !Task.isCancelled else { return }
+            let route = data.flatMap { DefaultRoute.parse(String(decoding: $0, as: UTF8.self)) }
+            let identity = await Task.detached(priority: .utility) {
+                SystemMonitorNetworkIdentity(route: route, network: route.flatMap {
+                    LocalIPv4Network.active(preferredInterfaceName: $0.interfaceName)
+                })
+            }.value
+            guard !Task.isCancelled, let self, self.generation == generation else { return }
+            self.samplingQueue.async { [sampler = self.sampler] in sampler.networkIdentity = identity }
+            self.networkIdentityTask = nil
+        }
+    }
+
     private func stopTimer() {
+        networkMonitor?.cancel()
+        networkMonitor = nil
+        networkIdentityTask?.cancel()
+        networkIdentityTask = nil
+        samplingQueue.async { [sampler] in sampler.networkIdentity = nil }
         timer?.setEventHandler {}
         timer?.cancel()
         timer = nil

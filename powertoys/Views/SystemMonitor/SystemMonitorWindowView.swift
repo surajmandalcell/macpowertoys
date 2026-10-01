@@ -371,7 +371,7 @@ struct SystemMonitorWindowView: View {
                 metricCard(.memory, value: service.snapshot?.memoryUsage.percent ?? "—", detail: memoryDetail,
                            values: chartHistory(.memory).memoryPercent, range: 0...100, accent: memoryIsHigh)
                 metricCard(.network, value: service.snapshot?.networkDownload.map(Self.rate) ?? "—",
-                           detail: "↓ Download · ↑ \(service.snapshot?.networkUpload.map(Self.rate) ?? "—")",
+                           detail: "All interfaces · ↑ \(service.snapshot?.networkUpload.map(Self.rate) ?? "—")",
                            values: chartHistory(.network).values,
                            secondary: chartHistory(.network).secondary, range: networkRange)
                 metricCard(.disk, value: service.snapshot?.diskUsage.percent ?? "—", detail: "\(diskAvailable) available",
@@ -857,8 +857,8 @@ struct SystemMonitorWindowView: View {
     private var networkPage: some View {
         VStack(spacing: OnePlusMetrics.cardGap) {
             detailHero(
-                label: "Download", value: service.snapshot?.networkDownload.map(Self.rate) ?? "—",
-                detail: "All active non-loopback interfaces",
+                label: "Download · All interfaces", value: service.snapshot?.networkDownload.map(Self.rate) ?? "—",
+                detail: "Download across all non-loopback interfaces",
                 values: chartHistory(.network).values,
                 secondary: chartHistory(.network).secondary, range: networkRange,
                 upperScaleLabel: Self.rate(networkRange.upperBound),
@@ -866,15 +866,18 @@ struct SystemMonitorWindowView: View {
                 seriesLabels: ["Download", "Upload"],
                 stats: [
                     ("Upload", service.snapshot?.networkUpload.map(Self.rate) ?? "—"),
-                    ("Interface", service.snapshot?.networkDetails?.interfaceName ?? "—"),
                 ]
             )
-            informationPanel("Interface", rows: [
-                    ("Name", service.snapshot?.networkDetails?.interfaceName ?? "—"),
+            LazyVGrid(columns: detailColumns, spacing: OnePlusMetrics.cardGap) {
+                informationPanel("Current connection", rows: [
+                    ("Interface", service.snapshot?.networkDetails?.interfaceName ?? "—"),
                     ("Local address", service.snapshot?.networkDetails?.localAddress ?? "—"),
+                ])
+                informationPanel("All interfaces", rows: [
                     ("Transferred down", service.snapshot?.networkDetails.map { Self.bytes($0.receivedTotal) } ?? "—"),
                     ("Transferred up", service.snapshot?.networkDetails.map { Self.bytes($0.sentTotal) } ?? "—"),
-            ])
+                ])
+            }
         }
     }
 
