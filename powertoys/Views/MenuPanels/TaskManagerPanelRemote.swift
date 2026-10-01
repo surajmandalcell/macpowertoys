@@ -64,13 +64,17 @@ struct TaskManagerRemoteMenuCard: View {
             VStack(alignment: .leading, spacing: OnePlusMetrics.actionSpacing) {
                 if let used = reading?.diskUsed, let total = reading?.diskTotal, total > 0 {
                     OnePlusUsageBar(value: Double(used) / Double(total))
-                    Text("\(TrayPopoverLayout.diskBytes(Int64(clamping: total - used))) free").onePlusText(.caption)
-                } else if state.reason == nil { Text("No disk data").onePlusText(.caption) }
-                if let reason = state.reason { Text(reason).onePlusText(.caption).lineLimit(2).help(reason) }
-                Button(state.phase == .offline ? "Connect" : "Disconnect") {
-                    if state.phase == .offline { sessions.connect(profile) } else { sessions.disconnect(profile.id) }
-                }.buttonStyle(OnePlusButtonStyle(.ghost, size: .small))
-                    .accessibilityLabel("\(state.phase == .offline ? "Connect to" : "Disconnect from") \(profile.name)")
+                }
+                HStack {
+                    if let used = reading?.diskUsed, let total = reading?.diskTotal, total > 0 {
+                        Text("\(TrayPopoverLayout.diskBytes(Int64(clamping: total - used))) free").onePlusText(.caption)
+                    } else { Text("No disk data").onePlusText(.caption) }
+                    Spacer(minLength: 0)
+                    if let reason = state.reason {
+                        Image(systemName: "info.circle").onePlusText(.caption).help(reason)
+                            .accessibilityLabel(reason)
+                    }
+                }
             }
         } actions: {
             Button { SystemMonitorRemoteTerminal.open(profile) } label: {
@@ -86,6 +90,11 @@ struct TaskManagerRemoteMenuCard: View {
                 .buttonStyle(OnePlusInteractionStyle(radius: 0))
                 .accessibilityLabel("Open Task Manager for \(profile.name)")
                 .help("Open \(profile.name) in Task Manager")
+        }
+        .contextMenu {
+            Button(state.phase == .offline ? "Connect" : "Disconnect") {
+                if state.phase == .offline { sessions.connect(profile) } else { sessions.disconnect(profile.id) }
+            }
         }
         .accessibilityElement(children: .contain)
         .accessibilityLabel("\(profile.name), \(profile.platform.rawValue), \(state.phase.rawValue)")

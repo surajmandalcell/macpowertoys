@@ -408,7 +408,7 @@ public struct OnePlusMenuTile<Content: View>: View {
             .background {
                 if !historyValues.isEmpty {
                     OnePlusAreaChart(values: historyValues, range: historyRange, color: OnePlusColor.accent)
-                        .opacity(0.18).allowsHitTesting(false).accessibilityHidden(true)
+                        .opacity(0.45).allowsHitTesting(false).accessibilityHidden(true)
                 }
             }
             .background(enabled && (hover || sample == .hover) && action != nil ? OnePlusColor.raisedHover : OnePlusColor.panelHover)
@@ -515,7 +515,7 @@ public struct OnePlusMenuItemCard<Detail: View, Actions: View>: View {
             HStack(spacing: 0) {
                 ForEach(metrics.indices, id: \.self) { index in
                     let metric = metrics[index]
-                    HStack(spacing: 4) {
+                    VStack(alignment: .leading, spacing: 3) {
                         HStack(spacing: 3) {
                             if let systemImage = metric.systemImage {
                                 Image(systemName: systemImage).font(.system(size: 8)).frame(width: 8, height: 8)
@@ -523,9 +523,8 @@ public struct OnePlusMenuItemCard<Detail: View, Actions: View>: View {
                             }
                             Text(metric.label).font(.system(size: 8)).lineLimit(1)
                         }.foregroundStyle(OnePlusColor.muted)
-                        Spacer(minLength: 0)
                         HStack(alignment: .firstTextBaseline, spacing: 2) {
-                            Text(metric.value).font(.system(size: 12)).monospacedDigit()
+                            Text(metric.value).font(.system(size: 12)).monospacedDigit().lineLimit(1).minimumScaleFactor(0.7)
                                 .foregroundStyle(online ? OnePlusColor.ink : OnePlusColor.muted)
                             Text(metric.unit).font(.system(size: 7.5))
                                 .foregroundStyle(online ? OnePlusColor.secondary : OnePlusColor.muted)
@@ -535,11 +534,10 @@ public struct OnePlusMenuItemCard<Detail: View, Actions: View>: View {
                 }
             }.frame(height: 36)
             OnePlusColor.line.frame(height: 1)
-            VStack(spacing: 0) {
+            HStack(spacing: 0) {
                 detail.padding(.horizontal, 7).padding(.vertical, 4).frame(maxWidth: .infinity, alignment: .leading)
-                OnePlusColor.line.frame(height: 1)
-                HStack(spacing: 6) { actions }.frame(maxWidth: .infinity)
-                    .padding(.horizontal, 7)
+                OnePlusColor.line.frame(width: 1)
+                VStack(spacing: 0) { actions }.frame(width: OnePlusMenuMetrics.actionColumn)
                     .buttonStyle(OnePlusButtonStyle(.ghost, size: .small, horizontalPadding: 8))
             }.frame(minHeight: 51)
         }.frame(maxWidth: .infinity).contentShape(Rectangle())

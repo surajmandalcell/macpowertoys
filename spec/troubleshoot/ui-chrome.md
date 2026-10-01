@@ -1,5 +1,28 @@
 # UI Chrome Troubleshooting
 
+## Task Manager Home Labels And Host Actions, 2026-10-01
+
+- **Symptom:** Signed `198055e4` uses uppercase Home labels and splits
+  Network and Disk inside words. A large Connect row puts remote actions
+  below the panel edge. The history lines are too faint.
+- **Cause:** Home labels use the uppercase table-header role without a
+  one-line limit. The host card stacks actions below disk content, and its
+  detail adds a separate connection button. Whole-chart opacity is 0.18.
+- **Invariant:** Home labels preserve Title Case, use one line, and truncate
+  at the end. Give labels priority so Disk fits at the standard width.
+  Keep the history under the whole tile, with coral ink and 0.45 opacity.
+  Host cards follow the reference: 20pt header, 36pt metric row with labels
+  above readings, then disk content beside the 84pt action column. Normal
+  cards measure 109pt; taller details can grow. Both actions stay inside
+  the card. Connect and Disconnect use its native context menu. Put a
+  connection reason in the info glyph's tooltip and accessibility label.
+- **Check:** The nine affected package checks pass. Offscreen renders use
+  the actual Home tile and remote card source with fixed readings in Light
+  and Dark. They cover connected, offline, and error cards. The action
+  geometry check fails on the signed `198055e4` source. Captures are in
+  `tmp/redesign/captures/panel-tm/`. The orchestrator must verify the exact
+  installed build, both appearances, context actions, SSH, and Open App.
+
 ## Tab Paint And Complete Row Hover, 2026-10-01
 
 - **Symptom:** Tab hover hugs the label. A row hover stops before its values,
@@ -15,9 +38,9 @@
   frames, extended paint, complete native table rows, disabled hover, and
   centered menu tiles. Removing the horizontal extension makes the tab
   regression fail. Whole-tile history uses the shared area chart under the
-  content with 18 percent opacity, accent ink, and the existing radius clip.
+  content with visible low-contrast accent ink and the existing radius clip.
   Hover paint is immediate. Metric values and statuses stay trailing on the
-  label row. Menu item actions share one horizontal row.
+  label row. Host item actions use the reference 84pt trailing column.
   Signed visual review and nested control interaction remain with the
   orchestrator. Report: `tmp/redesign/logs/w1-components.md`.
 

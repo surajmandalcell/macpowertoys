@@ -254,14 +254,15 @@ private struct TaskManagerMenuHomeTile: View {
         HStack(spacing: OnePlusMenuMetrics.tileGap) {
             Image(systemName: page.symbol).accessibilityHidden(true)
             Text(page == .sensors ? "Thermal" : page.title)
-        }.onePlusText(.tableHeader)
+                .lineLimit(1).truncationMode(.tail).help(page == .sensors ? "Thermal" : page.title)
+        }.onePlusText(.row, color: OnePlusColor.secondary).layoutPriority(1)
     }
 
     private func rate(_ arrow: String, _ parts: TaskManagerMenuValue, accent: Bool = false) -> some View {
         HStack(alignment: .firstTextBaseline, spacing: OnePlusMetrics.navRowGap) {
             Text(arrow).foregroundStyle(accent ? OnePlusColor.accent : OnePlusColor.secondary)
             Text(parts.value).onePlusText(.nav, color: OnePlusColor.ink).monospacedDigit().lineLimit(1)
-            if !parts.unit.isEmpty { Text(parts.unit).onePlusText(.tableHeader) }
+            if !parts.unit.isEmpty { Text(parts.unit).onePlusText(.caption).lineLimit(1) }
         }
     }
 }
