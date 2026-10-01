@@ -211,6 +211,35 @@ final class DiskExplorerViewTests: XCTestCase {
         XCTAssertNil(cache.rings(for: ringKey))
     }
 
+    func testClearingChartCacheReleasesCompletedSubtrees() {
+        let cache = DiskChartLayoutCache()
+        weak var retainedFolder: DiskEntry?
+        weak var retainedFile: DiskEntry?
+        let key = DiskChartCacheKey(revision: .distantPast, tab: .treemap,
+                                    directoryID: "root", measure: .space,
+                                    apparent: false, scanComplete: true,
+                                    width: 800, height: 500)
+        do {
+            let file = entry("/tmp/Diskman/Library/file", bytes: 100)
+            let folder = entry("/tmp/Diskman/Library", kind: .directory)
+            folder.replaceChildren([file])
+            retainedFolder = folder
+            retainedFile = file
+            cache.store([DiskChartTile(entry: folder, label: folder.name, weight: 100,
+                                       detail: "100 bytes", style: .storage(0))], for: key)
+            cache.store([DiskRingSegment(id: folder.id, entry: folder, label: folder.name,
+                                         detail: "100 bytes", start: 0, end: 1,
+                                         inner: 1, outer: 2, style: .storage(0))], for: key)
+        }
+        XCTAssertNotNil(retainedFolder)
+        XCTAssertNotNil(retainedFile)
+        cache.clear()
+        XCTAssertNil(retainedFolder)
+        XCTAssertNil(retainedFile)
+        XCTAssertNil(cache.treemap(for: key))
+        XCTAssertNil(cache.rings(for: key))
+    }
+
     func testChartLayoutsPrepareInDetachedTasks() async {
         let root = entry("/tmp/Diskman", kind: .directory)
         root.replaceChildren([
