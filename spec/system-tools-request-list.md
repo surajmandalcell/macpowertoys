@@ -209,8 +209,10 @@ the native focused command APIs. T105 Fan exit uses awaited, bounded Auto
 in `45faea7d`, `a9673394`, and `fb19e9eb`; failure preserves ownership and
 can cancel quit. Actual-source CLI checks pass for Battery rows, protected
 process menus, Fan exit ordering/failure, and rate reset/identity. All 26
-round 10 window captures were reviewed. The queued batch gate failed only
-in unowned RemoteBrowserView.swift:93 and :241. No second gate is queued.
+round 10 window captures were reviewed. The retained app-commands batch
+gate passed at source stamp `99a6a1b2`, compiling the app and both desktop
+test bundles with zero compiler errors. Log:
+`tmp/redesign/logs/app-commands-debug.log`. No second gate is queued.
 Hosted tests, physical Fan writes, sleep/wake, route changes, and the clean
 signed installed-app handoff remain with the orchestrator. Report:
 `tmp/redesign/logs/w3-tm-window.md`.

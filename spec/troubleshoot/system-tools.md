@@ -677,9 +677,10 @@
 - **Check:** Run SystemMonitorWindowAuditTests and the native process UI
   check on hosted CI. Actual-source CLI checks pass for pending rows,
   protected menus, reset pairs, monotonic clock and counter rollback, and
-  route/address matching. The round 11 batch gate fails in an unowned
-  RemoteBrowserView expression. Signed load, wake, network changes, native
-  selection, and command behavior remain open.
+  route/address matching. The retained round 11 batch gate at `99a6a1b2`
+  compiles the app and both desktop test bundles with zero compiler errors.
+  Hosted tests and signed load, wake, network changes, native selection,
+  and command behavior remain open.
 
 - **Symptom:** Status values move adjacent items or retained readings look
   current after the sampler fails. Attachment glyphs stay black in dark mode.
