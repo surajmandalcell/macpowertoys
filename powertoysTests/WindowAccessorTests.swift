@@ -41,7 +41,7 @@ final class WindowAccessorTests: XCTestCase {
             "nettoys": NSSize(width: 1440, height: 900),
             "disk-explorer": NSSize(width: 1440, height: 900),
             "switch": NSSize(width: 1240, height: 840),
-            "mac-tweaks": NSSize(width: 1120, height: 826),
+            "mac-tweaks": NSSize(width: 820, height: 660),
             "awake": NSSize(width: 560, height: 500),
             "color-picker": NSSize(width: 420, height: 250),
             "text-extractor": NSSize(width: 480, height: 270),

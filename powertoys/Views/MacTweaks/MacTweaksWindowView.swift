@@ -5,7 +5,7 @@ import ServiceManagement
 import SwiftUI
 
 enum MacTweaksLayout {
-    static let windowSize = NSSize(width: 1_120, height: 826)
+    static let windowSize = NSSize(width: 820, height: 660)
     static let contentSize = NSSize(
         width: windowSize.width,
         height: windowSize.height - UtilityLayout.hiddenTitlebarBottomSurplus
@@ -27,7 +27,6 @@ private struct MacTweaksCategory: Identifiable {
     let group: String
     let glyph: MacTweaksGlyphName
     let itemIDs: [String]
-    let preview: MacTweaksPreviewKind
 
     var systemImage: String {
         switch id {
@@ -45,21 +44,21 @@ private struct MacTweaksCategory: Identifiable {
 
     static let all: [Self] = [
         .init(id: "input", title: "Input", group: "Everyday", glyph: .input,
-              itemIDs: ["mic-lock", "input.press-hold"], preview: .apps),
+              itemIDs: ["mic-lock", "input.press-hold"]),
         .init(id: "dock", title: "Dock", group: "Everyday", glyph: .dock,
-              itemIDs: ["dock.reveal-delay", "dock.animation-duration", "dock.hidden-app-dimming", "dock.lock-size", "dock.lock-contents", "dock.stack-selection", "dock.minimize-effect", "dock.slow-motion", "dock.switcher-displays"], preview: .dockReveal),
+              itemIDs: ["dock.reveal-delay", "dock.animation-duration", "dock.hidden-app-dimming", "dock.lock-size", "dock.lock-contents", "dock.stack-selection", "dock.minimize-effect", "dock.slow-motion", "dock.switcher-displays"]),
         .init(id: "finder", title: "Finder", group: "Everyday", glyph: .finder,
-              itemIDs: ["finder.hidden-files", "finder.quit", "finder.path-title", "finder.sounds", "finder.network-metadata", "finder.column-sizing"], preview: .finder),
+              itemIDs: ["finder.hidden-files", "finder.quit", "finder.path-title", "finder.sounds", "finder.network-metadata", "finder.column-sizing"]),
         .init(id: "windows", title: "Windows", group: "Everyday", glyph: .windows,
-              itemIDs: ["dialogs.expanded-save", "windows.scroll-animation"], preview: .windows),
+              itemIDs: ["dialogs.expanded-save", "windows.scroll-animation"]),
         .init(id: "screenshots", title: "Screenshots", group: "Everyday", glyph: .screenshots,
-              itemIDs: ["screenshots.format", "screenshots.shadow", "screenshots.date"], preview: .screenshots),
+              itemIDs: ["screenshots.format", "screenshots.shadow", "screenshots.date"]),
         .init(id: "apps", title: "Apps", group: "Everyday", glyph: .apps,
-              itemIDs: ["terminal.pointer-focus", "music.half-stars", "apps.automatic-termination"], preview: .apps),
+              itemIDs: ["terminal.pointer-focus", "music.half-stars", "apps.automatic-termination"]),
         .init(id: "power", title: "Power", group: "System", glyph: .power,
-              itemIDs: ["helper.keep-awake"], preview: .power),
+              itemIDs: ["helper.keep-awake"]),
         .init(id: "menu-bar", title: "Menu bar", group: "System", glyph: .menubar,
-              itemIDs: ["menubar.spacing"], preview: .menubar)
+              itemIDs: ["menubar.spacing"])
     ]
 }
 
@@ -351,24 +350,12 @@ struct MacTweaksWindowView: View {
 
     private var dockPage: some View {
         VStack(spacing: MacTweaksLayout.panelGap) {
-            HStack(alignment: .top, spacing: MacTweaksLayout.panelGap) {
-                preferencePreviewPanel("Motion", glyph: .motion,
-                                       itemIDs: ["dock.reveal-delay", "dock.animation-duration"],
-                                       preview: .dockReveal)
-                preferencePreviewPanel("Window animation", glyph: .animation,
-                                       itemIDs: ["dock.minimize-effect", "dock.slow-motion"],
-                                       preview: .minimize)
-            }
-            .frame(height: 344)
-            HStack(alignment: .top, spacing: MacTweaksLayout.panelGap) {
-                preferencePanel("Layout & appearance", glyph: .layers,
-                                itemIDs: ["dock.lock-size", "dock.lock-contents", "dock.hidden-app-dimming", "dock.stack-selection", "dock.switcher-displays"],
-                                fillsHeight: true)
-                previewPanel("Stack & app switcher", glyph: .dock) {
-                    MacTweaksPreviewView(kind: .layout)
-                }
-            }
-            .frame(height: 260)
+            preferencePanel("Motion", glyph: .motion,
+                            itemIDs: ["dock.reveal-delay", "dock.animation-duration"])
+            preferencePanel("Window animation", glyph: .animation,
+                            itemIDs: ["dock.minimize-effect", "dock.slow-motion"])
+            preferencePanel("Layout & appearance", glyph: .layers,
+                            itemIDs: ["dock.lock-size", "dock.lock-contents", "dock.hidden-app-dimming", "dock.stack-selection", "dock.switcher-displays"])
         }
     }
 
@@ -380,7 +367,7 @@ struct MacTweaksWindowView: View {
                     .accessibilityLabel("Mic Lock")
                     .accessibilityIdentifier("mac-tweaks.mic-lock.enabled")
             }
-            HStack(alignment: .top, spacing: MacTweaksLayout.panelGap) {
+            VStack(spacing: MacTweaksLayout.panelGap) {
                 MacTweaksPanel("Input priority", glyph: .priority) {
                     ForEach(0..<4, id: \.self) { index in
                         MacTweaksInlineRow(
@@ -425,9 +412,8 @@ struct MacTweaksWindowView: View {
                     MacTweaksInlineRow("Input level", controlWidth: OnePlusMetrics.wideControlColumn) { inputLevelControl }
                 }
             }
-            .frame(height: 216)
-            HStack(spacing: MacTweaksLayout.panelGap) {
-                MacTweaksInlineRow("Open at login") {
+            VStack(spacing: 0) {
+                MacTweaksInlineRow("Open at login", separator: true) {
                     Toggle("Open at login", isOn: Binding(get: { opensAtLogin }, set: setOpenAtLogin))
                         .labelsHidden().toggleStyle(OnePlusSwitchStyle())
                         .accessibilityLabel("Open at login")
@@ -445,54 +431,36 @@ struct MacTweaksWindowView: View {
     }
 
     private var powerPage: some View {
-        HStack(alignment: .top, spacing: MacTweaksLayout.panelGap) {
-            MacTweaksPanel("Power preferences", glyph: .power) {
-                MacTweaksInlineRow("Keep this Mac awake", separator: true) {
-                    Toggle("Keep this Mac awake", isOn: Binding(
-                        get: { awake.configuration.mode != .passive },
-                        set: { enabled in
-                            setAwakeMode(enabled ? .indefinite : .passive)
-                        }
-                    )).labelsHidden().toggleStyle(OnePlusSwitchStyle())
-                        .accessibilityLabel("Keep this Mac awake")
-                }
-                MacTweaksInlineRow("Duration", separator: true) { awakeDurationMenu }
-                MacTweaksInlineRow("Keep display on", separator: true) {
-                    Toggle("Keep display on", isOn: Binding(get: { awake.configuration.keepDisplayOn }, set: awake.setKeepDisplayOn))
-                        .labelsHidden().toggleStyle(OnePlusSwitchStyle())
-                        .accessibilityLabel("Keep display on")
-                }
-                MacTweaksInlineRow("Status") {
-                    Text(awakeStatusText).onePlusText(.mono)
-                        .foregroundStyle(awake.assertionError == nil ? MacTweaksPalette.secondary : MacTweaksPalette.accent)
-                        .lineLimit(1)
-                }
+        MacTweaksPanel("Power preferences", glyph: .power) {
+            MacTweaksInlineRow("Keep this Mac awake", separator: true) {
+                Toggle("Keep this Mac awake", isOn: Binding(
+                    get: { awake.configuration.mode != .passive },
+                    set: { enabled in
+                        setAwakeMode(enabled ? .indefinite : .passive)
+                    }
+                )).labelsHidden().toggleStyle(OnePlusSwitchStyle())
+                    .accessibilityLabel("Keep this Mac awake")
             }
-            .frame(width: 442)
-            previewPanel("Power preview", glyph: .power) {
-                MacTweaksPreviewView(kind: .power)
+            MacTweaksInlineRow("Duration", separator: true) { awakeDurationMenu }
+            MacTweaksInlineRow("Keep display on", separator: true) {
+                Toggle("Keep display on", isOn: Binding(get: { awake.configuration.keepDisplayOn }, set: awake.setKeepDisplayOn))
+                    .labelsHidden().toggleStyle(OnePlusSwitchStyle())
+                    .accessibilityLabel("Keep display on")
             }
-            .frame(height: 300)
+            MacTweaksInlineRow("Status") {
+                Text(awakeStatusText).onePlusText(.mono)
+                    .foregroundStyle(awake.assertionError == nil ? MacTweaksPalette.secondary : MacTweaksPalette.accent)
+                    .lineLimit(1)
+            }
         }
     }
 
     private func genericPage(_ category: MacTweaksCategory) -> some View {
-        HStack(alignment: .top, spacing: MacTweaksLayout.panelGap) {
-            preferencePanel(groupTitle(for: category), glyph: category.glyph, itemIDs: category.itemIDs)
-                .frame(width: 442)
-            previewPanel(previewTitle(for: category), glyph: category.glyph) {
-                MacTweaksPreviewView(kind: category.preview)
-            }
-            .frame(height: 280)
-        }
+        preferencePanel(groupTitle(for: category), glyph: category.glyph, itemIDs: category.itemIDs)
     }
 
     private var searchPage: some View {
         let results = TweakSearch.results(for: trimmedSearch, in: allWorkingItems)
-        let hasInputResult = results.contains { category(for: $0).id == "input" }
-        let columns = hasInputResult
-            ? [GridItem(.flexible())]
-            : [GridItem(.flexible(), spacing: 16), GridItem(.flexible())]
         return Group {
             if results.isEmpty {
                 OnePlusEmptyState(
@@ -504,7 +472,7 @@ struct MacTweaksWindowView: View {
                 }
                 .frame(maxWidth: .infinity, minHeight: 410)
             } else {
-                LazyVGrid(columns: columns, alignment: .leading, spacing: 16) {
+                LazyVStack(spacing: MacTweaksLayout.panelGap) {
                     ForEach(results) { item in searchResultPanel(item) }
                 }
             }
@@ -532,9 +500,6 @@ struct MacTweaksWindowView: View {
             } else {
                 preferenceRows(item)
             }
-            MacTweaksRowDivider()
-            MacTweaksPreviewView(kind: category.preview)
-                .aspectRatio(600 / 304, contentMode: .fit)
         }
     }
 
@@ -564,7 +529,7 @@ struct MacTweaksWindowView: View {
                                     Rectangle().fill(MacTweaksPalette.line).frame(height: 1)
                                     Button { navigate(to: category.id) } label: {
                                         HStack(spacing: 8) {
-                                            MacTweaksGlyph(name: category.glyph).frame(width: 13, height: 13)
+                                            Image(systemName: category.glyph.systemImage).font(.system(size: 13)).frame(width: 13)
                                             Text(category.title).onePlusText(.cardTitle)
                                             Image(systemName: "chevron.right").onePlusText(.caption)
                                             Spacer()
@@ -628,18 +593,15 @@ struct MacTweaksWindowView: View {
                 aboutRow("Preferences", value: "Exact-value backup and restore", separator: true)
                 aboutRow("System access", value: "Requested only when selected")
             }
-            .frame(width: 620)
             MacTweaksPanel("Keyboard", glyph: .keyboard) {
                 aboutRow("Search", value: "⌘ K", separator: true)
                 aboutRow("Clear search or close a menu", value: "Esc", separator: true)
                 aboutRow("Move between options", value: "←  →")
             }
-            .frame(width: 620)
             HStack {
                 Spacer()
                 MacTweaksBorderedButton("Copy app details", symbol: "doc.on.doc") { copyAppDetails() }
             }
-            .frame(width: 620)
         }
     }
 
@@ -649,36 +611,16 @@ struct MacTweaksWindowView: View {
         }
     }
 
-    private func preferencePreviewPanel(
-        _ title: String,
-        glyph: MacTweaksGlyphName,
-        itemIDs: [String],
-        preview: MacTweaksPreviewKind
-    ) -> some View {
-        MacTweaksPanel(title, glyph: glyph) {
-            preferenceRows(itemIDs, separator: true)
-            MacTweaksPreviewView(kind: preview)
-        }
-    }
-
     @ViewBuilder
-    private func preferencePanel(_ title: String, glyph: MacTweaksGlyphName, itemIDs: [String], fillsHeight: Bool = false) -> some View {
+    private func preferencePanel(_ title: String, glyph: MacTweaksGlyphName, itemIDs: [String]) -> some View {
         if itemIDs.map(item(for:)).filter(shouldShow).flatMap({ TweakPreferences.fields(for: $0.id) }).count <= 1 {
             VStack(alignment: .leading, spacing: 0) {
                 OnePlusCardHeader(title, systemImage: glyph.systemImage)
                 preferenceRows(itemIDs)
             }
         } else {
-            MacTweaksPanel(title, glyph: glyph, fillsHeight: fillsHeight) { preferenceRows(itemIDs) }
+            MacTweaksPanel(title, glyph: glyph) { preferenceRows(itemIDs) }
         }
-    }
-
-    private func previewPanel<Content: View>(_ title: String, glyph: MacTweaksGlyphName, @ViewBuilder content: () -> Content) -> some View {
-        VStack(alignment: .leading, spacing: 0) {
-            OnePlusCardHeader(title, systemImage: glyph.systemImage)
-            content()
-        }
-        .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topLeading)
     }
 
     @ViewBuilder
@@ -735,10 +677,6 @@ struct MacTweaksWindowView: View {
         case "menu-bar": "Menu bar preferences"
         default: category.title
         }
-    }
-
-    private func previewTitle(for category: MacTweaksCategory) -> String {
-        category.id == "windows" ? "Open & close" : "\(category.title) preview"
     }
 
     private func navigate(to page: String) {

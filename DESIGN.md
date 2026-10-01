@@ -78,7 +78,7 @@ windows:
   rclone: { size: [1240, 840], sidebar: 216, density: regular, resizable: false }
   system-care: { size: [1240, 840], sidebar: 200, density: regular, resizable: false }
   switch: { size: [1240, 840], sidebar: 200, density: regular, resizable: false }
-  mac-tweaks: { size: [1120, 826], sidebar: 200, density: regular, resizable: false }
+  mac-tweaks: { size: [820, 660], sidebar: 200, density: regular, resizable: false }
   system-monitor: { size: [1080, 660], sidebar: 200, density: compact, resizable: false }
   logs: { size: [1080, 660], sidebar: 200, density: regular, resizable: false }
   input-devices: { size: [1080, 660], sidebar: 200, density: regular, resizable: false }
@@ -760,8 +760,11 @@ selection retain their existing behavior.
 
 ### Mac Tweaks
 
-Follows `mac-tweaks-design.html`, normalized to the 54 pt title row and the
-shared components. Preview artwork stays scoped to Mac Tweaks.
+Mac Tweaks is laid out like macOS System Settings: an 820 x 660 window, the
+200 pt sidebar, and one full-width column of setting cards on every page,
+including search results. It has no preview artwork, mock desktops, or
+decorative textures (owner correction 2026-10-01). Card headers keep their
+SF Symbol glyphs.
 
 ### Other workspaces
 

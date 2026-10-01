@@ -214,19 +214,20 @@ latency benefit still needs measurement. See `tmp/redesign/logs/w4-perf-windows.
   then inspect segment hover, row hover, and detail charts. Palette inks reach
   at least 4.5:1 on their resting and hover backgrounds.
 
-## Mac Tweaks Finder Preview Crop, 2026-09-30
+## Mac Tweaks Has No Previews, 2026-10-01
 
-- **Symptom:** The Finder preview touches the card sides and clips its status
-  row and bottom window edge.
-- **Cause:** The crop matched the 404pt by 242pt artwork exactly, but used
-  y137 as its center while the artwork is centered at y160. Scaling enlarged
-  the full window to the preview body with no space around it.
-- **Invariant:** Use a 468pt by 292pt crop centered at x300/y160. Preserve
-  uniform scale and the static poster frame. Hover does not play the preview.
-  Do not resize or pad the card to conceal a wrong artwork crop.
-- **Check:** The 414pt by 240pt body gives 20.38pt above and 22.38pt below the
-  window. Compare Finder at rest and during hover in both appearances on the
-  next signed build. Its chrome, status row, and boundary must remain visible.
+- **Symptom:** Mac Tweaks pages paired each settings card with a large mock
+  desktop, Dock, or Finder preview. The window was 1120pt wide and the
+  previews needed crop and hover fixes.
+- **Cause:** Decorative preview artwork competed with the settings and
+  forced a two-column layout with fixed card heights.
+- **Invariant:** The owner removed every preview and texture. Mac Tweaks is
+  an 820 x 660 window with one full-width column of cards, like macOS
+  System Settings. Pages and search results never use fixed heights or a
+  second column. Do not reintroduce `MacTweaksPreviewView` or preview assets.
+- **Check:** `rg -n "MacTweaksPreview|MacTweaksGrain|MacTweaksRibbon"
+  powertoys` returns nothing. Each category page shows only cards in one
+  column at 820pt.
 
 ## Mac Tweaks Shared Control Callers, 2026-09-30
 
