@@ -380,11 +380,11 @@ final class FanControlService {
         let currentRevision = revision
         let readSnapshot = readSnapshot
         let result = await Task.detached(priority: .utility) { readSnapshot() }.value
-        guard currentRevision == revision, !owners.isEmpty else { return }
+        guard currentRevision == revision, !owners.isEmpty, !isRestoringOnExit else { return }
         if result?.canControl != true, NetToysNeighborServiceManager.shared.isEnabled, helperCommit == nil {
             helperCommit = await Task.detached(priority: .utility) { FanCommand.helperSourceCommit() }.value
         }
-        guard currentRevision == revision, !owners.isEmpty else { return }
+        guard currentRevision == revision, !owners.isEmpty, !isRestoringOnExit else { return }
         hasCompletedRead = true
         if let result {
             let nativeControl = NetToysNeighborServiceManager.shared.isEnabled
@@ -429,6 +429,7 @@ final class FanControlService {
                     }
                 }
                 await self.refresh()
+                guard currentCommand == self.commandRevision else { return }
                 self.isChanging = false
             }
         }
@@ -438,11 +439,13 @@ final class FanControlService {
         guard !isRestoringOnExit else { throw FanError("Automatic fan restoration is already in progress.") }
         guard ownsManualControl || hasPendingManualCommand else { return }
         isRestoringOnExit = true
+        revision &+= 1
         isChanging = true
         commandRevision &+= 1
         coolResetTask?.cancel()
         coolResetTask = nil
         defer {
+            revision &+= 1
             isRestoringOnExit = false
             isChanging = false
         }
