@@ -330,6 +330,53 @@ final class SystemCareTests: XCTestCase {
         XCTAssertThrowsError(try SystemCareManager.validatedUninstallName(for: selected, inventory: Data("[]".utf8)))
     }
 
+    func testMoleHistoryParsesNestedCountsTargetsAndOptionalMetadata() throws {
+        let data = Data(#"""
+        {
+          "sessions": [
+            {
+              "command": "uninstall", "started_at": "2026-10-01 07:00:00", "ended_at": "",
+              "items": 3, "size": "92 MB", "operation_count": 5, "failed_tasks": 1,
+              "actions": {"removed": 2, "trashed": 0, "skipped": 0, "failed": 1, "rebuilt": 0, "other": 0}
+            },
+            {"command": "optimize", "actions": {"removed": true, "failed": -1, "other": 2.5}},
+            {"command": "clean", "operation_count": 1, "started_at": "", "ended_at": "2026-10-01 08:00:00"}
+          ],
+          "deletions": [
+            {"timestamp": "2026-10-01 07:00:01", "mode": "trash", "status": "TRASHED", "size_kb": 1024, "path": "/Applications/Fixture.app"},
+            {"mode": "delete", "status": null, "size_kb": null, "path": "/tmp/Fixture\nSecond.dmg"}
+          ]
+        }
+        """#.utf8)
+        let rows = try SystemCareManager.parseMoleHistory(data)
+        XCTAssertEqual(rows.count, 5)
+        XCTAssertEqual(rows[0].title, "uninstall")
+        XCTAssertEqual(rows[0].detail, "3 items · 92 MB")
+        XCTAssertEqual(rows[0].timestamp, "2026-10-01 07:00:00")
+        XCTAssertEqual(rows[0].result, "2 removed, 1 failed, 1 task failed")
+        XCTAssertFalse(rows[0].detail.contains("actions:"))
+        XCTAssertTrue(rows.allSatisfy { !$0.detail.contains("\n") })
+        let raw = try XCTUnwrap(JSONSerialization.jsonObject(with: Data(rows[0].rawPayload.utf8)) as? [String: Any])
+        XCTAssertEqual((raw["actions"] as? [String: Any])?["removed"] as? Int, 2)
+        XCTAssertEqual(rows[1].detail, "")
+        XCTAssertNil(rows[1].timestamp)
+        XCTAssertNil(rows[1].result)
+        XCTAssertEqual(rows[2].detail, "1 operation")
+        XCTAssertEqual(rows[2].timestamp, "2026-10-01 08:00:00")
+        XCTAssertNil(rows[2].result)
+        XCTAssertEqual(rows[3].title, "trash")
+        XCTAssertEqual(rows[3].detail, "/Applications/Fixture.app")
+        XCTAssertEqual(rows[3].timestamp, "2026-10-01 07:00:01")
+        XCTAssertEqual(rows[3].result, "TRASHED")
+        XCTAssertEqual(rows[4].title, "delete")
+        XCTAssertEqual(rows[4].detail, "/tmp/Fixture Second.dmg")
+        XCTAssertNil(rows[4].timestamp)
+        XCTAssertNil(rows[4].result)
+        XCTAssertTrue(try SystemCareManager.parseMoleHistory(Data("{}".utf8)).isEmpty)
+        XCTAssertThrowsError(try SystemCareManager.parseMoleHistory(Data("[]".utf8)))
+        XCTAssertThrowsError(try SystemCareManager.parseMoleHistory(Data(#"{"sessions":false}"#.utf8)))
+    }
+
     private struct Fixture {
         let home: URL
         let suite = "SystemCareTests.\(UUID().uuidString)"
