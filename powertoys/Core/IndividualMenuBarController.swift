@@ -193,7 +193,7 @@ final class IndividualMenuBarController: NSObject {
         button.identifier = NSUserInterfaceItemIdentifier("individual-menu.\(tool.id)")
         button.target = self
         button.action = #selector(activate(_:))
-        button.sendAction(on: [.leftMouseUp])
+        button.sendAction(on: [.leftMouseDown])
         button.toolTip = tool.title
         return item
     }
@@ -204,27 +204,40 @@ final class IndividualMenuBarController: NSObject {
                   identifier == "individual-menu.\($0.id)"
               }) else { return }
 
+        if let popover = popovers[tool], popover.isShown {
+            popover.performClose(nil)
+            OnePlusPanelTimings.shared.cancel(panel: tool.id)
+        } else {
+            show(tool: tool)
+        }
+    }
+
+    func show(tool: IndividualMenuBarTool, diagnostic: Bool = false) {
+        guard let button = statusItems[tool]?.button else { return }
+        if diagnostic {
+            OnePlusPanelTimings.shared.begin(panel: tool.id, tab: tool.id, input: "diagnostics")
+        } else { OnePlusPanelTimings.shared.beginOpenIfNeeded(panel: tool.id) }
         let popover = popovers[tool] ?? makePopover(for: tool)
         popovers[tool] = popover
-        if popover.isShown {
-            popover.performClose(nil)
-        } else {
-            popover.show(relativeTo: sender.bounds, of: sender, preferredEdge: .minY)
-        }
+        guard let host = popover.contentViewController else { return }
+        let ceiling = (button.window?.screen?.visibleFrame.height ?? 800) * OnePlusMenuMetrics.heightFraction
+        host.view.frame.size.width = OnePlusMenuMetrics.width
+        let size = NSSize(width: OnePlusMenuMetrics.width, height: min(host.view.fittingSize.height, ceiling))
+        host.view.setFrameSize(size)
+        host.view.layoutSubtreeIfNeeded()
+        popover.contentSize = size
+        popover.show(relativeTo: button.bounds, of: button, preferredEdge: .minY)
     }
 
     private func makePopover(for tool: IndividualMenuBarTool) -> NSPopover {
         let popover = NSPopover()
         popover.behavior = .transient
-        let host = NSHostingController(rootView: IndividualToolMenuPanel(tool: tool))
-        host.sizingOptions = [.preferredContentSize]
-        host.view.frame.size.width = OnePlusMenuMetrics.width
-        host.view.layoutSubtreeIfNeeded()
-        let maximumHeight = (NSScreen.main?.visibleFrame.height ?? 900) - 32
-        popover.contentSize = NSSize(
-            width: OnePlusMenuMetrics.width,
-            height: min(max(host.view.fittingSize.height, 72), maximumHeight)
-        )
+        popover.animates = false
+        let host = NSHostingController(rootView: IndividualToolMenuPanel(tool: tool)
+            .onOnePlusMenuHeightChange { [weak popover] height in
+                let size = NSSize(width: OnePlusMenuMetrics.width, height: height)
+                if popover?.contentSize != size { popover?.contentSize = size }
+            })
         popover.contentViewController = host
         return popover
     }

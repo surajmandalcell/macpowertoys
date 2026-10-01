@@ -297,6 +297,7 @@ struct PortmanPanelView: View {
         .onOnePlusMenuHeightChange {
             PortmanMenuController.shared.setHeight($0)
         }
+        .onePlusPanelTimings(panel: "portman", tab: page.panelID)
     }
 
     @ViewBuilder private var panelToolbar: some View {
@@ -459,6 +460,9 @@ struct PortmanPanelView: View {
     }
 
     private func navigate(to destination: Page) {
+        if destination != page, !OnePlusPanelTimings.shared.hasPending("portman") {
+            OnePlusPanelTimings.shared.begin(panel: "portman", operation: .tabSwitch, tab: destination.panelID)
+        }
         var transaction = Transaction(animation: nil)
         transaction.disablesAnimations = true
         withTransaction(transaction) {
@@ -1734,6 +1738,7 @@ final class PortmanMenuController: NSObject, NSPopoverDelegate {
     private var observers: [NSObjectProtocol] = []
     private var showTask: Task<Void, Never>?
     private var refreshTask: Task<Void, Never>?
+    var isShown: Bool { popover.isShown }
 
     private override init() {
         super.init()
@@ -1776,44 +1781,47 @@ final class PortmanMenuController: NSObject, NSPopoverDelegate {
             }
             return
         }
+        OnePlusPanelTimings.shared.beginOpenIfNeeded(panel: "portman")
+        let request = ToolPageRouter.shared.take(tool: "portman")
+        let destination = initialPage ?? request.flatMap { PortmanPanelView.Page(panelID: $0.page) }
+        if present(initialPage: destination, activateApp: activateApp) { return }
         showTask = Task { @MainActor [weak self] in
             guard let self else { return }
-            if activateApp { NSApp.activate(ignoringOtherApps: true) }
-            var destination = initialPage
             for _ in 0..<200 {
-                guard !Task.isCancelled, let button = self.item?.button, !self.popover.isShown else { return }
-                if button.window?.isVisible == true && !button.visibleRect.isEmpty && button.bounds.width > 0 {
-                    self.popover.appearance = NSApp.appearance
-                    if let request = ToolPageRouter.shared.take(tool: "portman"),
-                       let requestedPage = PortmanPanelView.Page(panelID: request.page) {
-                        destination = initialPage ?? requestedPage
-                    }
-                    let hosting = NSHostingController(rootView: PortmanPanelView(
-                        initialPage: destination
-                    ).utilityMotionPolicy())
-                    hosting.view.appearance = NSApp.appearance
-                    let ceiling = (button.window?.screen?.visibleFrame.height ?? 800) * OnePlusMenuMetrics.heightFraction
-                    let size = hosting.sizeThatFits(in: NSSize(width: OnePlusMenuMetrics.width, height: ceiling))
-                    hosting.view.setFrameSize(size)
-                    hosting.view.layoutSubtreeIfNeeded()
-                    self.popover.contentViewController = hosting
-                    self.popover.contentSize = size
-                    self.popover.show(relativeTo: button.bounds, of: button, preferredEdge: .minY)
-                    self.popover.contentViewController?.view.window?.appearance = NSApp.appearance
-                    if activateApp {
-                        NSApp.activate(ignoringOtherApps: true)
-                        self.popover.contentViewController?.view.window?.makeKey()
-                    }
-                    if AppRuntime.isUITesting { NSLog("Portman popover shown: \(self.popover.isShown)") }
-                    if self.popover.isShown { return }
-                }
                 try? await Task.sleep(for: .milliseconds(50))
+                guard !Task.isCancelled, self.item != nil, !self.popover.isShown else { return }
+                if self.present(initialPage: destination, activateApp: activateApp) { return }
             }
+            OnePlusPanelTimings.shared.cancel(panel: "portman")
             if AppRuntime.isUITesting { NSLog("Portman status item has no visible anchor") }
         }
     }
 
+    private func present(initialPage: PortmanPanelView.Page?, activateApp: Bool) -> Bool {
+        guard let button = item?.button, button.window?.isVisible == true,
+              !button.visibleRect.isEmpty, button.bounds.width > 0 else { return false }
+        if activateApp { NSApp.activate(ignoringOtherApps: true) }
+        popover.appearance = NSApp.appearance
+        let hosting = NSHostingController(rootView: PortmanPanelView(initialPage: initialPage).utilityMotionPolicy())
+        hosting.view.appearance = NSApp.appearance
+        let ceiling = (button.window?.screen?.visibleFrame.height ?? 800) * OnePlusMenuMetrics.heightFraction
+        let size = hosting.sizeThatFits(in: NSSize(width: OnePlusMenuMetrics.width, height: ceiling))
+        hosting.view.setFrameSize(size)
+        hosting.view.layoutSubtreeIfNeeded()
+        popover.contentViewController = hosting
+        popover.contentSize = size
+        popover.show(relativeTo: button.bounds, of: button, preferredEdge: .minY)
+        popover.contentViewController?.view.window?.appearance = NSApp.appearance
+        if activateApp {
+            NSApp.activate(ignoringOtherApps: true)
+            popover.contentViewController?.view.window?.makeKey()
+        }
+        if AppRuntime.isUITesting { NSLog("Portman popover shown: \(popover.isShown)") }
+        return popover.isShown
+    }
+
     func popoverDidClose(_ notification: Notification) {
+        OnePlusPanelTimings.shared.cancel(panel: "portman")
         popover.contentViewController = nil
     }
 
@@ -1868,7 +1876,7 @@ final class PortmanMenuController: NSObject, NSPopoverDelegate {
             newItem.button?.target = self
             newItem.button?.action = #selector(toggle)
             newItem.button?.setAccessibilityIdentifier("portman.statusItem")
-            newItem.button?.sendAction(on: [.leftMouseUp])
+            newItem.button?.sendAction(on: [.leftMouseDown])
             PortmanService.shared.beginMonitoring()
             updateButton()
         } else if let item {

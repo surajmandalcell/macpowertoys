@@ -14,6 +14,7 @@ class AppDelegate: NSObject, NSApplicationDelegate {
     static let statusItemEventMask: NSEvent.EventTypeMask = [.rightMouseDown]
 
     private var statusItemClickMonitor: Any?
+    private var statusItemTimingMonitor: Any?
     private var currentDockIconAssetName = "AppIcon"
     private var currentDockIconAppearanceName: NSAppearance.Name?
     private var dockIconAppearanceObservation: NSKeyValueObservation?
@@ -26,6 +27,7 @@ class AppDelegate: NSObject, NSApplicationDelegate {
     var timerOwnerCount: Int { timer == nil ? 0 : 1 }
     var eventMonitorOwnerCount: Int {
         (statusItemClickMonitor == nil ? 0 : 1) + OnePlusFocusPolicy.shared.eventMonitorOwnerCount
+            + (statusItemTimingMonitor == nil ? 0 : 1)
             + (freeRulerKeyMonitor == nil ? 0 : 1)
     }
     var observerOwnerCount: Int {
@@ -181,6 +183,19 @@ class AppDelegate: NSObject, NSApplicationDelegate {
             return nil
         }
         OnePlusFocusPolicy.shared.install()
+        statusItemTimingMonitor = NSEvent.addLocalMonitorForEvents(matching: [.leftMouseDown]) { event in
+            let hit = event.window?.contentView?.hitTest(event.locationInWindow)
+            if let button = Self.statusItemButton(containing: hit) {
+                let identifier = button.identifier?.rawValue ?? ""
+                let panel = identifier.hasPrefix("individual-menu.")
+                    ? String(identifier.dropFirst("individual-menu.".count))
+                    : DiagnosticsPanel.allCases.first { $0.matchingButton(in: [button]) != nil }?.rawValue
+                if let panel {
+                    OnePlusPanelTimings.shared.begin(panel: panel, input: "mouseDown", started: event.timestamp)
+                }
+            }
+            return event
+        }
 
         didFinishLaunching = true
         if AppRuntime.isUITesting,
@@ -209,6 +224,8 @@ class AppDelegate: NSObject, NSApplicationDelegate {
     }
 
     func applicationWillTerminate(_ notification: Notification) {
+        if let statusItemTimingMonitor { NSEvent.removeMonitor(statusItemTimingMonitor) }
+        statusItemTimingMonitor = nil
         OnePlusFocusPolicy.shared.stop()
         FanControlService.current?.restoreAutomaticOnExit()
         PortmanService.shared.stopAll()
