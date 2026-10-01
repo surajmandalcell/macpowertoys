@@ -1806,6 +1806,7 @@ final class SystemMonitorMenuController: NSObject {
         output.append(NSAttributedString(string: "\t\u{200b}"))
         output.addAttribute(.font, value: SystemMonitorStatusText.font, range: NSRange(location: 0, length: output.length))
         output.addAttribute(.paragraphStyle, value: paragraph, range: NSRange(location: 0, length: output.length))
+        output.addAttribute(.foregroundColor, value: NSColor.labelColor, range: NSRange(location: 0, length: output.length))
         return output
     }
 
