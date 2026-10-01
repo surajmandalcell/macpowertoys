@@ -127,13 +127,36 @@ final class TextExtractorService {
         playCompletionCue()
     }
 
-    func remove(_ id: UUID) {
-        history.removeAll { $0.id == id }
+    func remove(_ id: UUID, undoManager: UndoManager? = nil) {
+        removeExtractions([id], undoManager: undoManager, actionName: "Delete Extraction")
+    }
+
+    func clearHistory(undoManager: UndoManager? = nil) {
+        removeExtractions(Set(history.map(\.id)), undoManager: undoManager, actionName: "Clear Extractions")
+    }
+
+    private func removeExtractions(_ ids: Set<UUID>, undoManager: UndoManager?, actionName: String) {
+        let entries = history.enumerated().filter { ids.contains($0.element.id) }
+        guard !entries.isEmpty else { return }
+        let remainingCount = history.count - entries.count
+        undoManager?.registerUndo(withTarget: self) { [weak undoManager] service in
+            service.restoreExtractions(entries, remainingCount: remainingCount, undoManager: undoManager, actionName: actionName)
+        }
+        undoManager?.setActionName(actionName)
+        history.removeAll { ids.contains($0.id) }
         saveHistory()
     }
 
-    func clearHistory() {
-        history.removeAll()
+    private func restoreExtractions(_ entries: [(offset: Int, element: TextExtraction)], remainingCount: Int, undoManager: UndoManager?, actionName: String) {
+        let existing = Set(history.map(\.id))
+        let missing = entries.filter { !existing.contains($0.element.id) }
+        guard !missing.isEmpty else { return }
+        undoManager?.registerUndo(withTarget: self) { [weak undoManager] service in
+            service.removeExtractions(Set(missing.map { $0.element.id }), undoManager: undoManager, actionName: actionName)
+        }
+        undoManager?.setActionName(actionName)
+        let newerCount = max(0, history.count - remainingCount)
+        for entry in missing { history.insert(entry.element, at: min(entry.offset + newerCount, history.count)) }
         saveHistory()
     }
 

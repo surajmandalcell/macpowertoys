@@ -34,6 +34,7 @@ nonisolated func textExtractionPresentations(
 }
 
 struct TextExtractorView: View {
+    @Environment(\.undoManager) private var undoManager
     @State private var service = TextExtractorService.shared
     @State private var shortcuts = GlobalShortcutManager.shared
     @State private var page = TextExtractorPage.history
@@ -117,7 +118,7 @@ struct TextExtractorView: View {
                                     row: row,
                                     onOpen: { selectedExtraction = row.extraction },
                                     onCopy: { service.copy(row.extraction) },
-                                    onDelete: { service.remove(row.id) }
+                                    onDelete: { service.remove(row.id, undoManager: undoManager) }
                                 )
                                 .overlay(alignment: .bottom) {
                                     if row.id != historyRows.last?.id {
@@ -168,6 +169,7 @@ struct TextExtractorView: View {
 }
 
 struct TextExtractorSettingsView: View {
+    @Environment(\.undoManager) private var undoManager
     @State private var service = TextExtractorService.shared
     @State private var shortcuts = GlobalShortcutManager.shared
     @State private var languages = ""
@@ -186,7 +188,7 @@ struct TextExtractorSettingsView: View {
         }
         .transaction { $0.disablesAnimations = true }
         .confirmationDialog("Clear text extraction history?", isPresented: $confirmingClear) {
-            Button("Clear History", role: .destructive) { service.clearHistory() }
+            Button("Clear History", role: .destructive) { service.clearHistory(undoManager: undoManager) }
             Button("Cancel", role: .cancel) {}
         } message: {
             Text("This removes every saved text extraction.")
@@ -221,8 +223,8 @@ struct TextExtractorSettingsView: View {
             OnePlusCardHeader("Recognition", systemImage: "text.viewfinder")
             OnePlusSettingRow("Recognition quality") {
                 OnePlusSegmented(choices: TextRecognitionSpeed.allCases.map { ($0, $0.title) },
-                                 selection: $service.settings.speed, width: OnePlusMetrics.controlColumn,
-                                 accessibilityLabel: "Recognition quality")
+                                 selection: $service.settings.speed, accessibilityLabel: "Recognition quality",
+                                 width: OnePlusMetrics.controlColumn)
             }
             OnePlusSettingRow("Language correction") {
                 Toggle("Use language correction", isOn: $service.settings.languageCorrection)
