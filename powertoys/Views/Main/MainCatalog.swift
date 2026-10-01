@@ -26,6 +26,7 @@ enum MainPageRoute: Equatable {
         case "all-tools": return .catalog(.all)
         case "favorites": return .catalog(.favorites)
         case "settings": return .settings(MainSettingsTab(rawValue: savedSettingsTab) ?? .general)
+        case "settings-general": return .settings(.general)
         case "settings-marketplace": return .settings(.marketplace)
         case "settings-about": return .settings(.about)
         default:
