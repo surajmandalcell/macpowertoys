@@ -80,6 +80,17 @@ final class DiskExplorerViewTests: XCTestCase {
         XCTAssertTrue(DiskEntryPresentation.previewURLs([grouped]).isEmpty)
     }
 
+    func testSavedPagesRejectRemovedAndUnavailableDestinations() {
+        XCTAssertEqual(DiskExplorerPage.restored("settings", hasDevices: false), .settings)
+        XCTAssertEqual(DiskExplorerPage.restored("about", hasDevices: false), .about)
+        XCTAssertEqual(DiskExplorerPage.restored("modify", hasDevices: true), .modify)
+        for id in [nil, "removed", "modify"] {
+            XCTAssertEqual(DiskExplorerPage.restored(id, hasDevices: false), .explore)
+        }
+        XCTAssertEqual(DiskResultTab(rawValue: "largest-files"), .largestFiles)
+        XCTAssertNil(DiskResultTab(rawValue: "removed"))
+    }
+
     func testTableKeepsItsPresentationAcrossScanRevisions() {
         let original = DiskEntryTableRequest(revision: .distantPast, sourceID: "largest-files", search: "",
                                              column: 2, ascending: false, apparent: false, showsFileCount: false)
