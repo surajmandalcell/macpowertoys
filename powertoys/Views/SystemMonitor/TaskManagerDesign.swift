@@ -109,10 +109,15 @@ nonisolated enum TaskManagerChartGeometry {
 
     static func sampleIndex(at x: CGFloat, count: Int, capacity: Int, width: CGFloat) -> Int {
         guard count > 1 else { return 0 }
-        let positions = xPositions(count: count, capacity: capacity, width: width)
         let step = width / CGFloat(max(capacity, count, 2) - 1)
-        return min(max(Int(((x - positions[0]) / max(step, 1)).rounded()), 0), count - 1)
+        let start = max(0, width - step * CGFloat(count - 1))
+        return min(max(Int(((x - start) / max(step, 1)).rounded()), 0), count - 1)
     }
+}
+
+private struct TaskManagerChartTextInput: Equatable, Sendable {
+    let values: [Double]
+    let unit: String
 }
 
 struct TaskManagerHistoryChart: View {
@@ -130,6 +135,8 @@ struct TaskManagerHistoryChart: View {
     var primaryColor = TaskManagerTheme.ink.opacity(0.76)
     var secondaryColor = TaskManagerTheme.accent
     @State private var hoverX: CGFloat?
+    @State private var hoverLabels: [String] = []
+    @State private var accessibilityText = "No history"
 
     @ViewBuilder
     var body: some View {
@@ -178,7 +185,7 @@ struct TaskManagerHistoryChart: View {
                         .fill(TaskManagerTheme.secondary.opacity(0.65))
                         .frame(width: 1)
                         .overlay(alignment: .topLeading) {
-                            Text(values[index].formatted(.number.precision(.fractionLength(values[index] < 10 ? 1 : 0))) + (unit.isEmpty ? "" : " " + unit))
+                            Text(hoverLabels.indices.contains(index) ? hoverLabels[index] : "…")
                                 .font(.system(size: 9, design: .monospaced))
                                 .foregroundStyle(TaskManagerTheme.ink)
                                 .padding(.horizontal, 6)
@@ -201,7 +208,30 @@ struct TaskManagerHistoryChart: View {
             }
         }
         .clipped()
-        .accessibilityLabel(values.last.map { "Latest value \($0.formatted())\(unit)" } ?? "No history")
+        .accessibilityLabel(accessibilityText)
+        .task(id: TaskManagerChartTextInput(values: values, unit: unit)) {
+            let values = values
+            let unit = unit
+            let labels = await Task.detached(priority: .utility) {
+                Self.formattedLabels(values: values, unit: unit)
+            }.value
+            guard !Task.isCancelled else { return }
+            hoverLabels = labels.hover
+            accessibilityText = labels.accessibility
+        }
+    }
+
+    nonisolated static func formattedLabels(values: [Double], unit: String) -> (hover: [String], accessibility: String) {
+        let suffix = unit.isEmpty ? "" : " " + unit
+        let hover = values.map { value in
+            value.isFinite
+                ? value.formatted(.number.precision(.fractionLength(value < 10 ? 1 : 0))) + suffix
+                : "Unavailable"
+        }
+        let accessibility = values.last.map {
+            $0.isFinite ? "Latest value \($0.formatted())\(suffix)" : "Latest value unavailable"
+        } ?? "No history"
+        return (hover, accessibility)
     }
 
     private var gridFractions: [CGFloat] {

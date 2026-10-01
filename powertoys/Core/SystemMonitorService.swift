@@ -401,6 +401,22 @@ nonisolated struct SystemMonitorMemoryDetails: Sendable {
     let pageOuts: UInt64
 }
 
+nonisolated struct SystemMonitorMemoryAllocation: Equatable, Sendable {
+    let applications: Int64
+    let wired: Int64
+    let compressed: Int64
+    let available: Int64
+
+    init?(used: Int64?, total: Int64?, details: SystemMonitorMemoryDetails?) {
+        guard let used, let total, total > 0, let details else { return nil }
+        let boundedUsed = min(max(used, 0), total)
+        wired = min(max(details.wired, 0), boundedUsed)
+        compressed = min(max(details.compressed, 0), boundedUsed - wired)
+        applications = boundedUsed - wired - compressed
+        available = total - boundedUsed
+    }
+}
+
 nonisolated struct SystemMonitorNetworkDetails: Sendable {
     let interfaceName: String?
     let localAddress: String?
@@ -1206,14 +1222,69 @@ nonisolated private final class SystemMonitorSampler: @unchecked Sendable {
     }
 }
 
+nonisolated struct SystemMonitorWindowHistory: Sendable {
+    var values: [Double] = []
+    var secondary: [Double] = []
+    var memoryPercent: [Double] = []
+    var load: [Double] = []
+    var power: [Double] = []
+    var range: ClosedRange<Double> = 0...1
+    var powerRange: ClosedRange<Double> = 0...1
+
+    init(samples: [SystemMonitorSample] = [], metric: SystemMonitorMenuMetric = .cpu) {
+        switch metric {
+        case .cpu:
+            values = samples.compactMap(\.cpuUsage)
+            secondary = samples.compactMap { $0.cpuDetails?.system }
+            load = samples.compactMap { $0.loadAverage?.0 }
+        case .gpu: values = samples.compactMap(\.gpuUsage)
+        case .memory:
+            values = samples.compactMap { $0.memoryUsed.map(Double.init) }
+            memoryPercent = samples.compactMap(\.memoryUsage)
+        case .network:
+            values = samples.compactMap(\.networkDownload)
+            secondary = samples.compactMap(\.networkUpload)
+        case .disk:
+            values = samples.compactMap { $0.diskDetails?.readPerSecond }
+            secondary = samples.compactMap { $0.diskDetails?.writePerSecond }
+        case .battery:
+            values = samples.compactMap { $0.batteryPercent.map(Double.init) }
+            power = samples.compactMap(Self.powerDraw)
+        case .thermal:
+            values = samples.compactMap {
+                switch $0.thermalState {
+                case "Nominal": 0
+                case "Fair": 33
+                case "Serious": 66
+                case "Critical": 100
+                default: nil
+                }
+            }
+        }
+        range = 0...max(max(values.max() ?? 0, secondary.max() ?? 0) * 1.15, 1)
+        powerRange = 0...max((power.max() ?? 0) * 1.15, 1)
+    }
+
+    static func powerDraw(_ sample: SystemMonitorSample) -> Double? {
+        guard let voltage = sample.batteryDetails?.voltageMillivolts,
+              let amperage = sample.batteryDetails?.amperageMilliamps else { return nil }
+        return abs(Double(voltage) * Double(amperage)) / 1_000_000
+    }
+}
+
 nonisolated struct SystemMonitorHistory {
     static let capacity = 120
     private var samplesByMetric: [SystemMonitorMenuMetric: [SystemMonitorSample]] = [:]
+    private var windowHistory: [SystemMonitorMenuMetric: [Int: SystemMonitorWindowHistory]] = [:]
 
     var isEmpty: Bool { samplesByMetric.isEmpty }
 
     func samples(for metric: SystemMonitorMenuMetric) -> [SystemMonitorSample] {
         samplesByMetric[metric] ?? []
+    }
+
+    func windowValues(for metric: SystemMonitorMenuMetric, minutes: Int) -> SystemMonitorWindowHistory {
+        windowHistory[metric]?[minutes == 1 ? 1 : 2] ?? SystemMonitorWindowHistory()
     }
 
     mutating func append(_ sample: SystemMonitorSample, metrics: Set<SystemMonitorMenuMetric>) {
@@ -1222,6 +1293,11 @@ nonisolated struct SystemMonitorHistory {
             if samplesByMetric[metric, default: []].count > Self.capacity {
                 samplesByMetric[metric]?.removeFirst()
             }
+            let samples = samplesByMetric[metric] ?? []
+            windowHistory[metric] = [
+                1: SystemMonitorWindowHistory(samples: Array(samples.suffix(60)), metric: metric),
+                2: SystemMonitorWindowHistory(samples: samples, metric: metric),
+            ]
         }
     }
 }
@@ -1236,6 +1312,7 @@ final class SystemMonitorService {
     nonisolated static let maximumHistoryCount = SystemMonitorHistory.capacity
 
     private(set) var snapshot: SystemMonitorSample?
+    private(set) var memoryAllocation: SystemMonitorMemoryAllocation?
     private(set) var history = SystemMonitorHistory()
     private(set) var detailedActive = false
     private(set) var menuSettings: SystemMonitorMenuSettings
@@ -1397,6 +1474,8 @@ final class SystemMonitorService {
         history.append(sample, metrics: detailedMetrics)
         let sample = sample.preservingAvailableValues(from: snapshot)
         snapshot = sample
+        memoryAllocation = SystemMonitorMemoryAllocation(used: sample.memoryUsed, total: sample.memoryTotal,
+                                                       details: sample.memoryDetails)
         if toolEnabled && menuSettings.enabled && !dueMetrics.isEmpty {
             menuController.update(sample: sample, dueMetrics: dueMetrics)
         }
