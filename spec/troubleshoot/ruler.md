@@ -1,5 +1,25 @@
 # Ruler Troubleshooting
 
+## Unit Presentation Spies, Run 66, 2026-10-01
+
+- **Symptom:** Ruler fixtures call native key-window paths during local tests.
+- **Cause:** Controller show, manager showAll and cycleActiveRuler, Settings,
+  context menus, new-ruler hotkeys, color wells, and resize handles reach
+  real native window ordering or makeKey.
+- **Invariant:** Inject a RulerWindow presentation spy through the controller
+  window factory and the existing manager factory. Settings presentation uses
+  a window spy with the real nib content and delegate. Color-well presentation
+  passes through its existing presenter closure to a color-panel spy.
+  Keep real model, geometry, grouping, suspension, control, and close paths.
+  Keep unpresented nib checks native. Normal factories keep their original
+  RulerWindow behavior; never change overlay activation to suit a test.
+- **Check:** The class name must match FreeRulerCoreTests. Run only
+  `tmp/redesign/tools/xtest.sh <log> -only-testing:powertoysTests/FreeRulerCoreTests`.
+  Both guarded runs pass 130 tests with zero failures or skips. The final run
+  includes resize fixtures and asserts that color panels stay hidden and
+  non-key. The foreground guard does not abort. All original assertions remain.
+  Report: `tmp/redesign/logs/w8-ruler-tests.md`.
+
 ## Localized Settings Dimensions, 2026-10-01
 
 - **Symptom:** Millimeter or inch fields use a decimal dot in a locale that

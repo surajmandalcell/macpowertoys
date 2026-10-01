@@ -1,5 +1,17 @@
 # Ruler Request List
 
+Local verification, run 66, 2026-10-01: all 130 FreeRulerCoreTests pass
+with zero failures or skips through the guarded local runner. All 129
+existing tests and assertions remain; one regression checks that presentation
+spies leave native windows hidden and non-key. Controller show, manager
+showAll and cycleActiveRuler, Settings, color-panel, context-menu, new-ruler,
+and resize paths use presentation spies. Unpresented nib checks keep their
+real native windows. The controller window factory defaults to the existing
+RulerWindow, preserving pinned overlay behavior. The class now matches the
+requested FreeRulerCoreTests selector. No foreground guard abort occurs.
+The orchestrator owns installation and isolated real presentation checks.
+Report: `tmp/redesign/logs/w8-ruler-tests.md`.
+
 Test audit, run 65, 2026-10-01: RulerCoreTests still calls controller show,
 manager showAll and cycleActiveRuler, and Settings presentation paths that
 can make real windows key. The orchestrator owns replacement of these calls

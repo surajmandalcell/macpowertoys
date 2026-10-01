@@ -6,7 +6,40 @@ import OnePlusUI
 @testable import powertoys
 
 @MainActor
-final class RulerCoreTests: XCTestCase {
+final class FreeRulerCoreTests: XCTestCase {
+
+    func testPresentationSpiesKeepNativeWindowsHiddenAndNonKey() throws {
+        let keyWindow = NSApp.keyWindow
+        let manager = makeRulerManager()
+        let first = manager.createRuler()
+        let second = manager.createRuler()
+        let settingsController = makeRulerSettingsController(rulerController: first)
+        defer {
+            settingsController.close()
+            first.hide()
+            second.hide()
+        }
+
+        manager.showAll()
+        let firstWindow = try XCTUnwrap(first.rulerWindow as? RulerPresentationSpy)
+        let secondWindow = try XCTUnwrap(second.rulerWindow as? RulerPresentationSpy)
+        let initialKeyRequests = firstWindow.keyRequests
+        XCTAssertTrue(manager.cycleActiveRuler() === first)
+        XCTAssertEqual(firstWindow.keyRequests, initialKeyRequests + 1)
+        settingsController.show(attachedTo: first, sender: self)
+        let settingsWindow = try XCTUnwrap(settingsController.window as? RulerSettingsPresentationTrackingWindow)
+
+        XCTAssertTrue(firstWindow.isVisible)
+        XCTAssertTrue(secondWindow.isVisible)
+        XCTAssertTrue(settingsWindow.isVisible)
+        XCTAssertFalse(firstWindow.isNativelyVisible)
+        XCTAssertFalse(secondWindow.isNativelyVisible)
+        XCTAssertFalse(settingsWindow.isNativelyVisible)
+        XCTAssertFalse(firstWindow.isKeyWindow)
+        XCTAssertFalse(secondWindow.isKeyWindow)
+        XCTAssertFalse(settingsWindow.isKeyWindow)
+        XCTAssertTrue(NSApp.keyWindow === keyWindow)
+    }
 
     func testWindowAlphaValueConvertsPercentToAlpha() {
         XCTAssertEqual(windowAlphaValue(0), 0.0)
@@ -172,7 +205,7 @@ final class RulerCoreTests: XCTestCase {
     }
 
     func testRulerManagerCreatesTracksActivatesAndClosesRulers() {
-        let manager = RulerManager()
+        let manager = makeRulerManager()
         defer {
             for controller in manager.controllers {
                 controller.hide()
@@ -201,7 +234,7 @@ final class RulerCoreTests: XCTestCase {
     }
 
     func testRulerManagerDrawsActiveBorderOnlyOnActiveRuler() {
-        let manager = RulerManager()
+        let manager = makeRulerManager()
         defer {
             for controller in manager.controllers {
                 controller.hide()
@@ -241,7 +274,7 @@ final class RulerCoreTests: XCTestCase {
     }
 
     func testRulerManagerStaggersNewRulersWhenDefaultPositionIsOccupied() {
-        let manager = RulerManager()
+        let manager = makeRulerManager()
         defer {
             for controller in manager.controllers {
                 controller.hide()
@@ -265,7 +298,7 @@ final class RulerCoreTests: XCTestCase {
             withRestoredRulerSetState {
                 prefs.groupRulers = true
                 prefs.zeroCorner = .topLeft
-                let appDelegate = AppDelegate()
+                let appDelegate = makeRulerAppDelegate()
                 let first = appDelegate.rulerManager.createRuler(
                     screenFrame: NSRect(x: 0, y: 0, width: 1000, height: 800)
                 )
@@ -320,7 +353,7 @@ final class RulerCoreTests: XCTestCase {
     func testRulerManagerMovesGroupedActiveRulerToTopOfStack() {
         withRestoredRulerPreferences {
             prefs.groupRulers = true
-            let manager = RulerManager()
+            let manager = makeRulerManager()
             let first = manager.createRuler(
                 defaults: RulerSettings(unit: .pixels),
                 screenFrame: NSRect(x: 0, y: 0, width: 1000, height: 800)
@@ -355,7 +388,7 @@ final class RulerCoreTests: XCTestCase {
     }
 
     func testRulerManagerCyclesVisibleRulers() {
-        let manager = RulerManager()
+        let manager = makeRulerManager()
         let first = manager.createRuler()
         let second = manager.createRuler()
         let hidden = manager.createRuler()
@@ -417,7 +450,7 @@ final class RulerCoreTests: XCTestCase {
     func testRulerManagerRestoresStatesAndShowsAllControllers() {
         let firstID = UUID(uuidString: "F775A858-ED72-4242-B84B-E08B27EE1C9F")!
         let secondID = UUID(uuidString: "D922071D-D02B-4DF7-8762-3497D9FD90B4")!
-        let manager = RulerManager(initialStates: [
+        let manager = makeRulerManager(initialStates: [
             RulerInstanceState(
                 id: firstID,
                 settings: RulerSettings(unit: .pixels),
@@ -469,7 +502,7 @@ final class RulerCoreTests: XCTestCase {
             rulerShadow: true,
             zeroCorner: .bottomRight
         )
-        let controller = RulerController(
+        let controller = makeRulerController(
             state: RulerInstanceState(
                 settings: settings,
                 layout: RulerLayoutState(
@@ -505,7 +538,7 @@ final class RulerCoreTests: XCTestCase {
     func testRulerControllerIgnoresDefaultPreferenceChanges() {
         withRestoredRulerPreferences {
             let color = NSColor(deviceRed: 0.2, green: 0.3, blue: 0.7, alpha: 1)
-            let controller = RulerController(
+            let controller = makeRulerController(
                 state: RulerInstanceState(
                     settings: RulerSettings(
                         unit: .inches,
@@ -558,7 +591,7 @@ final class RulerCoreTests: XCTestCase {
             prefs.defaultHorizontalLength = 640
             prefs.defaultVerticalLength = 280
 
-            let controller = RulerController(
+            let controller = makeRulerController(
                 state: RulerInstanceState(
                     settings: RulerSettings(
                         unit: .inches,
@@ -692,7 +725,7 @@ final class RulerCoreTests: XCTestCase {
             prefs.defaultVerticalLength = 400
 
             let rulerColor = NSColor(deviceRed: 0.72, green: 0.24, blue: 0.44, alpha: 1)
-            let controller = RulerController(
+            let controller = makeRulerController(
                 state: RulerInstanceState(
                     settings: RulerSettings(
                         unit: .inches,
@@ -746,7 +779,7 @@ final class RulerCoreTests: XCTestCase {
             prefs.defaultHorizontalLength = 320
             prefs.defaultVerticalLength = 220
 
-            let controller = RulerController(
+            let controller = makeRulerController(
                 state: RulerInstanceState(
                     settings: RulerSettings(
                         unit: .inches,
@@ -795,7 +828,7 @@ final class RulerCoreTests: XCTestCase {
     }
 
     func testRulerSettingsControllerAppliesColorPanelChangesToActiveRuler() {
-        let controller = RulerController(
+        let controller = makeRulerController(
             state: RulerInstanceState(
                 settings: RulerSettings(
                     rulerColor: NSColor(deviceRed: 0.2, green: 0.3, blue: 0.4, alpha: 1)
@@ -825,7 +858,7 @@ final class RulerCoreTests: XCTestCase {
     }
 
     func testRulerSettingsControllerCheckboxKeyEquivalentsToggleFloatAndShadow() {
-        let controller = RulerController(
+        let controller = makeRulerController(
             state: RulerInstanceState(
                 settings: RulerSettings(floatRulers: false, rulerShadow: false),
                 layout: RulerLayoutState(
@@ -1221,7 +1254,7 @@ final class RulerCoreTests: XCTestCase {
     }
 
     func testRulerSettingsWindowsUseFixedUtilityChromeAndActionHierarchy() throws {
-        let rulerController = RulerController(
+        let rulerController = makeRulerController(
             state: RulerInstanceState(
                 settings: RulerSettings(),
                 layout: RulerLayoutState(
@@ -1291,7 +1324,7 @@ final class RulerCoreTests: XCTestCase {
     }
 
     func testRulerSettingsControllerPreservesIndependentWindowPosition() {
-        let controller = RulerController(
+        let controller = makeRulerController(
             state: RulerInstanceState(
                 settings: RulerSettings(),
                 layout: RulerLayoutState(
@@ -1301,7 +1334,7 @@ final class RulerCoreTests: XCTestCase {
                 )
             )
         )
-        let settingsController = RulerSettingsController(rulerController: controller)
+        let settingsController = makeRulerSettingsController(rulerController: controller)
         defer {
             settingsController.close()
             controller.hide()
@@ -1323,7 +1356,7 @@ final class RulerCoreTests: XCTestCase {
     }
 
     func testRulerSettingsControllerSuspendsOnlyAttachedRulerWhileVisible() {
-        let first = RulerController(
+        let first = makeRulerController(
             state: RulerInstanceState(
                 settings: RulerSettings(floatRulers: true),
                 layout: RulerLayoutState(
@@ -1333,7 +1366,7 @@ final class RulerCoreTests: XCTestCase {
                 )
             )
         )
-        let second = RulerController(
+        let second = makeRulerController(
             state: RulerInstanceState(
                 settings: RulerSettings(floatRulers: true),
                 layout: RulerLayoutState(
@@ -1343,7 +1376,7 @@ final class RulerCoreTests: XCTestCase {
                 )
             )
         )
-        let settingsController = RulerSettingsController(rulerController: first)
+        let settingsController = makeRulerSettingsController(rulerController: first)
         defer {
             settingsController.close()
             first.hide()
@@ -1382,7 +1415,7 @@ final class RulerCoreTests: XCTestCase {
     }
 
     func testRulerSettingsSuspendsAttachedRulerBeforeSettingsBecomesKey() throws {
-        let controller = RulerController(
+        let controller = makeRulerController(
             state: RulerInstanceState(
                 settings: RulerSettings(floatRulers: true),
                 layout: RulerLayoutState(
@@ -1392,7 +1425,7 @@ final class RulerCoreTests: XCTestCase {
                 )
             )
         )
-        let settingsController = RulerSettingsController(rulerController: controller)
+        let settingsController = makeRulerSettingsController(rulerController: controller)
         let nibWindow = try XCTUnwrap(settingsController.window)
         let settingsWindow = RulerSettingsPresentationTrackingWindow(
             contentRect: nibWindow.contentView!.bounds,
@@ -1419,7 +1452,7 @@ final class RulerCoreTests: XCTestCase {
     }
 
     func testRulerControllerPassesArrowKeysThroughWhileInteractionSuspended() {
-        let controller = RulerController(
+        let controller = makeRulerController(
             state: RulerInstanceState(
                 settings: RulerSettings(),
                 layout: RulerLayoutState(
@@ -1447,7 +1480,7 @@ final class RulerCoreTests: XCTestCase {
 
     func testRulerSettingsControllerDoesNotFollowRulerZeroCorner() {
         for zeroCorner in [ZeroCorner.topLeft, .topRight, .bottomLeft, .bottomRight] {
-            let controller = RulerController(
+            let controller = makeRulerController(
                 state: RulerInstanceState(
                     settings: RulerSettings(zeroCorner: zeroCorner),
                     layout: RulerLayoutState(
@@ -1457,7 +1490,7 @@ final class RulerCoreTests: XCTestCase {
                     )
                 )
             )
-            let settingsController = RulerSettingsController(rulerController: controller)
+            let settingsController = makeRulerSettingsController(rulerController: controller)
             defer {
                 settingsController.close()
                 controller.hide()
@@ -1479,7 +1512,7 @@ final class RulerCoreTests: XCTestCase {
     }
 
     func testRulerSettingsControllerUsesStandardIndependentWindowStyle() {
-        let controller = RulerController(
+        let controller = makeRulerController(
             state: RulerInstanceState(
                 settings: RulerSettings(),
                 layout: RulerLayoutState(
@@ -1489,7 +1522,7 @@ final class RulerCoreTests: XCTestCase {
                 )
             )
         )
-        let settingsController = RulerSettingsController(rulerController: controller)
+        let settingsController = makeRulerSettingsController(rulerController: controller)
         defer {
             settingsController.close()
             controller.hide()
@@ -1534,7 +1567,7 @@ final class RulerCoreTests: XCTestCase {
     }
 
     func testRulerSettingsControllerRestoresForegroundOpacityWhenClosingSheet() {
-        let controller = RulerController(
+        let controller = makeRulerController(
             state: RulerInstanceState(
                 settings: RulerSettings(
                     foregroundOpacity: 80,
@@ -1547,7 +1580,7 @@ final class RulerCoreTests: XCTestCase {
                 )
             )
         )
-        let settingsController = RulerSettingsController(rulerController: controller)
+        let settingsController = makeRulerSettingsController(rulerController: controller)
         defer {
             settingsController.close()
             controller.hide()
@@ -1566,7 +1599,7 @@ final class RulerCoreTests: XCTestCase {
     }
 
     func testRulerSettingsControllerTitlebarCloseClosesIndependentWindow() {
-        let controller = RulerController(
+        let controller = makeRulerController(
             state: RulerInstanceState(
                 settings: RulerSettings(),
                 layout: RulerLayoutState(
@@ -1576,7 +1609,7 @@ final class RulerCoreTests: XCTestCase {
                 )
             )
         )
-        let settingsController = RulerSettingsController(rulerController: controller)
+        let settingsController = makeRulerSettingsController(rulerController: controller)
         defer {
             settingsController.close()
             controller.hide()
@@ -1602,7 +1635,7 @@ final class RulerCoreTests: XCTestCase {
             withRestoredRulerSetState {
                 let visibleFrame = NSScreen.main?.visibleFrame ?? NSRect(x: 0, y: 0, width: 1200, height: 900)
                 let zeroPoint = NSPoint(x: visibleFrame.midX, y: visibleFrame.midY)
-                let appDelegate = AppDelegate()
+                let appDelegate = makeRulerAppDelegate()
                 let controller = appDelegate.rulerManager.addRuler(
                     state: RulerInstanceState(
                         settings: RulerSettings(zeroCorner: .topLeft),
@@ -1619,6 +1652,7 @@ final class RulerCoreTests: XCTestCase {
                 }
 
                 controller.show()
+                appDelegate.rulerSettingsController = makeRulerSettingsController(rulerController: controller)
                 appDelegate.openRulerSettings(self)
 
                 guard let settingsWindow = appDelegate.rulerSettingsController?.window else {
@@ -1644,7 +1678,7 @@ final class RulerCoreTests: XCTestCase {
             prefs.zeroCorner = .topLeft
             prefs.defaultHorizontalLength = 260
             prefs.defaultVerticalLength = 180
-            let manager = RulerManager()
+            let manager = makeRulerManager()
             defer {
                 for controller in manager.controllers {
                     controller.hide()
@@ -1744,7 +1778,7 @@ final class RulerCoreTests: XCTestCase {
     func testRulerManagerRestoresSavedActiveRulerID() {
         let firstID = UUID(uuidString: "CE2FB5D8-109F-4482-8F54-1381075EE8C8")!
         let secondID = UUID(uuidString: "3BF78AE6-446F-4C43-82B4-F7D0CFEDDE83")!
-        let manager = RulerManager()
+        let manager = makeRulerManager()
         defer {
             for controller in manager.controllers {
                 controller.hide()
@@ -1792,7 +1826,7 @@ final class RulerCoreTests: XCTestCase {
                 )
             )
             prefs.saveRulerSetState(rulers: [state], activeRulerID: id)
-            let appDelegate = AppDelegate()
+            let appDelegate = makeRulerAppDelegate()
             defer {
                 for controller in appDelegate.rulerManager.controllers {
                     controller.hide()
@@ -2177,7 +2211,7 @@ final class RulerCoreTests: XCTestCase {
     func testRulerControllerEnablesMouseTicksOnlyForVisibleLegs() {
         withRestoredZeroCornerPreference {
             prefs.zeroCorner = .topLeft
-            let controller = RulerController(
+            let controller = makeRulerController(
                 frame: NSRect(x: 100, y: 100, width: 260, height: 220)
             )
 
@@ -2205,7 +2239,7 @@ final class RulerCoreTests: XCTestCase {
             prefs.zeroCorner = .topLeft
             let horizontalFrame = NSRect(x: 200, y: 299, width: 320, height: Ruler.thickness)
             let verticalFrame = NSRect(x: 161, y: 120, width: Ruler.thickness, height: 180)
-            let controller = RulerController(
+            let controller = makeRulerController(
                 frame: RulerWindowLayout.joined(
                     horizontalFrame: horizontalFrame,
                     verticalFrame: verticalFrame,
@@ -2243,7 +2277,7 @@ final class RulerCoreTests: XCTestCase {
             prefs.zeroCorner = .topLeft
             let horizontalFrame = NSRect(x: 200, y: 299, width: 320, height: Ruler.thickness)
             let verticalFrame = NSRect(x: 161, y: 120, width: Ruler.thickness, height: 180)
-            let controller = RulerController(
+            let controller = makeRulerController(
                 frame: RulerWindowLayout.joined(
                     horizontalFrame: horizontalFrame,
                     verticalFrame: verticalFrame,
@@ -2287,7 +2321,7 @@ final class RulerCoreTests: XCTestCase {
             prefs.zeroCorner = .topLeft
             let horizontalFrame = NSRect(x: 200, y: 299, width: 320, height: Ruler.thickness)
             let verticalFrame = NSRect(x: 161, y: 120, width: Ruler.thickness, height: 180)
-            let controller = RulerController(
+            let controller = makeRulerController(
                 frame: RulerWindowLayout.joined(
                     horizontalFrame: horizontalFrame,
                     verticalFrame: verticalFrame,
@@ -2329,7 +2363,7 @@ final class RulerCoreTests: XCTestCase {
             prefs.zeroCorner = .topLeft
             let horizontalFrame = NSRect(x: 200, y: 299, width: 320, height: Ruler.thickness)
             let verticalFrame = NSRect(x: 161, y: 120, width: Ruler.thickness, height: 180)
-            let controller = RulerController(
+            let controller = makeRulerController(
                 frame: RulerWindowLayout.joined(
                     horizontalFrame: horizontalFrame,
                     verticalFrame: verticalFrame,
@@ -3740,7 +3774,7 @@ final class RulerCoreTests: XCTestCase {
 
             prefs.zeroCorner = .topLeft
             prefs.groupRulers = true
-            let appDelegate = AppDelegate()
+            let appDelegate = makeRulerAppDelegate()
 
             XCTAssertTrue(
                 appDelegate.performRulerHotkey(
@@ -3761,7 +3795,7 @@ final class RulerCoreTests: XCTestCase {
     func testManagedGroupHotkeyTogglesGroupedDraggingMode() {
         withRestoredRulerPreferences {
             prefs.groupRulers = false
-            let appDelegate = AppDelegate()
+            let appDelegate = makeRulerAppDelegate()
             let controller = appDelegate.rulerManager.createRuler()
             defer {
                 controller.hide()
@@ -3788,7 +3822,7 @@ final class RulerCoreTests: XCTestCase {
     }
 
     func testCommandGraveCyclesManagedRulers() {
-        let appDelegate = AppDelegate()
+        let appDelegate = makeRulerAppDelegate()
         let first = appDelegate.rulerManager.createRuler()
         let second = appDelegate.rulerManager.createRuler()
         defer {
@@ -3811,7 +3845,7 @@ final class RulerCoreTests: XCTestCase {
     }
 
     func testCommandNCreatesAndActivatesManagedRuler() {
-        let appDelegate = AppDelegate()
+        let appDelegate = makeRulerAppDelegate()
         let first = appDelegate.rulerManager.createRuler()
         defer {
             for controller in appDelegate.rulerManager.controllers {
@@ -3831,7 +3865,7 @@ final class RulerCoreTests: XCTestCase {
     }
 
     func testManagedWingHotkeysAffectOnlyActiveRuler() {
-        let appDelegate = AppDelegate()
+        let appDelegate = makeRulerAppDelegate()
         let first = appDelegate.rulerManager.createRuler()
         let second = appDelegate.rulerManager.createRuler()
         defer {
@@ -3860,7 +3894,7 @@ final class RulerCoreTests: XCTestCase {
             prefs.unit = .pixels
             prefs.floatRulers = true
             prefs.rulerShadow = false
-            let appDelegate = AppDelegate()
+            let appDelegate = makeRulerAppDelegate()
             let first = appDelegate.rulerManager.createRuler(
                 defaults: RulerSettings(unit: .pixels, floatRulers: true, rulerShadow: false)
             )
@@ -3896,7 +3930,7 @@ final class RulerCoreTests: XCTestCase {
         withRestoredRulerPreferences {
             withRestoredRulerSetState {
                 prefs.zeroCorner = .topRight
-                let appDelegate = AppDelegate()
+                let appDelegate = makeRulerAppDelegate()
                 let first = appDelegate.rulerManager.createRuler(
                     defaults: RulerSettings(zeroCorner: .bottomLeft)
                 )
@@ -3936,7 +3970,7 @@ final class RulerCoreTests: XCTestCase {
     }
 
     func testManagedWingCommandsDoNotHideLastVisibleWing() {
-        let appDelegate = AppDelegate()
+        let appDelegate = makeRulerAppDelegate()
         let controller = appDelegate.rulerManager.createRuler()
         defer {
             controller.hide()
@@ -3951,7 +3985,7 @@ final class RulerCoreTests: XCTestCase {
     }
 
     func testShiftHotkeysFlipActiveRulerOrigin() {
-        let appDelegate = AppDelegate()
+        let appDelegate = makeRulerAppDelegate()
         let controller = appDelegate.rulerManager.createRuler(
             defaults: RulerSettings(zeroCorner: .topLeft)
         )
@@ -3979,7 +4013,7 @@ final class RulerCoreTests: XCTestCase {
     }
 
     func testShiftHotkeysIgnoreCapsLock() {
-        let appDelegate = AppDelegate()
+        let appDelegate = makeRulerAppDelegate()
         let controller = appDelegate.rulerManager.createRuler(
             defaults: RulerSettings(zeroCorner: .topLeft)
         )
@@ -3998,7 +4032,7 @@ final class RulerCoreTests: XCTestCase {
     }
 
     func testNonShiftModifiedRulerHotkeysAreIgnored() {
-        let appDelegate = AppDelegate()
+        let appDelegate = makeRulerAppDelegate()
 
         XCTAssertFalse(
             appDelegate.performRulerHotkey(
@@ -4103,7 +4137,7 @@ final class RulerCoreTests: XCTestCase {
         file: StaticString = #filePath,
         line: UInt = #line
     ) {
-        let controller = RulerController(
+        let controller = makeRulerController(
             state: RulerInstanceState(
                 settings: RulerSettings(zeroCorner: zeroCorner),
                 layout: RulerLayoutState(
@@ -4113,8 +4147,19 @@ final class RulerCoreTests: XCTestCase {
                 )
             )
         )
-        let settingsController = RulerSettingsController(rulerController: controller)
-        let colorPanel = NSColorPanel.shared
+        let settingsController = makeRulerSettingsController(rulerController: controller)
+        let colorPanel = RulerColorPanelPresentationSpy(
+            contentRect: NSColorPanel.shared.frame,
+            styleMask: NSColorPanel.shared.styleMask,
+            backing: .buffered,
+            defer: false
+        )
+        var presentationCount = 0
+        settingsController.rulerColorWell.colorPanelPresenter = { [weak settingsController] colorWell, sharedPanel in
+            XCTAssertTrue(sharedPanel === NSColorPanel.shared, file: file, line: line)
+            presentationCount += 1
+            settingsController?.presentColorPanel(colorPanel, for: colorWell)
+        }
         closeRulerColorPanel()
         let originalColorPanelFrame = colorPanel.frame
         defer {
@@ -4178,6 +4223,11 @@ final class RulerCoreTests: XCTestCase {
 
         openingColorPanel(settingsController, settingsWindow)
 
+        XCTAssertEqual(presentationCount, 1, file: file, line: line)
+        XCTAssertTrue(colorPanel.wasOrdered, file: file, line: line)
+        XCTAssertFalse(colorPanel.isVisible, file: file, line: line)
+        XCTAssertFalse(colorPanel.isKeyWindow, file: file, line: line)
+        XCTAssertFalse(NSColorPanel.shared.isVisible, file: file, line: line)
         XCTAssertTrue(colorPanel.parent === settingsWindow, file: file, line: line)
         XCTAssertTrue(settingsWindow.childWindows?.contains(colorPanel) ?? false, file: file, line: line)
         XCTAssertEqual(colorPanel.frame.minX, expectedX, accuracy: 1, file: file, line: line)
@@ -4274,12 +4324,103 @@ private final class TestableZeroCornerHorizontalRule: HorizontalRule {
 private final class RulerSettingsPresentationTrackingWindow: NSWindow {
     var onMakeKeyAndOrderFront: (() -> Void)?
     var rulerWasSuspendedWhenOrdered: Bool?
+    private var presented = false
+
+    override var isVisible: Bool { presented }
+    var isNativelyVisible: Bool { super.isVisible }
+
+    override func makeKey() {}
 
     override func makeKeyAndOrderFront(_ sender: Any?) {
         onMakeKeyAndOrderFront?()
-        setFrameOrigin(NSPoint(x: -10000, y: -10000))
-        orderBack(sender)
+        presented = true
     }
+
+    override func orderFront(_ sender: Any?) { presented = true }
+    override func orderFrontRegardless() { presented = true }
+    override func orderOut(_ sender: Any?) { presented = false }
+    override func order(_ place: NSWindow.OrderingMode, relativeTo otherWin: Int) {}
+
+    override func close() {
+        presented = false
+        super.close()
+    }
+}
+
+private final class RulerPresentationSpy: RulerWindow {
+    private var presented = false
+    private(set) var keyRequests = 0
+
+    override var isVisible: Bool { presented }
+    var isNativelyVisible: Bool { super.isVisible }
+
+    override func makeKey() { keyRequests += 1 }
+    override func makeKeyAndOrderFront(_ sender: Any?) {
+        makeKey()
+        presented = true
+    }
+    override func orderFront(_ sender: Any?) { presented = true }
+    override func orderFrontRegardless() { presented = true }
+    override func orderOut(_ sender: Any?) { presented = false }
+    override func order(_ place: NSWindow.OrderingMode, relativeTo otherWin: Int) {}
+}
+
+private final class RulerColorPanelPresentationSpy: NSColorPanel {
+    private(set) var wasOrdered = false
+
+    override func makeKey() {}
+    override func makeKeyAndOrderFront(_ sender: Any?) { wasOrdered = true }
+    override func orderFront(_ sender: Any?) { wasOrdered = true }
+    override func orderFrontRegardless() { wasOrdered = true }
+    override func order(_ place: NSWindow.OrderingMode, relativeTo otherWin: Int) {}
+}
+
+@MainActor
+private func makeRulerController(state: RulerInstanceState) -> RulerController {
+    RulerController(state: state, windowFactory: { RulerPresentationSpy(frame: $0, settings: $1) })
+}
+
+@MainActor
+private func makeRulerController(frame: NSRect) -> RulerController {
+    RulerController(frame: frame, windowFactory: { RulerPresentationSpy(frame: $0, settings: $1) })
+}
+
+@MainActor
+private func makeRulerManager(initialStates: [RulerInstanceState] = []) -> RulerManager {
+    RulerManager(initialStates: initialStates, controllerFactory: { makeRulerController(state: $0) })
+}
+
+@MainActor
+private func makeRulerAppDelegate() -> AppDelegate {
+    let appDelegate = AppDelegate()
+    let originalManager = appDelegate.rulerManager
+    let manager = makeRulerManager()
+    manager.onActiveControllerChanged = originalManager.onActiveControllerChanged
+    manager.onStateChanged = originalManager.onStateChanged
+    appDelegate.rulerManager = manager
+    return appDelegate
+}
+
+@MainActor
+private func makeRulerSettingsController(rulerController: RulerController) -> RulerSettingsController {
+    let controller = RulerSettingsController(rulerController: rulerController)
+    guard let nibWindow = controller.window else { return controller }
+    let window = RulerSettingsPresentationTrackingWindow(
+        contentRect: nibWindow.contentView!.bounds,
+        styleMask: nibWindow.styleMask,
+        backing: .buffered,
+        defer: false
+    )
+    window.setFrame(nibWindow.frame, display: false)
+    window.contentView = nibWindow.contentView
+    window.delegate = controller
+    window.identifier = nibWindow.identifier
+    window.titlebarAppearsTransparent = nibWindow.titlebarAppearsTransparent
+    window.isMovableByWindowBackground = nibWindow.isMovableByWindowBackground
+    window.isReleasedWhenClosed = false
+    window.initialFirstResponder = nibWindow.initialFirstResponder
+    controller.window = window
+    return controller
 }
 
 private func rulerContentView(size: NSSize, zeroCorner: ZeroCorner) -> RulerContentView {
@@ -4305,7 +4446,7 @@ private func oneWingRulerWindow(
     frame: NSRect,
     settings: RulerSettings = RulerSettings()
 ) -> RulerWindow {
-    let window = RulerWindow(frame: frame, settings: settings)
+    let window = RulerPresentationSpy(frame: frame, settings: settings)
     window.setVisibleRules(
         horizontal: orientation == .horizontal,
         vertical: orientation == .vertical
@@ -4348,7 +4489,7 @@ private func pointInsideEmptyRulerWindowCorner(
 @MainActor
 private func withInstalledAppDelegate(_ test: (AppDelegate) throws -> Void) rethrows {
     let previousDelegate = NSApp.delegate
-    let appDelegate = AppDelegate()
+    let appDelegate = makeRulerAppDelegate()
     NSApp.delegate = appDelegate
 
     defer {
