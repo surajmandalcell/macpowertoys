@@ -6,15 +6,23 @@
   Network and Disk inside words. A large Connect row puts remote actions
   below the panel edge. The history lines are too faint.
   Round 11 also finds duplicate zero rate ticks, clipped RAM capacity,
-  and truncated long Network readings.
+  and truncated long Network readings. Signed `43ce0eb9` then shows bright
+  coral CPU, GPU, and Memory histories that compete with the values.
+  Round 12 finds repeated GPU/Network detail readings and small heading
+  and control-row glyphs.
 - **Cause:** Home labels use the uppercase table-header role without a
   one-line limit. The host card stacks actions below disk content, and its
   detail adds a separate connection button. Whole-chart opacity is 0.18.
   Rate ticks round to one decimal. RAM repeats the unit, and flexible rate
-  text competes with the Network label and wide gaps.
+  text competes with the Network label and wide gaps. The later history
+  shares one 0.45 opacity across a strong fill and stroke over the full height.
+  Detail preparation repeats hero readings. Metric glyphs inherit row type;
+  Battery uses the table-header role and control rows use compact row size.
 - **Invariant:** Home labels preserve Title Case, use one line, and truncate
   at the end. Give labels priority so Disk fits at the standard width.
-  Keep the history under the whole tile, with coral ink and 0.45 opacity.
+  Keep full-width background history in the lower 60 percent of each tile.
+  CPU and GPU use neutral chart ink; Memory keeps coral ink. Use a smooth
+  1pt line at 35 percent opacity and a 7 percent area fill. Values stay strongest.
   Host cards follow the reference: 20pt header, 36pt metric row with labels
   above readings, then disk content beside the 84pt action column. Normal
   cards measure 109pt; taller details can grow. Both actions stay inside
@@ -24,6 +32,10 @@
   plot. Keep captions and the time axis outside it. RAM uses one shared
   binary unit; keep full readings and stale status in help. Allocate its
   trailing width. Network rate text stays complete on one 34pt row.
+  CPU, GPU, and Memory titles use compact card-title type. Metric and
+  control-row glyphs share the 13pt menu token. Keep action glyph sizes,
+  30pt control rows, 34pt short tiles and 109.33pt columns. Detail rows omit
+  repeated hero readings but keep memory, thermal, connection and stale facts.
 - **Check:** The nine affected package checks pass. Offscreen renders use
   the actual Home tile and remote card source with fixed readings in Light
   and Dark. They cover connected, offline, and error cards. The action
@@ -34,7 +46,16 @@
   full help, stale help and the 4 Hz publication limit. Actual-source
   offscreen renders cover 120-point histories, complete RAM at the 109.33pt
   cell token, and both 12.35 GB/s rates. The shared history pixel check passes
-  in both appearances. Signed live acceptance remains with the orchestrator.
+  in both appearances. `5075da8e` applies the signed history correction.
+  Three focused package checks pass for quiet paint, protected label space,
+  extreme samples, finite curves and cache modes. Actual-source Home renders
+  in `tmp/redesign/captures/panel-tm/r11-quiet-source-*.png` pass visual review
+  in both appearances. The single quiet-chart compile gate passes.
+  `bb62bd07` fixes Round 12 detail rows and glyphs. Ten focused package
+  checks pass. Actual-source content shrinks GPU from 281pt to 253pt and
+  Network from 324pt to 268pt in both appearances. Hero histories and stale
+  rows remain. See `tmp/redesign/logs/panel-tm-r12-render.py`.
+  Signed live acceptance remains with the orchestrator.
 
 ## Tab Paint And Complete Row Hover, 2026-10-01
 
@@ -50,8 +71,8 @@
 - **Check:** `OnePlusRowAndTabGeometryTests` checks fixed tab and action
   frames, extended paint, complete native table rows, disabled hover, and
   centered menu tiles. Removing the horizontal extension makes the tab
-  regression fail. Whole-tile history uses the shared area chart under the
-  content with visible low-contrast accent ink and the existing radius clip.
+  regression fail. Tile history uses the shared area chart under the
+  content with low-contrast metric ink and the existing radius clip.
   Hover paint is immediate. Metric values and statuses stay trailing on the
   label row. Host item actions use the reference 84pt trailing column.
   Signed visual review and nested control interaction remain with the
