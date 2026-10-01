@@ -573,8 +573,14 @@
   columns. `tmp/redesign/syscare/check-r11-ui.py` measures actual source in hidden
   hosts in both appearances. Safety is 36pt shorter, Maintenance is 48pt shorter,
   and Open Terminal is 112 x 28pt. History uses matching 34pt rows and 12pt insets.
-  The current shared Tasks underline draws at y96-97. No paint failure is
-  reproduced. Check that capture discrepancy in the exact installed build.
+  Signed `43ce0eb9` still omits Tasks' underline in both appearances.
+  Route defaults and stateful hidden hosts select Tasks correctly. The shared
+  strip now paints the selected indicator directly from its binding outside
+  the button-style body, with the existing 36pt height, 22pt gap and 2pt ink.
+  `testSelectedTabUnderlineSurvivesInitialEntryAndTabChanges` checks initial
+  entry and Tasks/History/Tasks in both appearances. All 20 focused page and
+  row/tab checks pass. The route paint check fails when selected paint is
+  removed. Signed recapture and native interaction remain with the orchestrator.
 
 - **Symptom:** Populated Mole history rows show the same truncated actions
   dictionary instead of distinct activity.
