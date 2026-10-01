@@ -1192,8 +1192,9 @@ latency benefit still needs measurement. See `tmp/redesign/logs/w4-perf-windows.
 - **Invariant:** Use `onePlusTableCell` for each Scanner column. Account for
   AppKit's first-cell padding so header and value origins are 16pt and 12pt.
   Set `onePlusCardPadding` to zero only on standalone rows. Keep empty scans
-  in one open 44pt row with period copy trailing. Keep cards for records and
-  Scanner failure notices.
+  in one open 44pt row with period copy trailing. Keep cards for records.
+  Scanner stale-result notes and no-hosts advice use one quiet toolbar line,
+  without a padded card, under the run 69 owner correction.
 - **Check:** `7ae93446`, `ed44cc0d`, and `3145a948` fix these cases. The shared
   package geometry test and actual IP, hostname and MAC fixtures pass in both
   appearances. The final app/test gate passes at `168eae83`, with all five
