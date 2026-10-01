@@ -15,10 +15,11 @@ struct SystemMonitorRemoteView: View {
     init(addRequest: Int = 0, initialProfiles: [SystemMonitorRemoteProfile]? = nil,
          onProfilesChange: @escaping ([SystemMonitorRemoteProfile]) -> Void = { _ in }) {
         self.addRequest = addRequest
-        loadsProfiles = initialProfiles == nil
+        let preparedProfiles = initialProfiles ?? SystemMonitorRemoteSessions.shared.savedProfiles
+        loadsProfiles = preparedProfiles == nil
         suppliedProfiles = initialProfiles
         self.onProfilesChange = onProfilesChange
-        _profiles = State(initialValue: initialProfiles ?? [])
+        _profiles = State(initialValue: preparedProfiles ?? [])
     }
 
     var body: some View {
@@ -50,6 +51,7 @@ struct SystemMonitorRemoteView: View {
             if loadsProfiles {
                 let loaded = await Task.detached(priority: .userInitiated) { SystemMonitorRemoteProfiles.load() }.value
                 guard !Task.isCancelled else { return }
+                sessions.savedProfiles = loaded
                 profiles = loaded
                 onProfilesChange(loaded)
             }

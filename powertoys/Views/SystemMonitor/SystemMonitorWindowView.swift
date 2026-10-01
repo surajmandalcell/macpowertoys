@@ -146,8 +146,9 @@ struct SystemMonitorWindowView: View {
         remoteProfiles: [SystemMonitorRemoteProfile]? = nil
     ) {
         self.reportSnapshot = reportSnapshot
-        loadsRemoteProfiles = remoteProfiles == nil
-        _remoteProfiles = State(initialValue: remoteProfiles ?? [])
+        let preparedProfiles = remoteProfiles ?? SystemMonitorRemoteSessions.shared.savedProfiles
+        loadsRemoteProfiles = preparedProfiles == nil
+        _remoteProfiles = State(initialValue: preparedProfiles ?? [])
     }
 
     private var page: SystemMonitorPage { SystemMonitorPage.resolve(pageID) ?? .overview }
@@ -190,6 +191,7 @@ struct SystemMonitorWindowView: View {
                 SystemMonitorRemoteProfiles.load()
             }.value
             guard !Task.isCancelled else { return }
+            SystemMonitorRemoteSessions.shared.savedProfiles = profiles
             remoteProfiles = profiles
         }
         .overlay(alignment: .topLeading) {
