@@ -644,10 +644,12 @@
   with one Auto button. The remote card drew a placeholder storage row.
 - **Invariant:** Compact menu plots request 64pt and size their cards naturally.
   Keep time labels outside the plot. Fan always shows the shared 24pt Auto,
-  Cool, and Max control. Its warning action owns helper setup and Restore Auto
-  when automatic recovery is available without manual control. The shared
-  segmented API currently disables the whole control. Foundation must provide
-  per-choice availability before Auto alone can remain enabled there.
+  Cool, and Max control. Its warning action owns helper setup and Restore Auto.
+  The shared segmented API uses `isChoiceEnabled` for real buttons and arrow
+  keys. Auto requires manual control or automatic recovery; Cool and Max require manual
+  control. Changing state disables every choice. Fan text is prepared on a
+  utility task, equal results do not publish, and publications stay at least
+  250 ms apart. The final visible owner cancels pending preparation.
   Offline hosts keep unavailable CPU, RAM, and Network values but no empty
   storage row or track. Retain their OS in the host's accessibility identity.
 - **Check:** Run `testTaskManagerMenuMeasuresTabsAndAsyncProfiles` on hosted CI.
