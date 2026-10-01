@@ -397,7 +397,8 @@ struct TaskManagerSystemReportView: View {
                     .font(.system(size: 10))
                     .foregroundStyle(TaskManagerTheme.secondary)
             }
-            .padding(12)
+            .padding(.horizontal, OnePlusMetrics.cardPadding)
+            .padding(.vertical, OnePlusMetrics.compactCardPadding)
             Spacer()
         }
         .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topLeading)
@@ -541,7 +542,7 @@ struct TaskManagerSystemReportView: View {
                                             .frame(maxWidth: .infinity, alignment: .leading)
                                     }
                                 }
-                                .padding(.horizontal, 12)
+                                .padding(.horizontal, OnePlusMetrics.cardPadding)
                                 .padding(.vertical, 9)
                                 .contentShape(Rectangle())
                             }

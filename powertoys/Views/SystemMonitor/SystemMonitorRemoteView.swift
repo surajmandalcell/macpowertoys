@@ -81,6 +81,7 @@ struct SystemMonitorRemoteView: View {
                     OnePlusCardHeader("Disks")
                     ForEach(reading.disks) { disk in
                         OnePlusKeyValueRow(disk.id, value: "\(TrayPopoverLayout.diskBytes(Int64(clamping: disk.used))) / \(TrayPopoverLayout.diskBytes(Int64(clamping: disk.total)))")
+                            .padding(.horizontal, OnePlusMetrics.cardPadding)
                     }
                 }
             }
@@ -246,7 +247,7 @@ struct TaskManagerRemoteCard: View {
                         .padding(.bottom, 8)
                 }
                 actions
-                    .padding(.horizontal, OnePlusMetrics.compactCardPadding)
+                    .padding(.horizontal, OnePlusMetrics.cardPadding)
                     .padding(.vertical, OnePlusMetrics.actionSpacing)
             }
         }
@@ -275,7 +276,7 @@ struct TaskManagerRemoteCard: View {
             Text(value).onePlusText(.metric, color: reading == nil ? OnePlusColor.metricCaption : TaskManagerTheme.ink)
                 .monospacedDigit().lineLimit(1).minimumScaleFactor(0.65).help(value)
         }
-        .padding(.horizontal, 12)
+        .padding(.horizontal, OnePlusMetrics.cardPadding)
         .frame(maxWidth: .infinity, minHeight: 66, alignment: .leading)
     }
 
@@ -291,7 +292,7 @@ struct TaskManagerRemoteCard: View {
             }
             OnePlusUsageBar(value: Double(diskFraction))
         }
-        .padding(.horizontal, 12)
+        .padding(.horizontal, OnePlusMetrics.cardPadding)
         .padding(.vertical, OnePlusMetrics.actionSpacing)
         .frame(maxWidth: .infinity)
     }
