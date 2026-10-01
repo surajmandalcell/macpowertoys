@@ -6,11 +6,12 @@ final class MainCatalogTests: XCTestCase {
     func testMainNavigationKeepsModifiedStateAndToolPagesStable() throws {
         let home = try sourceFile("powertoys/Views/HomeView.swift")
         let selectionStart = try XCTUnwrap(home.range(of: ".onChange(of: selectedTool)"))
-        let defaultsStart = try XCTUnwrap(home.range(
-            of: ".onReceive(NotificationCenter.default.publisher(for: UserDefaults.didChangeNotification)"
-        ))
-        XCTAssertFalse(home[selectionStart.lowerBound..<defaultsStart.lowerBound].contains("modifiedRevision += 1"))
+        let selectionEnd = try XCTUnwrap(home.range(of: ".onReceive(NotificationCenter.default.publisher(for: .marketplaceReceiptsChanged)"))
+        let defaultsStart = try XCTUnwrap(home.range(of: "private func observePreferences()"))
+        XCTAssertFalse(home[selectionStart.lowerBound..<selectionEnd.lowerBound].contains("modifiedRevision += 1"))
         XCTAssertTrue(home[defaultsStart.lowerBound...].contains("modifiedRevision += 1"))
+        XCTAssertTrue(home.contains("ToolSettingsPreferenceObserver(keys: Set(SettingsRegistry.entries.map(\\.key)))"))
+        XCTAssertFalse(home.contains("publisher(for: UserDefaults.didChangeNotification)"))
         XCTAssertFalse(home.contains(".id(toolID)"))
 
         let tool = try sourceFile("powertoys/Views/ToolAboutView.swift")
@@ -20,6 +21,27 @@ final class MainCatalogTests: XCTestCase {
         let sidebar = try sourceFile("powertoys/Views/ToolSidebarView.swift")
         XCTAssertTrue(sidebar.contains("@State private var hasChanges = false"))
         XCTAssertFalse(sidebar.contains("private var hasChanges: Bool"))
+        XCTAssertTrue(sidebar.contains("Task.detached(priority: .utility) { SMAppService.mainApp.status }"))
+        XCTAssertFalse(sidebar.contains("SettingsRegistry.hasChanges()"))
+    }
+
+    func testLauncherPreferencesIgnoreWindowStateButKeepActualSettingChanges() throws {
+        let suite = "MainCatalogTests.\(UUID().uuidString)"
+        let defaults = try XCTUnwrap(UserDefaults(suiteName: suite))
+        defer { defaults.removePersistentDomain(forName: suite) }
+        var changes = 0
+        let observer = ToolSettingsPreferenceObserver(keys: Set(SettingsRegistry.entries.map(\.key)), defaults: defaults) {
+            changes += 1
+        }
+        defer { observer.stop() }
+        for key in ["systemMonitor.windowPage", "windowState.main", "systemMonitor.trayPage"] {
+            defaults.set("cpu", forKey: key)
+            NotificationCenter.default.post(name: UserDefaults.didChangeNotification, object: defaults)
+        }
+        XCTAssertEqual(changes, 0)
+        defaults.set(false, forKey: "app.showTray")
+        NotificationCenter.default.post(name: UserDefaults.didChangeNotification, object: defaults)
+        XCTAssertEqual(changes, 1)
     }
 
     func testMainCatalogPreparesRowsOutsideBodyEvaluation() throws {

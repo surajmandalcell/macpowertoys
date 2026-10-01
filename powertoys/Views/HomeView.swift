@@ -9,6 +9,7 @@ struct HomeView: View {
     @State private var focusedToolID: String?
     @State private var modifiedRevision = 0
     @State private var shortcutTools: [any Tool] = []
+    @State private var preferenceObserver: ToolSettingsPreferenceObserver?
 
     var body: some View {
         OnePlusWindowRoot(canvas: .main) {
@@ -38,13 +39,19 @@ struct HomeView: View {
             if value != "all-tools" { query = "" }
             focusedToolID = nil
         }
-        .onReceive(NotificationCenter.default.publisher(for: UserDefaults.didChangeNotification)) { _ in
-            modifiedRevision += 1
-        }
         .onReceive(NotificationCenter.default.publisher(for: .marketplaceReceiptsChanged)) { _ in
             refreshShortcutTools()
+            observePreferences()
+            modifiedRevision += 1
         }
-        .onAppear(perform: refreshShortcutTools)
+        .onAppear {
+            refreshShortcutTools()
+            observePreferences()
+        }
+        .onDisappear {
+            preferenceObserver?.stop()
+            preferenceObserver = nil
+        }
     }
 
     @ViewBuilder private var content: some View {
@@ -94,5 +101,12 @@ struct HomeView: View {
 
     private func refreshShortcutTools() {
         shortcutTools = Array(ToolRegistry.allTools.prefix(8))
+    }
+
+    private func observePreferences() {
+        preferenceObserver?.stop()
+        preferenceObserver = ToolSettingsPreferenceObserver(keys: Set(SettingsRegistry.entries.map(\.key))) {
+            modifiedRevision += 1
+        }
     }
 }
