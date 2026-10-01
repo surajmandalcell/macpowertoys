@@ -1,5 +1,25 @@
 # System Tools Request List
 
+Round 17 panels repair, run 68, 2026-10-01: `53b31541` keeps System Care
+decimal disk metrics and units complete, with full bytes in help and
+accessibility. `517c5593` moves Memory capacity within its 70pt tile and
+keeps CPU/GPU/Memory at the full 27pt metric role. Disk and Battery retain
+each hero fact once, plus real activity, cycles, power and stale readings.
+`7c2a8222` centers Devices, profile and Scroll device disclosure accessories.
+Refresh keeps its separate target and the body keeps its single gutter.
+`34c24557` adds the approved NetToys socket glyph and 13pt glyphs for Home,
+Cloud Sync, Input Devices, System Care, Task Manager, NetToys and Switch tabs.
+All five glyph tests pass, including 14pt status canvases and 11.2pt ink
+at 1x/2x/4x. Shared `10b09f5` renders named artwork in tool headers.
+The app and both desktop bundles compile against OnePlusUI 1.0.0.
+All five changed app classes pass across guarded runs: 117 distinct tests.
+Two focused shared checks pass. The broader shared geometry class has one
+unowned failure: stat metadata measures 46pt against its 44pt height check.
+The next shared tag, dependency adoption, signed captures, Refresh and
+disclosure interaction, and complete-frame timing remain with the
+orchestrator. Adopt OnePlusUI 1.0.1 containing `7dbcb3f` and `10b09f5`.
+Report: `tmp/redesign/logs/w10-fix17-panels.md`.
+
 Round 17 Task Manager repair, run 68, 2026-10-01: shared `68c91bf` sets
 card headers and settings to 16pt in both densities. `aecfb5b7` aligns custom
 information, Allocation, Remote and System Report rows with their headers.

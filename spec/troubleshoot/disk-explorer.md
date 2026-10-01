@@ -1,5 +1,21 @@
 # Diskman Troubleshooting
 
+## Device Caption Units And Entity Height, Run 68, 2026-10-01
+
+- **Symptom:** The sidebar shows `disk0 · 500.28…` without its unit.
+  Device rows use 56pt instead of the 44pt entity height.
+- **Cause:** The sidebar copies the detailed size formatter. The shared
+  device row hard-codes extra vertical space.
+- **Invariant:** Use whole decimal capacities only in device captions.
+  Keep precise sizes and full byte counts in row help and accessibility.
+  Preserve detailed table and inspector formatting. Device rows use the
+  shared 44pt token, existing two-line spacing and full-row hover/actions.
+- **Check:** App `53b31541` passes all 21 DiskExplorerViewTests, including
+  unit visibility in the 106pt lane and unchanged detailed formatting.
+  Shared `7dbcb3f` passes the device height and hover check in both densities
+  and appearances. The orchestrator must tag, adopt and inspect the build.
+  Report: `tmp/redesign/logs/w10-fix17-panels.md`.
+
 ## External app and source disks can be unlocked, 2026-10-01
 
 - **Symptom:** An external disk that holds the running app or repository was

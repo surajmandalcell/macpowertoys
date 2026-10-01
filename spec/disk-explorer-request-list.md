@@ -1,5 +1,18 @@
 # Diskman request list
 
+Round 17 sidebar repair, run 68, 2026-10-01: app `53b31541` shows compact
+device capacities such as `disk0 · 500 GB` in the existing 106pt lane.
+Row help and accessibility retain precise capacity and full byte counts.
+Detailed table and inspector formatters keep their existing precision.
+All 21 DiskExplorerViewTests pass through the foreground guard.
+Shared `7dbcb3f` uses the 44pt entity-row token and passes the height and
+full-row hover check in both densities and appearances. `10b09f5` is the
+latest shared checkpoint from this lane. Request OnePlusUI 1.0.1 containing
+both commits; the orchestrator owns tagging, adoption and installation.
+The app and test bundles compile against 1.0.0. The 44pt device geometry,
+lock/eject targets and precise help require the new signed build.
+Report: `tmp/redesign/logs/w10-fix17-panels.md`.
+
 Local verification, run 63, 2026-10-01: all 45 DiskExplorer and
 DiskManagement app tests pass through the guarded wrapper. This includes
 chart-cache release and scan regressions. The full run later aborts on focus.

@@ -1,5 +1,23 @@
 # System Tools Troubleshooting
 
+## Compact Panel Metrics And Duplicate Facts, Run 68, 2026-10-01
+
+- **Symptom:** Startup disk metrics lose digits or units. Memory shrinks
+  beside its capacity. Disk and Battery repeat facts from their heroes.
+- **Cause:** Precise decimal strings exceed narrow columns. The Memory
+  caption competes with its metric. Detail rows copy hero values.
+- **Invariant:** Compact System Care values use at most one decimal digit
+  and fixed 27pt metrics with separate units. Help retains full byte counts.
+  Memory capacity uses a separate line within the same 70pt tile. CPU,
+  GPU and Memory retain equal metric size and the lower history band.
+  Disk details retain Read/Write. Battery retains reported cycles and power.
+  Preserve stale and unavailable facts. Omit an empty details card.
+- **Check:** `53b31541` passes compact capacity and width checks.
+  `517c5593` passes all 62 Task Manager tests, including both-appearance
+  digit paint, unique detail facts, stale data and missing data.
+  The app and both test bundles compile. Installed review remains open.
+  Report: `tmp/redesign/logs/w10-fix17-panels.md`.
+
 ## Compact Card Insets And Disk Metadata, Run 68, 2026-10-01
 
 - **Symptom:** Compact headers and controls use 12pt horizontal insets.

@@ -1,5 +1,26 @@
 # UI Chrome Troubleshooting
 
+## Panel Identity Glyphs And Disclosure Captions, Run 68, 2026-10-01
+
+- **Symptom:** Input Devices count drops toward the header divider.
+  NetToys uses a generic graph. Main panel tab glyphs use the 12pt role.
+- **Cause:** A clear Refresh placeholder supplies a bottom baseline.
+  The tool mapping lacks its socket asset. Tabs copy an old size.
+- **Invariant:** Center the disclosure accessory group inside the 40pt
+  header. Keep Refresh's separate target and the single body gutter.
+  Use each tool's template asset in tabs, headers and status items.
+  All main tabs use the existing 13pt token within 26pt targets.
+  NetToys uses the approved socket module with 32pt SVG and 2.5pt strokes.
+  Its status canvas is 14pt with 11.2pt centered ink.
+- **Check:** `34c24557` passes all five glyph tests, including status bounds
+  at 1x, 2x and 4x. Shared `10b09f5` passes both-appearance named-artwork
+  rendering. Adopt the next shared tag before installed identity review.
+  `7c2a8222` passes all 16 Input Devices tests. Its offscreen header check
+  measures title, count, Refresh and disclosure centers in both appearances.
+  Use a light-ink threshold that includes the thin Refresh glyph's gray
+  pixels. A 0.45 red threshold sees one pixel and gives a false center.
+  Report: `tmp/redesign/logs/w10-fix17-panels.md`.
+
 ## Deferred Chrome Checks Miss Their Main-Queue Pass, 2026-10-01
 
 - **Symptom:** The full package suite sees close x9 and centerline y16,
