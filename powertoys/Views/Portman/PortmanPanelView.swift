@@ -257,6 +257,7 @@ struct PortmanPanelView: View {
 
     var body: some View {
         panelDialogs
+            .focusedValue(\.appOpenSettings) { navigate(to: .settings) }
             .onOpenToolPage("portman") { id in
                 if let destination = Page(panelID: id) { navigate(to: destination) }
             }
