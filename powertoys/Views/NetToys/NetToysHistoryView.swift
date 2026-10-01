@@ -727,6 +727,7 @@ struct NetToysSettingsView: View {
                         .disabled(settings.isToolTransitioning("nettoys"))
                 }
             }
+            .environment(\.onePlusCardPadding, 0)
             OnePlusCard {
                 OnePlusCardHeader("Permissions")
                 OnePlusSettingRow("Wi-Fi network names", help: locationStatusMessage,
@@ -781,6 +782,7 @@ struct NetToysSettingsView: View {
                     .buttonStyle(OnePlusButtonStyle(.destructive))
                     .disabled(!model.hasStoredHistory)
             }
+            .environment(\.onePlusCardPadding, 0)
         }
         .task {
             await model.refresh()

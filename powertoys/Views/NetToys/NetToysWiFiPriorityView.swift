@@ -200,6 +200,7 @@ struct NetToysWiFiPriorityView: View {
                 NSWorkspace.shared.open(url)
             }
         }
+        .environment(\.onePlusCardPadding, 0)
     }
 
     private var failoverMessage: String {
