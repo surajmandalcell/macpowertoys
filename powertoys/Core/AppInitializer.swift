@@ -20,8 +20,16 @@ final class AppInitializer {
     static let shared = AppInitializer()
 
     private(set) var state: State = .idle
+    private(set) var formattingRevision = 0
+    @ObservationIgnored private var formattingObservers: [NSObjectProtocol] = []
 
-    private init() {}
+    private init() {
+        formattingObservers = [NSLocale.currentLocaleDidChangeNotification, .NSSystemTimeZoneDidChange].map { name in
+            NotificationCenter.default.addObserver(forName: name, object: nil, queue: .main) { [weak self] _ in
+                MainActor.assumeIsolated { self?.formattingRevision &+= 1 }
+            }
+        }
+    }
 
     func initialize(modelContext: ModelContext) async {
         guard state == .idle else { return }
