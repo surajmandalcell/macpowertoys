@@ -1,6 +1,7 @@
 PROJECT := powertoys.xcodeproj
 SCHEME := powertoys
 TEST_SCHEME := powertoys-desktop-tests
+TEST_ARGS ?= -only-testing:powertoysTests
 DERIVED_DATA ?= /tmp/macpowertoys-derived
 SOURCE_COMMIT := $(shell git rev-parse HEAD)
 XCODEBUILD := taskpolicy -c utility nice -n 10 xcodebuild -project $(PROJECT) -jobs 4 -derivedDataPath $(DERIVED_DATA) MPT_SOURCE_COMMIT=$(SOURCE_COMMIT)
@@ -29,7 +30,7 @@ build-for-testing:
 
 test:
 	@test "$(TEST_SESSION)" = "isolated" || (echo "Xcode tests launch MacPowerToys on the desktop. Use make build-for-testing here; run TEST_SESSION=isolated make test in a separate macOS account or VM." && exit 1)
-	$(XCODEBUILD) -scheme $(TEST_SCHEME) test -destination 'platform=macOS' -parallel-testing-enabled NO -only-testing:powertoysTests -skip-testing:powertoysUITests $(SIGNING)
+	$(XCODEBUILD) -scheme $(TEST_SCHEME) test -destination 'platform=macOS' -parallel-testing-enabled NO $(TEST_ARGS) -skip-testing:powertoysUITests $(SIGNING)
 
 raycast-assets:
 	sh raycast/sync-icons.sh
