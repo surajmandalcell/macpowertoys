@@ -1,5 +1,12 @@
 # Mac Tweaks request list
 
+## Round 11 control and wallpaper corrections, 2026-10-01
+
+- [x] T084: remove the extra disabled opacity from shared selects and segments. Keep one 0.38 treatment on the custom timing field. T085: use the mono role with control ink for timing values; keep caption units, the native stepper, and 28pt height. Commit: `e9f06d55`.
+- [x] T086: delete only the shared wallpaper's grid strokes. Keep static artwork, uniform scaling, and window and Dock geometry. Commit: `bd8e54aa`.
+- [x] Review all 20 Round 10 Mac Tweaks captures from signed `198055e4` in Light and Dark. No additional lane defect found. Offscreen segments match bare shared rendering in both appearances and enabled states. Restoring the removed opacity fails that check. Timing text uses the mono role at the same height.
+- [~] Shared compile gates and integrated signed verification remain. ImageRenderer cannot prove native select or stepper rendering. The orchestrator must recapture Dock and the shared desktop previews, inspect disabled selects, segments, and timing controls, and finish the installed-app handoff. Report: `tmp/redesign/logs/w3-audit-tweaks.md`.
+
 ## Production audit, 2026-10-01
 
 - [x] Preserve reset actions and Modified entries whenever an exact-value backup exists, even at an explicit or absent system default. Disable new edits on unsupported OS releases while keeping restore available.
