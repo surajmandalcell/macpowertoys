@@ -105,27 +105,66 @@ final class ColorPickerService {
         copy(sample, as: defaultFormat)
     }
 
-    func togglePin(_ id: UUID) {
-        guard let index = history.firstIndex(where: { $0.id == id }) else { return }
-        history[index].isPinned.toggle()
+    func togglePin(_ id: UUID, undoManager: UndoManager? = nil) {
+        guard let sample = history.first(where: { $0.id == id }) else { return }
+        setPinned(id, to: !sample.isPinned, undoManager: undoManager,
+                  actionName: sample.isPinned ? "Unpin Color" : "Pin Color")
+    }
+
+    private func setPinned(_ id: UUID, to pinned: Bool, undoManager: UndoManager?, actionName: String) {
+        guard let index = history.firstIndex(where: { $0.id == id }), history[index].isPinned != pinned else { return }
+        let previous = history[index].isPinned
+        undoManager?.registerUndo(withTarget: self) { [weak undoManager] service in
+            service.setPinned(id, to: previous, undoManager: undoManager, actionName: actionName)
+        }
+        undoManager?.setActionName(actionName)
+        history[index].isPinned = pinned
         save()
     }
 
-    func remove(_ id: UUID) {
-        history.removeAll { $0.id == id }
+    func remove(_ id: UUID, undoManager: UndoManager? = nil) {
+        removeSamples([id], undoManager: undoManager, actionName: "Delete Color")
+    }
+
+    func clearAll(undoManager: UndoManager? = nil) {
+        removeSamples(Set(history.map(\.id)), undoManager: undoManager, actionName: "Clear Colors")
+    }
+
+    private func removeSamples(_ ids: Set<UUID>, undoManager: UndoManager?, actionName: String) {
+        let entries = history.enumerated().filter { ids.contains($0.element.id) }
+        guard !entries.isEmpty else { return }
+        let remainingCount = history.count - entries.count
+        undoManager?.registerUndo(withTarget: self) { [weak undoManager] service in
+            service.restoreSamples(entries, remainingCount: remainingCount, undoManager: undoManager, actionName: actionName)
+        }
+        undoManager?.setActionName(actionName)
+        history.removeAll { ids.contains($0.id) }
         save()
     }
 
-    func clearAll() {
-        history.removeAll()
+    private func restoreSamples(_ entries: [(offset: Int, element: ColorSample)], remainingCount: Int, undoManager: UndoManager?, actionName: String) {
+        let existing = Set(history.map(\.id))
+        let missing = entries.filter { !existing.contains($0.element.id) }
+        guard !missing.isEmpty else { return }
+        undoManager?.registerUndo(withTarget: self) { [weak undoManager] service in
+            service.removeSamples(Set(missing.map { $0.element.id }), undoManager: undoManager, actionName: actionName)
+        }
+        undoManager?.setActionName(actionName)
+        let newerCount = max(0, history.count - remainingCount)
+        for entry in missing { history.insert(entry.element, at: min(entry.offset + newerCount, history.count)) }
         save()
     }
 
     @discardableResult
-    func createProject(named name: String) -> ColorProject? {
+    func createProject(named name: String, undoManager: UndoManager? = nil) -> ColorProject? {
         let name = name.trimmingCharacters(in: .whitespacesAndNewlines)
         guard canCreateProject(named: name) else { return nil }
         let project = ColorProject(name: name)
+        let previousSelection = selectedProjectID
+        undoManager?.registerUndo(withTarget: self) { [weak undoManager] service in
+            service.removeProject(project.id, selection: previousSelection, undoManager: undoManager)
+        }
+        undoManager?.setActionName("Create Color Project")
         projects.append(project)
         saveProjects()
         selectProject(project.id)
@@ -139,9 +178,46 @@ final class ColorPickerService {
         }
     }
 
-    func selectProject(_ id: UUID?) {
-        guard id == nil || projects.contains(where: { $0.id == id }) else { return }
+    func selectProject(_ id: UUID?, undoManager: UndoManager? = nil) {
+        guard selectedProjectID != id, id == nil || projects.contains(where: { $0.id == id }) else { return }
+        let previous = selectedProjectID
+        undoManager?.registerUndo(withTarget: self) { [weak undoManager] service in
+            let restored = previous.flatMap { id in service.projects.contains { $0.id == id } ? id : nil }
+            service.selectProject(restored, undoManager: undoManager)
+        }
+        undoManager?.setActionName("Change Color Project")
         selectedProjectID = id
+    }
+
+    private func removeProject(_ id: UUID, selection: UUID?, undoManager: UndoManager?) {
+        guard let index = projects.firstIndex(where: { $0.id == id }) else { return }
+        let project = projects[index]
+        let assignedIDs = Set(history.filter { $0.projectID == id }.map(\.id))
+        let previousSelection = selectedProjectID
+        undoManager?.registerUndo(withTarget: self) { [weak undoManager] service in
+            service.restoreProject(project, at: index, assignedIDs: assignedIDs,
+                                   selection: previousSelection, undoManager: undoManager)
+        }
+        undoManager?.setActionName("Create Color Project")
+        projects.remove(at: index)
+        for index in history.indices where assignedIDs.contains(history[index].id) { history[index].projectID = nil }
+        selectedProjectID = selection.flatMap { id in projects.contains { $0.id == id } ? id : nil }
+        save()
+    }
+
+    private func restoreProject(_ project: ColorProject, at index: Int, assignedIDs: Set<UUID>, selection: UUID?, undoManager: UndoManager?) {
+        guard !projects.contains(where: { $0.id == project.id }) else { return }
+        let previousSelection = selectedProjectID
+        undoManager?.registerUndo(withTarget: self) { [weak undoManager] service in
+            service.removeProject(project.id, selection: previousSelection, undoManager: undoManager)
+        }
+        undoManager?.setActionName("Create Color Project")
+        projects.insert(project, at: min(index, projects.count))
+        for index in history.indices where assignedIDs.contains(history[index].id) && history[index].projectID == nil {
+            history[index].projectID = project.id
+        }
+        selectedProjectID = selection.flatMap { id in projects.contains { $0.id == id } ? id : nil }
+        save()
     }
 
     func samples(in projectID: UUID?) -> [ColorSample] {

@@ -88,6 +88,7 @@ nonisolated func colorPickerPresentation(
 }
 
 struct ColorHistoryView: View {
+    @Environment(\.undoManager) private var undoManager
     @State private var service = ColorPickerService.shared
     @State private var page = ColorPickerPage.history
     @State private var search = ""
@@ -227,8 +228,8 @@ struct ColorHistoryView: View {
                                     row: row,
                                     defaultFormat: service.defaultFormat,
                                     copy: service.copy,
-                                    togglePin: service.togglePin,
-                                    remove: service.remove
+                                    togglePin: { service.togglePin($0, undoManager: undoManager) },
+                                    remove: { service.remove($0, undoManager: undoManager) }
                                 )
                                 .overlay(alignment: .bottom) {
                                     if row.id != sampleRows.last?.id {
@@ -282,7 +283,7 @@ struct ColorHistoryView: View {
     }
 
     private func createProject() {
-        guard service.createProject(named: newProjectName) != nil else { return }
+        guard service.createProject(named: newProjectName, undoManager: undoManager) != nil else { return }
         newProjectName = ""
         isCreatingProject = false
         page = .history
@@ -320,13 +321,14 @@ struct ColorHistoryView: View {
     }
 
     private func selectProject(_ id: UUID?) {
-        service.selectProject(id)
+        service.selectProject(id, undoManager: undoManager)
         search = ""
         page = .history
     }
 }
 
 struct ColorPickerSettingsView: View {
+    @Environment(\.undoManager) private var undoManager
     @State private var service = ColorPickerService.shared
     @State private var shortcuts = GlobalShortcutManager.shared
     @State private var isConfirmingClearAll = false
@@ -347,7 +349,7 @@ struct ColorPickerSettingsView: View {
         }
         .transaction { $0.disablesAnimations = true }
         .confirmationDialog("Clear all picked colors?", isPresented: $isConfirmingClearAll) {
-            Button("Clear all", role: .destructive) { service.clearAll() }
+            Button("Clear all", role: .destructive) { service.clearAll(undoManager: undoManager) }
             Button("Cancel", role: .cancel) {}
         } message: { Text("This removes every saved color from History and all projects. Projects are kept.") }
     }
