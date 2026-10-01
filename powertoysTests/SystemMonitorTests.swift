@@ -35,17 +35,32 @@ final class SystemMonitorTests: XCTestCase {
     }
 
     func testMenuDetailsKeepEachHeroFactOnceAndPreserveStaleReadings() throws {
-        let sample = SystemMonitorSample(timestamp: .now, cpuUsage: nil, memoryUsed: nil, memoryTotal: nil,
+        let sample = SystemMonitorSample(timestamp: .now, cpuUsage: 25, memoryUsed: 8_589_934_592, memoryTotal: 17_179_869_184,
             gpuUsage: nil, networkDownload: nil, networkUpload: nil, diskUsed: 366_800_000_000,
             diskTotal: 500_000_000_000, batteryPercent: 80, batteryCharging: true,
-            thermalState: nil, loadAverage: nil, unavailableMetrics: [],
+            thermalState: "Fair", loadAverage: (1.25, 2.5, 3.75), unavailableMetrics: [],
             diskDetails: .init(readPerSecond: 2_000_000, writePerSecond: 1_000_000, readTotal: 0, writeTotal: 0),
             batteryDetails: .init(cycleCount: 50, health: "Normal", currentCapacity: nil, maximumCapacity: nil,
                                   voltageMillivolts: 12_000, amperageMilliamps: -1_000))
-        for stale in [Set<SystemMonitorMenuMetric>(), [.disk, .battery]] {
-            let data = TaskManagerMenuProjection.prepare(sample: sample, history: .init(), staleMetrics: stale)
+        var history = SystemMonitorHistory()
+        history.append(sample, metrics: [.cpu, .memory])
+        for stale in [Set<SystemMonitorMenuMetric>(), [.cpu, .memory, .disk, .battery]] {
+            let data = TaskManagerMenuProjection.prepare(sample: sample, history: history, staleMetrics: stale)
+            let cpu = try XCTUnwrap(data[.cpu])
+            let memory = try XCTUnwrap(data[.memory])
             let disk = try XCTUnwrap(data[.disk])
             let battery = try XCTUnwrap(data[.battery])
+            XCTAssertEqual(cpu.rows.map(\.title), ["Load · 1 minute", "Load · 5 minutes", "Load · 15 minutes", "Thermal pressure"] + (stale.isEmpty ? [] : ["Reading"]))
+            XCTAssertEqual(memory.rows.map(\.title), ["Applications", "Wired", "Available", "Compressed", "Swap used"] + (stale.isEmpty ? [] : ["Reading"]))
+            XCTAssertEqual(cpu.caption, stale.isEmpty ? "\(ProcessInfo.processInfo.activeProcessorCount) logical CPUs" : SystemMonitorFreshness.staleHelp)
+            XCTAssertEqual(memory.caption, stale.isEmpty ? "16 GB unified memory" : SystemMonitorFreshness.staleHelp)
+            XCTAssertEqual(cpu.chart.primary, [25])
+            XCTAssertEqual(memory.chart.primary, [8])
+            XCTAssertEqual(cpu.rows.prefix(4).map(\.value), ["1.25", "2.50", "3.75", "Fair"])
+            if !stale.isEmpty {
+                XCTAssertEqual(cpu.rows.last?.value, "Stale")
+                XCTAssertEqual(memory.rows.last?.value, "Stale")
+            }
             XCTAssertEqual(disk.rows.map(\.title), ["Read", "Write"] + (stale.isEmpty ? [] : ["Reading"]))
             XCTAssertEqual(battery.rows.map(\.title), ["Cycle count", "Power draw"] + (stale.isEmpty ? [] : ["Reading"]))
             XCTAssertEqual(battery.caption, stale.isEmpty ? "Connected to power" : "Stale reading. Showing the last successful sample.")
@@ -54,6 +69,8 @@ final class SystemMonitorTests: XCTestCase {
             XCTAssertNotEqual(disk.rows.first?.value, "—")
         }
         let pending = TaskManagerMenuProjection.prepare(sample: nil, history: .init())
+        XCTAssertEqual(pending[.cpu]?.rows.map(\.value), Array(repeating: "—", count: 4))
+        XCTAssertEqual(pending[.memory]?.rows.map(\.value), Array(repeating: "—", count: 5))
         XCTAssertEqual(pending[.disk]?.rows.map(\.value), ["—", "—"])
         XCTAssertEqual(pending[.battery]?.caption, "—")
         XCTAssertEqual(pending[.battery]?.accessories.first?.value, "—")
