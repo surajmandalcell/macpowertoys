@@ -5,9 +5,13 @@
 - **Symptom:** Signed `198055e4` uses uppercase Home labels and splits
   Network and Disk inside words. A large Connect row puts remote actions
   below the panel edge. The history lines are too faint.
+  Round 11 also finds duplicate zero rate ticks, clipped RAM capacity,
+  and truncated long Network readings.
 - **Cause:** Home labels use the uppercase table-header role without a
   one-line limit. The host card stacks actions below disk content, and its
   detail adds a separate connection button. Whole-chart opacity is 0.18.
+  Rate ticks round to one decimal. RAM repeats the unit, and flexible rate
+  text competes with the Network label and wide gaps.
 - **Invariant:** Home labels preserve Title Case, use one line, and truncate
   at the end. Give labels priority so Disk fits at the standard width.
   Keep the history under the whole tile, with coral ink and 0.45 opacity.
@@ -16,12 +20,21 @@
   cards measure 109pt; taller details can grow. Both actions stay inside
   the card. Connect and Disconnect use its native context menu. Put a
   connection reason in the info glyph's tooltip and accessibility label.
+  Use significant digits for low-rate ticks and show MB/s once above the
+  plot. Keep captions and the time axis outside it. RAM uses one shared
+  binary unit; keep full readings and stale status in help. Allocate its
+  trailing width. Network rate text stays complete on one 34pt row.
 - **Check:** The nine affected package checks pass. Offscreen renders use
   the actual Home tile and remote card source with fixed readings in Light
   and Dark. They cover connected, offline, and error cards. The action
   geometry check fails on the signed `198055e4` source. Captures are in
   `tmp/redesign/captures/panel-tm/`. The orchestrator must verify the exact
   installed build, both appearances, context actions, SSH, and Open App.
+  The round 11 source check covers zero, low and high rates, compact RAM,
+  full help, stale help and the 4 Hz publication limit. Actual-source
+  offscreen renders cover 120-point histories, complete RAM at the 109.33pt
+  cell token, and both 12.35 GB/s rates. The shared history pixel check passes
+  in both appearances. Signed live acceptance remains with the orchestrator.
 
 ## Tab Paint And Complete Row Hover, 2026-10-01
 
