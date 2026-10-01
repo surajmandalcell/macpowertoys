@@ -72,7 +72,7 @@ private struct AwakeStatusRow: View {
     var body: some View {
         VStack(alignment: .leading, spacing: OnePlusMetrics.actionSpacing) {
             HStack(spacing: OnePlusMetrics.actionSpacing) {
-                OnePlusStatus(service.statusText, state: service.isActive ? .success : .offline, textRole: .row)
+                OnePlusStatus(service.statusText, state: service.isActive ? .online : .offline, textRole: .row)
                     .monospacedDigit()
                     .frame(maxWidth: .infinity, alignment: .leading)
                 Button("Turn Off") { service.setMode(.passive) }

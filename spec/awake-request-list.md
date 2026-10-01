@@ -2,6 +2,15 @@
 
 Reviewed against current source and Git history on 2026-08-31.
 
+## Round 12 audit, 2026-10-01
+
+Applet critique item 2: steady active status uses the existing `.online` state,
+with neutral text and a filled 4pt dot. Off keeps its hollow muted dot.
+The regular row role, Turn Off action, row height, and assertion error banner
+remain. The signed `43ce0eb9` dark/light captures show the original green line.
+Source parsing passes. The combined compile gate is pending. Signed recapture
+remains with the orchestrator.
+
 ## Round 11 audit, 2026-10-01
 
 | Status | Task | Evidence | Remaining work |
@@ -58,7 +67,7 @@ remain with the orchestrator.
 | Verify | Keep Awake's status visible while its controls scroll, without adding a workspace header inset. | Home now places `AwakeStatusCard` above the only `ScrollView`; Settings still uses the shared cards-only implementation inside `OnePlusPage`. | Verify scroll limits and page switching in the signed build. |
 | Verify | Share one cards-only settings view between Awake and the main tool page. | `AwakeSettingsView()` owns the display, mode, quick-time, and process cards. The applet owns its OnePlusPage and floating-settings inset. Quick times use one row; the minute-based preset editor remains available. Debug and build-for-testing pass. | Foundation must dispatch to this type and remove AwakePreferencesView; then verify both hosts. |
 | Verify | Keep the floating settings button clear of both page bodies. | Round 2 applies the shared 52pt body inset before the gear overlay. The old inner 44pt padding is removed. The gear keeps its 8pt edge inset and Command-comma action. | Verify scrolling, window size, and both pages in the next signed capture. |
-| Verify | Render the Awake status in readable row type. | OnePlusStatus keeps the regular 12pt row role. The owner's second review adds the shared success color while an awake assertion is active. Off remains hollow and muted. Debug compiles. | Review active and inactive states in the next signed capture. |
+| Verify | Render the Awake status in readable row type. | OnePlusStatus keeps the regular 12pt row role. Round 12 replaces success ink with the neutral `.online` state for a steady active assertion. The 4pt dot stays filled; Off remains hollow and muted. | Review active and inactive states in the next signed capture. |
 | Verify | Use the 560 x 500 OnePlusUI applet, persistent display switch, status card, segmented modes, quick times, process attachment, and a replacing Settings page. | Debug build passes. DESIGN.md v14 supersedes the older material and two-light rules below. Routes are `home` and `settings`. | Review both appearances and controls in the orchestrator's installed build. |
 
 | Status | Request | Evidence | Remaining work |
