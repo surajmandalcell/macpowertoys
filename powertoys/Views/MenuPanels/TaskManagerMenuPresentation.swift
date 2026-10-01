@@ -87,9 +87,8 @@ nonisolated enum TaskManagerMenuProjection {
                     data.caption = "\(TrayPopoverLayout.diskBytes(used)) of \(TrayPopoverLayout.diskBytes(total)) used"
                 }
                 data.accessories = [reading("Available", diskFree)]
-                data.rows = [reading("Used", sample?.diskUsed.map(TrayPopoverLayout.diskBytes) ?? "—"), reading("Available", diskFree),
-                             reading("Capacity", sample?.diskTotal.map(TrayPopoverLayout.diskBytes) ?? "—"),
-                             reading("Read", sample?.diskDetails?.readPerSecond.map(rate) ?? "—"), reading("Write", sample?.diskDetails?.writePerSecond.map(rate) ?? "—")]
+                data.rows = [reading("Read", sample?.diskDetails?.readPerSecond.map(rate) ?? "—"),
+                             reading("Write", sample?.diskDetails?.writePerSecond.map(rate) ?? "—")]
                 data.chart.primary = history.samples(for: .disk).compactMap { $0.diskDetails?.readPerSecond }
                 data.chart.secondary = history.samples(for: .disk).compactMap { $0.diskDetails?.writePerSecond }
             case .battery:
@@ -97,8 +96,6 @@ nonisolated enum TaskManagerMenuProjection {
                 data.caption = batteryStatus
                 data.charging = sample?.batteryCharging == true
                 data.accessories = [reading("Health", sample?.batteryDetails?.health ?? "—")]
-                data.rows = [reading("Status", batteryStatus)]
-                if let health = sample?.batteryDetails?.health { data.rows.append(reading("Health", health)) }
                 if let cycles = sample?.batteryDetails?.cycleCount { data.rows.append(reading("Cycle count", String(cycles))) }
                 if let voltage = sample?.batteryDetails?.voltageMillivolts, let amperage = sample?.batteryDetails?.amperageMilliamps {
                     data.rows.append(reading("Power draw", "\(decimal(Double(voltage) * Double(amperage).magnitude / 1_000_000)) W"))
