@@ -141,6 +141,7 @@ public extension View {
     }
 }
 
+@MainActor
 private final class OnePlusMenuPanelScreen {
     weak var window: NSWindow?
     var maximumHeight: CGFloat? {
@@ -187,7 +188,7 @@ private struct OnePlusMenuPanelLayout: Layout {
     func makeCache(subviews: Subviews) -> Cache { Cache() }
     func updateCache(_ cache: inout Cache, subviews: Subviews) { cache = Cache() }
     private func heights(_ subviews: Subviews, width: CGFloat, cache: inout Cache) -> [CGFloat] {
-        let cap = max(OnePlusMenuMetrics.topBar, maximumHeight ?? screen.maximumHeight ?? fallbackHeight) - 2
+        let cap = max(OnePlusMenuMetrics.topBar, maximumHeight ?? MainActor.assumeIsolated { screen.maximumHeight } ?? fallbackHeight) - 2
         if cache.width == width, cache.cap == cap { return cache.heights }
         let natural = subviews.map { $0.sizeThatFits(.init(width: width, height: nil)).height }
         let topGap: CGFloat = natural[1] > 0 ? 0 : 3
