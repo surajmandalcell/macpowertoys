@@ -116,7 +116,7 @@ public struct OnePlusNavRow: View {
             action()
         } label: {
             HStack(spacing: 10) {
-                if let image { image.resizable().scaledToFit().frame(width: 15, height: 15).accessibilityHidden(true) }
+                if let image { image.onePlusAssetGlyph(size: 15).accessibilityHidden(true) }
                 else { Image(systemName: systemImage).font(.system(size: 15, weight: .regular)).rotationEffect(.degrees(iconRotation)).frame(width: 15).accessibilityHidden(true) }
                 Text(title).lineLimit(1)
                     .foregroundStyle(muted ? OnePlusColor.muted : selected ? OnePlusColor.ink : OnePlusColor.secondary)

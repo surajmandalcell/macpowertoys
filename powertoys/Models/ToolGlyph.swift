@@ -1,4 +1,5 @@
 import SwiftUI
+import OnePlusUI
 
 nonisolated enum ToolGlyph: String, CaseIterable {
     case cloudSync = "rclone"
@@ -56,7 +57,7 @@ struct ToolGlyphImage: View {
 
     var body: some View {
         if let image = glyph?.assetImage {
-            image.resizable().scaledToFit().frame(width: size, height: size)
+            image.onePlusAssetGlyph(size: size)
         } else {
             Image(systemName: glyph?.symbol ?? fallback).font(.system(size: size, weight: .regular))
         }
