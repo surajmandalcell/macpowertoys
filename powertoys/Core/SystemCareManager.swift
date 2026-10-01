@@ -142,6 +142,8 @@ final class SystemCareManager {
     private(set) var molePath: URL?
     private(set) var moleVersion: String?
     private(set) var isWorking = false
+    private(set) var canCancel = false
+    private(set) var isCancelling = false
     private(set) var progressMessage: String?
     private(set) var errorMessage: String?
     private(set) var cleanupCandidates: [CleanupCandidate] = []
@@ -161,6 +163,8 @@ final class SystemCareManager {
     private let homeDirectory: URL
     private let trashItem: @Sendable (URL) throws -> Void
     private var task: Task<Void, Never>?
+    private var isRestoring = false
+    private var refreshAfterRestore = false
 
     init(
         defaults: UserDefaults = .standard,
@@ -172,63 +176,116 @@ final class SystemCareManager {
         self.defaults = defaults
         self.homeDirectory = homeDirectory
         self.trashItem = trashItem
-        guard let data = defaults.data(forKey: Self.cleanupScanKey),
-              let snapshot = try? JSONDecoder().decode(CleanupScanSnapshot.self, from: data)
-        else { return }
-        let candidates = snapshot.candidates.filter { Self.isSafe($0, homeDirectory: homeDirectory) }
-        let validIDs = Set(candidates.map(\.id))
-        cleanupCandidates = candidates
-        selectedCandidateIDs = snapshot.selectedCandidateIDs?.intersection(validIDs) ?? validIDs
-        cleanupScanDate = snapshot.scannedAt
+        guard let data = defaults.data(forKey: Self.cleanupScanKey) else { return }
+        isRestoring = true
+        _ = beginWork("Restoring the saved scan...")
+        task = Task { [weak self] in
+            guard let self else { return }
+            defer { finishWork() }
+            do {
+                let snapshot = try await Self.runWorker {
+                    let saved = try JSONDecoder().decode(CleanupScanSnapshot.self, from: data)
+                    let candidates = saved.candidates.filter { Self.isSafe($0, homeDirectory: homeDirectory) }
+                    let validIDs = Set(candidates.map(\.id))
+                    return CleanupScanSnapshot(scannedAt: saved.scannedAt, candidates: candidates,
+                                               selectedCandidateIDs: saved.selectedCandidateIDs?.intersection(validIDs) ?? validIDs)
+                }
+                cleanupCandidates = snapshot.candidates
+                selectedCandidateIDs = snapshot.selectedCandidateIDs ?? []
+                cleanupScanDate = snapshot.scannedAt
+            } catch is CancellationError {
+            } catch {
+                errorMessage = "The saved cleanup scan could not be restored. Rescan the locations."
+            }
+        }
     }
 
     var hasCleanupScan: Bool { cleanupScanDate != nil }
 
-    func refresh() {
-        task?.cancel()
+    private func beginWork(_ message: String, cancelable: Bool = true) -> Bool {
+        guard !isWorking else { return false }
+        isWorking = true
+        canCancel = cancelable
+        isCancelling = false
         errorMessage = nil
+        progressMessage = message
+        return true
+    }
+
+    private func finishWork() {
+        task = nil
+        isWorking = false
+        canCancel = false
+        isCancelling = false
+        progressMessage = nil
+        isRestoring = false
+        if refreshAfterRestore {
+            refreshAfterRestore = false
+            refresh()
+        }
+    }
+
+    nonisolated static func runWorker<Value: Sendable>(
+        _ operation: @escaping @Sendable () async throws -> Value
+    ) async throws -> Value {
+        let worker = Task.detached(priority: .utility) {
+            try Task.checkCancellation()
+            let result = try await operation()
+            try Task.checkCancellation()
+            return result
+        }
+        return try await withTaskCancellationHandler {
+            try await worker.value
+        } onCancel: {
+            worker.cancel()
+        }
+    }
+
+    func refresh() {
+        if isRestoring { refreshAfterRestore = true; return }
+        guard beginWork("Checking Mole and applications...") else { return }
         task = Task { [weak self] in
             guard let self else { return }
-            let result = await Task.detached(priority: .utility) {
-                (Self.detectMole(), Self.installedApplications())
-            }.value
-            guard !Task.isCancelled else { return }
-            molePath = result.0.path
-            moleVersion = result.0.version
-            applications = result.1
+            defer { finishWork() }
+            do {
+                let result = try await Self.runWorker { (Self.detectMole(), Self.installedApplications()) }
+                molePath = result.0.path
+                moleVersion = result.0.version
+                applications = result.1
+            } catch is CancellationError {
+            } catch {
+                errorMessage = error.localizedDescription
+            }
         }
     }
 
     func cancel() {
+        guard isWorking, canCancel, !isCancelling else { return }
+        isCancelling = true
+        canCancel = false
+        progressMessage = "Canceling..."
         task?.cancel()
-        task = nil
-        isWorking = false
-        progressMessage = nil
     }
 
     func scanCleanup(categories: Set<SystemCareCategoryID>) {
-        task?.cancel()
-        isWorking = true
-        errorMessage = nil
-        progressMessage = "Scanning selected locations…"
+        guard beginWork("Scanning selected locations...") else { return }
         let homeDirectory = homeDirectory
         task = Task { [weak self] in
+            guard let self else { return }
+            defer { finishWork() }
             do {
-                let candidates = try await Task.detached(priority: .utility) {
+                let candidates = try await Self.runWorker {
                     try Self.cleanupCandidates(for: categories, homeDirectory: homeDirectory)
-                }.value
-                try Task.checkCancellation()
-                self?.cleanupCandidates = candidates
-                self?.selectedCandidateIDs = Set(candidates.map(\.id))
-                self?.cleanupScanDate = Date()
-                self?.persistCleanupScan()
+                }
+                self.cleanupCandidates = candidates
+                self.selectedCandidateIDs = Set(candidates.map(\.id))
+                self.cleanupScanDate = Date()
+                self.persistCleanupScan()
             } catch is CancellationError {
                 return
             } catch {
-                self?.errorMessage = error.localizedDescription
+                self.errorMessage = error.localizedDescription
             }
-            self?.isWorking = false
-            self?.progressMessage = nil
         }
     }
 
@@ -260,12 +317,12 @@ final class SystemCareManager {
         let candidates = cleanupCandidates.filter { selectedCandidateIDs.contains($0.id) }
         guard !candidates.isEmpty else { return }
         let originalSelectedIDs = Set(candidates.map(\.id))
-        isWorking = true
-        errorMessage = nil
-        progressMessage = "Moving selected items to Trash…"
+        guard beginWork("Moving selected items to Trash...", cancelable: false) else { return }
         let homeDirectory = homeDirectory
         let trashItem = trashItem
         task = Task { [weak self] in
+            guard let self else { return }
+            defer { finishWork() }
             let outcome = await Task.detached(priority: .utility) {
                 var recovered: Int64 = 0
                 var movedCount = 0
@@ -285,104 +342,92 @@ final class SystemCareManager {
                 }
                 return CleanupTrashResult(movedCount: movedCount, movedBytes: recovered, failures: failures)
             }.value
-            self?.lastRecoveredBytes = outcome.movedBytes
-            self?.lastTrashResult = outcome
+            self.lastRecoveredBytes = outcome.movedBytes
+            self.lastTrashResult = outcome
             let failedIDs = Set(outcome.failures.map(\.id))
             let successfulIDs = originalSelectedIDs.subtracting(failedIDs)
-            self?.cleanupCandidates.removeAll { successfulIDs.contains($0.id) }
-            self?.selectedCandidateIDs = failedIDs
-            self?.persistCleanupScan()
-            self?.isWorking = false
-            self?.progressMessage = nil
+            self.cleanupCandidates.removeAll { successfulIDs.contains($0.id) }
+            self.selectedCandidateIDs = failedIDs
+            self.persistCleanupScan()
             if !outcome.failures.isEmpty {
-                self?.errorMessage = "Could not move \(outcome.failures.count) item(s) to Trash."
+                self.errorMessage = "Could not move \(outcome.failures.count) item(s) to Trash."
             }
         }
     }
 
     func analyze(_ url: URL, resetBreadcrumbs: Bool = false) {
-        task?.cancel()
-        isWorking = true
-        errorMessage = nil
-        progressMessage = "Analyzing \(url.lastPathComponent.isEmpty ? url.path : url.lastPathComponent)…"
+        guard beginWork("Analyzing \(url.lastPathComponent.isEmpty ? url.path : url.lastPathComponent)...") else { return }
         let mole = molePath
         task = Task { [weak self] in
+            guard let self else { return }
+            defer { finishWork() }
             do {
-                let report = try await Task.detached(priority: .utility) {
+                let report = try await Self.runWorker {
                     if let mole {
                         return try Self.moleAnalyze(executable: mole, url: url)
                     }
                     return try Self.nativeAnalyze(url: url)
-                }.value
-                try Task.checkCancellation()
-                self?.storageURL = url
-                self?.storageEntries = report.entries
-                self?.storageTotal = report.totalSize
-                self?.storageFileCount = report.totalFiles
-                if resetBreadcrumbs || self?.storageBreadcrumbs.isEmpty == true {
-                    self?.storageBreadcrumbs = [url]
-                } else if self?.storageBreadcrumbs.last != url {
-                    self?.storageBreadcrumbs.append(url)
+                }
+                self.storageURL = url
+                self.storageEntries = report.entries
+                self.storageTotal = report.totalSize
+                self.storageFileCount = report.totalFiles
+                if resetBreadcrumbs || self.storageBreadcrumbs.isEmpty == true {
+                    self.storageBreadcrumbs = [url]
+                } else if let index = self.storageBreadcrumbs.firstIndex(of: url) {
+                    self.storageBreadcrumbs = Array(self.storageBreadcrumbs.prefix(index + 1))
+                } else if self.storageBreadcrumbs.last != url {
+                    self.storageBreadcrumbs.append(url)
                 }
             } catch is CancellationError {
                 return
             } catch {
-                self?.errorMessage = error.localizedDescription
+                self.errorMessage = error.localizedDescription
             }
-            self?.isWorking = false
-            self?.progressMessage = nil
         }
     }
 
     func navigateStorage(to url: URL) {
-        if let index = storageBreadcrumbs.firstIndex(of: url) {
-            storageBreadcrumbs = Array(storageBreadcrumbs.prefix(index + 1))
-        }
         analyze(url)
     }
 
     func loadHistory() {
-        guard let molePath else {
-            history = []
-            return
-        }
-        task?.cancel()
-        isWorking = true
+        guard !isWorking, let molePath else { return }
+        guard beginWork("Reading Mole history...") else { return }
         task = Task { [weak self] in
+            guard let self else { return }
+            defer { finishWork() }
             do {
-                let items = try await Task.detached(priority: .utility) {
-                    try Self.moleHistory(executable: molePath)
-                }.value
-                self?.history = items
+                history = try await Self.runWorker { try Self.moleHistory(executable: molePath) }
+            } catch is CancellationError {
             } catch {
-                self?.errorMessage = error.localizedDescription
+                errorMessage = error.localizedDescription
             }
-            self?.isWorking = false
         }
     }
 
     func installOrUpdateMole() {
+        guard !isWorking else { return }
         guard let brew = Self.firstExecutable(paths: ["/opt/homebrew/bin/brew", "/usr/local/bin/brew"]) else {
             errorMessage = "Homebrew was not found. Install Mole from its official instructions instead."
             return
         }
-        isWorking = true
-        errorMessage = nil
-        progressMessage = molePath == nil ? "Installing Mole with Homebrew…" : "Updating Mole with Homebrew…"
+        guard beginWork(molePath == nil ? "Installing Mole with Homebrew..." : "Updating Mole with Homebrew...",
+                        cancelable: false) else { return }
         let arguments = molePath == nil ? ["install", "mole"] : ["upgrade", "mole"]
         task = Task { [weak self] in
+            guard let self else { return }
+            defer { finishWork() }
             do {
-                let installation = try await Task.detached(priority: .utility) {
+                let installation = try await Self.runWorker {
                     _ = try Self.run(executable: brew, arguments: arguments)
                     return Self.detectMole()
-                }.value
-                self?.molePath = installation.path
-                self?.moleVersion = installation.version
+                }
+                self.molePath = installation.path
+                self.moleVersion = installation.version
             } catch {
-                self?.errorMessage = error.localizedDescription
+                self.errorMessage = error.localizedDescription
             }
-            self?.isWorking = false
-            self?.progressMessage = nil
         }
     }
 

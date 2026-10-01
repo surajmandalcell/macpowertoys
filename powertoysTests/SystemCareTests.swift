@@ -83,7 +83,7 @@ final class SystemCareTests: XCTestCase {
         XCTAssertFalse(SystemCareManager.isSafe(fresh, homeDirectory: fixture.home))
     }
 
-    func testSavedCleanupScanRestoresUntilExplicitClear() throws {
+    func testSavedCleanupScanRestoresUntilExplicitClear() async throws {
         let fixture = try Fixture()
         defer { fixture.remove() }
         let candidate = try fixture.candidate("marker")
@@ -93,12 +93,15 @@ final class SystemCareTests: XCTestCase {
                                            candidates: [candidate, unverified], selectedCandidateIDs: [])
         fixture.defaults.set(try JSONEncoder().encode(snapshot), forKey: SystemCareManager.cleanupScanKey)
         let manager = SystemCareManager(defaults: fixture.defaults, homeDirectory: fixture.home)
+        try await waitUntilIdle(manager)
 
         XCTAssertTrue(manager.hasCleanupScan)
         XCTAssertEqual(manager.cleanupCandidates, [candidate])
         XCTAssertTrue(manager.selectedCandidateIDs.isEmpty)
         manager.setCandidate(candidate.id, selected: true)
-        XCTAssertEqual(SystemCareManager(defaults: fixture.defaults, homeDirectory: fixture.home).selectedCandidateIDs, [candidate.id])
+        let restored = SystemCareManager(defaults: fixture.defaults, homeDirectory: fixture.home)
+        try await waitUntilIdle(restored)
+        XCTAssertEqual(restored.selectedCandidateIDs, [candidate.id])
         manager.clearCleanupScan()
         XCTAssertFalse(manager.hasCleanupScan)
         XCTAssertTrue(manager.cleanupCandidates.isEmpty)
@@ -125,6 +128,7 @@ final class SystemCareTests: XCTestCase {
                 throw NSError(domain: "SystemCareTests", code: 1)
             }
         }
+        try await waitUntilIdle(manager)
         manager.moveSelectedToTrash()
         await fulfillment(of: [started], timeout: 2)
         manager.setCandidate(moved.id, selected: false)
@@ -132,6 +136,14 @@ final class SystemCareTests: XCTestCase {
         manager.setCandidates([moved.id, failed.id], selected: false)
         manager.clearCleanupScan()
         manager.moveSelectedToTrash()
+        manager.cancel()
+        manager.refresh()
+        manager.scanCleanup(categories: [.caches])
+        manager.analyze(fixture.home)
+        manager.loadHistory()
+        manager.installOrUpdateMole()
+        XCTAssertTrue(manager.isWorking)
+        XCTAssertFalse(manager.canCancel)
         XCTAssertEqual(manager.selectedCandidateIDs, [moved.id, failed.id])
         release.signal()
         try await waitUntilIdle(manager)
@@ -142,8 +154,42 @@ final class SystemCareTests: XCTestCase {
         XCTAssertEqual(manager.lastTrashResult?.movedBytes, moved.size)
         XCTAssertEqual(manager.lastTrashResult?.failures.map(\.id), [failed.id])
         XCTAssertTrue(FileManager.default.fileExists(atPath: untouched.url.path))
-        XCTAssertEqual(SystemCareManager(defaults: fixture.defaults, homeDirectory: fixture.home).cleanupCandidates.map(\.id),
-                       [failed.id, untouched.id])
+        let restored = SystemCareManager(defaults: fixture.defaults, homeDirectory: fixture.home)
+        try await waitUntilIdle(restored)
+        XCTAssertEqual(restored.cleanupCandidates.map(\.id), [failed.id, untouched.id])
+    }
+
+    func testCancellationWaitsForDetachedWorkerExit() async throws {
+        let started = expectation(description: "Worker started")
+        let canceled = expectation(description: "Worker received cancellation")
+        let finished = expectation(description: "Outer task finished")
+        let release = DispatchSemaphore(value: 0)
+        let task = Task {
+            defer { finished.fulfill() }
+            do {
+                _ = try await SystemCareManager.runWorker {
+                    started.fulfill()
+                    while !Task.isCancelled { usleep(1_000) }
+                    canceled.fulfill()
+                    _ = release.wait(timeout: .now() + 3)
+                    try Task.checkCancellation()
+                    return true
+                }
+                XCTFail("Canceled worker returned a result")
+            } catch is CancellationError {
+            } catch {
+                XCTFail(error.localizedDescription)
+            }
+        }
+        await fulfillment(of: [started], timeout: 2)
+        task.cancel()
+        await fulfillment(of: [canceled], timeout: 2)
+        finished.isInverted = true
+        await fulfillment(of: [finished], timeout: 0.05)
+        finished.isInverted = false
+        release.signal()
+        await task.value
+        await fulfillment(of: [finished], timeout: 2)
     }
 
     private func waitUntilIdle(_ manager: SystemCareManager) async throws {
