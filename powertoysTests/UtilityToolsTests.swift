@@ -324,10 +324,10 @@ final class UtilityToolsTests: XCTestCase {
         for forbidden in ["OnePlusPage(", "ScrollView", ".padding(", "Spacer(", "maxHeight:"] {
             XCTAssertFalse(source.contains(forbidden), forbidden)
         }
-        for content in ["RcloneSettingsView()", "AwakeSettingsView()", "SwitchSettingsContent()",
+        for content in ["RcloneSettingsView()", "AwakeSettingsView()", "SwitchSettingsContent(showsEnableControl: false)",
                         "MacTweaksSettingsContent()", "InputDevicesSettingsContent()",
                         "SystemMonitorSettingsContent()", "SystemCareSettingsCards(mode:",
-                        "NetToysSettingsView()", "PortmanSettingsView()", "DiskExplorerSettingsView()",
+                        "NetToysSettingsView()", "PortmanSettingsView()", "DiskExplorerSettingsView(showsEnableControl: false)",
                         "ColorPickerSettingsView()", "TextExtractorSettingsView()", "LogsSettingsView()"] {
             XCTAssertTrue(source.contains(content), content)
         }
