@@ -1,10 +1,26 @@
 # Text Extractor Troubleshooting
 
+## Compact Settings Fit And Native Undo, 2026-10-01
+
+- Symptom: Preferred languages is clipped at the 462pt cap and history actions
+  cannot be undone from the owning window.
+- Cause: Separate shortcut/control cards exceed the 354pt body budget. Service
+  history mutations did not register inverse actions.
+- Invariant: The shortcut uses one 44pt row. Recognition contains all four
+  rows, including languages. Clear history is 28pt, 8pt below the group.
+  Keep native confirmations and named window UndoManager inverses. Restore
+  original records and order while retaining later arrivals.
+- Check: Native font metrics give 336pt ordinary content. Actual service and
+  UndoManager fixture checks pass delete, clear, redo, new arrivals, and saved
+  history restoration. Run AppletHistoryUndoTests on CI and inspect Settings
+  and the Edit menu on the installed build.
+
 ## OnePlusUI History And Settings, 2026-09-29
 
 - **Invariant:** The 480pt applet opens `history` and `settings` page links.
-  The shortcut menu and Extract Text action stay in the titlebar. Settings
-  replaces the history body. Native history details open in a sheet.
+  Only Extract Text stays in the titlebar, with the shortcut in its help.
+  Enablement and recording stay in Settings, which replaces the history body.
+  Native history details open in a sheet.
   Language edits save immediately; the removed Apply button is not needed.
 - **Check:** The Debug build passes. Installed capture, permission, error,
   keyboard, and appearance checks remain with the orchestrator.

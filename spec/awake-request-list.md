@@ -2,6 +2,13 @@
 
 Reviewed against current source and Git history on 2026-08-31.
 
+## Round 11 audit, 2026-10-01
+
+| Status | Task | Evidence | Remaining work |
+|---|---|---|---|
+| Source fixed | T073: Keep PID and process actions together. | `df0a2f5a` puts Process ID, the native field, Attach, and conditional Detach on one 44pt row with 8pt gaps. Validation, Return submission, and help remain. | Signed checks in the applet and embedded host, including errors and Detach. |
+| Source fixed | T074: Keep Session rows on a 44pt pitch. | `df0a2f5a` uses a zero-gap stack beneath the section-title gap. Inside separators remain. | Signed checks for Off, timed, Until, and the embedded display switch. |
+
 ## Production audit, 2026-10-01
 
 Both shared build modes pass for the Debug app and both desktop test bundles.
