@@ -210,7 +210,7 @@ struct InputScrollProfileCard: View {
     private var profileContent: some View {
         VStack(alignment: .leading, spacing: 0) {
             if let isExpanded {
-                InputDisclosureHeader(title: title, detail: deviceDetail, isExpanded: isExpanded)
+                InputDisclosureHeader(title: title, detail: headerDetail, isExpanded: isExpanded)
             } else {
                 OnePlusCardHeader(title, systemImage: icon) {
                     OnePlusStatus(deviceDetail, state: deviceCount > 0 ? .online : .offline)
@@ -303,6 +303,14 @@ struct InputScrollProfileCard: View {
             .onePlusRowHover()
         }
         .disabled(!profile.enabled)
+    }
+
+    var headerDetail: String {
+        if isExpanded?.wrappedValue == false {
+            let direction = profile.reverseVertical ? "Reversed" : "System"
+            return "\(direction) \(profile.speed.formatted(.number.precision(.fractionLength(2))))×"
+        }
+        return deviceDetail
     }
 
     private var deviceDetail: String {

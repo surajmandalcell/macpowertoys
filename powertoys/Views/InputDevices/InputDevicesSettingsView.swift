@@ -37,9 +37,9 @@ struct InputDevicesSettingsContent: View {
     @Environment(\.onePlusDensity) private var density
     var includesDeviceFooter = true
     var collapsible = false
-    @AppStorage("tray.inputDevices.mouse.expanded") private var mouseExpanded = true
-    @AppStorage("tray.inputDevices.trackpad.expanded") private var trackpadExpanded = true
-    @AppStorage("tray.inputDevices.scrollDevice.expanded") private var scrollDeviceExpanded = true
+    @AppStorage("tray.inputDevices.mouse.expanded") private var mouseExpanded = false
+    @AppStorage("tray.inputDevices.trackpad.expanded") private var trackpadExpanded = false
+    @AppStorage("tray.inputDevices.scrollDevice.expanded") private var scrollDeviceExpanded = false
 
     var body: some View {
         VStack(alignment: .leading, spacing: OnePlusMetrics.cardGap) {
