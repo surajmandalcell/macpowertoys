@@ -2,6 +2,7 @@ import SwiftUI
 import OnePlusUI
 
 struct HomeView: View {
+    @Environment(\.appearsActive) private var appearsActive
     @AppStorage("main.page") private var storedPage = "all-tools"
     @State private var selectedPage: String?
     private var selectedTool: String? {
@@ -41,8 +42,8 @@ struct HomeView: View {
         .focusedSceneValue(\.appGlobalSearch, focusSearch)
         .focusedSceneValue(\.appFind, AppCommandAction(title: "Find a Tool", perform: focusSearch))
         .alert("Could not open tool", isPresented: Binding(
-            get: { toolRouter.launchFailure != nil },
-            set: { if !$0 { toolRouter.launchFailure = nil } }
+            get: { appearsActive && NSApp.isActive && toolRouter.launchFailure != nil },
+            set: { if !$0 && appearsActive && NSApp.isActive { toolRouter.launchFailure = nil } }
         ), presenting: toolRouter.launchFailure) { failure in
             Button("Retry") { toolRouter.open(toolID: failure.toolID) }
             Button("Open Logs") { toolRouter.open(toolID: "logs") }

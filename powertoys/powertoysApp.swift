@@ -61,10 +61,35 @@ struct MacPowerToysApp: App {
         }
     }
 
-    var body: some Scene {
-        let _ = configureApplication()
+    @MainActor
+    static func makeBackgroundWindow(id: String) -> NSWindow? {
+        guard let canvas = OnePlusWindowCanvas.tool(id) else { return nil }
+        let window = NSWindow(contentRect: .init(origin: .zero, size: canvas.size),
+                              styleMask: [.titled, .closable, .miniaturizable, .fullSizeContentView],
+                              backing: .buffered, defer: false)
+        window.identifier = .init(id)
+        window.title = id == "main" ? "MacPowerToys" : ToolRegistry.tool(for: id)?.name ?? id
+        window.isReleasedWhenClosed = false
+        window.titleVisibility = .hidden
+        window.titlebarAppearsTransparent = true
+        window.isRestorable = false
+        window.tabbingMode = .disallowed
+        window.animationBehavior = .none
+        window.setFrame(.init(origin: window.frame.origin, size: canvas.size), display: false)
+        window.center()
+        let host = NSHostingController(rootView: windowContent(id: id)
+            .environment(\.toolWindowID, id))
+        host.sizingOptions = [.minSize, .intrinsicContentSize, .maxSize]
+        window.contentViewController = host
+        window.contentView?.layoutSubtreeIfNeeded()
+        WindowStateManager.shared.restoreState(for: window)
+        return window
+    }
 
-        Window("MacPowerToys", id: "main") {
+    @ViewBuilder
+    static func windowContent(id: String) -> some View {
+        switch id {
+        case "main":
             OnePlusWindowContent {
                 MainWindowView()
                     .modifier(AppStorageRecovery())
@@ -73,6 +98,103 @@ struct MacPowerToysApp: App {
                     .onePlusFixedCanvas(.main)
                     .onToolWindowURL("main")
             }
+        case "rclone":
+            OnePlusWindowContent {
+                AppStorageContent {
+                    RcloneWindowView()
+                        .utilityMotionPolicy()
+                }
+                .onToolWindowURL("rclone")
+            }
+        case "logs":
+            OnePlusWindowContent {
+                LogsWindowView()
+                    .utilityMotionPolicy()
+                    .onePlusFixedCanvas(.logs)
+                    .onToolWindowURL("logs")
+            }
+        case "awake":
+            OnePlusWindowContent {
+                AwakeView()
+                    .utilityMotionPolicy()
+                    .background(WindowAccessor(identifier: "awake"))
+                    .onePlusFixedCanvas(.awake)
+                    .onToolWindowURL("awake")
+            }
+        case "color-picker":
+            OnePlusWindowContent {
+                ColorHistoryView()
+                    .utilityMotionPolicy()
+                    .background(WindowAccessor(identifier: "color-picker"))
+                    .onePlusFixedCanvas(.colorPicker)
+                    .onToolWindowURL("color-picker")
+            }
+        case "text-extractor":
+            OnePlusWindowContent {
+                TextExtractorView()
+                    .utilityMotionPolicy()
+                    .background(WindowAccessor(identifier: "text-extractor"))
+                    .onePlusFixedCanvas(.textExtractor)
+                    .onToolWindowURL("text-extractor")
+            }
+        case "input-devices":
+            OnePlusWindowContent {
+                InputDevicesWindowView()
+                    .utilityMotionPolicy()
+                    .onePlusFixedCanvas(.inputDevices)
+                    .onToolWindowURL("input-devices")
+            }
+        case "system-care":
+            OnePlusWindowContent {
+                SystemCareWindowView()
+                    .utilityMotionPolicy()
+                    .onePlusFixedCanvas(.systemCare)
+                    .onToolWindowURL("system-care")
+            }
+        case "disk-explorer":
+            OnePlusWindowContent {
+                DiskExplorerWindowView()
+                    .utilityMotionPolicy()
+                    .onePlusFixedCanvas(.diskExplorer)
+                    .onToolWindowURL("disk-explorer")
+            }
+        case "system-monitor":
+            OnePlusWindowContent {
+                SystemMonitorWindowView()
+                    .utilityMotionPolicy()
+                    .onePlusFixedCanvas(.systemMonitor)
+                    .onToolWindowURL("system-monitor")
+            }
+        case "nettoys":
+            OnePlusWindowContent {
+                NetToysWindowView()
+                    .utilityMotionPolicy()
+                    .onePlusFixedCanvas(.netToys)
+                    .onToolWindowURL("nettoys")
+            }
+        case "switch":
+            OnePlusWindowContent {
+                SwitchWindowView()
+                    .utilityMotionPolicy()
+                    .onePlusFixedCanvas(.switchAccounts)
+                    .onToolWindowURL("switch")
+            }
+        case "mac-tweaks":
+            OnePlusWindowContent {
+                MacTweaksWindowView()
+                    .utilityMotionPolicy()
+                    .onePlusFixedCanvas(.macTweaks)
+                    .onToolWindowURL("mac-tweaks")
+            }
+        default: EmptyView()
+        }
+    }
+
+    var body: some Scene {
+        let _ = configureApplication()
+
+        Window("MacPowerToys", id: "main") {
+            Self.windowContent(id: "main")
         }
         .windowStyle(.hiddenTitleBar)
         .defaultSize(OnePlusWindowCanvas.main.size)
@@ -86,13 +208,7 @@ struct MacPowerToysApp: App {
         }
 
         Window("Cloud Sync", id: "rclone") {
-            OnePlusWindowContent {
-                AppStorageContent {
-                    RcloneWindowView()
-                        .utilityMotionPolicy()
-                }
-                .onToolWindowURL("rclone")
-            }
+            Self.windowContent(id: "rclone")
         }
         .defaultSize(OnePlusWindowCanvas.rclone.size)
         .windowResizability(.contentSize)
@@ -101,12 +217,7 @@ struct MacPowerToysApp: App {
         .restorationBehavior(.disabled)
 
         Window("Logs", id: "logs") {
-            OnePlusWindowContent {
-                LogsWindowView()
-                    .utilityMotionPolicy()
-                    .onePlusFixedCanvas(.logs)
-                    .onToolWindowURL("logs")
-            }
+            Self.windowContent(id: "logs")
         }
         .defaultSize(OnePlusWindowCanvas.logs.size)
         .windowResizability(.contentSize)
@@ -115,13 +226,7 @@ struct MacPowerToysApp: App {
         .restorationBehavior(.disabled)
 
         Window("Awake", id: "awake") {
-            OnePlusWindowContent {
-                AwakeView()
-                    .utilityMotionPolicy()
-                    .background(WindowAccessor(identifier: "awake"))
-                    .onePlusFixedCanvas(.awake)
-                    .onToolWindowURL("awake")
-            }
+            Self.windowContent(id: "awake")
         }
         .defaultSize(OnePlusWindowCanvas.awake.size)
         .windowResizability(.contentSize)
@@ -130,13 +235,7 @@ struct MacPowerToysApp: App {
         .restorationBehavior(.disabled)
 
         Window("Color Picker", id: "color-picker") {
-            OnePlusWindowContent {
-                ColorHistoryView()
-                    .utilityMotionPolicy()
-                    .background(WindowAccessor(identifier: "color-picker"))
-                    .onePlusFixedCanvas(.colorPicker)
-                    .onToolWindowURL("color-picker")
-            }
+            Self.windowContent(id: "color-picker")
         }
         .defaultSize(
             width: OnePlusWindowCanvas.colorPicker.size.width,
@@ -148,13 +247,7 @@ struct MacPowerToysApp: App {
         .restorationBehavior(.disabled)
 
         Window("Text Extractor", id: "text-extractor") {
-            OnePlusWindowContent {
-                TextExtractorView()
-                    .utilityMotionPolicy()
-                    .background(WindowAccessor(identifier: "text-extractor"))
-                    .onePlusFixedCanvas(.textExtractor)
-                    .onToolWindowURL("text-extractor")
-            }
+            Self.windowContent(id: "text-extractor")
         }
         .defaultSize(
             width: OnePlusWindowCanvas.textExtractor.size.width,
@@ -166,12 +259,7 @@ struct MacPowerToysApp: App {
         .restorationBehavior(.disabled)
 
         Window("Input Devices", id: "input-devices") {
-            OnePlusWindowContent {
-                InputDevicesWindowView()
-                    .utilityMotionPolicy()
-                    .onePlusFixedCanvas(.inputDevices)
-                    .onToolWindowURL("input-devices")
-            }
+            Self.windowContent(id: "input-devices")
         }
         .defaultSize(OnePlusWindowCanvas.inputDevices.size)
         .windowResizability(.contentSize)
@@ -180,12 +268,7 @@ struct MacPowerToysApp: App {
         .restorationBehavior(.disabled)
 
         Window("System Care", id: "system-care") {
-            OnePlusWindowContent {
-                SystemCareWindowView()
-                    .utilityMotionPolicy()
-                    .onePlusFixedCanvas(.systemCare)
-                    .onToolWindowURL("system-care")
-            }
+            Self.windowContent(id: "system-care")
         }
         .defaultSize(OnePlusWindowCanvas.systemCare.size)
         .windowResizability(.contentSize)
@@ -194,12 +277,7 @@ struct MacPowerToysApp: App {
         .restorationBehavior(.disabled)
 
         Window("Diskman", id: "disk-explorer") {
-            OnePlusWindowContent {
-                DiskExplorerWindowView()
-                    .utilityMotionPolicy()
-                    .onePlusFixedCanvas(.diskExplorer)
-                    .onToolWindowURL("disk-explorer")
-            }
+            Self.windowContent(id: "disk-explorer")
         }
         .defaultSize(OnePlusWindowCanvas.diskExplorer.size)
         .windowResizability(.contentSize)
@@ -208,12 +286,7 @@ struct MacPowerToysApp: App {
         .restorationBehavior(.disabled)
 
         Window("Task Manager", id: "system-monitor") {
-            OnePlusWindowContent {
-                SystemMonitorWindowView()
-                    .utilityMotionPolicy()
-                    .onePlusFixedCanvas(.systemMonitor)
-                    .onToolWindowURL("system-monitor")
-            }
+            Self.windowContent(id: "system-monitor")
         }
         .defaultSize(OnePlusWindowCanvas.systemMonitor.size)
         .windowResizability(.contentSize)
@@ -222,12 +295,7 @@ struct MacPowerToysApp: App {
         .restorationBehavior(.disabled)
 
         Window("NetToys", id: "nettoys") {
-            OnePlusWindowContent {
-                NetToysWindowView()
-                    .utilityMotionPolicy()
-                    .onePlusFixedCanvas(.netToys)
-                    .onToolWindowURL("nettoys")
-            }
+            Self.windowContent(id: "nettoys")
         }
         .defaultSize(OnePlusWindowCanvas.netToys.size)
         .windowResizability(.contentSize)
@@ -236,12 +304,7 @@ struct MacPowerToysApp: App {
         .restorationBehavior(.disabled)
 
         Window("Switch", id: "switch") {
-            OnePlusWindowContent {
-                SwitchWindowView()
-                    .utilityMotionPolicy()
-                    .onePlusFixedCanvas(.switchAccounts)
-                    .onToolWindowURL("switch")
-            }
+            Self.windowContent(id: "switch")
         }
         .defaultSize(OnePlusWindowCanvas.switchAccounts.size)
         .windowResizability(.contentSize)
@@ -250,12 +313,7 @@ struct MacPowerToysApp: App {
         .restorationBehavior(.disabled)
 
         Window("Mac Tweaks", id: "mac-tweaks") {
-            OnePlusWindowContent {
-                MacTweaksWindowView()
-                    .utilityMotionPolicy()
-                    .onePlusFixedCanvas(.macTweaks)
-                    .onToolWindowURL("mac-tweaks")
-            }
+            Self.windowContent(id: "mac-tweaks")
         }
         .defaultSize(OnePlusWindowCanvas.macTweaks.size)
         .windowResizability(.contentSize)
@@ -267,11 +325,13 @@ struct MacPowerToysApp: App {
 }
 
 private struct AppStorageRecovery: ViewModifier {
+    @Environment(\.appearsActive) private var appearsActive
     private var store: AppModelStore { AppInitializer.shared.modelStore }
 
     func body(content: Content) -> some View {
         content.alert("Cannot open saved data", isPresented: Binding(
-            get: { store.showsRecovery }, set: { store.showsRecovery = $0 }
+            get: { appearsActive && NSApp.isActive && store.showsRecovery },
+            set: { if appearsActive && NSApp.isActive { store.showsRecovery = $0 } }
         )) {
             Button("Retry") { Task { await AppInitializer.shared.openStorage() } }
             Button("Reveal Data Folder") { NSWorkspace.shared.open(AppDataLocation.directory) }

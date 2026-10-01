@@ -32,6 +32,13 @@ nonisolated struct OpenToolRoute: Equatable, Sendable {
 nonisolated struct ToolPageRequest: Equatable, Sendable {
     let tool: String
     let page: String
+
+    var opensSheet: Bool {
+        switch (tool, page) {
+        case ("rclone", "new-transfer"), ("switch", "add"), ("disk-explorer", "choose-folder"): true
+        default: false
+        }
+    }
 }
 
 extension Notification.Name {
@@ -54,25 +61,31 @@ final class ToolPageRouter {
                                         userInfo: ["tool": tool, "page": page])
     }
 
-    func take(tool: String, matching page: String? = nil) -> ToolPageRequest? {
-        guard let request = pending[tool], page == nil || page == request.page else { return nil }
+    func take(tool: String, matching page: String? = nil, allowSheet: Bool = true) -> ToolPageRequest? {
+        guard let request = pending[tool], page == nil || page == request.page,
+              allowSheet || !request.opensSheet else { return nil }
         pending[tool] = nil
         return request
     }
 }
 
 private struct OpenToolPageModifier: ViewModifier {
+    @Environment(\.appearsActive) private var appearsActive
     let tool: String?
     let page: String?
     let action: (String) -> Void
 
     private func deliver() {
         guard let tool else { return }
-        if let request = ToolPageRouter.shared.take(tool: tool, matching: page) { action(request.page) }
+        if let request = ToolPageRouter.shared.take(tool: tool, matching: page,
+                                                    allowSheet: appearsActive && NSApp.isActive) {
+            action(request.page)
+        }
     }
 
     func body(content: Content) -> some View {
         content.onAppear(perform: deliver)
+            .onChange(of: appearsActive) { _, active in if active { deliver() } }
             .onReceive(NotificationCenter.default.publisher(for: .openToolPage)) { notification in
                 guard (notification.object as? ToolPageRequest)?.tool == tool else { return }
                 deliver()

@@ -105,6 +105,19 @@ struct ToolPageRouterTests {
         #expect(router.take(tool: "rclone") == nil)
     }
 
+    @MainActor @Test func backgroundSheetRoutesWaitWithoutLosingTheRequest() {
+        let router = ToolPageRouter()
+        for (tool, page) in [("rclone", "new-transfer"), ("switch", "add"), ("disk-explorer", "choose-folder")] {
+            router.post(tool: tool, page: page, recordTiming: false)
+            #expect(router.take(tool: tool, allowSheet: false) == nil)
+            #expect(router.take(tool: tool, allowSheet: false) == nil)
+            #expect(router.take(tool: tool, allowSheet: true)?.page == page)
+            #expect(router.take(tool: tool) == nil)
+            router.post(tool: tool, page: "settings", recordTiming: false)
+            #expect(router.take(tool: tool, allowSheet: false)?.page == "settings")
+        }
+    }
+
     @MainActor @Test func externalDiagnosticsReachMeasuredBackgroundPanels() async throws {
         let panels = DiagnosticsMenuPanels.shared
         panels.close(clearCache: true)

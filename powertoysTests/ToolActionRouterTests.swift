@@ -4,25 +4,48 @@ import XCTest
 
 final class ToolActionRouterTests: XCTestCase {
     @MainActor
-    func testBackgroundAppletOpensReuseWindowsWithoutKeyOrdering() {
+    func testBackgroundWindowsNeverUseActivationOrSceneCreation() {
         final class WindowSpy: NSWindow {
             var keyOrders = 0
             var backgroundOrders = 0
+            var deminiaturizations = 0
+            var minimized = false
+            override var isMiniaturized: Bool { minimized }
             override func makeKeyAndOrderFront(_ sender: Any?) { keyOrders += 1 }
             override func orderFrontRegardless() { backgroundOrders += 1 }
+            override func deminiaturize(_ sender: Any?) { deminiaturizations += 1 }
         }
-        for tool in ["main", "awake", "color-picker", "text-extractor"] {
-            let window = WindowSpy(contentRect: .zero, styleMask: [], backing: .buffered, defer: true)
-            window.identifier = .init(tool)
-            var opened: [String] = []
-            ToolActionRouter.presentSingleWindow(id: tool, windows: [window], activateApp: false) { opened.append($0) }
-            XCTAssertEqual(window.backgroundOrders, 1)
-            XCTAssertEqual(window.keyOrders, 0)
-            XCTAssertTrue(opened.isEmpty)
-            ToolActionRouter.presentSingleWindow(id: tool, windows: [window], activateApp: true) { opened.append($0) }
-            XCTAssertEqual(window.keyOrders, 1, "Explicit opens keep key ordering.")
-            ToolActionRouter.presentSingleWindow(id: tool, windows: [], activateApp: false) { opened.append($0) }
-            XCTAssertEqual(opened, [tool], "Cold opens use the configured scene action once.")
+        let tools = ["main", "rclone", "logs", "awake", "color-picker", "text-extractor",
+                     "input-devices", "system-care", "disk-explorer", "system-monitor", "nettoys", "switch", "mac-tweaks"]
+        for tool in tools {
+            for existing in [false, true] {
+                let window = WindowSpy(contentRect: .zero, styleMask: [], backing: .buffered, defer: true)
+                window.identifier = .init(tool)
+                window.minimized = existing
+                var opened: [String] = []
+                var created: [String] = []
+                var activations = 0
+                ToolActionRouter.presentSingleWindow(id: tool, windows: existing ? [window] : [], activateApp: false,
+                    createWindow: { created.append($0); return window }, activate: { activations += 1 }) { opened.append($0) }
+                XCTAssertEqual(window.backgroundOrders, 1, tool)
+                XCTAssertEqual(window.keyOrders, 0, tool)
+                XCTAssertEqual(window.deminiaturizations, 0, tool)
+                XCTAssertEqual(window.minimized, existing, "Background opens must not restore a minimized window as key.")
+                XCTAssertEqual(activations, 0, tool)
+                XCTAssertEqual(created, existing ? [] : [tool])
+                XCTAssertTrue(opened.isEmpty, "Background creation must not call SwiftUI openWindow.")
+                ToolActionRouter.presentSingleWindow(id: tool, windows: [window], activateApp: true,
+                    createWindow: { _ in XCTFail("Reuse must not create a window"); return nil },
+                    activate: { activations += 1 }) { opened.append($0) }
+                XCTAssertEqual(window.keyOrders, 1, "Explicit opens keep key ordering.")
+                XCTAssertEqual(window.deminiaturizations, existing ? 1 : 0)
+                XCTAssertEqual(activations, 1)
+                ToolActionRouter.presentSingleWindow(id: tool, windows: [], activateApp: true,
+                    createWindow: { _ in XCTFail("Explicit cold opens use their scene"); return nil },
+                    activate: { activations += 1 }) { opened.append($0) }
+                XCTAssertEqual(opened, [tool])
+                XCTAssertEqual(activations, 2)
+            }
         }
     }
 
