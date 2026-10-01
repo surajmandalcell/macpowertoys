@@ -120,6 +120,16 @@
   Signed status-item, diagnostic, popup, and sheet checks remain with the
   orchestrator.
 
+Round 49 performance check, 2026-10-01: keep native panel hosts independent
+from `MacPowerToysApp`'s full scene environment. The installed Task Manager
+panel trace spends 36-56ms per tab in native scene-root updates. An offscreen
+probe shows that an unused environment change rebuilds the full-environment
+bridge, while the independent host does not rebuild. Reintroducing the copy
+fails the same check. Main Open App now uses `ToolActionRouter`, so capture
+hosts need no copied `openWindow` action. Shared appearance roots still own
+color scheme and native appearance. This source fix is compiled; its signed
+latency benefit still needs measurement. See `tmp/redesign/logs/w4-perf-windows.md`.
+
 ## Key Notifications Interrupt Text Editing, 2026-09-30
 
 - **Symptom:** Portman retains only the first typed SSH host character.

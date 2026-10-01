@@ -47,6 +47,20 @@ tm-window owns the first sample and visibility fixes. P2, P3, and P5 stay open
 until signed after timings, sampling, idle CPU, and complete-frame checks.
 See `tmp/redesign/perf/w1-windows.md` for evidence and exact commands.
 
+Round 49 performance, 2026-10-01: signed `38158c11` warm replay records
+Mac Tweaks Dock 111.5ms, NetToys Settings 111.5ms, Diskman Settings 81.9ms,
+Task Manager Overview 110.9ms, and System Care Overview 57.1ms. Same-page
+raises are 1.3-62.6ms in that batch. Unprofiled panel tab maxima are Main
+137.4ms, Task Manager 244.5ms, and Portman 106.0ms; all panel opens stay below
+250ms. All open records are warm and the endpoint remains display submission.
+The Task Manager panel trace finds 36-56ms in native scene-root updates and
+only 2-5ms in natural-height work. The full scene-environment bridge is removed
+in `00227de5`; `ff74d88b` routes Main Open App without that bridge. The focused
+invalidation and router checks pass, and the single app/test compile gate
+passes. Signed timing, complete frames, cold Processes preparation, and native
+interaction remain open. The orchestrator owns the clean installed handoff.
+Evidence and exact commands: `tmp/redesign/logs/w4-perf-windows.md`.
+
 Round 11 T014-T016: both current-source visibility package checks pass.
 Presented covered windows can sample; hidden and minimized policy inputs stop.
 The selected Task Manager body stays mounted. Signed native close/minimize,

@@ -18,6 +18,18 @@ preference changes. Both compile gates pass. Signed after timings, Modified
 updates, and complete first/late frames remain. Targets and exact replay:
 `tmp/redesign/perf/w1-windows.md`.
 
+Round 49 performance, 2026-10-01: signed `38158c11` background replay
+keeps Chrome frontmost. Warm window opens reach 241.7ms; main's Task Manager
+page reaches 133.4ms and All tools reaches 241.6ms at display submission.
+Time Profiler covers all six requested destinations. The app no longer reads
+or copies the full scene environment (`00227de5`). Main panel Open App uses
+the existing window router (`ff74d88b`) and keeps explicit user activation.
+The unused-environment probe passes and its copied-environment mutation fails.
+The actual background-router check and the single app/test compile gate pass.
+The orchestrator must install clean source and rerun the unchanged timing
+endpoint before closing P2 or P3. Commands and limits are in
+`tmp/redesign/logs/w4-perf-windows.md`.
+
 Round 11 routing: `7b54d7d9` makes early plugin opens wait for Marketplace
 receipts and rechecks enablement before launch. Built-in opens stay immediate.
 The observed `ToolActionRouter.launchFailure` publishes the tool and actual
