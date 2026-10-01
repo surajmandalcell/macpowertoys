@@ -1181,9 +1181,9 @@
   thumb, or 6pt with Increased Contrast, over the content with no track. It
   stays hidden while idle, appears during scrolling or edge hover, and hides
   at once after 0.9 seconds in both Reduce Motion modes. Keep its native-width
-  hit region. Do not remove the indicator or disable scrolling. Resolve the matching sibling synchronously
-  when possible and again from AppKit layout; use a deferred lookup only as a
-  fallback.
+  hit region. Do not remove the indicator or disable scrolling. Resolve the
+  matching sibling synchronously when possible and again from AppKit layout;
+  use a deferred lookup only as a fallback.
 - **Check:** Inventory every scrolling source with `rg`. The surface count must
   equal the shared-modifier count, and `showsIndicators: false` must be absent.
   Exercise long content in every app family, sheet, editor, and horizontal
