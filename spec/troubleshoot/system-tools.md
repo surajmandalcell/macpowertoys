@@ -492,11 +492,17 @@
 - **Symptom:** The panel hides both profiles behind one link. Refresh performs
   HID enumeration on the main actor and replaces an active event tap. Pending
   smoothing steps can still post after tool disablement because the saved
-  scroll-control preference remains on.
-- **Cause:** One shared disclosure gate owns both profiles. Refresh couples
+  scroll-control preference remains on. Signed `198055e4` review also found
+  a 1,146 pt panel because all four sections defaulted to expanded.
+- **Cause:** Every disclosure used an expanded fallback. One shared disclosure
+  gate owns both profiles. Refresh couples
   device discovery to tap creation, and delayed steps check only the preference.
 - **Invariant:** Devices, Mouse, Trackpad, and Scroll device have independent
-  persisted disclosures. Show every detected device and all seven profile rows.
+  persisted disclosures. For unset keys, open Devices and collapse Mouse,
+  Trackpad, and Scroll device; never overwrite saved choices. Collapsed profile
+  headers show live direction and speed on the trailing side. Devices keeps its
+  count and Scroll device keeps its selected mode. Show every detected device
+  and all seven profile rows when expanded.
   Keep one "Use custom scrolling" switch with a help-glyph explanation.
   Put counts and status on the trailing side of their row. Keep the master
   switch and device selector outside cards. Compact disclosures have no card
@@ -509,7 +515,8 @@
 - **Check:** The read-only source probe finds the USB receiver and internal
   trackpad and passes profile, override, Shift, horizontal, and invalid-speed
   checks. Compile `InputDevicesTests` here and run them on hosted CI. In the
-  final signed app, test every disclosure across panel recreation, both profile
+  final signed app, test fresh disclosure defaults and saved choices across
+  panel recreation, collapsed header values, both profile
   gates, permission recovery, tap refresh, and immediate disablement during a
   smoothed notch. Preserve the owner's scroll preferences.
 
