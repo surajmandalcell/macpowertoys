@@ -54,7 +54,7 @@ nonisolated enum TaskManagerMenuProjection {
                 data.value = percent(sample?.gpuUsage)
                 data.homeCaption = "Graphics utilization"
                 data.caption = "Integrated graphics"
-                data.rows = [reading("Graphics utilization", data.value), reading("Memory", "Unified"), reading("Thermal pressure", sample?.thermalState ?? "—")]
+                data.rows = [reading("Memory", "Unified"), reading("Thermal pressure", sample?.thermalState ?? "—")]
                 data.chart.primary = history.samples(for: .gpu).compactMap(\.gpuUsage)
             case .memory:
                 let allocation = SystemMonitorMemoryAllocation(used: sample?.memoryUsed, total: sample?.memoryTotal, details: sample?.memoryDetails)
@@ -75,7 +75,7 @@ nonisolated enum TaskManagerMenuProjection {
                 data.upload = sample?.networkUpload.map(rate) ?? "—"
                 data.caption = SystemMonitorNetworkDetails.rateScope
                 data.accessories = [reading("Upload", data.upload)]
-                data.rows = [reading("Download", data.value), reading("Upload", data.upload), reading("Current interface", sample?.networkDetails?.interfaceName ?? "—"),
+                data.rows = [reading("Current interface", sample?.networkDetails?.interfaceName ?? "—"),
                              reading("Local address", sample?.networkDetails?.localAddress ?? "—")]
                 data.chart.primary = history.samples(for: .network).compactMap(\.networkDownload)
                 data.chart.secondary = history.samples(for: .network).compactMap(\.networkUpload)

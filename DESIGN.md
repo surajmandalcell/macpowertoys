@@ -559,6 +559,8 @@ separate tool panel.
   lower 60 percent. Use a smooth 1 pt line at 35 percent opacity and a
   7 percent area fill. CPU and GPU use neutral `chartLine`; Memory keeps
   coral `accent`. Values remain the strongest element in both appearances.
+  CPU, GPU, and Memory headings use compact `cardTitle` type. Metric and
+  control-row glyphs use 13 pt. Action glyphs keep their compact label size.
 - Status-item icons use the same modest visual size as the Portman icon.
   A Task Manager item that shows only one metric uses the Task Manager
   glyph, not the metric glyph.
