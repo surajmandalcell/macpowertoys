@@ -217,10 +217,11 @@ final class IndividualMenuBarController: NSObject {
         if diagnostic {
             OnePlusPanelTimings.shared.begin(panel: tool.id, tab: tool.id, input: "diagnostics")
         } else { OnePlusPanelTimings.shared.beginOpenIfNeeded(panel: tool.id) }
-        let popover = popovers[tool] ?? makePopover(for: tool)
-        popovers[tool] = popover
-        guard let host = popover.contentViewController else { return }
         let ceiling = (button.window?.screen?.visibleFrame.height ?? 800) * OnePlusMenuMetrics.heightFraction
+        let popover = popovers[tool] ?? makePopover(for: tool, maximumHeight: ceiling)
+        popovers[tool] = popover
+        guard let host = popover.contentViewController as? NSHostingController<AnyView> else { return }
+        host.rootView = content(for: tool, maximumHeight: ceiling, popover: popover)
         host.view.frame.size.width = OnePlusMenuMetrics.width
         let size = NSSize(width: OnePlusMenuMetrics.width, height: min(host.view.fittingSize.height, ceiling))
         host.view.setFrameSize(size)
@@ -229,16 +230,20 @@ final class IndividualMenuBarController: NSObject {
         popover.show(relativeTo: button.bounds, of: button, preferredEdge: .minY)
     }
 
-    private func makePopover(for tool: IndividualMenuBarTool) -> NSPopover {
+    private func makePopover(for tool: IndividualMenuBarTool, maximumHeight: CGFloat) -> NSPopover {
         let popover = NSPopover()
         popover.behavior = .transient
         popover.animates = false
-        let host = NSHostingController(rootView: IndividualToolMenuPanel(tool: tool)
+        popover.contentViewController = NSHostingController(rootView: content(for: tool, maximumHeight: maximumHeight, popover: popover))
+        return popover
+    }
+
+    private func content(for tool: IndividualMenuBarTool, maximumHeight: CGFloat, popover: NSPopover) -> AnyView {
+        AnyView(IndividualToolMenuPanel(tool: tool)
+            .environment(\.onePlusMenuMaximumHeight, maximumHeight)
             .onOnePlusMenuHeightChange { [weak popover] height in
                 let size = NSSize(width: OnePlusMenuMetrics.width, height: height)
                 if popover?.contentSize != size { popover?.contentSize = size }
             })
-        popover.contentViewController = host
-        return popover
     }
 }

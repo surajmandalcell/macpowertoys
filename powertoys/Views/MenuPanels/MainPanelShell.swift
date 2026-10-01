@@ -92,8 +92,7 @@ struct TrayPopoverView: View {
     private var selectedTab: TrayTab { TrayTab(rawValue: selectedTabID) ?? .home }
 
     var body: some View {
-        OnePlusMenuPanel(maximumHeight: (NSScreen.main?.visibleFrame.height ?? 900) * TrayPopoverLayout.heightFraction,
-                         contentID: selectedTabID) {
+        OnePlusMenuPanel(contentID: selectedTabID) {
             TrayTabStrip(
                 tabs: tabs,
                 selected: Binding(get: { selectedTab }, set: { select($0) }),

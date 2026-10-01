@@ -51,6 +51,7 @@ nonisolated enum SystemMonitorTrayPage: String, CaseIterable, Identifiable {
 }
 
 struct SystemMonitorMenuPopoverView: View {
+    var maximumHeight: CGFloat?
     private let diagnostic: Bool
     private let defaults: UserDefaults
     private let loadsRemoteProfiles: Bool
@@ -61,8 +62,10 @@ struct SystemMonitorMenuPopoverView: View {
         remoteProfiles: [SystemMonitorRemoteProfile]? = nil,
         diagnostic: Bool = false,
         defaults: UserDefaults = .standard,
+        maximumHeight: CGFloat? = nil,
         onPreferredHeight: @escaping (CGFloat) -> Void = { _ in }
     ) {
+        self.maximumHeight = maximumHeight
         self.defaults = defaults
         self.diagnostic = diagnostic
         let profiles = remoteProfiles ?? []
@@ -73,6 +76,7 @@ struct SystemMonitorMenuPopoverView: View {
 
     var body: some View {
         SystemMonitorTrayView(remoteProfiles: remoteProfiles, diagnostic: diagnostic, onPreferredHeight: onPreferredHeight)
+        .environment(\.onePlusMenuMaximumHeight, maximumHeight)
         .frame(width: OnePlusMenuMetrics.width)
         .defaultAppStorage(defaults)
         .utilityMotionPolicy()

@@ -59,6 +59,8 @@ struct OnePlusMenuPanelShell<Tabs: View, Actions: View, Body: View>: View {
     let toolbar: (() -> AnyView)?
     let footer: (() -> AnyView)?
     @Environment(\.onePlusMenuHeightChanged) private var heightChanged
+    @Environment(\.onePlusMenuMaximumHeight) private var suppliedHeight
+    @State private var screen = OnePlusMenuPanelScreen()
 
     init(maximumHeight: CGFloat?, contentID: AnyHashable = 0, tabs: Tabs, actions: Actions,
          toolbar: (() -> AnyView)? = nil, footer: (() -> AnyView)? = nil,
@@ -75,9 +77,8 @@ struct OnePlusMenuPanelShell<Tabs: View, Actions: View, Body: View>: View {
     var body: some View {
         let screenHeight = NSScreen.main?.visibleFrame.height ?? 800
         let defaultHeight = screenHeight.isFinite ? max(0, screenHeight) * OnePlusMenuMetrics.heightFraction : 720
-        let requestedHeight = maximumHeight.flatMap { $0.isFinite ? max(0, $0) : nil } ?? defaultHeight
-        let cap = max(OnePlusMenuMetrics.topBar, min(requestedHeight, defaultHeight))
-        OnePlusMenuPanelLayout(maximumHeight: cap - 2) {
+        let requestedHeight = (maximumHeight ?? suppliedHeight).flatMap { $0.isFinite ? max(0, $0) : nil }
+        OnePlusMenuPanelLayout(maximumHeight: requestedHeight, fallbackHeight: defaultHeight, screen: screen) {
             HStack(spacing: 7) {
                 tabs
                 Spacer(minLength: 0)
@@ -89,7 +90,7 @@ struct OnePlusMenuPanelShell<Tabs: View, Actions: View, Body: View>: View {
                 .frame(width: OnePlusMenuMetrics.bodyWidth).padding(.horizontal, OnePlusMenuMetrics.bodyInset))
             fixedRegion(footer?() ?? AnyView(EmptyView()), top: 5, bottom: 8)
         }.padding(1).frame(width: 356).fixedSize(horizontal: false, vertical: true)
-            .background(OnePlusMenuHeightReporter(changed: heightChanged))
+            .background(OnePlusMenuHeightReporter(changed: heightChanged, screen: screen))
             .background(OnePlusColor.sidebar)
             .clipShape(RoundedRectangle(cornerRadius: 11))
             .overlay { RoundedRectangle(cornerRadius: 11).strokeBorder(OnePlusColor.line, lineWidth: 1) }
@@ -111,6 +112,18 @@ private struct OnePlusMenuHeightChangedKey: EnvironmentKey {
     static var defaultValue: (CGFloat) -> Void { { _ in } }
 }
 
+private struct OnePlusMenuMaximumHeightKey: EnvironmentKey {
+    static let defaultValue: CGFloat? = nil
+}
+
+public extension EnvironmentValues {
+    /// The originating status item's screen ceiling, supplied before native measurement.
+    var onePlusMenuMaximumHeight: CGFloat? {
+        get { self[OnePlusMenuMaximumHeightKey.self] }
+        set { self[OnePlusMenuMaximumHeightKey.self] = newValue }
+    }
+}
+
 private extension EnvironmentValues {
     var onePlusMenuHeightChanged: (CGFloat) -> Void {
         get { self[OnePlusMenuHeightChangedKey.self] }
@@ -128,18 +141,32 @@ public extension View {
     }
 }
 
+private final class OnePlusMenuPanelScreen {
+    weak var window: NSWindow?
+    var maximumHeight: CGFloat? {
+        window?.screen.map { $0.visibleFrame.height * OnePlusMenuMetrics.heightFraction }
+    }
+}
+
 private struct OnePlusMenuHeightReporter: NSViewRepresentable {
     let changed: (CGFloat) -> Void
-    func makeNSView(context: Context) -> HeightView { HeightView(changed: changed) }
+    let screen: OnePlusMenuPanelScreen
+    func makeNSView(context: Context) -> HeightView { HeightView(changed: changed, screen: screen) }
     func updateNSView(_ view: HeightView, context: Context) { view.changed = changed }
     final class HeightView: NSView {
         var changed: (CGFloat) -> Void
-        init(changed: @escaping (CGFloat) -> Void) {
+        let screen: OnePlusMenuPanelScreen
+        init(changed: @escaping (CGFloat) -> Void, screen: OnePlusMenuPanelScreen) {
             self.changed = changed
+            self.screen = screen
             super.init(frame: .zero)
         }
         @available(*, unavailable) required init?(coder: NSCoder) { fatalError() }
         override func hitTest(_ point: NSPoint) -> NSView? { nil }
+        override func viewDidMoveToWindow() {
+            super.viewDidMoveToWindow()
+            screen.window = window
+        }
         override func setFrameSize(_ newSize: NSSize) {
             let previous = frame.height
             super.setFrameSize(newSize)
@@ -149,7 +176,9 @@ private struct OnePlusMenuHeightReporter: NSViewRepresentable {
 }
 
 private struct OnePlusMenuPanelLayout: Layout {
-    let maximumHeight: CGFloat
+    let maximumHeight: CGFloat?
+    let fallbackHeight: CGFloat
+    let screen: OnePlusMenuPanelScreen
     struct Cache {
         var width: CGFloat?
         var cap: CGFloat?
@@ -158,13 +187,14 @@ private struct OnePlusMenuPanelLayout: Layout {
     func makeCache(subviews: Subviews) -> Cache { Cache() }
     func updateCache(_ cache: inout Cache, subviews: Subviews) { cache = Cache() }
     private func heights(_ subviews: Subviews, width: CGFloat, cache: inout Cache) -> [CGFloat] {
-        if cache.width == width, cache.cap == maximumHeight { return cache.heights }
+        let cap = max(OnePlusMenuMetrics.topBar, maximumHeight ?? screen.maximumHeight ?? fallbackHeight) - 2
+        if cache.width == width, cache.cap == cap { return cache.heights }
         let natural = subviews.map { $0.sizeThatFits(.init(width: width, height: nil)).height }
         let topGap: CGFloat = natural[1] > 0 ? 0 : 3
         let bottomGap: CGFloat = natural[3] > 0 ? 0 : 8
-        let bodyCap = max(0, maximumHeight - natural[0] - natural[1] - natural[3] - topGap - bottomGap)
+        let bodyCap = max(0, cap - natural[0] - natural[1] - natural[3] - topGap - bottomGap)
         let heights = [natural[0], natural[1], topGap, min(natural[2], bodyCap), bottomGap, natural[3]]
-        cache = Cache(width: width, cap: maximumHeight, heights: heights)
+        cache = Cache(width: width, cap: cap, heights: heights)
         return heights
     }
 
