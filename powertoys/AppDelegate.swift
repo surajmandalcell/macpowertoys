@@ -80,7 +80,7 @@ class AppDelegate: NSObject, NSApplicationDelegate {
                   settingsController.window?.isVisible == true else { return }
 
             if let controller {
-                settingsController.show(attachedTo: controller, sender: self)
+                settingsController.show(attachedTo: controller, sender: self, activateApp: NSApp.isActive)
             } else {
                 settingsController.close()
             }
@@ -269,7 +269,7 @@ class AppDelegate: NSObject, NSApplicationDelegate {
 
     @MainActor
     @objc func openMainWindowFromStatusItem() {
-        DeepLinkHandler.shared.handle(url: URL(string: "macpowertoys://open/main")!)
+        ToolActionRouter.shared.open(toolID: "main")
     }
 
     @MainActor
@@ -557,8 +557,7 @@ final class AppInstanceCoordinator {
 
         let supportedBundleIDs = [AppIdentity.bundleIdentifier, AppIdentity.legacyBundleIdentifier]
         let runningApps = supportedBundleIDs.flatMap(NSRunningApplication.runningApplications(withBundleIdentifier:))
-        if let existingApp = runningApps.first(where: { $0 != NSRunningApplication.current }) {
-            existingApp.activate(options: [.activateAllWindows])
+        if runningApps.contains(where: { $0 != NSRunningApplication.current }) {
             ownsInstance = false
             return
         }
@@ -568,8 +567,6 @@ final class AppInstanceCoordinator {
             instanceLock = lock
             ownsInstance = true
         } else {
-            let candidates = supportedBundleIDs.flatMap(NSRunningApplication.runningApplications(withBundleIdentifier:))
-            candidates.first(where: { $0 != NSRunningApplication.current })?.activate(options: [.activateAllWindows])
             ownsInstance = false
         }
     }

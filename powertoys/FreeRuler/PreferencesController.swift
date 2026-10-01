@@ -1086,17 +1086,25 @@ final class RulerSettingsController: NSWindowController, NSWindowDelegate {
     }
 
     override func showWindow(_ sender: Any?) {
+        showWindow(sender, activateApp: true)
+    }
+
+    private func showWindow(_ sender: Any?, activateApp: Bool) {
         detachWindowIfNeeded()
         configureOpaqueColorPicking()
         updateView()
         updateRulerInteractionSuspension(isPresenting: true)
-        window?.makeKeyAndOrderFront(sender)
-        window?.makeFirstResponder(unitSegmentedControl)
+        if activateApp {
+            window?.makeKeyAndOrderFront(sender)
+            window?.makeFirstResponder(unitSegmentedControl)
+        } else {
+            window?.orderFrontRegardless()
+        }
     }
 
-    func show(attachedTo controller: RulerController, sender: Any?) {
+    func show(attachedTo controller: RulerController, sender: Any?, activateApp: Bool = true) {
         updateRulerController(controller)
-        showWindow(sender)
+        showWindow(sender, activateApp: activateApp)
     }
 
     override func close() {
