@@ -87,8 +87,9 @@ nonisolated struct DiskEntryTableRow: Identifiable, Sendable {
     let cells: [String]
     let symbol: String
     let url: URL?
+    let sizeShare: Double
     var id: String { entry.id }
-    var tableItem: OnePlusTableItem { OnePlusTableItem(id: id, cells: cells, symbol: symbol, url: url) }
+    var tableItem: OnePlusTableItem { OnePlusTableItem(id: id, cells: cells, symbol: symbol, url: url, usage: [2: sizeShare]) }
 }
 
 nonisolated struct DiskEntryTableProjection: Sendable {
@@ -142,6 +143,7 @@ struct DiskEntryTable: View {
             request.search.isEmpty || DiskEntryPresentation.name($0).localizedStandardContains(request.search) ||
                 ($0.kind != .aggregate && $0.url.path.localizedStandardContains(request.search))
         }, column: request.column, ascending: request.ascending, apparent: request.apparent)
+        let largest = matches.map { $0.bytes(apparent: request.apparent) }.max() ?? 0
         let rows = matches.map { entry in
             DiskEntryTableRow(
                 entry: entry,
@@ -150,7 +152,8 @@ struct DiskEntryTable: View {
                         entry.modifiedAt.formatted(date: .numeric, time: .shortened)] +
                     (request.showsFileCount ? [entry.fileCount.formatted()] : []),
                 symbol: DiskEntryPresentation.symbol(entry),
-                url: entry.kind == .aggregate ? nil : entry.url
+                url: entry.kind == .aggregate ? nil : entry.url,
+                sizeShare: DiskChartGeometry.fraction(Double(entry.bytes(apparent: request.apparent)), of: Double(largest))
             )
         }
         return DiskEntryTableProjection(request: request, rows: rows,
@@ -165,7 +168,7 @@ struct DiskEntryTable: View {
         let current = cached ?? (keepsPreviousRows ? displayedProjection : .empty)
         let rows = tableItems[request] ?? (keepsPreviousRows ? displayedTableItems : [])
         let columns: [OnePlusGridColumn] = [.init("Name", width: 450), .init("Kind", width: 180),
-            .init("Size", width: 120, trailing: true), .init("Modified", width: 180)] +
+            .init("Size", width: 180, trailing: true), .init("Modified", width: 180)] +
             (showsFileCount ? [.init("Files", width: 80, trailing: true)] : [])
         OnePlusNativeTable(columns: columns,
                            rows: rows, selection: $selection,

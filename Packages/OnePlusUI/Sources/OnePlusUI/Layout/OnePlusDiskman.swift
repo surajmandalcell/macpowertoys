@@ -14,6 +14,8 @@ public enum OnePlusDiskmanMetrics {
     public static let tileLabelHeight: CGFloat = 56
     public static let tileCountsHeight: CGFloat = 104
     public static let inspectorChildren = 5
+    public static let sizeBarWidth: CGFloat = 55
+    public static let sizeBarHeight: CGFloat = 3
 }
 
 public struct OnePlusDiskmanHeader<Actions: View>: View {
