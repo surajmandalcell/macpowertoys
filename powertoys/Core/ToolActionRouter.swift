@@ -43,6 +43,12 @@ extension Notification.Name {
     static let toolActionRequested = Notification.Name("toolActionRequested")
 }
 
+struct ToolLaunchFailure: Identifiable, Equatable, Sendable {
+    let id = UUID()
+    let toolID: String
+    let message: String
+}
+
 @Observable
 @MainActor
 final class ToolActionRouter {
@@ -52,6 +58,7 @@ final class ToolActionRouter {
     private var openWindowAction: OpenWindowAction?
     private var pending: [ToolActionRequest] = []
     private var pendingToolOpens: [(id: String, activateApp: Bool)] = []
+    var launchFailure: ToolLaunchFailure?
 
     private init() {}
 
@@ -114,20 +121,26 @@ final class ToolActionRouter {
             presentSingleWindow(id: resolved, using: openWindowAction, activateApp: activateApp)
             if resolved != "main" { dismissMainWindowAfterToolOpen() }
             if activateApp { NSApp.activate(ignoringOtherApps: true) }
-        } else if MarketplaceManager.shared.receipts.contains(where: { $0.toolID == resolved }) {
+        } else {
             Task {
+                await MarketplaceManager.shared.restore()
+                guard SettingsManager.shared.isToolEnabled(resolved) else { return }
+                guard MarketplaceManager.shared.receipts.contains(where: { $0.toolID == resolved }) else {
+                    LogManager.shared.warning("Unknown tool ID: \(resolved)", source: "ToolActionRouter")
+                    return
+                }
+                if launchFailure?.toolID == resolved { launchFailure = nil }
                 do {
                     try await MarketplaceManager.shared.launchInstalledTool(toolID: resolved)
                     dismissMainWindowAfterToolOpen()
                 } catch {
+                    launchFailure = ToolLaunchFailure(toolID: resolved, message: error.localizedDescription)
                     LogManager.shared.error(
                         "Failed to launch marketplace tool \(resolved): \(error)",
                         source: "ToolActionRouter"
                     )
                 }
             }
-        } else {
-            LogManager.shared.warning("Unknown tool ID: \(resolved)", source: "ToolActionRouter")
         }
     }
 
