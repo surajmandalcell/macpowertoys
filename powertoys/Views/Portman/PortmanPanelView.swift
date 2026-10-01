@@ -189,6 +189,7 @@ struct PortmanPanelView: View {
     @State private var hoveredTime: Date?
     @State private var highlightedProcessID: String?
     @State private var hoveredRowID: String?
+    @FocusState private var focusedLocalActionID: String?
     @State private var hoveredLinkPortID: String?
     @State private var hoveredStopPortID: String?
     @State private var showingMore = false
@@ -600,7 +601,8 @@ struct PortmanPanelView: View {
     private func localRow(_ row: PortmanOverviewRow) -> some View {
         let port = row.port
         let isHovered = hoveredRowID == port.id
-        let showsActions = !cleanupMode && (isHovered || OnePlusFocusPolicy.shared.showsFocus)
+        let showsActions = !cleanupMode && (isHovered || OnePlusFocusPolicy.shared.showsFocus
+            || focusedLocalActionID?.hasPrefix(port.id + ".") == true)
         return HStack(spacing: OnePlusMetrics.actionSpacing) {
             if cleanupMode {
                 Toggle(isOn: Binding(
@@ -666,6 +668,7 @@ struct PortmanPanelView: View {
                 }
                 .buttonStyle(OnePlusInteractionStyle(radius: OnePlusMetrics.panelRadius))
                 .accessibilityIdentifier("portman.local.\(String(port.port))")
+                .focused($focusedLocalActionID, equals: port.id + ".details")
                 .accessibilityLabel(cleanupMode
                                     ? "Select port \(String(port.port)) for cleanup"
                                     : "Show port \(String(port.port)) details")
@@ -683,6 +686,7 @@ struct PortmanPanelView: View {
                         .help("Open localhost port \(String(port.port))")
                         .accessibilityLabel("Open localhost port \(String(port.port))")
                         .accessibilityIdentifier("portman.link.\(String(port.port))")
+                        .focused($focusedLocalActionID, equals: port.id + ".link")
                         if row.canStop {
                             Button { pendingStop = port } label: {
                                 Image(systemName: "stop.fill").onePlusText(.caption)
@@ -695,6 +699,7 @@ struct PortmanPanelView: View {
                             .help("Stop process tree for port \(String(port.port))")
                             .accessibilityLabel("Stop process tree for port \(String(port.port))")
                             .accessibilityIdentifier("portman.stop.\(String(port.port))")
+                            .focused($focusedLocalActionID, equals: port.id + ".stop")
                         }
                     }
                     .buttonStyle(OnePlusButtonStyle(.icon, size: .small))
