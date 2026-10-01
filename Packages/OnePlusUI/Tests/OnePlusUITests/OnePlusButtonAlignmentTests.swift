@@ -121,17 +121,27 @@ final class OnePlusButtonAlignmentTests: XCTestCase {
     }
 
     func testAccentPrimaryInkMeetsContrastInEachAppearanceAndState() throws {
-        func luminance(_ color: NSColor) -> CGFloat {
-            let channels = [color.redComponent, color.greenComponent, color.blueComponent]
-                .map { $0 <= 0.04045 ? $0 / 12.92 : pow(($0 + 0.055) / 1.055, 2.4) }
-            return channels[0] * 0.2126 + channels[1] * 0.7152 + channels[2] * 0.0722
+        // APCA 0.0.98G lightness contrast; DESIGN.md requires Lc 60 for button labels.
+        func apcaLc(text: NSColor, background: NSColor) -> Double {
+            func luminance(_ color: NSColor) -> Double {
+                let rgb = color.usingColorSpace(.sRGB)!
+                let y = 0.2126729 * pow(rgb.redComponent, 2.4) + 0.7151522 * pow(rgb.greenComponent, 2.4)
+                    + 0.0721750 * pow(rgb.blueComponent, 2.4)
+                return y < 0.022 ? y + pow(0.022 - y, 1.414) : y
+            }
+            let ink = luminance(text), ground = luminance(background)
+            if ground > ink {
+                let s = (pow(ground, 0.56) - pow(ink, 0.57)) * 1.14
+                return s < 0.1 ? 0 : (s - 0.027) * 100
+            }
+            let s = (pow(ground, 0.65) - pow(ink, 0.62)) * 1.14
+            return s > -0.1 ? 0 : (s + 0.027) * 100
         }
         for name in [NSAppearance.Name.darkAqua, .aqua] {
             try XCTUnwrap(NSAppearance(named: name)).performAsCurrentDrawingAppearance {
-                let ink = luminance(NSColor(OnePlusColor.accentPrimaryInk).usingColorSpace(.sRGB)!)
+                let ink = NSColor(OnePlusColor.accentPrimaryInk)
                 for fill in [OnePlusColor.accent, OnePlusColor.accentPrimaryHover, OnePlusColor.accentPrimaryPressed] {
-                    let ground = luminance(NSColor(fill).usingColorSpace(.sRGB)!)
-                    XCTAssertGreaterThanOrEqual((max(ink, ground) + 0.05) / (min(ink, ground) + 0.05), 4.5)
+                    XCTAssertGreaterThanOrEqual(abs(apcaLc(text: ink, background: NSColor(fill))), 60, "\(name)")
                 }
             }
         }
