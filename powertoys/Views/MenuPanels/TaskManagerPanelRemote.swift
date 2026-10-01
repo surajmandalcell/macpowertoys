@@ -3,10 +3,27 @@ import SwiftUI
 
 struct TaskManagerRemoteMenuCard: View {
     let profiles: [SystemMonitorRemoteProfile]
+    @ObservedObject private var sessions = SystemMonitorRemoteSessions.shared
+    @Environment(\.onePlusIsVisible) private var isVisible
+    @State private var owner = UUID().uuidString
+    private var shownProfiles: [SystemMonitorRemoteProfile] { sessions.savedProfiles ?? profiles }
+
+    private var hostIDs: Set<String> { Set(shownProfiles.map(\.id)) }
+
+    var body: some View {
+        content
+            .onChange(of: isVisible, initial: true) { _, visible in
+                sessions.setVisible(visible ? hostIDs : [], owner: owner)
+            }
+            .onChange(of: hostIDs) { _, ids in
+                sessions.setVisible(isVisible ? ids : [], owner: owner)
+            }
+            .onDisappear { sessions.setVisible([], owner: owner) }
+    }
 
     @ViewBuilder
-    var body: some View {
-        if profiles.isEmpty {
+    private var content: some View {
+        if shownProfiles.isEmpty {
             OnePlusMenuTile(span: 3, height: 51, textured: false, action: openRemoteStats) {
                 HStack(spacing: 9) {
                     Image(systemName: "server.rack")
@@ -23,7 +40,7 @@ struct TaskManagerRemoteMenuCard: View {
             }
         } else {
             LazyVStack(spacing: 6) {
-                ForEach(profiles) { profile in
+                ForEach(shownProfiles) { profile in
                     remoteCard(profile)
                 }
             }
@@ -31,18 +48,30 @@ struct TaskManagerRemoteMenuCard: View {
     }
 
     private func remoteCard(_ profile: SystemMonitorRemoteProfile) -> some View {
-        OnePlusMenuItemCard(
+        let state = sessions.state(for: profile.id)
+        let reading = state.reading
+        return OnePlusMenuItemCard(
             profile.name,
             systemImage: "server.rack",
-            status: "Offline",
-            online: false,
+            status: state.phase.rawValue,
+            online: state.phase == .connected,
             metrics: [
-                OnePlusMenuMetric("CPU", systemImage: "cpu", value: "—"),
-                OnePlusMenuMetric("RAM", systemImage: "memorychip", value: "—"),
-                OnePlusMenuMetric("Network", systemImage: "arrow.up.arrow.down", value: "—"),
+                OnePlusMenuMetric("CPU", systemImage: "cpu", value: reading?.cpuPercent.map { "\(Int($0.rounded()))%" } ?? "—"),
+                OnePlusMenuMetric("RAM", systemImage: "memorychip", value: reading.map { "\(TaskManagerRemoteCard.shortBytes($0.memoryUsed))/\(TaskManagerRemoteCard.shortBytes($0.memoryTotal))" } ?? "—"),
+                OnePlusMenuMetric("Network", systemImage: "arrow.up.arrow.down", value: reading.map { "↓\($0.download.map(TaskManagerRemoteCard.shortRate) ?? "—") ↑\($0.upload.map(TaskManagerRemoteCard.shortRate) ?? "—")" } ?? "—", unit: reading == nil ? "" : "/s"),
             ]
         ) {
-            Text("No disk data").onePlusText(.caption)
+            VStack(alignment: .leading, spacing: OnePlusMetrics.actionSpacing) {
+                if let used = reading?.diskUsed, let total = reading?.diskTotal, total > 0 {
+                    OnePlusUsageBar(value: Double(used) / Double(total))
+                    Text("\(TrayPopoverLayout.diskBytes(Int64(clamping: total - used))) free").onePlusText(.caption)
+                } else if state.reason == nil { Text("No disk data").onePlusText(.caption) }
+                if let reason = state.reason { Text(reason).onePlusText(.caption).lineLimit(2).help(reason) }
+                Button(state.phase == .offline ? "Connect" : "Disconnect") {
+                    if state.phase == .offline { sessions.connect(profile) } else { sessions.disconnect(profile.id) }
+                }.buttonStyle(OnePlusButtonStyle(.ghost, size: .small))
+                    .accessibilityLabel("\(state.phase == .offline ? "Connect to" : "Disconnect from") \(profile.name)")
+            }
         } actions: {
             Button { SystemMonitorRemoteTerminal.open(profile) } label: {
                 remoteActionLabel("Open SSH", symbol: "arrow.up.right.square")
@@ -51,7 +80,7 @@ struct TaskManagerRemoteMenuCard: View {
                 .accessibilityLabel("Open SSH for \(profile.name)")
                 .help("Open SSH for \(profile.name)")
             OnePlusColor.lineSoft.frame(height: 1)
-            Button(action: openRemoteStats) {
+            Button { sessions.selectedID = profile.id; openRemoteStats() } label: {
                 remoteActionLabel("Open App", symbol: "arrow.right")
             }
                 .buttonStyle(OnePlusInteractionStyle(radius: 0))
@@ -59,7 +88,7 @@ struct TaskManagerRemoteMenuCard: View {
                 .help("Open \(profile.name) in Task Manager")
         }
         .accessibilityElement(children: .contain)
-        .accessibilityLabel("\(profile.name), \(profile.platform.rawValue), offline")
+        .accessibilityLabel("\(profile.name), \(profile.platform.rawValue), \(state.phase.rawValue)")
     }
 
     private func remoteActionLabel(_ title: String, symbol: String) -> some View {
