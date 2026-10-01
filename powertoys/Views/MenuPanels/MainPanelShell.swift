@@ -186,7 +186,7 @@ struct TrayPopoverView: View {
 
     private func select(_ tab: TrayTab) {
         guard tab != selectedTab else { return }
-        if !OnePlusPanelTimings.shared.hasPending("main") {
+        if !OnePlusPanelTimings.shared.hasPending("main", tab: tab.panelID) {
             OnePlusPanelTimings.shared.begin(panel: "main", operation: .tabSwitch, tab: tab.panelID)
         }
         var transaction = Transaction(animation: nil)

@@ -51,7 +51,10 @@ public final class OnePlusPanelTimings {
         if pending[panel] == nil { begin(panel: panel) }
     }
 
-    public func hasPending(_ panel: String) -> Bool { pending[panel] != nil }
+    public func hasPending(_ panel: String, tab: String? = nil) -> Bool {
+        guard let interval = pending[panel] else { return false }
+        return tab == nil || interval.tab.isEmpty || interval.tab == tab
+    }
 
     public func finish(panel: String, tab: String?, size: NSSize,
                 at time: TimeInterval = ProcessInfo.processInfo.systemUptime) {

@@ -7,6 +7,8 @@ final class OnePlusPanelTimingsTests: XCTestCase {
     func testTimingsRequireTheDestinationAndKeepOnlyFiftyCompletedFrames() throws {
         let timings = OnePlusPanelTimings()
         timings.begin(panel: "main", tab: "home", input: "mouseDown", started: 10)
+        XCTAssertTrue(timings.hasPending("main", tab: "home"))
+        XCTAssertFalse(timings.hasPending("main", tab: "cpu"))
         timings.finish(panel: "main", tab: "old", size: NSSize(width: 356, height: 200), at: 10.01)
         timings.finish(panel: "main", tab: "home", size: .zero, at: 10.02)
         XCTAssertTrue(timings.records.isEmpty)
@@ -26,6 +28,7 @@ final class OnePlusPanelTimingsTests: XCTestCase {
         XCTAssertEqual(timings.records.last?.tab, "54")
         XCTAssertTrue(timings.records.allSatisfy { !$0.cold && $0.operation == "tabSwitch" })
         timings.begin(panel: "main", started: 30)
+        XCTAssertTrue(timings.hasPending("main", tab: "home"))
         timings.cancel(panel: "main")
         timings.finish(panel: "main", tab: "home", size: NSSize(width: 356, height: 200), at: 31)
         XCTAssertEqual(timings.records.count, 50)

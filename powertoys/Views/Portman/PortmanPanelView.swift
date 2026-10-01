@@ -462,7 +462,7 @@ struct PortmanPanelView: View {
     }
 
     private func navigate(to destination: Page) {
-        if destination != page, !OnePlusPanelTimings.shared.hasPending("portman") {
+        if destination != page, !OnePlusPanelTimings.shared.hasPending("portman", tab: destination.panelID) {
             OnePlusPanelTimings.shared.begin(panel: "portman", operation: .tabSwitch, tab: destination.panelID)
         }
         var transaction = Transaction(animation: nil)
