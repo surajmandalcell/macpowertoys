@@ -213,7 +213,8 @@
 - **Invariant:** Catalog cards and list rows pair an unlabeled switch with a
   ghost Open text button without an arrow. Tool pages keep the switch in the
   header and put "Open <Tool>" in the fixed bottom action bar on the 24pt
-  gutter with a 1pt lineSoft divider. Keep accessible names and disabled
+  gutter, with white accent-button text and no divider line above it
+  (owner correction 2026-10-01). Keep accessible names and disabled
   launch behavior. Ruler keeps both native settings actions in its body.
 - **Check:** Inspect grid, list, and all 14 tool pages. No enable caption or
   catalog Open arrow remains. Scroll and switch tabs; the page action stays
@@ -572,23 +573,22 @@ appearances in the signed build. Report: `tmp/redesign/logs/w1-panel-main.md`.
   download, checksum, and signing-team failures without termination or bundle
   replacement. A valid update requests termination before replacement.
 
-## Unrelated Defaults Writes Block Other Windows
+## Main Modified Page Removed, 2026-10-01
 
-- **Symptom:** Task Manager and applet pages pause while the launcher is open.
-- **Cause:** Every defaults write increased the launcher's Modified revision.
-  Its sidebar then read `SMAppService.mainApp.status` on the main thread.
-  In signed `198055e4`, the wait profile contains 1,353 samples in this path,
-  waiting for the service's synchronous XPC reply. Page and window-state
-  writes can trigger the query even though no app preference changed.
-- **Invariant:** Watch only registered preference keys with the existing
-  `ToolSettingsPreferenceObserver`. Update the keys when Marketplace changes.
-  Read Login Items status on a utility task, then publish Modified on the
-  main actor. Cancel an obsolete result when the revision changes.
-- **Check:** The actual observer fixture ignores page, window-state, and tray
-  writes and accepts a real preference change. It and the cache mutation
-  check are in `tmp/redesign/perf/w1-windows/check-costs.py`. After a signed
-  install, replay Task Manager and applet pages with the launcher open, then
-  verify Modified after a real preference or Login Items change.
+- **Symptom:** The launcher sidebar had a Modified page that listed every
+  changed preference across tools, and its revision bookkeeping queried
+  Login Items status and blocked other windows.
+- **Cause:** Reset of changed settings was built as a main-app feature on
+  `SettingsRegistry`, `ToolSettingsPreferenceObserver`, and `changed`
+  callbacks instead of living in the tools that own the settings.
+- **Invariant:** The owner removed the main Modified page and all of its
+  logic. The main sidebar bottom has only Settings and Exit. Per-tool reset
+  stays inside the tool, such as the Mac Tweaks Modified destination. Do
+  not reintroduce a cross-tool preference registry or a launcher revision
+  counter.
+- **Check:** `rg -n "SettingsRegistry|MainModifiedView|modifiedRevision"
+  powertoys powertoysTests` returns nothing. `main/modified` routes resolve
+  to no page.
 
 ## Heavy Launcher Settings First Frame
 

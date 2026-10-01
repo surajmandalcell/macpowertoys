@@ -6,7 +6,6 @@ struct AllToolsGridView: View {
     var query: String
     @Binding var filter: MainCatalogFilter
     @Binding var focusedToolID: String?
-    var changed: () -> Void
     @AppStorage("main.favorites") private var storedFavorites = "[]"
     @AppStorage("main.sort") private var sort = MainCatalogSort.defaultOrder
     @AppStorage("main.viewMode") private var viewMode = MainCatalogViewMode.grid
@@ -22,9 +21,8 @@ struct AllToolsGridView: View {
 
     init(selectedTool: Binding<String?>, query: String = "",
          filter: Binding<MainCatalogFilter> = .constant(.all),
-         focusedToolID: Binding<String?> = .constant(nil), changed: @escaping () -> Void = {}) {
+         focusedToolID: Binding<String?> = .constant(nil)) {
         _selectedTool = selectedTool; self.query = query; _filter = filter; _focusedToolID = focusedToolID
-        self.changed = changed
     }
 
     var body: some View {
@@ -49,10 +47,8 @@ struct AllToolsGridView: View {
         .onChange(of: storedFavorites) { _, value in
             let updated = MainCatalog.favorites(from: value)
             if updated != favoriteIDs { favoriteIDs = updated; refreshCatalog() }
-            changed()
         }
-        .onChange(of: sort) { refreshCatalog(); changed() }
-        .onChange(of: viewMode) { changed() }
+        .onChange(of: sort) { refreshCatalog() }
         .onReceive(NotificationCenter.default.publisher(for: .marketplaceReceiptsChanged)) { _ in refreshCatalog() }
         .onAppear {
             favoriteIDs = MainCatalog.favorites(from: storedFavorites)

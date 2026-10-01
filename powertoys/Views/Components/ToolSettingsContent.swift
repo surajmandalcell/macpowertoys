@@ -4,28 +4,10 @@ import OnePlusUI
 /// The host owns the page, scrolling, and gutters. Each tool supplies only cards.
 struct ToolSettingsContent: View {
     let toolID: String
-    var changed: (() -> Void)? = nil
-    @State private var preferenceObserver: ToolSettingsPreferenceObserver?
     @AppStorage("systemCare.defaultMode") private var systemCareMode = SystemCareMode.quick.rawValue
 
-    var body: some View {
-        settingsContent
-            .onChange(of: toolID, initial: true) { _, _ in
-                preferenceObserver?.stop()
-                guard let changed else { preferenceObserver = nil; return }
-                let keys = Set(SettingsRegistry.entries.filter {
-                    $0.toolID == toolID || (toolID == "rclone" && $0.key == "app.showTray")
-                }.map(\.key))
-                preferenceObserver = ToolSettingsPreferenceObserver(keys: keys, changed: changed)
-            }
-            .onDisappear {
-                preferenceObserver?.stop()
-                preferenceObserver = nil
-            }
-    }
-
     @ViewBuilder
-    private var settingsContent: some View {
+    var body: some View {
         switch toolID {
         case "rclone": RcloneSettingsView()
         case "ruler": RulerLauncherSettingsView()

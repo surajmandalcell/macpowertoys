@@ -16,14 +16,12 @@ struct HomeView: View {
     @State private var filter = MainCatalogFilter.all
     @AppStorage("main.settingsTab") private var storedSettingsTab = MainSettingsTab.general.rawValue
     @State private var focusedToolID: String?
-    @State private var modifiedRevision = 0
     @State private var shortcutTools: [any Tool] = []
-    @State private var preferenceObserver: ToolSettingsPreferenceObserver?
 
     var body: some View {
         OnePlusWindowRoot(canvas: .main) {
             ToolSidebarView(selectedTool: selectedToolBinding, searchText: $query,
-                            modifiedRevision: modifiedRevision, searchFocusTrigger: searchFocusTrigger)
+                            searchFocusTrigger: searchFocusTrigger)
         } content: {
             content
         }
@@ -64,18 +62,11 @@ struct HomeView: View {
         }
         .onReceive(NotificationCenter.default.publisher(for: .marketplaceReceiptsChanged)) { _ in
             refreshShortcutTools()
-            observePreferences()
-            modifiedRevision += 1
         }
         .onAppear {
             let enabledIDs = ToolRegistry.allTools.filter { SettingsManager.shared.isToolEnabled($0.id) }.map(\.id)
             if MainPageRoute.resolve(selectedTool ?? "", toolIDs: enabledIDs) == nil { selectedTool = "all-tools" }
             refreshShortcutTools()
-            observePreferences()
-        }
-        .onDisappear {
-            preferenceObserver?.stop()
-            preferenceObserver = nil
         }
     }
 
@@ -83,13 +74,11 @@ struct HomeView: View {
         switch selectedTool {
         case "all-tools":
             AllToolsGridView(selectedTool: selectedToolBinding, query: query, filter: $filter,
-                             focusedToolID: $focusedToolID) { modifiedRevision += 1 }
+                             focusedToolID: $focusedToolID)
         case "settings":
-            MainSettingsView(tab: settingsTab, showManual: { openPage("manual/" + $0) }) { modifiedRevision += 1 }
-        case "modified":
-            MainModifiedView { modifiedRevision += 1 }
+            MainSettingsView(tab: settingsTab, showManual: { openPage("manual/" + $0) })
         case let toolID?:
-            ToolAboutView(toolId: toolID, changed: { modifiedRevision += 1 })
+            ToolAboutView(toolId: toolID)
         default:
             OnePlusEmptyState("Select a tool", systemImage: "wrench.adjustable",
                               caption: "Choose a tool from the sidebar.")
@@ -120,7 +109,6 @@ struct HomeView: View {
         switch route {
         case .catalog(let requestedFilter): filter = requestedFilter; selectedTool = "all-tools"
         case .settings(let tab): storedSettingsTab = tab.rawValue; selectedTool = "settings"
-        case .modified: selectedTool = "modified"
         case .tool(let id): selectedTool = id
         case .manual(let id): MainToolTab.select(.guide, for: id); selectedTool = id
         }
@@ -137,12 +125,5 @@ struct HomeView: View {
 
     private func refreshShortcutTools() {
         shortcutTools = Array(ToolRegistry.allTools.prefix(8))
-    }
-
-    private func observePreferences() {
-        preferenceObserver?.stop()
-        preferenceObserver = ToolSettingsPreferenceObserver(keys: Set(SettingsRegistry.entries.map(\.key))) {
-            modifiedRevision += 1
-        }
     }
 }
