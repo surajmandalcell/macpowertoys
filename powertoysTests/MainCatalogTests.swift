@@ -133,6 +133,15 @@ final class MainCatalogTests: XCTestCase {
         XCTAssertNil(MainPageRoute.resolve("tool/removed", toolIDs: ids))
         XCTAssertNil(MainPageRoute.resolve("tool/logs/history", toolIDs: ids))
     }
+
+    func testSettingsRoutesRestoreValidTabsAndExplicitDestinationsWin() {
+        for tab in MainSettingsTab.allCases {
+            XCTAssertEqual(MainPageRoute.resolve("settings", toolIDs: [], savedSettingsTab: tab.rawValue), .settings(tab))
+        }
+        XCTAssertEqual(MainPageRoute.resolve("settings", toolIDs: [], savedSettingsTab: "removed"), .settings(.general))
+        XCTAssertEqual(MainPageRoute.resolve("settings-marketplace", toolIDs: [], savedSettingsTab: "about"), .settings(.marketplace))
+        XCTAssertEqual(MainPageRoute.resolve("settings-about", toolIDs: [], savedSettingsTab: "marketplace"), .settings(.about))
+    }
 }
 
 private func sourceFile(_ path: String) throws -> String {

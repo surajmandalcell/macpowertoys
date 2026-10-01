@@ -2,10 +2,10 @@ import SwiftUI
 import OnePlusUI
 
 struct HomeView: View {
-    @State private var selectedTool: String? = "all-tools"
+    @AppStorage("main.page") private var selectedTool: String? = "all-tools"
     @State private var query = ""
     @State private var filter = MainCatalogFilter.all
-    @State private var settingsTab = MainSettingsTab.general
+    @AppStorage("main.settingsTab") private var storedSettingsTab = MainSettingsTab.general.rawValue
     @State private var focusedToolID: String?
     @State private var modifiedRevision = 0
     @State private var shortcutTools: [any Tool] = []
@@ -45,6 +45,8 @@ struct HomeView: View {
             modifiedRevision += 1
         }
         .onAppear {
+            let enabledIDs = ToolRegistry.allTools.filter { SettingsManager.shared.isToolEnabled($0.id) }.map(\.id)
+            if MainPageRoute.resolve(selectedTool ?? "", toolIDs: enabledIDs) == nil { selectedTool = "all-tools" }
             refreshShortcutTools()
             observePreferences()
         }
@@ -60,7 +62,7 @@ struct HomeView: View {
             AllToolsGridView(selectedTool: $selectedTool, query: query, filter: $filter,
                              focusedToolID: $focusedToolID) { modifiedRevision += 1 }
         case "settings":
-            MainSettingsView(tab: $settingsTab) { modifiedRevision += 1 }
+            MainSettingsView(tab: settingsTab) { modifiedRevision += 1 }
         case "modified":
             MainModifiedView { modifiedRevision += 1 }
         case let toolID?:
@@ -89,14 +91,20 @@ struct HomeView: View {
     }
 
     private func openPage(_ id: String) {
-        guard let route = MainPageRoute.resolve(id, toolIDs: ToolRegistry.allTools.map(\.id)) else { return }
+        guard let route = MainPageRoute.resolve(id, toolIDs: ToolRegistry.allTools.map(\.id),
+                                               savedSettingsTab: storedSettingsTab) else { return }
         query = ""
         switch route {
         case .catalog(let requestedFilter): filter = requestedFilter; selectedTool = "all-tools"
-        case .settings(let tab): settingsTab = tab; selectedTool = "settings"
+        case .settings(let tab): storedSettingsTab = tab.rawValue; selectedTool = "settings"
         case .modified: selectedTool = "modified"
         case .tool(let id): selectedTool = id
         }
+    }
+
+    private var settingsTab: Binding<MainSettingsTab> {
+        Binding(get: { MainSettingsTab(rawValue: storedSettingsTab) ?? .general },
+                set: { storedSettingsTab = $0.rawValue })
     }
 
     private func refreshShortcutTools() {
