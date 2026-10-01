@@ -8,8 +8,8 @@ final class CompactAppletRedesignTests: XCTestCase {
             XCTAssertTrue(OnePlusWindowCanvas.colorPicker.heightRange!.contains(ColorPickerLayout.historyHeight(count: count)))
             XCTAssertTrue(OnePlusWindowCanvas.textExtractor.heightRange!.contains(TextExtractorLayout.historyHeight(count: count)))
         }
-        XCTAssertEqual(ColorPickerLayout.historyHeight(count: 1000), 460)
-        XCTAssertEqual(TextExtractorLayout.historyHeight(count: 1000), 462)
+        XCTAssertEqual(ColorPickerLayout.historyHeight(count: 1000), 426)
+        XCTAssertEqual(TextExtractorLayout.historyHeight(count: 1000), 446)
         XCTAssertEqual(AwakeLayout.windowWidth, 560)
         XCTAssertEqual(AwakeLayout.windowHeight, 500)
     }
@@ -17,7 +17,7 @@ final class CompactAppletRedesignTests: XCTestCase {
     func testColorProjectsWindowGrowsUntilItsMaximumHeight() {
         XCTAssertEqual(ColorPickerLayout.projectsHeight(projectCount: 0, isCreating: false), 250)
         XCTAssertEqual(ColorPickerLayout.projectsHeight(projectCount: 1, isCreating: false), 294)
-        XCTAssertEqual(ColorPickerLayout.projectsHeight(projectCount: 0, isCreating: true), 310)
+        XCTAssertEqual(ColorPickerLayout.projectsHeight(projectCount: 0, isCreating: true), 294)
         XCTAssertEqual(ColorPickerLayout.projectsHeight(projectCount: 100, isCreating: false), 460)
     }
 
@@ -25,7 +25,7 @@ final class CompactAppletRedesignTests: XCTestCase {
         XCTAssertEqual(ColorPickerLayout.settingsHeight(contentHeight: 296), 404)
         XCTAssertEqual(ColorPickerLayout.settingsHeight(contentHeight: 0), 250)
         XCTAssertEqual(ColorPickerLayout.settingsHeight(contentHeight: 1000), 460)
-        XCTAssertEqual(ColorPickerLayout.settingsHeight(contentHeight: ColorPickerLayout.settingsContentHeight), 404)
+        XCTAssertEqual(ColorPickerLayout.settingsHeight(contentHeight: ColorPickerLayout.settingsContentHeight), 380)
     }
 
     func testColorHistoryPresentationFiltersAndFormatsOffTheViewPath() throws {

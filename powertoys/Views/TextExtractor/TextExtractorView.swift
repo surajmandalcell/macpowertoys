@@ -6,7 +6,7 @@ enum TextExtractorLayout {
     static let historyBaseHeight = OnePlusWindowCanvas.textExtractor.size.height - OnePlusMetrics.appletTitlebar
     static let maximumWindowHeight = OnePlusWindowCanvas.textExtractor.heightRange!.upperBound
     static let settingsHeight = maximumWindowHeight - OnePlusMetrics.appletTitlebar
-    static let historyRowHeight = OnePlusMetrics.captionedSettingRow
+    static let historyRowHeight = OnePlusMetrics.settingRow
 
     static func historyHeight(count: Int) -> CGFloat {
         min(maximumWindowHeight, historyBaseHeight + OnePlusMetrics.appletTitlebar
@@ -68,6 +68,7 @@ struct TextExtractorView: View {
         .frame(height: page == .settings ? TextExtractorLayout.maximumWindowHeight
                : TextExtractorLayout.historyHeight(count: service.history.count))
         .sheet(item: $selectedExtraction) { TextExtractionDetailView(extraction: $0) }
+        .transaction { $0.disablesAnimations = true }
         .onOpenToolPage("text-extractor") { id in
             if let destination = TextExtractorPage(rawValue: id) { page = destination }
         }
@@ -116,8 +117,8 @@ struct TextExtractorView: View {
         VStack(alignment: .leading, spacing: OnePlusMetrics.cardGap) {
             statusBanner
             if service.history.isEmpty {
-                OnePlusEmptyState("Select text anywhere", systemImage: "viewfinder",
-                                  caption: "Drag a region. Recognized text is copied automatically.")
+                OnePlusEmptyState("Select text anywhere", systemImage: "viewfinder")
+                    .help("Drag a region. Recognized text is copied automatically.")
             } else {
                 OnePlusSectionTitle("History")
                 OnePlusCard {
@@ -186,24 +187,21 @@ struct TextExtractorSettingsView: View {
         VStack(alignment: .leading, spacing: OnePlusMetrics.cardGap) {
             shortcutSettings
             recognitionSettings
-            OnePlusCard {
-                OnePlusCardHeader("Languages", systemImage: "globe")
-                OnePlusSettingRow("Preferred languages", caption: "Empty means automatic.", separator: false) {
-                    OnePlusTextField("en-US, fr-FR", text: $languages, onSubmit: applyLanguages)
-                        .accessibilityLabel("Preferred languages")
-                        .onChange(of: languages) { applyLanguages() }
-                }
+            OnePlusSettingRow("Preferred languages", help: "Empty means automatic.", separator: false) {
+                OnePlusTextField("en-US, fr-FR", text: $languages, onSubmit: applyLanguages)
+                    .accessibilityLabel("Preferred languages")
+                    .onChange(of: languages) { applyLanguages() }
             }
-            OnePlusCard {
-                OnePlusCardHeader("History", systemImage: "clock.arrow.circlepath")
-                OnePlusSettingRow("Clear history", caption: "Removes saved extracted text.", separator: false) {
-                    Button("Clear", role: .destructive) { confirmingClear = true }
-                        .buttonStyle(OnePlusButtonStyle(.destructive))
-                        .disabled(service.history.isEmpty)
-                        .accessibilityIdentifier("text-extractor.clear-history")
-                }
+            .environment(\.onePlusCardPadding, 0)
+            OnePlusSettingRow("Clear history", help: "Removes saved extracted text.", separator: false) {
+                Button("Clear", role: .destructive) { confirmingClear = true }
+                    .buttonStyle(OnePlusButtonStyle(.destructive))
+                    .disabled(service.history.isEmpty)
+                    .accessibilityIdentifier("text-extractor.clear-history")
             }
+            .environment(\.onePlusCardPadding, 0)
         }
+        .transaction { $0.disablesAnimations = true }
         .confirmationDialog("Clear text extraction history?", isPresented: $confirmingClear) {
             Button("Clear History", role: .destructive) { service.clearHistory() }
             Button("Cancel", role: .cancel) {}
@@ -226,7 +224,7 @@ struct TextExtractorSettingsView: View {
                     get: { shortcuts.isEnabled(.textExtractor) }, set: { shortcuts.setEnabled($0, for: .textExtractor) }
                 )).labelsHidden().toggleStyle(OnePlusSwitchStyle())
             }
-            OnePlusSettingRow("Keyboard shortcut", caption: "Works in every app.", separator: false) {
+            OnePlusSettingRow("Keyboard shortcut", help: "Works in every app.", separator: false) {
                 ShortcutRecorderField(action: .textExtractor).disabled(!shortcuts.isEnabled(.textExtractor))
             }
             ShortcutPermissionNotice(action: .textExtractor)
@@ -271,10 +269,7 @@ private struct TextExtractionRow: View {
         HStack(spacing: OnePlusMetrics.actionSpacing) {
             Button(action: onOpen) {
                 HStack(spacing: OnePlusMetrics.actionSpacing) {
-                    VStack(alignment: .leading, spacing: OnePlusMetrics.spacing[0]) {
-                        Text(extraction.text).onePlusText(.row).lineLimit(1)
-                        Text("Screen selection").onePlusText(.caption)
-                    }
+                    Text(extraction.text).onePlusText(.row).lineLimit(1)
                     Spacer(minLength: 0)
                     Text(row.timestamp).onePlusText(.caption).fixedSize()
                 }
