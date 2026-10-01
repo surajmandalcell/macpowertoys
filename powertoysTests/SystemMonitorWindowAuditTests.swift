@@ -21,6 +21,27 @@ final class SystemMonitorWindowAuditTests: XCTestCase {
         XCTAssertEqual(service.timerOwnerCount, 0)
     }
 
+    func testBatteryDetailsReserveFourRowsUntilCompletedAndRetainValidRefresh() {
+        let pending = SystemMonitorWindowView.batteryDetailRows(for: nil)
+        XCTAssertEqual(pending.map { $0.0 }, ["Health", "Cycle count", "Voltage", "Amperage"])
+        XCTAssertEqual(pending.map { $0.1 }, Array(repeating: "—", count: 4))
+        let details = SystemMonitorBatteryDetails(cycleCount: 12, health: "Normal", currentCapacity: nil,
+                                                  maximumCapacity: nil, voltageMillivolts: 12000, amperageMilliamps: -500)
+        let rows = SystemMonitorWindowView.batteryDetailRows(for: details)
+        XCTAssertEqual(rows.count, pending.count)
+        XCTAssertEqual(rows[0].1, "Normal")
+        XCTAssertEqual(rows[1].1, "12")
+        let old = SystemMonitorSample(timestamp: Date(), cpuUsage: nil, memoryUsed: nil, memoryTotal: nil,
+                                      gpuUsage: nil, networkDownload: nil, networkUpload: nil, diskUsed: nil,
+                                      diskTotal: nil, batteryPercent: 60, batteryCharging: false, thermalState: nil,
+                                      loadAverage: nil, unavailableMetrics: [], batteryDetails: details)
+        let pendingSample = SystemMonitorSample(timestamp: Date(), cpuUsage: nil, memoryUsed: nil, memoryTotal: nil,
+                                                gpuUsage: nil, networkDownload: nil, networkUpload: nil, diskUsed: nil,
+                                                diskTotal: nil, batteryPercent: nil, batteryCharging: nil, thermalState: nil,
+                                                loadAverage: nil, unavailableMetrics: [])
+        XCTAssertEqual(pendingSample.preservingAvailableValues(from: old).batteryDetails?.cycleCount, 12)
+    }
+
     func testPendingBatteryDoesNotClaimTheHardwareIsAbsent() {
         func sample(percent: Int? = nil, charging: Bool? = nil,
                     unavailable: Set<SystemMonitorMenuMetric> = []) -> SystemMonitorSample {

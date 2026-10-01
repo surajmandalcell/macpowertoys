@@ -624,6 +624,15 @@ Processes, CPU, GPU, Memory, Network, Disk, Battery, Sensors, Remote stats,
 System Report, About, and Settings. The Task Manager menu panel follows the
 HTML panel exactly, except `Open App`, which uses the ghost style.
 
+Overview uses regular 27 pt values with 12 pt units, 23 pt thermal words,
+and 13 pt glyphs, approved in round 11. Metric labels use chartSeries[0];
+notes and glyphs use secondary ink. Cards and grid columns have 16 pt gaps.
+Detail legends share the card label's 12 pt inset; time axes follow plots.
+Chart captions and core IDs use compact 9.5 pt caption or mono roles.
+Navigation chevrons reserve their frame and appear only on hover or
+accessible keyboard focus. Histories use chartLine and 1.2 pt strokes,
+with the shared ordered-dot pattern clipped to the measured area.
+
 Remote window cards use regular 18 pt values, approved in round 11. Host
 destination and platform sit beside the identity. Configure, Refresh,
 Open SSH, and Connect/Disconnect/Open App share a horizontal row of 24 pt
