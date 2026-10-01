@@ -183,69 +183,20 @@ enum MacTweaksPreviewKind: String {
         case .menubar: "menu bar spacing"
         }
     }
-
-    var cycleDuration: TimeInterval {
-        switch self {
-        case .dockReveal: 3.61
-        case .minimize: 4.14
-        case .layout: 6.24
-        case .finder, .apps: 4.6
-        case .windows: 2.60
-        case .screenshots: 3.80
-        case .power: 4.2
-        case .menubar: 2.50
-        }
-    }
 }
 
 struct MacTweaksPreviewView: View {
     let kind: MacTweaksPreviewKind
 
-    @Environment(\.accessibilityReduceMotion) private var reduceMotion
-    @State private var isHovering = false
-    @State private var startedAt: Date?
-
-    private var shouldReduceMotion: Bool {
-        reduceMotion && ProcessInfo.processInfo.environment["MPT_UI_TEST_PREVIEW_MOTION"] != "1"
-    }
-
     var body: some View {
-        Group {
-            if isHovering && !shouldReduceMotion {
-                TimelineView(.animation(minimumInterval: 1 / 60)) { timeline in
-                    previewFrame(progress: progress(at: timeline.date))
-                }
-            } else {
-                previewFrame(progress: 0)
-            }
-        }
-        .clipped()
-        .contentShape(Rectangle())
-        .onContinuousHover { phase in
-            switch phase {
-            case .active:
-                setHovering(true)
-            case .ended:
-                setHovering(false)
-            }
-        }
-        .overlay(Color.white.opacity(isHovering ? 0.012 : 0).allowsHitTesting(false))
-        .animation(shouldReduceMotion ? nil : .easeOut(duration: 0.12), value: isHovering)
-        .transaction { transaction in
-            if shouldReduceMotion { transaction.disablesAnimations = true }
-        }
-        .accessibilityElement(children: .ignore)
-        .accessibilityLabel("Preview of \(kind.accessibilityName), \(isHovering && !shouldReduceMotion ? "playing" : "at rest")")
-        .accessibilityIdentifier("mac-tweaks.preview.\(kind.rawValue)")
+        previewFrame()
+            .clipped()
+            .accessibilityElement(children: .ignore)
+            .accessibilityLabel("Preview of \(kind.accessibilityName), at rest")
+            .accessibilityIdentifier("mac-tweaks.preview.\(kind.rawValue)")
     }
 
-    private func setHovering(_ hovering: Bool) {
-        guard hovering != isHovering else { return }
-        isHovering = hovering
-        startedAt = hovering ? Date() : nil
-    }
-
-    private func previewFrame(progress: Double) -> some View {
+    private func previewFrame() -> some View {
         GeometryReader { proxy in
             let sceneHeight = max(1, proxy.size.height - 2)
             let crop = kind == .finder
@@ -256,51 +207,32 @@ struct MacTweaksPreviewView: View {
                 MacTweaksFilmBackground()
                     .scaleEffect(1.08)
                     .blur(radius: 10)
-                renderedPreview(progress: progress)
+                renderedPreview()
                     .frame(width: 600, height: 304)
                     .scaleEffect(scale)
                     .position(
                         x: proxy.size.width / 2 + (300 - crop.midX) * scale,
                         y: sceneHeight / 2 + (152 - crop.midY) * scale
                     )
-                HStack(spacing: 2) {
-                    ForEach(0..<4, id: \.self) { _ in
-                        Rectangle().fill(Color.white.opacity(0.10))
-                    }
-                }
-                .frame(height: 2)
-                LinearGradient(
-                    colors: [Color(white: 0.60), Color(white: 0.87)],
-                    startPoint: .leading,
-                    endPoint: .trailing
-                )
-                .frame(width: proxy.size.width * CGFloat(progress), height: 2)
-                .opacity(isHovering && !shouldReduceMotion ? 1 : 0)
             }
         }
     }
 
-    private func progress(at date: Date) -> Double {
-        guard isHovering, !shouldReduceMotion, let startedAt else { return 0 }
-        let elapsed = max(0, date.timeIntervalSince(startedAt))
-        return elapsed.truncatingRemainder(dividingBy: kind.cycleDuration) / kind.cycleDuration
-    }
-
     @ViewBuilder
-    private func preview(progress: Double) -> some View {
+    private func preview() -> some View {
         if kind == .power {
-            PowerPreviewScene(progress: progress, active: isHovering && !shouldReduceMotion)
+            PowerPreviewScene(progress: 0, active: false)
         } else {
-            DesktopPreviewScene(kind: kind, progress: progress, active: isHovering && !shouldReduceMotion)
+            DesktopPreviewScene(kind: kind, progress: 0, active: false)
         }
     }
 
     @ViewBuilder
-    private func renderedPreview(progress: Double) -> some View {
+    private func renderedPreview() -> some View {
         if kind == .power {
-            preview(progress: progress)
+            preview()
         } else {
-            preview(progress: progress)
+            preview()
                 .drawingGroup(opaque: false, colorMode: .linear)
         }
     }
