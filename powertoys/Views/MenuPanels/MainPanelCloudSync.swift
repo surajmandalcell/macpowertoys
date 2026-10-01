@@ -67,12 +67,10 @@ struct CloudSyncTrayView: View {
         return HStack(spacing: OnePlusMetrics.actionSpacing) {
             Image(systemName: remote.icon).onePlusText(.row)
                 .frame(width: OnePlusMetrics.compactControlHeight)
-            VStack(alignment: .leading, spacing: OnePlusMetrics.navRowGap) {
-                Text(remote.displayName).onePlusText(.row, color: OnePlusColor.dataBlue)
-                    .lineLimit(1).help(remote.displayName)
-                Text(remote.typeLabel).onePlusText(.caption).lineLimit(1)
-            }
+            Text(remote.displayName).onePlusText(.row, color: OnePlusColor.dataBlue)
+                .lineLimit(1).help(remote.displayName)
             Spacer(minLength: OnePlusMenuMetrics.tileGap)
+            Text(remote.typeLabel).onePlusText(.caption).lineLimit(1)
             Text(lastTransfer?.state.displayName ?? "No transfers").onePlusText(.caption)
             if let lastTransfer {
                 let date = lastTransfer.finishedAt ?? lastTransfer.createdAt
