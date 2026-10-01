@@ -10,6 +10,8 @@ nonisolated struct PortmanOverviewRow: Identifiable, Sendable {
     let canStop: Bool
     let title: String
     let subtitle: String
+    let appBundlePath: String?
+    let processSymbol: String
     let memoryText: String
     let sparklineValues: [Double]
     let sparklineRange: ClosedRange<Double>
@@ -96,11 +98,14 @@ nonisolated func portmanOverviewPresentation(
         let title = portmanServerName(project: details?.project,
                                       processName: port.launchCommand.isEmpty ? port.command : port.launchCommand)
         let branch = details?.branch.flatMap { $0.isEmpty || $0 == title ? nil : $0 }
+        let appBundlePath = SystemMonitorProcessHierarchy.appBundlePath(for: port.executablePath)
         return PortmanOverviewRow(
             port: port,
             canStop: port.canStop,
             title: title,
             subtitle: branch ?? "",
+            appBundlePath: appBundlePath,
+            processSymbol: appBundlePath == nil && port.executablePath.hasPrefix("/") ? "terminal" : "",
             memoryText: portmanMemoryString(port.memoryBytes),
             sparklineValues: values,
             sparklineRange: (values.min() ?? 0)...max(1, values.max() ?? 1)
@@ -198,6 +203,7 @@ struct PortmanPanelView: View {
     @State private var showingProcesses = false
     @State private var overviewGeneration = 0
     @State private var overviewPresentation = PortmanOverviewPresentation.empty
+    @State private var processIcons = SystemMonitorProcessIcons()
     @AppStorage("portman.sessionLinksEnabled") private var sessionLinksEnabled = false
     @AppStorage("portman.publicGitHubLinksEnabled") private var publicGitHubLinksEnabled = false
     @AppStorage("portman.editor") private var editor = "auto"
@@ -517,6 +523,7 @@ struct PortmanPanelView: View {
         }
         guard !Task.isCancelled, overviewRequest == request else { return }
         overviewPresentation = presentation
+        await processIcons.load(bundlePaths: Set(presentation.rows.compactMap(\.appBundlePath)))
     }
 
     private var localOverviewHeader: some View {
@@ -641,6 +648,15 @@ struct PortmanPanelView: View {
                         }
                         .foregroundStyle(portColor(port))
                         .frame(width: 44, alignment: .leading)
+                        Group {
+                            if let path = row.appBundlePath, let icon = processIcons.images[path] {
+                                Image(nsImage: icon).resizable().scaledToFit()
+                            } else if !row.processSymbol.isEmpty {
+                                Image(systemName: row.processSymbol).onePlusText(.row, color: OnePlusColor.secondary)
+                            } else { Color.clear }
+                        }
+                        .frame(width: OnePlusMetrics.navIcon, height: OnePlusMetrics.navIcon)
+                        .accessibilityHidden(true)
                         ViewThatFits(in: .horizontal) {
                             HStack(alignment: .firstTextBaseline, spacing: OnePlusMetrics.spacing[2]) {
                                 Text(row.title).onePlusText(.cardTitle).fixedSize()
@@ -778,7 +794,7 @@ struct PortmanPanelView: View {
                 Spacer()
                 Text("\(String(format: "%.1f", Double(total) / Double(physical) * 100))% of RAM")
             }
-            .onePlusText(.mono)
+            .onePlusText(.mono, color: OnePlusColor.metricCaption)
             .lineLimit(1)
             .minimumScaleFactor(0.8)
         }

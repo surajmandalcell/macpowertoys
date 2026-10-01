@@ -20,6 +20,7 @@ nonisolated struct PortmanLocalPort: Identifiable, Sendable {
     let userID: UInt32
     var processes: [PortmanProcess] = []
     var hasConnections = false
+    var executablePath = ""
 
     var processID: String { "\(pid):\(started)" }
     var id: String { "\(processID):\(port)" }
@@ -280,6 +281,7 @@ nonisolated enum PortmanScanner {
     static func parseLocal(
         _ lsof: String, _ ps: String,
         identities: [Int32: (UInt64, UInt32)] = [:],
+        executablePaths: [Int32: String] = [:],
         range: ClosedRange<UInt16> = 3000...9999
     ) -> [PortmanLocalPort] {
         var details: [Int32: (Int64, Double, String, String)] = [:]
@@ -310,7 +312,8 @@ nonisolated enum PortmanScanner {
                     launchCommand: detail?.3 ?? command,
                     memoryBytes: detail?.0 ?? 0, cpuPercent: detail?.1 ?? 0,
                     uptime: detail?.2 ?? "", started: identities[pid]?.0 ?? 0,
-                    userID: identities[pid]?.1 ?? UInt32.max
+                    userID: identities[pid]?.1 ?? UInt32.max,
+                    executablePath: executablePaths[pid] ?? ""
                 ))
             default: break
             }
@@ -327,6 +330,7 @@ nonisolated enum PortmanScanner {
         let ps = (try? run("/bin/ps", ["-p", pids.sorted().map(String.init).joined(separator: ","),
                                         "-o", "pid=,rss=,%cpu=,etime=,command="])) ?? ""
         var identities: [Int32: (UInt64, UInt32)] = [:]
+        var executablePaths: [Int32: String] = [:]
         for pid in pids {
             var info = proc_bsdinfo()
             let bytes = withUnsafeMutablePointer(to: &info) {
@@ -335,9 +339,13 @@ nonisolated enum PortmanScanner {
             if bytes == MemoryLayout<proc_bsdinfo>.size {
                 identities[pid] = (info.pbi_start_tvsec * 1_000_000 + info.pbi_start_tvusec,
                                    info.pbi_uid)
+                var path = [CChar](repeating: 0, count: Int(MAXPATHLEN))
+                if proc_pidpath(pid, &path, UInt32(path.count)) > 0 {
+                    executablePaths[pid] = String(cString: path)
+                }
             }
         }
-        var ports = parseLocal(lsof, ps, identities: identities, range: range)
+        var ports = parseLocal(lsof, ps, identities: identities, executablePaths: executablePaths, range: range)
         let established = (try? run("/usr/sbin/lsof", ["-nP", "-iTCP", "-sTCP:ESTABLISHED", "-Fp"],
                                     emptyExitIsSuccess: true)) ?? ""
         let connectedPIDs = Set(established.split(whereSeparator: \.isNewline)

@@ -167,6 +167,47 @@ final class PortmanTests: XCTestCase {
         XCTAssertEqual(presentation.scanRangeText, "3000–9999")
     }
 
+    func testListenerIconsUseExecutableIdentityAndKeepUnknownSlotsBlank() throws {
+        for (path, bundle, symbol) in [
+            ("/Applications/Raycast.app/Contents/MacOS/Raycast", "/Applications/Raycast.app", ""),
+            ("/Applications/My App.app/Contents/Frameworks/Helper.app/Contents/MacOS/Helper", "/Applications/My App.app", ""),
+            ("/opt/homebrew/bin/node", nil, "terminal"),
+            ("/usr/bin/python3", nil, "terminal"),
+            ("", nil, ""),
+            ("node", nil, ""),
+            ("Unavailable", nil, "")
+        ] as [(String, String?, String)] {
+            let ports = PortmanScanner.parseLocal("p42\ncnode\nn*:3000", "42 1024 1.5 1m node server.js",
+                                                 executablePaths: [42: path])
+            let presentation = portmanOverviewPresentation(
+                ports: ports, history: [:], metadata: [:], lastConnectionAt: [:],
+                sort: .port, selectedProcessIDs: [], cleanupMode: false,
+                idleHours: 4, runningDays: 3, policyMode: .off,
+                includeDeletedFolders: false, scanRange: 3000...9999
+            )
+            let row = try XCTUnwrap(presentation.rows.first)
+            XCTAssertEqual(row.port.executablePath, path)
+            XCTAssertEqual(row.appBundlePath, bundle)
+            XCTAssertEqual(row.processSymbol, symbol)
+            XCTAssertEqual(row.title, "node server.js")
+            XCTAssertEqual(row.memoryText, "1 MB")
+        }
+    }
+
+    @MainActor
+    func testListenerIconsReuseBundleArtworkAndEvictUnusedPaths() async throws {
+        let icons = SystemMonitorProcessIcons()
+        let finder = "/System/Library/CoreServices/Finder.app"
+        let missing = "/nonexistent/Portman.app"
+        await icons.load(bundlePaths: [finder, missing])
+        let first = try XCTUnwrap(icons.images[finder])
+        XCTAssertNil(icons.images[missing])
+        await icons.load(bundlePaths: [finder, missing])
+        XCTAssertTrue(icons.images[finder] === first)
+        await icons.load(bundlePaths: [])
+        XCTAssertTrue(icons.images.isEmpty)
+    }
+
     func testServerRowsKeepProjectAndBranchContextDistinct() throws {
         for (project, branch, command, title, subtitle) in [
             ("Project", "main", "node server.js", "Project", "main"),
