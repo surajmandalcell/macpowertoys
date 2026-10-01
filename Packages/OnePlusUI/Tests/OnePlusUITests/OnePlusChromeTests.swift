@@ -14,7 +14,7 @@ final class OnePlusChromeTests: XCTestCase {
                 let chrome = OnePlusChromeView(size: window.frame.size, centerline: centerline,
                                              sizing: .swiftUI, report: { _ in })
                 window.contentView?.addSubview(chrome)
-                RunLoop.main.run(until: Date(timeIntervalSinceNow: 0.03))
+                waitForChrome(window, centerline: centerline)
                 window.propertyWrites = 0
                 let passes = chrome.appliedPassCount
                 for type in [NSWindow.ButtonType.closeButton, .miniaturizeButton, .zoomButton] {
@@ -23,7 +23,7 @@ final class OnePlusChromeTests: XCTestCase {
                     button.setFrameOrigin(CGPoint(x: button.frame.minX, y: button.frame.minY + 11))
                 }
                 NotificationCenter.default.post(name: NSWindow.didUpdateNotification, object: window)
-                RunLoop.main.run(until: Date(timeIntervalSinceNow: 0.03))
+                waitForChrome(window, centerline: centerline)
                 for type in [NSWindow.ButtonType.closeButton, .miniaturizeButton, .zoomButton] {
                     let button = try XCTUnwrap(window.standardWindowButton(type))
                     XCTAssertEqual(window.frame.height - button.convert(button.bounds, to: nil).midY, centerline, accuracy: 0.5)
@@ -50,11 +50,11 @@ final class OnePlusChromeTests: XCTestCase {
                     .frame(height: height).onePlusFixedCanvas(canvas))
             window.contentView = host
             host.layoutSubtreeIfNeeded()
-            RunLoop.main.run(until: Date(timeIntervalSinceNow: 0.15))
+            waitForChrome(window, centerline: canvas.centerline)
             XCTAssertEqual(host.fittingSize.width, canvas.size.width)
             XCTAssertEqual(host.fittingSize.height, height)
             NotificationCenter.default.post(name: NSWindow.didResizeNotification, object: window)
-            RunLoop.main.run(until: Date(timeIntervalSinceNow: 0.05))
+            waitForChrome(window, centerline: canvas.centerline)
             XCTAssertEqual(window.frame.height, height)
             XCTAssertTrue(window.styleMask.contains(.miniaturizable))
             let minimize = window.standardWindowButton(.miniaturizeButton)!
@@ -97,7 +97,7 @@ final class OnePlusChromeTests: XCTestCase {
             let chrome = OnePlusChromeView(size: NSSize(width: 420, height: 300), centerline: 22,
                                           sizing: sizing, report: { _ in })
             window.contentView?.addSubview(chrome)
-            RunLoop.main.run(until: Date(timeIntervalSinceNow: 0.05))
+            waitForChrome(window, centerline: 22)
             let writes = window.propertyWrites
             let passes = chrome.appliedPassCount
             let zoom = try XCTUnwrap(window.standardWindowButton(.zoomButton))
@@ -105,7 +105,7 @@ final class OnePlusChromeTests: XCTestCase {
                 window.setFrame(NSRect(x: -2000, y: -2000, width: 420, height: 270 + index * 4), display: false)
                 zoom.setFrameOrigin(NSPoint(x: zoom.frame.minX, y: zoom.frame.minY + 5))
                 chrome.layout()
-                RunLoop.main.run(until: Date(timeIntervalSinceNow: 0.01))
+                waitForChrome(window, centerline: 22)
                 XCTAssertEqual(window.frame.height - zoom.convert(zoom.bounds, to: nil).midY, 22, accuracy: 0.5)
             }
             XCTAssertEqual(window.contentSizeWrites, 0, "Chrome must not resize a SwiftUI canvas.")
@@ -124,6 +124,18 @@ final class OnePlusChromeTests: XCTestCase {
             RunLoop.main.run(until: Date(timeIntervalSinceNow: 0.02))
             XCTAssertEqual(chrome.appliedPassCount, beforeClose, "Closing must cancel pending work.")
         }
+    }
+
+    private func waitForChrome(_ window: NSWindow, centerline: CGFloat) {
+        let deadline = Date(timeIntervalSinceNow: 1)
+        repeat {
+            RunLoop.main.run(until: Date(timeIntervalSinceNow: 0.01))
+            let aligned = [NSWindow.ButtonType.closeButton, .miniaturizeButton, .zoomButton].allSatisfy { type in
+                guard let button = window.standardWindowButton(type) else { return false }
+                return abs(window.frame.height - button.convert(button.bounds, to: nil).midY - centerline) <= 0.5
+            }
+            if aligned, window.titleVisibility == .hidden { return }
+        } while Date() < deadline
     }
 }
 
