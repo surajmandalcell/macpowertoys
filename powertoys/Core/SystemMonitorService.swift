@@ -1,4 +1,5 @@
 import AppKit
+import NetToysCore
 import Darwin
 import Foundation
 import Network

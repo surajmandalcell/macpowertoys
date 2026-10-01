@@ -2,6 +2,7 @@ import AppKit
 import Charts
 import Observation
 import SwiftUI
+import NetToysCore
 import OnePlusUI
 
 nonisolated struct PortmanOverviewRow: Identifiable, Sendable {

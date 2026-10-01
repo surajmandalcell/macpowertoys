@@ -1,5 +1,7 @@
 import AppKit
 import Darwin
+import NetToysCore
+import ObjectiveC
 import OnePlusUI
 import Observation
 import Synchronization
@@ -8,6 +10,15 @@ import XCTest
 @testable import powertoys
 
 final class FanControlTests: XCTestCase {
+    func testFanCommandsStayOnTheHostDaemon() {
+        let host = MacPowerToysHelperContract.neighbor
+        XCTAssertEqual(host.machServiceName, "com.surajmandal.macpowertoys.nettoys-neighbor")
+        XCTAssertNotEqual(host.machServiceName, NetToysNeighborServiceContract(host: .standalone).machServiceName)
+        let selector = NSSelectorFromString("applyFanPreset:reply:")
+        XCTAssertNotNil(protocol_getMethodDescription(MacPowerToysHelperXPCProtocol.self, selector, true, true).name)
+        XCTAssertNil(protocol_getMethodDescription(NetToysNeighborXPCProtocol.self, selector, true, true).name)
+    }
+
     @MainActor
     func testPendingManualCommandIsQueuedBeforeExitAuto() async throws {
         let requests = Mutex<[(FanPreset, @Sendable (String?) -> Void)]>([])

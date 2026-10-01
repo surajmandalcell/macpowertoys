@@ -1,5 +1,6 @@
 import AppKit
 import Foundation
+import NetToysCore
 import OnePlusUI
 import SwiftUI
 import UniformTypeIdentifiers

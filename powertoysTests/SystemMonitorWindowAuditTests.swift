@@ -1,4 +1,5 @@
 import Foundation
+import NetToysCore
 import OnePlusUI
 import XCTest
 @testable import powertoys

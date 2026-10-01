@@ -4,6 +4,7 @@
 //
 
 import Foundation
+import NetToysKit
 import AppKit
 import SwiftUI
 
@@ -117,7 +118,7 @@ final class SettingsManager {
             guard !transitioningToolIDs.contains(toolID) else { return }
             transitioningToolIDs.insert(toolID)
             Task {
-                let succeeded = await NetToysLoginItemManager.shared.setEnabled(enabled)
+                let succeeded = await MacPowerToysNetToys.host.loginItems.setEnabled(enabled)
                 if succeeded {
                     persistToolEnabled(enabled, toolID: toolID)
                     postEnablementChange(enabled, toolID: toolID)
@@ -136,7 +137,7 @@ final class SettingsManager {
     func reconcileNetToysLifecycle() async {
         guard !AppRuntime.isRunningTests else { return }
         let requested = isToolEnabled("nettoys")
-        let succeeded = await NetToysLoginItemManager.shared.setEnabled(requested)
+        let succeeded = await MacPowerToysNetToys.host.loginItems.setEnabled(requested)
         if requested, !succeeded { persistToolEnabled(false, toolID: "nettoys") }
     }
 

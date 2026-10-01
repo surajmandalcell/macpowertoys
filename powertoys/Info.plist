@@ -2,6 +2,8 @@
 <!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
 <plist version="1.0">
 <dict>
+    <key>NetToysPackageVersion</key>
+    <string>1.0.0</string>
 	<key>MPTSourceCommit</key>
 	<string>$(MPT_SOURCE_COMMIT)</string>
 	<key>NSScreenCaptureUsageDescription</key>
@@ -10,6 +12,8 @@
 	<string>Input Devices adjusts mouse and trackpad scroll events using the profiles you enable.</string>
 	<key>NSLocalNetworkUsageDescription</key>
 	<string>NetToys scans addresses and ports on local networks that you choose.</string>
+	<key>NSBonjourServices</key>
+	<array><string>_macpowertoys-permission._tcp</string></array>
 	<key>NSLocationUsageDescription</key>
 	<string>Network History uses your Wi-Fi network name to label local network changes.</string>
 	<key>NSLocationWhenInUseUsageDescription</key>
