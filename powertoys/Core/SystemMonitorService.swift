@@ -1507,6 +1507,7 @@ final class SystemMonitorMenuController: NSObject {
     private var renderedStateCache = SystemMonitorRenderedStateCache()
     private var settings = SystemMonitorMenuSettings()
     private let popover = NSPopover()
+    private var presentationTask: Task<Void, Never>?
     private var lastDirectOrder: [SystemMonitorMenuMetric]?
     private let defaults: UserDefaults
     private(set) var renderedWriteCount = 0
@@ -1548,7 +1549,11 @@ final class SystemMonitorMenuController: NSObject {
             : []
         let obsoleteKeys = statusItems.keys.filter { !desired.contains($0) ||
             (!positionKeys.isEmpty && $0 != "group") }
-        if !obsoleteKeys.isEmpty { popover.performClose(nil) }
+        if !obsoleteKeys.isEmpty {
+            presentationTask?.cancel()
+            presentationTask = nil
+            popover.performClose(nil)
+        }
         for key in obsoleteKeys {
             if let item = statusItems.removeValue(forKey: key) {
                 NSStatusBar.system.removeStatusItem(item)
@@ -1648,7 +1653,7 @@ final class SystemMonitorMenuController: NSObject {
         item.button?.setAccessibilityIdentifier("SystemMonitorMenuBarItem")
         item.button?.target = self
         item.button?.action = #selector(openSystemMonitor)
-        item.button?.sendAction(on: [.leftMouseUp])
+        item.button?.sendAction(on: [.leftMouseDown])
         item.button?.toolTip = "Task Manager"
         return item
     }
@@ -1656,8 +1661,11 @@ final class SystemMonitorMenuController: NSObject {
         "\(settings.enabled)|\(settings.enabledItems.map { "\($0.metric.rawValue):\($0.placement.rawValue)" }.joined(separator: ","))"
     }
     @objc private func openSystemMonitor(_ sender: NSStatusBarButton) {
-        if popover.isShown {
+        if popover.isShown || presentationTask != nil {
+            presentationTask?.cancel()
+            presentationTask = nil
             popover.performClose(nil)
+            OnePlusPanelTimings.shared.cancel(panel: "system-monitor")
             return
         }
         popover.behavior = .transient
@@ -1666,14 +1674,35 @@ final class SystemMonitorMenuController: NSObject {
            !defaults.bool(forKey: "systemMonitor.rememberTrayPage") {
             defaults.set(SystemMonitorTrayPage.home.rawValue, forKey: "systemMonitor.trayPage")
         }
-        let hosting = NSHostingController(rootView: SystemMonitorMenuPopoverView(defaults: defaults) { [weak self] height in
-            guard let self,
-                  abs(self.popover.contentSize.height - height) > 0.5 else { return }
-            self.popover.contentSize = NSSize(width: OnePlusMenuMetrics.width, height: height)
-        })
+        OnePlusPanelTimings.shared.beginOpenIfNeeded(panel: "system-monitor")
+        if defaults.string(forKey: "systemMonitor.trayPage") == SystemMonitorTrayPage.processes.rawValue {
+            presentationTask = Task { [weak self, weak sender] in
+                await TaskManagerMenuProcessModel.shared.prepareForPresentation()
+                guard !Task.isCancelled, let self, let sender else { return }
+                self.presentationTask = nil
+                self.present(sender)
+            }
+        } else {
+            present(sender)
+        }
+    }
+
+    private func present(_ sender: NSStatusBarButton) {
+        guard sender.window?.isVisible == true else { return }
+        let hosting: NSHostingController<SystemMonitorMenuPopoverView>
+        if let existing = popover.contentViewController as? NSHostingController<SystemMonitorMenuPopoverView> {
+            hosting = existing
+        } else {
+            hosting = NSHostingController(rootView: SystemMonitorMenuPopoverView(defaults: defaults) { [weak self] height in
+                guard let self,
+                      abs(self.popover.contentSize.height - height) > 0.5 else { return }
+                self.popover.contentSize = NSSize(width: OnePlusMenuMetrics.width, height: height)
+            })
+        }
         hosting.view.appearance = NSApp.appearance
         let ceiling = (sender.window?.screen?.visibleFrame.height ?? 800) * OnePlusMenuMetrics.heightFraction
         hosting.view.setFrameSize(hosting.sizeThatFits(in: NSSize(width: OnePlusMenuMetrics.width, height: ceiling)))
+        hosting.view.layoutSubtreeIfNeeded()
         popover.contentViewController = hosting
         popover.contentSize = hosting.view.frame.size
         popover.show(relativeTo: sender.bounds, of: sender, preferredEdge: .minY)

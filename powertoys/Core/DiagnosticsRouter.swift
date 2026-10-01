@@ -6,6 +6,8 @@ nonisolated enum DiagnosticsRoute: Equatable, Sendable {
     case openPanel(DiagnosticsPanel, tab: String? = nil)
     case appearance(AppAppearance)
     case closePanels
+    case timings
+    case openIndividualPanel(String)
 
     static func parse(_ url: URL) -> Self? {
         guard DeepLinkHandler.isSupportedScheme(url.scheme), url.host == "diagnostics",
@@ -14,8 +16,12 @@ nonisolated enum DiagnosticsRoute: Equatable, Sendable {
         let query = URLComponents(url: url, resolvingAgainstBaseURL: false)?.queryItems ?? []
         let parts = url.path.split(separator: "/", omittingEmptySubsequences: false)
         if parts == ["", "close-panels"], url.query == nil { return .closePanels }
+        if parts == ["", "timings"], url.query == nil { return .timings }
         guard parts.count == 3, parts[0].isEmpty else { return nil }
         switch parts[1] {
+        case "open-tool-panel":
+            guard url.query == nil, IndividualMenuBarTool(rawValue: String(parts[2])) != nil else { return nil }
+            return .openIndividualPanel(String(parts[2]))
         case "appearance":
             guard url.query == nil else { return nil }
             return AppAppearance(rawValue: String(parts[2])).map(Self.appearance)
@@ -35,6 +41,7 @@ final class DiagnosticsMenuPanels: NSObject {
     weak var mainWindow: NSWindow?
     private let popovers = NSHashTable<NSPopover>.weakObjects()
     private(set) var captureWindow: NSPanel?
+    private var presentationTask: Task<Void, Never>?
     var makeCaptureContent: ((DiagnosticsPanel, @escaping (CGFloat) -> Void) -> AnyView?)?
     private let defaults: UserDefaults
 
@@ -52,6 +59,10 @@ final class DiagnosticsMenuPanels: NSObject {
     }
 
     func close() {
+        presentationTask?.cancel()
+        presentationTask = nil
+        for panel in DiagnosticsPanel.allCases { OnePlusPanelTimings.shared.cancel(panel: panel.rawValue) }
+        for tool in IndividualMenuBarTool.allCases { OnePlusPanelTimings.shared.cancel(panel: tool.id) }
         captureWindow?.orderOut(nil)
         captureWindow?.contentViewController = nil
         captureWindow = nil
@@ -63,6 +74,26 @@ final class DiagnosticsMenuPanels: NSObject {
     }
 
     func open(_ panel: DiagnosticsPanel, tab: String?) {
+        let switching = (captureWindow?.identifier?.rawValue == "diagnostics-panel.\(panel.rawValue)"
+            && captureWindow?.isVisible == true) || (panel == .portman && PortmanMenuController.shared.isShown)
+        if !switching { close() }
+        presentationTask?.cancel()
+        presentationTask = nil
+        OnePlusPanelTimings.shared.begin(panel: panel.rawValue, operation: switching ? .tabSwitch : .open,
+                                         tab: tab ?? "", input: "diagnostics")
+        if panel == .systemMonitor, tab == SystemMonitorTrayPage.processes.rawValue {
+            presentationTask = Task { [weak self] in
+                await TaskManagerMenuProcessModel.shared.prepareForPresentation()
+                guard !Task.isCancelled else { return }
+                self?.presentationTask = nil
+                self?.present(panel, tab: tab)
+            }
+        } else {
+            present(panel, tab: tab)
+        }
+    }
+
+    private func present(_ panel: DiagnosticsPanel, tab: String?) {
         panel.selectTab(tab, defaults: defaults)
         if captureWindow?.identifier?.rawValue == "diagnostics-panel.\(panel.rawValue)",
            captureWindow?.isVisible == true { return }
@@ -71,7 +102,6 @@ final class DiagnosticsMenuPanels: NSObject {
                                               activateApp: false)
             return
         }
-        close()
         presentCapturePanel(panel)
     }
 

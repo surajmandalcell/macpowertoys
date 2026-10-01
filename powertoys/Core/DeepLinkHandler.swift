@@ -6,6 +6,7 @@
 import Foundation
 import SwiftUI
 import Darwin
+import OnePlusUI
 
 nonisolated struct NetToysScanPrefill: Equatable, Sendable {
     let targets: String
@@ -85,6 +86,31 @@ final class DeepLinkHandler {
         }
 
         switch DiagnosticsRoute.parse(url) {
+        case .timings:
+            let records = OnePlusPanelTimings.shared.records
+            let sourceCommit = Bundle.main.object(forInfoDictionaryKey: "MPTSourceCommit") as? String ?? "unknown"
+            Task {
+                do {
+                    try await Task.detached(priority: .utility) {
+                        let root = FileManager.default.urls(for: .applicationSupportDirectory, in: .userDomainMask)[0]
+                        let directory = root.appendingPathComponent("MacPowerToys/Diagnostics", isDirectory: true)
+                        try FileManager.default.createDirectory(at: directory, withIntermediateDirectories: true)
+                        let data = try JSONEncoder().encode(records)
+                        let object: [String: Any] = ["sourceCommit": sourceCommit, "endpoint": "display-submitted",
+                            "timings": try JSONSerialization.jsonObject(with: data)]
+                        try JSONSerialization.data(withJSONObject: object, options: [.prettyPrinted, .sortedKeys])
+                            .write(to: directory.appendingPathComponent("timings.json"), options: .atomic)
+                    }.value
+                } catch {
+                    LogManager.shared.error("Could not record panel timings.", source: "DeepLinkHandler")
+                }
+            }
+            return
+        case .openIndividualPanel(let id):
+            if let tool = IndividualMenuBarTool(rawValue: id) {
+                IndividualMenuBarController.shared.show(tool: tool, diagnostic: true)
+            }
+            return
         case .openPanel(let panel, let tab):
             DiagnosticsMenuPanels.shared.open(panel, tab: tab)
             return

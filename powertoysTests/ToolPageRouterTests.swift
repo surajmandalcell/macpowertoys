@@ -5,6 +5,23 @@ import Testing
 @testable import powertoys
 
 struct ToolPageRouterTests {
+    @Test func timingAndIndividualPanelRoutesRequireExactPaths() throws {
+        for scheme in ["macpowertoys", "powertoys"] {
+            #expect(DiagnosticsRoute.parse(try #require(URL(string: "\(scheme)://diagnostics/timings"))) == .timings)
+            for tool in IndividualMenuBarTool.allCases {
+                #expect(DiagnosticsRoute.parse(try #require(URL(string: "\(scheme)://diagnostics/open-tool-panel/\(tool.id)")))
+                    == .openIndividualPanel(tool.id))
+            }
+        }
+        for url in ["https://diagnostics/timings", "powertoys://open/timings",
+                    "powertoys://diagnostics/timings/", "powertoys://diagnostics/timings?tab=home",
+                    "powertoys://user@diagnostics/timings", "powertoys://diagnostics:123/timings",
+                    "powertoys://diagnostics/timings#extra", "powertoys://diagnostics/open-tool-panel/unknown",
+                    "powertoys://diagnostics/open-tool-panel/awake/", "powertoys://diagnostics/open-tool-panel/awake?tab=home"] {
+            #expect(DiagnosticsRoute.parse(try #require(URL(string: url))) == nil)
+        }
+    }
+
     @Test func parsesToolAndPageForBothSchemes() throws {
         for scheme in ["macpowertoys", "powertoys"] {
             #expect(OpenToolRoute.parse(try #require(URL(string: "\(scheme)://open/system-monitor/cpu")))
@@ -233,7 +250,7 @@ struct ToolPageRouterTests {
                     == .appearance(appearance))
             }
             #expect(DiagnosticsRoute.parse(try #require(URL(string: "\(scheme)://diagnostics/close-panels"))) == .closePanels)
-            #expect(DiagnosticsRoute.parse(try #require(URL(string: "\(scheme)://diagnostics/close-panels/"))) == .closePanels)
+            #expect(DiagnosticsRoute.parse(try #require(URL(string: "\(scheme)://diagnostics/close-panels/"))) == nil)
         }
         for value in ["https://diagnostics/close-panels", "powertoys://open/close-panels",
                       "powertoys://open/appearance/dark", "powertoys://diagnostics/appearance/unknown",
