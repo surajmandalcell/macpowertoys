@@ -90,6 +90,7 @@ final class MainCatalogTests: XCTestCase {
             XCTAssertEqual(MainPageRoute.resolve("settings", toolIDs: [], savedSettingsTab: tab.rawValue), .settings(tab))
         }
         XCTAssertEqual(MainPageRoute.resolve("settings", toolIDs: [], savedSettingsTab: "removed"), .settings(.general))
+        XCTAssertEqual(MainPageRoute.resolve("settings-general", toolIDs: [], savedSettingsTab: "about"), .settings(.general))
         XCTAssertEqual(MainPageRoute.resolve("settings-marketplace", toolIDs: [], savedSettingsTab: "about"), .settings(.marketplace))
         XCTAssertEqual(MainPageRoute.resolve("settings-about", toolIDs: [], savedSettingsTab: "marketplace"), .settings(.about))
     }
