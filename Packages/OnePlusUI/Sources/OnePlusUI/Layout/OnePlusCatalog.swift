@@ -47,7 +47,7 @@ public struct OnePlusToolPageHeader<Icon: View, Actions: View>: View {
                 Text(subtitle).onePlusText(.subtitle).lineLimit(1).help(subtitle)
             }
             .frame(maxWidth: .infinity, alignment: .leading)
-            HStack(alignment: .top, spacing: OnePlusMetrics.actionSpacing) { actions }
+            OnePlusHeaderActions { actions }
                 .frame(height: OnePlusTitleStyle.system.lineHeight(for: density), alignment: .top)
                 .fixedSize(horizontal: true, vertical: false)
         }
@@ -55,7 +55,6 @@ public struct OnePlusToolPageHeader<Icon: View, Actions: View>: View {
         .padding(.top, OnePlusMetrics.contentTop)
         .padding(.bottom, OnePlusMetrics.pageHeaderBottom)
         .background(OnePlusWindowDragArea())
-        .environment(\.onePlusHeaderTopAligned, true)
     }
 }
 

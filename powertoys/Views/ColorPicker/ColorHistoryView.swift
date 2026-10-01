@@ -207,7 +207,7 @@ struct ColorHistoryView: View {
 
     private var history: some View {
         VStack(spacing: OnePlusMetrics.contentGap) {
-            HStack(spacing: OnePlusMetrics.actionSpacing) {
+            OnePlusHeaderActions {
                 OnePlusSearchField(prompt: "Search colors", text: $search, width: nil,
                                    focusTrigger: focusSearch, accessibilityIdentifier: "color-picker.search")
                 OnePlusSelect(choices: ColorCopyFormat.allCases.map { ($0, $0.title) },
@@ -249,7 +249,7 @@ struct ColorHistoryView: View {
 
     private var projects: some View {
         VStack(alignment: .leading, spacing: OnePlusMetrics.actionSpacing) {
-            HStack(spacing: OnePlusMetrics.actionSpacing) {
+            OnePlusHeaderActions {
                 OnePlusSectionTitle("Color projects")
                 Button("New Project", systemImage: "plus") { isCreatingProject.toggle() }
                     .buttonStyle(OnePlusButtonStyle(.ghost, size: .small))

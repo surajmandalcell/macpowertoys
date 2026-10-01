@@ -451,9 +451,9 @@ struct SystemMonitorProcessesView: View {
     }
 
     private var toolbar: some View {
-        HStack(spacing: 14) {
-            HStack(spacing: 7) {
-                Text("Hierarchy").font(.system(size: 9)).foregroundStyle(TaskManagerTheme.secondary)
+        OnePlusHeaderActions {
+            OnePlusHeaderActions {
+                Text("Hierarchy").onePlusText(.caption)
                 Toggle("Hierarchy", isOn: hierarchyBinding)
                     .labelsHidden().toggleStyle(OnePlusSwitchStyle())
             }

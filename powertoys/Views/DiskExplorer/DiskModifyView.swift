@@ -120,7 +120,7 @@ struct DiskModifyView: View {
     }
 
     private var headerActions: some View {
-        HStack(spacing: OnePlusMetrics.actionSpacing) {
+        OnePlusHeaderActions {
             if let disk {
                 Button(model.isLocked(disk) ? "Unlock disk" : "Lock disk", systemImage: model.isLocked(disk) ? "lock.fill" : "lock.open") {
                     model.setLocked(!model.isLocked(disk), for: disk)

@@ -86,7 +86,7 @@ struct SystemCareTrayView: View {
     private var toolbar: some View {
         VStack(alignment: .leading, spacing: OnePlusMenuMetrics.tileGap) {
             OnePlusMenuCard(textured: true) { SystemCareDiskSummary(disk: disk, loaded: diskLoaded) }
-            HStack(spacing: OnePlusMetrics.actionSpacing) {
+            OnePlusHeaderActions {
                 Button(manager.hasCleanupScan ? "Rescan" : "Scan", systemImage: "arrow.clockwise") {
                     startedScan = true
                     manager.scanCleanup(categories: Set(SystemCareCategoryID.allCases))

@@ -85,7 +85,7 @@ struct RcloneSidebarView: View {
     }
 
     private var remotesHeader: some View {
-        HStack(spacing: OnePlusMetrics.spacing[1]) {
+        OnePlusHeaderActions {
             OnePlusNavCaption("Remotes")
             Button { showAddRemote = true } label: { Image(systemName: "plus") }
                 .buttonStyle(OnePlusButtonStyle(.icon, size: .small))

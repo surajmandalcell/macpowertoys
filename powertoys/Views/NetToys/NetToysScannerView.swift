@@ -858,7 +858,7 @@ struct NetToysScannerView: View {
     }
 
     private var scanControls: some View {
-        HStack(spacing: OnePlusMetrics.actionSpacing) {
+        OnePlusHeaderActions {
             OnePlusTextField("Address, range, CIDR, or list", text: $model.targetInput)
                 .accessibilityLabel("Scan targets")
             OnePlusTextField("Ports", text: $model.portInput)
@@ -921,7 +921,7 @@ struct NetToysScannerView: View {
 
     private var resultControls: some View {
         let selected = selectedRows
-        return HStack(spacing: OnePlusMetrics.actionSpacing) {
+        return OnePlusHeaderActions {
             OnePlusSegmented(choices: resultFilterChoices, selection: $model.filter,
                              accessibilityLabel: "Results")
                 .fixedSize()

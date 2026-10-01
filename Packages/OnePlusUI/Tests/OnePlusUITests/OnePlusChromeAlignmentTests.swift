@@ -5,11 +5,11 @@ import XCTest
 
 @MainActor
 final class OnePlusChromeAlignmentTests: XCTestCase {
-    func testAllHeaderRecipesPaintOnTheTwentyPointTopLine() throws {
+    func testHeaderTitlesAndTallestControlsStartOnTheTwentyPointTopLine() throws {
         for appearance in [NSAppearance.Name.aqua, .darkAqua] {
             for scale in [CGFloat(1), 2] {
                 for density in OnePlusDensity.allCases {
-                    let actions = HStack(alignment: .top, spacing: 8) {
+                    let actions = OnePlusHeaderActions {
                         Button("Refresh") {}.buttonStyle(OnePlusButtonStyle())
                             .overlay { ChromeContentProbe("button") }
                         OnePlusSelect(choices: [("one", "One")], selection: .constant("one"),
@@ -93,12 +93,24 @@ final class OnePlusChromeAlignmentTests: XCTestCase {
         XCTAssertEqual(try paintedTop(x: titleX..<(titleX + 90), threshold: 0.45, linear: true), 20, accuracy: 1 / scale,
                        "\(name) title \(appearance) \(scale)x")
         func descendants(_ view: NSView) -> [NSView] { [view] + view.subviews.flatMap(descendants) }
+        let controlFrames = try probes.map { probe in
+            let node = try XCTUnwrap(descendants(host).first { $0.identifier?.rawValue == probe })
+            return node.convert(node.bounds, to: host)
+        }
+        let maximumHeight = controlFrames.map(\.height).max()
+        let tallest = controlFrames.filter { $0.height == maximumHeight }.min { $0.minY < $1.minY }
+        if let tallest { XCTAssertEqual(tallest.minY, 20, accuracy: 0.01, "\(name) tallest control") }
         for probe in probes + (name.hasPrefix("tool-") ? ["icon"] : []) {
             let node = try XCTUnwrap(descendants(host).first { $0.identifier?.rawValue == probe })
             let rect = node.convert(node.bounds, to: host)
-            XCTAssertEqual(rect.minY, 20, accuracy: 0.01, "\(name) \(probe) frame")
+            if probe == "icon" {
+                XCTAssertEqual(rect.minY, 20, accuracy: 0.01, "\(name) icon frame")
+            } else if let tallest {
+                XCTAssertEqual(rect.midY, tallest.midY, accuracy: 0.5, "\(name) \(probe) center")
+            }
             let x = probe == "switch" ? rect.maxX - 16 : rect.midX
-            XCTAssertEqual(try paintedTop(x: (x - 1)..<(x + 1), threshold: 0.025), 20, accuracy: 0.5,
+            let top = probe == "switch" ? rect.midY - 8.5 : rect.minY
+            XCTAssertEqual(try paintedTop(x: (x - 1)..<(x + 1), threshold: 0.025), top, accuracy: 0.5,
                            "\(name) \(probe) paint \(appearance) \(scale)x")
         }
         if name == "sheet" {
