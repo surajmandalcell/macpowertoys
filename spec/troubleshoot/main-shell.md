@@ -408,6 +408,21 @@ appearances in the signed build. Report: `tmp/redesign/logs/w1-panel-main.md`.
   Awake assertions, Cloud Sync engine work, and tray presence all follow the
   same state; then re-enable from the detail page.
 
+## Cold Launcher Settings Requests, 2026-10-01
+
+- **Symptom:** The main-panel Settings button can open the launcher without
+  showing Settings when its view has not mounted.
+- **Cause:** A deferred notification can arrive before the view subscribes.
+- **Invariant:** Use `ToolActionRouter.open(toolID:page:)`. It stores the
+  matching tool-page request before opening or reusing the window.
+  `onOpenToolPage` consumes it once on appearance or notification. Other
+  tools must not consume the main request. System Care keeps General;
+  Ruler Settings and Defaults keep their distinct AppKit controllers.
+- **Check:** Compile the existing pending-request and native-route tests.
+  Run them on CI. In the signed app, open Settings from cold and existing
+  launcher states with other tools visible. Only the target context changes.
+  Fix: `f1a191dc`. Report: `tmp/redesign/logs/w3-panel-main.md`.
+
 ## Launcher Settings Reuse
 
 - **Symptom:** Clicking a launcher tool shows help only, or its settings differ
