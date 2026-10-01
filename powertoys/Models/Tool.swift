@@ -426,10 +426,39 @@ struct MacTweaksTool: Tool {
     let searchKeywords = ["mic lock", "microphone", "bluetooth", "airpods", "audio input"]
 
     let manual = [
+        ToolManualSection(title: "Pages and search", points: [
+            "Enable Mac Tweaks in the launcher, then choose Open Mac Tweaks.",
+            "Choose Input, Dock, Finder, Windows, Screenshots, Apps, Power, or Menu bar in the sidebar.",
+            "Press Cmd-K and type a setting name or behavior to search available controls across pages. Press Escape to clear search.",
+            "Open About to see the app version, keyboard shortcuts, and Copy app details."
+        ]),
+        ToolManualSection(title: "Preferences and previews", points: [
+            "Change a control to save its value. Default uses the system default. Custom means the current value does not match a listed choice.",
+            "Preference edits are enabled on macOS 15.8, 26.7, and 27.0. Other releases keep controls read-only and allow reset. Finder column sizing and unused app termination are limited to macOS 15.8.",
+            "Previews are static examples of the setting. They do not show the current state of your Mac.",
+            "Managed preferences and values changed elsewhere are protected. If a save fails, read the error before trying again."
+        ]),
+        ToolManualSection(title: "Backups and reset", points: [
+            "Mac Tweaks saves the exact original value before the first change. It also records when the original key was absent.",
+            "Open Modified to compare Current and Original values. Changed settings remain listed while a saved original value can be restored, even at the system default.",
+            "Use the reset arrow beside a control or Modified row to restore its saved original. A setting without a backup returns to the system default.",
+            "Choose Reset all on Modified and confirm to restore every listed preference. If a backup cannot be read, new writes stop until it is recovered."
+        ]),
+        ToolManualSection(title: "Apply saved changes", points: [
+            "Dock and Finder changes show a restart action. Save work, choose that action, then confirm Restart Dock or Restart Finder. Choose Later to keep the saved change and restart when ready.",
+            "Follow the notice for other changes. It can require reopening an app, taking a new screenshot, or signing out and back in.",
+            "A restart failure leaves the setting saved. Read the error and restart the affected app later."
+        ]),
         ToolManualSection(title: "Mic Lock", points: [
-            "Open Mac Tweaks and turn on Mic Lock.",
+            "Choose Input and turn on Mic Lock.",
             "Choose a primary microphone and up to three fallbacks. A disconnected choice stays saved.",
-            "Mic Lock restores the first available choice when macOS changes input. If none is available, it selects a built-in or other non-wireless input."
+            "Mic Lock restores the first available choice when macOS changes input. If none is available, it selects a built-in or other non-wireless input.",
+            "Use Test to check the input level. Grant microphone access when macOS asks.",
+            "If Mac audio needs recovery, choose Revive Audio and confirm. macOS requests administrator approval; audio in other apps can stop briefly."
+        ]),
+        ToolManualSection(title: "Power", points: [
+            "Turn on Keep this Mac awake and choose a duration. Keep display on controls display sleep separately.",
+            "Read Status to check whether the Mac stays awake and how much time remains. These controls use the same Awake state as the Awake tool."
         ])
     ]
 
