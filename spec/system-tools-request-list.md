@@ -23,10 +23,14 @@ Production window performance, 2026-10-01: Input Devices, System Care, and
 Task Manager use the shared window and page timing ledger. All saved fixed
 workspaces now restore position once, on attachment, and keep their current
 size. The source restoration check passes; two timing package checks pass.
-Debug and desktop test compile gates pass. Hosted tests were not run.
-P2, P3, and P5 remain open. Task Manager still gates its page body on delayed
-visibility, and signed sampling, idle CPU, and complete-frame checks remain.
-See `tmp/redesign/perf/w1-windows.md` for the baseline and exact commands.
+Signed `198055e4` Task Manager pages measured 215-287ms in the orchestrator
+replay and 248-482ms in the focused profile. `da3146a3` removes unrelated
+launcher preference refreshes and puts its Login Items query off the main
+thread. `8adbcc30` caches NetToys helper status outside rendering. The actual
+observer/cache check and both compile gates pass; hosted tests were not run.
+tm-window owns the first sample and visibility fixes. P2, P3, and P5 stay open
+until signed after timings, sampling, idle CPU, and complete-frame checks.
+See `tmp/redesign/perf/w1-windows.md` for evidence and exact commands.
 
 Production pass, 2026-10-01: menu-panel types now live in
 `powertoys/Views/MenuPanels/`, one cohesive file per panel part. This is a pure

@@ -226,6 +226,24 @@
   its canonical MAC still appears. Confirm another interface and an
   unrequested address are ignored.
 
+## NetToys Helper Status Blocks Page Rendering
+
+- **Symptom:** NetToys Settings and Scanner stall before display. Other open
+  pages can also wait for these views to finish rendering.
+- **Cause:** Several labels and enabled states read `SMAppService.status`
+  through a computed property during body and layout. Signed `198055e4`
+  has 1,648 main-thread wait samples from the NetToys render paths.
+- **Invariant:** Keep one observed status snapshot. Coalesce refreshes and
+  read status on a utility task. Until the first result, show Checking.
+  Rendering must not query ServiceManagement. Enable and restart still read
+  current native state; cancel old refreshes and refresh after failed restart.
+- **Check:** The actual manager fixture verifies the pending state, one read
+  for overlapping refreshes, no read for repeated getters, and a new explicit
+  refresh. A computed-query mutation fails. Run
+  `tmp/redesign/perf/w1-windows/check-costs.py`. In the signed build, check
+  pending/final layout, every helper approval state, external Login Items
+  changes, Enable, restart failure, and the shared Task Manager Fan consumer.
+
 ## NetToys Background Approval Recovery
 
 - **Symptom:** NetToys cannot be enabled, MAC Address Access says Needs

@@ -3,6 +3,15 @@
 Reviewed against the current app source on 2026-08-31. Update this list when a
 direct user correction or verified result changes a status.
 
+Window performance: signed `198055e4` History measured 326ms in the
+orchestrator replay and 282ms on a later changed-page replay. The wait profile
+found a shared launcher Login Items query after unrelated defaults writes.
+`da3146a3` filters these writes and moves the query off the main thread.
+The actual preference-observer check and both compile gates pass. No Text
+Extractor view changed. Signed after timings and complete first/late frames
+remain; open <=250ms and page <=100ms stay open. Exact commands and evidence:
+`tmp/redesign/perf/w1-windows.md`.
+
 ## Production audit, 2026-10-01
 
 Both shared build modes pass for the Debug app and both desktop test bundles.

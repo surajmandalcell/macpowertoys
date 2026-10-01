@@ -11,10 +11,13 @@ direct user correction or verified result changes a status.
 
 Window performance: the shared ledger records applet open, tab selection,
 and Settings selection. It ends after native display submission. Two package
-checks pass. Debug and desktop test compile gates pass. The installed
-baseline is `36c585b4`; current source still needs
-signed measurements and first-frame captures. The 250ms open and 100ms page
-limits remain open. Commands: `tmp/redesign/perf/w1-windows.md`.
+checks pass. Signed `198055e4` History measured 543ms in the orchestrator
+replay and 305ms on a later changed-page replay. The wait profile found a
+shared launcher Login Items query after unrelated defaults writes.
+`da3146a3` filters these writes and moves the query off the main thread.
+The actual preference-observer check and both compile gates pass. Signed
+after measurements and complete first/late frames remain. The 250ms open
+and 100ms page limits stay open. Commands: `tmp/redesign/perf/w1-windows.md`.
 
 ## Production audit, 2026-10-01
 

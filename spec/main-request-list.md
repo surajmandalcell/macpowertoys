@@ -9,6 +9,15 @@ the latest normal signed build.
 
 ## Open or Needs Verification
 
+Window performance, 2026-10-01: signed `198055e4` measured All tools at
+110ms and the Task Manager detail page at 130ms. Unrelated defaults writes
+also made the launcher query Login Items during other windows' page changes.
+`da3146a3` reuses the watched-key observer and reads Login Items on a utility
+task. The actual observer check rejects window/page writes and accepts real
+preference changes. Both compile gates pass. Signed after timings, Modified
+updates, and complete first/late frames remain. Targets and exact replay:
+`tmp/redesign/perf/w1-windows.md`.
+
 | Status | Request | Current evidence | Remaining work |
 |---|---|---|---|
 | Build verified; signed review pending | Apply B3, B4, B5, A4-A7, and the density correction to the combined panel. | `42cf6c02` restores shared Fan below Awake and adopts centered Home action tiles. Switch has one refresh icon, one missing-limit warning, full-row account actions, and no repeated hints. `f9622ca5` puts metadata and related actions on one row, removes single-row cards, and keeps blue data and progress. `d315a237` aligns separate action tiles and keeps stable tab identities with arrow navigation. `4698423d` shares Switch state and retained token totals. `9d10953e` preserves sibling NetToys settings. `26145e12` fixes System Care toolbar/footer slots and Cleanup/General actions. `47e98b79` replaces inline account errors with orange glyph help and keeps one identity line plus usage bars. The shared gate compiles the app and both desktop-test bundles. | Run hosted checks and signed dark/light, hover, focus, action, height, and timing checks. System Care panel ownership moved to `syscare-ui` after `f9622ca5`. Report: `tmp/redesign/logs/w1-panel-main.md`. |

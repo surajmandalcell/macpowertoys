@@ -448,6 +448,24 @@ appearances in the signed build. Report: `tmp/redesign/logs/w1-panel-main.md`.
   download, checksum, and signing-team failures without termination or bundle
   replacement. A valid update requests termination before replacement.
 
+## Unrelated Defaults Writes Block Other Windows
+
+- **Symptom:** Task Manager and applet pages pause while the launcher is open.
+- **Cause:** Every defaults write increased the launcher's Modified revision.
+  Its sidebar then read `SMAppService.mainApp.status` on the main thread.
+  In signed `198055e4`, the wait profile contains 1,353 samples in this path,
+  waiting for the service's synchronous XPC reply. Page and window-state
+  writes can trigger the query even though no app preference changed.
+- **Invariant:** Watch only registered preference keys with the existing
+  `ToolSettingsPreferenceObserver`. Update the keys when Marketplace changes.
+  Read Login Items status on a utility task, then publish Modified on the
+  main actor. Cancel an obsolete result when the revision changes.
+- **Check:** The actual observer fixture ignores page, window-state, and tray
+  writes and accepts a real preference change. It and the cache mutation
+  check are in `tmp/redesign/perf/w1-windows/check-costs.py`. After a signed
+  install, replay Task Manager and applet pages with the launcher open, then
+  verify Modified after a real preference or Login Items change.
+
 ## Heavy Launcher Settings First Frame
 
 - **Symptom:** Selecting NetToys or System Monitor leaves the launcher frozen
