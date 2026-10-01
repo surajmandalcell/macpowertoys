@@ -34,6 +34,13 @@ struct RowAndTabStatesShowcase: View {
             }
             OnePlusSegmented(choices: ["Default", "On", "Off"].map { ($0, $0) }, selection: $segment)
                 .environment(\.onePlusControlState, .hover)
+            HStack(spacing: 16) {
+                ForEach([OnePlusControlState.rest, .hover], id: \.self) { state in
+                    OnePlusMetricTile("CPU", systemImage: "cpu", value: "24", unit: "%", caption: "Processor activity", action: {}) {
+                        OnePlusSparkline(values: [15, 40, 20, 70, 45]).frame(height: 24)
+                    }.environment(\.onePlusControlState, state)
+                }
+            }
             HStack(alignment: .top, spacing: 16) {
                 OnePlusMenuTile(span: 2, height: 51, textured: false, action: {}) {
                     HStack { Text("Single centered row").onePlusText(.row); Spacer(); Text("12 GB").onePlusText(.mono) }

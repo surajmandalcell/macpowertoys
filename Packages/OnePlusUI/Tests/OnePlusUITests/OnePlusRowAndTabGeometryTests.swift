@@ -143,6 +143,7 @@ final class OnePlusRowAndTabGeometryTests: XCTestCase {
 
     func testMenuAndTableRowsHoverAcrossValuesAndControlsButNotWhenDisabled() throws {
         let rows: [(AnyView, CGFloat, CGFloat)] = [
+            (AnyView(OnePlusMetricTile("CPU", systemImage: "cpu", value: "24", unit: "%", caption: "Processor activity", action: {})), 90, 45),
             (AnyView(HStack { Text("CPU"); Spacer(); Text("24%"); Button("Open") {} }.onePlusTableRow()), 34, 16),
             (AnyView(OnePlusMenuControlRow("Awake", systemImage: "moon", caption: "Keep this Mac awake") {
                 Button("Change") {}.buttonStyle(.plain)
@@ -180,8 +181,11 @@ final class OnePlusRowAndTabGeometryTests: XCTestCase {
         }.onePlusNativeTable())
         let window = attach(host, width: 300, height: 100)
         defer { window.close() }
-        RunLoop.main.run(until: Date(timeIntervalSinceNow: 0.05))
-        host.layoutSubtreeIfNeeded()
+        let deadline = Date(timeIntervalSinceNow: 1)
+        while !descendants(host).contains(where: { $0 is OnePlusTableLines }), Date() < deadline {
+            RunLoop.main.run(until: Date(timeIntervalSinceNow: 0.01))
+            host.layoutSubtreeIfNeeded()
+        }
         let table = try XCTUnwrap(descendants(host).compactMap { $0 as? NSTableView }.first)
         let row = try XCTUnwrap(table.rowView(atRow: 0, makeIfNecessary: true))
         let lines = try XCTUnwrap(table.subviews.compactMap { $0 as? OnePlusTableLines }.first)
