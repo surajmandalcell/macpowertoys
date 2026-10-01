@@ -70,14 +70,14 @@ struct MacPowerToysApp: App {
                 .utilityMotionPolicy()
                 .environment(\.toolWindowID, "main")
                 .onePlusFixedCanvas(.main)
-                .onNativeToolPageURL("main")
+                .onToolWindowURL("main")
         }
         .windowStyle(.hiddenTitleBar)
         .defaultSize(OnePlusWindowCanvas.main.size)
         .windowResizability(.contentSize)
         .restorationBehavior(.disabled)
         .defaultLaunchBehavior(.suppressed)
-        .handlesExternalEvents(matching: Set(["main"]))
+        .handlesExternalEvents(matching: [])
         .commands {
             AppCommands()
             FreeRulerCommands()
@@ -88,24 +88,24 @@ struct MacPowerToysApp: App {
                 RcloneWindowView()
                     .utilityMotionPolicy()
             }
-            .onNativeToolPageURL("rclone")
+            .onToolWindowURL("rclone")
         }
         .defaultSize(OnePlusWindowCanvas.rclone.size)
         .windowResizability(.contentSize)
         .windowStyle(.hiddenTitleBar)
-        .handlesExternalEvents(matching: Set(["rclone"]))
+        .handlesExternalEvents(matching: [])
         .restorationBehavior(.disabled)
 
         Window("Logs", id: "logs") {
             LogsWindowView()
                 .utilityMotionPolicy()
                 .onePlusFixedCanvas(.logs)
-                .onNativeToolPageURL("logs")
+                .onToolWindowURL("logs")
         }
         .defaultSize(OnePlusWindowCanvas.logs.size)
         .windowResizability(.contentSize)
         .windowStyle(.hiddenTitleBar)
-        .handlesExternalEvents(matching: Set(["logs"]))
+        .handlesExternalEvents(matching: [])
         .restorationBehavior(.disabled)
 
         Window("Awake", id: "awake") {
@@ -113,12 +113,12 @@ struct MacPowerToysApp: App {
                 .utilityMotionPolicy()
                 .background(WindowAccessor(identifier: "awake"))
                 .onePlusFixedCanvas(.awake)
-                .onNativeToolPageURL("awake")
+                .onToolWindowURL("awake")
         }
         .defaultSize(OnePlusWindowCanvas.awake.size)
         .windowResizability(.contentSize)
         .windowStyle(.hiddenTitleBar)
-        .handlesExternalEvents(matching: Set(["awake"]))
+        .handlesExternalEvents(matching: [])
         .restorationBehavior(.disabled)
 
         Window("Color Picker", id: "color-picker") {
@@ -126,7 +126,7 @@ struct MacPowerToysApp: App {
                 .utilityMotionPolicy()
                 .background(WindowAccessor(identifier: "color-picker"))
                 .onePlusFixedCanvas(.colorPicker)
-                .onNativeToolPageURL("color-picker")
+                .onToolWindowURL("color-picker")
         }
         .defaultSize(
             width: OnePlusWindowCanvas.colorPicker.size.width,
@@ -134,7 +134,7 @@ struct MacPowerToysApp: App {
         )
         .windowResizability(.contentSize)
         .windowStyle(.hiddenTitleBar)
-        .handlesExternalEvents(matching: Set(["color-picker"]))
+        .handlesExternalEvents(matching: [])
         .restorationBehavior(.disabled)
 
         Window("Text Extractor", id: "text-extractor") {
@@ -142,7 +142,7 @@ struct MacPowerToysApp: App {
                 .utilityMotionPolicy()
                 .background(WindowAccessor(identifier: "text-extractor"))
                 .onePlusFixedCanvas(.textExtractor)
-                .onNativeToolPageURL("text-extractor")
+                .onToolWindowURL("text-extractor")
         }
         .defaultSize(
             width: OnePlusWindowCanvas.textExtractor.size.width,
@@ -150,91 +150,91 @@ struct MacPowerToysApp: App {
         )
         .windowResizability(.contentSize)
         .windowStyle(.hiddenTitleBar)
-        .handlesExternalEvents(matching: Set(["text-extractor"]))
+        .handlesExternalEvents(matching: [])
         .restorationBehavior(.disabled)
 
         Window("Input Devices", id: "input-devices") {
             InputDevicesWindowView()
                 .utilityMotionPolicy()
                 .onePlusFixedCanvas(.inputDevices)
-                .onNativeToolPageURL("input-devices")
+                .onToolWindowURL("input-devices")
         }
         .defaultSize(OnePlusWindowCanvas.inputDevices.size)
         .windowResizability(.contentSize)
         .windowStyle(.hiddenTitleBar)
-        .handlesExternalEvents(matching: Set(["input-devices"]))
+        .handlesExternalEvents(matching: [])
         .restorationBehavior(.disabled)
 
         Window("System Care", id: "system-care") {
             SystemCareWindowView()
                 .utilityMotionPolicy()
                 .onePlusFixedCanvas(.systemCare)
-                .onNativeToolPageURL("system-care")
+                .onToolWindowURL("system-care")
         }
         .defaultSize(OnePlusWindowCanvas.systemCare.size)
         .windowResizability(.contentSize)
         .windowStyle(.hiddenTitleBar)
-        .handlesExternalEvents(matching: Set(["system-care"]))
+        .handlesExternalEvents(matching: [])
         .restorationBehavior(.disabled)
 
         Window("Diskman", id: "disk-explorer") {
             DiskExplorerWindowView()
                 .utilityMotionPolicy()
                 .onePlusFixedCanvas(.diskExplorer)
-                .onNativeToolPageURL("disk-explorer")
+                .onToolWindowURL("disk-explorer")
         }
         .defaultSize(OnePlusWindowCanvas.diskExplorer.size)
         .windowResizability(.contentSize)
         .windowStyle(.hiddenTitleBar)
-        .handlesExternalEvents(matching: Set(["disk-explorer"]))
+        .handlesExternalEvents(matching: [])
         .restorationBehavior(.disabled)
 
         Window("Task Manager", id: "system-monitor") {
             SystemMonitorWindowView()
                 .utilityMotionPolicy()
                 .onePlusFixedCanvas(.systemMonitor)
-                .onNativeToolPageURL("system-monitor")
+                .onToolWindowURL("system-monitor")
         }
         .defaultSize(OnePlusWindowCanvas.systemMonitor.size)
         .windowResizability(.contentSize)
         .windowStyle(.hiddenTitleBar)
-        .handlesExternalEvents(matching: Set(["://open/system-monitor"]))
+        .handlesExternalEvents(matching: [])
         .restorationBehavior(.disabled)
 
         Window("NetToys", id: "nettoys") {
             NetToysWindowView()
                 .utilityMotionPolicy()
                 .onePlusFixedCanvas(.netToys)
-                .onNativeToolPageURL("nettoys")
+                .onToolWindowURL("nettoys")
         }
         .defaultSize(OnePlusWindowCanvas.netToys.size)
         .windowResizability(.contentSize)
         .windowStyle(.hiddenTitleBar)
-        .handlesExternalEvents(matching: Set(["nettoys"]))
+        .handlesExternalEvents(matching: [])
         .restorationBehavior(.disabled)
 
         Window("Switch", id: "switch") {
             SwitchWindowView()
                 .utilityMotionPolicy()
                 .onePlusFixedCanvas(.switchAccounts)
-                .onNativeToolPageURL("switch")
+                .onToolWindowURL("switch")
         }
         .defaultSize(OnePlusWindowCanvas.switchAccounts.size)
         .windowResizability(.contentSize)
         .windowStyle(.hiddenTitleBar)
-        .handlesExternalEvents(matching: Set(["switch"]))
+        .handlesExternalEvents(matching: [])
         .restorationBehavior(.disabled)
 
         Window("Mac Tweaks", id: "mac-tweaks") {
             MacTweaksWindowView()
                 .utilityMotionPolicy()
                 .onePlusFixedCanvas(.macTweaks)
-                .onNativeToolPageURL("mac-tweaks")
+                .onToolWindowURL("mac-tweaks")
         }
         .defaultSize(OnePlusWindowCanvas.macTweaks.size)
         .windowResizability(.contentSize)
         .windowStyle(.hiddenTitleBar)
-        .handlesExternalEvents(matching: Set(["mac-tweaks"]))
+        .handlesExternalEvents(matching: [])
         .restorationBehavior(.disabled)
 
     }

@@ -1,7 +1,31 @@
+import AppKit
 import XCTest
 @testable import powertoys
 
 final class ToolActionRouterTests: XCTestCase {
+    @MainActor
+    func testBackgroundAppletOpensReuseWindowsWithoutKeyOrdering() {
+        final class WindowSpy: NSWindow {
+            var keyOrders = 0
+            var backgroundOrders = 0
+            override func makeKeyAndOrderFront(_ sender: Any?) { keyOrders += 1 }
+            override func orderFrontRegardless() { backgroundOrders += 1 }
+        }
+        for tool in ["main", "awake", "color-picker", "text-extractor"] {
+            let window = WindowSpy(contentRect: .zero, styleMask: [], backing: .buffered, defer: true)
+            window.identifier = .init(tool)
+            var opened: [String] = []
+            ToolActionRouter.presentSingleWindow(id: tool, windows: [window], activateApp: false) { opened.append($0) }
+            XCTAssertEqual(window.backgroundOrders, 1)
+            XCTAssertEqual(window.keyOrders, 0)
+            XCTAssertTrue(opened.isEmpty)
+            ToolActionRouter.presentSingleWindow(id: tool, windows: [window], activateApp: true) { opened.append($0) }
+            XCTAssertEqual(window.keyOrders, 1, "Explicit opens keep key ordering.")
+            ToolActionRouter.presentSingleWindow(id: tool, windows: [], activateApp: false) { opened.append($0) }
+            XCTAssertEqual(opened, [tool], "Cold opens use the configured scene action once.")
+        }
+    }
+
     @MainActor
     func testToolOpenClosesMainOnlyWhenEnabled() throws {
         let suite = "ToolActionRouterTests.\(UUID().uuidString)"

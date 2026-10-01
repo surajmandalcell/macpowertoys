@@ -118,7 +118,7 @@ final class ToolActionRouter {
                 }
                 return
             }
-            presentSingleWindow(id: resolved, using: openWindowAction, activateApp: activateApp)
+            Self.presentSingleWindow(id: resolved, windows: NSApp.windows, activateApp: activateApp) { openWindowAction(id: $0) }
             if resolved != "main" { dismissMainWindowAfterToolOpen() }
             if activateApp { NSApp.activate(ignoringOtherApps: true) }
         } else {
@@ -198,8 +198,9 @@ final class ToolActionRouter {
         }
     }
 
-    private func presentSingleWindow(id: String, using openWindow: OpenWindowAction, activateApp: Bool) {
-        if let window = NSApp.windows.first(where: {
+    static func presentSingleWindow(id: String, windows: [NSWindow],
+                                    activateApp: Bool, openWindow: (String) -> Void) {
+        if let window = windows.first(where: {
             Self.windowIdentifier($0.identifier?.rawValue, matches: id)
         }) {
             if window.isMiniaturized { window.deminiaturize(nil) }
@@ -207,7 +208,7 @@ final class ToolActionRouter {
             else { window.orderFrontRegardless() }
             return
         }
-        openWindow(id: id)
+        openWindow(id)
     }
 
     private func dismissMainWindowAfterToolOpen() {
