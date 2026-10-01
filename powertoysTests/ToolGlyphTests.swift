@@ -5,6 +5,13 @@ import XCTest
 
 @MainActor
 final class ToolGlyphTests: XCTestCase {
+    func testNetToysUsesTheSocketModuleTemplate() throws {
+        XCTAssertEqual(ToolGlyph.netToys.symbol, "NetToysGlyph")
+        XCTAssertTrue(ToolGlyph.netToys.isAsset)
+        XCTAssertNotNil(ToolGlyph.netToys.assetNSImage)
+        XCTAssertTrue(try XCTUnwrap(StatusItemIcon.symbol(ToolGlyph.netToys.symbol)).isTemplate)
+    }
+
     func testToolGlyphsAndStatusImagesShareTheApprovedGeometry() throws {
         let tools = ToolRegistry.builtInTools
         XCTAssertEqual(tools.count, 14)

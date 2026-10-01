@@ -9,7 +9,8 @@ enum StatusItemIcon {
     static func symbol(_ name: String) -> NSImage? {
         if let image = symbols[name] { return image }
         if ToolGlyph.allCases.contains(where: { $0.isAsset && $0.symbol == name }) {
-            guard let image = NSImage(named: name)?.copy() as? NSImage else { return nil }
+            guard let source = NSImage(named: name)?.copy() as? NSImage else { return nil }
+            let image = name == ToolGlyph.netToys.symbol ? normalized(source) : source
             image.size = NSSize(width: OnePlusMenuMetrics.statusIconSize, height: OnePlusMenuMetrics.statusIconSize)
             image.isTemplate = true
             symbols[name] = image
