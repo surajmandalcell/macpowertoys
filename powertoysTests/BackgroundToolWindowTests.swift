@@ -7,6 +7,73 @@ import XCTest
 
 @MainActor
 final class BackgroundToolWindowTests: XCTestCase {
+    func testNativeCloseRebuildsTheHostAndFixedFrameBeforeOrdering() throws {
+        let window = BackgroundToolWindow(
+            contentRect: NSRect(x: -10000, y: -10000, width: 1240, height: 840),
+            styleMask: [.titled, .closable, .fullSizeContentView], backing: .buffered, defer: false)
+        window.identifier = .init("main")
+        window.isReleasedWhenClosed = false
+        defer { window.close() }
+        window.prepareContent()
+        for _ in 0..<3 {
+            let original = try XCTUnwrap(window.contentViewController)
+            window.performClose(nil)
+            XCTAssertNil(window.contentViewController)
+            window.prepareContent()
+            XCTAssertNotNil(window.contentViewController)
+            XCTAssertFalse(window.contentViewController === original)
+            XCTAssertEqual(window.frame.size, NSSize(width: 1240, height: 840))
+            XCTAssertFalse(window.styleMask.contains(.resizable))
+            XCTAssertTrue(window.styleMask.contains(.fullSizeContentView))
+            XCTAssertTrue(window.titlebarAppearsTransparent)
+            XCTAssertFalse(window.isVisible)
+            XCTAssertFalse(window.isKeyWindow)
+        }
+    }
+
+    func testNativeSceneCloseRebuildsBeforeEitherPresentationIntent() throws {
+        final class WindowSpy: NSWindow {
+            var beforeOrdering: () -> Void = {}
+            var backgroundOrders = 0
+            var keyOrders = 0
+            override func orderFrontRegardless() { beforeOrdering(); backgroundOrders += 1 }
+            override func makeKeyAndOrderFront(_ sender: Any?) { beforeOrdering(); keyOrders += 1 }
+        }
+        let window = WindowSpy(
+            contentRect: NSRect(x: -10000, y: -10000, width: 1240, height: 840),
+            styleMask: [.titled, .closable, .fullSizeContentView], backing: .buffered, defer: false)
+        window.identifier = .init("main")
+        window.isReleasedWhenClosed = false
+        defer { window.close() }
+        let probe = BackgroundWindowProbe()
+        window.contentViewController = NSHostingController(rootView:
+            OnePlusWindowContent { BackgroundWindowPayloadView(probe: probe) })
+        window.contentView?.layoutSubtreeIfNeeded()
+        for explicit in [false, true] {
+            let original = try XCTUnwrap(window.contentViewController)
+            window.performClose(nil)
+            var activations = 0
+            window.beforeOrdering = {
+                XCTAssertNotNil(window.contentViewController)
+                XCTAssertFalse(window.contentViewController === original)
+                XCTAssertEqual(window.frame.size, NSSize(width: 1240, height: 840))
+                XCTAssertFalse(window.styleMask.contains(.resizable))
+                XCTAssertTrue(window.styleMask.contains(.fullSizeContentView))
+                XCTAssertTrue(window.titlebarAppearsTransparent)
+            }
+            ToolActionRouter.presentSingleWindow(id: "main", windows: [window], activateApp: explicit,
+                createWindow: { _ in XCTFail("Reopen must reuse the native window"); return nil },
+                activate: { activations += 1 },
+                openWindow: { _ in XCTFail("Reopen must not depend on SwiftUI scene creation") })
+            XCTAssertEqual(activations, explicit ? 1 : 0)
+            XCTAssertFalse(window.isVisible)
+            XCTAssertFalse(window.isKeyWindow)
+            window.beforeOrdering = {}
+        }
+        XCTAssertEqual(window.backgroundOrders, 1)
+        XCTAssertEqual(window.keyOrders, 1)
+    }
+
     func testCloseReleasesTheHostAndModelWithoutReleasingTheWindow() {
         let window = BackgroundToolWindow(
             contentRect: NSRect(x: -10000, y: -10000, width: 320, height: 240),

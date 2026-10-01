@@ -222,6 +222,11 @@ final class ToolActionRouter {
             return
         }
         guard let window = existing ?? createWindow(id) else { return }
+        if let background = window as? BackgroundToolWindow {
+            background.prepareContent()
+        } else if !window.isVisible {
+            BackgroundToolWindow.mountContent(id: id, in: window)
+        }
         window.onePlusPrepareForOpening()
         if activateApp {
             if window.isMiniaturized { window.deminiaturize(nil) }

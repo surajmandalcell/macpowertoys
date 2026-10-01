@@ -1,5 +1,14 @@
 # Color Picker Request List
 
+Native reopen, run 75, 2026-10-02: the shared presenter remounts closed
+scene hosts before ordering. Background hosts preserve their closed frame
+and restore content first. The hidden source fixture passes Color Picker
+at 250, 355, and 460pt through native performClose and close, with mounted
+content and the expected first frame. All 102 shared cycles pass with zero
+activation calls. The single app/test compile gate passes. Installed native
+close, History/Projects/Settings routes, controls, and timing remain with
+the orchestrator. Report: `tmp/redesign/logs/w14-blank-main.md`.
+
 Round 17 applet correction, run 68, 2026-10-01: OnePlusUI `a02d43d`
 restores the shared 40pt row and C22 for Awake, Color Picker, and Text
 Extractor. Action frames span y10..34; untabbed content begins at y56.

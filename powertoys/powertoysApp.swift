@@ -328,18 +328,37 @@ struct MacPowerToysApp: App {
 final class BackgroundToolWindow: NSWindow {
     func prepareContent() {
         guard contentViewController == nil, let id = identifier?.rawValue else { return }
+        Self.mountContent(id: id, in: self)
+    }
+
+    static func mountContent(id: String, in window: NSWindow) {
+        guard let canvas = OnePlusWindowCanvas.tool(id) else { return }
+        let topLeft = NSPoint(x: window.frame.minX, y: window.frame.maxY)
+        window.styleMask = window.styleMask.union(.fullSizeContentView).subtracting(.resizable)
+        window.titleVisibility = .hidden
+        window.titlebarAppearsTransparent = true
         let host = NSHostingController(rootView: MacPowerToysApp.windowContent(id: id)
             .environment(\.toolWindowID, id))
-        host.sizingOptions = [.minSize, .intrinsicContentSize, .maxSize]
-        contentViewController = host
-        contentView?.layoutSubtreeIfNeeded()
+        host.sizingOptions = canvas.heightRange == nil ? [] : [.intrinsicContentSize]
+        window.contentViewController = host
+        host.view.layoutSubtreeIfNeeded()
+        var size = canvas.size
+        if let range = canvas.heightRange {
+            let height = host.view.fittingSize.height - host.view.safeAreaInsets.top
+            size.height = min(max(height, range.lowerBound), range.upperBound)
+        }
+        window.setFrame(NSRect(x: topLeft.x, y: topLeft.y - size.height,
+                               width: size.width, height: size.height), display: false)
+        host.view.layoutSubtreeIfNeeded()
     }
 
     override func close() {
-        super.close()
         let size = contentView?.frame.size ?? .zero
+        let frame = frame
+        super.close()
         contentViewController = nil
         contentView = NSView(frame: .init(origin: .zero, size: size))
+        setFrame(frame, display: false)
     }
 
     override func orderFrontRegardless() {

@@ -1,5 +1,15 @@
 # System Tools Request List
 
+Native reopen, run 75, 2026-10-02: the shared presenter remounts hidden
+scene controllers before ordering. Background hosts restore mounted content
+and their fixed canvas first. The source-derived native fixture passes all
+13 roots across 102 close/reopen cycles with zero activation calls. Coverage
+includes Input Devices, System Care, Task Manager, and both applet height
+ranges. Two permanent native regressions and both desktop bundles compile
+through the single tests gate. The orchestrator owns installed native close,
+routes, launcher Open, Dock reopen, menu Open App, and complete first frames.
+Report: `tmp/redesign/logs/w14-blank-main.md`.
+
 Shared stat check, run 74, 2026-10-02: OnePlusUI `ad42789` corrects
 the stale compact height ceiling. The approved 16pt padding makes the
 single-line StatCell 46pt tall. The check now verifies 32pt of vertical

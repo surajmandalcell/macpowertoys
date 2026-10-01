@@ -1,5 +1,13 @@
 # Ruler Request List
 
+Reopen audit, run 75, 2026-10-02: Ruler uses native controllers and does
+not use the closed SwiftUI scene host. Its controller applies ruler state
+before ordering. The existing source-derived presentation check passes
+background and explicit intent with spies. No Ruler code changed. The single
+app/test compile gate passes. Installed Ruler close/reopen and Settings and
+Defaults interaction remain with the orchestrator.
+Report: `tmp/redesign/logs/w14-blank-main.md`.
+
 Local verification, run 66, 2026-10-01: all 130 FreeRulerCoreTests pass
 with zero failures or skips through the guarded local runner. All 129
 existing tests and assertions remain; one regression checks that presentation

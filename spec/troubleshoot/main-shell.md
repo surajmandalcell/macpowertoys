@@ -1,5 +1,30 @@
 # Main Shell Troubleshooting
 
+## Closed Windows Reopen With Empty Content, Run 75, 2026-10-02
+
+- **Symptom:** Native close followed by a background Main route shows an
+  empty 1240 x 872pt window instead of the complete 1240 x 840pt canvas.
+- **Cause:** Closed SwiftUI scenes retain their controller and clear root.
+  Reuse only sends a notification to that root. Replacement background
+  controllers also export temporary intrinsic sizes before deferred chrome.
+  Prior tests settle the run loop after reopening and miss the first frame.
+- **Invariant:** Remount hidden scene controllers before native ordering.
+  Prepare background controllers before sending the shared open notification.
+  Fixed native hosts do not drive window size through intrinsic constraints.
+  Preserve the top-left point and apply the registered canvas and native style
+  synchronously. Variable applets retain intrinsic height updates; remove the
+  native titlebar inset from their first measurement. Save the frame before
+  close unmounts content. Keep background activation guards and URL ownership.
+- **Check:** The source-derived hidden fixture passes 102 real native
+  close/reopen cycles across all 13 roots and both window owners, including
+  applet minimum, middle, and maximum heights. It uses performClose and close,
+  checks mounted models and sizes before ordering, and makes zero activation
+  calls. The original source fails. Two permanent native regressions compile
+  through the single tests gate. The Ruler presentation source check passes.
+  Native installed close, all entry paths, complete first frames, and timing
+  remain with the orchestrator. No installed route or process was changed.
+  Report: `tmp/redesign/logs/w14-blank-main.md`.
+
 ## Background Page Reuse, Run 70, 2026-10-01
 
 - **Symptom:** Signed `b9c129a5` preserves focus for main All tools, then
