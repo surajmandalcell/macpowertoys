@@ -59,7 +59,7 @@ public struct OnePlusStepperField: View {
                 if let unit { Text(unit).font(.system(size: 9, design: .monospaced)).foregroundStyle(OnePlusColor.muted).padding(.trailing, 8) }
                 OnePlusColor.line.frame(width: 1)
                 OnePlusNativeStepper(title: title, value: $value, range: range, step: step, enabled: enabled)
-                    .frame(width: 17).clipped()
+                    .controlSize(.small).frame(width: 17).clipped()
             }
             .frame(height: controlHeight ?? density.controlHeight)
             .background(focused && OnePlusFocusPolicy.shared.showsFocus ? OnePlusColor.fieldFocus : OnePlusColor.field, in: RoundedRectangle(cornerRadius: 6))
@@ -107,7 +107,11 @@ private struct OnePlusNativeStepper: NSViewRepresentable {
         view.controlSize = .small
         return view
     }
+    func sizeThatFits(_ proposal: ProposedViewSize, nsView: NSStepper, context: Context) -> CGSize? {
+        nsView.intrinsicContentSize
+    }
     func updateNSView(_ view: NSStepper, context: Context) {
+        view.controlSize = .small
         context.coordinator.value = $value
         context.coordinator.range = range
         view.minValue = Double(range.lowerBound); view.maxValue = Double(range.upperBound)
