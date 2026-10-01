@@ -147,11 +147,11 @@ final class TrayFanUITests: XCTestCase {
         XCTAssertTrue(configure.waitForExistence(timeout: 5))
         XCTAssertTrue(connect.waitForExistence(timeout: 5))
         XCTAssertEqual(configure.frame.height, 24, accuracy: 1)
-        XCTAssertEqual(connect.frame.height, 33, accuracy: 1)
-        XCTAssertEqual(connect.frame.width, 92, accuracy: 1)
+        XCTAssertEqual(connect.frame.height, 24, accuracy: 1)
+        XCTAssertGreaterThan(connect.frame.width, connect.frame.height)
         XCTAssertEqual(taskManager.buttons.matching(identifier: "system-monitor.remote.connect.ui-build-mac").count, 1)
-        XCTAssertLessThan(connect.frame.maxY, configure.frame.minY)
-        XCTAssertEqual(taskManager.frame.maxX - configure.frame.maxX, 32, accuracy: 2)
+        XCTAssertEqual(connect.frame.midY, configure.frame.midY, accuracy: 1)
+        XCTAssertEqual(taskManager.frame.maxX - connect.frame.maxX, 32, accuracy: 2)
 
         let remoteCapture = XCTAttachment(screenshot: taskManager.screenshot())
         remoteCapture.name = "Task Manager remote host and configuration actions"

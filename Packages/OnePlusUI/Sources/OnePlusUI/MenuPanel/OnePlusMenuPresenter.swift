@@ -104,8 +104,14 @@ public final class OnePlusMenuPresenter: NSObject {
             }
             return event
         }) { monitors.append(monitor) }
-        if let monitor = NSEvent.addGlobalMonitorForEvents(matching: mouse, handler: { [weak self] _ in
-            self?.close()
+        if let monitor = NSEvent.addGlobalMonitorForEvents(matching: mouse, handler: { [weak self] event in
+            guard let self else { return }
+            // Status-bar events can arrive through the global monitor before the action.
+            // Let the anchor's action toggle its panel instead of closing then reopening it.
+            let point = event.window?.convertPoint(toScreen: event.locationInWindow) ?? event.locationInWindow
+            if let anchor = self.anchor, let owner = anchor.window,
+               owner.convertToScreen(anchor.convert(anchor.bounds, to: nil)).contains(point) { return }
+            self.close()
         }) { monitors.append(monitor) }
         let center = NotificationCenter.default
         observers.append(center.addObserver(forName: NSApplication.didResignActiveNotification,
