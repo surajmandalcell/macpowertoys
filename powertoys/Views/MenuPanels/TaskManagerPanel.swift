@@ -113,7 +113,11 @@ struct SystemMonitorTrayView: View {
                     OnePlusMenuTab($0, $0.title, systemImage: $0.symbol,
                                    accessibilityIdentifier: "system-monitor.tray.\($0.rawValue)")
                 },
-                selection: Binding(get: { page }, set: { pageID = $0.rawValue })
+                selection: Binding(get: { page }, set: {
+                    guard $0 != page else { return }
+                    OnePlusPanelTimings.shared.begin(panel: "system-monitor", operation: .tabSwitch, tab: $0.rawValue)
+                    pageID = $0.rawValue
+                })
             )
         } actions: {
             OnePlusMenuOpenApp {
@@ -131,6 +135,7 @@ struct SystemMonitorTrayView: View {
             .modifier(TaskManagerMenuSampling(page: page))
         }
         .onOnePlusMenuHeightChange(onPreferredHeight)
+        .onePlusPanelTimings(panel: "system-monitor", tab: pageID)
     }
 
     private var homePage: some View {
