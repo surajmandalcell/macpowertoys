@@ -54,7 +54,7 @@ struct SystemMonitorMenuPopoverView: View {
     var maximumHeight: CGFloat?
     private let diagnostic: Bool
     private let defaults: UserDefaults
-    private let loadsRemoteProfiles: Bool
+    private let suppliedRemoteProfiles: [SystemMonitorRemoteProfile]?
     private let onPreferredHeight: (CGFloat) -> Void
     @State private var remoteProfiles: [SystemMonitorRemoteProfile]
 
@@ -69,19 +69,19 @@ struct SystemMonitorMenuPopoverView: View {
         self.defaults = defaults
         self.diagnostic = diagnostic
         let profiles = remoteProfiles ?? []
-        loadsRemoteProfiles = remoteProfiles == nil
+        suppliedRemoteProfiles = remoteProfiles
         self.onPreferredHeight = onPreferredHeight
         _remoteProfiles = State(initialValue: profiles)
     }
 
     var body: some View {
-        SystemMonitorTrayView(remoteProfiles: remoteProfiles, diagnostic: diagnostic, onPreferredHeight: onPreferredHeight)
+        SystemMonitorTrayView(remoteProfiles: suppliedRemoteProfiles ?? remoteProfiles, diagnostic: diagnostic, onPreferredHeight: onPreferredHeight)
         .environment(\.onePlusMenuMaximumHeight, maximumHeight)
         .frame(width: OnePlusMenuMetrics.width)
         .defaultAppStorage(defaults)
         .utilityMotionPolicy()
         .task {
-            guard loadsRemoteProfiles else { return }
+            guard suppliedRemoteProfiles == nil else { return }
             let defaults = defaults
             let profiles = await Task.detached(priority: .userInitiated) {
                 SystemMonitorRemoteProfiles.load(defaults: defaults)

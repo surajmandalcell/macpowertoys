@@ -93,8 +93,8 @@ struct OnePlusMenuPanelShell<Tabs: View, Actions: View, Body: View>: View {
         }.padding(1).frame(width: 356).fixedSize(horizontal: false, vertical: true)
             .background(OnePlusMenuHeightReporter(changed: heightChanged, screen: screen))
             .background(OnePlusColor.sidebar)
-            .clipShape(RoundedRectangle(cornerRadius: 11))
-            .overlay { RoundedRectangle(cornerRadius: 11).strokeBorder(OnePlusColor.line, lineWidth: 1) }
+            .clipShape(RoundedRectangle(cornerRadius: OnePlusMetrics.panelRadius))
+            .overlay { RoundedRectangle(cornerRadius: OnePlusMetrics.panelRadius).strokeBorder(OnePlusColor.line, lineWidth: 1) }
             .onePlusDensity(.compact)
             .environment(\.onePlusCardPadding, OnePlusMetrics.cardPadding)
             .onePlusNeutralControls()

@@ -39,7 +39,7 @@ nonisolated enum DiagnosticsRoute: Equatable, Sendable {
 final class DiagnosticsMenuPanels: NSObject {
     static let shared = DiagnosticsMenuPanels()
     weak var mainWindow: NSWindow?
-    private let popovers = NSHashTable<NSPopover>.weakObjects()
+    private let popovers = NSHashTable<OnePlusMenuPresenter>.weakObjects()
     private(set) var captureWindow: NSPanel?
     private var cachedWindows: [DiagnosticsPanel: NSPanel] = [:]
     private var cachedTabs: [DiagnosticsPanel: String] = [:]
@@ -52,13 +52,13 @@ final class DiagnosticsMenuPanels: NSObject {
         self.defaults = defaults
         super.init()
         NotificationCenter.default.addObserver(self, selector: #selector(didShow(_:)),
-                                               name: NSPopover.didShowNotification, object: nil)
+                                               name: OnePlusMenuPresenter.didShowNotification, object: nil)
     }
 
     isolated deinit { NotificationCenter.default.removeObserver(self) }
 
     @objc private func didShow(_ notification: Notification) {
-        if let popover = notification.object as? NSPopover { popovers.add(popover) }
+        if let popover = notification.object as? OnePlusMenuPresenter { popovers.add(popover) }
     }
 
     func close(clearCache: Bool = false) {
@@ -74,7 +74,7 @@ final class DiagnosticsMenuPanels: NSObject {
             cachedProfiles = nil
         }
         // The native menu controllers own their popovers. Keep only weak references.
-        for popover in popovers.allObjects where popover.isShown && !popover.isDetached {
+        for popover in popovers.allObjects where popover.isShown {
             popover.performClose(nil)
         }
         if let mainWindow, mainWindow.isVisible { mainWindow.close() }

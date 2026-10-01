@@ -1655,7 +1655,7 @@ final class SystemMonitorMenuController: NSObject {
     private var reservedWidths: [SystemMonitorMenuMetric: CGFloat] = [:]
     private var renderedStateCache = SystemMonitorRenderedStateCache()
     private var settings = SystemMonitorMenuSettings()
-    private let popover = NSPopover()
+    private let popover = OnePlusMenuPresenter()
     private static let presentationLog = OSLog(subsystem: "com.surajmandal.macpowertoys", category: .pointsOfInterest)
     private var presentationTask: Task<Void, Never>?
     private var presentedProfiles: [SystemMonitorRemoteProfile]?
@@ -1838,8 +1838,6 @@ final class SystemMonitorMenuController: NSObject {
             OnePlusPanelTimings.shared.cancel(panel: "system-monitor")
             return
         }
-        popover.behavior = .transient
-        popover.animates = false
         if defaults.object(forKey: "systemMonitor.rememberTrayPage") != nil,
            !defaults.bool(forKey: "systemMonitor.rememberTrayPage") {
             defaults.set(SystemMonitorTrayPage.home.rawValue, forKey: "systemMonitor.trayPage")
@@ -1878,11 +1876,15 @@ final class SystemMonitorMenuController: NSObject {
            presentedProfiles == profiles {
             hosting = existing
         } else {
-            hosting = NSHostingController(rootView: SystemMonitorMenuPopoverView(remoteProfiles: profiles, defaults: defaults, maximumHeight: ceiling) { [weak self] height in
+            let root = SystemMonitorMenuPopoverView(remoteProfiles: profiles, defaults: defaults, maximumHeight: ceiling) { [weak self] height in
                 guard let self,
                       abs(self.popover.contentSize.height - height) > 0.5 else { return }
                 self.popover.contentSize = NSSize(width: OnePlusMenuMetrics.width, height: height)
-            })
+            }
+            if let existing = popover.contentViewController as? NSHostingController<SystemMonitorMenuPopoverView> {
+                existing.rootView = root
+                hosting = existing
+            } else { hosting = NSHostingController(rootView: root) }
             presentedProfiles = profiles
         }
         if hosting.rootView.maximumHeight != ceiling { hosting.rootView.maximumHeight = ceiling }

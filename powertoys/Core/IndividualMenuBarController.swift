@@ -116,7 +116,7 @@ final class IndividualMenuBarController: NSObject {
 
     private let defaults = UserDefaults.standard
     private var statusItems: [IndividualMenuBarTool: NSStatusItem] = [:]
-    private var popovers: [IndividualMenuBarTool: NSPopover] = [:]
+    private var popovers: [IndividualMenuBarTool: OnePlusMenuPresenter] = [:]
     private var observers: [NSObjectProtocol] = []
 
     var statusItemOwnerCount: Int { statusItems.count }
@@ -229,18 +229,16 @@ final class IndividualMenuBarController: NSObject {
         host.view.setFrameSize(size)
         host.view.layoutSubtreeIfNeeded()
         popover.contentSize = size
-        popover.show(relativeTo: button.bounds, of: button, preferredEdge: .minY)
+        popover.show(relativeTo: button.bounds, of: button, preferredEdge: .minY, takesFocus: !diagnostic)
     }
 
-    private func makePopover(for tool: IndividualMenuBarTool, maximumHeight: CGFloat) -> NSPopover {
-        let popover = NSPopover()
-        popover.behavior = .transient
-        popover.animates = false
+    private func makePopover(for tool: IndividualMenuBarTool, maximumHeight: CGFloat) -> OnePlusMenuPresenter {
+        let popover = OnePlusMenuPresenter()
         popover.contentViewController = NSHostingController(rootView: content(for: tool, maximumHeight: maximumHeight, popover: popover))
         return popover
     }
 
-    private func content(for tool: IndividualMenuBarTool, maximumHeight: CGFloat, popover: NSPopover) -> AnyView {
+    private func content(for tool: IndividualMenuBarTool, maximumHeight: CGFloat, popover: OnePlusMenuPresenter) -> AnyView {
         AnyView(IndividualToolMenuPanel(tool: tool)
             .environment(\.onePlusMenuMaximumHeight, maximumHeight)
             .onOnePlusMenuHeightChange { [weak popover] height in
