@@ -32,7 +32,7 @@ struct RcloneWindowView: View {
         } content: {
             contentArea
         }
-        .disabled(manager.isShuttingDown)
+        .disabled(manager.isShuttingDown || manager.isPresentingNewTransfer || showAddRemote)
         .environment(manager)
         .buttonStyle(OnePlusButtonStyle())
         .background(WindowAccessor(identifier: "rclone"))
