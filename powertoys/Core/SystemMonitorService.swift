@@ -796,6 +796,16 @@ nonisolated enum SystemMonitorMenuRenderer {
             values += byteUnits.map { "1,023.99 " + $0 }
         } else if item.metric == .disk && item.diskUnit != .percentage {
             values += byteUnits.map { "999.99 " + $0 }
+        } else if item.metric == .network && item.networkUnit == .bits {
+            let units = Set(magnitudes.map { bitRate(Double($0)).split(separator: " ").last.map(String.init) ?? "" })
+            values += units.map { unit in
+                let rate = "1000 " + unit
+                switch item.networkDirection {
+                case .both: return "↓\(rate) ↑\(rate)"
+                case .download: return "↓\(rate)"
+                case .upload: return "↑\(rate)"
+                }
+            }
         } else if item.metric == .network && item.networkUnit == .bytes {
             values += byteUnits.map { unit in
                 let rate = "999.99 " + unit + "/s"
@@ -821,7 +831,7 @@ nonisolated enum SystemMonitorMenuRenderer {
         let scales: [(Double, String)] = [(1e18, "Eb/s"), (1e15, "Pb/s"), (1e12, "Tb/s"), (1e9, "Gb/s"), (1e6, "Mb/s"), (1e3, "kb/s")]
         guard let scale = scales.first(where: { bits >= $0.0 }) else { return "\(Int(bits.rounded())) b/s" }
         let value = bits / scale.0
-        return value.formatted(.number.precision(.fractionLength(value < 10 ? 1 : 0))) + " " + scale.1
+        return value.formatted(.number.grouping(.never).precision(.fractionLength(value < 10 ? 1 : 0))) + " " + scale.1
     }
 }
 
