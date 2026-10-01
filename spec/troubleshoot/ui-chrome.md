@@ -1437,3 +1437,20 @@
   glyph line box and compare native coverage; nearest-token classification
   gives a false failure after the palette change. Signed interaction remains
   an orchestrator check. Report: `tmp/redesign/logs/w3-components.md`.
+
+## Search mouse-down responder cycle, 2026-10-01
+
+- **Symptom:** Signed 43ce0eb9 hangs after a search click. The sampled stack
+  repeats NSTextField, NSView and OnePlusSearchView mouseDown 494 times.
+- **Cause:** An unhandled child event returns to the wrapper through
+  nextResponder. The wrapper sends it back to the same child and repeats.
+  Removing makeFirstResponder alone still reproduces the cycle.
+- **Invariant:** Native field clicks stay in AppKit. A search wrapper may
+  focus its field but must not send mouseDown back to that child. Keep
+  explicit Find selection separate from pointer event dispatch.
+- **Check:** cb3292da adds a bounded offscreen native-click regression that
+  fails on the old source without hanging. All ten search/focus checks pass.
+  One batch compile gate fails on the unrelated Switch settings caller/API
+  mismatch. Chrome relays the fix to perf-windows. Signed installation,
+  caret and CPU/footprint acceptance remain with the orchestrator.
+  Report: `tmp/redesign/logs/w3-components.md`.
