@@ -403,6 +403,7 @@ public struct OnePlusMenuTile<Content: View>: View {
     let content: Content
     private var historyValues: [Double] = []
     private var historyRange: ClosedRange<Double> = 0...100
+    private var historyColor: Color = OnePlusColor.chartLine
     @Environment(\.isEnabled) private var enabled
     @Environment(\.onePlusControlState) private var sample
     @State private var hover = false
@@ -413,9 +414,10 @@ public struct OnePlusMenuTile<Content: View>: View {
         self.textured = textured
         self.action = action; self.content = content()
     }
-    public func historyBackground(values: [Double], range: ClosedRange<Double> = 0...100) -> Self {
+    public func historyBackground(values: [Double], range: ClosedRange<Double> = 0...100,
+                                  color: Color = OnePlusColor.chartLine) -> Self {
         var tile = self
-        tile.historyValues = values; tile.historyRange = range
+        tile.historyValues = values; tile.historyRange = range; tile.historyColor = color
         return tile
     }
     public var body: some View {
@@ -443,8 +445,9 @@ public struct OnePlusMenuTile<Content: View>: View {
                     (enabled && (hover || sample == .hover) && action != nil ? OnePlusColor.raisedHover : OnePlusColor.panelHover)
                     if textured { OnePlusDitherTexture(strength: 0.11) }
                     if !historyValues.isEmpty {
-                        OnePlusAreaChart(values: historyValues, range: historyRange, color: OnePlusColor.accent)
-                            .opacity(0.45).allowsHitTesting(false).accessibilityHidden(true)
+                        OnePlusAreaChart(values: historyValues, range: historyRange, color: historyColor, quietBackground: true)
+                            .frame(height: height * 0.6).frame(maxHeight: .infinity, alignment: .bottom)
+                            .allowsHitTesting(false).accessibilityHidden(true)
                     }
                 }
             }

@@ -13,19 +13,21 @@ final class OnePlusFiniteValueTests: XCTestCase {
                                             -Double.greatestFiniteMagnitude ... .greatestFiniteMagnitude]
         for values in samples {
             for range in ranges {
-                let paths = OnePlusChartPaths.cached(values: values, range: range)
-                for path in [paths.line, paths.area] {
-                    path.forEach { element in
-                        let points: [CGPoint]
-                        switch element {
-                        case .move(let point), .line(let point): points = [point]
-                        case .quadCurve(let point, let control): points = [point, control]
-                        case .curve(let point, let control1, let control2): points = [point, control1, control2]
-                        case .closeSubpath: points = []
-                        }
-                        for point in points {
-                            XCTAssertTrue(point.x.isFinite && point.y.isFinite, "\(values), \(range): \(point)")
-                            XCTAssertTrue((0...1).contains(point.x) && (0...1).contains(point.y))
+                for smoothed in [false, true] {
+                    let paths = OnePlusChartPaths.cached(values: values, range: range, smoothed: smoothed)
+                    for path in [paths.line, paths.area] {
+                        path.forEach { element in
+                            let points: [CGPoint]
+                            switch element {
+                            case .move(let point), .line(let point): points = [point]
+                            case .quadCurve(let point, let control): points = [point, control]
+                            case .curve(let point, let control1, let control2): points = [point, control1, control2]
+                            case .closeSubpath: points = []
+                            }
+                            for point in points {
+                                XCTAssertTrue(point.x.isFinite && point.y.isFinite, "\(values), \(range): \(point)")
+                                XCTAssertTrue((0...1).contains(point.x) && (0...1).contains(point.y))
+                            }
                         }
                     }
                 }

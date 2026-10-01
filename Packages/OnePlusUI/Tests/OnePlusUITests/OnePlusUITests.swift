@@ -257,6 +257,12 @@ final class OnePlusUITests: XCTestCase {
         let paths = OnePlusChartPaths.cached(values: [-20, 50, 140], range: 0...100)
         XCTAssertTrue(paths === OnePlusChartPaths.cached(values: [-20, 50, 140], range: 0...100))
         XCTAssertEqual(paths.line.boundingRect, CGRect(x: 0, y: 0, width: 1, height: 1))
+        let smoothed = OnePlusChartPaths.cached(values: [-20, 50, 140], range: 0...100, smoothed: true)
+        XCTAssertFalse(smoothed === paths)
+        XCTAssertEqual(smoothed.line.boundingRect, paths.line.boundingRect)
+        var curves = 0
+        smoothed.line.forEach { if case .curve = $0 { curves += 1 } }
+        XCTAssertEqual(curves, 2)
         XCTAssertTrue(OnePlusChartPaths.cached(values: [.nan, .infinity], range: 0...100).line.isEmpty)
         XCTAssertFalse(OnePlusChartPaths.cached(values: [50], range: 0...100).line.isEmpty)
     }

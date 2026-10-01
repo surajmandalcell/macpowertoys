@@ -551,8 +551,10 @@ separate tool panel.
 - Tiles (`OnePlusMenuTile`): radius 6, one step above `panel` (`#262626`
   dark), 1 pt `line`, 7 x 8 padding, grain 0.11, 5 pt grid gaps, three
   109.33 pt columns. Wide tiles span two columns. A metric tile with history
-  (CPU, GPU, Memory) draws it as a quiet area chart behind the whole tile,
-  under the text, never as a small chart beside the value.
+  (CPU, GPU, Memory) draws it behind the tile content at full width in the
+  lower 60 percent. Use a smooth 1 pt line at 35 percent opacity and a
+  7 percent area fill. CPU and GPU use neutral `chartLine`; Memory keeps
+  coral `accent`. Values remain the strongest element in both appearances.
 - Status-item icons use the same modest visual size as the Portman icon.
   A Task Manager item that shows only one metric uses the Task Manager
   glyph, not the metric glyph.

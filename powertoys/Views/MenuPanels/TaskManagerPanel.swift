@@ -227,7 +227,7 @@ private struct TaskManagerMenuHomeTile: View {
                         }
                     }
                 }
-                .historyBackground(values: data.history)
+                .historyBackground(values: data.history, color: page == .memory ? OnePlusColor.accent : OnePlusColor.chartLine)
                 .help(data.captionHelp)
             case .network:
                 OnePlusMenuTile(span: 2, height: 34, textured: false, action: { selection = page }) {
