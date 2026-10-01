@@ -7,9 +7,9 @@ enum ColorPickerLayout {
     static let historyBaseHeight = OnePlusWindowCanvas.colorPicker.size.height - OnePlusMetrics.appletTitlebar
     static let maximumWindowHeight = OnePlusWindowCanvas.colorPicker.heightRange!.upperBound
     static let settingsContentHeight = 2 * OnePlusMetrics.cardHeader
-        + 2 * (OnePlusMetrics.settingRow + OnePlusMetrics.captionedSettingRow)
+        + 4 * OnePlusMetrics.settingRow
         + OnePlusMetrics.cardGap
-    static let historyRowHeight = OnePlusMetrics.captionedSettingRow
+    static let historyRowHeight = OnePlusMetrics.settingRow
 
     static func historyHeight(count: Int) -> CGFloat {
         min(maximumWindowHeight, historyBaseHeight + OnePlusMetrics.appletTitlebar
@@ -26,7 +26,7 @@ enum ColorPickerLayout {
     static func projectsHeight(projectCount: Int, isCreating: Bool) -> CGFloat {
         min(maximumWindowHeight, OnePlusWindowCanvas.colorPicker.size.height
             + CGFloat(max(0, projectCount)) * OnePlusMetrics.settingRow
-            + (isCreating ? OnePlusMetrics.controlHeight + 2 * OnePlusMetrics.cardPadding : 0))
+            + (isCreating ? OnePlusMetrics.controlHeight + OnePlusMetrics.contentGap : 0))
     }
 }
 
@@ -168,6 +168,7 @@ struct ColorHistoryView: View {
         )) {
             Button("OK") { service.exportError = nil }
         } message: { Text(service.exportError ?? "The project could not be written.") }
+        .transaction { $0.disablesAnimations = true }
         .onOpenToolPage("color-picker") { id in
             if let destination = ColorPickerPage(rawValue: id) { page = destination }
         }
@@ -244,22 +245,26 @@ struct ColorHistoryView: View {
     }
 
     private var projects: some View {
-        OnePlusCard {
-            OnePlusCardHeader("Color projects") {
+        VStack(alignment: .leading, spacing: OnePlusMetrics.actionSpacing) {
+            HStack(spacing: OnePlusMetrics.actionSpacing) {
+                Text("Color projects").onePlusText(.sectionTitle)
+                Spacer(minLength: 0)
                 Button("New Project", systemImage: "plus") { isCreatingProject.toggle() }
                     .buttonStyle(OnePlusButtonStyle(.ghost, size: .small))
             }
             if isCreatingProject { newProjectField }
-            ScrollView {
-                LazyVStack(spacing: 0) {
-                    projectRow(id: nil, name: "Unfiled", project: nil)
-                    ForEach(service.projects) { project in
-                        projectRow(id: project.id, name: project.name, project: project)
+            OnePlusCard {
+                ScrollView {
+                    LazyVStack(spacing: 0) {
+                        projectRow(id: nil, name: "Unfiled", project: nil)
+                        ForEach(service.projects) { project in
+                            projectRow(id: project.id, name: project.name, project: project)
+                        }
                     }
                 }
+                .onePlusScrollIndicators()
+                .frame(minHeight: OnePlusMetrics.settingRow, maxHeight: .infinity)
             }
-            .onePlusScrollIndicators()
-            .frame(minHeight: OnePlusMetrics.settingRow, maxHeight: .infinity)
         }
         .frame(maxHeight: .infinity)
         .padding(.horizontal, OnePlusMetrics.appletGutter)
@@ -274,7 +279,7 @@ struct ColorHistoryView: View {
                 .disabled(!service.canCreateProject(named: newProjectName))
             Button { isCreatingProject = false; newProjectName = "" } label: { Image(systemName: "xmark") }
                 .buttonStyle(OnePlusButtonStyle(.icon)).help("Cancel").accessibilityLabel("Cancel new project")
-        }.padding(OnePlusMetrics.cardPadding)
+        }
     }
 
     private func createProject() {
@@ -292,8 +297,8 @@ struct ColorHistoryView: View {
                 HStack(spacing: OnePlusMetrics.actionSpacing) {
                     Image(systemName: "folder")
                     Text(name).lineLimit(1)
-                    OnePlusBadge(count)
                     Spacer(minLength: 0)
+                    Text(count, format: .number).onePlusText(.caption).monospacedDigit().fixedSize()
                     if selected { Image(systemName: "checkmark") }
                 }
                 .onePlusText(.row)
@@ -340,6 +345,7 @@ struct ColorPickerSettingsView: View {
                 }
             }
         }
+        .transaction { $0.disablesAnimations = true }
         .confirmationDialog("Clear all picked colors?", isPresented: $isConfirmingClearAll) {
             Button("Clear all", role: .destructive) { service.clearAll() }
             Button("Cancel", role: .cancel) {}
@@ -354,7 +360,7 @@ struct ColorPickerSettingsView: View {
                     get: { shortcuts.isEnabled(.colorPicker) }, set: { shortcuts.setEnabled($0, for: .colorPicker) }
                 )).labelsHidden().toggleStyle(OnePlusSwitchStyle())
             }
-            OnePlusSettingRow("Keyboard shortcut", caption: "Works in every app.", separator: false) {
+            OnePlusSettingRow("Keyboard shortcut", help: "Works in every app.", separator: false) {
                 ShortcutRecorderField(action: .colorPicker).disabled(!shortcuts.isEnabled(.colorPicker))
             }
             ShortcutPermissionNotice(action: .colorPicker)
@@ -368,7 +374,7 @@ struct ColorPickerSettingsView: View {
                 OnePlusSelect(choices: ColorCopyFormat.allCases.map { ($0, $0.title) },
                               selection: $service.defaultFormat, accessibilityLabel: "Copy format")
             }
-            OnePlusSettingRow("Clear history", caption: "Keeps your projects.", separator: false) {
+            OnePlusSettingRow("Clear history", help: "Keeps your projects.", separator: false) {
                 Button("Clear all", role: .destructive) { isConfirmingClearAll = true }
                     .buttonStyle(OnePlusButtonStyle(.destructive))
                     .disabled(service.history.isEmpty).help("Clear every saved color")

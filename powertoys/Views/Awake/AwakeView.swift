@@ -39,6 +39,7 @@ struct AwakeView: View {
                 }
             }
         }
+        .transaction { $0.disablesAnimations = true }
         .onOpenToolPage("awake") { page in
             if page == "home" { settings = false }
             if page == "settings" { settings = true }
@@ -53,7 +54,7 @@ struct AwakeView: View {
 private struct AwakeHomeView: View {
     var body: some View {
         VStack(alignment: .leading, spacing: OnePlusMetrics.cardGap) {
-            AwakeStatusCard()
+            AwakeStatusRow()
             ScrollView {
                 AwakeSettingsView(showsDisplayToggle: false)
             }
@@ -65,18 +66,18 @@ private struct AwakeHomeView: View {
     }
 }
 
-private struct AwakeStatusCard: View {
+private struct AwakeStatusRow: View {
     @State private var service = AwakeService.shared
 
     var body: some View {
-        OnePlusCard {
+        VStack(alignment: .leading, spacing: OnePlusMetrics.actionSpacing) {
             HStack(spacing: OnePlusMetrics.actionSpacing) {
                 OnePlusStatus(service.statusText, state: service.isActive ? .success : .offline, textRole: .row)
                     .monospacedDigit()
                     .frame(maxWidth: .infinity, alignment: .leading)
                 Button("Turn Off") { service.setMode(.passive) }
                     .disabled(service.configuration.mode == .passive)
-            }.padding(OnePlusMetrics.cardPadding)
+            }.frame(minHeight: OnePlusMetrics.settingRow)
             if let error = service.assertionError { OnePlusBanner(error, tone: .error) }
         }
         .buttonStyle(OnePlusButtonStyle())
@@ -111,6 +112,8 @@ struct AwakeSettingsView: View {
             }
         }
         .buttonStyle(OnePlusButtonStyle())
+        .environment(\.onePlusCardPadding, 0)
+        .transaction { $0.disablesAnimations = true }
         .onAppear {
             let seconds = max(60, Int(service.configuration.intervalSeconds))
             hours = min(168, seconds / 3600)
@@ -135,8 +138,8 @@ struct AwakeSettingsView: View {
     }
 
     private var modes: some View {
-        OnePlusCard {
-            OnePlusCardHeader("Session", systemImage: "moon")
+        VStack(alignment: .leading, spacing: OnePlusMetrics.actionSpacing) {
+            OnePlusSectionTitle("Session")
             OnePlusSettingRow("Keep awake", separator: showsDisplayToggle || service.configuration.mode == .timed || service.configuration.mode == .until || duration == 0) {
                 OnePlusSelect(choices: [(AwakeMode.passive, "Off"), (.indefinite, "Indefinitely"),
                                         (.timed, "For a duration"), (.until, "Until a time")],
@@ -168,14 +171,14 @@ struct AwakeSettingsView: View {
                             Button("Start") { selectMode(.until) }
                         }
                     }
-                }.padding(OnePlusMetrics.cardPadding)
+                }.frame(minHeight: OnePlusMetrics.settingRow)
             }
         }
     }
 
     private var quickTimes: some View {
-        OnePlusCard {
-            OnePlusCardHeader("Quick times", systemImage: "clock")
+        VStack(alignment: .leading, spacing: OnePlusMetrics.actionSpacing) {
+            OnePlusSectionTitle("Quick times")
             ScrollView(.horizontal) {
                 HStack(spacing: OnePlusMetrics.actionSpacing) {
                     ForEach(service.configuration.presets, id: \.self) { seconds in
@@ -197,9 +200,8 @@ struct AwakeSettingsView: View {
             .onePlusScrollIndicators()
             .fixedSize(horizontal: false, vertical: true)
             .frame(maxWidth: .infinity, alignment: .leading)
-            .padding(OnePlusMetrics.cardPadding)
             if showsDisplayToggle {
-                OnePlusSettingRow("New preset", caption: "Save up to eight durations.", separator: false) {
+                OnePlusSettingRow("New preset", help: "Save up to eight durations.", separator: false) {
                     HStack(spacing: OnePlusMetrics.actionSpacing) {
                         OnePlusStepperField("Preset minutes", value: $presetMinutes, in: 1...10_080, unit: "min")
                         Button("Add") {
@@ -214,8 +216,10 @@ struct AwakeSettingsView: View {
     }
 
     private var process: some View {
-        OnePlusCard {
-            OnePlusCardHeader("Attach to a process", systemImage: "terminal") {
+        VStack(alignment: .leading, spacing: OnePlusMetrics.actionSpacing) {
+            HStack(spacing: OnePlusMetrics.actionSpacing) {
+                Text("Attach to a process").onePlusText(.sectionTitle)
+                Spacer(minLength: 0)
                 HStack(spacing: OnePlusMetrics.actionSpacing) {
                     Button("Attach", action: attach)
                     if service.configuration.attachedProcessID != nil {
@@ -223,7 +227,7 @@ struct AwakeSettingsView: View {
                     }
                 }
             }
-            OnePlusSettingRow("Process ID", caption: service.configuration.attachedProcessID.map {
+            OnePlusSettingRow("Process ID", help: service.configuration.attachedProcessID.map {
                 "Stops when PID \(String($0)) exits."
             } ?? "Stops when this process exits.", separator: false) {
                 OnePlusTextField("Process ID", text: $processID, error: processError, onSubmit: attach)
