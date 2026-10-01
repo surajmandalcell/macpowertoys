@@ -6,12 +6,14 @@ import XCTest
 final class MarketplaceInstallerTests: XCTestCase {
     private var root: URL!
     private var store: MarketplaceStore!
+    private var terminationRequests: [String] = []
 
     override func setUp() {
         super.setUp()
         root = FileManager.default.temporaryDirectory
             .appendingPathComponent("installer-tests-\(UUID().uuidString)", isDirectory: true)
         store = MarketplaceStore(root: root)
+        terminationRequests = []
     }
 
     override func tearDown() {
@@ -247,6 +249,57 @@ final class MarketplaceInstallerTests: XCTestCase {
             }
             XCTAssertTrue(message.contains("output exceeded 1024 bytes"))
         }
+    }
+
+    func testManagerTerminatesOnlyForValidatedActivation() async throws {
+        let original = MarketplaceInstaller(store: store, adapters: adapters())
+        _ = try await original.install(manifest(), sourceID: "acme-tools", sourceURL: Self.sourceURL)
+        let markerURL = await installedFile("Tool.app/Contents/marker.txt")
+        let terminate: @MainActor @Sendable (String) -> Void = { [weak self] bundleID in
+            self?.terminationRequests.append(bundleID)
+            XCTAssertEqual(try? String(contentsOf: markerURL, encoding: .utf8), "v1")
+        }
+        let source = MarketplaceSource(url: Self.sourceURL, addedAt: Date(), sourceID: "acme-tools")
+        let host = HostEnvironment(
+            hostVersion: AppVersion("1.6.0")!, hostBuild: 10, macOSVersion: AppVersion("26.2")!
+        )
+        var failedDownload = adapters()
+        failedDownload.download = { _, _ in throw MarketplaceInstallError.downloadFailed("offline") }
+        let rejectedUpdates: [(MarketplaceToolManifest, InstallerAdapters, MarketplaceInstallError)] = [
+            (manifest(), failedDownload, .downloadFailed("offline")),
+            (manifest(sha256: String(repeating: "0", count: 64)), adapters(), .checksumMismatch),
+            (manifest(), adapters(signingTeam: "ZYXWV98765"), .teamIDMismatch("ZYXWV98765"))
+        ]
+        for (update, adapters, expectedError) in rejectedUpdates {
+            let manager = MarketplaceManager(
+                rootDirectory: root,
+                reservedToolIDs: ["logs"],
+                hostEnvironment: host,
+                installerAdapters: adapters,
+                terminateRunningApplications: terminate
+            )
+            do {
+                try await manager.installTool(update, from: source)
+                XCTFail("Expected \(expectedError)")
+            } catch let error as MarketplaceInstallError {
+                XCTAssertEqual(error, expectedError)
+            }
+            XCTAssertTrue(terminationRequests.isEmpty)
+            XCTAssertEqual(try String(contentsOf: markerURL, encoding: .utf8), "v1")
+            XCTAssertTrue(manager.receipts.isEmpty)
+        }
+
+        let manager = MarketplaceManager(
+            rootDirectory: root,
+            reservedToolIDs: ["logs"],
+            hostEnvironment: host,
+            installerAdapters: adapters(marker: "v2"),
+            terminateRunningApplications: terminate
+        )
+        try await manager.installTool(manifest(), from: source)
+        XCTAssertEqual(terminationRequests, ["com.acme.window-snapper"])
+        XCTAssertEqual(try String(contentsOf: markerURL, encoding: .utf8), "v2")
+        XCTAssertEqual(manager.receipts.map(\.toolID), ["window-snapper"])
     }
 
     func testManagerInstallToolRecordsReceipt() async throws {
