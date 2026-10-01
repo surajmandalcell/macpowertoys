@@ -164,6 +164,16 @@ nonisolated enum SystemMonitorProcessRows {
     }
 }
 
+nonisolated enum SystemMonitorProcessActions {
+    static func canTerminate(_ process: SystemMonitorProcess) -> Bool {
+        process.started != 0 && process.pid > 1 && process.pid != ProcessInfo.processInfo.processIdentifier
+    }
+
+    static func canCopyPath(_ process: SystemMonitorProcess) -> Bool {
+        process.executablePath.hasPrefix("/")
+    }
+}
+
 private struct SystemMonitorProcessRowsRequest: Hashable {
     let generation: Int
     let search: String
@@ -326,6 +336,7 @@ struct SystemMonitorProcessesView: View {
                     endpoints: networkEndpoints,
                     endpointsLoaded: endpointsLoaded,
                     lastUpdated: lastUpdated,
+                    errorMessage: errorMessage,
                     onQuit: { confirm(selected, force: false) },
                     onForceQuit: { confirm(selected, force: true) },
                     onDone: { selectedID = nil }
@@ -346,7 +357,7 @@ struct SystemMonitorProcessesView: View {
                 }
             }
         } message: {
-            Text(pendingForce ? "This process will stop immediately." : "The process can save its work before it exits.")
+            Text(pendingForce ? "This process will stop immediately." : "The process will be asked to stop. Unsaved work may be lost.")
         }
     }
 
@@ -484,7 +495,7 @@ struct SystemMonitorProcessesView: View {
             guard !Task.isCancelled else { return }
             networkEndpoints = endpoints
             endpointsLoaded = true
-            try? await Task.sleep(for: .seconds(10))
+            try? await Task.sleep(for: .seconds(30))
         }
     }
 
@@ -547,29 +558,34 @@ private struct SystemMonitorProcessRow: View, Equatable {
             .accessibilityLabel("Inspect \(process.name), PID \(process.pid)")
             .accessibilityIdentifier("task-manager.process.row.\(process.pid)")
 
-            Menu {
-                Button("Inspect") { inspect(process) }
-                if process.executablePath != "Unavailable" && process.executablePath != "Protected process" {
-                    Button("Copy Executable Path") { copyPath(process.executablePath) }
+            OnePlusMenuButton("Process actions", systemImage: "ellipsis", variant: .borderedIcon) {
+                var items: [OnePlusPopupMenuEntry] = [
+                    .item(OnePlusPopupMenuItem("Inspect") { inspect(process) }),
+                ]
+                if SystemMonitorProcessActions.canCopyPath(process) {
+                    items.append(.item(OnePlusPopupMenuItem("Copy executable path") { copyPath(process.executablePath) }))
                 }
-                Divider()
-                Button("Quit") { confirm(process, false) }
-                    .disabled(process.started == 0)
-                Button("Force Quit", role: .destructive) { confirm(process, true) }
-                    .disabled(process.started == 0)
-            } label: {
-                Image(systemName: "ellipsis")
-                    .font(.system(size: 11))
-                    .foregroundStyle(TaskManagerTheme.secondary)
-                    .frame(width: 24, height: 23)
+                items += [
+                    .separator(),
+                    .item(OnePlusPopupMenuItem("Quit", isEnabled: SystemMonitorProcessActions.canTerminate(process)) { confirm(process, false) }),
+                    .item(OnePlusPopupMenuItem("Force Quit", role: .destructive, isEnabled: SystemMonitorProcessActions.canTerminate(process)) { confirm(process, true) }),
+                ]
+                return items
             }
-            .menuStyle(.borderlessButton)
-            .menuIndicator(.hidden)
-            .fixedSize()
-            .frame(width: 24)
             .accessibilityIdentifier("task-manager.process.actions.\(process.pid)")
         }
         .onePlusTableRow(selected: selected)
+        .contextMenu {
+            Button("Inspect") { inspect(process) }
+            if SystemMonitorProcessActions.canCopyPath(process) {
+                Button("Copy executable path") { copyPath(process.executablePath) }
+            }
+            Divider()
+            Button("Quit") { confirm(process, false) }
+                .disabled(!SystemMonitorProcessActions.canTerminate(process))
+            Button("Force Quit", role: .destructive) { confirm(process, true) }
+                .disabled(!SystemMonitorProcessActions.canTerminate(process))
+        }
     }
 }
 
@@ -580,90 +596,54 @@ struct ProcessDetailSheet: View {
     let endpoints: [String]
     let endpointsLoaded: Bool
     let lastUpdated: Date?
+    var errorMessage: String? = nil
     let onQuit: () -> Void
     let onForceQuit: () -> Void
     let onDone: () -> Void
 
     var body: some View {
-        VStack(spacing: 0) {
-            HStack {
-                Text("Process Information")
-                    .font(.system(size: 12, weight: .medium))
-                Spacer()
-                Button(action: onDone) {
-                    Image(systemName: "xmark")
-                        .font(.system(size: 9, weight: .semibold))
-                        .frame(width: 23, height: 23)
-                }
-                .taskManagerControl(.quiet, minWidth: 23, minHeight: 23, horizontalPadding: 0)
-                .accessibilityLabel("Close")
-            }
-            .padding(.horizontal, 14)
-            .frame(height: 42)
-            .background(TaskManagerTheme.window)
-            .overlay(alignment: .bottom) { Rectangle().fill(TaskManagerTheme.lineSoft).frame(height: 1) }
-
+        OnePlusSheet("Process Information", width: .small, close: onDone) {
             ScrollView {
-                VStack(alignment: .leading, spacing: 14) {
+                VStack(alignment: .leading, spacing: OnePlusMetrics.spacing[6]) {
+                    if let errorMessage { OnePlusBanner(errorMessage, tone: .error) }
                     identity
                     stats
                     properties
                     executable
                     endpointsSection
                 }
-                .padding(.horizontal, 20)
-                .padding(.vertical, 18)
             }
             .thinScrollIndicators()
-
-            HStack(spacing: 8) {
-                Button("Quit") { onQuit() }
-                    .taskManagerControl(.destructive)
-                    .disabled(process.started == 0)
-                TaskManagerProcessActionMenu(
-                    isEnabled: process.started != 0,
-                    onForceQuit: onForceQuit
-                )
-                .frame(width: 68, height: 27)
-                .background(
-                    Color.white.opacity(0.035),
-                    in: RoundedRectangle(cornerRadius: TaskManagerTheme.controlRadius)
-                )
-                .overlay {
-                    RoundedRectangle(cornerRadius: TaskManagerTheme.controlRadius)
-                        .strokeBorder(TaskManagerTheme.line)
-                }
-                Spacer()
-                Button("Copy details") { copyDetails() }
-                    .taskManagerControl()
-                Button("Done", action: onDone)
-                    .taskManagerControl(.primary, minWidth: 58)
-            }
-            .padding(.horizontal, 20)
-            .frame(height: 52)
-            .background(TaskManagerTheme.window)
-            .overlay(alignment: .top) { Rectangle().fill(TaskManagerTheme.lineSoft).frame(height: 1) }
+        } footer: {
+            Button("Quit", action: onQuit)
+                .buttonStyle(OnePlusButtonStyle(.destructive))
+                .disabled(!SystemMonitorProcessActions.canTerminate(process))
+            OnePlusMenuButton("More", variant: .neutral, items: [
+                .item(OnePlusPopupMenuItem("Force Quit", role: .destructive, isEnabled: SystemMonitorProcessActions.canTerminate(process), action: onForceQuit)),
+            ])
+            .accessibilityIdentifier("task-manager.process.more")
+            Button("Copy details") { copyDetails() }
+                .buttonStyle(OnePlusButtonStyle(.neutral))
+            Button("Done", action: onDone)
+                .buttonStyle(OnePlusButtonStyle(.primary))
         }
-        .frame(width: 450, height: 520)
-        .background(TaskManagerTheme.window)
-        .foregroundStyle(TaskManagerTheme.ink)
+        .frame(height: 520)
     }
 
     private var identity: some View {
         HStack(spacing: 12) {
-            RoundedRectangle(cornerRadius: 9)
-                .fill(Color.white.opacity(0.06))
+            RoundedRectangle(cornerRadius: OnePlusMetrics.panelRadius)
+                .fill(OnePlusColor.raised)
                 .overlay { Image(systemName: "gearshape").font(.system(size: 22)).foregroundStyle(TaskManagerTheme.secondary) }
-                .overlay { RoundedRectangle(cornerRadius: 9).strokeBorder(TaskManagerTheme.line) }
+                .overlay { RoundedRectangle(cornerRadius: OnePlusMetrics.panelRadius).strokeBorder(TaskManagerTheme.line) }
                 .frame(width: 44, height: 44)
-            VStack(alignment: .leading, spacing: 4) {
-                Text(process.name).font(.system(size: 17, weight: .medium)).lineLimit(1)
-                Text("PID \(process.pid) · \(childCount) \(childCount == 1 ? "child" : "children")")
-                    .font(.system(size: 10)).foregroundStyle(TaskManagerTheme.secondary)
-                if let lastUpdated {
-                    Text("Updated \(lastUpdated, style: .time)")
-                        .font(.system(size: 9)).foregroundStyle(TaskManagerTheme.muted)
-                }
+            Text(process.name).font(.system(size: 17, weight: .medium)).lineLimit(1)
+                .help(process.name)
+            Spacer(minLength: OnePlusMetrics.spacing[2])
+            if let lastUpdated {
+                Text(lastUpdated, style: .time)
+                    .font(.system(size: 9)).foregroundStyle(TaskManagerTheme.muted)
+                    .help("Last updated")
             }
         }
     }
@@ -677,8 +657,8 @@ struct ProcessDetailSheet: View {
                 Rectangle().fill(TaskManagerTheme.line).frame(width: 1)
                 stat("Threads", process.threads == 0 ? "—" : "\(process.threads)")
             }
+            .frame(height: 68)
         }
-        .frame(height: 68)
     }
 
     private func stat(_ title: String, _ value: String) -> some View {
@@ -692,6 +672,8 @@ struct ProcessDetailSheet: View {
 
     private var properties: some View {
         VStack(spacing: 0) {
+            property("PID", String(process.pid))
+            property("Children", String(childCount))
             property("Parent", parentName)
             property("User ID", process.userID == UInt32.max ? "—" : String(process.userID))
             property("Started", process.started == 0 ? "—" : startedDate)
@@ -719,6 +701,7 @@ struct ProcessDetailSheet: View {
                 .textSelection(.enabled)
         }
         .padding(.vertical, 7)
+        .onePlusRowHover()
         .overlay(alignment: .bottom) { Rectangle().fill(TaskManagerTheme.lineSoft).frame(height: 1) }
     }
 
@@ -727,11 +710,12 @@ struct ProcessDetailSheet: View {
             HStack {
                 Text("EXECUTABLE").font(.system(size: 9)).foregroundStyle(TaskManagerTheme.secondary)
                 Spacer()
-                if process.executablePath != "Unavailable" && process.executablePath != "Protected process" {
+                if SystemMonitorProcessActions.canCopyPath(process) {
                     Button { copy(process.executablePath) } label: {
-                        Image(systemName: "doc.on.doc").font(.system(size: 11)).frame(width: 23, height: 22)
+                        Image(systemName: "doc.on.doc")
                     }
-                    .taskManagerControl(.quiet, minWidth: 23, minHeight: 22, horizontalPadding: 0)
+                    .buttonStyle(OnePlusButtonStyle(.borderedIcon, size: .small))
+                    .accessibilityLabel("Copy executable path")
                     .help("Copy executable path")
                 }
             }
@@ -741,8 +725,8 @@ struct ProcessDetailSheet: View {
                 .textSelection(.enabled)
                 .padding(10)
                 .frame(maxWidth: .infinity, alignment: .leading)
-                .background(Color.black.opacity(0.16), in: RoundedRectangle(cornerRadius: 5))
-                .overlay { RoundedRectangle(cornerRadius: 5).strokeBorder(TaskManagerTheme.lineSoft) }
+                .background(OnePlusColor.track, in: RoundedRectangle(cornerRadius: OnePlusMetrics.controlRadius))
+                .overlay { RoundedRectangle(cornerRadius: OnePlusMetrics.controlRadius).strokeBorder(TaskManagerTheme.lineSoft) }
             if executablePathDisplay == "—" {
                 Text("The executable path is not available for this process.")
                     .font(.system(size: 9))
@@ -797,52 +781,5 @@ struct ProcessDetailSheet: View {
 
     private func bytes(_ value: UInt64) -> String {
         ByteCountFormatter.string(fromByteCount: Int64(min(value, UInt64(Int64.max))), countStyle: .memory)
-    }
-}
-
-private struct TaskManagerProcessActionMenu: NSViewRepresentable {
-    let isEnabled: Bool
-    let onForceQuit: () -> Void
-
-    func makeCoordinator() -> Coordinator {
-        Coordinator(action: onForceQuit)
-    }
-
-    func makeNSView(context: Context) -> NSPopUpButton {
-        let button = NSPopUpButton(frame: .zero, pullsDown: true)
-        button.isBordered = false
-        button.controlSize = .small
-        button.font = .systemFont(ofSize: 10.5, weight: .medium)
-        button.contentTintColor = NSColor(calibratedWhite: 0.929, alpha: 0.88)
-        button.alignment = .left
-        button.addItem(withTitle: "More")
-
-        let forceQuit = NSMenuItem(
-            title: "Force Quit",
-            action: #selector(Coordinator.forceQuit),
-            keyEquivalent: ""
-        )
-        forceQuit.target = context.coordinator
-        button.menu?.addItem(forceQuit)
-        button.setAccessibilityLabel("More")
-        button.setAccessibilityIdentifier("task-manager.process.more")
-        return button
-    }
-
-    func updateNSView(_ button: NSPopUpButton, context: Context) {
-        context.coordinator.action = onForceQuit
-        button.item(withTitle: "Force Quit")?.isEnabled = isEnabled
-    }
-
-    final class Coordinator: NSObject {
-        var action: () -> Void
-
-        init(action: @escaping () -> Void) {
-            self.action = action
-        }
-
-        @objc func forceQuit() {
-            action()
-        }
     }
 }
