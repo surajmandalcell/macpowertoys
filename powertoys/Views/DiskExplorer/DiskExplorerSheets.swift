@@ -24,11 +24,10 @@ struct DiskExplorerReviewSheet: View {
                         ForEach(Array(zip(entries.indices, entries)), id: \.1.id) { index, entry in
                             HStack(spacing: OnePlusMetrics.actionSpacing) {
                                 Image(systemName: DiskEntryPresentation.symbol(entry))
-                                VStack(alignment: .leading, spacing: OnePlusMetrics.spacing[0]) {
-                                    Text(entry.name).onePlusText(.row).lineLimit(1)
-                                    Text(entry.url.path).onePlusText(.mono).lineLimit(1).truncationMode(.middle)
-                                }
-                                Spacer()
+                                Text(entry.name).onePlusText(.row).lineLimit(1)
+                                Text(entry.url.deletingLastPathComponent().path).onePlusText(.mono)
+                                    .lineLimit(1).truncationMode(.middle)
+                                    .frame(maxWidth: .infinity, alignment: .trailing).help(entry.url.path)
                                 Text(entry.allocatedBytes.diskSize).onePlusText(.mono)
                                 Button { model.toggleMark(entry) } label: { Image(systemName: "minus.circle") }
                                     .buttonStyle(OnePlusButtonStyle(.icon)).help("Remove from review").accessibilityLabel("Remove \(entry.name) from review")
