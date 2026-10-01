@@ -6,7 +6,8 @@
   failed ModelContainer open terminates the app.
 - **Cause:** Startup awaited unrelated archives and created the store in the
   App initializer. Its catch called fatalError.
-- **Invariant:** Migrate preferences before constructing settings owners.
+- **Invariant:** Migrate preferences in App init before SwiftUI scene commands
+  can construct and cache settings owners. This migration does no file work.
   Publish route and status-item readiness before archive reads and store-file
   migration. Keep plugin-dependent work after Marketplace receipts. Open
   storage away from the main actor and share concurrent opens. Cloud Sync
@@ -17,8 +18,11 @@
 - **Check:** The source-derived Swift 6 disposable-store check preserves all
   files on injected failure, then reads the saved record on Retry. The actual
   LogEntry/TransferRecord fixture keeps 10,000 rows and original inputs.
-  Legacy migration takes 210-228ms; existing-container opening takes 4.8-7.6ms.
-  These values exclude full app startup and cold OS caches. Run
+  Initial bundled migration takes 210-228ms/container opening 4.8-7.6ms. The
+  final separated fixture takes 586ms for 1,000 preferences, 3.8ms for files,
+  and 16.4ms for container opening under shared build load. App init copies
+  preferences without creating the data folder. These values exclude full
+  app startup and cold OS caches. Run
   `tmp/redesign/checks/app-lifecycle/store-check.py` and `profile-startup.py`.
   Hosted AppLifecycleTests and signed readiness, native recovery, Finder reveal,
   and Cloud Sync first-frame checks remain with the orchestrator.
