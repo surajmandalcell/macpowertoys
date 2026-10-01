@@ -64,13 +64,12 @@ final class SystemMonitorTests: XCTestCase {
         }
             .defaultAppStorage(defaults)
             .frame(width: OnePlusMenuMetrics.width, height: screenCap))
-        host.frame = NSRect(x: screen.minX + 32, y: screen.minY + 32,
+        host.frame = NSRect(x: -10000, y: -10000,
                             width: OnePlusMenuMetrics.width, height: screenCap)
         let window = NSWindow(contentRect: host.frame, styleMask: [.titled], backing: .buffered, defer: false)
         window.isReleasedWhenClosed = false
         window.contentView = host
-        NSApp.activate(ignoringOtherApps: true)
-        window.makeKeyAndOrderFront(nil)
+        window.orderBack(nil)
         defer { window.close(); window.contentView = nil }
         host.layoutSubtreeIfNeeded()
         let deadline = Date().addingTimeInterval(2)
@@ -103,24 +102,20 @@ final class SystemMonitorTests: XCTestCase {
         let profiles = await Task.detached { SystemMonitorRemoteProfiles.load(defaults: defaults) }.value
         let preparedHost = NSHostingController(rootView: SystemMonitorMenuPopoverView(remoteProfiles: profiles, defaults: defaults))
         let preparedHeight = preparedHost.sizeThatFits(in: proposal).height
-        let popover = NSPopover()
-        popover.animates = false
-        let host = NSHostingController(rootView: SystemMonitorMenuPopoverView(defaults: defaults) { [weak popover] height in
-            popover?.contentSize = NSSize(width: OnePlusMenuMetrics.width, height: height)
+        let panel = NSPanel(contentRect: NSRect(x: -10000, y: -10000, width: proposal.width, height: proposal.height),
+                            styleMask: [.borderless, .nonactivatingPanel], backing: .buffered, defer: false)
+        panel.isReleasedWhenClosed = false
+        panel.becomesKeyOnlyIfNeeded = true
+        let host = NSHostingController(rootView: SystemMonitorMenuPopoverView(defaults: defaults) { [weak panel] height in
+            panel?.setContentSize(NSSize(width: OnePlusMenuMetrics.width, height: height))
         })
         let initial = host.sizeThatFits(in: proposal)
         XCTAssertGreaterThan(initial.height, 100, "The layout tree must exist before presentation")
         host.view.setFrameSize(initial)
-        popover.contentViewController = host
-
-        let window = NSWindow(contentRect: NSRect(x: screen.minX + 32, y: screen.minY + 32, width: 400, height: 40),
-                              styleMask: [.titled], backing: .buffered, defer: false)
-        window.isReleasedWhenClosed = false
-        let anchor = NSView(frame: NSRect(x: 0, y: 0, width: 400, height: 40))
-        window.contentView = anchor
-        window.makeKeyAndOrderFront(nil)
-        popover.show(relativeTo: anchor.bounds, of: anchor, preferredEdge: .minY)
-        defer { popover.close(); popover.contentViewController = nil; window.close(); window.contentView = nil }
+        panel.setContentSize(initial)
+        panel.contentViewController = host
+        panel.orderBack(nil)
+        defer { panel.close(); panel.contentViewController = nil }
         func settle() async throws {
             for _ in 0..<10 {
                 host.view.layoutSubtreeIfNeeded()
@@ -129,7 +124,7 @@ final class SystemMonitorTests: XCTestCase {
             host.view.layoutSubtreeIfNeeded()
         }
         try await settle()
-        let homeHeight = popover.contentSize.height
+        let homeHeight = panel.contentLayoutRect.height
         XCTAssertEqual(preparedHeight, homeHeight, accuracy: 1, "Prepared profiles must have the final Home height before presentation")
         XCTAssertGreaterThan(preparedHeight, emptyHeight)
         XCTAssertEqual(homeHeight, host.sizeThatFits(in: proposal).height, accuracy: 1)
@@ -138,8 +133,8 @@ final class SystemMonitorTests: XCTestCase {
             defaults.set(page.rawValue, forKey: "systemMonitor.trayPage")
             try await settle()
             let measured = host.sizeThatFits(in: proposal)
-            XCTAssertEqual(popover.contentSize.width, OnePlusMenuMetrics.width, accuracy: 1)
-            XCTAssertEqual(popover.contentSize.height, measured.height, accuracy: 1, page.rawValue)
+            XCTAssertEqual(panel.contentLayoutRect.width, OnePlusMenuMetrics.width, accuracy: 1)
+            XCTAssertEqual(panel.contentLayoutRect.height, measured.height, accuracy: 1, page.rawValue)
             XCTAssertGreaterThan(measured.height, 100, page.rawValue)
             XCTAssertLessThanOrEqual(measured.height, proposal.height + 1, page.rawValue)
             if page == .cpu { XCTAssertLessThanOrEqual(measured.height, 422, "CPU must keep its compact plot") }
@@ -684,15 +679,14 @@ final class SystemMonitorTests: XCTestCase {
                 host.appearance = NSAppearance(named: scheme == .dark ? .darkAqua : .aqua)
                 let screen = try XCTUnwrap(NSScreen.main).visibleFrame
                 host.frame = NSRect(
-                    x: screen.minX + 32, y: screen.minY + 32,
+                    x: -10000, y: -10000,
                     width: OnePlusMenuMetrics.width,
                     height: screen.height * OnePlusMenuMetrics.heightFraction
                 )
                 let window = NSWindow(contentRect: host.frame, styleMask: [.titled], backing: .buffered, defer: false)
                 window.isReleasedWhenClosed = false
                 window.contentView = host
-                NSApp.activate(ignoringOtherApps: true)
-                window.makeKeyAndOrderFront(nil)
+                window.orderBack(nil)
                 defer { window.close(); window.contentView = nil }
                 host.layoutSubtreeIfNeeded()
                 let deadline = Date().addingTimeInterval(2)

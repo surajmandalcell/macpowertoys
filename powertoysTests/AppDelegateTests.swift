@@ -9,10 +9,21 @@ final class AppDelegateTests: XCTestCase {
     func testNondefaultLaunchDoesNotOpenMainWindow() {
         XCTAssertTrue(AppDelegate.shouldOpenMainWindowAfterLaunch(userInfo: [
             NSApplication.launchIsDefaultUserInfoKey: true
-        ]))
+        ], isRunningUnitTests: false))
         XCTAssertFalse(AppDelegate.shouldOpenMainWindowAfterLaunch(userInfo: [
             NSApplication.launchIsDefaultUserInfoKey: false
-        ]))
+        ], isRunningUnitTests: false))
+    }
+
+    func testUnitTestHostCannotActivateOrReopenMainWindow() {
+        XCTAssertTrue(AppRuntime.isRunningUnitTests)
+        XCTAssertEqual(NSApp.activationPolicy(), .prohibited)
+        for isDefault in [true, false] {
+            XCTAssertFalse(AppDelegate.shouldOpenMainWindowAfterLaunch(userInfo: [
+                NSApplication.launchIsDefaultUserInfoKey: isDefault
+            ]))
+        }
+        XCTAssertFalse(AppDelegate().applicationShouldHandleReopen(NSApp, hasVisibleWindows: false))
     }
 
     func testExternalURLsCannotBypassBackgroundIntentThroughSwiftUIScenes() throws {

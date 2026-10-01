@@ -7,20 +7,20 @@ import XCTest
 final class FocusEffectTests: XCTestCase {
     @MainActor
     func testKeyNotificationKeepsAnActiveTextEditor() throws {
-        let window = NSWindow(contentRect: NSRect(x: 32, y: 32, width: 300, height: 100),
+        let foreground = NSWorkspace.shared.frontmostApplication?.processIdentifier
+        let window = OffscreenFocusWindow(contentRect: NSRect(x: -10000, y: -10000, width: 300, height: 100),
                               styleMask: [.titled], backing: .buffered, defer: false)
         window.isReleasedWhenClosed = false
         let field = NSTextField(frame: NSRect(x: 10, y: 10, width: 280, height: 28))
         window.contentView?.addSubview(field)
         OnePlusFocusPolicy.shared.configure(window)
-        NSApp.activate(ignoringOtherApps: true)
-        window.makeKeyAndOrderFront(nil)
         defer { window.close(); window.contentView = nil }
-        XCTAssertTrue(NSApp.keyWindow === window)
         XCTAssertTrue(window.makeFirstResponder(field))
         let editor = try XCTUnwrap(field.currentEditor())
+        XCTAssertTrue(window.firstResponder === editor)
         NotificationCenter.default.post(name: NSWindow.didBecomeKeyNotification, object: window)
         XCTAssertTrue(window.firstResponder === editor, "A key notification must not interrupt typing")
+        XCTAssertEqual(NSWorkspace.shared.frontmostApplication?.processIdentifier, foreground)
     }
 
     @MainActor
@@ -32,6 +32,10 @@ final class FocusEffectTests: XCTestCase {
         host.layoutSubtreeIfNeeded()
         XCTAssertFalse(focusEffectEnabled)
     }
+}
+
+private final class OffscreenFocusWindow: NSWindow {
+    override var isVisible: Bool { true }
 }
 
 private struct FocusEffectProbe: View {

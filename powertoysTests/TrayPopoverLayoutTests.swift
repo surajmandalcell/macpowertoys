@@ -336,13 +336,12 @@ final class TrayPopoverLayoutTests: XCTestCase {
         )
         host.appearance = NSAppearance(named: colorScheme == .dark ? .darkAqua : .aqua)
         let screen = try XCTUnwrap(NSScreen.main).visibleFrame
-        host.frame = NSRect(origin: screen.origin, size: NSSize(width: TrayPopoverLayout.width,
+        host.frame = NSRect(origin: NSPoint(x: -10000, y: -10000), size: NSSize(width: TrayPopoverLayout.width,
                                                               height: screen.height * TrayPopoverLayout.heightFraction))
         let window = NSWindow(contentRect: host.frame, styleMask: [.titled], backing: .buffered, defer: false)
         window.isReleasedWhenClosed = false
         window.contentView = host
-        NSApp.activate(ignoringOtherApps: true)
-        window.makeKeyAndOrderFront(nil)
+        window.orderBack(nil)
         defer { window.close(); window.contentView = nil }
         host.layoutSubtreeIfNeeded()
         let deadline = Date().addingTimeInterval(2)
