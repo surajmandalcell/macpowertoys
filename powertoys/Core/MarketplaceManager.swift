@@ -394,11 +394,13 @@ final class MarketplaceManager {
         return FileManager.default.fileExists(atPath: url.path) ? url : nil
     }
 
-    func launchInstalledTool(toolID: String) async throws {
+    func launchInstalledTool(toolID: String, activateApp: Bool = true) async throws {
         guard let appURL = await installedAppURL(for: toolID) else {
             throw MarketplaceInstallError.appMissing
         }
-        try await NSWorkspace.shared.openApplication(at: appURL, configuration: NSWorkspace.OpenConfiguration())
+        let configuration = NSWorkspace.OpenConfiguration()
+        configuration.activates = activateApp
+        try await NSWorkspace.shared.openApplication(at: appURL, configuration: configuration)
     }
 
     func recordInstall(_ receipt: MarketplaceReceipt) async throws {

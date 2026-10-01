@@ -32,6 +32,18 @@ final class ToolActionRouterTests: XCTestCase {
         XCTAssertEqual(ToolActionRouter.request(from: url)?.action, .colorPickerCopyLast)
     }
 
+    func testExternalWindowActionsDoNotRequestActivation() throws {
+        for scheme in ["macpowertoys", "powertoys"] {
+            for action in ToolActionID.allCases where action.opensWindow
+                || [.rulerOpen, .rulerSettings, .portmanOpen].contains(action) {
+                let url = try XCTUnwrap(URL(string: "\(scheme)://run/\(action.rawValue)"))
+                XCTAssertFalse(try XCTUnwrap(ToolActionRouter.request(from: url)).activateApp, action.rawValue)
+            }
+        }
+        XCTAssertTrue(ToolActionRequest(action: .awakeOpen).activateApp,
+                      "Explicit launcher and panel actions still activate.")
+    }
+
     @MainActor
     func testLegacyMonitorWindowIDResolvesToCurrentID() {
         XCTAssertEqual(ToolActionRouter.resolvedWindowID("power-stats"), "system-monitor")

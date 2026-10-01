@@ -131,7 +131,7 @@ final class ToolActionRouter {
                 }
                 if launchFailure?.toolID == resolved { launchFailure = nil }
                 do {
-                    try await MarketplaceManager.shared.launchInstalledTool(toolID: resolved)
+                    try await MarketplaceManager.shared.launchInstalledTool(toolID: resolved, activateApp: activateApp)
                     dismissMainWindowAfterToolOpen()
                 } catch {
                     launchFailure = ToolLaunchFailure(toolID: resolved, message: error.localizedDescription)
@@ -165,12 +165,12 @@ final class ToolActionRouter {
         }
 
         if request.action == .portmanOpen {
-            open(toolID: "portman")
+            open(toolID: "portman", activateApp: request.activateApp)
             return
         }
 
         if request.action.opensWindow {
-            open(toolID: request.action.toolID)
+            open(toolID: request.action.toolID, activateApp: request.activateApp)
         }
 
         if request.action == .rulerOpen {
@@ -246,6 +246,6 @@ final class ToolActionRouter {
             .reduce(into: [String: String]()) { result, item in
                 if let value = item.value { result[item.name] = value }
             } ?? [:]
-        return ToolActionRequest(action: action, parameters: parameters)
+        return ToolActionRequest(action: action, parameters: parameters, activateApp: false)
     }
 }

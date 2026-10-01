@@ -141,8 +141,9 @@ extension AppDelegate {
         case .rulerOpen:
             openFreeRuler(activateApp: notification.userInfo?["activateApp"] as? Bool ?? true)
         case .rulerSettings:
-            openFreeRuler()
-            openRulerSettings(self)
+            let activateApp = notification.userInfo?["activateApp"] as? Bool ?? true
+            openFreeRuler(activateApp: activateApp)
+            openRulerSettings(self, activateApp: activateApp)
         default:
             break
         }
@@ -488,13 +489,17 @@ extension AppDelegate {
     }
 
     @IBAction func openRulerSettings(_ sender: Any) {
+        openRulerSettings(sender, activateApp: true)
+    }
+
+    private func openRulerSettings(_ sender: Any, activateApp: Bool) {
         guard let controller = rulerManager.activeController else { return }
 
         if rulerSettingsController == nil {
             rulerSettingsController = RulerSettingsController(rulerController: controller)
         }
 
-        rulerSettingsController?.show(attachedTo: controller, sender: sender)
+        rulerSettingsController?.show(attachedTo: controller, sender: sender, activateApp: activateApp)
     }
 
     @IBAction func newRuler(_ sender: Any) {

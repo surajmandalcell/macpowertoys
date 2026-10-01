@@ -160,7 +160,7 @@ final class DeepLinkHandler {
 
         if let actionIndex = args.firstIndex(of: "--action"), args.count > actionIndex + 1,
            let action = ToolActionID(rawValue: args[actionIndex + 1]) {
-            ToolActionRouter.shared.execute(ToolActionRequest(action: action))
+            ToolActionRouter.shared.execute(ToolActionRequest(action: action, activateApp: false))
         }
 
         if SettingsManager.shared.isToolEnabled("awake")
@@ -216,7 +216,7 @@ final class DeepLinkHandler {
                 let toolId = route.tool
                 let prefill = toolId == "nettoys" ? NetToysScanPrefill.parse(url) : nil
                 if let prefill { pendingNetToysPrefill = prefill }
-                ToolActionRouter.shared.open(toolID: toolId, page: route.page, activateApp: NSApp.isActive)
+                ToolActionRouter.shared.open(toolID: toolId, page: route.page, activateApp: false)
                 if let prefill {
                     NotificationCenter.default.post(name: .netToysPrefill, object: prefill)
                 }
@@ -229,6 +229,6 @@ final class DeepLinkHandler {
 
     private func openTool(id toolId: String) {
         LogManager.shared.info("Opening tool via deep link: \(toolId)", source: "DeepLinkHandler")
-        ToolActionRouter.shared.open(toolID: toolId)
+        ToolActionRouter.shared.open(toolID: toolId, activateApp: false)
     }
 }
