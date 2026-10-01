@@ -587,7 +587,6 @@ nonisolated struct RemoteFileDragItem: Transferable, Sendable {
         try FileManager.default.createDirectory(at: directory, withIntermediateDirectories: true)
         let group = "drag/\(UUID().uuidString)"
         var jobid: Int?
-        defer { Task { await client.deleteStats(group: group) } }
         do {
             let startedJob = try await client.startFileJob(
                 srcFs: srcFs, srcRemote: srcRemote,
@@ -608,12 +607,14 @@ nonisolated struct RemoteFileDragItem: Transferable, Sendable {
                     guard status.success else {
                         throw RcloneRCError.http(status: 0, message: status.error)
                     }
+                    await client.deleteStats(group: group)
                     return directory.appendingPathComponent(fileName)
                 }
             }
             throw RcloneRCError.http(status: 0, message: "Download timed out.")
         } catch {
             if let jobid { try? await client.stopJob(jobid: jobid) }
+            await client.deleteStats(group: group)
             try? FileManager.default.removeItem(at: directory)
             throw error
         }
