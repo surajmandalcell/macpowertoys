@@ -122,6 +122,7 @@ struct TrayPopoverView: View {
         } content: {
             tabContent
         }
+        .onePlusPanelTimings(panel: "main", tab: selectedTab.panelID)
         .onAppear(perform: prepareTabs)
         .onChange(of: storedTabOrder) { prepareTabs() }
         .onReceive(NotificationCenter.default.publisher(for: UserDefaults.didChangeNotification)) { _ in
@@ -163,6 +164,7 @@ struct TrayPopoverView: View {
 
     private func select(_ tab: TrayTab) {
         guard tab != selectedTab else { return }
+        OnePlusPanelTimings.shared.begin(panel: "main", operation: .tabSwitch, tab: tab.panelID)
         var transaction = Transaction(animation: nil)
         transaction.disablesAnimations = true
         withTransaction(transaction) {
@@ -217,6 +219,7 @@ struct IndividualToolMenuPanel: View {
         } content: {
             content
         }
+        .onePlusPanelTimings(panel: tool.id, tab: tool.id)
     }
 
     @ViewBuilder
