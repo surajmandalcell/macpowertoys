@@ -32,6 +32,7 @@ struct MacPowerToysApp: App {
     init() {
         PortmanShortcuts.updateAppShortcutParameters()
         do {
+            let started = ContinuousClock.now
             let schema = Schema([LogEntry.self, TransferRecord.self])
             let config: ModelConfiguration
             if AppRuntime.isUITesting || !AppInstanceCoordinator.shared.ownsInstance {
@@ -41,7 +42,10 @@ struct MacPowerToysApp: App {
                 AppDataLocation.migrateLegacyStoreIfNeeded()
                 config = ModelConfiguration(schema: schema, url: AppDataLocation.storeURL)
             }
+            NSLog("Startup migrations completed in %@", String(describing: started.duration(to: .now)))
+            let containerStarted = ContinuousClock.now
             modelContainer = try ModelContainer(for: schema, configurations: [config])
+            NSLog("Startup ModelContainer created in %@", String(describing: containerStarted.duration(to: .now)))
         } catch {
             fatalError("Failed to create ModelContainer: \(error)")
         }
@@ -62,15 +66,20 @@ struct MacPowerToysApp: App {
         }
         appearance.apply()
         appDelegate.configureApplication {
-            DeepLinkHandler.shared.setOpenWindowAction(openWindow)
             if AppRuntime.isUITesting {
+                DeepLinkHandler.shared.setOpenWindowAction(openWindow)
                 DeepLinkHandler.shared.handleCLIArguments()
                 return
             }
-            guard !AppRuntime.isRunningTests else { return }
-            await AppInitializer.shared.initialize(modelContext: modelContainer.mainContext)
-            appearance.apply()
-            DeepLinkHandler.shared.handleCLIArguments()
+            guard !AppRuntime.isRunningTests else {
+                DeepLinkHandler.shared.setOpenWindowAction(openWindow)
+                return
+            }
+            await AppInitializer.shared.initialize(modelContext: modelContainer.mainContext) {
+                appearance.apply()
+                DeepLinkHandler.shared.setOpenWindowAction(openWindow)
+                DeepLinkHandler.shared.handleCLIArguments()
+            }
         }
     }
 

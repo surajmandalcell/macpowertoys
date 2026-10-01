@@ -31,7 +31,7 @@ final class AppInitializer {
         }
     }
 
-    func initialize(modelContext: ModelContext) async {
+    func initialize(modelContext: ModelContext, routesReady: () -> Void) async {
         guard state == .idle else { return }
 
         state = .initializing
@@ -39,17 +39,8 @@ final class AppInitializer {
         LogManager.shared.configurePersistence(container: modelContext.container)
         LogManager.shared.info("App initializing...", source: "AppInitializer")
 
-        await LogManager.shared.loadPersistedLogs()
-        await LocalChangeHistory.shared.restore()
-
-        Task.detached(priority: .background) {
-            await LogManager.shared.pruneOldLogs()
-        }
-
+        let started = ContinuousClock.now
         _ = SettingsManager.shared
-        await SettingsManager.shared.reconcileNetToysLifecycle()
-        await MarketplaceManager.shared.restore()
-        SettingsSyncManager.shared.startIfEnabled()
         if SettingsManager.shared.isToolEnabled("awake") { _ = AwakeService.shared }
         _ = ColorPickerService.shared
         let textExtractor = TextExtractorService.shared
@@ -67,6 +58,17 @@ final class AppInitializer {
 
         applyStoredTheme()
 
+        state = .ready
+        routesReady()
+        LogManager.shared.info("Built-in routes and status items ready in \(started.duration(to: .now))", source: "AppInitializer")
+
+        await MarketplaceManager.shared.restore()
+        SettingsSyncManager.shared.startIfEnabled()
+        await SettingsManager.shared.reconcileNetToysLifecycle()
+        await LocalChangeHistory.shared.restore()
+        await LogManager.shared.loadPersistedLogs()
+        await LogManager.shared.pruneOldLogs()
+
         let hasContinuousJobs = await RcloneJobManager.hasPersistedContinuousJobs()
         let shouldStartRclone = UserDefaults.standard.bool(forKey: "tool.rclone.startAtLaunch") || hasContinuousJobs
         if shouldStartRclone && SettingsManager.shared.isToolEnabled("rclone") {
@@ -75,7 +77,6 @@ final class AppInitializer {
 
         LogManager.shared.info("App initialization complete", source: "AppInitializer")
 
-        state = .ready
     }
 
     func shutdown() async {
