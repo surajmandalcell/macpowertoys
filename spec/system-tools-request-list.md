@@ -1,5 +1,20 @@
 # System Tools Request List
 
+Round 17 Task Manager repair, run 68, 2026-10-01: shared `68c91bf` sets
+card headers and settings to 16pt in both densities. `aecfb5b7` aligns custom
+information, Allocation, Remote and System Report rows with their headers.
+Coverage includes CPU Core activity/Load average, GPU Graphics details,
+Memory Allocation/Virtual memory, Network Current connection/All interfaces,
+Disk Volume, Battery details, About Keyboard shortcuts, Fan and remote hosts.
+Disk Available and Used share a baseline, with 6pt within each pair and 20pt
+between pairs. Its trailing edge remains at x1048. The approved detail-chart
+labels and legends keep 12pt. Reorder instructions use handle help.
+Six focused package tests pass. Both app/test compile batches pass against
+OnePlusUI 1.0.0. Shared `716ad8b` also fixes the retained main page's native
+titlebar inset. The orchestrator must tag and adopt the shared changes, then
+verify all listed groups, Disk geometry and real reorder controls in both
+installed appearances. Report: `tmp/redesign/logs/w10-fix17-main.md`.
+
 Local verification, run 65, 2026-10-01: `8c0cc71b` fixes the System Care
 cancellation test's illegal expectation change and the inactive focus probe.
 All 13 System Care tests pass. The guarded selected run passes 43 tests with

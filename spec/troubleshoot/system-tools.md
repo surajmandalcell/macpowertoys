@@ -1,5 +1,24 @@
 # System Tools Troubleshooting
 
+## Compact Card Insets And Disk Metadata, Run 68, 2026-10-01
+
+- **Symptom:** Compact headers and controls use 12pt horizontal insets.
+  Disk Available and Used stack labels above their values. Reorder help
+  stays visible beside the Menu bar items heading.
+- **Cause:** The shared card default changes with density. Custom rows copy
+  that old inset. Disk metadata uses vertical stacks.
+- **Invariant:** Card headings, settings and custom information rows use
+  the shared 16pt horizontal token in both densities. Keep explicit 12pt
+  detail-chart labels and legends. Disk pairs share the first text baseline,
+  use 6pt within each pair and 20pt between pairs, and end at x1048.
+  Keep 40pt headers, 44pt settings and 33/34pt table geometry. Put reorder
+  help on its handle and retain keyboard actions and accessibility hints.
+- **Check:** Shared `68c91bf` passes the compact heading/control geometry
+  test. App `aecfb5b7` aligns information and remote rows, Disk metadata and
+  handle help. Six focused package checks and both compile batches pass.
+  The orchestrator owns the shared tag bump, installation and real controls.
+  Report: `tmp/redesign/logs/w10-fix17-main.md`.
+
 ## Local Unit Tests Activate The App, 2026-10-01
 
 - **Symptom:** The guarded local run aborts when FocusEffectTests starts.

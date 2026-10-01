@@ -1,5 +1,23 @@
 # Main Shell Troubleshooting
 
+## Retained Page Insets And General Captures, Run 68, 2026-10-01
+
+- **Symptom:** Main's retained Task Manager page starts 32pt too low.
+  Generic Settings captures show saved About content instead of General.
+- **Cause:** The nested NSHostingView imports native titlebar safe areas.
+  The generic Settings route correctly restores the saved tab.
+- **Invariant:** The shared retained host disables safe-area regions because
+  its enclosing workspace owns the full-size canvas. Keep contentTop at 20pt.
+  Capture General through `main/settings-general`; preserve saved restoration
+  on `main/settings`. Check `main.settings.general` and the selected General
+  tab before saving the existing settings-dark/light filenames.
+- **Check:** `716ad8b` passes offscreen cold and return geometry in both
+  appearances. `9464e768` passes seven guarded MainCatalog tests, including
+  explicit General when About was saved. The read-only capture check rejects
+  the old installed page without changing foreground focus. Tag adoption,
+  installed captures and real controls remain with the orchestrator.
+  Report: `tmp/redesign/logs/w10-fix17-main.md`.
+
 ## Background window creation, run 60, 2026-10-01
 
 - **Symptom:** The owner lost game focus during capture of signed `adb39e46`.

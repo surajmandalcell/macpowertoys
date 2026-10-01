@@ -1,5 +1,18 @@
 # Main Task Request List
 
+Round 17 main repair, run 68, 2026-10-01: shared `716ad8b` removes the
+retained native host's second titlebar inset. Offscreen cold and return
+checks place the icon at y20 and Display at y118 in both appearances.
+`9464e768` adds `settings-general`; ordinary Settings restores its saved tab.
+The capture script selects General explicitly and checks its body identifier
+and selected tab before saving either appearance. `aecfb5b7` moves reorder
+instructions to handle help and keeps the keyboard and accessibility hints.
+Six focused package tests and seven guarded MainCatalog tests pass.
+Both source batches compile the app and test bundles. The app still uses
+OnePlusUI 1.0.0; the orchestrator must publish and adopt the next tag.
+Installed General captures, retained header geometry and reorder controls
+remain open. Report: `tmp/redesign/logs/w10-fix17-main.md`.
+
 Local verification, run 63, 2026-10-01: GitHub CI is manual-only.
 All 145 OnePlusUI package tests pass after `f3337f89` repairs async waits.
 The guarded app run records 475 passes and 5 skips before a focus abort.
