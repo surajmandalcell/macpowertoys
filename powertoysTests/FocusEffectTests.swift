@@ -24,13 +24,15 @@ final class FocusEffectTests: XCTestCase {
     }
 
     @MainActor
-    func testSharedRootSuppressesDescendantFocusEffects() {
-        var focusEffectEnabled = true
+    func testSharedRootUsesAccessibilityFocusPolicy() {
+        OnePlusFocusPolicy.shared.refresh()
+        let expected = NSApp.isFullKeyboardAccessEnabled || NSWorkspace.shared.isVoiceOverEnabled
+        var focusEffectEnabled: Bool?
         let host = NSHostingView(rootView: FocusEffectProbe { focusEffectEnabled = $0 }
             .utilityMotionPolicy())
         host.frame = NSRect(x: 0, y: 0, width: 100, height: 40)
         host.layoutSubtreeIfNeeded()
-        XCTAssertFalse(focusEffectEnabled)
+        XCTAssertEqual(focusEffectEnabled, expected)
     }
 }
 
@@ -38,12 +40,13 @@ private final class OffscreenFocusWindow: NSWindow {
     override var isVisible: Bool { true }
 }
 
-private struct FocusEffectProbe: View {
+private struct FocusEffectProbe: NSViewRepresentable {
     @Environment(\.isFocusEffectEnabled) private var isFocusEffectEnabled
-    let onAppear: (Bool) -> Void
+    let read: (Bool) -> Void
 
-    var body: some View {
-        Button("Probe") {}
-            .onAppear { onAppear(isFocusEffectEnabled) }
+    func makeNSView(context: Context) -> NSView { NSView() }
+
+    func updateNSView(_ view: NSView, context: Context) {
+        read(isFocusEffectEnabled)
     }
 }
