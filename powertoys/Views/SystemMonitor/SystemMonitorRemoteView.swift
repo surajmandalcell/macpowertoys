@@ -56,7 +56,6 @@ struct SystemMonitorRemoteView: View {
                 profiles = loaded
                 onProfilesChange(loaded)
             }
-            if addRequest > 0 { editor = SystemMonitorRemoteProfile(name: "", host: "") }
         }
         .onChange(of: addRequest) { _, _ in editor = SystemMonitorRemoteProfile(name: "", host: "") }
         .onChange(of: suppliedProfiles) { _, loaded in
