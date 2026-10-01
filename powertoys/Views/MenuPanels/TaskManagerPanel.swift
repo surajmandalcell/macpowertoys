@@ -152,7 +152,7 @@ struct SystemMonitorTrayView: View {
             .accessibilityIdentifier("system-monitor.menu.open-app")
         } content: {
             TaskManagerMenuContent(page: page, presentation: presentation, processModel: processModel,
-                                   remoteProfiles: remoteProfiles, selection: selection)
+                                   remoteProfiles: remoteProfiles, select: select)
                 .equatable()
                 .modifier(TaskManagerMenuSampling(page: page, presentation: presentation))
         }
@@ -173,10 +173,10 @@ private struct TaskManagerMenuContent: View, Equatable {
     let presentation: TaskManagerMenuPresentation
     let processModel: TaskManagerMenuProcessModel
     let remoteProfiles: [SystemMonitorRemoteProfile]
-    let selection: Binding<SystemMonitorTrayPage>
+    let select: (SystemMonitorTrayPage) -> Void
 
     static func == (lhs: Self, rhs: Self) -> Bool {
-        // Selection bindings address the same retained tray storage.
+        // Actions address the same retained tray storage without observing its selection.
         lhs.page == rhs.page && lhs.presentation === rhs.presentation
             && lhs.processModel === rhs.processModel && lhs.remoteProfiles == rhs.remoteProfiles
     }
@@ -208,7 +208,7 @@ private struct TaskManagerMenuContent: View, Equatable {
 
     @ViewBuilder private func tile(_ page: SystemMonitorTrayPage) -> some View {
         if let state = presentation.pages[page] {
-            TaskManagerMenuHomeTile(page: page, state: state, selection: selection)
+            TaskManagerMenuHomeTile(page: page, state: state, select: select)
         }
     }
 
@@ -226,14 +226,14 @@ private struct TaskManagerMenuContent: View, Equatable {
 private struct TaskManagerMenuHomeTile: View {
     let page: SystemMonitorTrayPage
     @Bindable var state: TaskManagerMenuPageState
-    @Binding var selection: SystemMonitorTrayPage
+    let select: (SystemMonitorTrayPage) -> Void
 
     var body: some View {
         let data = state.home
         Group {
             switch page {
             case .cpu, .gpu, .memory:
-                OnePlusMenuTile(action: { selection = page }) {
+                OnePlusMenuTile(action: { select(page) }) {
                     VStack(alignment: .leading, spacing: OnePlusMetrics.navRowGap) {
                         metricLabel
                         HStack(alignment: .firstTextBaseline, spacing: OnePlusMetrics.navRowGap) {
@@ -248,7 +248,7 @@ private struct TaskManagerMenuHomeTile: View {
                 .historyBackground(values: data.history, color: page == .memory ? OnePlusColor.accent : OnePlusColor.chartLine)
                 .help(data.captionHelp)
             case .network:
-                OnePlusMenuTile(span: 2, height: 34, textured: false, action: { selection = page }) {
+                OnePlusMenuTile(span: 2, height: 34, textured: false, action: { select(page) }) {
                     HStack(spacing: OnePlusMetrics.navRowGap) {
                         metricLabel
                         Spacer(minLength: 0)
@@ -257,7 +257,7 @@ private struct TaskManagerMenuHomeTile: View {
                     }.frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .leading)
                 }
             case .disk:
-                OnePlusMenuTile(height: 34, textured: false, action: { selection = page }) {
+                OnePlusMenuTile(height: 34, textured: false, action: { select(page) }) {
                     HStack(spacing: OnePlusMenuMetrics.tileGap) {
                         metricLabel
                         Spacer(minLength: OnePlusMetrics.navRowGap)
@@ -267,7 +267,7 @@ private struct TaskManagerMenuHomeTile: View {
                 .help(data.caption)
                 .accessibilityValue(data.caption)
             case .sensors:
-                OnePlusMenuTile(span: 2, height: 34, textured: false, action: { selection = page }) {
+                OnePlusMenuTile(span: 2, height: 34, textured: false, action: { select(page) }) {
                     HStack(spacing: OnePlusMetrics.actionSpacing) {
                         metricLabel
                         Spacer(minLength: OnePlusMetrics.navRowGap)
@@ -275,7 +275,7 @@ private struct TaskManagerMenuHomeTile: View {
                     }.frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .leading)
                 }
             case .battery:
-                OnePlusMenuTile(height: 34, textured: false, action: { selection = page }) {
+                OnePlusMenuTile(height: 34, textured: false, action: { select(page) }) {
                     HStack(spacing: OnePlusMenuMetrics.tileGap) {
                         Image(systemName: page.symbol).font(.system(size: OnePlusMenuMetrics.glyphSize)).foregroundStyle(OnePlusColor.secondary)
                         Spacer(minLength: OnePlusMetrics.navRowGap)
