@@ -129,6 +129,23 @@
   current ruler, and run the factory reset. Confirm each expected value. Enable
   the shadow, relaunch, and confirm that the saved choice remains enabled.
 
+## Background Ruler Open Takes Foreground Focus
+
+- **Symptom:** A background tool URL activates MacPowerToys and selects the
+  ruler even though the caller passed activateApp=false.
+- **Cause:** The router discarded that choice. The delegate always activated,
+  the manager always made the active ruler key, and the controller always
+  used NSWindowController.showWindow before ordering.
+- **Invariant:** Carry activation through the queued action and native
+  delegate, manager and controller. Background opens use orderFrontRegardless
+  without showWindow, makeKey or app activation. Default user launches and
+  capture paths keep their pinned behavior.
+- **Check:** Actual presentation bodies against non-GUI spies fail old source
+  and pass both activation choices. The actual router also preserves a queued
+  background request. Run `tmp/redesign/perf/w3-windows/check-ruler.py` and
+  `check-routes.py`. In current signed source, verify foreground app identity
+  after a background open, then test user launch and capture in isolation.
+
 ## Ruler Launch Ownership
 
 - **Symptom:** A ruler opens when MacPowerToys starts, or the launcher opens a

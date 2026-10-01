@@ -32,6 +32,15 @@ tm-window owns the first sample and visibility fixes. P2, P3, and P5 stay open
 until signed after timings, sampling, idle CPU, and complete-frame checks.
 See `tmp/redesign/perf/w1-windows.md` for evidence and exact commands.
 
+Round 11 T014-T016: both current-source visibility package checks pass.
+Presented covered windows can sample; hidden and minimized policy inputs stop.
+The selected Task Manager body stays mounted. Signed native close/minimize,
+inactive Space, detailed redraw, menu-metric independence, quiet CPU, wakeup,
+energy, App Nap and physical-footprint checks remain. The installed source
+is still `198055e4`; its old wait sample does not prove current retention.
+No new cache, pressure callback or visibility gate was added without a
+current-build failure. Matrix: `tmp/redesign/perf/w1-windows.md`.
+
 Production pass, 2026-10-01: menu-panel types now live in
 `powertoys/Views/MenuPanels/`, one cohesive file per panel part. This is a pure
 move with only the required cross-file access changes. Debug compilation and
