@@ -9,7 +9,11 @@ final class OnePlusButtonAlignmentTests: XCTestCase {
         for density in OnePlusDensity.allCases {
             for size in [nil, OnePlusButtonStyle.Size.regular, .small] {
                 for variant in OnePlusButtonStyle.Variant.allCases {
-                    for symbol in ["circle.fill", "eyedropper", "text.viewfinder", "ruler"] {
+                    for symbol in ["circle.fill", "eyedropper", "text.viewfinder", "ruler", "play.fill",
+                                   "chevron.up", "chevron.down", "chevron.left", "chevron.right", "plus",
+                                   "arrow.clockwise", "doc.on.doc", "pin", "pin.fill", "trash", "stop.fill",
+                                   "stop.circle", "link", "nosign", "gearshape", "power", "folder",
+                                   "square.grid.2x2", "list.bullet", "character.cursor.ibeam"] {
                         let height: CGFloat = size.map { $0 == .small ? 24 : 28 } ?? density.controlHeight
                         let view = Button {} label: {
                             Label {
@@ -52,6 +56,22 @@ final class OnePlusButtonAlignmentTests: XCTestCase {
                 try assertCenters(Button {} label: { Image(systemName: "circle.fill").foregroundStyle(Color(red: 0, green: 0, blue: 1)) }
                     .buttonStyle(OnePlusButtonStyle(variant)).onePlusDensity(density),
                                   height: density.controlHeight, context: "icon \(variant)", components: ["glyph"])
+            }
+        }
+    }
+
+    func testHeaderHeightCentersPaintedCapsAndSymbols() throws {
+        for density in OnePlusDensity.allCases {
+            for variant in OnePlusButtonStyle.Variant.allCases {
+                let view = Button {} label: {
+                    Label {
+                        Text("HILT").foregroundStyle(.green)
+                    } icon: {
+                        Image(systemName: "play.fill").foregroundStyle(Color(red: 0, green: 0, blue: 1))
+                    }
+                }.buttonStyle(OnePlusButtonStyle(variant, height: 26)).onePlusDensity(density)
+                try assertCenters(view, height: 26, context: "header \(density) \(variant)",
+                                  components: variant == .icon || variant == .borderedIcon ? ["glyph"] : ["label", "glyph"])
             }
         }
     }
@@ -149,7 +169,8 @@ final class OnePlusButtonAlignmentTests: XCTestCase {
                             }
                         } else if color.greenComponent > 0.5 && color.greenComponent - color.redComponent > 0.3 {
                             painted.append((x, y, true))
-                        } else if color.blueComponent > 0.5 && color.blueComponent - color.greenComponent > 0.3 {
+                        // Blue chroma measures coverage on either neutral fill; absolute blue clips dark antialiasing.
+                        } else if color.blueComponent - color.greenComponent > 0.3 {
                             painted.append((x, y, false))
                         }
                     }
