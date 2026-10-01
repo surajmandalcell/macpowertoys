@@ -38,7 +38,9 @@ final class OnePlusMenuSizingTests: XCTestCase {
 
     func testOfflineHostReadingsUseMutedInkInBothAppearances() throws {
         for name in [NSAppearance.Name.darkAqua, .aqua] {
+            var coverageByState: [[CGFloat]] = []
             for online in [false, true] {
+                var coverages: [CGFloat] = []
                 let card = { (value: String) in
                     OnePlusMenuItemCard(
                         "Sample host", systemImage: "server.rack", status: online ? "Connected" : "Offline", online: online,
@@ -59,21 +61,19 @@ final class OnePlusMenuSizingTests: XCTestCase {
                 XCTAssertEqual(host.fittingSize.height, 109, accuracy: 0.01)
                 let bitmap = try XCTUnwrap(host.bitmapImageRepForCachingDisplay(in: host.bounds))
                 host.cacheDisplay(in: host.bounds, to: bitmap)
-                host.rootView = card("")
+                host.rootView = card(" ")
                 host.layoutSubtreeIfNeeded()
                 let empty = try XCTUnwrap(host.bitmapImageRepForCachingDisplay(in: host.bounds))
                 host.cacheDisplay(in: host.bounds, to: empty)
-                var expected: CGFloat = 0, opposite: CGFloat = 0
+                var expected: CGFloat = 0, fill: CGFloat = 0
                 appearance.performAsCurrentDrawingAppearance {
-                    expected = NSColor(online ? OnePlusColor.ink : OnePlusColor.muted)
-                        .usingColorSpace(.sRGB)!.redComponent
-                    opposite = NSColor(online ? OnePlusColor.muted : OnePlusColor.ink)
-                        .usingColorSpace(.sRGB)!.redComponent
+                    expected = NSColor(online ? OnePlusColor.ink : OnePlusColor.muted).usingColorSpace(.sRGB)!.redComponent
+                    fill = NSColor(OnePlusColor.panel).usingColorSpace(.sRGB)!.redComponent
                 }
                 for column in 0..<3 {
                     var reading: CGFloat = name == .darkAqua ? 0 : 1
                     var valuePixels = 0
-                    // Measure value paint against the same card with empty values.
+                    // Measure value paint against a blank glyph with the same native line box.
                     // This follows horizontal metadata without sampling labels.
                     for x in (column * bitmap.pixelsWide / 3)..<((column + 1) * bitmap.pixelsWide / 3) {
                         for y in 0..<bitmap.pixelsHigh {
@@ -85,10 +85,20 @@ final class OnePlusMenuSizingTests: XCTestCase {
                         }
                     }
                     XCTAssertGreaterThan(valuePixels, 0)
-                    // Text antialiasing blends the token with the panel fill.
-                    XCTAssertLessThan(abs(reading - expected), abs(reading - opposite),
-                                      "Reading ink must follow the host's availability")
+                    // Compare coverage of the same glyph in both states. Antialiased ink can
+                    // be closer to a different token even when the intended ink is correct.
+                    let coverage = abs(reading - fill) / abs(expected - fill)
+                    XCTAssertGreaterThan(coverage, 0.4)
+                    XCTAssertLessThanOrEqual(coverage, 1.08)
+                    coverages.append(coverage)
                 }
+                coverageByState.append(coverages)
+            }
+            // Native text contrast adjustment changes coverage by up to 6%,
+            // well below the difference produced by using either ink for both states.
+            for column in 0..<3 {
+                XCTAssertEqual(coverageByState[0][column], coverageByState[1][column], accuracy: 0.06,
+                               "Reading ink must follow availability at the same native glyph coverage")
             }
         }
     }
