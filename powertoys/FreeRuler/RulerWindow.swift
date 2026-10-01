@@ -1229,9 +1229,9 @@ final class RulerController: NSWindowController, NSWindowDelegate, NotificationO
         return rulerWindow.isVisible
     }
 
-    func show() {
+    func show(activateApp: Bool = true) {
         applyStateToWindow(display: false)
-        showWindow(self)
+        if activateApp { showWindow(self) }
         rulerWindow.orderFrontRegardless()
     }
 
@@ -1728,12 +1728,12 @@ final class RulerManager {
         notifyStateChanged()
     }
 
-    func showAll() {
+    func showAll(activateApp: Bool = true) {
         for controller in controllers {
-            controller.show()
+            controller.show(activateApp: activateApp)
         }
 
-        if let activeController = activeController {
+        if activateApp, let activeController = activeController {
             activeController.rulerWindow.makeKey()
         }
     }

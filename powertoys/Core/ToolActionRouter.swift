@@ -36,6 +36,7 @@ enum ToolActionID: String, CaseIterable, Codable, Sendable {
 struct ToolActionRequest: Equatable, Sendable {
     let action: ToolActionID
     var parameters: [String: String] = [:]
+    var activateApp = true
 }
 
 extension Notification.Name {
@@ -89,8 +90,7 @@ final class ToolActionRouter {
             return
         }
         if resolved == "ruler" {
-            execute(ToolActionRequest(action: .rulerOpen))
-            if activateApp { NSApp.activate(ignoringOtherApps: true) }
+            execute(ToolActionRequest(action: .rulerOpen, activateApp: activateApp))
             return
         }
 
@@ -163,10 +163,12 @@ final class ToolActionRouter {
         if request.action == .rulerOpen {
             OnePlusPanelTimings.shared.begin(panel: "window.ruler", operation: .windowOpen, input: "tool-router")
         }
+        var userInfo: [String: Any] = request.parameters
+        userInfo["activateApp"] = request.activateApp
         NotificationCenter.default.post(
             name: .toolActionRequested,
             object: request.action,
-            userInfo: request.parameters
+            userInfo: userInfo
         )
         if request.action == .rulerOpen {
             dismissMainWindowAfterToolOpen()

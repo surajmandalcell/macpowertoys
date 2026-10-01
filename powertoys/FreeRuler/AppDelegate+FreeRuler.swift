@@ -139,7 +139,7 @@ extension AppDelegate {
 
         switch action {
         case .rulerOpen:
-            openFreeRuler()
+            openFreeRuler(activateApp: notification.userInfo?["activateApp"] as? Bool ?? true)
         case .rulerSettings:
             openFreeRuler()
             openRulerSettings(self)
@@ -166,7 +166,7 @@ extension AppDelegate {
 }
 
 extension AppDelegate {
-    func openFreeRuler() {
+    func openFreeRuler(activateApp: Bool = true) {
         if !freeRulerDidInitialize {
             if AppRuntime.isUITesting {
                 resetFreeRulerPreferences()
@@ -179,8 +179,8 @@ extension AppDelegate {
             freeRulerDidInitialize = true
         }
 
-        showRulers()
-        NSApp.activate(ignoringOtherApps: true)
+        showRulers(activateApp: activateApp)
+        if activateApp { NSApp.activate(ignoringOtherApps: true) }
         updateFreeRulerMenuContext(for: NSApp.keyWindow)
     }
 
@@ -326,9 +326,9 @@ extension AppDelegate {
         rulerManager.createRuler()
     }
 
-    func showRulers() {
+    func showRulers(activateApp: Bool = true) {
         createRulersIfNeeded()
-        rulerManager.showAll()
+        rulerManager.showAll(activateApp: activateApp)
         updateMouseTickTimer()
     }
 
