@@ -420,7 +420,7 @@ struct SwitchWindowView: View {
                     if let error = model.usageErrors[account.id] {
                         OnePlusBanner("\(error) Showing the last saved usage.", tone: .warning)
                     }
-                    usageFacts(snapshot)
+                    Self.usageFacts(snapshot)
                     ScrollView {
                         VStack(alignment: .leading, spacing: 0) {
                             ForEach(buckets.indices, id: \.self) { index in
@@ -456,23 +456,27 @@ struct SwitchWindowView: View {
         return "\(error) Select Refresh usage to try again."
     }
 
-    private func usageFacts(_ snapshot: CodexAccountUsageSnapshot) -> some View {
-        HStack(alignment: .top, spacing: 0) {
-            OnePlusStatCell("Ordinary usage", value: snapshot.rateLimits?.ordinaryUsageAllowed.map { $0 ? "Available" : "Restricted" } ?? "Unavailable")
-            OnePlusRule(vertical: true)
-            OnePlusStatCell("Authentication", value: snapshot.account == nil ? "Verified locally" : "Signed in")
-            OnePlusRule(vertical: true)
-            OnePlusStatCell("Lifetime", value: snapshot.usage?.lifetimeTokens?.formatted(.number.notation(.compactName)) ?? "Unavailable")
-            OnePlusRule(vertical: true)
-            OnePlusStatCell("Peak day", value: snapshot.usage?.peakDailyTokens?.formatted(.number.notation(.compactName)) ?? "Unavailable")
-            OnePlusRule(vertical: true)
-            OnePlusStatCell("Current streak", value: snapshot.usage?.currentStreakDays.map { "\($0) days" } ?? "Unavailable")
-            OnePlusRule(vertical: true)
-            OnePlusStatCell("Longest streak", value: snapshot.usage?.longestStreakDays.map { "\($0) days" } ?? "Unavailable")
-            OnePlusRule(vertical: true)
-            OnePlusStatCell("Longest turn", value: snapshot.usage?.longestRunningTurnSeconds.map {
-                Duration.seconds($0).formatted(.units(allowed: [.hours, .minutes, .seconds], width: .abbreviated, maximumUnitCount: 2))
-            } ?? "Unavailable")
+    static func usageFacts(_ snapshot: CodexAccountUsageSnapshot) -> some View {
+        VStack(alignment: .leading, spacing: 0) {
+            HStack(alignment: .top, spacing: 0) {
+                OnePlusStatCell("Ordinary usage", value: snapshot.rateLimits?.ordinaryUsageAllowed.map { $0 ? "Available" : "Restricted" } ?? "Unavailable")
+                OnePlusRule(vertical: true)
+                OnePlusStatCell("Authentication", value: snapshot.account == nil ? "Verified locally" : "Signed in")
+                OnePlusRule(vertical: true)
+                OnePlusStatCell("Lifetime", value: snapshot.usage?.lifetimeTokens?.formatted(.number.notation(.compactName)) ?? "Unavailable")
+                OnePlusRule(vertical: true)
+                OnePlusStatCell("Peak day", value: snapshot.usage?.peakDailyTokens?.formatted(.number.notation(.compactName)) ?? "Unavailable")
+            }
+            OnePlusRule()
+            HStack(alignment: .top, spacing: 0) {
+                OnePlusStatCell("Current streak", value: snapshot.usage?.currentStreakDays.map { "\($0) days" } ?? "Unavailable")
+                OnePlusRule(vertical: true)
+                OnePlusStatCell("Longest streak", value: snapshot.usage?.longestStreakDays.map { "\($0) days" } ?? "Unavailable")
+                OnePlusRule(vertical: true)
+                OnePlusStatCell("Longest turn", value: snapshot.usage?.longestRunningTurnSeconds.map {
+                    Duration.seconds($0).formatted(.units(allowed: [.hours, .minutes, .seconds], width: .abbreviated, maximumUnitCount: 2))
+                } ?? "Unavailable")
+            }
         }.fixedSize(horizontal: false, vertical: true)
     }
 
@@ -507,13 +511,17 @@ struct SwitchWindowView: View {
             SwitchTrayUsagePreferences.percentageLabel(used: $0, showUsed: showUsageAsUsed)
         } ?? "Unavailable"
         return VStack(alignment: .leading, spacing: OnePlusMetrics.actionSpacing) {
-            HStack { Text(title).onePlusText(.row); Spacer(); Text(percentage).onePlusText(.mono) }
+            HStack(alignment: .firstTextBaseline, spacing: OnePlusMetrics.actionSpacing) {
+                Text(title).onePlusText(.row)
+                Spacer()
+                if let reset = window.resetsAt {
+                    Text("Resets \(reset.formatted(date: .abbreviated, time: .shortened))").onePlusText(.caption)
+                }
+                Text(percentage).onePlusText(.mono)
+            }
             if let percent = window.usedPercent {
                 OnePlusUsageBar(value: Double(showUsageAsUsed ? min(max(percent, 0), 100) : 100 - min(max(percent, 0), 100)) / 100)
                     .accessibilityLabel("\(title), \(percentage)")
-            }
-            if let reset = window.resetsAt {
-                Text("Resets \(reset.formatted(date: .abbreviated, time: .shortened))").onePlusText(.caption)
             }
         }.frame(maxWidth: .infinity, alignment: .leading)
     }
@@ -563,11 +571,11 @@ struct SwitchWindowView: View {
                     }
                 } else {
                     ForEach(model.pendingRecovery) { operation in
-                        OnePlusPathSettingRow(operation.kind.capitalized, path: operation.destination.path) {
+                        OnePlusPathSettingRow(operation.kind.capitalized, path: operation.destination.path, layout: .horizontal) {
                             if operation.phase == .conflicted { Button("Resolve") { conflictToResolve = operation }.disabled(model.isWorking) }
                             else { OnePlusStatus(operation.phase.rawValue, state: .warning) }
                         }
-                        OnePlusPathSettingRow("Protected backup", path: operation.backup.path) {
+                        OnePlusPathSettingRow("Protected backup", path: operation.backup.path, layout: .horizontal) {
                             Button("Reveal") { NSWorkspace.shared.activateFileViewerSelecting([operation.backup]) }
                         }
                     }
@@ -577,7 +585,7 @@ struct SwitchWindowView: View {
                 OnePlusCard {
                     OnePlusCardHeader("Linked settings")
                     ForEach(model.linkedSettingsIssues) { issue in
-                        OnePlusPathSettingRow("Linked setting", path: issue.localPath.path) {
+                        OnePlusPathSettingRow("Linked setting", path: issue.localPath.path, layout: .horizontal) {
                             Button("Review repair") { linkedIssueToRepair = issue }.disabled(model.isWorking)
                         }
                     }
@@ -590,7 +598,7 @@ struct SwitchWindowView: View {
                     OnePlusKeyValueRow("During import", value: "Back up, stage, verify, then publish")
                     OnePlusKeyValueRow("On failure", value: "Keep prior credentials and the backup journal")
                 }.padding(OnePlusMetrics.cardPadding)
-                OnePlusSettingRow("Recovery backups", caption: "Created automatically when account data changes.", separator: false) {
+                OnePlusSettingRow("Recovery backups", help: "Created automatically when account data changes.", separator: false) {
                     Button("Show backups", systemImage: "folder") {
                         let folder = model.paths.applicationSupport.appending(path: "backups", directoryHint: .isDirectory)
                         NSWorkspace.shared.activateFileViewerSelecting([
@@ -598,13 +606,13 @@ struct SwitchWindowView: View {
                         ])
                     }
                 }
-                OnePlusPathSettingRow("Claude profile backups", path: model.paths.applicationSupport.appending(path: "claude-code-profiles/backups").path) {
+                OnePlusPathSettingRow("Claude profile backups", path: model.paths.applicationSupport.appending(path: "claude-code-profiles/backups").path, layout: .horizontal) {
                     Button("Reveal") {
                         NSWorkspace.shared.activateFileViewerSelecting([model.paths.applicationSupport.appending(path: "claude-code-profiles")])
                     }
                 }
                 if let backup = model.lastBackupURL {
-                    OnePlusPathSettingRow("Latest operation backup", path: backup.path) {
+                    OnePlusPathSettingRow("Latest operation backup", path: backup.path, layout: .horizontal) {
                         Button("Reveal") { NSWorkspace.shared.activateFileViewerSelecting([backup]) }
                     }
                 }
@@ -826,6 +834,9 @@ struct SwitchActivityGrid: View {
         let period: String
         let updatedAt: Date?
         let rows: [CodexDailyUsageSnapshot]?
+        let formattingRevision: Int
+        let locale: Locale
+        let calendar: Calendar
     }
 
     nonisolated private static let calendar: Calendar = {
@@ -837,7 +848,9 @@ struct SwitchActivityGrid: View {
     nonisolated static func makePresentation(
         rows: [CodexDailyUsageSnapshot],
         period: CodexTokenPeriod,
-        now: Date
+        now: Date,
+        locale: Locale = .current,
+        firstWeekday: Int = Calendar.current.firstWeekday
     ) -> Presentation {
         let calendar = Self.calendar
         guard let range = period.dateRange(endingAt: now) else {
@@ -845,7 +858,12 @@ struct SwitchActivityGrid: View {
         }
         let today = range.upperBound
         let first = range.lowerBound
-        let start = calendar.date(byAdding: .day, value: 1 - calendar.component(.weekday, from: first), to: first) ?? first
+        let weekdayOffset = (calendar.component(.weekday, from: first) - firstWeekday + 7) % 7
+        let start = calendar.date(byAdding: .day, value: -weekdayOffset, to: first) ?? first
+        let shortDate = Date.FormatStyle(date: .abbreviated, time: .omitted,
+                                        locale: locale, calendar: calendar, timeZone: calendar.timeZone)
+        let completeDate = Date.FormatStyle(date: .complete, time: .omitted,
+                                           locale: locale, calendar: calendar, timeZone: calendar.timeZone)
         let formatter = ISO8601DateFormatter()
         formatter.formatOptions = [.withFullDate]
         formatter.timeZone = calendar.timeZone
@@ -881,9 +899,9 @@ struct SwitchActivityGrid: View {
                     date: date,
                     tokens: count,
                     level: 3 - min(3, Int(sqrt(Double(count) / Double(maximum)) * 3)),
-                    shortLabel: date.formatted(date: .abbreviated, time: .omitted),
-                    accessibilityLabel: date.formatted(date: .complete, time: .omitted),
-                    tokenLabel: "\(count.formatted()) tokens"
+                    shortLabel: date.formatted(shortDate),
+                    accessibilityLabel: date.formatted(completeDate),
+                    tokenLabel: "\(count.formatted(.number.locale(locale))) tokens"
                 ))
             }
             weeks.append(week)
@@ -929,16 +947,25 @@ struct SwitchActivityGrid: View {
                 }
             }
         }
-        .task(id: Request(period: period.rawValue, updatedAt: updatedAt, rows: rows)) {
+        .task(id: preparationRequest) {
             selectedDate = nil
-            guard let rows else { return }
-            let period = period
+            let request = preparationRequest
+            guard let rows = request.rows, let period = CodexTokenPeriod(rawValue: request.period) else { return }
             let result = await Task.detached(priority: .utility) {
-                Self.makePresentation(rows: rows, period: period, now: .now)
+                Self.makePresentation(rows: rows, period: period, now: .now,
+                                      locale: request.locale, firstWeekday: request.calendar.firstWeekday)
             }.value
             guard !Task.isCancelled else { return }
             presentation = result
         }
+    }
+
+    private var preparationRequest: Request {
+        let revision = AppInitializer.shared.formattingRevision
+        var calendar = Calendar.current
+        calendar.timeZone = .current
+        return Request(period: period.rawValue, updatedAt: updatedAt, rows: rows,
+                       formattingRevision: revision, locale: .current, calendar: calendar)
     }
 
     private func tokenDetail(_ tokens: Int64) -> String {

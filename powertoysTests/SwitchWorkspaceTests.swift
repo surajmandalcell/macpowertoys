@@ -7,6 +7,46 @@ import XCTest
 
 @MainActor
 final class SwitchWorkspaceTests: XCTestCase {
+    func testUsageFactsFitShortLabelsAndValuesWithinTwoRows() {
+        let snapshot = sampleUsage()
+        let host = NSHostingView(rootView: SwitchWindowView.usageFacts(snapshot).frame(width: 992))
+        host.layoutSubtreeIfNeeded()
+        let cell = NSHostingView(rootView: OnePlusStatCell("Authentication", value: "Verified locally").fixedSize())
+        cell.layoutSubtreeIfNeeded()
+        XCTAssertGreaterThan(cell.fittingSize.width, 992 / 7)
+        XCTAssertLessThan(cell.fittingSize.width, (992 - 3) / 4)
+        XCTAssertEqual(host.fittingSize.height, cell.fittingSize.height * 2 + 1, accuracy: 1)
+    }
+
+    func testActivityDateLabelsStayUTCAndWeeksFollowTheLocale() throws {
+        let previousZone = NSTimeZone.default
+        NSTimeZone.default = try XCTUnwrap(TimeZone(identifier: "America/Los_Angeles"))
+        defer { NSTimeZone.default = previousZone }
+        let formatter = ISO8601DateFormatter()
+        formatter.formatOptions = [.withFullDate]
+        formatter.timeZone = TimeZone(secondsFromGMT: 0)
+        let now = try XCTUnwrap(formatter.date(from: "2026-01-01"))
+        let rows = [CodexDailyUsageSnapshot(startDate: "2026-01-01", tokens: 1_234),
+                    CodexDailyUsageSnapshot(startDate: "2025-12-26", tokens: 42),
+                    CodexDailyUsageSnapshot(startDate: "2025-12-32", tokens: 999)]
+        for firstWeekday in [1, 2] {
+            let result = SwitchActivityGrid.makePresentation(rows: rows, period: .weekly, now: now,
+                                                            locale: Locale(identifier: "en_US"), firstWeekday: firstWeekday)
+            let day = try XCTUnwrap(result.weeks.last?.compactMap { $0 }.last)
+            XCTAssertEqual(day.shortLabel, "Jan 1, 2026")
+            XCTAssertEqual(day.accessibilityLabel, "Thursday, January 1, 2026")
+            XCTAssertEqual(day.tokenLabel, "1,234 tokens")
+            XCTAssertEqual(result.weeks[0].firstIndex { $0 != nil }, firstWeekday == 1 ? 5 : 4)
+            XCTAssertEqual(result.weeks[1].lastIndex { $0 != nil }, firstWeekday == 1 ? 4 : 3)
+            XCTAssertEqual(result.totals["weekly"], 1_276)
+        }
+        let german = SwitchActivityGrid.makePresentation(rows: rows, period: .today, now: now,
+                                                        locale: Locale(identifier: "de_DE"), firstWeekday: 2)
+        let day = try XCTUnwrap(german.weeks.flatMap { $0 }.compactMap { $0 }.first)
+        XCTAssertEqual(day.shortLabel, "1. Jan. 2026")
+        XCTAssertEqual(day.tokenLabel, "1.234 tokens")
+    }
+
     func testDailyActivityKeepsItsHeightWhileLoadingRefreshingAndEmpty() async throws {
         let snapshot = sampleUsage()
         let host = NSHostingView(rootView: SwitchActivityGrid(rows: nil, updatedAt: nil)
