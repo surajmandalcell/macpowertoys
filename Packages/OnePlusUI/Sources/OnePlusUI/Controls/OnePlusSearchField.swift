@@ -38,19 +38,21 @@ public struct OnePlusSidebarSearch: View {
     private let prompt: String
     private let alternateShortcut: KeyEquivalent?
     private let identifier: String?
-    @State private var focusTrigger = 0
+    private let focusTrigger: Int
+    @State private var shortcutFocusTrigger = 0
     public init(_ prompt: String = "Search", text: Binding<String>, alternateShortcut: KeyEquivalent? = nil,
-                accessibilityIdentifier: String? = nil) {
+                accessibilityIdentifier: String? = nil, focusTrigger: Int = 0) {
+        self.focusTrigger = focusTrigger
         self.prompt = prompt; _text = text; self.alternateShortcut = alternateShortcut
         identifier = accessibilityIdentifier
     }
     public var body: some View {
-        OnePlusSearchField(prompt: prompt, text: $text, width: nil, focusTrigger: focusTrigger,
+        OnePlusSearchField(prompt: prompt, text: $text, width: nil, focusTrigger: focusTrigger &+ shortcutFocusTrigger,
                            accessibilityIdentifier: identifier, height: 32, shortcutHint: "⌘K")
             .background {
-                Button("Focus search") { focusTrigger += 1 }.keyboardShortcut("k").hidden()
+                Button("Focus search") { shortcutFocusTrigger &+= 1 }.keyboardShortcut("k").hidden()
                 if let alternateShortcut {
-                    Button("Find a tool") { focusTrigger += 1 }.keyboardShortcut(alternateShortcut).hidden()
+                    Button("Find a tool") { shortcutFocusTrigger &+= 1 }.keyboardShortcut(alternateShortcut).hidden()
                 }
             }
     }
@@ -74,7 +76,7 @@ private struct OnePlusNativeSearch: NSViewRepresentable {
         view.field.isEnabled = enabled
         view.field.focusRingType = .none
         view.field.font = .systemFont(ofSize: fontSize)
-        if view.field.stringValue != text { view.field.stringValue = text }
+        view.updateText(text)
         view.hint.stringValue = hint ?? ""
         view.hint.isHidden = hint == nil || !text.isEmpty
         view.needsLayout = true
@@ -82,7 +84,7 @@ private struct OnePlusNativeSearch: NSViewRepresentable {
             view.focusTrigger = focusTrigger
             DispatchQueue.main.async { [weak view] in
                 guard let view, view.field.isEnabled else { return }
-                view.window?.makeFirstResponder(view.field)
+                if view.window?.makeFirstResponder(view.field) == true { view.field.selectText(nil) }
             }
         }
     }
@@ -97,6 +99,7 @@ final class OnePlusSearchView: NSView, NSSearchFieldDelegate {
     private var hovered = false
     private var hoverArea: NSTrackingArea?
     private let textLayout = NSLayoutManager()
+    let synchronization = OnePlusTextSynchronization()
     override var isFlipped: Bool { true }
 
     override init(frame: NSRect) {
@@ -132,6 +135,12 @@ final class OnePlusSearchView: NSView, NSSearchFieldDelegate {
     override func mouseDown(with event: NSEvent) {
         guard field.isEnabled else { return }
         window?.makeFirstResponder(field)
+        field.mouseDown(with: event)
+    }
+    func updateText(_ text: String) {
+        if let editor = field.currentEditor() as? NSTextView {
+            synchronization.update(text, in: editor)
+        } else if field.stringValue != text { field.stringValue = text }
     }
     override func updateTrackingAreas() {
         if let hoverArea { removeTrackingArea(hoverArea) }
@@ -152,13 +161,20 @@ final class OnePlusSearchView: NSView, NSSearchFieldDelegate {
     override func viewDidChangeEffectiveAppearance() { super.viewDidChangeEffectiveAppearance(); needsDisplay = true }
     func controlTextDidBeginEditing(_ notification: Notification) {
         focused = true; needsDisplay = true
-        (field.currentEditor() as? NSTextView)?.selectedTextAttributes = [
-            .backgroundColor: NSColor(OnePlusColor.selection),
-            .foregroundColor: NSColor(OnePlusColor.ink)
-        ]
+        (field.currentEditor() as? NSTextView)?.useOnePlusTextSelection()
     }
-    func controlTextDidEndEditing(_ notification: Notification) { focused = false; needsDisplay = true }
-    func controlTextDidChange(_ notification: Notification) { changed(field.stringValue) }
+    func controlTextDidEndEditing(_ notification: Notification) {
+        if let editor = notification.userInfo?["NSFieldEditor"] as? NSTextView {
+            synchronization.applyPending(in: editor)
+            changed(editor.string)
+        }
+        focused = false; needsDisplay = true
+    }
+    func controlTextDidChange(_ notification: Notification) {
+        guard !synchronization.replacing else { return }
+        if let editor = field.currentEditor() as? NSTextView { synchronization.applyPending(in: editor) }
+        changed(field.stringValue)
+    }
     func control(_ control: NSControl, textView: NSTextView, doCommandBy command: Selector) -> Bool {
         guard command == #selector(NSResponder.cancelOperation(_:)), !field.stringValue.isEmpty else { return false }
         field.stringValue = ""
