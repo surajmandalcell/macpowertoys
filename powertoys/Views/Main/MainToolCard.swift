@@ -16,13 +16,13 @@ struct MainToolCard: View {
         OnePlusCard {
             Button(action: select) {
                 VStack(alignment: .leading, spacing: 0) {
-                    HStack(spacing: OnePlusCatalogMetrics.gap) {
+                    HStack(spacing: OnePlusCatalogMetrics.identityGap) {
                         ToolIconView(tool: tool, size: OnePlusCatalogMetrics.iconSize)
-                        MainToolIdentity(tool: tool)
-                        Spacer(minLength: OnePlusMetrics.compactControlHeight)
+                        MainToolIdentity(tool: tool).padding(.trailing, OnePlusMetrics.compactControlHeight)
                     }
                     .padding(.bottom, OnePlusMetrics.actionSpacing)
-                    Text(tool.summary).onePlusText(.row, color: OnePlusColor.secondary)
+                    Text(tool.summary).font(OnePlusCatalogMetrics.summaryFont).monospacedDigit()
+                        .foregroundStyle(OnePlusColor.secondary).lineSpacing(OnePlusCatalogMetrics.summaryLineSpacing)
                         .lineLimit(2, reservesSpace: true).help(tool.description)
                         .frame(maxWidth: .infinity, alignment: .leading)
                         .padding(.bottom, OnePlusCatalogMetrics.gap)
@@ -77,10 +77,12 @@ struct MainToolListRow: View {
     var body: some View {
         HStack(spacing: OnePlusCatalogMetrics.gap) {
             Button(action: select) {
-                HStack(spacing: OnePlusCatalogMetrics.gap) {
-                    ToolIconView(tool: tool, size: OnePlusCatalogMetrics.iconSize)
+                HStack(spacing: OnePlusCatalogMetrics.identityGap) {
+                    ToolIconView(tool: tool, size: OnePlusCatalogMetrics.listIconSize)
                     MainToolIdentity(tool: tool).frame(width: OnePlusCatalogMetrics.listNameWidth, alignment: .leading)
-                    Text(tool.summary).onePlusText(.caption).lineLimit(2).help(tool.description)
+                    Text(tool.summary).font(OnePlusCatalogMetrics.summaryFont).monospacedDigit()
+                        .foregroundStyle(OnePlusColor.secondary).lineSpacing(OnePlusCatalogMetrics.summaryLineSpacing)
+                        .lineLimit(2).help(tool.description)
                         .frame(maxWidth: .infinity, alignment: .leading)
                 }
                 .frame(maxWidth: .infinity, minHeight: OnePlusCatalogMetrics.rowHeight, alignment: .leading)
@@ -117,7 +119,8 @@ struct MainToolIdentity: View {
     var body: some View {
         VStack(alignment: .leading, spacing: OnePlusCatalogMetrics.titleGap) {
             Text(tool.name).onePlusText(.cardTitle).lineLimit(1).help(tool.name)
-            Text(tool.category.rawValue).onePlusText(.caption).lineLimit(1)
+            Text(tool.category.rawValue).font(OnePlusCatalogMetrics.categoryFont)
+                .foregroundStyle(OnePlusColor.muted).lineLimit(1)
         }.frame(maxWidth: .infinity, alignment: .leading)
     }
 }
