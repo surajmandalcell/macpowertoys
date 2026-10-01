@@ -58,8 +58,13 @@
 - **Cause:** Tool symbols were copied across enums. Native SF images kept
   intrinsic bounds, and equal point sizes did not give equal painted sizes.
   Treating every glyph as an SF Symbol replaced Portman's original SVG.
-- **Invariant:** `ToolGlyph` owns 14 unique glyphs and Ruler angle. Switch uses
-  regular `stop.circle`. Portman uses the original `PortmanStatusGlyph` asset
+- **Invariant:** `ToolGlyph` owns 14 unique glyphs and Ruler angle. Glyphs
+  come from each tool's own icon. System Care uses `SystemCareGlyph` (tray
+  with a lifted block) and Switch uses `SwitchGlyph` (emergency-stop
+  button); both are 32pt-viewBox template SVGs fitted to the 11.2pt span,
+  marked by `ToolGlyph.isAsset`, and drawn through `assetImage` or
+  `ToolGlyphImage`, never `Image(systemName:)`. Portman uses the original
+  `PortmanStatusGlyph` asset
   across glyph surfaces. Copy it at 14pt and set template mode, exactly as
   before `91d9a538`. Preserve its native vector drawing without normalization.
   `StatusItemIcon` caches other template images on a 14pt canvas with a
@@ -72,6 +77,21 @@
   comparison and 36 image geometries. Inspect the 16pt Switch/artwork contact
   sheets in both appearances. After signed installation, capture only the
   menu bar with `screencapture -R` and inspect all separate/grouped styles.
+
+## Switch Icon Top Looks Clipped, 2026-10-01
+
+- **Symptom:** On the Switch tool page the 40pt icon looked cut at the top.
+- **Cause:** The standalone 1024px master has a non-square 907 x 881 tile,
+  inset and high in the canvas. The button cap sits about 2pt below the
+  tile top while the bottom margin is twice that, and the tile is smaller
+  than every full-bleed tool icon.
+- **Invariant:** `SwitchLogo` is one universal 512px full-bleed square. It
+  is made from the master by masking off the master tile edge, filling the
+  ivory gradient, cropping 907 x 907 at (59, 44), and cutting the shared
+  112 radius corners. Do not copy the master tile unchanged again.
+- **Check:** Render the asset at 40pt beside another tool icon. The tile
+  fills the frame and the button has even top and bottom margins.
+  `UtilityToolsTests` corner, size, and optical-bounds checks pass.
 
 ## Diagnostic Panel URLs Consumed By Native Scenes, 2026-09-30
 

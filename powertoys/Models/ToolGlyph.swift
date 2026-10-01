@@ -23,20 +23,22 @@ nonisolated enum ToolGlyph: String, CaseIterable {
         case .colorPicker: "eyedropper"
         case .textExtractor: "text.viewfinder"
         case .inputDevices: "computermouse"
-        case .systemCare: "tray.and.arrow.up"
+        case .systemCare: "SystemCareGlyph"
         case .diskman: "opticaldisc"
         case .taskManager: "waveform.path.ecg.rectangle"
         case .netToys: "point.3.connected.trianglepath.dotted"
         case .portman: "PortmanStatusGlyph"
         case .macTweaks: "slider.vertical.3"
-        case .switchAccounts: "stop.circle"
+        case .switchAccounts: "SwitchGlyph"
         }
     }
 
     @MainActor var assetImage: Image? {
-        guard self == .portman, let image = NSImage(named: symbol) else { return nil }
+        guard isAsset, let image = NSImage(named: symbol) else { return nil }
         return Image(nsImage: image).renderingMode(.template)
     }
+
+    var isAsset: Bool { [.portman, .systemCare, .switchAccounts].contains(self) }
 
     @MainActor var image: Image { assetImage ?? Image(systemName: symbol) }
 
@@ -45,4 +47,18 @@ nonisolated enum ToolGlyph: String, CaseIterable {
 
 extension Tool {
     var iconRotation: Double { ToolGlyph(rawValue: id)?.rotation ?? 0 }
+}
+
+struct ToolGlyphImage: View {
+    let glyph: ToolGlyph?
+    let size: CGFloat
+    var fallback = "house"
+
+    var body: some View {
+        if let image = glyph?.assetImage {
+            image.resizable().scaledToFit().frame(width: size, height: size)
+        } else {
+            Image(systemName: glyph?.symbol ?? fallback).font(.system(size: size, weight: .regular))
+        }
+    }
 }

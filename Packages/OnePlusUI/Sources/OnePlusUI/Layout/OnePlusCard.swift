@@ -64,15 +64,19 @@ public struct OnePlusCardHeader<Accessory: View>: View {
     private let title: String
     private let subtitle: String?
     private let icon: String?
+    private let image: Image?
     private let iconRotation: Double
     private let accessory: Accessory
     @Environment(\.onePlusCardPadding) private var cardPadding
-    public init(_ title: String, systemImage: String? = nil, iconRotation: Double = 0, subtitle: String? = nil, @ViewBuilder accessory: () -> Accessory) {
-        self.title = title; self.subtitle = subtitle; icon = systemImage; self.iconRotation = iconRotation; self.accessory = accessory()
+    public init(_ title: String, systemImage: String? = nil, image: Image? = nil, iconRotation: Double = 0, subtitle: String? = nil, @ViewBuilder accessory: () -> Accessory) {
+        self.title = title; self.subtitle = subtitle; icon = systemImage; self.image = image; self.iconRotation = iconRotation; self.accessory = accessory()
     }
     public var body: some View {
         HStack(spacing: 8) {
-            if let icon {
+            if let image {
+                image.resizable().scaledToFit().frame(width: 13, height: 13)
+                    .foregroundStyle(OnePlusColor.secondary).accessibilityHidden(true)
+            } else if let icon {
                 Image(systemName: icon).font(.system(size: 13)).rotationEffect(.degrees(iconRotation)).frame(width: 13)
                     .foregroundStyle(OnePlusColor.secondary).accessibilityHidden(true)
             }
@@ -88,8 +92,8 @@ public struct OnePlusCardHeader<Accessory: View>: View {
 }
 
 public extension OnePlusCardHeader where Accessory == EmptyView {
-    init(_ title: String, systemImage: String? = nil, iconRotation: Double = 0, subtitle: String? = nil) {
-        self.init(title, systemImage: systemImage, iconRotation: iconRotation, subtitle: subtitle, accessory: { EmptyView() })
+    init(_ title: String, systemImage: String? = nil, image: Image? = nil, iconRotation: Double = 0, subtitle: String? = nil) {
+        self.init(title, systemImage: systemImage, image: image, iconRotation: iconRotation, subtitle: subtitle, accessory: { EmptyView() })
     }
 }
 

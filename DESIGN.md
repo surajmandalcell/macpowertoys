@@ -627,11 +627,15 @@ separate tool panel.
 - Status-item icons use the same modest visual size as the Portman icon.
   A Task Manager item that shows only one metric uses the Task Manager
   glyph, not the metric glyph.
-- Sidebar and panel glyphs mirror each tool's icon metaphor (for example a
-  slanted ruler, regular `stop.circle` for Switch). No two tools share a glyph.
+- Sidebar and panel glyphs are drawn from each tool's own icon, not picked
+  from a loose SF Symbol (owner correction 2026-10-01). Examples: a slanted
+  ruler; `SystemCareGlyph`, a tray with one block lifted out; `SwitchGlyph`,
+  an emergency-stop button on its base. No two tools share a glyph.
   Portman retains its original `PortmanStatusGlyph` socket asset on every
   glyph surface. Its status image is an unmodified 14 pt template copy;
   its 11.2 pt maximum ink span remains the reference for other status items.
+  Custom glyph assets are 32 x 32 template SVGs with 2.5 strokes, and their
+  ink fits that same 11.2 pt span.
 - Control rows (Fan, Awake): 30 pt, a leading 13 pt glyph, 10.5 pt label, and
   SF Mono status, with a trailing 24 pt segmented control.
 - Section header: a 1 pt `line` divider, 7 pt top padding, a 9.5 pt section
@@ -880,8 +884,11 @@ variant weakens the deliberate temperature and contrast difference.
 | Mac Tweaks | Chosen Color | Chosen Color | Owner-selected 01 Faders in both appearances |
 
 Switch uses the same emergency-stop artwork in both appearances and in the
-standalone app. Its MacPowerToys image set contains a 512px copy of the
-standalone 1024px master. The original mark remains available for the tiny
+standalone app. The standalone 1024px master has a non-square, inset tile with
+the button high in it. The MacPowerToys copy is one universal 512px
+full-bleed square: the master tile edge is removed, the button is centered,
+and the shared 112 radius cuts the corners (owner correction 2026-10-01:
+the top looked clipped). The original mark remains available for the tiny
 menu-bar template, where the physical switch would lose detail.
 
 The 2026-09-25 owner request in `spec/icon-refresh-request-list.md` replaces
