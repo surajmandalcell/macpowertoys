@@ -31,9 +31,11 @@ Pause and restart preserve completed files. The active file resumes only when it
 ## Personal signed build checks
 
 1. Confirm Cloud Sync has no active transfers.
-2. In a separate macOS account or VM, run `TEST_SESSION=isolated make test`
-   and the UI smoke tests. On the owner's desktop, use
-   `make build-for-testing` to compile tests without launching them.
+2. Build and test locally; GitHub CI runs only on manual dispatch (owner
+   decision 2026-10-01: CI minutes run out). Run unit tests on the owner's
+   Mac with `tmp/redesign/tools/xtest.sh` only while no game or full-screen
+   app is in front. It aborts the run if the front app changes. UI tests
+   still need a separate macOS account or VM.
 3. Run `make build`.
 4. Verify the result with `codesign --verify --deep --strict`.
 5. Quit the installed app, then run `make install ALLOW_INSTALL=1`.

@@ -1,18 +1,8 @@
 name: Diskman UI navigation
 
 on:
+  # Manual only: the owner runs builds and tests locally (2026-10-01).
   workflow_dispatch:
-  push:
-    branches: [main]
-    paths:
-      - .github/workflows/disk-explorer-ui.yml
-      - powertoys/Core/DiskExplorerModel.swift
-      - powertoys/Core/DiskExplorerScanner.swift
-      - powertoys/Core/DiskManagement.swift
-      - powertoys/Views/DiskExplorer/**
-      - powertoysTests/DiskExplorerTests.swift
-      - powertoysTests/DiskManagementTests.swift
-      - powertoysUITests/DiskExplorerUITests.swift
 
 jobs:
   disk-explorer-unit:

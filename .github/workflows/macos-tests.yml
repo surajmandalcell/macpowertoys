@@ -1,17 +1,8 @@
 name: macOS unit tests
 
 on:
+  # Manual only: the owner runs builds and tests locally (2026-10-01).
   workflow_dispatch:
-  push:
-    branches: [main]
-    paths:
-      - .github/workflows/macos-tests.yml
-      - Makefile
-      - powertoys/**
-      - powertoysTests/**
-      - powertoysUITests/**
-      - powertoys.xcodeproj/**
-      - Packages/OnePlusUI/**
 
 jobs:
   unit-tests:

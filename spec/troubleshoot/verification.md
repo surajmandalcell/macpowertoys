@@ -13,8 +13,11 @@
 - **Invariant:** The shared `powertoys` scheme has no test action. Executable
   tests use `powertoys-desktop-tests` only in an isolated macOS account or VM.
   `make test` requires `TEST_SESSION=isolated`, signs its products, and disables
-  parallel test launches. Use build-only checks on the owner's desktop. Do not
-  answer privacy or Gatekeeper decisions for the owner.
+  parallel test launches. Owner decision 2026-10-01: unit tests also run
+  locally on the owner's Mac through the guarded `tmp/redesign/tools/xtest.sh`
+  (refuses while a game is in front, kills the run if the front app changes).
+  GitHub CI is manual-only. Do not answer privacy or Gatekeeper decisions
+  for the owner.
 - **Check:** The app scheme has zero testables; the isolated scheme has two.
   `make test` without the isolated-session flag exits before Xcode starts.
   `build-for-testing` compiles both bundles without launching an app or runner.
