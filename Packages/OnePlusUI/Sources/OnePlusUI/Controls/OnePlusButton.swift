@@ -134,7 +134,9 @@ struct OnePlusButtonLabelStyle: LabelStyle {
     let pointSize: CGFloat
     var iconOnly = false
     @ViewBuilder func makeBody(configuration: Configuration) -> some View {
-        if iconOnly { configuration.icon }
+        if iconOnly {
+            configuration.icon.accessibilityLabel { _ in configuration.title }
+        }
         else {
             OnePlusControlContentLayout(pointSize: pointSize) {
                 configuration.icon
