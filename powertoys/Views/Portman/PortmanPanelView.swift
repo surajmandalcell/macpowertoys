@@ -1883,9 +1883,7 @@ final class PortmanMenuController: NSObject, NSPopoverDelegate {
     private func updateButton() {
         guard let button = item?.button else { return }
         let ports = PortmanService.shared.localPorts
-        let image = NSImage(named: "PortmanStatusGlyph")?.copy() as? NSImage
-        image?.size = NSSize(width: 14, height: 14)
-        image?.isTemplate = true
+        let image = StatusItemIcon.symbol(ToolGlyph.portman.symbol)
         button.image = image
         button.imagePosition = .imageLeading
         button.title = " \(ports.count)"

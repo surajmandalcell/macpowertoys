@@ -29,6 +29,7 @@ struct ToolIconView: View {
     private var symbolIcon: some View {
         Image(systemName: tool.icon)
             .resizable()
+            .rotationEffect(.degrees(tool.iconRotation))
             .scaledToFit()
             .padding(size * 0.22)
             .foregroundStyle(OnePlusColor.ink)

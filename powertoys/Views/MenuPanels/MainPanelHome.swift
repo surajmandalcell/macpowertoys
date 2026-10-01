@@ -8,19 +8,19 @@ struct TrayHomeView: View {
         VStack(spacing: OnePlusMenuMetrics.tileGap) {
             HStack(spacing: OnePlusMenuMetrics.tileGap) {
                 TrayHomeActionButton(
-                    title: "Pick Color", symbol: "eyedropper",
+                    title: "Pick Color", symbol: ToolGlyph.colorPicker.symbol,
                     enabled: toolIDs.contains("color-picker")
                 ) {
                     ToolActionRouter.shared.execute(ToolActionRequest(action: .colorPickerPick))
                 }
                 TrayHomeActionButton(
-                    title: "Extract Text", symbol: "text.viewfinder",
+                    title: "Extract Text", symbol: ToolGlyph.textExtractor.symbol,
                     enabled: toolIDs.contains("text-extractor")
                 ) {
                     ToolActionRouter.shared.execute(ToolActionRequest(action: .textExtractorCapture))
                 }
                 TrayHomeActionButton(
-                    title: "Ruler", symbol: "ruler", iconRotation: -45,
+                    title: "Ruler", symbol: ToolGlyph.ruler.symbol, iconRotation: ToolGlyph.ruler.rotation,
                     enabled: toolIDs.contains("ruler")
                 ) {
                     ToolActionRouter.shared.execute(ToolActionRequest(action: .rulerOpen))
@@ -87,7 +87,7 @@ struct AwakeTrayRow: View {
 
     var body: some View {
         VStack(alignment: .leading, spacing: 2) {
-            OnePlusMenuControlRow("Awake", systemImage: "moon.zzz", status: status) {
+            OnePlusMenuControlRow("Awake", systemImage: ToolGlyph.awake.symbol, status: status) {
                 OnePlusSegmented(
                     choices: [
                         (AwakeQuickMode?.some(.off), "Off"),

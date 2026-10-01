@@ -265,10 +265,10 @@ struct MacPowerToysApp: App {
                 .modelContainer(modelContainer)
                 .background(DiagnosticsMainMenuWindow())
         } label: {
-            Image("MenuBarIcon")
+            Image(nsImage: StatusItemIcon.main)
                 .resizable()
                 .renderingMode(.template)
-                .frame(width: 14, height: 14)
+                .frame(width: OnePlusMenuMetrics.statusIconSize, height: OnePlusMenuMetrics.statusIconSize)
                 .accessibilityLabel("MacPowerToys")
                 .accessibilityIdentifier("MenuBarIcon")
         }

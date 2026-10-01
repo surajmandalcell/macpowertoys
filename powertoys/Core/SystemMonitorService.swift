@@ -669,6 +669,10 @@ nonisolated enum SystemMonitorLifecycle {
 }
 
 nonisolated enum SystemMonitorMenuRenderer {
+    static func symbol(for item: SystemMonitorMenuItemConfiguration, itemCount: Int) -> String {
+        if itemCount == 1 { return ToolGlyph.taskManager.symbol }
+        return item.metric.symbols.contains(item.symbol) ? item.symbol : item.metric.symbol
+    }
     static func render(item: SystemMonitorMenuItemConfiguration, sample: SystemMonitorSample?) -> SystemMonitorRenderedItem {
         SystemMonitorRenderedItem(metric: item.metric, style: item.style,
                                   symbol: item.metric.symbols.contains(item.symbol) ? item.symbol : item.metric.symbol,
@@ -1514,7 +1518,7 @@ final class SystemMonitorMenuController: NSObject {
 
     private func renderedItem(_ item: SystemMonitorMenuItemConfiguration) -> SystemMonitorRenderedItem {
         SystemMonitorRenderedItem(metric: item.metric, style: item.style,
-                                  symbol: item.metric.symbols.contains(item.symbol) ? item.symbol : item.metric.symbol,
+                                  symbol: SystemMonitorMenuRenderer.symbol(for: item, itemCount: settings.enabledItems.count),
                                   value: latestValues[item.metric] ?? "—")
     }
 
@@ -1542,6 +1546,8 @@ final class SystemMonitorMenuController: NSObject {
             if item.style != .valueOnly, let symbol = image(symbol: item.symbol, description: item.metric.title) {
                 let attachment = NSTextAttachment()
                 attachment.image = symbol
+                let side = OnePlusMenuMetrics.statusIconSize
+                attachment.bounds = NSRect(x: 0, y: (NSFont.menuBarFont(ofSize: 0).capHeight - side) / 2, width: side, height: side)
                 output.append(NSAttributedString(attachment: attachment))
                 if item.style == .iconAndValue { output.append(NSAttributedString(string: " ")) }
             }
@@ -1554,7 +1560,7 @@ final class SystemMonitorMenuController: NSObject {
         state.map { "\($0.metric.title), \($0.value)" }.joined(separator: "; ")
     }
     private func image(symbol: String, description: String) -> NSImage? {
-        NSImage(systemSymbolName: symbol, accessibilityDescription: description)
+        StatusItemIcon.symbol(symbol)
     }
     private func makeStatusItem(autosaveName: String) -> NSStatusItem {
         let item = NSStatusBar.system.statusItem(withLength: NSStatusItem.variableLength)

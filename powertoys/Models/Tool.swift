@@ -68,7 +68,7 @@ struct RcloneTool: Tool {
     let name = "Cloud Sync"
     let summary = "Copy, sync, and move files across cloud storage."
     let description = "Move files between your Mac and cloud storage with live progress, automatic retries, and ignore rules."
-    let icon = "cloud"
+    let icon = ToolGlyph.cloudSync.symbol
     let logoAsset = "CloudSyncLogo"
     let category = ToolCategory.files
     let hasTrayTab = true
@@ -116,7 +116,7 @@ struct LogsTool: Tool {
     let name = "Logs"
     let summary = "Read app activity and recent macOS errors."
     let description = "Inspect MacPowerToys activity and recent macOS errors and faults in clearly separated views."
-    let icon = "doc.text.magnifyingglass"
+    let icon = ToolGlyph.logs.symbol
     let logoAsset = "LogsLogo"
     let category = ToolCategory.system
 
@@ -145,7 +145,7 @@ struct RulerTool: Tool {
     let name = "Ruler"
     let summary = "Measure the screen in pixels, millimeters, or inches."
     let description = "Measure the screen with movable, resizable rulers in pixels, millimeters, or inches."
-    let icon = "ruler"
+    let icon = ToolGlyph.ruler.symbol
     let logoAsset = "RulerLogo"
     let category = ToolCategory.dev
 
@@ -171,7 +171,7 @@ struct AwakeTool: Tool {
     let name = "Awake"
     let summary = "Keep your Mac awake for as long as you need."
     let description = "Keep your Mac awake indefinitely, for a duration, or until a chosen time without changing Energy settings."
-    let icon = "cup.and.saucer"
+    let icon = ToolGlyph.awake.symbol
     let logoAsset = "AwakeLogo"
     let category = ToolCategory.system
     let hasTrayTab = true
@@ -198,7 +198,7 @@ struct ColorPickerTool: Tool {
     let name = "Color Picker"
     let summary = "Pick screen colors and copy them in your chosen format."
     let description = "Pick any onscreen color, copy it instantly, and keep a compact searchable history of useful values."
-    let icon = "eyedropper"
+    let icon = ToolGlyph.colorPicker.symbol
     let logoAsset = "ColorPickerLogo"
     let category = ToolCategory.dev
     let hasTrayTab = true
@@ -221,7 +221,7 @@ struct TextExtractorTool: Tool {
     let name = "Text Extractor"
     let summary = "Copy text from any screen region, processed on your Mac."
     let description = "Select text anywhere on screen and copy it using private, fully on-device Apple Vision recognition."
-    let icon = "text.viewfinder"
+    let icon = ToolGlyph.textExtractor.symbol
     let logoAsset = "TextExtractorLogo"
     let category = ToolCategory.text
     let hasTrayTab = true
@@ -244,7 +244,7 @@ struct InputDevicesTool: Tool {
     let name = "Input Devices"
     let summary = "Set mouse and trackpad scroll direction and speed."
     let description = "Tune mouse and trackpad scrolling independently, including direction, speed, horizontal movement, and wheel smoothing."
-    let icon = "computermouse"
+    let icon = ToolGlyph.inputDevices.symbol
     let logoAsset = "InputDevicesLogoA"
     let category = ToolCategory.system
     let hasTrayTab = true
@@ -271,7 +271,7 @@ struct SystemCareTool: Tool {
     let name = "System Care"
     let summary = "Review storage, clean up files, and remove apps."
     let description = "Understand storage, preview safe cleanup, remove apps, and use advanced Mole maintenance."
-    let icon = "internaldrive"
+    let icon = ToolGlyph.systemCare.symbol
     let logoAsset = "SystemCareLogo"
     let category = ToolCategory.system
     let hasTrayTab = true
@@ -297,7 +297,7 @@ struct DiskExplorerTool: Tool {
     let name = "Diskman"
     let summary = "Map disk usage and manage removable drives."
     let description = "Analyze storage with live treemaps and rings, then manage removable disks and partitions."
-    let icon = "internaldrive"
+    let icon = ToolGlyph.diskman.symbol
     let logoAsset = "DiskExplorerLogo"
     let category = ToolCategory.files
 
@@ -333,7 +333,7 @@ struct SystemMonitorTool: Tool {
     let name = "Task Manager"
     let summary = "Inspect processes and system activity, locally or by SSH."
     let description = "Inspect processes and live system activity locally or over SSH, with an optional lightweight menu-bar summary."
-    let icon = "chart.xyaxis.line"
+    let icon = ToolGlyph.taskManager.symbol
     let logoAsset = "SystemMonitorLogo"
     let category = ToolCategory.system
     let hasTrayTab = false
@@ -364,7 +364,7 @@ struct NetToysTool: Tool {
     let name = "NetToys"
     let summary = "Scan networks, track outages, and keep SSH hosts linked."
     let description = "Scan IP networks, keep SSH hosts attached to changing local addresses, and review network outages."
-    let icon = "network"
+    let icon = ToolGlyph.netToys.symbol
     let logoAsset = "NetToysLogo"
     let category = ToolCategory.system
     let hasTrayTab = true
@@ -395,7 +395,7 @@ struct PortmanTool: Tool {
     let name = "Portman"
     let summary = "Find local servers and forward private SSH ports."
     let description = "See local development servers and forward private SSH ports to this Mac."
-    let icon = "circle.grid.2x2.fill"
+    let icon = ToolGlyph.portman.symbol
     let logoAsset = "PortmanLogo"
     let category = ToolCategory.dev
     let hasTrayTab = false
@@ -420,7 +420,7 @@ struct MacTweaksTool: Tool {
     let name = "Mac Tweaks"
     let summary = "Tune input, Dock, Finder, windows, apps, and power."
     let description = "Find and control small Mac settings, starting with Mic Lock for Bluetooth headphone sound."
-    let icon = "slider.horizontal.3"
+    let icon = ToolGlyph.macTweaks.symbol
     let logoAsset = "MacTweaksLogo"
     let category = ToolCategory.system
     let searchKeywords = ["mic lock", "microphone", "bluetooth", "airpods", "audio input"]
@@ -441,7 +441,7 @@ struct SwitchTool: Tool {
     let name = "Switch"
     let summary = "Switch CLI accounts and review their usage."
     let description = "Keep CLI accounts together, switch identities, and review usage."
-    let icon = "person.2"
+    let icon = ToolGlyph.switchAccounts.symbol
     let logoAsset = "SwitchLogo"
     let category = ToolCategory.dev
     let hasTrayTab = true

@@ -141,7 +141,7 @@ struct InputDevicesWindowView: View {
             OnePlusPageHeader(title: "About", subtitle: appVersion)
         } content: {
             OnePlusCard {
-                OnePlusCardHeader("Input Devices", systemImage: "computermouse")
+                OnePlusCardHeader("Input Devices", systemImage: ToolGlyph.inputDevices.symbol)
                 OnePlusSettingRow("Profiles", caption: "Mouse and trackpad settings stay independent.") {
                     OnePlusStatus("Saved locally")
                 }
