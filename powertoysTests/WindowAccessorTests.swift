@@ -102,8 +102,8 @@ final class WindowAccessorTests: XCTestCase {
                        MacTweaksLayout.windowSize.height, accuracy: 0.5)
     }
 
-    func testUtilityMotionStopsWhenReduceMotionIsEnabled() {
-        XCTAssertNotNil(UtilityMotion.animation(reduceMotion: false))
+    func testUtilityMotionIsInstantWithOrWithoutReduceMotion() {
+        XCTAssertNil(UtilityMotion.animation(reduceMotion: false))
         XCTAssertNil(UtilityMotion.animation(reduceMotion: true))
     }
 
