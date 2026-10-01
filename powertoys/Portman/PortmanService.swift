@@ -483,19 +483,22 @@ nonisolated enum PortmanScanner {
             && (output.contains("password") || output.contains("keyboard-interactive"))
     }
 
-    static func remotePorts(host: String, password: String? = nil,
-                            configurationFile: URL? = nil) async throws -> [PortmanRemotePort] {
-        guard SystemMonitorRemoteProtocol.validHost(host) else {
-            throw NSError(domain: "Portman", code: 1,
-                          userInfo: [NSLocalizedDescriptionKey: "Enter a valid SSH host or alias."])
-        }
-        let command = "LC_ALL=C ss -ltnpH 2>/dev/null || LC_ALL=C lsof -nP -iTCP -sTCP:LISTEN -Fpcn 2>/dev/null; "
+    static let remoteScanCommand = "command -v ss >/dev/null 2>&1 || command -v lsof >/dev/null 2>&1 "
+            + "|| { printf 'Port scanning requires ss or lsof on this host.\\n' >&2; exit 2; }; "
+            + "LC_ALL=C ss -ltnpH 2>/dev/null || LC_ALL=C lsof -nP -iTCP -sTCP:LISTEN -Fpcn 2>/dev/null; "
             + "sudo -n ss -ltnpH 2>/dev/null || true; "
             + "printf '\\nMPT_DOCKER\\n'; "
             + "docker ps --format '{{.Names}}|{{.Ports}}' 2>/dev/null "
             + "|| sudo -n docker ps --format '{{.Names}}|{{.Ports}}' 2>/dev/null || true; "
             + "printf '\\nMPT_SYSTEMD\\n'; "
             + "LC_ALL=C systemctl list-sockets --all --no-legend --no-pager --plain 2>/dev/null || true"
+
+    static func remotePorts(host: String, password: String? = nil,
+                            configurationFile: URL? = nil) async throws -> [PortmanRemotePort] {
+        guard SystemMonitorRemoteProtocol.validHost(host) else {
+            throw NSError(domain: "Portman", code: 1,
+                          userInfo: [NSLocalizedDescriptionKey: "Enter a valid SSH host or alias."])
+        }
         let configArguments = configurationFile.map { ["-F", $0.path] } ?? []
         let channel = try password.map { _ in try SSHAskpassChannel() }
         let delivery = channel.flatMap { channel in password.map { channel.startDelivery(password: $0) } }
@@ -504,7 +507,7 @@ nonisolated enum PortmanScanner {
             executableURL: URL(fileURLWithPath: "/usr/bin/ssh"),
             arguments: configArguments + authenticationArguments(password: password != nil)
                 + ["-o", "ConnectTimeout=5",
-                        "-o", "StrictHostKeyChecking=accept-new", "-T", "--", host, command],
+                        "-o", "StrictHostKeyChecking=accept-new", "-T", "--", host, remoteScanCommand],
             environment: channel?.environment ?? ProcessInfo.processInfo.environment,
             standardInput: Data(),
             maximumOutputBytes: 1_048_576,

@@ -147,7 +147,8 @@ final class PortmanTests: XCTestCase {
 
         XCTAssertEqual(presentation.rows.map(\.port.port), [8000, 3000])
         XCTAssertEqual(presentation.rows.map(\.title), ["python3 app.py", "node server.js"])
-        XCTAssertEqual(presentation.rows.map(\.subtitle), ["up 2m", "up 1m"])
+        XCTAssertEqual(presentation.rows.map(\.subtitle), ["", ""])
+        XCTAssertEqual(presentation.rows.map(\.port.uptime), ["2m", "1m"])
         XCTAssertEqual(presentation.uniquePortCount, 2)
         XCTAssertEqual(presentation.memoryBytes, 5_120)
         XCTAssertEqual(presentation.cpuPercent, 4)
@@ -156,10 +157,10 @@ final class PortmanTests: XCTestCase {
 
     func testServerRowsKeepProjectAndBranchContextDistinct() throws {
         for (project, branch, command, title, subtitle) in [
-            ("Project", "main", "node server.js", "Project", "main · up 1m"),
-            ("Project", "Project", "node server.js", "Project", "up 1m"),
-            ("/", "", "node server.js", "node server.js", "up 1m"),
-            ("", "", "", "node", "up 1m")
+            ("Project", "main", "node server.js", "Project", "main"),
+            ("Project", "Project", "node server.js", "Project", ""),
+            ("/", "", "node server.js", "node server.js", ""),
+            ("", "", "", "node", "")
         ] {
             let port = PortmanLocalPort(
                 pid: 42, port: 3000, address: "127.0.0.1", command: "node",
@@ -176,6 +177,87 @@ final class PortmanTests: XCTestCase {
             let row = try XCTUnwrap(presentation.rows.first)
             XCTAssertEqual(row.title, title)
             XCTAssertEqual(row.subtitle, subtitle)
+        }
+    }
+
+    func testCleanupMemoryCountsOnlySelectedOverlappingProcessTrees() {
+        let child = PortmanProcess(pid: 51, parentPID: 42, command: "python3", memoryBytes: 4_096,
+                                   cpuPercent: 2.5, started: 2, userID: geteuid())
+        let parent = PortmanLocalPort(
+            pid: 42, port: 3000, address: "127.0.0.1", command: "node",
+            launchCommand: "node server.js", memoryBytes: 5_120, cpuPercent: 4,
+            uptime: "1m", started: 1, userID: geteuid(), processes: [child]
+        )
+        let listener = PortmanLocalPort(
+            pid: child.pid, port: 8000, address: "127.0.0.1", command: "python3",
+            launchCommand: "python3 app.py", memoryBytes: child.memoryBytes, cpuPercent: child.cpuPercent,
+            uptime: "1m", started: child.started, userID: child.userID
+        )
+        for ports in [[parent, listener], [listener, parent]] {
+            for (selection, memory, cpu) in [
+                (Set([listener.processID]), Int64(4_096), 2.5),
+                (Set([parent.processID]), Int64(5_120), 4.0),
+                (Set([parent.processID, listener.processID]), Int64(5_120), 4.0),
+                (Set<String>(), Int64(0), 0.0)
+            ] {
+                let presentation = portmanOverviewPresentation(
+                    ports: ports, history: [:], metadata: [:], lastConnectionAt: [:],
+                    sort: .port, selectedProcessIDs: selection, cleanupMode: true,
+                    idleHours: 4, runningDays: 3, policyMode: .off,
+                    includeDeletedFolders: false, scanRange: 3000...9999
+                )
+                XCTAssertEqual(presentation.memoryBytes, memory)
+                XCTAssertEqual(presentation.cpuPercent, cpu)
+            }
+        }
+        var protectedParent = parent
+        protectedParent.processes = [PortmanProcess(
+            pid: child.pid, parentPID: child.parentPID, command: "/usr/local/bin/postgres",
+            memoryBytes: child.memoryBytes, cpuPercent: child.cpuPercent,
+            started: child.started, userID: child.userID
+        )]
+        let protected = portmanOverviewPresentation(
+            ports: [protectedParent], history: [:], metadata: [:], lastConnectionAt: [:],
+            sort: .port, selectedProcessIDs: [parent.processID], cleanupMode: true,
+            idleHours: 4, runningDays: 3, policyMode: .off,
+            includeDeletedFolders: false, scanRange: 3000...9999
+        )
+        XCTAssertEqual(protected.memoryBytes, 1_024)
+        XCTAssertEqual(protected.cpuPercent, 1.5)
+    }
+
+    func testNameSortUsesVisibleProjectTitlesAndPortForTies() {
+        let ports = [(UInt16(8000), "bun", "Alpha"), (UInt16(3000), "python", "Alpha"),
+                     (UInt16(5000), "node", "Zebra")].map { number, command, _ in
+            PortmanLocalPort(pid: Int32(number), port: number, address: "127.0.0.1", command: command,
+                             launchCommand: command, memoryBytes: 0, cpuPercent: 0,
+                             uptime: "1m", started: 1, userID: geteuid())
+        }
+        let metadata = Dictionary(uniqueKeysWithValues: zip(ports, ["Alpha", "Alpha", "Zebra"]).map {
+            ($0.0.id, PortmanMetadata(folder: "/", project: $0.1, branch: nil, root: nil))
+        })
+        let presentation = portmanOverviewPresentation(
+            ports: ports, history: [:], metadata: metadata, lastConnectionAt: [:],
+            sort: .name, selectedProcessIDs: [], cleanupMode: false,
+            idleHours: 4, runningDays: 3, policyMode: .off,
+            includeDeletedFolders: false, scanRange: 3000...9999
+        )
+        XCTAssertEqual(presentation.rows.map(\.port.port), [3000, 8000, 5000])
+    }
+
+    @MainActor
+    func testSettingsSearchFindsVisiblePortAndCleanupLabels() {
+        let state = PortmanSettingsState()
+        state.installedEditors = []
+        func steppers(in view: NSView) -> [NSStepper] {
+            (view as? NSStepper).map { [$0] } ?? view.subviews.flatMap { steppers(in: $0) }
+        }
+        for (query, label) in [("First port", "First scan port"), ("Last port", "Last scan port"),
+                               ("Idle for", "Idle hours"), ("Running for", "Running days")] {
+            let host = NSHostingView(rootView: PortmanSettingsView(search: query, state: state))
+            host.frame = NSRect(x: 0, y: 0, width: OnePlusMenuMetrics.bodyWidth, height: 300)
+            host.layoutSubtreeIfNeeded()
+            XCTAssertEqual(steppers(in: host).map { $0.accessibilityLabel() }, [label], query)
         }
     }
 
@@ -208,6 +290,7 @@ final class PortmanTests: XCTestCase {
         LISTEN 0 512 127.0.0.1:8000 0.0.0.0:* users:(("llama-server",pid=81,fd=3))
         MPT_DOCKER
         wud|0.0.0.0:3000->3000/tcp, [::]:3000->3000/tcp
+        udp-only|0.0.0.0:3000->3000/udp
         dozzle|127.0.0.1:9030->8080/tcp
         MPT_SYSTEMD
         0.0.0.0:22 ssh.socket ssh.service
@@ -229,6 +312,9 @@ final class PortmanTests: XCTestCase {
         )
         XCTAssertEqual(inspected.command, "node /srv/app/server.js --watch")
         XCTAssertEqual(inspected.container, "my-web")
+        XCTAssertNil(PortmanScanner.parseRemoteProcessDetails(
+            "node server.js\nMPT_CONTAINER\nudp-only|0.0.0.0:3000->3000/udp\n", port: 3000
+        ).container)
         let arguments = try PortmanScanner.tunnelArguments(host: "my-server", remotePort: 3000, localPort: 4200)
         XCTAssertTrue(arguments.contains("127.0.0.1:4200:localhost:3000"))
         XCTAssertTrue(arguments.contains("ConnectTimeout=5"))
@@ -243,6 +329,21 @@ final class PortmanTests: XCTestCase {
         XCTAssertEqual(passwordArguments.suffix(2), ["--", "alice@192.0.2.10"])
         XCTAssertThrowsError(try PortmanScanner.tunnelArguments(host: "-oProxyCommand=bad", remotePort: 3000, localPort: 4200))
         XCTAssertThrowsError(try PortmanScanner.tunnelArguments(host: "my-server", remotePort: 0, localPort: 4200))
+    }
+
+    func testRemoteScanReportsMissingListenerTools() throws {
+        let process = Process()
+        let error = Pipe()
+        process.executableURL = URL(fileURLWithPath: "/bin/sh")
+        process.arguments = ["-c", PortmanScanner.remoteScanCommand]
+        process.environment = ["PATH": "/missing/portman-listener-tools"]
+        process.standardError = error
+        process.standardOutput = FileHandle.nullDevice
+        try process.run()
+        process.waitUntilExit()
+        XCTAssertEqual(process.terminationStatus, 2)
+        XCTAssertTrue(String(decoding: error.fileHandleForReading.readDataToEndOfFile(), as: UTF8.self)
+            .contains("Port scanning requires ss or lsof on this host."))
     }
 
     func testRemotePortSelectionExtendsAndClearsShiftRange() {
