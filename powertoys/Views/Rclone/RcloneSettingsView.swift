@@ -50,13 +50,13 @@ struct RcloneSettingsView: View {
         OnePlusCard {
             VStack(spacing: 0) {
                 OnePlusCardHeader("Sync engine")
-                OnePlusSettingRow("Start at launch", caption: "Ready after sign-in.") {
+                OnePlusSettingRow("Start at launch", help: "Ready after sign-in.") {
                     Toggle("Start at launch", isOn: $startAtLaunch).labelsHidden().toggleStyle(OnePlusSwitchStyle())
                 }
-                OnePlusSettingRow("Show transfer status", caption: "In the MacPowerToys menu bar.") {
+                OnePlusSettingRow("Show transfer status", help: "In the MacPowerToys menu bar.") {
                     Toggle("Show transfer status", isOn: $showTray).labelsHidden().toggleStyle(OnePlusSwitchStyle())
                 }
-                OnePlusSettingRow("Retry interrupted transfers", caption: "Always on; unfinished transfers resume.", separator: false) {
+                OnePlusSettingRow("Retry interrupted transfers", help: "Always on; unfinished transfers resume.", separator: false) {
                     Text("On").onePlusText(.control)
                 }
             }
@@ -67,13 +67,13 @@ struct RcloneSettingsView: View {
         OnePlusCard {
             VStack(spacing: 0) {
                 OnePlusCardHeader("Transfers")
-                OnePlusSettingRow("Parallel transfers", caption: "Files copied at the same time.", controlWidth: OnePlusMetrics.wideControlColumn) {
+                OnePlusSettingRow("Parallel transfers", help: "Files copied at the same time.", controlWidth: OnePlusMetrics.wideControlColumn) {
                     OnePlusStepperField("Parallel transfers", value: $transfers, in: 1...64)
                 }
-                OnePlusSettingRow("Checkers", caption: "Remote checks at the same time.", controlWidth: OnePlusMetrics.wideControlColumn) {
+                OnePlusSettingRow("Checkers", help: "Remote checks at the same time.", controlWidth: OnePlusMetrics.wideControlColumn) {
                     OnePlusStepperField("Checkers", value: $checkers, in: 1...128)
                 }
-                OnePlusSettingRow("Bandwidth limit", caption: "Leave blank or enter off for no limit.", controlWidth: OnePlusMetrics.wideControlColumn) {
+                OnePlusSettingRow("Bandwidth limit", help: "Leave blank or enter off for no limit.", controlWidth: OnePlusMetrics.wideControlColumn) {
                     OnePlusTextField("10M, 1.5GiB, or off", text: $bandwidthLimit, error: RcloneBandwidthInput.error(for: bandwidthLimit))
                 }
                 OnePlusSettingRow("Default operation", controlWidth: OnePlusMetrics.wideControlColumn, separator: false) {
@@ -94,8 +94,7 @@ struct RcloneSettingsView: View {
             VStack(alignment: .leading, spacing: OnePlusMetrics.spacing[2]) {
                 OnePlusTextEditor("Ignore patterns", text: $ignorePatterns)
                     .frame(height: OnePlusMetrics.spacing[6] * 8)
-                Text("One glob per line. Used as an exclude rule.")
-                    .onePlusText(.caption)
+                    .help("One glob per line. Used as an exclude rule.")
             }
             .padding(OnePlusMetrics.cardPadding)
         }
@@ -107,7 +106,7 @@ struct RcloneSettingsView: View {
             OnePlusSettingRow("Max retries", controlWidth: OnePlusMetrics.wideControlColumn) {
                 OnePlusStepperField("Max retries", value: $maxRetries, in: 0...20)
             }
-            OnePlusSettingRow("Retry backoff", caption: "The wait doubles after each failed try.", controlWidth: OnePlusMetrics.wideControlColumn) {
+            OnePlusSettingRow("Retry backoff", help: "The wait doubles after each failed try.", controlWidth: OnePlusMetrics.wideControlColumn) {
                 OnePlusStepperField(
                     "Retry backoff",
                     value: Binding(get: { Int(retryBackoff) }, set: { retryBackoff = Double($0) }),
@@ -127,7 +126,7 @@ struct RcloneSettingsView: View {
     private var rcloneCard: some View {
         OnePlusCard {
             OnePlusCardHeader("rclone")
-            OnePlusSettingRow("Binary path", caption: "Leave blank to use the detected binary.", controlWidth: OnePlusMetrics.wideControlColumn, separator: false) {
+            OnePlusSettingRow("Binary path", help: "Leave blank to use the detected binary.", controlWidth: OnePlusMetrics.wideControlColumn, separator: false) {
                 OnePlusTextField("Auto-detected", text: $binaryPath)
             }
         }
