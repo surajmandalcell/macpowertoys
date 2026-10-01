@@ -15,6 +15,7 @@ nonisolated final class DiskEntry: Identifiable, @unchecked Sendable {
     private let storedName: String
     private weak var parent: DiskEntry?
     private let rootURL: URL?
+    private let retainedRoot: DiskEntry?
     private let ownAllocatedBytes: Int64
     private let ownApparentBytes: Int64
     private let ownFileCount: UInt64
@@ -53,6 +54,7 @@ nonisolated final class DiskEntry: Identifiable, @unchecked Sendable {
         storedName = component.isEmpty ? standardized.path : component
         parent = nil
         rootURL = standardized
+        retainedRoot = nil
         self.kind = kind
         id = Self.makeID(name: standardized.path, parent: nil, kind: kind,
                          device: device, inode: inode)
@@ -79,6 +81,7 @@ nonisolated final class DiskEntry: Identifiable, @unchecked Sendable {
         storedName = name
         self.parent = parent
         self.rootURL = rootURL
+        retainedRoot = nil
         self.kind = kind
         id = Self.makeID(name: kind == .aggregate ? "\0aggregate" : name,
                          parent: parent, kind: kind, device: device, inode: inode)
@@ -102,6 +105,8 @@ nonisolated final class DiskEntry: Identifiable, @unchecked Sendable {
         storedName = entry.storedName
         self.parent = parent
         rootURL = entry.rootURL
+        // Shared entries use weak parents; keep their paths alive after Stop.
+        retainedRoot = parent == nil ? entry : nil
         id = entry.id
         kind = entry.kind
         ownAllocatedBytes = entry.ownAllocatedBytes

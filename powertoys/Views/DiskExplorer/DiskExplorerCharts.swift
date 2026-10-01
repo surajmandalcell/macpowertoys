@@ -50,13 +50,14 @@ nonisolated enum DiskChartMeasure: String, CaseIterable, Identifiable, Sendable 
                            scanComplete: Bool) -> (shown: [DiskEntry], hidden: [DiskEntry]) {
         let byPath = directory.children.sorted { $0.id < $1.id }
         guard byPath.count > limit else { return (byPath, []) }
-        guard scanComplete else { return (Array(byPath.prefix(limit)), Array(byPath.dropFirst(limit))) }
         let aggregates = byPath.filter { $0.kind == .aggregate }
-        let topIDs = Set(byPath.filter { $0.kind != .aggregate }.sorted {
+        let candidates = byPath.filter { $0.kind != .aggregate }
+        let ranked = scanComplete ? candidates.sorted {
             let left = weight($0, apparent: apparent)
             let right = weight($1, apparent: apparent)
             return left == right ? $0.id < $1.id : left > right
-        }.prefix(max(0, limit - aggregates.count)).map(\.id) + aggregates.map(\.id))
+        } : candidates
+        let topIDs = Set(ranked.prefix(max(0, limit - aggregates.count)).map(\.id) + aggregates.map(\.id))
         return (byPath.filter { topIDs.contains($0.id) }, byPath.filter { !topIDs.contains($0.id) })
     }
 }

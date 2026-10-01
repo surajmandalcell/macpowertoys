@@ -195,12 +195,47 @@ final class DiskExplorerTests: XCTestCase {
         let outcome = DiskRemoval.remove([entry], under: scan.root, permanently: true)
         XCTAssertEqual(outcome.removed, 0)
         XCTAssertTrue(FileManager.default.fileExists(atPath: child.path))
+        let trashOutcome = DiskRemoval.remove([entry], under: scan.root, permanently: false)
+        XCTAssertEqual(trashOutcome.removed, 0)
+        XCTAssertEqual(trashOutcome.errors, ["Changed since scan: \(child.path)"])
+        XCTAssertTrue(FileManager.default.fileExists(atPath: child.path))
 
         let refreshed = try DiskExplorerScanner.scan(root)
         let original = try XCTUnwrap(refreshed.root.children.first { $0.name == "old-item" })
         let validOutcome = DiskRemoval.remove([original], under: refreshed.root, permanently: true)
         XCTAssertEqual(validOutcome.removed, 1)
         XCTAssertFalse(FileManager.default.fileExists(atPath: original.url.path))
+    }
+
+    func testStoppedScanKeepsSharedFilePaths() throws {
+        let root = FileManager.default.temporaryDirectory.appendingPathComponent(UUID().uuidString)
+        try FileManager.default.createDirectory(at: root, withIntermediateDirectories: true)
+        defer { try? FileManager.default.removeItem(at: root) }
+        let file = root.appendingPathComponent("top.bin")
+        try Data(repeating: 7, count: 8192).write(to: file)
+        let session = DiskScanSession()
+        let snapshots = DiskSnapshotRecorder()
+        XCTAssertThrowsError(try DiskExplorerScanner.scan(root, session: session) { snapshot in
+            guard !snapshot.largestFiles.isEmpty else { return }
+            snapshots.append(snapshot)
+            session.cancel()
+        }) { XCTAssertTrue($0 is CancellationError) }
+        let stopped = try XCTUnwrap(snapshots.values.last)
+        XCTAssertFalse(stopped.isComplete)
+        XCTAssertEqual(stopped.root.children.first?.url, file)
+        XCTAssertEqual(stopped.largestFiles.first?.url, file)
+    }
+
+    func testRemovalReviewExcludesDescendantsAcrossSimilarSiblingNames() throws {
+        let root = FileManager.default.temporaryDirectory.appendingPathComponent(UUID().uuidString)
+        try FileManager.default.createDirectory(at: root.appendingPathComponent("a/nested"), withIntermediateDirectories: true)
+        try FileManager.default.createDirectory(at: root.appendingPathComponent("a-sibling"), withIntermediateDirectories: true)
+        defer { try? FileManager.default.removeItem(at: root) }
+        let scan = try DiskExplorerScanner.scan(root)
+        let folder = try XCTUnwrap(scan.root.children.first { $0.name == "a" })
+        let sibling = try XCTUnwrap(scan.root.children.first { $0.name == "a-sibling" })
+        let nested = try XCTUnwrap(folder.children.first)
+        XCTAssertEqual(DiskRemoval.topLevel([nested, sibling, folder]).map(\.id), [folder.id, sibling.id])
     }
 
     private func duBytes(_ url: URL) throws -> Int64 {
