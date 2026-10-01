@@ -3,12 +3,13 @@ import OnePlusUI
 
 struct HomeView: View {
     @AppStorage("main.page") private var storedPage = "all-tools"
+    @State private var selectedPage: String?
     private var selectedTool: String? {
-        get { storedPage }
-        nonmutating set { storedPage = newValue ?? "all-tools" }
+        get { selectedPage ?? storedPage }
+        nonmutating set { selectedPage = newValue ?? "all-tools" }
     }
     private var selectedToolBinding: Binding<String?> {
-        Binding(get: { storedPage }, set: { storedPage = $0 ?? "all-tools" })
+        Binding(get: { selectedTool }, set: { selectedTool = $0 })
     }
     @State private var query = ""
     @State private var searchFocusTrigger = 0
@@ -23,8 +24,18 @@ struct HomeView: View {
             ToolSidebarView(selectedTool: selectedToolBinding, searchText: $query,
                             searchFocusTrigger: searchFocusTrigger)
         } content: {
-            content
+            ZStack {
+                content
+                OnePlusRetainedPage(isSelected: selectedTool == "system-monitor", revision: "system-monitor") {
+                    ToolAboutView(toolId: "system-monitor")
+                }
+                .allowsHitTesting(selectedTool == "system-monitor")
+                .accessibilityHidden(selectedTool != "system-monitor")
+            }
         }
+        .modifier(MainPageStorage(save: saveSelectedPage))
+        .onePlusLiveUpdates()
+        .onChange(of: storedPage) { _, page in selectedPage = page }
         .background { keyboardActions }
         .focusedSceneValue(\.appOpenSettings, { openPage("settings") })
         .focusedSceneValue(\.appGlobalSearch, focusSearch)
@@ -64,6 +75,7 @@ struct HomeView: View {
             refreshShortcutTools()
         }
         .onAppear {
+            if selectedPage == nil { selectedPage = storedPage }
             let enabledIDs = ToolRegistry.allTools.filter { SettingsManager.shared.isToolEnabled($0.id) }.map(\.id)
             if MainPageRoute.resolve(selectedTool ?? "", toolIDs: enabledIDs) == nil { selectedTool = "all-tools" }
             refreshShortcutTools()
@@ -77,6 +89,8 @@ struct HomeView: View {
                              focusedToolID: $focusedToolID)
         case "settings":
             MainSettingsView(tab: settingsTab, showManual: { openPage("manual/" + $0) })
+        case "system-monitor":
+            EmptyView()
         case let toolID?:
             ToolAboutView(toolId: toolID)
         default:
@@ -125,5 +139,20 @@ struct HomeView: View {
 
     private func refreshShortcutTools() {
         shortcutTools = Array(ToolRegistry.allTools.prefix(8))
+    }
+
+    private func saveSelectedPage() {
+        if let selectedPage, storedPage != selectedPage { storedPage = selectedPage }
+    }
+}
+
+private struct MainPageStorage: ViewModifier {
+    @Environment(\.onePlusIsVisible) private var isVisible
+    let save: () -> Void
+
+    func body(content: Content) -> some View {
+        content
+            .onChange(of: isVisible) { _, visible in if !visible { save() } }
+            .onDisappear(perform: save)
     }
 }
