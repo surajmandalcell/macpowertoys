@@ -47,6 +47,7 @@ public enum OnePlusMetrics {
     public static let compactCardPadding: CGFloat = 12
     /// First page-title line box, measured from the visible window top.
     public static let contentTop: CGFloat = 16
+    public static let dotTitleCapOffset: CGFloat = 1
     /// Gap below the fixed header, tabs, or toolbar before body content.
     public static let contentGap: CGFloat = 16
     public static let pageHeaderBottom: CGFloat = 0
