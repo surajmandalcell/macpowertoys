@@ -79,6 +79,12 @@ final class PortmanUITests: XCTestCase {
 
         let link = app.buttons["portman.link.7265"]
         let stop = app.buttons["portman.stop.7265"]
+        sort.hover()
+        XCTAssertFalse(link.exists, "An unfocused row exposed actions instead of metrics")
+        XCTAssertFalse(stop.exists, "An unfocused row exposed actions instead of metrics")
+        let restingValue = try XCTUnwrap(row.value as? String)
+        XCTAssertTrue(restingValue.contains("Memory "))
+        XCTAssertTrue(restingValue.contains(", running for "))
         let rowFrame = row.frame
         let fullRow = app.descendants(matching: .any)["portman.local.row.7265"]
         XCTAssertEqual(rowFrame.width, fullRow.frame.width, accuracy: 1,
@@ -87,6 +93,9 @@ final class PortmanUITests: XCTestCase {
         XCTAssertTrue(link.isHittable, "Hover did not expose the link action")
         XCTAssertTrue(stop.isHittable, "Hover did not expose the stop action")
         XCTAssertEqual(row.frame, rowFrame, "Hover changed the identity width")
+        let hoverValue = try XCTUnwrap(row.value as? String)
+        XCTAssertTrue(hoverValue.contains("Memory "))
+        XCTAssertTrue(hoverValue.contains(", running for "))
         let linkFrame = link.frame
         let stopFrame = stop.frame
         XCTAssertEqual(linkFrame.midY, stopFrame.midY, accuracy: 1)

@@ -190,6 +190,7 @@ struct PortmanPanelView: View {
     @State private var highlightedProcessID: String?
     @State private var hoveredRowID: String?
     @FocusState private var focusedLocalActionID: String?
+    @AccessibilityFocusState private var accessibleLocalActionID: String?
     @State private var hoveredLinkPortID: String?
     @State private var hoveredStopPortID: String?
     @State private var showingMore = false
@@ -602,8 +603,9 @@ struct PortmanPanelView: View {
     private func localRow(_ row: PortmanOverviewRow) -> some View {
         let port = row.port
         let isHovered = hoveredRowID == port.id
-        let showsActions = !cleanupMode && (isHovered || OnePlusFocusPolicy.shared.showsFocus
-            || focusedLocalActionID?.hasPrefix(port.id + ".") == true)
+        let showsActions = !cleanupMode && (isHovered
+            || focusedLocalActionID?.hasPrefix(port.id + ".") == true
+            || accessibleLocalActionID?.hasPrefix(port.id + ".") == true)
         return HStack(spacing: OnePlusMetrics.actionSpacing) {
             if cleanupMode {
                 Toggle(isOn: Binding(
@@ -670,9 +672,11 @@ struct PortmanPanelView: View {
                 .buttonStyle(OnePlusInteractionStyle(radius: OnePlusMetrics.panelRadius))
                 .accessibilityIdentifier("portman.local.\(String(port.port))")
                 .focused($focusedLocalActionID, equals: port.id + ".details")
+                .accessibilityFocused($accessibleLocalActionID, equals: port.id + ".details")
                 .accessibilityLabel(cleanupMode
                                     ? "Select port \(String(port.port)) for cleanup"
                                     : "Show port \(String(port.port)) details")
+                .accessibilityValue("Memory \(row.memoryText), running for \(port.uptime)")
                 .help("\(row.title)\(row.subtitle.isEmpty ? "" : " · \(row.subtitle)") · up \(port.uptime)")
                 if !cleanupMode {
                     HStack(spacing: OnePlusMetrics.spacing[1]) {
@@ -688,6 +692,7 @@ struct PortmanPanelView: View {
                         .accessibilityLabel("Open localhost port \(String(port.port))")
                         .accessibilityIdentifier("portman.link.\(String(port.port))")
                         .focused($focusedLocalActionID, equals: port.id + ".link")
+                        .accessibilityFocused($accessibleLocalActionID, equals: port.id + ".link")
                         if row.canStop {
                             Button { pendingStop = port } label: {
                                 Image(systemName: "stop.fill").onePlusText(.caption)
@@ -701,6 +706,7 @@ struct PortmanPanelView: View {
                             .accessibilityLabel("Stop process tree for port \(String(port.port))")
                             .accessibilityIdentifier("portman.stop.\(String(port.port))")
                             .focused($focusedLocalActionID, equals: port.id + ".stop")
+                            .accessibilityFocused($accessibleLocalActionID, equals: port.id + ".stop")
                         }
                     }
                     .buttonStyle(OnePlusButtonStyle(.icon, size: .small))
