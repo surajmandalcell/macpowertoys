@@ -485,6 +485,7 @@ nonisolated enum SystemMonitorBatteryProperties {
 nonisolated struct SystemMonitorSample: Identifiable, Sendable {
     let id = UUID()
     let timestamp: Date
+    let lastSuccessfulReads: [SystemMonitorMenuMetric: Date]
     let cpuUsage: Double?
     let memoryUsed: Int64?
     let memoryTotal: Int64?
@@ -523,8 +524,20 @@ nonisolated struct SystemMonitorSample: Identifiable, Sendable {
         memoryDetails: SystemMonitorMemoryDetails? = nil,
         networkDetails: SystemMonitorNetworkDetails? = nil,
         diskDetails: SystemMonitorDiskDetails? = nil,
-        batteryDetails: SystemMonitorBatteryDetails? = nil
+        batteryDetails: SystemMonitorBatteryDetails? = nil,
+        lastSuccessfulReads: [SystemMonitorMenuMetric: Date]? = nil
     ) {
+        let present: [(SystemMonitorMenuMetric, Bool)] = [
+            (.cpu, cpuUsage?.isFinite == true),
+            (.memory, memoryUsed != nil && (memoryTotal ?? 0) > 0),
+            (.gpu, gpuUsage?.isFinite == true),
+            (.network, networkDownload?.isFinite == true && networkUpload?.isFinite == true),
+            (.disk, diskUsed != nil && (diskTotal ?? 0) > 0),
+            (.battery, batteryPercent != nil && batteryCharging != nil),
+            (.thermal, thermalState != nil),
+        ]
+        self.lastSuccessfulReads = lastSuccessfulReads ?? Dictionary(uniqueKeysWithValues:
+            present.filter { $0.1 && !unavailableMetrics.contains($0.0) }.map { ($0.0, timestamp) })
         self.timestamp = timestamp
         self.cpuUsage = cpuUsage
         self.memoryUsed = memoryUsed
@@ -557,29 +570,30 @@ nonisolated struct SystemMonitorSample: Identifiable, Sendable {
 
     func preservingAvailableValues(from previous: Self?) -> Self {
         guard let previous else { return self }
-        func retained<Value>(_ metric: SystemMonitorMenuMetric, _ value: Value?, _ oldValue: Value?) -> Value? {
-            unavailableMetrics.contains(metric) ? nil : value ?? oldValue
+        func retained<Value>(_ value: Value?, _ oldValue: Value?) -> Value? {
+            value ?? oldValue
         }
         return Self(
             timestamp: timestamp,
-            cpuUsage: retained(.cpu, cpuUsage, previous.cpuUsage),
-            memoryUsed: retained(.memory, memoryUsed, previous.memoryUsed),
-            memoryTotal: retained(.memory, memoryTotal, previous.memoryTotal),
-            gpuUsage: retained(.gpu, gpuUsage, previous.gpuUsage),
-            networkDownload: retained(.network, networkDownload, previous.networkDownload),
-            networkUpload: retained(.network, networkUpload, previous.networkUpload),
-            diskUsed: retained(.disk, diskUsed, previous.diskUsed),
-            diskTotal: retained(.disk, diskTotal, previous.diskTotal),
-            batteryPercent: retained(.battery, batteryPercent, previous.batteryPercent),
-            batteryCharging: retained(.battery, batteryCharging, previous.batteryCharging),
-            thermalState: retained(.thermal, thermalState, previous.thermalState),
-            loadAverage: retained(.cpu, loadAverage, previous.loadAverage),
+            cpuUsage: retained(cpuUsage, previous.cpuUsage),
+            memoryUsed: retained(memoryUsed, previous.memoryUsed),
+            memoryTotal: retained(memoryTotal, previous.memoryTotal),
+            gpuUsage: retained(gpuUsage, previous.gpuUsage),
+            networkDownload: retained(networkDownload, previous.networkDownload),
+            networkUpload: retained(networkUpload, previous.networkUpload),
+            diskUsed: retained(diskUsed, previous.diskUsed),
+            diskTotal: retained(diskTotal, previous.diskTotal),
+            batteryPercent: retained(batteryPercent, previous.batteryPercent),
+            batteryCharging: retained(batteryCharging, previous.batteryCharging),
+            thermalState: retained(thermalState, previous.thermalState),
+            loadAverage: retained(loadAverage, previous.loadAverage),
             unavailableMetrics: unavailableMetrics,
-            cpuDetails: retained(.cpu, cpuDetails, previous.cpuDetails),
-            memoryDetails: retained(.memory, memoryDetails, previous.memoryDetails),
-            networkDetails: retained(.network, networkDetails, previous.networkDetails),
-            diskDetails: retained(.disk, diskDetails, previous.diskDetails),
-            batteryDetails: retained(.battery, batteryDetails, previous.batteryDetails)
+            cpuDetails: retained(cpuDetails, previous.cpuDetails),
+            memoryDetails: retained(memoryDetails, previous.memoryDetails),
+            networkDetails: retained(networkDetails, previous.networkDetails),
+            diskDetails: retained(diskDetails, previous.diskDetails),
+            batteryDetails: retained(batteryDetails, previous.batteryDetails),
+            lastSuccessfulReads: previous.lastSuccessfulReads.merging(lastSuccessfulReads) { _, fresh in fresh }
         )
     }
 }
@@ -668,11 +682,13 @@ nonisolated struct SystemMonitorRenderedItem: Equatable {
     let style: SystemMonitorMenuItemStyle
     let symbol: String
     let value: String
+    var stale = false
 }
 
 nonisolated enum SystemMonitorDisplayFormat {
     static func byteRate(_ value: Double) -> String {
-        let bytes = Int64(max(value, 0))
+        guard value.isFinite else { return "—" }
+        let bytes = Int64(min(max(value, 0), Double(Int64.max).nextDown))
         guard bytes > 0 else { return "0 KB/s" }
         return ByteCountFormatter.string(fromByteCount: bytes, countStyle: .file) + "/s"
     }
@@ -695,7 +711,8 @@ nonisolated enum SystemMonitorMenuRenderer {
                                   value: value(item: item, sample: sample))
     }
     private static func value(item: SystemMonitorMenuItemConfiguration, sample: SystemMonitorSample?) -> String {
-        if sample?.unavailableMetrics.contains(item.metric) == true { return "Unavailable" }
+        if sample?.unavailableMetrics.contains(item.metric) == true,
+           sample?.lastSuccessfulReads[item.metric] == nil { return "—" }
         switch item.metric {
         case .cpu: return sample?.cpuUsage.map(percent) ?? "—"
         case .memory:
@@ -706,7 +723,7 @@ nonisolated enum SystemMonitorMenuRenderer {
                 guard let used = sample?.memoryUsed, let total = sample?.memoryTotal else { return "—" }
                 return bytes(max(total - used, 0))
             }
-        case .gpu: return sample?.gpuUsage.map(percent) ?? "Unavailable"
+        case .gpu: return sample?.gpuUsage.map(percent) ?? "—"
         case .disk:
             switch item.diskUnit {
             case .percentage: return sample?.diskUsage.map(percent) ?? "—"
@@ -728,10 +745,10 @@ nonisolated enum SystemMonitorMenuRenderer {
             let percentage = sample?.batteryPercent.map { "\($0)%" }
             let status = sample?.batteryCharging.map { $0 ? "Charging" : "On Battery" }
             switch item.batteryDisplay {
-            case .percentage: return percentage ?? "Unavailable"
-            case .status: return status ?? "Unavailable"
+            case .percentage: return percentage ?? "—"
+            case .status: return status ?? "—"
             case .both:
-                guard let percentage, let status else { return "Unavailable" }
+                guard let percentage, let status else { return "—" }
                 return "\(percentage) · \(status)"
             }
         case .thermal:
@@ -745,13 +762,63 @@ nonisolated enum SystemMonitorMenuRenderer {
             }
         }
     }
-    private static func percent(_ value: Double) -> String { "\(Int(value.rounded()))%" }
+    static func widthCandidates(for item: SystemMonitorMenuItemConfiguration) -> [String] {
+        let magnitudes: [Int64] = [0, 1, 999, 1_000, 999_900, 1_000_000, 999_900_000,
+                                  1_000_000_000, 999_900_000_000, 1_000_000_000_000,
+                                  999_900_000_000_000, 1_000_000_000_000_000, Int64.max]
+        let percentages = ["0%", "100%"]
+        var values: [String]
+        switch item.metric {
+        case .cpu, .gpu: values = percentages
+        case .memory: values = item.memoryUnit == .percentage ? percentages : magnitudes.map(bytes)
+        case .disk: values = item.diskUnit == .percentage ? percentages : magnitudes.map(TrayPopoverLayout.diskBytes)
+        case .network:
+            let rates = magnitudes.map { item.networkUnit == .bytes ? SystemMonitorDisplayFormat.byteRate(Double($0)) : bitRate(Double($0)) }
+            values = rates.map { rate in
+                switch item.networkDirection {
+                case .both: "↓\(rate) ↑\(rate)"
+                case .download: "↓\(rate)"
+                case .upload: "↑\(rate)"
+                }
+            }
+        case .battery:
+            switch item.batteryDisplay {
+            case .percentage: values = percentages
+            case .status: values = ["Charging", "On Battery"]
+            case .both: values = ["100% · Charging", "100% · On Battery"]
+            }
+        case .thermal:
+            values = item.thermalDisplay == .compact ? ["OK", "Warm", "Hot", "Critical", "Unknown"] : ["Nominal", "Fair", "Serious", "Critical", "Unknown"]
+        }
+        // ByteCountFormatter can emit two decimals between unit boundaries.
+        let byteUnits = Set(magnitudes.map { ByteCountFormatter.string(fromByteCount: $0, countStyle: .file).split(separator: " ").last.map(String.init) ?? "" })
+        if item.metric == .memory && item.memoryUnit != .percentage {
+            values += byteUnits.map { "1,023.99 " + $0 }
+        } else if item.metric == .disk && item.diskUnit != .percentage {
+            values += byteUnits.map { "999.99 " + $0 }
+        } else if item.metric == .network && item.networkUnit == .bytes {
+            values += byteUnits.map { unit in
+                let rate = "999.99 " + unit + "/s"
+                switch item.networkDirection {
+                case .both: return "↓\(rate) ↑\(rate)"
+                case .download: return "↓\(rate)"
+                case .upload: return "↑\(rate)"
+                }
+            }
+        }
+        return values + (item.metric == .network ? ["—", "↓— ↑—"] : ["—"])
+    }
+
+    private static func percent(_ value: Double) -> String {
+        value.isFinite ? "\(Int(min(max(value.rounded(), 0), 100)))%" : "—"
+    }
     private static func bytes(_ value: Int64) -> String {
         ByteCountFormatter.string(fromByteCount: max(value, 0), countStyle: .memory)
     }
     private static func bitRate(_ byteRate: Double) -> String {
-        let bits = max(byteRate, 0) * 8
-        let scales: [(Double, String)] = [(1_000_000_000, "Gb/s"), (1_000_000, "Mb/s"), (1_000, "kb/s")]
+        guard byteRate.isFinite else { return "—" }
+        let bits = min(max(byteRate, 0), Double(Int64.max).nextDown) * 8
+        let scales: [(Double, String)] = [(1e18, "Eb/s"), (1e15, "Pb/s"), (1e12, "Tb/s"), (1e9, "Gb/s"), (1e6, "Mb/s"), (1e3, "kb/s")]
         guard let scale = scales.first(where: { bits >= $0.0 }) else { return "\(Int(bits.rounded())) b/s" }
         let value = bits / scale.0
         return value.formatted(.number.precision(.fractionLength(value < 10 ? 1 : 0))) + " " + scale.1
@@ -1314,6 +1381,7 @@ final class SystemMonitorService {
     private(set) var snapshot: SystemMonitorSample?
     private(set) var memoryAllocation: SystemMonitorMemoryAllocation?
     private(set) var history = SystemMonitorHistory()
+    private(set) var staleMetrics = Set<SystemMonitorMenuMetric>()
     private(set) var detailedActive = false
     private(set) var menuSettings: SystemMonitorMenuSettings
 
@@ -1321,6 +1389,7 @@ final class SystemMonitorService {
     private let samplingQueue = DispatchQueue(label: "com.surajmandal.macpowertoys.system-monitor", qos: .utility)
     private let menuController: SystemMonitorMenuController
     private let defaults: UserDefaults
+    private var freshnessTask: Task<Void, Never>?
     private var timer: DispatchSourceTimer?
     private var wakeObserver: NSObjectProtocol?
     private var unavailableMenuMetrics = Set<SystemMonitorMenuMetric>()
@@ -1370,6 +1439,7 @@ final class SystemMonitorService {
         if let wakeObserver {
             NSWorkspace.shared.notificationCenter.removeObserver(wakeObserver)
         }
+        freshnessTask?.cancel()
         stopTimer()
     }
 
@@ -1404,6 +1474,12 @@ final class SystemMonitorService {
         unavailableMenuMetrics.removeAll()
         reconfigure()
     }
+    func refreshMenuFormatting() {
+        var settings = menuSettings
+        settings.enabled = toolEnabled && menuSettings.enabled
+        menuController.configure(settings: settings, refreshFormatting: true)
+    }
+
     func setToolEnabled(_ enabled: Bool) {
         guard SystemMonitorLifecycle.changesState(from: toolEnabled, to: enabled) else { return }
         toolEnabled = enabled
@@ -1422,6 +1498,7 @@ final class SystemMonitorService {
         var settings = menuSettings
         settings.enabled = menuActive
         menuController.configure(settings: settings)
+        updateFreshness()
         guard toolEnabled,
               SystemMonitorMenuSchedule.timerInterval(
                 settings: settings,
@@ -1476,8 +1553,9 @@ final class SystemMonitorService {
         snapshot = sample
         memoryAllocation = SystemMonitorMemoryAllocation(used: sample.memoryUsed, total: sample.memoryTotal,
                                                        details: sample.memoryDetails)
-        if toolEnabled && menuSettings.enabled && !dueMetrics.isEmpty {
-            menuController.update(sample: sample, dueMetrics: dueMetrics)
+        updateFreshness(updateMenu: false)
+        if toolEnabled && menuSettings.enabled {
+            menuController.update(sample: sample, dueMetrics: dueMetrics, staleMetrics: staleMetrics)
         }
         let enabledMetrics = Set(menuSettings.enabledItems.map(\.metric))
         let newlyUnavailable = sample.unavailableMetrics.intersection(enabledMetrics)
@@ -1485,6 +1563,32 @@ final class SystemMonitorService {
         guard !newlyUnavailable.isEmpty else { return }
         unavailableMenuMetrics.formUnion(newlyUnavailable)
         if detailedMetrics.isEmpty { reconfigure() }
+    }
+
+    private func updateFreshness(updateMenu: Bool = true) {
+        freshnessTask?.cancel()
+        freshnessTask = nil
+        let detailedMetrics = detailedOwners.values.reduce(into: Set<SystemMonitorMenuMetric>()) { $0.formUnion($1) }
+        let activeMetrics = toolEnabled ? detailedMetrics.union(menuSettings.enabled ? menuSettings.enabledItems.map(\.metric) : []) : []
+        let now = Date()
+        var nextExpiry: Date?
+        var stale = Set<SystemMonitorMenuMetric>()
+        for metric in activeMetrics {
+            guard let last = snapshot?.lastSuccessfulReads[metric] else { continue }
+            let item = menuSettings.items.first { $0.metric == metric } ?? .init(metric: metric)
+            let interval = detailedMetrics.contains(metric) ? 1 : item.effectiveInterval(global: menuSettings.interval)
+            let expiry = last.addingTimeInterval(SystemMonitorFreshness.allowance(interval: interval))
+            if now >= expiry { stale.insert(metric) }
+            else { nextExpiry = min(nextExpiry ?? expiry, expiry) }
+        }
+        if staleMetrics != stale { staleMetrics = stale }
+        if updateMenu { menuController.update(sample: nil, dueMetrics: [], staleMetrics: stale) }
+        guard let nextExpiry else { return }
+        freshnessTask = Task { [weak self] in
+            do { try await Task.sleep(for: .seconds(max(nextExpiry.timeIntervalSinceNow, 0))) }
+            catch { return }
+            self?.updateFreshness()
+        }
     }
 
     private func retryUnavailableMetrics() {
@@ -1504,6 +1608,9 @@ final class SystemMonitorService {
 final class SystemMonitorMenuController: NSObject {
     private var statusItems: [String: NSStatusItem] = [:]
     private var latestValues: [SystemMonitorMenuMetric: String] = [:]
+    private var latestSample: SystemMonitorSample?
+    private var staleMetrics = Set<SystemMonitorMenuMetric>()
+    private var reservedWidths: [SystemMonitorMenuMetric: CGFloat] = [:]
     private var renderedStateCache = SystemMonitorRenderedStateCache()
     private var settings = SystemMonitorMenuSettings()
     private let popover = NSPopover()
@@ -1523,9 +1630,11 @@ final class SystemMonitorMenuController: NSObject {
     }
     var statusItemAutosaveNames: Set<String> { Set(statusItems.values.map(\.autosaveName)) }
     func displayedValue(for metric: SystemMonitorMenuMetric) -> String? { latestValues[metric] }
+    func statusItemLength(for key: String) -> CGFloat? { statusItems[key]?.length }
+    func statusItemHelp(for key: String) -> String? { statusItems[key]?.button?.toolTip }
 
-    func configure(settings: SystemMonitorMenuSettings) {
-        guard settings != self.settings else { return }
+    func configure(settings: SystemMonitorMenuSettings, refreshFormatting: Bool = false) {
+        guard refreshFormatting || settings != self.settings else { return }
         let order = settings.items.filter { $0.placement == .separate }.map(\.metric)
         let positionKeys = SystemMonitorStatusItemOrder.preferredPositionKeys(
             previous: lastDirectOrder,
@@ -1536,10 +1645,12 @@ final class SystemMonitorMenuController: NSObject {
         lastDirectOrder = order
         let oldLayout = layoutSignature(for: self.settings)
         self.settings = settings
+        reservedWidths = Dictionary(uniqueKeysWithValues: settings.enabledItems.map { ($0.metric, SystemMonitorStatusText.width(for: $0)) })
         let enabled = Set(settings.enabledItems.map(\.metric))
         latestValues = settings.enabled ? latestValues.filter { enabled.contains($0.key) } : [:]
+        updateReservedLengths()
         guard oldLayout != layoutSignature(for: settings) else {
-            update(sample: nil, dueMetrics: [])
+            update(sample: latestSample, dueMetrics: Set(enabled))
             return
         }
         renderedStateCache.removeAll()
@@ -1571,11 +1682,22 @@ final class SystemMonitorMenuController: NSObject {
                 autosaveName: SystemMonitorStatusItemOrder.autosaveName(for: item.metric)
             )
         }
-        update(sample: nil, dueMetrics: [])
+        updateReservedLengths()
+        update(sample: latestSample, dueMetrics: Set(enabled))
     }
 
-    func update(sample: SystemMonitorSample?, dueMetrics: Set<SystemMonitorMenuMetric>) {
+    private func updateReservedLengths() {
+        statusItems["group"]?.length = SystemMonitorStatusText.length(for: settings.combinedItems, widths: reservedWidths)
+        for item in settings.separateItems {
+            statusItems[item.metric.rawValue]?.length = SystemMonitorStatusText.length(for: [item], widths: reservedWidths)
+        }
+    }
+
+    func update(sample: SystemMonitorSample?, dueMetrics: Set<SystemMonitorMenuMetric>,
+                staleMetrics: Set<SystemMonitorMenuMetric>? = nil) {
         guard settings.enabled else { return }
+        if let staleMetrics { self.staleMetrics = staleMetrics }
+        if let sample { latestSample = sample }
         for item in settings.enabledItems where dueMetrics.contains(item.metric) {
             let value = SystemMonitorMenuRenderer.render(item: item, sample: sample).value
             if !value.contains("—") || latestValues[item.metric] == nil {
@@ -1589,10 +1711,11 @@ final class SystemMonitorMenuController: NSObject {
                 renderedWriteCount += 1
                 button.image = nil
                 button.attributedTitle = attributedTitle(for: state)
+                button.toolTip = accessibilityLabel(for: state)
                 button.setAccessibilityLabel(accessibilityLabel(for: state))
             }
         }
-        for item in settings.separateItems where dueMetrics.contains(item.metric) || sample == nil {
+        for item in settings.separateItems {
             let state = [renderedItem(item)]
             let key = item.metric.rawValue
             guard renderedStateCache.shouldApply(state, for: key),
@@ -1604,30 +1727,28 @@ final class SystemMonitorMenuController: NSObject {
     private func renderedItem(_ item: SystemMonitorMenuItemConfiguration) -> SystemMonitorRenderedItem {
         SystemMonitorRenderedItem(metric: item.metric, style: item.style,
                                   symbol: SystemMonitorMenuRenderer.symbol(for: item, itemCount: settings.enabledItems.count),
-                                  value: latestValues[item.metric] ?? "—")
+                                  value: latestValues[item.metric] ?? "—", stale: staleMetrics.contains(item.metric))
     }
 
     private func apply(_ state: SystemMonitorRenderedItem, to button: NSStatusBarButton) {
         renderedWriteCount += 1
-        button.attributedTitle = NSAttributedString(string: "")
-        switch state.style {
-        case .iconAndValue:
-            button.image = image(symbol: state.symbol, description: state.metric.title)
-            button.title = state.value
-        case .iconOnly:
-            button.image = image(symbol: state.symbol, description: state.metric.title)
-            button.title = ""
-        case .valueOnly:
-            button.image = nil
-            button.title = state.value
-        }
-        button.setAccessibilityLabel("\(state.metric.title), \(state.value)")
+        button.image = nil
+        button.attributedTitle = attributedTitle(for: [state])
+        button.toolTip = accessibilityLabel(for: [state])
+        button.setAccessibilityLabel(accessibilityLabel(for: [state]))
     }
 
     private func attributedTitle(for state: [SystemMonitorRenderedItem]) -> NSAttributedString {
         let output = NSMutableAttributedString()
+        let paragraph = NSMutableParagraphStyle()
+        var offset: CGFloat = 0
+        paragraph.tabStops = state.dropLast().map { item in
+            offset += SystemMonitorStatusText.contentWidth(for: item.style, valueWidth: reservedWidths[item.metric] ?? 0)
+                + SystemMonitorStatusText.groupGap
+            return NSTextTab(textAlignment: .left, location: offset)
+        }
         for (index, item) in state.enumerated() {
-            if index > 0 { output.append(NSAttributedString(string: "  ")) }
+            if index > 0 { output.append(NSAttributedString(string: "\t")) }
             if item.style != .valueOnly, let symbol = image(symbol: item.symbol, description: item.metric.title) {
                 let attachment = NSTextAttachment()
                 attachment.image = symbol
@@ -1636,13 +1757,15 @@ final class SystemMonitorMenuController: NSObject {
                 output.append(NSAttributedString(attachment: attachment))
                 if item.style == .iconAndValue { output.append(NSAttributedString(string: " ")) }
             }
-            if item.style != .iconOnly { output.append(NSAttributedString(string: item.value)) }
+            if item.style != .iconOnly { output.append(SystemMonitorStatusText.value(item.value)) }
         }
+        output.addAttribute(.font, value: SystemMonitorStatusText.font, range: NSRange(location: 0, length: output.length))
+        output.addAttribute(.paragraphStyle, value: paragraph, range: NSRange(location: 0, length: output.length))
         return output
     }
 
     private func accessibilityLabel(for state: [SystemMonitorRenderedItem]) -> String {
-        state.map { "\($0.metric.title), \($0.value)" }.joined(separator: "; ")
+        state.map { "\($0.metric.title), \($0.value)" + ($0.stale ? ", Stale reading" : "") }.joined(separator: "; ")
     }
     private func image(symbol: String, description: String) -> NSImage? {
         StatusItemIcon.symbol(symbol)
