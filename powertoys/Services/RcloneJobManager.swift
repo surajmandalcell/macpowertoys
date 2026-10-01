@@ -115,6 +115,7 @@ final class RcloneJobManager {
     private var settingsApplyTasks: [UUID: Task<Void, Never>] = [:]
     private var lastAppliedBandwidth: String?
     private var loadedPersistedJobs = false
+    private var loadJobsTask: Task<[TransferJobSnapshot], Never>?
     private var persistJobsTask: Task<Void, Never>?
     private let transferWriter = OrderedAtomicFileWriter()
     private var transferRevision = 0
@@ -250,10 +251,14 @@ final class RcloneJobManager {
     }
 
     func start() async {
-        guard !started, !isShuttingDown else { return }
+        guard !started, !isShuttingDown, !Task.isCancelled else { return }
         started = true
+        var startupFinished = false
+        defer { if !startupFinished { started = false } }
         await DevSyncService.shared.start()
+        guard started, !isShuttingDown, !Task.isCancelled else { return }
         await loadPersistedJobs()
+        guard started, !isShuttingDown, !Task.isCancelled else { return }
         restoreSourceWatchers()
         startVolumeWatch()
         resumeJobsForMountedVolumes()
@@ -261,10 +266,7 @@ final class RcloneJobManager {
 
         do {
             let client = try await daemon.ensureRunning(binaryPath: settings.binaryPath)
-            guard started else {
-                daemon.stop()
-                return
-            }
+            guard started, !isShuttingDown, !Task.isCancelled else { return }
             self.client = client
             engineRetryAttempt = 0
             clearEngineFailureBanner()
@@ -272,14 +274,12 @@ final class RcloneJobManager {
             pruneRecords()
             Task.detached(priority: .background) { Self.sweepTemporaryCaches() }
             await refreshRemotes()
-            guard started else {
-                daemon.stop()
-                self.client = nil
-                return
-            }
+            guard started, !isShuttingDown, !Task.isCancelled else { return }
             startPolling()
+            startupFinished = true
         } catch {
             started = false
+            guard !isShuttingDown, !Task.isCancelled else { return }
             let message = (error as? LocalizedError)?.errorDescription ?? "Could not start rclone."
             engineFailureBanner = message
             errorBanner = message
@@ -338,9 +338,13 @@ final class RcloneJobManager {
         defer { isShuttingDown = false }
         persistJobsTask?.cancel()
         persistJobsTask = nil
-        let snapshots = jobs.map(\.terminationSnapshot)
         var saveStage = "transfers"
         do {
+            if !loadedPersistedJobs, started || loadJobsTask != nil || !jobs.isEmpty {
+                await loadPersistedJobs()
+                try Task.checkCancellation()
+            }
+            let snapshots = jobs.map(\.terminationSnapshot)
             if loadedPersistedJobs || !jobs.isEmpty {
                 try await persistSnapshots(snapshots)
             }
@@ -1461,14 +1465,19 @@ final class RcloneJobManager {
 
     private func loadPersistedJobs() async {
         guard !loadedPersistedJobs else { return }
-        loadedPersistedJobs = true
-        let snapshots = await Task.detached(priority: .utility) {
+        let task = loadJobsTask ?? Task.detached(priority: .utility) {
             guard let data = try? Data(contentsOf: AppDataLocation.transfersURL) else {
                 return [TransferJobSnapshot]()
             }
             return (try? JSONDecoder().decode([TransferJobSnapshot].self, from: data)) ?? []
-        }.value
-        jobs = snapshots.map { TransferJob(snapshot: $0) }
+        }
+        loadJobsTask = task
+        let snapshots = await task.value
+        guard !loadedPersistedJobs, !Task.isCancelled else { return }
+        let currentIDs = Set(jobs.map(\.id))
+        jobs.append(contentsOf: snapshots.filter { !currentIDs.contains($0.id) }.map { TransferJob(snapshot: $0) })
+        loadedPersistedJobs = true
+        loadJobsTask = nil
     }
 
     static func hasPersistedContinuousJobs() async -> Bool {

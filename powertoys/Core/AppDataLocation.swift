@@ -83,6 +83,10 @@ enum AppIdentity {
 
     nonisolated static func migrateLegacyData() {
         _ = AppDataLocation.directory
+        migrateLegacyPreferences()
+    }
+
+    nonisolated static func migrateLegacyPreferences() {
         let defaults = UserDefaults.standard
         guard !defaults.bool(forKey: defaultsMigrationKey) else { return }
         let legacy = defaults.persistentDomain(forName: legacyBundleIdentifier) ?? [:]
