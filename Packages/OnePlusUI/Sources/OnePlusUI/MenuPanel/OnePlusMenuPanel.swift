@@ -223,7 +223,7 @@ private struct OnePlusMenuScrollContent<Content: View>: NSViewRepresentable {
     let content: Content
 
     final class Coordinator {
-        // ponytail: visited tab IDs live with the panel; add eviction for unbounded IDs.
+        // Keep visited tabs while open; only the measured current tab stays warm on close.
         var hosts: [AnyHashable: OnePlusMenuHostingView<AnyView>] = [:]
         var selected: AnyHashable?
     }
@@ -256,6 +256,14 @@ private struct OnePlusMenuScrollContent<Content: View>: NSViewRepresentable {
         if scroll.documentView !== host { scroll.documentView = host }
         cache.hosts[contentID] = host
         cache.selected = contentID
+        if !context.environment.onePlusIsVisible {
+            for (id, inactive) in cache.hosts where id != contentID {
+                inactive.inactiveRoot = nil
+                inactive.rootView = AnyView(EmptyView())
+                inactive.layoutSubtreeIfNeeded()
+            }
+            cache.hosts = [contentID: host]
+        }
     }
 
     private func root(in context: Context, visible: Bool) -> some View {

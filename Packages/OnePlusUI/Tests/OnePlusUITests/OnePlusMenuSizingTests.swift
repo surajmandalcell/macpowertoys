@@ -11,9 +11,11 @@ final class OnePlusMenuSizingTests: XCTestCase {
         let host = NSHostingView(rootView: MenuTabContent(selection: selection, probe: probe))
         host.frame.size = NSSize(width: 356, height: 600)
         func layout() {
-            host.layoutSubtreeIfNeeded()
-            RunLoop.main.run(until: Date(timeIntervalSinceNow: 0.03))
-            host.layoutSubtreeIfNeeded()
+            autoreleasepool {
+                host.layoutSubtreeIfNeeded()
+                RunLoop.main.run(until: Date(timeIntervalSinceNow: 0.03))
+                host.layoutSubtreeIfNeeded()
+            }
         }
         layout()
         let first = try XCTUnwrap(probe.markers[0])
@@ -30,9 +32,14 @@ final class OnePlusMenuSizingTests: XCTestCase {
         selection.visible = false
         layout()
         XCTAssertTrue(probe.liveTabs.isEmpty)
+        weak var discardedTab = probe.markers[1]
+        probe.markers.removeValue(forKey: 1)
+        layout()
+        XCTAssertNil(discardedTab, "Closing retains only the currently measured tab host.")
         selection.visible = true
         layout()
         XCTAssertEqual(probe.liveTabs, [0])
+        XCTAssertEqual(probe.markers[0]?.count.wrappedValue, 7, "The warm current tab keeps its state.")
         XCTAssertEqual(host.fittingSize.height, 48 + 11 + 120, accuracy: 0.5)
     }
 
