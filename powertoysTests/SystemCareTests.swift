@@ -317,6 +317,10 @@ final class SystemCareTests: XCTestCase {
         XCTAssertNil(SystemCareManager.uninstallRefusal(for: selected, applications: [selected]))
         XCTAssertNotNil(SystemCareManager.uninstallRefusal(for: selected, applications: [selected, duplicate]))
         XCTAssertNotNil(SystemCareManager.uninstallRefusal(for: selected, applications: [duplicate]))
+        for name in ["Glob*App", "Glob?App", "Glob[App", "Glob\\App", "-Option"] {
+            let unsafe = InstalledApplication(name: name, url: URL(fileURLWithPath: "/Applications/\(name).app"))
+            XCTAssertNotNil(SystemCareManager.uninstallRefusal(for: unsafe, applications: [unsafe]))
+        }
         let exact = Data(#"[{"name":"Same","path":"/Applications/Same.app"}]"#.utf8)
         XCTAssertEqual(try SystemCareManager.validatedUninstallName(for: selected, inventory: exact), "Same")
         let ambiguous = Data(#"[{"name":"Same","path":"/Applications/Same.app"},{"name":"Same","path":"/Volumes/Fixture/Applications/Same.app"}]"#.utf8)

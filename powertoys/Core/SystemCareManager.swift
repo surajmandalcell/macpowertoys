@@ -549,6 +549,7 @@ final class SystemCareManager {
     ) -> String? {
         guard !application.name.isEmpty, !application.name.hasPrefix("-"),
               application.name.rangeOfCharacter(from: .controlCharacters) == nil,
+              application.name.rangeOfCharacter(from: CharacterSet(charactersIn: "\\*?[")) == nil,
               application.name == application.url.deletingPathExtension().lastPathComponent else {
             return "The application name cannot be passed safely to Mole."
         }
