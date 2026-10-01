@@ -472,6 +472,8 @@ struct SystemMonitorWindowView: View {
             .contentShape(Rectangle())
         }
         .buttonStyle(UtilityInteractionButtonStyle(cornerRadius: TaskManagerTheme.panelRadius))
+        .help(service.staleMetrics.contains(metric) ? SystemMonitorFreshness.staleHelp : detail)
+        .accessibilityHint(service.staleMetrics.contains(metric) ? SystemMonitorFreshness.staleHelp : "")
         .onHover { hoveredMetric = $0 ? identity : nil }
         .focused($focusedMetric, equals: identity)
         .accessibilityLabel("Open \(title ?? metric.title), \(value)")
@@ -616,6 +618,9 @@ struct SystemMonitorWindowView: View {
         stats: [(String, String)]
     ) -> some View {
         let displayed = unit.isEmpty ? TaskManagerMetricText.parts(value) : (value, unit)
+        let metric = SystemMonitorMenuMetric(rawValue: page == .sensors ? "thermal" : page.rawValue)
+        let readingIsStale = metric.map { service.staleMetrics.contains($0) } ?? false
+        let readingHelp = readingIsStale ? SystemMonitorFreshness.staleHelp : detail
         return TaskManagerPanel(textured: true) {
             VStack(spacing: 10) {
                 HStack(alignment: .top, spacing: 18) {
@@ -624,12 +629,12 @@ struct SystemMonitorWindowView: View {
                             Text(label)
                                 .font(.system(size: 10, weight: .medium))
                                 .foregroundStyle(TaskManagerTheme.secondary)
-                            if !detail.isEmpty {
+                            if !readingHelp.isEmpty {
                                 Image(systemName: "info.circle")
                                     .font(.system(size: 9))
                                     .foregroundStyle(TaskManagerTheme.muted)
-                                    .help(detail)
-                                    .accessibilityLabel(detail)
+                                    .help(readingHelp)
+                                    .accessibilityLabel(readingHelp)
                             }
                         }
                         HStack(alignment: .firstTextBaseline, spacing: 4) {

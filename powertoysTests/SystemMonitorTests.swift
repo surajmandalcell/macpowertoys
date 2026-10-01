@@ -1227,7 +1227,7 @@ final class SystemMonitorTests: XCTestCase {
                 item: SystemMonitorMenuItemConfiguration(metric: .gpu),
                 sample: firstDelta
             ).value,
-            "Unavailable"
+            "—"
         )
         XCTAssertEqual(
             SystemMonitorMenuRenderer.render(
@@ -1448,7 +1448,8 @@ final class SystemMonitorTests: XCTestCase {
 
         let unavailable = sample(cpuUsage: nil, unavailableMetrics: [.cpu])
             .preservingAvailableValues(from: measured)
-        XCTAssertNil(unavailable.cpuUsage)
+        XCTAssertEqual(unavailable.cpuUsage, measured.cpuUsage)
+        XCTAssertEqual(unavailable.lastSuccessfulReads[.cpu], measured.lastSuccessfulReads[.cpu])
     }
 
     private func sample(

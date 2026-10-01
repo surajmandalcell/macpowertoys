@@ -27,7 +27,7 @@ nonisolated struct TaskManagerMenuPageData: Equatable, Sendable {
 }
 
 nonisolated enum TaskManagerMenuProjection {
-    static func prepare(sample: SystemMonitorSample?, history: SystemMonitorHistory) -> [SystemMonitorTrayPage: TaskManagerMenuPageData] {
+    static func prepare(sample: SystemMonitorSample?, history: SystemMonitorHistory, staleMetrics: Set<SystemMonitorMenuMetric> = []) -> [SystemMonitorTrayPage: TaskManagerMenuPageData] {
         var pages: [SystemMonitorTrayPage: TaskManagerMenuPageData] = [:]
         let load = sample?.loadAverage.map { decimal($0.0) } ?? "—"
         let used = sample?.memoryUsed.map(bytes) ?? "—"
@@ -107,6 +107,11 @@ nonisolated enum TaskManagerMenuProjection {
                 data.caption = "System-reported state"
                 data.chart.primary = history.samples(for: .thermal).compactMap { thermalLevel($0.thermalState) }
             case .home, .processes: break
+            }
+            if let metric = SystemMonitorMenuMetric(rawValue: page == .sensors ? "thermal" : page.rawValue), staleMetrics.contains(metric) {
+                data.rows.append(reading("Reading", "Stale"))
+                data.caption = SystemMonitorFreshness.staleHelp
+                data.homeCaption = "Stale reading"
             }
             if page != .memory { data.homeValue = data.value }
             data.chart.primary = data.chart.primary.filter(\.isFinite)
@@ -212,14 +217,14 @@ final class TaskManagerMenuPresentation {
     private var active = false
     private var isObserving = false
     private var generation = 0
-    private var pending: (sample: SystemMonitorSample?, history: SystemMonitorHistory)?
+    private var pending: (sample: SystemMonitorSample?, history: SystemMonitorHistory, stale: Set<SystemMonitorMenuMetric>)?
     private var preparation: Task<Void, Never>?
     private var lastPublication: ContinuousClock.Instant?
 
     init(service: SystemMonitorService = .shared) {
         self.service = service
         let history = service.history
-        pages = TaskManagerMenuProjection.prepare(sample: service.snapshot, history: history).mapValues { data in
+        pages = TaskManagerMenuProjection.prepare(sample: service.snapshot, history: history, staleMetrics: service.staleMetrics).mapValues { data in
             TaskManagerMenuPageState(data, history: [])
         }
         for (page, state) in pages {
@@ -246,12 +251,13 @@ final class TaskManagerMenuPresentation {
 
     private func observe() {
         guard active else { return }
-        pending = (service.snapshot, service.history)
+        pending = (service.snapshot, service.history, service.staleMetrics)
         guard !isObserving else { return }
         isObserving = true
         withObservationTracking {
             _ = service.snapshot
             _ = service.history
+            _ = service.staleMetrics
         } onChange: { [weak self] in
             Task { @MainActor [weak self] in
                 guard let self else { return }
@@ -274,7 +280,7 @@ final class TaskManagerMenuPresentation {
             guard !Task.isCancelled, let input = pending else { return }
             pending = nil
             let result = await Task.detached(priority: .userInitiated) {
-                TaskManagerMenuProjection.prepare(sample: input.sample, history: input.history)
+                TaskManagerMenuProjection.prepare(sample: input.sample, history: input.history, staleMetrics: input.stale)
             }.value
             guard !Task.isCancelled, active, self.generation == generation else { return }
             for (page, data) in result {
