@@ -14,6 +14,7 @@ final class DiskManagementModel {
     private(set) var isBusy = false
     private(set) var message: String?
     private(set) var error: String?
+    private(set) var progressText = "Reading physical disks..."
     var blockedEject: BlockedDiskEject?
     var selectedDiskID: String?
     var selectedPartitionID: String?
@@ -34,7 +35,8 @@ final class DiskManagementModel {
         return !isPreview && (lockStates[disk.identity] ?? true)
     }
     func setLocked(_ locked: Bool, for disk: ManagedDisk) {
-        guard !isBusy, !isPreview, disks.contains(where: { $0.identity == disk.identity }) else { return }
+        guard !isBusy, !isPreview,
+              disks.contains(where: { $0.identity == disk.identity && (locked || $0.manageable) }) else { return }
         DiskWriteLock.setLocked(locked, for: disk)
         lockStates[disk.identity] = locked
         lockRevision += 1
@@ -53,6 +55,7 @@ final class DiskManagementModel {
     func clearError() { error = nil }
     func refresh() async {
         guard !isBusy else { return }
+        progressText = "Reading physical disks..."
         isBusy = true
         defer { isBusy = false }
         do {
@@ -62,40 +65,48 @@ final class DiskManagementModel {
         } catch { if !Task.isCancelled { self.error = error.localizedDescription } }
     }
     func run(_ request: DiskRequest) async {
-        guard !isBusy else { return }
+        guard !isBusy, !isPreview else { return }
+        progressText = "\(request.action.rawValue) on /dev/\(request.target)..."
         isBusy = true; error = nil; message = nil
+        defer { isBusy = false }
         do {
             message = try await Task.detached(priority: .userInitiated) {
                 try DiskManagement.run(request)
             }.value.trimmingCharacters(in: .whitespacesAndNewlines)
-            let (current, locks) = try await Task.detached(priority: .utility) { try Self.inventoryAndLocks() }.value
-            updateDisks(current, lockStates: locks)
         } catch {
             self.error = error.localizedDescription
-            if let (current, locks) = try? await Task.detached(priority: .utility, operation: { try Self.inventoryAndLocks() }).value {
-                updateDisks(current, lockStates: locks)
-            }
         }
-        isBusy = false
+        await refreshAfterOperation()
     }
     func eject(_ disk: ManagedDisk, closing blockers: [DiskEjectBlocker] = [], force: Bool = false) async {
         guard !isBusy, !isPreview else { return }
         let request = DiskRequest(disk: disk, partition: nil, action: .eject, name: "", format: "", scheme: "", size: "")
+        progressText = "Ejecting /dev/\(disk.id)..."
         isBusy = true; error = nil; message = nil; blockedEject = nil
+        defer { isBusy = false }
         do {
             message = try await Task.detached(priority: .userInitiated) {
                 blockers.isEmpty ? try DiskManagement.run(request) :
                     try DiskManagement.quitBlockersAndEject(blockers, request: request, force: force)
             }.value.trimmingCharacters(in: .whitespacesAndNewlines)
-            let (current, locks) = try await Task.detached(priority: .utility) { try Self.inventoryAndLocks() }.value
-            updateDisks(current, lockStates: locks)
         } catch {
             let reason = error.localizedDescription
             let active = await Task.detached(priority: .utility) { DiskManagement.ejectBlockers(on: disk) }.value
-            if !active.isEmpty && !isLocked(disk) { blockedEject = BlockedDiskEject(disk: disk, blockers: active, reason: reason) }
+            if !active.isEmpty && disk.manageable && !isLocked(disk) { blockedEject = BlockedDiskEject(disk: disk, blockers: active, reason: reason) }
             else { self.error = reason }
         }
-        isBusy = false
+        await refreshAfterOperation()
+    }
+
+    private func refreshAfterOperation() async {
+        progressText = "Refreshing devices..."
+        do {
+            let (current, locks) = try await Task.detached(priority: .utility) { try Self.inventoryAndLocks() }.value
+            updateDisks(current, lockStates: locks)
+        } catch {
+            let detail = "Device refresh failed. Select Refresh to try again. \(error.localizedDescription)"
+            self.error = self.error.map { "\($0)\n\(detail)" } ?? detail
+        }
     }
 
     private nonisolated static func inventoryAndLocks() throws -> ([ManagedDisk], [String: Bool]) {

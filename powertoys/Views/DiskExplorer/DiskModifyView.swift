@@ -33,6 +33,7 @@ struct DiskModifyView: View {
 
     private func unavailableReason(for action: DiskAction, on disk: ManagedDisk) -> String? {
         if model.isBusy { return "Wait for the current operation to finish." }
+        if action != .verify, let reason = disk.protectionReason { return reason }
         if action != .verify && model.isLocked(disk) { return "Unlock this disk to make changes." }
         if !disk.manageable && action != .verify { return "Only writable removable or external disks can be modified." }
         if action.needsPartition && partition == nil { return "Select a partition or volume above." }
@@ -47,7 +48,7 @@ struct DiskModifyView: View {
         if [.eraseVolume, .deletePartition, .resizePartition, .mergePartitions].contains(action), partition.isAPFSVolume {
             return "Select its physical APFS container partition."
         }
-        if [.rename, .eraseVolume, .deletePartition, .resizePartition, .mergePartitions].contains(action), partition.content == "EFI" {
+        if [.repair, .rename, .eraseVolume, .deletePartition, .resizePartition, .mergePartitions].contains(action), partition.content == "EFI" {
             return "The EFI system partition cannot be changed here."
         }
         if action == .resizePartition && partition.content != "Apple_HFS" {
@@ -74,9 +75,20 @@ struct DiskModifyView: View {
                 OnePlusPageHeader(title: disk?.name ?? "Devices",
                                   subtitle: disk.map { "\($0.id) · \($0.size.diskSize) · \($0.scheme)" } ?? "Physical disks and partitions",
                                   subtitleRole: .mono) { headerActions }
+            } footer: {
+                if model.isBusy {
+                    HStack(spacing: OnePlusMetrics.actionSpacing) {
+                        ProgressView().controlSize(.small)
+                        Text(model.progressText).onePlusText(.row)
+                        Spacer()
+                    }
+                }
             } content: {
                 if let disk {
                     if model.isPreview { OnePlusBanner("Preview data. Disk operations are disabled.") }
+                    if let reason = disk.protectionReason {
+                        OnePlusBanner(reason, tone: .warning).accessibilityIdentifier("diskman.protectedDisk")
+                    }
                     partitionMap(disk)
                     partitions(disk)
                     actions(disk)
@@ -87,7 +99,6 @@ struct DiskModifyView: View {
                                           caption: "Connect a disk, then refresh.") { Button("Refresh", action: refresh).disabled(model.isBusy) }
                     }
                 }
-                if model.isBusy { ProgressView("Working with disk...").controlSize(.small) }
                 if let error = model.error { OnePlusBanner(error, tone: .error).accessibilityIdentifier("diskman.inventoryError") }
                 if let message = model.message, !message.isEmpty {
                     OnePlusCard { Text(message).onePlusText(.mono).textSelection(.enabled).padding(OnePlusMetrics.cardPadding) }
@@ -102,7 +113,7 @@ struct DiskModifyView: View {
                     .disabled(!canExecute(pending.request))
             }
             Button("Cancel", role: .cancel) { }
-        } message: { Text(pending?.request.summary ?? "") }
+        } message: { Text((pending?.request.summary ?? "") + "\nDisk data or layout will change. Keep a backup before continuing.") }
         .onChange(of: model.selectedDiskID) { _, _ in pending = nil; typedDiskID = "" }
         .onDisappear { refreshTask?.cancel(); refreshTask = nil }
         .task(id: disk?.identity) { await readUsage() }
@@ -113,7 +124,7 @@ struct DiskModifyView: View {
             if let disk {
                 Button(model.isLocked(disk) ? "Unlock disk" : "Lock disk", systemImage: model.isLocked(disk) ? "lock.fill" : "lock.open") {
                     model.setLocked(!model.isLocked(disk), for: disk)
-                }.buttonStyle(OnePlusButtonStyle()).disabled(model.isBusy || model.isPreview)
+                }.buttonStyle(OnePlusButtonStyle()).disabled(model.isBusy || model.isPreview || !disk.manageable)
                     .accessibilityIdentifier("diskman.lockDisk")
                 Button("Eject", systemImage: "eject") { Task { await model.eject(disk) } }
                     .buttonStyle(OnePlusButtonStyle()).disabled(model.isBusy || model.isPreview || model.isLocked(disk) || !disk.manageable)
@@ -377,6 +388,10 @@ struct DiskModifyView: View {
                 }
                 if [.eraseDisk, .partitionDisk].contains(request.action) { OnePlusKeyValueRow("Map", value: request.scheme) }
             }
+            if request.action == .partitionDisk {
+                OnePlusKeyValueRow("Second partition", value: "\(request.name.trimmingCharacters(in: .whitespacesAndNewlines)) 2 · \(request.format) · Remaining space")
+                OnePlusBanner("All existing partitions and their data will be erased.", tone: .warning)
+            }
             if request.action == .mergePartitions, let first = request.partition, let next = request.disk.nextPhysicalPartition(after: first.id) {
                 let consequence = first.fileSystem == "ExFAT" ? "ExFAT merge erases both /dev/\(first.id) and /dev/\(next.id)." :
                     "Journaled HFS+ merge keeps /dev/\(first.id) and erases /dev/\(next.id)."
@@ -403,7 +418,8 @@ struct DiskModifyView: View {
     }
     private func canExecute(_ request: DiskRequest) -> Bool {
         !model.isPreview && !model.isBusy && (!request.action.destroysData || typedDiskID == request.disk.id) &&
-        (request.action == .verify || !model.isLocked(request.disk)) && model.disks.contains { $0.identity == request.disk.identity }
+        (request.action == .verify || request.disk.manageable && !model.isLocked(request.disk)) &&
+        model.disks.contains { $0.identity == request.disk.identity && (request.action == .verify || $0.manageable) }
     }
     private func execute(_ request: DiskRequest) {
         guard canExecute(request) else { return }
