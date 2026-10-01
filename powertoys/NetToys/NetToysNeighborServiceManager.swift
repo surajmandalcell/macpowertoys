@@ -11,21 +11,32 @@ final class NetToysNeighborServiceManager {
     )
     private(set) var revision = 0
     private(set) var errorMessage: String?
+    private(set) var status: SMAppService.Status?
+    @ObservationIgnored private var refreshTask: Task<Void, Never>?
+    @ObservationIgnored private let readStatus: @Sendable () -> SMAppService.Status
 
-    private init() {}
+    init(readStatus: @escaping @Sendable () -> SMAppService.Status = {
+        SMAppService.daemon(plistName: NetToysNeighborServiceContract.daemonPlistName).status
+    }) {
+        self.readStatus = readStatus
+        refresh()
+    }
 
-    var status: SMAppService.Status { service.status }
     var isEnabled: Bool { status == .enabled }
 
     @discardableResult
     func enable(openSettings: Bool = true) -> Bool {
+        refreshTask?.cancel()
+        refreshTask = nil
         errorMessage = nil
         do {
-            if status == .notRegistered || status == .notFound { try service.register() }
+            let current = service.status
+            if current == .notRegistered || current == .notFound { try service.register() }
         } catch {
             errorMessage = error.localizedDescription
         }
-        refresh()
+        status = service.status
+        revision &+= 1
         guard status == .enabled else {
             if errorMessage == nil {
                 errorMessage = status == .requiresApproval
@@ -38,11 +49,23 @@ final class NetToysNeighborServiceManager {
         return true
     }
 
-    func refresh() { revision &+= 1 }
+    func refresh() {
+        guard refreshTask == nil else { return }
+        let readStatus = readStatus
+        refreshTask = Task { [weak self] in
+            let status = await Task.detached(priority: .utility, operation: readStatus).value
+            guard !Task.isCancelled, let self else { return }
+            self.status = status
+            self.revision &+= 1
+            self.refreshTask = nil
+        }
+    }
 
     func restart() async throws {
+        refreshTask?.cancel()
+        refreshTask = nil
+        defer { refresh() }
         try await service.unregister()
         try service.register()
-        refresh()
     }
 }

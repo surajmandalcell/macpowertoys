@@ -778,7 +778,7 @@ struct NetToysScannerView: View {
     var body: some View {
         OnePlusPage(scrolls: false) {
             OnePlusPageHeader(title: "IP Scanner", subtitle: networkSubtitle) {
-                OnePlusStatus("MAC access: \(macAccessTitle)", state: macAccessEnabled ? .online : .warning)
+                OnePlusStatus("MAC access: \(macAccessTitle)", state: neighborService.status == nil ? .neutral : macAccessEnabled ? .online : .warning)
                 Button(action: openSettings) {
                     Label("Scanner Settings", systemImage: "slider.horizontal.3")
                 }
@@ -787,7 +787,7 @@ struct NetToysScannerView: View {
         } content: {
             scanControls
                 .disabled(model.isLoading)
-            if !macAccessEnabled {
+            if neighborService.status != nil, !macAccessEnabled {
                 OnePlusBanner(neighborService.errorMessage ?? "Allow MAC access to identify neighboring devices.", tone: .warning) {
                     Button(neighborService.status == .requiresApproval ? "Open Login Items" : "Enable MAC Access") {
                         neighborService.enable()
@@ -1246,6 +1246,7 @@ struct NetToysScannerView: View {
     private var macAccessTitle: String {
         _ = neighborService.revision
         return switch neighborService.status {
+        case nil: "Checking"
         case .enabled: "Allowed"
         case .requiresApproval: "Needs Approval"
         case .notRegistered: "Not Enabled"
