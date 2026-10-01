@@ -207,7 +207,7 @@ struct MacPowerToysApp: App {
         .defaultSize(OnePlusWindowCanvas.systemMonitor.size)
         .windowResizability(.contentSize)
         .windowStyle(.hiddenTitleBar)
-        .handlesExternalEvents(matching: Set(["system-monitor"]))
+        .handlesExternalEvents(matching: Set(["://open/system-monitor"]))
         .restorationBehavior(.disabled)
 
         Window("NetToys", id: "nettoys") {
