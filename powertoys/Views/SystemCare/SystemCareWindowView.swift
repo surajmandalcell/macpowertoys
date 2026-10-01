@@ -82,15 +82,22 @@ nonisolated enum SystemCarePresentationRows {
         let formatter = byteFormatter()
         let dateStyle = Date.FormatStyle(date: .abbreviated, time: .omitted)
         let values = try? application.url.resourceValues(forKeys: [.contentAccessDateKey, .isSymbolicLinkKey])
-        let bytes = allocatedSize(of: application.url)
-        let size = bytes.map {
-            formatter.string(fromByteCount: $0)
-        } ?? "Unavailable"
-        let sizeError = bytes == nil
-            ? (values?.isSymbolicLink == true
-               ? "Bundle is a symbolic link. Size scanning does not follow links."
-               : "Bundle files could not be read. Check that the application is available and readable.")
-            : nil
+        let size: String
+        let sizeError: String?
+        do {
+            let rootValues = try application.url.resourceValues(forKeys: [.isDirectoryKey, .isSymbolicLinkKey])
+            guard rootValues.isSymbolicLink != true else {
+                throw NSError(domain: "SystemCare", code: 1, userInfo: [
+                    NSLocalizedDescriptionKey: "Bundle is a symbolic link. Size scanning does not follow links."
+                ])
+            }
+            guard rootValues.isDirectory == true else { throw CocoaError(.fileReadCorruptFile) }
+            size = formatter.string(fromByteCount: try SystemCareManager.allocatedSize(of: application.url))
+            sizeError = nil
+        } catch {
+            size = "Unavailable"
+            sizeError = error.localizedDescription
+        }
         return SystemCareApplicationMetadata(
             id: application.id,
             size: size,
@@ -98,40 +105,6 @@ nonisolated enum SystemCarePresentationRows {
             lastUsed: values?.contentAccessDate.map { dateStyle.format($0) } ?? "Not available",
             iconData: NSWorkspace.shared.icon(forFile: application.url.path).tiffRepresentation
         )
-    }
-
-    static func allocatedSize(of root: URL) -> Int64? {
-        guard let rootValues = try? root.resourceValues(forKeys: [.isDirectoryKey, .isSymbolicLinkKey]),
-              rootValues.isDirectory == true, rootValues.isSymbolicLink != true else { return nil }
-        let keys: [URLResourceKey] = [
-            .isRegularFileKey,
-            .isSymbolicLinkKey,
-            .totalFileAllocatedSizeKey,
-            .fileAllocatedSizeKey
-        ]
-        var readFailed = false
-        guard let enumerator = FileManager.default.enumerator(
-            at: root,
-            includingPropertiesForKeys: keys,
-            options: [],
-            errorHandler: { _, _ in readFailed = true; return false }
-        ) else { return nil }
-        var total: Int64 = 0
-        for case let url as URL in enumerator {
-            guard !Task.isCancelled else { return nil }
-            guard let values = try? url.resourceValues(forKeys: Set(keys)) else { return nil }
-            if values.isSymbolicLink == true {
-                enumerator.skipDescendants()
-                continue
-            }
-            guard values.isRegularFile == true else { continue }
-            guard let allocated = values.totalFileAllocatedSize ?? values.fileAllocatedSize else { return nil }
-            let bytes = Int64(allocated)
-            let (sum, overflow) = total.addingReportingOverflow(bytes)
-            guard !overflow else { return nil }
-            total = sum
-        }
-        return readFailed ? nil : total
     }
 
     private static func byteFormatter() -> ByteCountFormatter {
@@ -430,6 +403,12 @@ struct SystemCareWindowView: View {
 
     @ViewBuilder
     private var storageContent: some View {
+        if let issue = manager.storageIssue {
+            OnePlusBanner("\(issue.url.path): \(issue.reason)", tone: .error) {
+                Button("Choose Folder…") { chooseStorageFolder() }.disabled(manager.isWorking)
+                Button("Retry") { manager.analyze(issue.url, resetBreadcrumbs: true) }.disabled(manager.isWorking)
+            }
+        }
         if manager.storageURL == nil {
             OnePlusEmptyState(
                 "Choose a folder",
@@ -443,12 +422,6 @@ struct SystemCareWindowView: View {
             .frame(maxWidth: .infinity, maxHeight: .infinity)
         } else {
             storageBreadcrumbCard
-            if let issue = manager.storageIssue {
-                OnePlusBanner("\(issue.url.path): \(issue.reason)", tone: .error) {
-                    Button("Choose Folder…") { chooseStorageFolder() }.disabled(manager.isWorking)
-                    Button("Retry") { manager.analyze(issue.url, resetBreadcrumbs: true) }.disabled(manager.isWorking)
-                }
-            }
             storageSummaryCard
             storageTableCard
                 .frame(maxHeight: .infinity, alignment: .top)
