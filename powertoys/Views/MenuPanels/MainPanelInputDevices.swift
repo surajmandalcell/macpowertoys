@@ -42,16 +42,17 @@ struct InputDevicesTrayView: View {
             VStack(alignment: .leading, spacing: OnePlusMetrics.spacing[0]) {
                 HStack(spacing: OnePlusMetrics.actionSpacing) {
                     Image(systemName: device.kind.icon).onePlusText(.row)
-                    Text(device.name).onePlusText(.cardTitle).lineLimit(1).help(device.name)
+                    VStack(alignment: .leading, spacing: OnePlusMetrics.spacing[0]) {
+                        Text(device.name).onePlusText(.cardTitle).lineLimit(1).help(device.name)
+                        Text(device.connectionSummary.components(separatedBy: " · ").first ?? device.transport)
+                            .onePlusText(.caption)
+                    }
                     Spacer(minLength: OnePlusMenuMetrics.tileGap)
-                    InputStateLabel(state: state)
-                }
-                HStack {
-                    Text(device.connectionSummary.components(separatedBy: " · ").first ?? device.transport)
-                        .onePlusText(.caption)
-                    Spacer(minLength: OnePlusMenuMetrics.tileGap)
-                    Text("\(profile.reverseVertical ? "Reversed" : "System") · \(profile.speed.formatted(.number.precision(.fractionLength(2))))×")
-                        .onePlusText(.mono)
+                    VStack(alignment: .trailing, spacing: OnePlusMetrics.spacing[0]) {
+                        InputStateLabel(state: state)
+                        Text("\(profile.reverseVertical ? "Reversed" : "System") · \(profile.speed.formatted(.number.precision(.fractionLength(2))))×")
+                            .onePlusText(.mono)
+                    }
                 }
                 if let battery = device.batteryPercent {
                     HStack(spacing: OnePlusMetrics.actionSpacing) {
