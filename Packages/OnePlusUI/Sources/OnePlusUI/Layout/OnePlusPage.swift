@@ -4,7 +4,7 @@ public enum OnePlusTitleStyle: Sendable {
     case system, dotMatrix
 
     public func lineHeight(for density: OnePlusDensity) -> CGFloat {
-        self == .dotMatrix ? OnePlusDotTitle.lineHeight : OnePlusTextRole.pageTitle.size(for: density) * 1.2
+        OnePlusTextRole.pageTitle.size(for: self == .dotMatrix ? .regular : density) * 1.2
     }
 }
 
@@ -26,7 +26,9 @@ public struct OnePlusPageHeader<Actions: View>: View {
         HStack(alignment: .top, spacing: 16) {
             VStack(alignment: .leading, spacing: 2) {
                 Group {
-                    if titleStyle == .dotMatrix { OnePlusDotTitle(title) }
+                    if titleStyle == .dotMatrix {
+                        OnePlusDotTitle(title).offset(y: OnePlusMetrics.dotTitleCapOffset)
+                    }
                     else { Text(title).onePlusText(.pageTitle).lineLimit(1).help(title) }
                 }.frame(height: titleHeight).accessibilityAddTraits(.isHeader)
                 if let subtitle {
