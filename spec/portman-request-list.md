@@ -44,7 +44,7 @@ the background at source `36c585b4`; these are baseline captures only.
 | Status | Request | Evidence | Remaining work |
 |---|---|---|---|
 | Source fixed | T087: recover identity width with one 134pt trailing slot. | `5447bd89` overlays adjacent Link and Stop on graph, memory, and uptime. Short distinct branches share the name baseline when they fit. `01bed768` exposes actions during keyboard focus and checks full button width in the hosted hover test. Identity colors, full-row hover, help, native context menus, and cleanup metrics remain. | Run the hosted hover test. Check rest, hover, protected rows, cleanup, Tab, Full Keyboard Access, and VoiceOver in both appearances on the signed build. |
-| Geometry verified | T088: pair direct settings sections in the main window and remove the card-only inset in both hosts. | `8801bfd9` pairs General with Integrations and Ports & processes with Clean up. The source-derived offscreen check measures 480pt columns with a 16pt gap at 976pt, a 356pt natural height, and a single 338pt column with a 724pt height in compact density. Visible native stepper bounds reach each group edge. The prior source fails the same check. Control columns remain 160/180pt. | Run the full native regression on hosted CI and inspect all sections, filtering, help, and control actions in both signed hosts. |
+| Geometry verified | T088: pair direct settings sections in the main window and remove the card-only inset in both hosts. | `8801bfd9` pairs General with Integrations and Ports & processes with Clean up. The source-derived offscreen check measures 480pt columns with a 16pt gap at 976pt, a 356pt natural height, and a single 338pt column with a 724pt height in compact density. Visible native stepper bounds reach each group edge. The prior source fails the same check. Control columns remain 160/180pt. `e55dfd06` checks the captured 640pt main viewport. | Run the full native regression on hosted CI and inspect all sections, filtering, help, and control actions in both signed hosts. |
 
 Report: `tmp/redesign/logs/w3-audit-portman.md`. The eight supplied round 10
 Portman captures were reviewed. They show the two assigned defects and no
@@ -55,9 +55,12 @@ The T088 commit also contains a concurrent `PortmanMenuController` presenter
 hunk. It supplies the clicked display's height ceiling to the retained root.
 This is perf-panels work and requires that owner's integration review.
 
-The complete current Portman view type-checks against the built app module.
+The complete Portman view at `01bed768` type-checks against the built app module.
 The probe renames its overview helper to avoid an imported duplicate.
-The shared compile gates are pending after two unowned concurrent failures.
+The existing combined gate passes: the Debug app and both test bundles
+compile. Evidence: `tmp/redesign/logs/w3-audit-portman-debug-final.log`.
+The newer duplicate was canceled under the latest orchestrator instruction.
+Hosted execution and signed interaction checks remain open.
 
 ## Status glyph, 2026-10-01
 
