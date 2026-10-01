@@ -113,15 +113,17 @@ struct TextExtractorView: View {
                     ScrollView {
                         LazyVStack(spacing: 0) {
                             ForEach(historyRows) { row in
-                                if row.id != historyRows.first?.id {
-                                    OnePlusColor.lineSoft.frame(height: 1)
-                                }
                                 TextExtractionRow(
                                     row: row,
                                     onOpen: { selectedExtraction = row.extraction },
                                     onCopy: { service.copy(row.extraction) },
                                     onDelete: { service.remove(row.id) }
                                 )
+                                .overlay(alignment: .bottom) {
+                                    if row.id != historyRows.last?.id {
+                                        OnePlusColor.lineSoft.frame(height: 1)
+                                    }
+                                }
                             }
                         }
                     }
