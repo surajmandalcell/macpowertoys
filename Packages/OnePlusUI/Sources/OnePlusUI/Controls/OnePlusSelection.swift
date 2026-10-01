@@ -32,31 +32,39 @@ public struct OnePlusSegmented<Value: Hashable>: View {
     @Binding private var selection: Value
     private let label: String
     private let width: CGFloat?
+    private let isChoiceEnabled: (Value) -> Bool
     @Environment(\.onePlusDensity) private var density
     @Environment(\.onePlusControlHeight) private var controlHeight
     @Environment(\.isEnabled) private var enabled
 
     public init(choices: [(Value, String)], selection: Binding<Value>, accessibilityLabel: String = "Selection",
-                accessibilityIdentifierPrefix: String? = nil, width: CGFloat? = nil) {
+                accessibilityIdentifierPrefix: String? = nil, width: CGFloat? = nil,
+                isChoiceEnabled: @escaping (Value) -> Bool = { _ in true }) {
         self.choices = choices
         symbols = [:]
         identifierPrefix = accessibilityIdentifierPrefix
         _selection = selection
         label = accessibilityLabel
         self.width = width.flatMap { $0.isFinite && $0 > 0 ? $0 : nil }
+        self.isChoiceEnabled = isChoiceEnabled
     }
 
-    public init(iconChoices: [(Value, String, String)], selection: Binding<Value>, accessibilityLabel: String) {
+    public init(iconChoices: [(Value, String, String)], selection: Binding<Value>, accessibilityLabel: String,
+                isChoiceEnabled: @escaping (Value) -> Bool = { _ in true }) {
         choices = iconChoices.map { ($0.0, $0.1) }
         symbols = Dictionary(uniqueKeysWithValues: iconChoices.map { ($0.0, $0.2) })
         identifierPrefix = nil
         _selection = selection
         label = accessibilityLabel
         width = nil
+        self.isChoiceEnabled = isChoiceEnabled
     }
 
-    public static func nextSelection(in values: [Value], current: Value, direction: Int) -> Value? {
+    public static func nextSelection(in values: [Value], current: Value, direction: Int,
+                                     isChoiceEnabled: (Value) -> Bool = { _ in true }) -> Value? {
+        let values = values.filter(isChoiceEnabled)
         guard !values.isEmpty else { return nil }
+        guard values.contains(current) else { return direction < 0 ? values.last : values.first }
         let index = values.firstIndex(of: current) ?? 0
         return values[min(max(index + direction, 0), values.count - 1)]
     }
@@ -79,6 +87,8 @@ public struct OnePlusSegmented<Value: Hashable>: View {
                                         padding: padding, expands: width != nil)
                 }
                 .buttonStyle(OnePlusInteractionStyle(radius: 3, disabledOpacity: 1))
+                .disabled(!isChoiceEnabled(choice.0))
+                .opacity(enabled && !isChoiceEnabled(choice.0) ? OnePlusMetrics.disabledOpacity : 1)
                 .accessibilityAddTraits(selection == choice.0 ? .isSelected : [])
                 .accessibilityIdentifier(identifierPrefix.map { "\($0).\(choice.0)" } ?? "")
                 .help(choice.1)
@@ -91,7 +101,8 @@ public struct OnePlusSegmented<Value: Hashable>: View {
         .onMoveCommand { direction in
             guard enabled else { return }
             let delta = direction == .left || direction == .up ? -1 : 1
-            if let value = Self.nextSelection(in: choices.map(\.0), current: selection, direction: delta) { selection = value }
+            if let value = Self.nextSelection(in: choices.map(\.0), current: selection, direction: delta,
+                                              isChoiceEnabled: isChoiceEnabled) { selection = value }
         }
         .accessibilityElement(children: .contain)
         .accessibilityLabel(label)
