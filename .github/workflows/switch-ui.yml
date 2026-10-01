@@ -29,7 +29,7 @@ jobs:
           fi
       - name: Save window captures
         if: always()
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v7
         with:
           name: switch-ui-renders
           path: ${{ runner.temp }}/switch-ui-renders

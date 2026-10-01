@@ -31,7 +31,7 @@ jobs:
           fi
       - name: Save chart renders
         if: always()
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v7
         with:
           name: disk-explorer-unit-renders
           path: ${{ runner.temp }}/disk-explorer-unit-renders
@@ -73,7 +73,7 @@ jobs:
           fi
       - name: Save window captures
         if: always()
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v7
         with:
           name: disk-explorer-ui-renders
           path: ${{ runner.temp }}/disk-explorer-ui-renders
