@@ -105,14 +105,14 @@ struct SwitchTrayView: View {
     }
 
     private func accountContent(_ account: AccountRecord, isDefault: Bool, showsUsage: Bool) -> some View {
-        VStack(alignment: .leading, spacing: OnePlusMenuMetrics.tileGap) {
+        let title = account.identity.email ?? account.identity.accountID ?? "Saved account"
+        return VStack(alignment: .leading, spacing: OnePlusMenuMetrics.tileGap) {
             HStack(spacing: OnePlusMetrics.actionSpacing) {
                 SwitchProviderIcon(providerID: account.identity.providerID, size: OnePlusMetrics.compactControlHeight)
-                VStack(alignment: .leading, spacing: OnePlusMetrics.navRowGap) {
-                    Text(account.identity.email ?? account.identity.accountID ?? "Saved account")
-                        .onePlusText(.row).lineLimit(1)
-                    Text(account.identity.providerID.displayName).onePlusText(.caption)
-                }
+                Text(title)
+                    .onePlusText(.row).lineLimit(1)
+                    .help("\(title)\n\(account.identity.providerID.displayName)")
+                    .accessibilityLabel("\(title), \(account.identity.providerID.displayName)")
                 Spacer(minLength: OnePlusMetrics.actionSpacing)
                 if isDefault {
                     Label("Default", systemImage: "checkmark.circle.fill")
@@ -123,6 +123,13 @@ struct SwitchTrayView: View {
                     Text("\(period.tokens(in: snapshot, dailyUsage: model.dailyUsage[account.id]).formatted(.number.notation(.compactName))) tokens")
                         .onePlusText(.caption).help(period.label)
                 }
+                if let error = model.usageErrors[account.id] {
+                    Image(systemName: "exclamationmark.circle.fill")
+                        .onePlusText(.caption, color: OnePlusColor.warn)
+                        .accessibilityLabel(error)
+                        .accessibilityIdentifier("switch.tray.account-warning.\(account.id)")
+                        .help(error)
+                }
             }
             if showsUsage, let snapshot = model.usage[account.id] {
                 if let primary = snapshot.rateLimits?.defaultBucket?.primary?.usedPercent {
@@ -131,9 +138,6 @@ struct SwitchTrayView: View {
                 if let secondary = snapshot.rateLimits?.defaultBucket?.secondary?.usedPercent {
                     usageBar(secondary, title: "Secondary window")
                 }
-            }
-            if let error = model.usageErrors[account.id] {
-                Text(error).onePlusText(.caption, color: OnePlusColor.danger).lineLimit(2).help(error)
             }
         }
     }
