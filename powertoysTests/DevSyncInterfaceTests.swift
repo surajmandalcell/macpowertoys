@@ -201,7 +201,7 @@ final class DevSyncInterfaceTests: XCTestCase {
         XCTAssertEqual(DevSetupStep.preview.label, "Step 6 of 6 · Preview")
     }
 
-    func testSetupPrimaryActionTitleMatchesThePreviewSummaryOnTheLastStep() {
+    func testSetupPrimaryActionTitleMatchesThePreviewSummaryOnTheLastStep() async {
         let model = DevSyncSetupModel(engine: engine)
         XCTAssertEqual(model.primaryActionTitle, "Continue")
 
@@ -217,6 +217,7 @@ final class DevSyncInterfaceTests: XCTestCase {
             scanComplete: true
         )
         model.step = .preview
+        await model.buildPreview()
         model.preview = preview
 
         XCTAssertEqual(model.primaryActionTitle, preview.summary.primaryActionTitle)
@@ -263,6 +264,56 @@ final class DevSyncInterfaceTests: XCTestCase {
 
         XCTAssertEqual(model.draft.configuration.activityPreset, .lowDriveActivity)
         XCTAssertEqual(model.draft.configuration.timing, DevActivityPreset.lowDriveActivity.timing)
+    }
+
+    func testFailedResolutionAndConfigurationKeepPublishedState() async {
+        let root = URL(fileURLWithPath: #filePath).deletingLastPathComponent().deletingLastPathComponent()
+            .appendingPathComponent("tmp/redesign/audit-cloudsync/state-\(UUID().uuidString)")
+        defer { try? FileManager.default.removeItem(at: root) }
+        let service = DevSyncService(stateStore: DevSyncStateStore(rootURL: root))
+        let manager = DevSyncManager(engine: service)
+        manager.apply(.pairs([seed.pair]))
+        let projectID = seed.projects[0].id
+        manager.driftPaths[projectID] = ["one.txt"]
+        var configuration = seed.pair.configuration
+        configuration.policy.followGitIgnore.toggle()
+        await manager.updateConfiguration(pairID: seed.pair.id, configuration: configuration)
+        XCTAssertEqual(manager.pairs[0].configuration, seed.pair.configuration)
+        await manager.resolveDrift(pairID: seed.pair.id, projectID: projectID,
+                                   relativePath: "one.txt", resolution: .overwriteExternal)
+        XCTAssertEqual(manager.driftPaths[projectID], ["one.txt"])
+        XCTAssertNotNil(manager.errorBanner)
+    }
+
+    func testUnavailableDriftRootsAndUnsafePathsReturnAnError() async {
+        let root = URL(fileURLWithPath: #filePath).deletingLastPathComponent().deletingLastPathComponent()
+            .appendingPathComponent("tmp/redesign/audit-cloudsync/drift-\(UUID().uuidString)")
+        defer { try? FileManager.default.removeItem(at: root) }
+        let pairEngine = DevSyncPairEngine(pair: seed.pair, stateStore: DevSyncStateStore(rootURL: root),
+                                          rsyncExecutable: URL(fileURLWithPath: "/usr/bin/rsync")) { _ in }
+        for path in ["one.txt", "../escape"] {
+            do {
+                try await pairEngine.resolveDrift(projectID: seed.projects[0].id,
+                                                  relativePath: path, resolution: .overwriteExternal)
+                XCTFail("An unavailable or unsafe resolution must fail")
+            } catch {
+                XCTAssertNotNil(error as? DevOperationRunnerError)
+            }
+        }
+    }
+
+    func testSetupBlocksIncompleteOrChangedPreview() async {
+        let model = DevSyncSetupModel(engine: engine)
+        model.step = .preview
+        await model.buildPreview()
+        XCTAssertTrue(model.canContinue)
+        model.preview?.scanComplete = false
+        XCTAssertFalse(model.canContinue)
+        model.preview?.scanComplete = true
+        model.draft.displayName = "Changed pair"
+        XCTAssertFalse(model.canContinue)
+        model.step = .compatibility
+        XCTAssertFalse(model.canContinue)
     }
 
     // MARK: Sidebar badge

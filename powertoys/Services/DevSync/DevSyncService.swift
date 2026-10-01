@@ -8,6 +8,10 @@ nonisolated final class DevSyncService: DevSyncEngine, @unchecked Sendable {
         var values: [UUID: DevSyncPairEngine] = [:]
 
         func engine(_ id: UUID) -> DevSyncPairEngine? { values[id] }
+        func require(_ id: UUID) throws -> DevSyncPairEngine {
+            guard let engine = values[id] else { throw DevOperationRunnerError.rootUnavailable }
+            return engine
+        }
         func all() -> [DevSyncPairEngine] { Array(values.values) }
         func set(_ engine: DevSyncPairEngine, id: UUID) { values[id] = engine }
         func remove(_ id: UUID) -> DevSyncPairEngine? { values.removeValue(forKey: id) }
@@ -170,7 +174,7 @@ nonisolated final class DevSyncService: DevSyncEngine, @unchecked Sendable {
                 sensitive.append(prefix + action.relativePath)
                 projectSummary.sensitiveIncludedCount += 1
             }
-            add(projectSummary, to: &summary)
+            summary.add(projectSummary)
         }
         summary.managedLinksToCreate += catalog.output.projectsToLink.count
         var warnings = catalog.probe.warnings
@@ -243,8 +247,8 @@ nonisolated final class DevSyncService: DevSyncEngine, @unchecked Sendable {
     }
 
     func updateConfiguration(pairID: UUID, configuration: DevSyncConfiguration) async throws {
-        guard let engine = await engines.engine(pairID) else { return }
-        await engine.updateConfiguration(configuration)
+        let engine = try await engines.require(pairID)
+        try await engine.updateConfiguration(configuration)
         yield(.pairs(await stateStore.loadPairs()))
     }
 
@@ -256,15 +260,15 @@ nonisolated final class DevSyncService: DevSyncEngine, @unchecked Sendable {
     func previewPending(pairID: UUID) async -> DevSyncPlan? { await engines.engine(pairID)?.previewPending() }
     func syncProject(pairID: UUID, projectID: UUID) async { await engines.engine(pairID)?.syncProject(projectID) }
     func previewProject(pairID: UUID, projectID: UUID) async -> DevSyncPlan? { await engines.engine(pairID)?.previewProject(projectID) }
-    func moveToExternal(pairID: UUID, projectID: UUID) async throws { try await engines.engine(pairID)?.moveToExternal(projectID) }
-    func bringInternal(pairID: UUID, projectID: UUID) async throws { try await engines.engine(pairID)?.bringInternal(projectID) }
+    func moveToExternal(pairID: UUID, projectID: UUID) async throws { try await engines.require(pairID).moveToExternal(projectID) }
+    func bringInternal(pairID: UUID, projectID: UUID) async throws { try await engines.require(pairID).bringInternal(projectID) }
     func setProjectExcluded(pairID: UUID, projectID: UUID, excluded: Bool) async { await engines.engine(pairID)?.setProjectExcluded(projectID, excluded: excluded) }
     func includeCandidate(pairID: UUID, relativePath: String) async { await engines.engine(pairID)?.includeCandidate(relativePath: relativePath) }
-    func repairLink(pairID: UUID, projectID: UUID) async throws { try await engines.engine(pairID)?.repairLink(projectID) }
-    func adoptLink(pairID: UUID, relativePath: String) async throws { try await engines.engine(pairID)?.adoptLink(relativePath: relativePath) }
-    func decideMissingProject(pairID: UUID, projectID: UUID, decision: DevMissingProjectDecision) async throws { try await engines.engine(pairID)?.decideMissingProject(projectID, decision: decision) }
-    func resolveDrift(pairID: UUID, projectID: UUID, relativePath: String, resolution: DevDriftResolution) async throws { try await engines.engine(pairID)?.resolveDrift(projectID: projectID, relativePath: relativePath, resolution: resolution) }
-    func resolveConflict(pairID: UUID, conflictID: UUID, resolution: DevConflictResolution) async throws { try await engines.engine(pairID)?.resolveConflict(conflictID, resolution: resolution) }
+    func repairLink(pairID: UUID, projectID: UUID) async throws { try await engines.require(pairID).repairLink(projectID) }
+    func adoptLink(pairID: UUID, relativePath: String) async throws { try await engines.require(pairID).adoptLink(relativePath: relativePath) }
+    func decideMissingProject(pairID: UUID, projectID: UUID, decision: DevMissingProjectDecision) async throws { try await engines.require(pairID).decideMissingProject(projectID, decision: decision) }
+    func resolveDrift(pairID: UUID, projectID: UUID, relativePath: String, resolution: DevDriftResolution) async throws { try await engines.require(pairID).resolveDrift(projectID: projectID, relativePath: relativePath, resolution: resolution) }
+    func resolveConflict(pairID: UUID, conflictID: UUID, resolution: DevConflictResolution) async throws { try await engines.require(pairID).resolveConflict(conflictID, resolution: resolution) }
     func explain(pairID: UUID, projectID: UUID, relativePath: String) async -> DevFilePolicyDecision? { await engines.engine(pairID)?.explain(projectID: projectID, relativePath: relativePath) }
 
     private func makeEngine(pair: DevSyncPair, executable: URL) -> DevSyncPairEngine {
@@ -360,22 +364,6 @@ nonisolated final class DevSyncService: DevSyncEngine, @unchecked Sendable {
         })
     }
 
-    private func add(_ source: DevPlanSummary, to target: inout DevPlanSummary) {
-        target.copyToExternalCount += source.copyToExternalCount
-        target.copyToExternalBytes += source.copyToExternalBytes
-        target.copyToInternalCount += source.copyToInternalCount
-        target.copyToInternalBytes += source.copyToInternalBytes
-        target.managedLinksToCreate += source.managedLinksToCreate
-        target.retainedExternalOnlyCount += source.retainedExternalOnlyCount
-        target.safetyMoveCount += source.safetyMoveCount
-        target.deletionCount += source.deletionCount
-        target.conflictCount += source.conflictCount
-        target.blockedPathCount += source.blockedPathCount
-        target.sensitiveIncludedCount += source.sensitiveIncludedCount
-        target.ignoredBytes += source.ignoredBytes
-        target.requiredFreeBytes += source.requiredFreeBytes
-    }
-
     private func removeSafetyStore(pair: DevSyncPair) async throws {
         let root = pair.externalRoot.url.appendingPathComponent(DevSyncDefaults.systemDirectoryName, isDirectory: true)
         let target = root.appendingPathComponent(pair.id.uuidString, isDirectory: true)
@@ -433,5 +421,23 @@ nonisolated final class DevSyncService: DevSyncEngine, @unchecked Sendable {
                 try FileManager.default.createDirectory(at: current, withIntermediateDirectories: false)
             }
         }
+    }
+}
+
+extension DevPlanSummary {
+    nonisolated mutating func add(_ source: DevPlanSummary) {
+        self.copyToExternalCount += source.copyToExternalCount
+        self.copyToExternalBytes += source.copyToExternalBytes
+        self.copyToInternalCount += source.copyToInternalCount
+        self.copyToInternalBytes += source.copyToInternalBytes
+        self.managedLinksToCreate += source.managedLinksToCreate
+        self.retainedExternalOnlyCount += source.retainedExternalOnlyCount
+        self.safetyMoveCount += source.safetyMoveCount
+        self.deletionCount += source.deletionCount
+        self.conflictCount += source.conflictCount
+        self.blockedPathCount += source.blockedPathCount
+        self.sensitiveIncludedCount += source.sensitiveIncludedCount
+        self.ignoredBytes += source.ignoredBytes
+        self.requiredFreeBytes += source.requiredFreeBytes
     }
 }

@@ -560,7 +560,27 @@ final class DevSyncPairEngineTests: XCTestCase {
         XCTAssertEqual(manager.jobs[0].state, .queued)
     }
 
+    func testPendingPreviewIncludesManualChangesBeforeTheyAreDue() async throws {
+        let root = URL(fileURLWithPath: #filePath).deletingLastPathComponent().deletingLastPathComponent()
+            .appendingPathComponent("tmp/redesign/audit-cloudsync/preview-\(UUID().uuidString)")
+        let fixture = try await makeFixture(fixtureRoot: root, configure: {
+            $0.activityPreset = .manualOnly
+            $0.timing = DevActivityPreset.manualOnly.timing
+        })
+        addTeardownBlock {
+            await fixture.engine.stop()
+            try? FileManager.default.removeItem(at: root)
+        }
+        await fixture.engine.start()
+        try Data("changed manual content".utf8).write(to: fixture.internalProject.appendingPathComponent("source.swift"))
+        await fixture.engine.noteEvents(side: .internal, relativePaths: ["app/source.swift"])
+        let preview = await fixture.engine.previewPending()
+        XCTAssertTrue(preview?.actions.contains { $0.kind == .copyPath && $0.relativePath == "app/source.swift" } == true)
+        XCTAssertEqual(try Data(contentsOf: fixture.externalProject.appendingPathComponent("source.swift")), Data("source".utf8))
+    }
+
     private func makeFixture(
+        fixtureRoot: URL? = nil,
         name: String = UUID().uuidString,
         executable: URL = URL(fileURLWithPath: "/usr/bin/rsync"),
         gitRepository: Bool = false,
@@ -570,7 +590,7 @@ final class DevSyncPairEngineTests: XCTestCase {
         withMutationActivity: DevMutationActivity = .live,
         configure: (inout DevSyncConfiguration) -> Void = { _ in }
     ) async throws -> PairFixture {
-        let root = temporaryRoot.appendingPathComponent(name, isDirectory: true)
+        let root = fixtureRoot ?? temporaryRoot.appendingPathComponent(name, isDirectory: true)
         let internalRoot = root.appendingPathComponent("internal", isDirectory: true)
         let externalRoot = root.appendingPathComponent("external", isDirectory: true)
         let internalProject = internalRoot.appendingPathComponent("app", isDirectory: true)
