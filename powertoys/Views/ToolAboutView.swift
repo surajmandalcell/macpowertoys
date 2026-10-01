@@ -13,16 +13,13 @@ struct ToolAboutView: View {
     let toolId: String
     var showsModalCloseButton = false
     var showsSettings = true
-    var changed: () -> Void = {}
     @Environment(\.dismiss) private var dismiss
     @AppStorage private var storedTab: String
 
-    init(toolId: String, showsModalCloseButton: Bool = false, showsSettings: Bool = true,
-         changed: @escaping () -> Void = {}) {
+    init(toolId: String, showsModalCloseButton: Bool = false, showsSettings: Bool = true) {
         self.toolId = toolId
         self.showsModalCloseButton = showsModalCloseButton
         self.showsSettings = showsSettings
-        self.changed = changed
         _storedTab = AppStorage(wrappedValue: MainToolTab.settings.rawValue, MainToolTab.storageKey(for: toolId))
     }
 
@@ -48,7 +45,7 @@ struct ToolAboutView: View {
                 if !showsSettings || tab.wrappedValue == .guide {
                     ForEach(tool.manual) { section in manualCard(section) }
                 } else {
-                    ToolSettingsContent(toolID: tool.id, changed: changed)
+                    ToolSettingsContent(toolID: tool.id)
                         .frame(maxWidth: .infinity, alignment: .topLeading)
                 }
             }
@@ -77,7 +74,7 @@ struct ToolAboutView: View {
 
     private func tabs(_ tool: any Tool) -> some View {
         OnePlusTabStrip(tabs: [OnePlusTab(.settings, "Settings"), OnePlusTab(.guide, "How to use")], selection: tab) {
-            if let menuTool = IndividualMenuBarTool(rawValue: tool.id) { MainMenuBarPlacement(tool: menuTool, changed: changed) }
+            if let menuTool = IndividualMenuBarTool(rawValue: tool.id) { MainMenuBarPlacement(tool: menuTool) }
         }
         .accessibilityIdentifier("tool.\(tool.id).page")
     }
@@ -100,12 +97,10 @@ struct ToolAboutView: View {
 
 private struct MainMenuBarPlacement: View {
     let tool: IndividualMenuBarTool
-    let changed: () -> Void
     @AppStorage private var mode: MenuBarDisplayMode
 
-    init(tool: IndividualMenuBarTool, changed: @escaping () -> Void) {
+    init(tool: IndividualMenuBarTool) {
         self.tool = tool
-        self.changed = changed
         _mode = AppStorage(wrappedValue: tool.displayMode(), tool.preferenceKey)
     }
 
@@ -117,6 +112,6 @@ private struct MainMenuBarPlacement: View {
                 .fixedSize(horizontal: true, vertical: false)
                 .accessibilityIdentifier("tool.\(tool.id).menu-bar-icon")
         }
-        .onChange(of: mode) { _, _ in IndividualMenuBarController.shared.refresh(); changed() }
+        .onChange(of: mode) { _, _ in IndividualMenuBarController.shared.refresh() }
     }
 }

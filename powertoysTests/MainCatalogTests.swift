@@ -3,14 +3,8 @@ import XCTest
 
 @MainActor
 final class MainCatalogTests: XCTestCase {
-    func testMainNavigationKeepsModifiedStateAndToolPagesStable() throws {
+    func testMainNavigationKeepsToolPagesStable() throws {
         let home = try sourceFile("powertoys/Views/HomeView.swift")
-        let selectionStart = try XCTUnwrap(home.range(of: ".onChange(of: selectedTool)"))
-        let selectionEnd = try XCTUnwrap(home.range(of: ".onReceive(NotificationCenter.default.publisher(for: .marketplaceReceiptsChanged)"))
-        let defaultsStart = try XCTUnwrap(home.range(of: "private func observePreferences()"))
-        XCTAssertFalse(home[selectionStart.lowerBound..<selectionEnd.lowerBound].contains("modifiedRevision += 1"))
-        XCTAssertTrue(home[defaultsStart.lowerBound...].contains("modifiedRevision += 1"))
-        XCTAssertTrue(home.contains("ToolSettingsPreferenceObserver(keys: Set(SettingsRegistry.entries.map(\\.key)))"))
         XCTAssertFalse(home.contains("publisher(for: UserDefaults.didChangeNotification)"))
         XCTAssertFalse(home.contains(".id(toolID)"))
 
@@ -18,31 +12,6 @@ final class MainCatalogTests: XCTestCase {
         XCTAssertFalse(tool.contains(".id(tool.id)"))
         XCTAssertTrue(tool.contains("MainToolTab(rawValue: storedTab) ?? .settings"))
         XCTAssertTrue(home.contains("case .manual(let id): MainToolTab.select(.guide, for: id)"))
-
-        let sidebar = try sourceFile("powertoys/Views/ToolSidebarView.swift")
-        XCTAssertTrue(sidebar.contains("@State private var hasChanges = false"))
-        XCTAssertFalse(sidebar.contains("private var hasChanges: Bool"))
-        XCTAssertTrue(sidebar.contains("Task.detached(priority: .utility) { SMAppService.mainApp.status }"))
-        XCTAssertFalse(sidebar.contains("SettingsRegistry.hasChanges()"))
-    }
-
-    func testLauncherPreferencesIgnoreWindowStateButKeepActualSettingChanges() throws {
-        let suite = "MainCatalogTests.\(UUID().uuidString)"
-        let defaults = try XCTUnwrap(UserDefaults(suiteName: suite))
-        defer { defaults.removePersistentDomain(forName: suite) }
-        var changes = 0
-        let observer = ToolSettingsPreferenceObserver(keys: Set(SettingsRegistry.entries.map(\.key)), defaults: defaults) {
-            changes += 1
-        }
-        defer { observer.stop() }
-        for key in ["systemMonitor.windowPage", "windowState.main", "systemMonitor.trayPage"] {
-            defaults.set("cpu", forKey: key)
-            NotificationCenter.default.post(name: UserDefaults.didChangeNotification, object: defaults)
-        }
-        XCTAssertEqual(changes, 0)
-        defaults.set(false, forKey: "app.showTray")
-        NotificationCenter.default.post(name: UserDefaults.didChangeNotification, object: defaults)
-        XCTAssertEqual(changes, 1)
     }
 
     func testMainCatalogPreparesRowsOutsideBodyEvaluation() throws {
@@ -67,27 +36,6 @@ final class MainCatalogTests: XCTestCase {
         let marketplace = try sourceFile("powertoys/Views/Marketplace/MarketplaceSettingsView.swift")
         XCTAssertTrue(marketplace.contains("@State private var installed: [MarketplaceEntry]"))
         XCTAssertFalse(marketplace.contains("private var installed: [MarketplaceEntry] { manager.entries.filter"))
-
-        let modified = try sourceFile("powertoys/Views/Main/MainModifiedView.swift")
-        let modifiedBody = try XCTUnwrap(modified.range(of: "var body: some View"))
-        let rowBuilder = try XCTUnwrap(modified.range(of: "static func groupRows"))
-        let modifiedRender = modified[modifiedBody.lowerBound..<rowBuilder.lowerBound]
-        XCTAssertFalse(modifiedRender.contains(".map"))
-        XCTAssertFalse(modifiedRender.contains(".filter"))
-        XCTAssertTrue(modified.contains("@State private var groupedDifferences"))
-    }
-
-    func testModifiedPairsOnlyAdjacentGroupsWithEqualRowCounts() {
-        XCTAssertTrue(MainModifiedView.groupRows([]).isEmpty)
-        XCTAssertEqual(MainModifiedView.groupRows([
-            ("app", 1), ("rclone", 3), ("ruler", 5), ("awake", 1), ("logs", 2), ("nettoys", 1)
-        ]), [["app"], ["rclone"], ["ruler"], ["awake"], ["logs"], ["nettoys"]])
-        XCTAssertEqual(MainModifiedView.groupRows([
-            ("app", 1), ("ruler", 5), ("awake", 1)
-        ]), [["app"], ["ruler"], ["awake"]])
-        XCTAssertEqual(MainModifiedView.groupRows([
-            ("app", 1), ("rclone", 1), ("ruler", 4), ("awake", 4), ("logs", 2), ("nettoys", 2)
-        ]), [["app", "rclone"], ["ruler"], ["awake"], ["logs", "nettoys"]])
     }
 
     func testSearchMatchesEveryFieldAndRequiresEveryTerm() {
@@ -124,7 +72,7 @@ final class MainCatalogTests: XCTestCase {
         let pages: [(String, MainPageRoute)] = [
             ("all-tools", .catalog(.all)), ("favorites", .catalog(.favorites)),
             ("settings", .settings(.general)), ("settings-marketplace", .settings(.marketplace)),
-            ("settings-about", .settings(.about)), ("modified", .modified)
+            ("settings-about", .settings(.about))
         ]
         for (page, route) in pages { XCTAssertEqual(MainPageRoute.resolve(page, toolIDs: ids), route) }
         for id in ids {

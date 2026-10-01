@@ -1,14 +1,11 @@
 import SwiftUI
 import OnePlusUI
-import ServiceManagement
 
 struct ToolSidebarView: View {
     @Binding var selectedTool: String?
     @Binding var searchText: String
-    var modifiedRevision: Int
     var searchFocusTrigger = 0
     @State private var settings = SettingsManager.shared
-    @State private var hasChanges = false
     @State private var visibleTools: [any Tool] = []
 
     var body: some View {
@@ -31,21 +28,10 @@ struct ToolSidebarView: View {
                     .contextMenu { MainToolContextMenu(tool: tool) { selectedTool = tool.id } }
             }
         } bottom: {
-            OnePlusNavRow("Modified", systemImage: "arrow.counterclockwise", selected: selectedTool == "modified") {
-                selectedTool = "modified"
-            }
-            .disabled(!hasChanges)
             OnePlusNavRow("Settings", systemImage: "gearshape", selected: selectedTool == "settings") {
                 selectedTool = "settings"
             }
             OnePlusNavRow("Exit", systemImage: "rectangle.portrait.and.arrow.right") { NSApp.terminate(nil) }
-        }
-        .task(id: modifiedRevision) {
-            // Login Items status waits on a system service; never query it during layout.
-            let status = await Task.detached(priority: .utility) { SMAppService.mainApp.status }.value
-            guard !Task.isCancelled else { return }
-            hasChanges = status == .enabled || status == .requiresApproval
-                || SettingsRegistry.entries.contains { $0.id != "app.openAtLogin" && $0.isModified() }
         }
         .onChange(of: searchText, initial: true) { _, _ in refreshVisibleTools() }
         .onReceive(NotificationCenter.default.publisher(for: .marketplaceReceiptsChanged)) { _ in refreshVisibleTools() }

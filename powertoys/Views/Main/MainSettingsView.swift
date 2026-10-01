@@ -5,7 +5,6 @@ import ServiceManagement
 struct MainSettingsView: View {
     @Binding var tab: MainSettingsTab
     var showManual: (String) -> Void = { _ in }
-    let changed: () -> Void
 
     var body: some View {
         OnePlusPage {
@@ -14,7 +13,7 @@ struct MainSettingsView: View {
             OnePlusTabStrip(tabs: MainSettingsTab.allCases.map { OnePlusTab($0, $0.title) }, selection: $tab)
         } content: {
             switch tab {
-            case .general: MainGeneralSettings(changed: changed)
+            case .general: MainGeneralSettings()
             case .marketplace: MarketplaceSettingsView()
             case .about: MainAboutSettings(showManual: showManual)
             }
@@ -24,7 +23,6 @@ struct MainSettingsView: View {
 }
 
 private struct MainGeneralSettings: View {
-    let changed: () -> Void
     @AppStorage(AppAppearance.storageKey) private var appearance = AppAppearance.dark
     @AppStorage("app.closeMainWindowAfterOpeningTool") private var closeMainAfterOpen = false
     @AppStorage("app.showTray") private var showTray = true
@@ -42,11 +40,7 @@ private struct MainGeneralSettings: View {
             }.fixedSize(horizontal: false, vertical: true)
             shortcutCard
         }
-        .onChange(of: appearance) { _, value in value.apply(); changed() }
-        .onChange(of: closeMainAfterOpen) { changed() }
-        .onChange(of: showTray) { changed() }
-        .onChange(of: sync.isEnabled) { changed() }
-        .onChange(of: loginStatus) { changed() }
+        .onChange(of: appearance) { _, value in value.apply() }
         .onReceive(NotificationCenter.default.publisher(for: NSApplication.didBecomeActiveNotification)) { _ in
             loginStatus = SMAppService.mainApp.status
         }
