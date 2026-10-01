@@ -29,6 +29,9 @@ final class SystemMonitorStatusTests: XCTestCase {
         }
         let widths = Dictionary(uniqueKeysWithValues: items.map { ($0.metric, SystemMonitorStatusText.width(for: $0)) })
         XCTAssertLessThan(SystemMonitorStatusText.length(for: items, widths: widths), 1_280)
+        let bits = SystemMonitorMenuItemConfiguration(metric: .network, networkUnit: .bits)
+        XCTAssertGreaterThanOrEqual(SystemMonitorStatusText.width(for: bits),
+                                    SystemMonitorStatusText.width(of: "↓102 Mb/s ↑102 Mb/s"))
         for item in items {
             for text in SystemMonitorMenuRenderer.widthCandidates(for: item) {
                 XCTAssertLessThanOrEqual(SystemMonitorStatusText.width(of: text), widths[item.metric]!, text)
