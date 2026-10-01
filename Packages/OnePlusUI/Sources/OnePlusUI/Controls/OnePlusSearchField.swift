@@ -90,7 +90,7 @@ private struct OnePlusNativeSearch: NSViewRepresentable {
     }
 }
 
-final class OnePlusSearchView: NSView, NSSearchFieldDelegate {
+class OnePlusSearchView: NSView, NSSearchFieldDelegate {
     let field: NSSearchField = OnePlusNativeSearchField()
     let hint = NSTextField(labelWithString: "")
     var changed: (String) -> Void = { _ in }
@@ -134,8 +134,9 @@ final class OnePlusSearchView: NSView, NSSearchFieldDelegate {
     }
     override func mouseDown(with event: NSEvent) {
         guard field.isEnabled else { return }
+        // Unhandled child events arrive here through nextResponder.
+        // Sending them back to the field would recurse.
         window?.makeFirstResponder(field)
-        field.mouseDown(with: event)
     }
     func updateText(_ text: String) {
         if let editor = field.currentEditor() as? NSTextView {

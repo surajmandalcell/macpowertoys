@@ -5,6 +5,50 @@ import XCTest
 
 @MainActor
 final class OnePlusSearchTests: XCTestCase {
+    func testSearchMouseDownReturnsWithoutReenteringContainer() throws {
+        let view = CountingSearchView(frame: NSRect(x: 0, y: 0, width: 260, height: 32))
+        let window = NSWindow(contentRect: NSRect(x: -10000, y: -10000, width: 260, height: 32),
+                              styleMask: .borderless, backing: .buffered, defer: false)
+        window.isReleasedWhenClosed = false
+        defer { window.close() }
+        window.contentView = view
+        view.field.stringValue = "existing query"
+        view.layoutSubtreeIfNeeded()
+
+        // Native controls forward unhandled mouse events through nextResponder.
+        // Bound reentry in this test so the original defect fails without hanging.
+        for target in [view, view.field] {
+            view.mouseDownCount = 0
+            if target === view.field {
+                view.field.isEditable = false
+                view.field.isSelectable = false
+            }
+            let point = target === view ? NSPoint(x: 2, y: 2) : NSPoint(x: view.field.frame.midX, y: view.field.frame.midY)
+            let event = try XCTUnwrap(NSEvent.mouseEvent(with: .leftMouseDown,
+                location: view.convert(point, to: nil), modifierFlags: [], timestamp: 0,
+                windowNumber: window.windowNumber, context: nil, eventNumber: 0,
+                clickCount: 1, pressure: 1))
+            target.mouseDown(with: event)
+            XCTAssertEqual(view.mouseDownCount, 1, "A search click must not cycle through the container.")
+        }
+        view.field.isEditable = true
+        view.field.isSelectable = true
+        window.makeFirstResponder(nil)
+        view.mouseDownCount = 0
+        let point = view.convert(NSPoint(x: view.field.frame.midX, y: view.field.frame.midY), to: nil)
+        let down = try XCTUnwrap(NSEvent.mouseEvent(with: .leftMouseDown,
+            location: point, modifierFlags: [], timestamp: 1, windowNumber: window.windowNumber,
+            context: nil, eventNumber: 1, clickCount: 1, pressure: 1))
+        let up = try XCTUnwrap(NSEvent.mouseEvent(with: .leftMouseUp,
+            location: point, modifierFlags: [], timestamp: 1.1, windowNumber: window.windowNumber,
+            context: nil, eventNumber: 2, clickCount: 1, pressure: 0))
+        NSApplication.shared.postEvent(up, atStart: true)
+        view.field.mouseDown(with: down)
+        XCTAssertLessThanOrEqual(view.mouseDownCount, 1, "Editable field clicks must return without a cycle.")
+        _ = NSApplication.shared.nextEvent(matching: .leftMouseUp, until: .distantPast, inMode: .default, dequeue: true)
+        XCTAssertFalse(window.isVisible)
+    }
+
     func testExplicitFindSelectsTheCurrentQuery() throws {
         let root = { (trigger: Int) in OnePlusSidebarSearch(text: .constant("existing query"), focusTrigger: trigger) }
         let host = NSHostingView(rootView: root(0))
@@ -93,5 +137,14 @@ final class OnePlusSearchTests: XCTestCase {
                 }
             }
         }
+    }
+}
+
+@MainActor
+private final class CountingSearchView: OnePlusSearchView {
+    var mouseDownCount = 0
+    override func mouseDown(with event: NSEvent) {
+        mouseDownCount += 1
+        if mouseDownCount == 1 { super.mouseDown(with: event) }
     }
 }
