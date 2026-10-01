@@ -15,13 +15,13 @@ final class OnePlusMotionTests: XCTestCase {
     }
 
     func testSharedHoverSourcesHaveNoMotionOrGeometryEffects() throws {
-        let forbidden = try NSRegularExpression(pattern: #"\.\s*(animation|transition|contentTransition|scaleEffect|offset|matchedGeometryEffect)\s*\(|\bwithAnimation\s*\("#)
+        let forbidden = try NSRegularExpression(pattern: #"\.\s*(animation|transition|contentTransition|scaleEffect|offset|matchedGeometryEffect)\s*\(|\bwithAnimation\s*\(|\bNSAnimationContext\b|\.\s*animator\s*\("#)
         let sources = URL(fileURLWithPath: #filePath).deletingLastPathComponent()
             .deletingLastPathComponent().deletingLastPathComponent().appendingPathComponent("Sources/OnePlusUI")
         let files = try XCTUnwrap(FileManager.default.enumerator(at: sources, includingPropertiesForKeys: nil))
         for case let file as URL in files where file.pathExtension == "swift" {
             let source = try String(contentsOf: file, encoding: .utf8)
-            guard source.contains(".onHover") else { continue }
+            guard source.contains(".onHover") || source.contains("func mouseEntered(") else { continue }
             let controls = source.replacingOccurrences(of: ".offset(y: OnePlusMetrics.dotTitleCapOffset)", with: "")
             XCTAssertNil(forbidden.firstMatch(in: controls, range: NSRange(controls.startIndex..., in: controls)), file.path)
         }
