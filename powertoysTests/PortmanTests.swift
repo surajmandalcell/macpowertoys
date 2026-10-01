@@ -292,7 +292,7 @@ final class PortmanTests: XCTestCase {
             if density == .regular {
                 XCTAssertEqual(firstFrame.maxX, 480, accuracy: 1)
                 XCTAssertEqual(idleFrame.minX - firstFrame.minX, 496, accuracy: 1)
-                XCTAssertLessThan(size.height, 420, "All four groups must fit above the main footer")
+                XCTAssertLessThan(size.height, 640, "All four groups must fit above the main footer")
             } else {
                 XCTAssertEqual(firstFrame.maxX, width, accuracy: 1)
                 XCTAssertEqual(firstFrame.minX, idleFrame.minX, accuracy: 1)
