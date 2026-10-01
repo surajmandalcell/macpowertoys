@@ -1,5 +1,89 @@
 # Diskman Troubleshooting
 
+## External app and source disks can be unlocked, 2026-10-01
+
+- **Symptom:** An external disk that holds the running app or repository was
+  eligible for writes after unlock. The startup disk could be absent from
+  Modify because macOS reports its physical kind as Unknown.
+- **Cause:** Manageability checked internal and removable flags alone. It did
+  not map protected mounted volumes to their physical APFS stores.
+- **Invariant:** Resolve the startup, app, and available source volume before
+  inventory. Protect every backing physical disk and display its reason.
+  Refuse writes when that mapping cannot be verified. Keep read-only Verify
+  available and repeat identity, protection, and lock checks before execution.
+- **Check:** The live standalone check protects disk0 and disk6 while allowing
+  the authorized SD. Removing the protected-volume result makes it fail.
+  The regression covers APFS stores, snapshots, malformed stores, internal
+  media, images, protection reasons, and preview execution. Run it on CI.
+
+## Device progress and failure refresh are incomplete, 2026-10-01
+
+- **Symptom:** Progress could scroll away, failed eject retained an old list,
+  and an unmounted ExFAT volume lost its format label.
+- **Cause:** Progress lived in the scroll content, eject refreshed only after
+  success, and format detection depended on a mounted Foundation volume.
+- **Invariant:** Keep action and target progress in the fixed page footer.
+  Refresh after success and failure and report refresh failure explicitly.
+  Read native diskutil filesystem metadata when a volume is unmounted.
+  Show both proposed partitions and the full erase consequence before review.
+- **Check:** The native SD run covered every supported operation. The source
+  harness retained ExFAT while unmounted. A blocked eject named the owned tail
+  PID and succeeded after it closed. The final one-volume DISKMAN ExFAT layout
+  passed filesystem verification and was safely ejected. The logging wrapper
+  failed after native zero-fill completion; the subsequent format and checks
+  passed. Signed progress, errors, review, and blocker controls remain open.
+
+## Stopped scan loses file paths, 2026-10-01
+
+- **Symptom:** After cancellation, a top-level file's URL becomes relative to
+  the process working directory. Results and Largest files can point elsewhere.
+- **Cause:** Partial snapshots share file and completed-folder nodes with the
+  scanner tree. Those nodes have weak parents. The scanner releases its root
+  when it stops, while the partial result remains visible.
+- **Invariant:** A snapshot root retains the source root for shared nodes.
+  Keep weak parent links and compact IDs. Do not rebuild full file URLs or
+  copy the complete tree at each progress update.
+- **Check:** Scan a temporary folder, cancel after the first nonempty snapshot,
+  then compare Results and Largest files paths after scanner release. The
+  standalone check fails on the prior source and passes with root retention.
+  Execute the focused XCTest on hosted CI and inspect signed Stop actions.
+
+## Live chart hides folded files, 2026-10-01
+
+- **Symptom:** The live treemap folds the scanner aggregate into Other when
+  its ID sorts outside the bounded prefix.
+- **Cause:** Live selection returned the prefix before reserving aggregate
+  membership. The earlier test's aggregate happened to fall inside it.
+- **Invariant:** Reserve aggregate membership in both live and complete
+  selection. Keep the other live members stable and retain measured totals.
+- **Check:** Put an aggregate beyond the old cutoff and check Space, Files,
+  and Age. All three fail on the prior source and pass after the fix. Run
+  the strengthened view test on hosted CI and inspect signed charts.
+
+## Review repeats a selected descendant, 2026-10-01
+
+- **Symptom:** Selecting `a`, `a-sibling`, and `a/nested` includes all three
+  in review and can attempt the nested removal after removing its parent.
+- **Cause:** Lexical sorting puts the sibling between the parent and child.
+  Filtering compared only the last retained entry.
+- **Invariant:** Compare ancestor paths with the complete selected-path set.
+  Keep siblings and exclude every descendant already covered by selection.
+- **Check:** The temporary-folder check fails on the prior source and passes
+  after the fix. A changed temporary file is rejected on the Trash path
+  before the system Trash service is called. Execute focused tests on CI.
+
+## Quick Look Drops Additional Selected Files, 2026-10-01
+
+- **Symptom:** Space and the context menu preview only one selected file.
+- **Cause:** Both callers reduce the selection to one entry. The window uses
+  the single-URL native Quick Look overload.
+- **Invariant:** Pass all selected real URLs and the initial URL to the native
+  collection overload. Keep table order for Space. Never preview aggregates.
+  Single-item chart and inspector previews use the same collection path.
+- **Check:** The selection regression covers two real entries with a leading
+  aggregate and an aggregate-only selection. Compile locally, execute on CI,
+  and verify native multi-file navigation and dismissal on the signed app.
+
 ## Live Inspector Facts Reset During Scan Updates
 
 - **Symptom:** Signed round 6 Home shows 0 inspector folders and no child
@@ -58,6 +142,9 @@
 - **Cause:** Diskman used separate page chrome and drew file rows itself.
 - **Invariant:** Use the fixed 1440 x 900 OnePlusUI shell, 216 pt sidebar,
   27 pt sidebar centerline, 16 pt page title top, and 24 pt page gutter.
+  Pair short Display and Scanning Settings cards in equal-width columns
+  with a 16 pt gap and top alignment. Keep their natural heights and leave
+  the Enable row outside the cards. Both Settings hosts use the shared view.
   First launch asks for a
   location. Analyze uses live summary cards, three tabs, map breadcrumbs,
   and a 260 pt inspector. Click selects; double-click enters a folder.
@@ -414,3 +501,18 @@
   the Modify body until the target is inside its viewport before clicking.
 - **Check:** Hosted run `36703912801` passes blocker dismissal, partition and
   whole-disk selection, merge review, chart selection, hover, and drill-in.
+
+
+## Chart Cache Keeps Closed Scan Subtrees, 2026-10-01
+
+- **Symptom:** Closing Diskman clears the model but its chart cache can keep
+  completed folder entries and their full descendants alive.
+- **Cause:** Treemap tiles and ring segments hold strong DiskEntry references.
+  The window kept its cache across close and replacement scans.
+- **Invariant:** Clear both cached layouts when the window disappears and
+  before a replacement scan. Stop still keeps partial results and paths.
+- **Check:** `00ff0e21` adds the weak-reference XCTest. A source-derived
+  400,001-node check fails without clearing and releases every node with it.
+  Footprint falls from 110.95 MB to 56.95 MB; freed malloc pages can remain
+  reusable. One app/test compile gate passes. `cd49d097` commits both shared
+  window hooks and the header row. Signed replay and recovery remain open.

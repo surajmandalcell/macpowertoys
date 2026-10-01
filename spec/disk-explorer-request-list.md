@@ -1,8 +1,93 @@
 # Diskman request list
 
+Local verification, run 63, 2026-10-01: all 45 DiskExplorer and
+DiskManagement app tests pass through the guarded wrapper. This includes
+chart-cache release and scan regressions. The full run later aborts on focus.
+`cd49d097` commits reviewed header and cache hooks. Installed controls,
+physical devices, memory recovery, and signed captures remain open.
+Report: `tmp/redesign/logs/w7-local-tests.md`.
+
+Recap Pro table traits H, I, 2026-10-01: `e25d7c99` gives native file
+tables, partition rows, and Review rows 33pt headers and 34pt bodies in
+both densities, alternating surfaces, and full-row hover/selection.
+`8eeb2a0f` puts Review paths and sizes beside names; full paths remain in
+help. All 13 package table checks pass in Light and Dark; each source
+batch's single app/test compile gate passes. Installed sorting, selection,
+scrolling, and Review checks remain with the orchestrator.
+Report: `tmp/redesign/logs/w4-traits-tables.md`.
+
 Requested on 2026-09-25, using [disktree](https://github.com/tobi/disktree) and
 [DaisyDisk](https://daisydiskapp.com/) as behavior references. This is an
 independent Swift and SwiftUI implementation in MacPowerToys.
+
+## Production partition audit, 2026-10-01
+
+| Status | Request | Evidence | Remaining work |
+|---|---|---|---|
+| Logic verified; signed review pending | Protect the startup disk, running app, repository, and internal disks. | `bcdb3f43` resolves each protected volume to its physical APFS stores and records a visible refusal reason. The live source harness protects disk0 and the repository/app disk6 while allowing only the test SD. Removing protected-volume lookup makes that check fail. EFI repair and preview execution are rejected. `228370aa` disables protected sidebar unlock and explains eject protection. | Run the compiled safety regressions on hosted CI. Check protected banners, disabled locks, and refusal copy in the signed app. |
+| Source updated; signed review pending | Keep progress visible, refresh after failures, and make review complete. | `bcdb3f43` keeps action and target progress in the fixed footer, refreshes after both run and eject results, reports refresh errors, retains ExFAT while unmounted, and shows both proposed partitions plus the erase warning. | Exercise progress, errors, selection after refresh, typed review, confirmation and Cancel on the signed build. |
+| SD verified; signed review pending | Exercise every supported native device operation safely. | `sdcard-guard.sh` checks the physical SD media, Secure Digital bus, removable flag, and size before each device write. Erase, split, mixed APFS/ExFAT layout, rename, mount/unmount, repair, zero-fill, add/delete, shrink/grow, HFS+ preservation merge, confirmed ExFAT merge, and eject passed. A real blocked eject identified only the owned tail process. The raw command log and final state are in `tmp/redesign/logs/w1-diskman-partition.md`. | The card was verified as one ExFAT data volume named DISKMAN, then safely ejected. Reinsert it for signed interaction. No physical hot-swap or owner process quit was tested. |
+
+The orchestrator owns the clean signed install, source-stamp and running-path
+checks, installed controls, both appearances, and hosted test execution.
+Six shared build attempts stopped only in unowned files. The final attempt
+fails in `NetToysScannerView.swift:1029` while type-checking the Response column.
+Diskman source checks pass; the full app and test build remains an integration
+gate. Exact commands and logs are in the partition report.
+
+## Scan memory follow-up, 2026-10-01
+
+`00ff0e21` adds chart-cache clearing and a regression for subtree release.
+`cd49d097` commits the window-close and replacement-scan hooks with the
+shared header row after review. Both `chartLayouts.clear()` calls compile.
+A source-derived 400,001-node check fails without clearing and passes with
+it; footprint falls from 110.95 MB to 56.95 MB and all nodes release.
+One tests-mode gate compiles the app and both test bundles. A signed
+`76ed9b89` replay shows 983,230 retained scan nodes after Stop. Stop must keep
+partial results and valid paths. The orchestrator owns clean installation,
+closed-window recovery, full replay, and the under-250 MB gate.
+Report: `tmp/redesign/logs/w4-memory2.md`.
+
+## Production analysis audit, 2026-10-01
+
+| Status | Request | Evidence | Remaining work |
+|---|---|---|---|
+| Logic verified; signed review pending | Preserve file paths after stopping a scan. | A partial snapshot retains the source root that owns shared entries' weak parents. The standalone temporary-folder check fails on the prior scanner and passes after the fix. A focused XCTest checks both Results and Largest files paths after scanner release. | Execute hosted tests. Check Stop, Quick Look, Copy Path, and Reveal in Finder on the signed build. |
+| Logic verified; signed review pending | Keep folded files visible in every live chart measure. | Live bounded selection reserves space for the scanner aggregate. An adversarial aggregate beyond the old cutoff fails in Space, Files, and Age on the prior source and passes after the fix. The existing view test now checks that boundary and preserves all shown plus hidden identities. | Execute hosted tests. Inspect live and completed charts in both appearances. |
+| Logic verified; signed review pending | Review each selected subtree once. | Removal filtering checks every selected ancestor path instead of only the adjacent sorted row. A temporary-folder fixture catches a similarly named sibling between parent and child. Changed-file Trash rejection passes without calling the Trash service. | Execute hosted tests. Check review totals, confirmation, cancellation, and unmarking. Never Trash owner data during this audit. |
+| Source updated; signed review pending | Use shared More controls and full-row review hover, and keep both manuals accurate. | The header uses OnePlusMenuButton. Review rows use onePlusTableRow, with full-row hover and a separator. About and the launcher use the same corrected first-run and double-click instructions. | Check the popup, row hover, two-line review rows, and both manuals in the signed build. |
+| Source updated; signed review pending | Apply the owner's horizontal density and instant motion correction. | Scan statistics, folder status, chart labels, inspector sizes and review totals use horizontal rows. Results search and review controls sit directly on the page. Enable and unreadable rows have no card wrapper. Scanning settings group two content rows in one card. Help uses tooltips. Browse and Cancel share the sheet footer. Treemap membership and frame animations are removed, including unused animation state and the old metric label. | Capture pending, live and completed Analyze, both table tabs, Choose Folder, Settings and About. Check label truncation, tooltips and instant updates in both appearances. The 2026-10-01 owner correction replaces earlier paired single-row cards and chart interpolation requirements. |
+
+The fifth shared build gate compiles the Debug app and both test bundles.
+The safe temporary-folder checks pass. Hosted test execution and signed
+interaction remain open. The feature inventory and build logs are in
+`tmp/redesign/logs/w1-audit-diskman.md`. The orchestrator owns installation,
+deep-link captures, live controls, both appearances, and the latency gate.
+Devices, partitions, format, erase, eject, and write locks stay with
+`diskman-partition`.
+
+## Round 11 analysis review, 2026-10-01
+
+| Status | Request | Evidence | Remaining work |
+|---|---|---|---|
+| Source fixed; signed review pending | T092: Keep Space used in accent ink. | `965f451d` passes the accent to the mono text modifier. The horizontal 28 pt summary stays on the page. | Check both signed appearances. |
+| Source fixed; signed review pending | T093: Align the standalone Enable row. | `965f451d` sets card padding to zero on that row only. Its 44 pt height, 16 pt next-card gap, and real card insets stay intact. | Check Settings in both hosts and appearances. |
+| Source fixed; hosted and signed review pending | T094: Quick Look the complete real-file selection. | `965f451d` passes ordered table selections and context-menu collections to native Quick Look. Aggregates have no preview URL. A focused regression is in the app test bundle. | Run hosted tests. Use Space and the context menu for one, many, mixed aggregate, and aggregate-only selections. Check dismissal and existing file actions. |
+| Package verified; signed review pending | T123 / O9: Compare item sizes inside the native Size column. | `04c02b3a` adds 55 x 3 pt neutral bars beside byte text, normalized after filtering. All 11 focused native table tests pass, including geometry, fractional updates, invalid inputs, selection, and plain cells. | Run hosted projection tests. Check filtered and unfiltered Results and Largest files, sorting, hover, selection, and both appearances. |
+| Source fixed; hosted and signed review pending | T118 / O4: Restore validated page and result-tab IDs. | `04e5c182` restores IDs before rendering, rejects unknown IDs, and falls back from Modify when no device is available. Search stays transient. `c5ca5a2d` starts Analyze after restored Settings without changing the selected tab. Existing explicit page routes still override saved choices. | Run hosted regressions. Check close/reopen, relaunch, invalid IDs, unavailable devices, and each explicit route. |
+
+All 12 round 10 Diskman captures were reviewed. No additional demonstrated
+layout defect was found. New signed captures and native interactions remain
+with the orchestrator. The one batch compile gate fails only on concurrent
+MainToolCard catalog-token references, with no Diskman diagnostic. The updated
+queue rule prevents a second gate. Catalog tokens are now in `6c097371`.
+See `tmp/redesign/logs/w3-audit-diskman.md` for remaining acceptance checks.
+
+## Round 12 Settings review, 2026-10-01
+
+| Status | Request | Evidence | Remaining work |
+|---|---|---|---|
+| Source fixed; signed review pending | R11 critique item 1: Pair short Display and Scanning cards. | `6f387aa3` places both existing cards in the shared Settings view's equal-width, top-aligned HStack with a 16 pt gap. The standalone Enable row and natural 172/128 pt card heights remain. Source parse and whitespace checks pass. The one tests-mode gate passes at source stamp `d0c3d0e4` and compiles the Debug app and both test bundles without running hosted tests. | Check 580 pt widths at the 1440 pt canvas, both Settings hosts, and both signed appearances. |
 
 ## Native redesign, 2026-09-29
 
@@ -70,7 +155,7 @@ arc is narrower than the 1 pt separator.
 | Verify | Keep disk write protections while changing Modify's layout. | Device header, partition map, partition rows, direct action groups, and staged review use OnePlusUI. Command checks still bind to media identity and enforce the write lock, EFI protection, and typed review. | Run hosted safety and review tests. Do not write to physical disks during redesign review. |
 | Verify | Provide first-run, scanning, completed, stopped, unreadable, and error states. | The stats update from scanner snapshots. Stable chart membership and count-based splits remain. Choose Folder is a 460 pt native sheet; unreadable rows link to Full Disk Access. | Capture each state and inspect all page deep links. |
 | Verify | Restyle Settings and About without losing preferences or guidance. | Shared cards retain chart, measure, apparent-size, hidden-file, enable, and disk-access controls. Scanning and Disk access now share equal columns with a 16 pt gap. About includes the guide and keyboard shortcuts. | Inspect the paired cards and saved settings in both appearances. |
-| Verify | Use neutral inspector and more-menu controls. | The share bar uses the shared neutral fill. The native menu uses the shared icon label. | Capture rest, hover, and open-menu states in both appearances. |
+| Verify | Use neutral inspector and more-menu controls. | The share bar uses the shared neutral fill. The header More action uses the shared OnePlusMenuButton and popup. File context menus stay native. | Capture rest, hover, and open-menu states in both appearances. |
 | Verify | Keep completed charts readable on a large home folder. | Tiny final targets fold into Other with their measured totals. Folded scanner aggregates stay explicit. Live ring bands stay fixed. Keyboard selection uses the visible layout, and grouped ring IDs cannot collide with real paths. Compiled regressions cover grouping, totals, hover hits, and live band widths. | Execute hosted checks and inspect completed treemap/rings, selection, and hover in both appearances. |
 | Verify | Route home, largest-files, results, rings, choose-folder, settings, about, and device/bsd-name pages. | The window handles every page through `.onOpenToolPage`; the shared parser now accepts nested device paths. Volume metadata loads off the main actor, and appearance does not restart a scan started by a pending page link. | Capture the first home page in dark and light and measure opening time; verify all links. |
 
@@ -83,11 +168,11 @@ compilation does not prove interaction, opening time, or appearance.
 
 | Status | Request | Evidence | Remaining work |
 |---|---|---|---|
-| Verify | Make each physical disk the Modify entry and place Eject in its sidebar row. | The separate Manage Disks row is removed. Eject keeps the existing per-media write lock and identity checks. A failed normal eject can list open processes; Close sends a normal app quit or TERM, while Force Quit sends KILL only after a separate button press. Both recheck the disk and process identity. Hosted run `36279617042` passed sidebar selection and the blocked-eject preview, including disabled quit actions in test mode. | A real process-blocked eject remains untested: the authorized 16 GB card is absent from the current disk inventory. |
+| Verify | Make each physical disk the Modify entry and place Eject in its sidebar row. | The separate Manage Disks row is removed. Eject keeps the existing per-media write lock and identity checks. A failed normal eject can list open processes; Close sends a normal app quit or TERM, while Force Quit sends KILL only after a separate button press. Both recheck the disk and process identity. Hosted run `36279617042` passed sidebar selection and the blocked-eject preview, including disabled quit actions in test mode. | The 2026-10-01 partition audit verified a real blocked eject and successful retry after the owned process closed. Check the installed blocker sheet and quit controls after reinserting the card. |
 | Verify | Publish a shallow size estimate before the deep scan and use the full chart height. | The scanner reads immediate children of each top-level folder once, publishes their allocated-size floor, then reuses that listing for exact traversal. Hosted run `36279617042` passed the progressive-scan unit check and UI navigation. Its light/dark renders show the chart using the available height, without the idle footer, and the unreadable count in a dim yellow button beside View. Hover details appear in the existing header line. | Inspect the final signed installed window when app-scoped control is available. |
 | Done | Make Modify a direct partition workspace and test native merge safety. | The disk rail, textured partition map, volume rows, and grouped action cards expose operations without an action picker. Selection shows the adjacent merge target and data-loss outcome before review; disabled actions explain why. ExFAT resize is unavailable; HFS+ and APFS resize sheets read macOS limits before review. Destructive actions require the reviewed disk ID and recheck media identity before execution. Hosted run `36216183313` passed Modify navigation, merge review, selection, focused safety tests, and light/dark renders. On the authorized 16 GB SD card (serial `0x19302912`), HFS+ shrank and grew while a 1 MB marker retained SHA-256 `30e14955...`; an adjacent HFS+ merge preserved it. Add/delete partition and forced ExFAT merge succeeded; the latter erased its marker as warned. A dry forced merge returned exit 0 with “Merge canceled”, so the runner now sends confirmation after typed review and rejects canceled output. The card is restored to one mounted `DISKMAN` ExFAT volume and passed `fsck_exfat`. The signed app and helper at `562d019` passed strict signature and source-stamp checks; the `/Applications` app launched in the background. | Native installed-window inspection remains subject to Computer Use approval. |
 | Done | Add a separate, on-demand disk tool. | `DiskExplorerTool` is in the built-in registry; its own SwiftUI window has a stable restoration ID, launcher settings, deep-link routing, and the shared Reduce Motion-aware page transition. The Debug app builds. | Verify the final signed window and position restoration. |
-| Done | Scan a whole volume or chosen folder quickly. | Home scans on opening. The POSIX walker uses `readdir` and `fstatat` off the main actor, with four top-level workers, cancellation, hidden-file choice, volume boundaries, hard-link deduplication, and unreadable counts. A 392,508-entry `/Applications` scan took 5.36–6.17 seconds in two runs on this Mac. A fixture matches `/usr/bin/du` and verifies symlink-loop handling. | Measure startup-disk behavior with the final signed app and report inaccessible paths. |
+| Done | Scan a whole volume or chosen folder quickly. | First run asks for a location. A selected source can resume on appearance. The POSIX walker uses `readdir` and `fstatat` off the main actor, with four top-level workers, cancellation, hidden-file choice, volume boundaries, hard-link deduplication, and unreadable counts. A 392,508-entry `/Applications` scan took 5.36–6.17 seconds in two runs on this Mac. A fixture matches `/usr/bin/du` and verifies symlink-loop handling. | Measure startup-disk behavior with the final signed app and report inaccessible paths. |
 | Done | Offer both treemap and circular disk views and remember the choice. | Shared preferences drive the window and launcher pickers. Both charts navigate the same scan tree and can show disk use, file count, or recency of changes. | Inspect both charts and measures in the final signed app. |
 | Done | Include core exploration and removal actions. | The workspace has volume and folder selection, breadcrumbs, size and count summaries, search, sort, Quick Look, Finder reveal, marking, review, Trash, and separately confirmed permanent deletion. Removal checks the scan root and each entry's device and inode before acting. | Exercise the non-destructive UI flow in the final signed app. |
 | Verify | Show when a scan cannot see protected files. | The scan reports unreadable items and opens Full Disk Access settings. Apple requires the user to grant this access in System Settings. | Check the denied and allowed states on the final installed app. |
@@ -166,8 +251,8 @@ a subdued yellow button next to View, with details on demand.
 | Verify | Keep Analyze's scan separate from Modify. | A page switch cancels the Analyze scan and removes its status footer. Hosted normal-mode run `36173007922` passed the Modify assertion and captured the disk inventory's own progress state without the scan footer. A separate normal-launch capture from run `36171513372` showed the visualization without an unsolicited event-access prompt. | Inspect the final signed window and its permission-dependent states. |
 | Verify | Add safe native disk and partition management. | Modify lists physical media and partition/volume structure. Native actions include verification, selected-volume repair, mount/unmount/eject, rename, erase volume/disk, repartition, add/delete/resize partitions, APFS volume and container operations, and zero-fill. Writes are limited to writable removable/external physical media with a resolvable I/O Registry media instance; the app compares that instance and the disk layout again immediately before execution and requires typed device-ID review for data-loss actions. APFS operations exclude shared-store containers and reject a changed container reference. Hosted run `36189567926` passed the replacement-media identity regression, other safety tests, Modify UI, and light/dark renders. Two read-only lookups of the authorized SD card returned the same media instance. | Inspect the updated signed app; a physical hot-swap was not performed. |
 | Verify | Show the actual mounted file system in Modify. | The SD partition type is `Microsoft Basic Data`, but macOS reports its mounted file system as ExFAT. Modify now reads the native volume-format description and shows ExFAT; APFS stores and volumes have explicit labels. The authorized card returned `ExFAT` in a direct Foundation metadata probe. Hosted run `36192321303` passed and its light and dark Modify renders both show ExFAT. | Inspect the final signed app. |
-| Done | Test destructive operations only on the authorized 16 GB SD card. | The test harness checked Secure Digital bus, 15,634,268,160-byte size, `disk10`, and card serial `0x19302912` before every operation. Erase, verify, repartition, rename, mount/unmount, partition delete/add, volume format, HFS+ resize, volume repair, zero-fill, and APFS add/delete/shrink/grow succeeded. The card was restored to one mounted ExFAT volume named `DISKMAN`; `fsck_exfat` reports it is OK. | Eject was left untested so the card remains available without physical reinsertion. |
-| Open | Add exact disk-image backup and restore if native device access can be granted safely. | `diskutil image create from disk10` and `disk10s2` both returned `Operation not permitted` because the current account cannot read raw device nodes. Imaging the mounted folder succeeded, but made a small APFS image of its files, not an exact ExFAT disk or partition clone. No clone control is exposed. The SD card remains mounted as ExFAT. | Design a supported privileged read/restore path and verify both operations on only the authorized SD card before exposing them. |
+| Done | Test destructive operations only on the authorized 16 GB SD card. | The test harness checked Secure Digital bus, 15,634,268,160-byte size, `disk10`, and card serial `0x19302912` before every operation. Erase, verify, repartition, rename, mount/unmount, partition delete/add, volume format, HFS+ resize, volume repair, zero-fill, and APFS add/delete/shrink/grow succeeded. The card was restored to one mounted ExFAT volume named `DISKMAN`; `fsck_exfat` reports it is OK. | The 2026-10-01 partition audit repeated these operations and verified both blocked and successful eject. The restored card is now safely ejected; reinsert it for installed interaction. |
+| Open | Add exact disk-image backup and restore if native device access can be granted safely. | `diskutil image create from disk10` and `disk10s2` both returned `Operation not permitted` because the current account cannot read raw device nodes. Imaging the mounted folder succeeded, but made a small APFS image of its files, not an exact ExFAT disk or partition clone. No clone control is exposed. The current SD state is recorded in the production partition audit. | Design a supported privileged read/restore path and verify both operations on only the authorized SD card before exposing them. |
 
 MiniTool's Windows-specific operations such as BitLocker, drive letters,
 NTFS/FAT conversion, dynamic disks, and MBR repair have no equivalent safe

@@ -1,5 +1,138 @@
 # System Tools Request List
 
+Local verification, run 63, 2026-10-01: `a57d0c4d` commits shared switch
+alignment and flexible selects. `e738cbed` commits Task Manager adoption.
+All 145 package tests pass, including retained-page and flexible-width checks.
+The guarded app run aborts in FocusEffectTests after 475 passes and 5 skips.
+Task Manager and Input Devices app classes had not run. No full pass is claimed.
+The orchestrator owns safe app-test completion, installation, and live checks.
+Report: `tmp/redesign/logs/w7-local-tests.md`.
+
+CI repair, run 62, 2026-10-01: the shared menu presenter must leave anchor
+clicks to the status-item toggle. Its outside-click monitor must not close
+and then reopen the panel. Task Manager panel dismissal and remembered
+selection require the next hosted run. No installed app was changed.
+Report: `tmp/redesign/logs/w7-ci-fix.md`.
+
+Background creation, run 60, 2026-10-01: cold, retained, and closed Input
+Devices, System Care, and Task Manager windows must preserve the frontmost
+app. Page routes and diagnostic panels must keep false activation intent.
+The source probe passes cold and retained ordering without activation across
+all 13 scene windows. The final app module and changed tests typecheck after
+repair of the single compile-gate error. The guarded installed replay remains
+with the orchestrator.
+Report: `tmp/redesign/logs/w6-no-activation.md`.
+
+Round 59 page performance, 2026-10-01: `58932d0c` adds the shared retained
+page host. Overview and Settings create their hosts on first visit, then keep
+page state while another page is selected. Selection stays outside content
+equality. Hidden Overview keeps its last frame without observing live metric
+changes; hidden child tasks stop before detachment. Teardown clears the graph.
+`e738cbed` commits the window adoption with navigation, header, and flexible
+picker changes. The shared picker and its layout test are in `a57d0c4d`.
+The offscreen check reduces 20 selection rebuilds to zero, sees zero builds
+for 20 hidden samples, preserves state through 10 returns, and releases the
+host on teardown. The main and window storage probes reduce 20 writes to zero.
+The one tests-mode gate compiles the app and both desktop bundles.
+Supplied signed `e0432849` Overview/Settings times are 126/141ms. Signed after
+times, complete frames, native controls, and the <=100ms P3 gate stay open for
+the orchestrator's installed handoff. Report: `tmp/redesign/logs/w6-perf-pages.md`.
+
+Round 58 Task Manager performance, 2026-10-01: `027ea904` removes the live
+selection binding from retained content and Home tiles. The tab strip still
+binds the selected page. `e0432849` keeps panel navigation in local state and
+saves on shell hide or disappearance. `e738cbed` commits the matching window
+change after review.
+Time Profiler on installed `83835ecf` records 71.4 percent
+of main-thread samples in AttributeGraph. The focused retention check changes
+selection 20 times: old content rebuilds 20 times; current content zero times.
+Retained actions, child readings, environment, profiles, and tab changes pass.
+Window and panel storage checks reduce 20 switch writes to zero and preserve
+initial restoration, external requests, hide persistence, and reopen. On signed
+`d40b9397`, window page intervals also include unrelated menu layout and Switch
+token formatting. Warm CPU, Overview, and Settings measured 108.5, 122.4, and
+126.9ms with profiling attached.
+With profiling attached, panel switches measured 192.5-468.8ms. These numbers
+use display submission and do not prove complete-frame timing. The round 14
+baseline remains open 333ms, tabs 132-163ms, Overview 123ms, and Settings 122ms.
+P1, P3, P4, and P5 stay open until the orchestrator installs the source fix and
+measures warm open, all tabs, and window pages. All three sequential batch
+compile gates pass, one per source batch. The shared window change is now
+committed in `e738cbed`.
+Report: `tmp/redesign/logs/w5-perf-tm.md`.
+
+Header action rows, run 57, 2026-10-01: the shared row puts only the
+tallest control at y20. Captions, status dots, switches, and smaller buttons
+share its center and text baseline, with 12pt gaps. NetToys MAC access and
+Input Devices counts inherit the fix. Task Manager, Diskman, Logs, System
+Care, and Portman toolbars adopt the shared row. Three focused package
+checks pass in both appearances at 1x/2x. One app/test-bundle gate passes.
+The orchestrator owns installed captures and control interaction.
+Report: `tmp/redesign/logs/w4-header-rows.md`.
+
+Round 56 page performance, 2026-10-01: Task Manager settings use flexible
+format pickers instead of seven GeometryReaders. The native package check
+passes for fixed and flexible widths in both densities. The shared picker
+file and its alignment edits are in `a57d0c4d`; `e738cbed` commits the window
+use. The one tests-mode gate compiles the app and both desktop bundles.
+Signed `76ed9b89` before maxima are main Task Manager 171.6ms and window
+Overview 144.1ms. A retained Overview tree is rejected for this batch because
+it would keep global snapshot dependencies while another page is visible.
+P3 and signed control checks stay open. The orchestrator owns the clean
+installed handoff and after measurement. Report:
+`tmp/redesign/logs/w4-perf-alltools.md`.
+
+Recap Pro table traits H, I, 2026-10-01: `e25d7c99` uses shared 33pt
+headers and 34pt body rows in both densities. Dark rows alternate #202020
+and #242424; Light uses #FAFAFA and #F2F2F2. Hover and selection cover the
+full row. Processes, menu items, cleanup candidates, history, storage,
+applications, and System Report adopt the shared geometry and row index.
+All 13 package table checks pass in Light and Dark. The table batch's one
+app/test compile gate passes. Signed scrolling, sorting, selection, focus,
+and pointer checks remain with the orchestrator.
+Report: `tmp/redesign/logs/w4-traits-tables.md`.
+
+Recap Pro metric traits A, B, C, 2026-10-01: `e14b7e38` and the shared
+`e25d7c99` edits provide values at 27pt,
+weight 550, and a 30.24pt line in both densities. Metric captions use dark
+#A0A0A0 and light #5B5B5B. Textured cards and metric menu tiles use the
+180 by 110pt grayscale ribbon at 0.07 below content. Task Manager Overview,
+detail, Remote, process detail, and menu captions adopt these roles; System
+Care and Portman inherit the shared metric style. All four focused package
+checks pass in Light and Dark, including variable font weight, caption
+contrast, texture extent, and content layering. The single app/test-bundle
+compile gate passes. Signed installed-build capture and interaction checks
+remain with the orchestrator. Report: `tmp/redesign/logs/w4-traits-cards.md`.
+
+Scroll edges, 2026-10-01: OnePlusPage no longer subtracts an outer bottom
+gutter from fixed bodies. Task Manager Overview and other page-owned scrollers
+reach the real window bottom and keep 24pt end padding inside their content.
+Input Devices Scrolling uses the shared scroll host and overlaid fixed footer.
+System Care status notices use page footer slots, with no separate outer gutter
+(source `e25d7c99`, included in the authorized traits-tables shared commit).
+All 15 focused package checks pass, covering all 13 shared canvases, footer
+clearance, and applet gear states. Four regressions fail on the old source.
+Signed populated-page scrolling, footers, and applet controls remain with the
+orchestrator. Report: `tmp/redesign/logs/w4-scroll-edges.md`.
+
+Round 48 header picks, 2026-10-01: `bd2e0963` implements Inset B
+(close x13, title 14pt after zoom) and Top B (title caps, icons, and action
+tops at y20). Applet and sheet header rows are 44pt; applet lights use C=27.
+The row amendment centers switch paint in its unchanged 24pt hit frame.
+The body moves down 4pt with its existing gaps. Offscreen render and native
+geometry checks pass (42 checks) in both appearances at 1x/2x. One
+app/test compile gate passes. Cap strokes allow one physical pixel for
+antialiasing; action frames are exact. Signed pixel captures
+and real light hover remain with the orchestrator after installation.
+Report: `tmp/redesign/logs/w4-chrome.md`.
+
+Menu-panel radius, 2026-10-01: all production status panels use the shared
+borderless nonactivating presenter and the 8pt shell token. Hosts stay cached
+on warm open. All ten package radius/sizing checks pass in Light and Dark;
+the single shared tests-mode gate compiles the Debug app and both bundles.
+Signed shadow, placement, dismissal, controls, saved tabs and <100ms warm
+open checks remain with the orchestrator. Report: `tmp/redesign/logs/w4-panel-radius.md`.
+
 Round 11 status readings, 2026-10-01: T050 checkpoints `4612187d`,
 `4f12d6e7`, `8e5ff726`, `c707a43f`, and `d761b625` reserve metric widths
 with native monospaced digits. Native title padding keeps grouped glyphs
@@ -14,6 +147,14 @@ when the last owner closes. The shared app and test-bundle compilation gate
 passes at `f52c553b`. Hosted tests, native menu crowding, and signed
 installation remain with the orchestrator.
 Report: `tmp/redesign/logs/w3-glyphs-status.md`.
+
+Round 11 shared focus, 2026-10-01: native tables keep keyboard focus after
+row clicks without focus paint when accessibility modes are off. Key-window
+reactivation preserves valid responders and active text selection. Detached,
+hidden, disabled, or fully clipped responders are cleared. All six focus
+package checks and all 17 focused chrome checks pass. Signed Tab, Shift-Tab,
+arrows, Space, Return, VoiceOver, and scroll/tab checks remain with the
+orchestrator. Report: `tmp/redesign/logs/w3-chrome.md`.
 
 Production glyph pass, 2026-10-01: `91d9a538` gives Input Devices, System
 Care, Diskman, and Task Manager distinct shared tool glyphs. Status images
@@ -61,6 +202,19 @@ passes. Signed timing, complete frames, cold Processes preparation, and native
 interaction remain open. The orchestrator owns the clean installed handoff.
 Evidence and exact commands: `tmp/redesign/logs/w4-perf-windows.md`.
 
+Round 56 Task Manager panel performance, 2026-10-01: content now has an
+equality boundary inside the shared retained native hosts. Visibility and
+sampling stay outside that boundary; metric-specific observation and the
+off-main projection remain in place. Tab descriptors are static. The
+offscreen retention check passes, including live child updates and profile
+invalidation; its equality mutation fails. Signed `76ed9b89` records one
+complete pass before the foreground guard stops: metric tabs 237-290ms,
+Home 220.3ms, Processes 508.7ms, and panel open 78.5ms. The endpoint is
+display submission. The <=100ms complete-frame gate stays open until the
+orchestrator installs and measures source `b3e5a71e`. The final app and desktop
+test-bundle compile gate passes. Evidence and exact rerun commands:
+`tmp/redesign/logs/w4-perf-tmpanel.md`.
+
 Round 11 T014-T016: both current-source visibility package checks pass.
 Presented covered windows can sample; hidden and minimized policy inputs stop.
 The selected Task Manager body stays mounted. Signed native close/minimize,
@@ -103,6 +257,9 @@ compilation pass. Hosted tests and signed interaction remain. Report: `tmp/redes
 
 | Status | Request | Evidence | Remaining work |
 |---|---|---|---|
+| Build verified; signed review pending | Round 11 T089-T091: align Scanner cells and remove standalone row chrome. | `7ae93446` reuses shared table-cell geometry in all 15 Scanner columns. Actual IP, hostname and MAC cell origins match 16pt/12pt headings in both appearances; the shared package geometry test passes. `ed44cc0d` removes inherited card padding from four standalone rows. `3145a948` makes empty scans one open 44pt row with trailing period copy and unboxes the manual permission action row. All twelve round 10 captures were reviewed; no further demonstrated defect was found. The final shared gate compiles the Debug app and both test bundles at `168eae83`, with all five changed views matching that source stamp. | Run hosted checks and signed interaction. The orchestrator owns installation. Report: `tmp/redesign/logs/w3-audit-nettoys.md`. |
+| Build verified; signed review pending | Audit every NetToys feature and apply the horizontal density and instant-motion correction. | `c125c479` protects independent settings edits and bounds Wi-Fi subprocesses. `f7294b61` fixes scanner sorting, all-down rows, duplicate import/restore, comments, archive loading and history clearing, with focused regressions. It removes toolbar and single-control cards, places metadata on the same row, and uses shared row hover. `5d5b5bca` splits toolbar expressions after the compiler timeout; `b9220f87` uses explicit optional-aware numeric table comparators, which pass a native table type-check. Actual Swift 6 fixtures pass; the shared gate compiles the Debug app and desktop-test bundles at `b4fd441d`, with all owned source/test files matching; six installed baseline pages were captured. One permitted /24 scan returned 254 unique rows and one local host. | Execute hosted tests, install a clean signed commit, and verify both appearances and all changed controls. The unsigned probe returned EHOSTUNREACH for the reachable gateway; a fresh signed scan remains required. Panel-main adopted the edit-baseline `saveChanges` API in `9d10953e`. Report: `tmp/redesign/logs/w1-audit-nettoys.md`. |
+| Phase 1 complete; extraction pending | Run NetToys as a standalone app and as the MacPowerToys package, with tagged OnePlusUI shared by both. | Local nettoys commit `570cdaa` adds the SwiftPM library/app shell, bundle Makefile, metadata, shared-rule pointers and MIT license. Debug compilation and clean-commit Release packaging pass. The packaged ad hoc signature, entitlements and source stamp pass checks. `tmp/redesign/nettoys-plan.txt` records the complete inventory and phase 2 checklist, including shared monitor ownership and the host-only fan daemon. | Freeze the current lanes, move code, publish reviewed package tags, integrate both hosts, and run signed helper and interaction checks. The orchestrator owns repos, pushes, tags and installation. Report: `tmp/redesign/logs/w1-nettoys-plan.md`. |
 | Build verified; signed review pending | Show current network data and quick actions in the main panel. | The tab uses one current route, permitted SSID, local IPv4 address, and bounded gateway probe. Existing parser and cancellable subprocess code are reused. Scan network and Copy IP are direct actions. Configuration disclosures remain. No poller was added. | Check Wi-Fi, wired, missing permission, no route, and gateway timeout in the signed build. Verify both actions, first frames, and idle work. Report: `tmp/redesign/logs/24-panels-tabs.md`. |
 | Build verified; signed review pending | Add current-network tiles to the main menu panel and prepare its data off the main thread. | The panel retains configuration, helper status, five recent anchors, and five recent failures across tab changes. Full-page routes, persistent disclosures, and feature switches remain. | Check loaded, empty, error, and expanded states in both appearances on the signed build. Report: `tmp/redesign/logs/21-menus-r8.md`. |
 | Capture review complete; empty-period fix compiled | Resolve the NetToys capture findings through round 6. | All twelve signed `3e33de2` NetToys captures were inspected. T=16, the 24pt bottom bound, trailing-chevron triggers, 16pt Scanner header inset, readable permissions, Automatic alignment, natural short lists, and History row allocation retain their corrections. `60a0890` uses "No scans in this period" when saved runs exist outside the range and reserves "No saved scans" for an empty archive. Its regression covers range changes and archive clearing. Debug and the desktop-test scheme build-for-testing pass. | Hosted regression execution, signed empty-period copy, opened popups, focus modes, populated Scanner cells and recent scans, active scrollers, quiet-machine latency, and a current live scan remain unverified. See `tmp/redesign/logs/25r9-nettoys.md`. |
@@ -148,6 +305,18 @@ compilation pass. Hosted tests and signed interaction remain. Report: `tmp/redes
 
 ## Input Devices
 
+Scroll reverse, run 52, 2026-10-01: `59122487` fixes the saved 3.0x
+endpoint. The native slider stored `3.0000000000000004`; the strict range
+guard added in `57acd38c` rejected the mouse profile before reversal or
+smoothing. The transform now accepts one floating-point step beyond each
+endpoint and honors the master gate. The source-derived regression fails
+before the fix and passes afterward for both axes, mouse and trackpad,
+smoothing on/off, and master/profile gates. The installed `38158c11` has
+an enabled scroll tap. The one compile gate fails in unowned
+`OnePlusType.swift:6` on `NSFont` concurrency safety. The orchestrator owns
+the shared build repair, hosted tests, signed installation, and real wheel
+verification. Report: `tmp/redesign/logs/w4-scroll-fix.md`.
+
 | Status | Request | Evidence | Remaining work |
 |---|---|---|---|
 | Source complete; single compile gate queued | T082: remove direct-row card insets and duplicate Input Devices panel headers. | `fa3c0e3d` applies zero onePlusCardPadding to direct panel rows, collapsible profiles, master/recovery rows, and the selector. True profile/device cards keep their insets. One Devices header has trailing count, Refresh, and chevron; the repeated Connected devices title and rule are removed. Existing saved choices and `d1bea33b` defaults remain. The source-derived header renders at 338 x 40 pt in Light and Dark. All four changed files pass a focused type check with existing dependency modules. Initial full builds fail in unowned concurrent edits. Under the owner batch rule, only `audit-input-r11-tests-retry1.log` remains queued; it also compiles the Debug app. | Review the queued gate result, run hosted InputDevicesTests, then check shell-edge alignment, independent Refresh/disclosure clicks, hover, and keyboard access in the signed build. Report: `tmp/redesign/logs/w3-audit-input.md`. |
@@ -187,9 +356,27 @@ compilation pass. Hosted tests and signed interaction remain. Report: `tmp/redes
 
 ## System Care and Mole
 
+Memory, 2026-10-01: `1529ae52` replaces each 70.52 MiB app-icon TIFF
+with an 80 x 80 CGImage and clears window icon caches on close. Signed
+`e25d7c99` grew from 85 MB at rest to 7,055 MB with 6.5 GB in Foundation.
+The isolated fixed loader holds all 91 icons below 12 MiB and returns to
+8.97 MiB after cache clearing. `1b789232` gives subprocess callers a 4 MiB
+default cap and per-chunk pools. `92e3b394` drains checksum, Git, rsync,
+and fan read pools: the 512 MiB checksum uses 2.47 MiB, down from 516.89.
+`76ed9b89` streams and caps Portman command output at 8 MiB. Four focused
+regressions compile. Each of three batches passes one tests-mode build gate.
+Remaining: hosted execution, clean signed install, the full after matrix,
+and close/reopen recovery below 250 MB. Only the orchestrator can install
+or restart. Report: `tmp/redesign/logs/w4-memory.md`.
+
 | Status | Request | Evidence | Remaining work |
 |---|---|---|---|
-| Source complete; S1 core verification pending | Complete native Trash with the frozen batch IDs, even if a sibling view changes selection. | The panel-main audit found that completion used live selection IDs. Syscare-core fixes C2 in `13b1701e`: completion uses original IDs, keeps failed IDs selected, locks shared selection, and guards duplicate Trash starts. The core report records the partial-failure and sibling-selection regressions: `tmp/redesign/logs/w2-syscare-core.md`. | Run hosted regressions and controlled signed Trash checks. Core behavior belongs to syscare-core; panel controls belong to syscare-ui. |
+| Source fixed; signed review pending | Round 12: restore the selected Maintenance Tasks underline reported in signed `43ce0eb9`. | `9631144f` moves selected paint into the shared `OnePlusTabStrip`, directly driven by its selection binding and outside the button-style body. It keeps the 36pt strip, 22pt tab gap, 2pt label-width underline, divider, disabled opacity and noninteractive paint. All 20 focused page and row/tab package checks pass. Stateful actual-source route checks pass in both appearances and fail when selected paint is removed. The signed-only failure remains outside the hidden-host reproduction. | One batched `xbuild.sh tests` gate passes at `d9b38c35` for the Debug app and both desktop test bundles. Log: `tmp/redesign/logs/syscare-ui-r12-tests.log`. The orchestrator must check initial Maintenance entry and Tasks -> History -> Tasks in both appearances on the exact signed build. Report: `tmp/redesign/logs/w3-syscare-ui.md`, Round 12. |
+| Compile and geometry verified; signed review pending | T099-T101: compact System Care help and actions, and trace the Tasks underline. T102: adopt readable history columns. | `ca9a17bb` uses Safety/Maintenance help, 44pt rows and intrinsic paired actions. `fb6619b8` uses a shared history cell layout with optional trailing time/result and raw JSON help; window Scan instructions also move to help. The source-derived hidden-host check passes in both appearances: Safety is 36pt shorter, Maintenance is 48pt shorter, Terminal is 112 x 28pt, and history uses matching 34pt rows with 12pt insets. The shared Tasks underline paints y96-97 for all three aliases, so no speculative local paint change is made. | Shared gate `168eae83` compiles the Debug app and both desktop test bundles; the current window/shared views, panel and core manager match its source. Log: `tmp/redesign/logs/audit-nettoys-r11-tests-retry2.log`. An earlier queued Debug retry is left running under the owner's single-gate rule. The orchestrator must check the installed Tasks capture discrepancy, real help, confirmations, disabled actions, and all panel scan states. Report: `tmp/redesign/logs/w3-syscare-ui.md`. |
+| Core compile and source checks pass; hosted tests and signed review pending | T102: show readable Mole history summaries and separate supplied time and result fields. | `7b606373` parses nested session action counts and deletion targets, retains optional supplied timestamps/status, and stores raw record JSON for detail/help. An actual-source fixture fails on the old dictionary output and passes on the new parser. Swift 6 parser/regression typecheck and whitespace checks pass. No cleanup command runs. Mole session JSON has no target paths, so none are invented. | Shared gate `168eae83` compiles the Debug app and both desktop test bundles; the current manager and SystemCareTests.swift match that commit exactly. Log: `tmp/redesign/logs/audit-nettoys-r11-tests-retry2.log`. No hosted tests ran and no further gate is queued. `fb6619b8` supplies matching 34pt header/body columns with 12pt insets and trailing metadata; syscare-ui reports passing both-appearance hidden-host checks. The orchestrator owns hosted regression execution and signed dark/light history interaction. Report: `tmp/redesign/logs/w3-syscare-core.md`. |
+| Design approved; implementation active | S1 phase 1: reassess System Care and propose the full makeover before app implementation. | All 18 r9 window and panel captures and the complete System Care manager/view were reviewed. Research covers six cleaner apps plus Dribbble, Pinterest, and Mobbin access limits. The self-contained dark/light mock proposes Cleanup, Storage, Applications, Maintenance, and Settings with the 356pt panel. It applies the binding horizontal-density and instant-motion correction. Mock: `tmp/redesign/syscare/syscare-mock.html`. Build spec: `tmp/redesign/syscare/syscare-spec.txt`. Report: `tmp/redesign/logs/w1-syscare-research.md`. | The approved spec now drives S1 core, window, and panel work. Signed live verification remains open. |
+| Compile verified; signed review pending | S1 lanes B/C: implement the approved five-destination window and compact cleanup panel. | `7e0404c4` adds Cleanup, Storage, Applications, Maintenance Tasks/History, and Settings General/About with all old route aliases. It uses native tables, real cached icons, paired inspector actions, shared disk/candidate views, coverage and actual Trash failures, and verified Mole action guards. `3e1161c0` shortens builders; `28a94dd8` shares the core allocator and retains exact errors. `26145e12` wires the panel fixed regions and Cleanup/General actions. Debug and desktop-test compilation, parser, route mappings, nested bundle allocation, and whitespace checks pass. | Run hosted tests. The orchestrator must install clean signed source and check all pages and panel states in both appearances, keyboard/VoiceOver, confirmations, controlled Trash, Finder/Quick Look, and exact Terminal actions. Report: `tmp/redesign/logs/w2-syscare-ui.md`. |
+| Build and fixture checks pass; hosted and signed review pending | S1 lane A: fix trusted cleanup paths, frozen Trash IDs, work ownership, coverage, bounded Mole reads, and exact application identity. | `a2962a86` and `7082f3fe` require trusted roots, current file/root identities, and no ancestor symlinks or dot traversal. `13b1701e` freezes Trash IDs and retains actual failures. `65cbbf59` waits for owned work to exit. `366b1eee` reports coverage, truncation, scoped retry, and package sizes. `3ffa6c7a` bounds, cancels, kills, and reaps CLI reads. `15e9a1bb` verifies preview support and refuses ambiguous uninstall names; `198055e4` refuses names that Mole rewrites before matching. Both shared compile gates and disposable source-derived fixture checks pass. Installed Mole 1.54.0 help confirms all four task previews and uninstall preview. | Run focused SystemCareTests on hosted CI. The orchestrator must install clean signed source and verify folder access/denial, cancel, controlled Trash and Finder Put Back, and exact Terminal actions. No cleanup command or installed app change was made by this lane. Report: `tmp/redesign/logs/w2-syscare-core.md`. |
 | Build verified; signed review pending | Show startup-disk usage before a cleanup scan in the main panel. | A utility task reads total, free, and important-usage capacity once and again after a saved scan changes. Used, Purgeable, and Free share one segment bar. The bounded-capacity regression compiles. Scan is the one primary action. Saved results, selection, and confirmed Trash remain. | Run the regression on hosted CI. Check unavailable capacity, unscanned, empty, populated, loading, failure, cancellation, and confirmed Trash states in the signed build. Report: `tmp/redesign/logs/24-panels-tabs.md`. |
 | Build verified; signed review pending | Give the cleanup menu panel a storage bar and prepared category rows. | The panel reuses `SystemCarePresentationRows.cleanup` off the main thread. A retained snapshot holds each row and category total. Analyze, Clear Scan, selection, expansion, confirmation, and recoverable Trash actions remain. A regression checks row identity and totals. | Run hosted checks and signed scan, selection, expansion, and Trash confirmation interactions. Report: `tmp/redesign/logs/21-menus-r8.md`. |
 | Captures reviewed; live checks pending | Review System Care in the round 6 signed captures. | All sixteen `3e33de2` captures were inspected. Overview retains inside activity rules and pre-scan dashes. Applications retains real sizes and icons, unavailable-size guidance, aligned headers, and a fixed full-height inspector. Mole keeps its fixed footer. Chrome uses C=27 and shared titles start at T=16 in both appearances. No owned source change was needed in this round. | Live row scrolling, application size-error selection and Retry Size, native confirmations, focus, idle CPU, and latency remain unverified. See `tmp/redesign/logs/25r9-tweaks.md`. |
@@ -198,7 +385,7 @@ compilation pass. Hosted tests and signed interaction remain. Report: `tmp/redes
 | Build verified; visual checks pending | Apply the owner's round 3 fixed-region, one-gutter, custom-select, and speed rules to every System Care page. | Storage, Cleanup, Applications, Mole, and History use fixed `OnePlusPage` hosts. Their lazy rows scroll inside the card while headers, search, inspectors, actions, and the bottom work status stay fixed. Storage, cleanup, and application row strings load on utility tasks; application rows no longer read file metadata or app icons in `body`. Value selectors use `OnePlusSelect`; Storage More remains an action menu. Debug and desktop test compilation pass. | Measure page switching and inspect all eight pages in the exact signed build. |
 | Code complete; foundation integration pending | Keep one System Care settings card stack for the tool window and main window. | `SystemCareSettingsCards(mode:)` contains the Cleanup and Safety cards with a 16pt gap. The System Care Settings page wraps it in `OnePlusPage`. | The foundation must dispatch this type directly and delete its old copy in `Views/Components/ToolPreferences.swift`, then the orchestrator must inspect both hosts. |
 | Code complete; visual checks pending | Correct the round 2 System Care screenshot findings. | `117f6b6` separates metric values from units, keeps the empty Storage action neutral, removes grain from non-metric cards, and removes explicit small button sizes. A focused metric-format regression compiles with the desktop test bundle. | The orchestrator must recapture all eight pages in dark and light. Shared window, scroller, table, row, status, tint, and contrast fixes remain with the foundation. |
-| Verify | Redesign System Care on the fixed 1240 x 840 OnePlusUI canvas. Add all eight page routes and keep native cleanup, storage drill-down, application review, Mole, history, settings, and safety behavior. | Overview uses four metric tiles and recent activity. Storage uses a segment bar, legend, and category table. Cleanup keeps one confirmed primary action. Applications show size, last use, leftovers review, and confirmed Terminal uninstall. Mole commands keep privilege prompts visible in Terminal. The Debug app and desktop-test bundle compile. | Inspect every route in dark and light, then verify cleanup confirmation, storage navigation, application review, and Mole Terminal actions in the installed build. |
+| Superseded by S1 | Redesign System Care on the fixed 1240 x 840 OnePlusUI canvas. The eight old routes remain aliases of five destinations. | Overview uses four metric tiles and recent activity. Storage uses a segment bar, legend, and category table. Cleanup keeps one confirmed primary action. Applications show size, last use, leftovers review, and confirmed Terminal uninstall. Mole commands keep privilege prompts visible in Terminal. The Debug app and desktop-test bundle compile. | Inspect every route in dark and light, then verify cleanup confirmation, storage navigation, application review, and Mole Terminal actions in the installed build. |
 | Verify | Center the pre-scan System Care tray empty state. | `7504bc2` gives both cleanup empty states the full available width. The production-width dark render shows the drive icon and `Analyze cleanup locations` centered below the actions. | Inspect the exact signed installed tray. |
 | Done | Add a large System Care interface for Mole and native cleanup. | `a073a35` added Overview, Storage, Cleanup, Applications, Mole CLI, History, Settings, and About pages. | None. |
 | Done | Add a storage view that supports visual drill-down. | The Storage page has an interactive ring, breadcrumbs, size totals, and folder drill-down. `855a250` keeps folder rows actionable and renders file rows as plain information without false hover or pressed feedback. | None. |
@@ -214,6 +401,74 @@ compilation pass. Hosted tests and signed interaction remain. Report: `tmp/redes
 | Verify | Use the new System Care cleanup-tray icon. | `SystemCareLogo` is a 512px RGBA asset with one removable coral block. Focused icon and Raycast checks pass. | Inspect launcher and Dock in the final signed app. |
 
 ## Task Manager (formerly System Monitor)
+
+Memory5, 2026-10-01: signed `d911b0fa`, PID 86076, remains at
+327.5 MiB after the owner's complete close pass. Its heap has 73 ViewGraphs
+and 29.8 MB of PropertyList elements. `2a036b02` releases the native hosting
+controller of every closed background tool window, keeping its native shell
+and size. Content rebuilds before background and explicit ordering. The
+actual-source factory probe fails on the old retained host and passes three
+controller, host, and model release cycles. Size and foreground identity stay
+unchanged; no window is ordered. The existing routing probe passes all 26
+background paths. The single gate links the app but fails on the test's
+missing Combine import. `e8243b26` fixes it; the final test typecheck passes.
+Hosted XCTest, a complete compile gate, clean signed installation, closed recovery
+below 250 MB, and complete-frame reopen timing remain with the orchestrator.
+Report: `tmp/redesign/logs/w7-memory5.md`.
+
+Memory4, 2026-10-01: signed `e0432849` has zero listed windows and a
+684.2M physical footprint in the first read-only sample. `44d8e12c`
+unmounts all 13 closed scene roots and restores them before native ordering.
+`bc4132ca` releases inactive panel roots on hide and keeps the current
+measured host. `329d6caf` reuses three 128 by 128 template glyph bitmaps.
+Nine offscreen package checks pass. Three close/reopen cycles release all
+three model instances, preserve size, and order no windows. The inactive
+tab view is released; the current tab keeps its value. The glyph probe
+reuses each bitmap for 101 requests. One app/test compile gate passes.
+The orchestrator must commit the other lanes' changes, install clean signed
+source, verify its stamp and path, repeat all windows and panel tabs, close
+all surfaces, wait 30 seconds, and record heap, footprint and reopen timing.
+The under-250 MB and fast-reopen acceptance gates remain open.
+Report: `tmp/redesign/logs/w6-memory4.md`.
+
+Memory follow-up, 2026-10-01: the signed `76ed9b89` route replay has an
+ongoing Diskman scan, so later tool deltas do not isolate their memory.
+After cancelling it through Settings, Cloud Sync All stays at 891 MB.
+Task Manager Overview first reaches 995 MB, then Processes/About return to
+899/897 MB. Warm Overview is 906 MB with the same 983,230 scan nodes.
+Its heap has 50.52 MB of SwiftUI property-list elements, compared with
+51.06 MB on About. Foundation-tagged memory is 16 KB, CG images are
+10.3-12.4 MB, IOSurface is 22.0-22.5 MB, and graphics are about 3.8 MB.
+No retained 550 MB Overview increase or large ribbon cache is demonstrated.
+The orchestrator must rerun the matrix on a clean signed build and measure
+closed-window recovery. The under-250 MB goal stays open.
+Report: `tmp/redesign/logs/w4-memory2.md`.
+
+Memory3, 2026-10-01: the signed `83835ecf` sample is 472.5 MiB with
+all 13 tool windows still visible. The next signed `d40b9397` process starts
+at 90.6 MiB with Main visible. Opening each tool on a page without a scan
+reaches 263.4 MiB. Visiting the 18 panel tabs and closing panels settles at
+305.0 MiB. All 13 tool windows remain open. Malloc allocations are
+198.1 MiB, including 40.8 MiB of SwiftUI property-list elements; the heap
+has no live DiskEntry allocations. These routes preserve the foreground.
+`a6aeff3a` adds `diagnostics/close-window/<tool-id>` through the existing
+scoped close handler. Its exact-path check fails before and passes after;
+one app/test compile gate passes. The orchestrator must install this commit,
+close each tool through the background route, wait 30 seconds, and collect
+heap and vmmap samples. The under-250 MB goal remains open. This route adds
+measurement support; it does not establish a memory reduction.
+Report: `tmp/redesign/logs/w5-memory3.md`.
+
+Process icons, 2026-10-01: `f0eaaacd` uses real cached bundle icons in the
+Processes window and panel. Bundle lookup and CGImage preparation run on a
+utility task. Command-line executables use terminal; unknown paths and app
+icons still loading keep a blank slot. Lock, gear and placeholder fallbacks
+are removed. The native 15pt slot and panel slot stay fixed. Light/Dark
+package renders pass. Actual-source checks pass Finder artwork, bundle
+reuse, eviction, cancellation and off-main work; the old source fails the
+same glyph check. One tests-mode gate compiles the app and both desktop
+test bundles. Hosted app tests and signed window/panel review remain with
+the orchestrator. Report: `tmp/redesign/logs/w4-process-icons.md`.
 
 Round 11 window source fixes are committed. T056, T057, and T061 are fixed
 in `af2303d8`; T058, T059, and the process-menu part of T060 are fixed in
@@ -234,12 +489,14 @@ signed installed-app handoff remain with the orchestrator. Report:
 
 | Status | Request | Evidence | Remaining work |
 |---|---|---|---|
+| Source and compile verified; signed review pending | Round 12, critique items 1-4: restore process sort feedback and app icons, compact Overview text, and unique Disk details. | `23d1a768` paints the native sort indicator without moving labels, caches bundle icons off the main thread in the existing 15pt slot, applies compact 11pt/9.5pt Overview roles, and keeps one 100pt Volume panel with Mount point and Status. All 12 focused package tests pass, including light/dark header paints and icon cell updates. The old header fails the same sort regression. Actual-source icon cache and layout checks pass. The single tests-mode gate compiles the app and both desktop test bundles; log: `tmp/redesign/logs/tm-window-r12-tests.log`. | The orchestrator must run hosted SystemMonitorTests, install the clean signed commit, verify source stamp and running path, and check sort clicks, bundle/fallback icons, Overview inks and bounds, and Disk in both appearances. Report: `tmp/redesign/logs/w3-tm-window.md`. |
 | Signed medians improve; Task Manager tabs remain open | P1, P4, P5 panel presenter, P6 panel: open complete panels within 100ms warm or 250ms cold and switch tabs within 100ms. | Signed `43ce0eb9` records Main/Task Manager/Portman warm open medians 16.1/38.1/79.0ms and tab medians 66.8/128.2/84.4ms at display submission. Maximum opens are 95.5/208.0/112.4ms; maximum tabs are 86.9/134.8/102.9ms. All open samples report warm. Retention fixes `720eba0a`, `0957691b`, and `7a0b9730` remain. The targeted Task Manager trace finds 118-141ms inclusive AttributeGraph CPU in failing CPU/Memory intervals, 24-35ms native scene-root updates, and only 5-7ms natural-height measurement. `547b5586` restricts Task Manager scene matching to native open URLs; its former condition also matched panel diagnostics. Eight native routes remain eligible and eight diagnostic routes are excluded. The expected speed benefit requires a signed rerun. | The single new tests-mode gate fails only in unowned ToolSettingsContent.swift:36; Main/Switch own the caller/API mismatch. The changed app file compiles. No second gate is queued. The orchestrator must install the clean integrated fix, check source stamp/path and unchanged foreground, then run the same collector and require warm opens and tabs <=100ms. Keep cold complete frames, enabled separate items, saved-host edits, closed-panel CPU, and hosted execution open. Report: `tmp/redesign/logs/w3-perf-panels.md`. |
 | Source fixes committed; signed acceptance open | T001-T008, T051, T110: verify panel latency and native behavior; fix originating display sizing and accessible status names. T108 panel Settings hooks. | `b7e222d7`, `8801bfd9`, and `0fa0407d` supply the screen ceiling before measurement and preserve natural shrink. `073f2874` names separate status buttons. Read-only AX exports Main as MacPowerToys with MenuBarIcon. `07728304` and `63daa7e9` expose focused Settings routes. `a5d188f1` splits Processes preparation, saved-profile decode, host construction, and native layout signposts. Current saved-host loading measures 0.0015ms median and 0.117ms maximum; no decode cache is justified. Sizing, retained state, hidden tasks, timing bounds, and inner popup Escape checks pass. The signed `43ce0eb9` timing comparison and Task Manager profile are recorded above. Scene routing fix `547b5586` leaves Main, Portman, content, sampling, and the timing endpoint unchanged. | The latest single batch compile stops at ToolSettingsContent.swift:36; Main/Switch own reconciliation. The orchestrator owns clean installation, actual pointer/keyboard timing and complete frames, Escape chains, foreground preservation, runtime owners, and Control-click parity. A background diagnostic profile unexpectedly changed Chrome to MacPowerToys as foreground; further opens stopped. Recheck this with the scene fix before acceptance. Manager checks stay open; macOS 27.0 and both stacked display ceilings are recorded, with no Ice or Bartender found in /Applications. Report: `tmp/redesign/logs/w3-perf-panels.md`. |
 | Build verified; signed review pending | Round 11 T053, T054, T055: dense remote window controls, stable saved-host and error frames, complete panel readings. | `f44b9584` gives window actions one horizontal 24pt row, merges Configure/Refresh into the host, puts metadata and counts on identity/header rows, and records approved 18pt values in DESIGN. `20cb65c7` reuses the existing saved-profile snapshot after a measured warm empty-state flash. `3dcf0c69` keeps error and offline window cards at 146pt with header reason help. `b22323cb` keeps zero RAM numeric and full panel readings in help, preserving the 556945c9 geometry. Light/Dark actual-source fixtures pass; previous source fails the same action, zero, warm-frame, and error-bound checks. The batch gate compiles the Debug app and both test bundles at `b4a79152`; log: `tmp/redesign/logs/remote-r11-debug.log`. | Run `SystemMonitorRemoteTests` on CI. The orchestrator must inspect cold first/later frames, native help/context menus, all host controls, Terminal, Open App, keyboard behavior, and both signed appearances. Report: `tmp/redesign/logs/w3-remote.md`. |
 | Build verified; signed review pending | B8: repair Remote Stats host editing, SSH sampling, lifecycle, and window and panel actions. | `c0dd4b4b` shares host sessions and validates user, port, and protocol data. `e901bac6` connects both card surfaces, adds validated editing, starts the exact command in Terminal, and selects the host for Open App. `2dc04d43` prevents replay of an old Add host request on page return. The bounded `oci2` probe and two real samples pass for CPU, RAM, network rates, and five disks. The private control socket is removed on close. A malformed-load check fails on previous source and passes on current source. The final shared build-for-testing gate passes. Remote parser and state tests also compile to an object against the actual Debug app module. Tests were not executed here. | Run `SystemMonitorRemoteTests` on CI. The orchestrator must install clean signed source and check host edits, Return, interval changes, Manual refresh, all close paths, shared readings, Terminal, host selection, and dark/light layouts. Live macOS and Windows sampling remains open. Report: `tmp/redesign/logs/w1-remote.md`. |
 | Compile verified; signed acceptance open | B7, A7, P5 panel views, and S5: make all nine Task Manager panel tabs dense, responsive, and complete before presentation. | `4ed82b8f` uses the shared full-tile area history for CPU, GPU, and Memory. Network, Disk, Thermal, and Battery use centered single rows. Metric text is prepared off the main thread and changed tile, hero, chart, and row data is published at most 4 times per second. Processes retains prepared rows, removes the nine-row cap, and gives each row and the footer a full action area. `2ed86dbf` cancels preparation when the panel hides. Metadata uses the same row; static explanations use tooltips. The standalone source check passes value boundaries, equal-data suppression, independent views, burst coalescing, and hide/reopen; a 1 ms cadence mutation fails. The gated Debug app and both test bundles compile at `15e9a1bb`. `556945c9` fixes the signed round 10 Home labels with Title Case, one line, and end truncation; makes the whole-tile history readable at low contrast; and restores remote label/value cells plus the trailing 84pt action column. Connect and Disconnect use the native context menu. Light/Dark source renders pass; the action geometry check fails on signed `198055e4`. The final gated Debug app and both test bundles compile at `556945c9`; all 15 related package checks pass. Round 11 T096 and T097 are fixed in `63daa7e9`: rate ticks use significant digits, MB/s sits above the plot, and RAM shares one unit with full readings in help. T098 source renders prove and fix long Network truncation, retain 34pt rows and full-tile histories, and check 120 prepared samples, complete RAM at the 109.33pt cell token, Disk percentage/free-space help, and both appearances. The focused history pixel check and source logic check pass. T050 stale help remains integrated. Owner review of signed `43ce0eb9` supersedes the former 0.45 history treatment. `5075da8e` uses neutral CPU/GPU and coral Memory ink, a smooth 1pt line at 35 percent opacity, a 7 percent fill, and the lower 60 percent plot band. Three focused package checks and actual-source Light/Dark Home renders pass for paint, bounds, extreme samples, finite curves and cache modes. The single quiet-chart tests-mode gate passes. Round 12 `bb62bd07` removes duplicate GPU and Network detail readings, retains distinct facts and stale rows, and supplies compact card-title headings plus shared 13pt metric/control glyphs. Ten package checks and actual-source Light/Dark renders pass. Detail content shrinks GPU 281pt to 253pt and Network 324pt to 268pt. Control rows stay 30pt; short tiles stay 34pt with complete long rates. | Run the hosted app tests. The orchestrator must install clean signed source, exercise all nine tabs and actions, check remote Connect/Disconnect, Open SSH and Open App, inspect Home labels, chart contrast, natural card height, both appearances and first frames, and record timing and idle work. `tm-window` owns verification of shared Fan availability, prepared text, and real hardware; `perf-panels` owns the native open path. The single round 11 batch gate failed on unrelated Main catalog metrics. The new one-gate-per-batch rule ends retries. The quiet-chart correction batch compiles. The single Round 12 tests-mode gate compiles the Debug app and both desktop test bundles; final installed acceptance remains with the orchestrator. For T098, collect at least 120 real CPU/GPU/Memory samples, check long Network rates, complete RAM and Disk help, and record signed source stamp, running path and both appearances. Report: `tmp/redesign/logs/w3-panel-tm.md`. |
 | Build and source checks pass; signed review pending | Audit the Task Manager window and apply the 2026-10-01 density correction. | `8edb9428` guards process actions, reuses shared menus and the native sheet, shows detail errors, and uses a 30-second endpoint interval. `1840152d` updates report search on content changes, preserves repeated section names, and reports atomic export failures. `6ea5d560` caches bounded chart series and hover/AX text, keeps unknown memory absent, applies full-row hover, limits history to one or two minutes, and puts chart metadata on one line with help in tooltips. `549fb0f4` and `08a8dad2` keep Auto independently available, prepare Fan text outside rendering, and cap equal-suppressed publications at 250 ms. `267d4182` keeps Fan controls in centered single rows. `704dc1fe` mounts the selected page before deferred visibility and gates process sampling and chart text preparation while hidden. `d0a97318` and `4cb36d2a` update hosted selectors for real Fan and process popup buttons and the restored Main Fan row. `90e86b85` starts metric and process sampling in covered windows, keeps pending Battery text unknown, and fixes utility callback isolation. The native startup check completes in 6 ms, retains the latest snapshot on reopen, and fails with a one-second delay. Native process sampling returns rows in 176 ms. Source-derived checks, the isolated actual Fan publisher check, and the package keyboard-availability test pass. Removing the publication limit and swallowing export errors each fail their checks. | Both gated app and desktop-test compilations pass. Run hosted tests, then install the clean signed build and recheck the r10 background-open pending-data failure, warm reopen, close/minimize, every route, helper state, process confirmation, export, Settings control, appearance, and timing. Report: `tmp/redesign/logs/w1-tm-window.md`. |
+| Package verified; signed review pending | Align Task Manager title paint with regular page titles and preserve native traffic-light hover tracking. | `0a034305` aligns the shared header; `e303571b` fixes native tracking; `54720f52` adds the cap token and checks. Shared headers keep T=16, use the regular line box, and apply the 1pt dot cap offset. Native chrome moves the enclosing titlebar container and updates tracking. Eighteen focused package tests pass, including pixels in both appearances at 1x and 2x and exact scene nesting. The installed before table and expected values are in `tmp/redesign/logs/w1-chrome.md`. | The orchestrator must install clean source and verify title paint, launcher and deep-link routes, real close/minimize hover glyphs, key changes, restore, and appearance changes. |
 | Build verified; signed review pending | Correct the round 8 Task Manager card layout, chart guides, and native disk units. | `2f628330` puts the 203pt process lane inside its panel and aligns rows at the top. `bf697770` omits empty hero captions. `ec0aac3c` lets information cards keep their content height. `a6251a74` uses the shared chart grid token and bounded, pixel-aligned 1pt rules. `05f2bfc7` uses decimal disk units in native status items and keeps RAM binary. Debug and desktop build-for-testing pass. The source-derived check passes for native formatting, missing values, clamping, and guide geometry at 1x and 2x. | The orchestrator must verify Overview card tops, Battery with measured and unavailable power, short and extended information cards, and visible guides in both signed appearances. Compare native disk labels with the same window and panel sample. Hosted tests and live focus, first frames, identity colors, idle CPU, and speed remain open. Report: `tmp/redesign/logs/30r11-tm.md`. |
 | Build verified; signed review pending | Center every compact Task Manager chart scale on its grid ticks. | `0b9bd503` uses the window chart's fractional positioning. `29b37b19` matches the shared grid's pixel rounding for CPU, GPU, Memory, Network, Disk, Battery, and Sensors. Plots stay 64pt high. Each endpoint has 6pt of space. Numeric rate ticks, leading legends, and the external time axis remain. The source-derived geometry check passes and rejects the captured spacer-stack baseline. All 18 supplied Task Manager panel captures were reviewed. Debug and desktop build-for-testing pass. | The orchestrator must raise the hosted CPU height cap from 410pt to 422pt for the 12pt endpoint reserve, run that test, and verify tick centers, endpoint clearance, and natural panel heights in both signed appearances. Check focus modes, first frames, identity colors, idle CPU, and speed. The shared grid fix is implemented in `a6251a74` by the `tm` worker. Report: `tmp/redesign/logs/30r11-panels.md`. |
 | Build verified; signed review pending | Use decimal disk units throughout the Task Manager window and keep RAM binary. | `f89207a7` routes Overview disk used, capacity, and free space, the Disk page, cumulative disk reads, and Remote Stats storage through the existing decimal `TrayPopoverLayout.diskBytes`. Disk rates already use `.file` in `SystemMonitorDisplayFormat.byteRate`. System Report retains source values without its own byte formatter. `testDiskByteFormatterUsesDecimalUnits` covers decimal KB through TB. The standalone check passes for decimal disk units, the window adapter, binary RAM, rates, and clamping. An isolated binary-format mutation fails the added test's assertions. Debug and desktop build-for-testing pass. | The orchestrator must run the added unit test on hosted CI and compare the signed window and panels from the same disk sample in both appearances, including measured Remote Stats storage. `05f2bfc7` completes decimal disk used and available values in native status items. Signed native label comparison remains open. Report: `tmp/redesign/logs/29-tm-disk-units.md`. |

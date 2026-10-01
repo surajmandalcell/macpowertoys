@@ -1,5 +1,44 @@
 # UI Chrome Troubleshooting
 
+## Deferred Chrome Checks Miss Their Main-Queue Pass, 2026-10-01
+
+- **Symptom:** The full package suite sees close x9 and centerline y16,
+  while focused chrome checks pass at x13 and the requested centerline.
+- **Cause:** Nested run-loop waits can use their deadline before queued chrome
+  work runs after the large bitmap sweep. Some test windows also stay open.
+- **Invariant:** Keep the 13pt inset and native hover and hit-test assertions.
+  Yield the main actor during a bounded wait. Close offscreen windows and drain
+  each large bitmap case. Wait for scene size instead of a fixed sleep.
+- **Check:** `f3337f89` passes all 145 package tests. The hover check takes
+  0.337 seconds, down from 24.315 seconds with only resource cleanup.
+  It covers both appearances, six native events, and both centerlines.
+  No production chrome change was needed. Log:
+  `tmp/redesign/logs/local-tests-package-final.log`.
+
+## Scroll edges and floating controls, 2026-10-01
+
+- **Symptom:** Task Manager Overview cuts off its lower cards above the
+  window bottom. Compact applet gears reduce the available body height.
+- **Cause:** Fixed OnePlusPage bodies had bottom padding outside their scroll
+  view. Floating-settings reserve also padded the body outside its scrollers.
+  Scrolling page footers occupied a separate row below the viewport.
+- **Invariant:** A page-owned scroll viewport reaches the window bottom.
+  Card scrollers clip at the card edge. Put the 24pt page gutter and measured
+  scrolling-page footer clearance inside scroll content. Keep fixed headers,
+  table headers, inspectors, and card-page footers. Overlay the applet gear
+  at its 8pt edge inset with 52pt scroll-end padding and no body-height change.
+  Consume the inset once so nested editors and horizontal strips do not
+  inherit it. Empty footer slots consume no height. Stack multiple footer
+  views before measuring them.
+- **Check:** OnePlusPageTests and the floating-gear size test pass all 15
+  checks. They cover native clip geometry at all 13 shared canvas sizes,
+  scrolling-page footer clearance, fixed regions, and both gear states at
+  every applet height bound. The four edge/gear regressions fail against
+  b8d58b19. Source inventory covers every window and applet; Ruler's native
+  overlay and settings have no shared page scroll host. Signed installation,
+  scrolling, bottom-row actions, and gear interaction remain with the
+  orchestrator. Report: `tmp/redesign/logs/w4-scroll-edges.md`.
+
 ## Task Manager Home Labels And Host Actions, 2026-10-01
 
 - **Symptom:** Signed `198055e4` uses uppercase Home labels and splits
@@ -80,22 +119,35 @@
 
 ## Page Cap Tops And Native Hover Containers, 2026-10-01
 
-- **Symptom:** Installed Task Manager dots start at y16. Regular page title
-  paint starts at y21. Native lights start at y20 and center at y27.
-- **Cause:** Dot headers used a 20pt line box with no text cap space. The
-  chrome moved native buttons inside their old 32pt titlebar container.
-- **Invariant:** Keep T=16. Center the 20pt dots in the regular 28.8pt line
-  box with the shared 1pt optical cap offset. Keep native button frames
-  centered in their parent. Move the enclosing native titlebar container,
-  then update its ancestor tracking areas. Reapply on key, resize, full-screen,
-  appearance, and native layout changes. Keep deferred, coalesced work.
-- **Check:** The new pixel and native geometry regressions fail on the old
-  source. Eighteen focused package tests pass. Pixels are checked at 1x and
-  2x in Light and Dark. Native checks cover all three lights, tracking areas,
-  hit tests, late resets, and both centerlines. Exact scene nesting keeps the
-  660pt canvas and first body row at y75.8. The installed before table is in
-  `tmp/redesign/logs/w1-chrome.md`. Signed captures and real pointer glyphs
-  after installation remain with the orchestrator.
+- **Symptom:** Header icons and controls start at y16 while native lights
+  start at y20. Close starts at x9. Applet controls use a different top line.
+  The first Top B fix then put MAC access and device counts above button labels.
+- **Cause:** Header actions center on the title line box. Switches center
+  their 17pt paint within a 24pt hit frame. Native chrome lacks an x inset.
+  The first Top B action stack top-aligned captions and controls of every size.
+- **Invariant:** Owner Top B puts title caps, tool icons, and the tallest
+  header action control at y20. The 2026-10-01 row amendment centers captions,
+  status dots, switches, and smaller controls on that control, with one text
+  baseline and 12pt item gaps. Use `OnePlusHeaderActions` in shared headers
+  and nested toolbars. Status dots use the existing optical content layout.
+  Inset B puts close at x13, with the title 14pt after zoom. Preserve the
+  native button frames, move the enclosing titlebar container, and refresh
+  ancestor tracking. Keep deferred coalescing and repair late x/y resets.
+  Preserve title line boxes and body gaps; the body moves down 4pt. Applet
+  and sheet rows grow from 40pt to 44pt. Applet lights use C=27. Switches
+  keep their 24pt hit frame and centered 17pt capsule.
+- **Check:** OnePlusHeaderRowTests measures caption/button painted centers
+  within 0.5pt in both appearances at 1x/2x. Mixed rows cover both densities,
+  status dots, switches, selects, native fields, progress, and smaller buttons.
+  Three focused package checks pass. OnePlusChromeAlignmentTests renders
+  shared page, main tool,
+  all three applets, and sheet headers in both appearances at 1x and 2x.
+  It measures cap strokes in linear light, actual control paint, and view
+  geometry. Native checks cover all 13 canvas recipes, x13/y20, the 14pt
+  zoom gap, all light tracking areas, native hit tests, and late resets.
+  The exact Task Manager scene keeps its 660pt canvas and first row at
+  y79.8. Signed installed captures and real hover remain with the
+  orchestrator. Report: `tmp/redesign/logs/w4-chrome.md`.
 
 ## Menu Hosts Ignore App Appearance, 2026-09-30
 
@@ -111,7 +163,12 @@
   Configure native hosts on attachment. Let the app observer update live
   windows. Do not configure again from native appearance-change callbacks
   or add a competing preferred color scheme. Both can keep a popover busy.
-  Use one app-lifetime observer and weak window references. Do not poll.
+  Use app-lifetime observers and weak window references. Do not poll.
+  Register accessibility display changes on the workspace notification center.
+  Invalidate each registered native root once per display notification and
+  preserve the app appearance. The offscreen notification check fails before
+  this observer and passes after it. Contrast palette values belong to the
+  components lane; signed Increase Contrast changes remain with the orchestrator.
 - **Check:** `testPresentationRootsFollowAppAppearanceAndLiveChanges` failed
   before the fix. It now passes for dark, light, dark again, and Automatic.
   It checks native appearances, rendered pixels, and nested menu-body schemes.
@@ -133,12 +190,18 @@ latency benefit still needs measurement. See `tmp/redesign/logs/w4-perf-windows.
 ## Key Notifications Interrupt Text Editing, 2026-09-30
 
 - **Symptom:** Portman retains only the first typed SSH host character.
-- **Cause:** The focus policy clears the first responder on key-window
-  notifications, including an active native field editor.
-- **Invariant:** Preserve active text inputs when a configured window becomes
-  key. Keep resting controls unfocused and hidden-window focus blocked.
-- **Check:** `testKeyNotificationKeepsAnActiveTextEditor` passes in hosted
-  `36741797887`. All Portman navigation and SSH validation checks pass.
+  Reactivation also drops valid keyboard and accessibility responders.
+- **Cause:** The focus policy resets nontext responders on each key-window
+  notification and reads the app key window instead of the notification object.
+- **Invariant:** Use the notification window. Clear ordinary opening focus
+  once; preserve active text editors and native selection controls. On later
+  key and display updates, clear only detached, hidden, disabled, or fully
+  clipped responders. Intersect visibleRect with bounds because a nonclipping
+  parent can return a visible rectangle outside the responder's bounds.
+- **Check:** Round 11 adds three native offscreen regressions. All six focus
+  checks and all 17 focused chrome, appearance, and visibility checks pass.
+  The original policy fails the regressions. Signed keyboard, VoiceOver,
+  scroll, tab-change, and reactivation checks remain with the orchestrator.
 
 ## Nested Menu Body Accessibility, 2026-09-30
 
@@ -151,6 +214,26 @@ latency benefit still needs measurement. See `tmp/redesign/logs/w4-perf-windows.
 - **Check:** `dd204b20` restores CPU reopen and all Tray Fan checks in
   `36726827473`. The corrected exact StaticText value predicate passes in
   `36727981386`. `36731756842` passes every UI job on the current app source.
+
+## Shared Table Geometry And Row Surfaces, 2026-10-01
+
+- **Symptom:** Compact tables have shorter rows, or custom data lists omit
+  stripes and leave hover/selection inside only one cell.
+- **Cause:** Callers keep raw heights or omit a current display-row index.
+  SwiftUI Table supplies its own selection painting and reused row views.
+- **Invariant:** Use the DESIGN H/I table tokens in every density. Pass the
+  current row position with stable record identity. Refresh reused native
+  row indexes. Keep SwiftUI's table style, grid color, delegate, and cells;
+  paint row backgrounds and separators through the shared skin. Update
+  only available rows. Hover and selection paint over the entire stripe.
+  Keep metadata on the trailing side; preserve full values in help or
+  accessibility text when visual text is truncated.
+- **Check:** Run OnePlusTableTests. The offscreen render checks cover both
+  native implementations, GridTable, both densities and appearances, full
+  row paint, hover exit, and emphasized/unemphasized selection. All 13 pass.
+  Use an independent captured sRGB swatch for bitmap color checks because
+  cache-display bitmaps carry the display profile. Installed scroll/reuse,
+  sorting, keyboard, focus, and pointer checks remain with the orchestrator.
 
 ## Native Table Columns During Tab Changes, 2026-09-30
 
@@ -519,12 +602,12 @@ latency benefit still needs measurement. See `tmp/redesign/logs/w4-perf-windows.
   prepends to `4`. This failure alone does not establish a storage-binding
   defect.
 - **Invariant:** Keep the cleanup threshold as a text draft while editing.
-  On Return, save only an integer inside that setting's range; otherwise
-  restore the last valid value. The three cleanup number fields share this
-  behavior.
+  On Return, save only an integer inside that setting's range. Invalid text
+  stays visible with an error, as DESIGN.md requires. The three cleanup
+  number fields share this behavior.
 - **Check:** Select the existing value, replace `4` with `6`, and press Return; the
   displayed and saved value must be `6`. Enter `99` for the idle threshold;
-  it must revert to `6` without changing the saved value.
+  the draft and range error must remain without changing the saved value.
 
 ## Portman Port Numbers And Initial Charts
 
@@ -934,9 +1017,10 @@ latency benefit still needs measurement. See `tmp/redesign/logs/w4-perf-windows.
   clicks an unrelated part of the same app window or menu-bar popover.
 - **Cause:** AppKit keeps the old first responder when the click target does not
   accept focus.
-- **Invariant:** A left click outside a text editor clears the old first
-  responder before the target handles the click. Clicking in a text field keeps
-  editing intact. Tab still operates controls. Focus indicators appear only
+- **Invariant:** A pointer click outside text editors and native selection
+  controls clears the old first responder before the target handles the click.
+  Text fields keep editing intact. Native tables and lists keep keyboard focus
+  after a row click. Tab still operates controls. Focus indicators appear only
   with Full Keyboard Access or VoiceOver.
 - **Check:** Tab to a control in a workspace, compact applet, and tray. Click
   blank content and another button; the old outline disappears. Click and edit
@@ -951,8 +1035,10 @@ latency benefit still needs measurement. See `tmp/redesign/logs/w4-perf-windows.
 - **Invariant:** The shared root policy enables focus visuals only when Full
   Keyboard Access or VoiceOver is on. Refresh on keyboard-mode notifications,
   VoiceOver observation, app activation, defaults changes, and input events.
-  Register each native window once. Keep its opening responder on the window.
-  Reject pointer focus for nontext controls and keep text editing intact.
+  Register each native window once. Clear ordinary opening focus once and
+  preserve valid responders on reactivation. Allow text and native selection
+  controls to take pointer focus without focus paint. Other controls take
+  pointer focus when Full Keyboard Access or VoiceOver is on.
 - **Check:** All 72 package tests pass at foundation round 10. Debug and desktop
   build-for-testing pass. Signed window, sheet, popup, and panel checks remain
   with the orchestrator. Selection and tab strip overrides are protected by
@@ -1008,6 +1094,40 @@ latency benefit still needs measurement. See `tmp/redesign/logs/w4-perf-windows.
   loaded, refreshing, empty, and failed states in both appearances. Change
   periods and accounts. No pending state may report measured zero usage.
 
+## Switch Usage Facts And UTC Activity, 2026-10-01
+
+- **Symptom:** Seven usage columns truncate short labels and values. Activity
+  labels can show the prior day in negative UTC offsets and always start Sunday.
+- **Cause:** Each stat pair receives one seventh of the content width. Date-only
+  UTC keys use the default display zone, and week alignment ignores firstWeekday.
+- **Invariant:** Use two top-aligned stat rows, four then three columns. Keep the
+  264pt Usage card and inner quota scrolling. Parse and format usage days in UTC.
+  Align weeks with the user firstWeekday. Include the shared formatting revision
+  and fresh locale, calendar, and time zone in the cached preparation request.
+- **Check:** `f1092120` passes exact source layout and calendar regressions.
+  Offscreen light/dark renders show all seven facts. Los Angeles, Monday/Sunday
+  starts, year boundaries, invalid dates and German labels pass. Isolated copies
+  with the former layout and date logic fail. Shared app and test-bundle
+  compilation passes. Hosted execution and signed live acceptance remain.
+  See `tmp/redesign/logs/w3-switch.md`.
+
+## Switch Short Cards And About Identity, 2026-10-01
+
+- **Symptom:** Two short Settings cards occupy separate full-width tiers.
+  About gives a small logo its own row and pushes the manual down.
+- **Cause:** The page stacks compact peer cards and identity elements
+  vertically instead of using their available width.
+- **Invariant:** Pair standalone App behavior and Menu bar defaults in
+  equal columns with a 16pt gap. Keep natural 128pt heights and the full-width
+  Data locations card below. About uses a 48pt logo beside its text with a
+  16pt gap. Headline and mono version share a baseline. Keep all information.
+- **Check:** `9eb32937` passes source renders in both appearances. Settings
+  has 488pt columns and Data locations starts at window y=222. About intro
+  is 132pt tall and Accounts follows after 16pt. Main's `5ef050e8` retains
+  this standalone layout while removing the embedded enable row. Shared
+  compilation after that API patch and signed capture review remain.
+  See `tmp/redesign/logs/w3-switch.md`.
+
 ## NetToys Round 3 Screenshot Review, 2026-09-30
 
 - **Symptom:** Permission actions truncate, Automatic enrollment sits at the
@@ -1025,6 +1145,25 @@ latency benefit still needs measurement. See `tmp/redesign/logs/w4-perf-windows.
 - **Check:** Inspect both appearances with two outages, three scans, multiple
   network names, and each permission state. Scroll each row region and confirm
   chart, headers, search, Export, and Clear stay fixed.
+
+## NetToys Open Rows And Scanner Cell Origins, 2026-10-01
+
+- **Symptom:** Scanner values start before their headings. Standalone
+  settings rows retain a 16pt card inset. Empty scan periods and the manual
+  permission summary still have card shells.
+- **Cause:** Scanner cells omit shared cell geometry. Removing a parent card
+  does not clear the setting row's default card padding. Empty content reuses
+  the record card branch.
+- **Invariant:** Use `onePlusTableCell` for each Scanner column. Account for
+  AppKit's first-cell padding so header and value origins are 16pt and 12pt.
+  Set `onePlusCardPadding` to zero only on standalone rows. Keep empty scans
+  in one open 44pt row with period copy trailing. Keep cards for records and
+  Scanner failure notices.
+- **Check:** `7ae93446`, `ed44cc0d`, and `3145a948` fix these cases. The shared
+  package geometry test and actual IP, hostname and MAC fixtures pass in both
+  appearances. The final app/test gate passes at `168eae83`, with all five
+  changed views matching that source stamp. Signed controls and saved
+  customization remain to be checked.
 
 ## NetToys Dynamic Form Stability
 
@@ -1363,6 +1502,18 @@ latency benefit still needs measurement. See `tmp/redesign/logs/w4-perf-windows.
   prompt; run `36171513372` passed and its normal-launch capture showed the
   scanning visualization without a permission dialog.
 
+## Awake Healthy Status Ink, 2026-10-01
+
+- **Symptom:** Signed `43ce0eb9` shows the steady running sentence in green
+  in both appearances.
+- **Cause:** AwakeStatusRow maps an active session to the success state.
+- **Invariant:** Map steady healthy sessions to the existing online state.
+  Keep neutral row text, the 4pt filled dot, trailing Turn Off, and existing
+  geometry. Off is hollow and muted. Actual assertion errors keep error ink.
+- **Check:** Shared state mapping and both signed Home captures reviewed.
+  Parsing and the single combined gate pass at `7a8a6c41`. Updated signed
+  active/off/error recapture remains with the orchestrator.
+
 ## Awake Window Controls
 
 - **Symptom:** The Awake window can be enlarged, the off state is exposed as
@@ -1470,6 +1621,21 @@ latency benefit still needs measurement. See `tmp/redesign/logs/w4-perf-windows.
   gives a false failure after the palette change. Signed interaction remains
   an orchestrator check. Report: `tmp/redesign/logs/w3-components.md`.
 
+## Portman Rest Metrics And Row Focus, 2026-10-01
+
+- **Symptom:** Signed `43ce0eb9` shows Link and Stop on every server row,
+  hiding each row's memory, uptime, and sparkline.
+- **Cause:** The action condition treats the global focus-paint policy as
+  focus ownership for every row.
+- **Invariant:** Only hover or actual keyboard/accessibility focus on that
+  row exposes actions. Keep the fixed 134pt slot and instant paint. Preserve
+  memory and uptime in the details button's accessibility value in both states.
+- **Check:** The extracted production condition passes all 200 combinations
+  of hover, cleanup, keyboard focus, accessibility focus, and global policy.
+  The prior condition fails. The hosted hover test checks absent rest actions,
+  preserved metric values, and fixed bounds. Signed rest and one hovered or
+  focused row in both appearances remain with the orchestrator.
+
 ## Search mouse-down responder cycle, 2026-10-01
 
 - **Symptom:** Signed 43ce0eb9 hangs after a search click. The sampled stack
@@ -1482,7 +1648,10 @@ latency benefit still needs measurement. See `tmp/redesign/logs/w4-perf-windows.
   explicit Find selection separate from pointer event dispatch.
 - **Check:** cb3292da adds a bounded offscreen native-click regression that
   fails on the old source without hanging. All ten search/focus checks pass.
-  One batch compile gate fails on the unrelated Switch settings caller/API
-  mismatch. Chrome relays the fix to perf-windows. Signed installation,
+  Main resolves the initial Switch caller/API build break in 5ef050e8.
+  One authorized rerun aborts in Xcode before compilation with Abort trap: 6
+  after a DARWIN_USER_CACHE_DIR Input/output error. No compiler diagnostic
+  appears. Keep this environment failure separate from the passing package
+  regression. Chrome relays the fix to perf-windows. Signed installation,
   caret and CPU/footprint acceptance remain with the orchestrator.
   Report: `tmp/redesign/logs/w3-components.md`.

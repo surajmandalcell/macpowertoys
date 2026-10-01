@@ -1,5 +1,36 @@
 # Ruler Request List
 
+Local verification, run 63, 2026-10-01: the guarded app run stops before
+RulerCoreTests when FocusEffectTests activates MacPowerToys. Ruler's current
+local execution remains open. No Ruler window or installed app was changed.
+Report: `tmp/redesign/logs/w7-local-tests.md`.
+
+Background creation, run 60, 2026-10-01: retain false activation intent
+through cold and reused Ruler and Ruler Settings creation. Background routes
+must only order the window. Explicit opens keep activation and key ordering.
+The actual Ruler presentation check passes background and explicit ordering.
+The final app module and changed tests typecheck after repair of the single
+compile-gate error. The guarded installed replay remains with the orchestrator.
+Report: `tmp/redesign/logs/w6-no-activation.md`.
+
+Background opens, run 55, 2026-10-01: `a5a87ec8` removes automatic
+SwiftUI URL scene selection across the app. The existing `ruler.settings`
+route from `d6ccf9cb` already passes false activation intent through the
+action handler and Settings controller. Actual-source non-GUI checks pass
+for background ruler/settings ordering and explicit key ordering.
+Final app and changed-test typechecks pass. The one tests gate failed on
+an ID list still used by Command-Q; that list is restored. Both URL schemes,
+cold/reused Settings, explicit user opens, and signed foreground identity
+remain with the orchestrator. Report: `tmp/redesign/logs/w4-focus-fix.md`.
+
+Round 11 shared focus, 2026-10-01: native tables keep keyboard focus after
+row clicks without focus paint when accessibility modes are off. Key-window
+reactivation preserves valid responders and active text selection. Detached,
+hidden, disabled, or fully clipped responders are cleared. All six focus
+package checks and all 17 focused chrome checks pass. Signed Tab, Shift-Tab,
+arrows, Space, Return, VoiceOver, and scroll/tab checks remain with the
+orchestrator. Report: `tmp/redesign/logs/w3-chrome.md`.
+
 Glyph pass, 2026-10-01: `91d9a538` defines Ruler at -45 degrees in
 `ToolGlyph`. Sidebar, fallback tile, Home action, and launcher Settings use
 that definition. The 14-tool contact sheet was reviewed at 16pt and 32pt in
@@ -23,6 +54,9 @@ Update this list whenever Ruler requirements or verification results change.
 
 ## Production audit, 2026-10-01
 
+Both shared build modes pass for the Debug app and both desktop test bundles.
+The new regression tests compile. Hosted tests and signed checks remain open.
+
 Main launcher, `4ab747b9`: Settings and Defaults are two related native
 actions directly on one row. Single-action card wrappers are removed under
 the horizontal-density correction. The Settings button keeps the shared
@@ -33,7 +67,7 @@ Both shared compile modes pass. Hosted checks and signed interaction remain.
 | Status | Request | Evidence | Remaining work |
 |---|---|---|---|
 | Build verified; signed review pending | Show and dismiss hotkey feedback at once in both Reduce Motion modes. | `0948ba7a` removes the custom AppKit alpha animations. The existing 1.2-second dismissal and native panel ordering stay in place. The gated Debug retry compiles the app and both desktop test bundles. Ruler geometry and controls are unchanged. | Check grouping, units, float, shadow, and origin feedback in the installed app. Report: `tmp/redesign/logs/w1-motion-sweep.md`. |
-| Verify | Preserve decimal dimensions in each field's locale. | `adcf8bf2` formats millimeters and inches with the corresponding NumberFormatter locale. Foundation round trips passed German and English decimals. A native NSTextField read `25,5` back as `25.5`. `RulerDimensionLocaleTests` covers unit conversion and separate field locales. | Compile through the shared gate, run on CI, then edit both windows in German and English in the signed app. |
+| Verify | Preserve decimal dimensions in each field's locale. | `adcf8bf2` formats millimeters and inches with the corresponding NumberFormatter locale. Foundation round trips passed German and English decimals. A native NSTextField read `25,5` back as `25.5`. `RulerDimensionLocaleTests` covers unit conversion and separate field locales. | Run on CI, then edit both windows in German and English in the signed app. |
 | Verify | Show the color-well focus marker only under the shared keyboard focus policy. | `adcf8bf2` gates the existing first-responder marker with `OnePlusFocusPolicy.showsFocus`. | Verify mouse, Tab, VoiceOver, and Full Keyboard Access behavior in the signed app. |
 | Verify | Audit Settings and Defaults units, dimensions, color panel, opacity, border, float, shadow, reset, Save as Default, persistence, key loop, localization, independent placement, and close restoration. | Both controllers, the shared controls view, and all three XIBs were traced. Existing FreeRulerCoreTests cover routing, controls, layout, persistence, and target suspension. | Current-source install and both native windows require the orchestrator. Ruler opening activates the app, so the audit did not open it. The pinned overlay stays unchanged. S5 and A4-A7 remain open. |
 | Verify | Apply the horizontal density and instant-motion correction without changing the pinned overlay. | The native controls already use same-row values, adjacent actions, grouped multi-row content, and no custom hover or page animation. No further Ruler code or XIB change was needed. | Check both native windows after installation. |

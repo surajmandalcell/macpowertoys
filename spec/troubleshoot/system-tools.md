@@ -1,5 +1,19 @@
 # System Tools Troubleshooting
 
+## Local Unit Tests Activate The App, 2026-10-01
+
+- **Symptom:** The guarded local run aborts when FocusEffectTests starts.
+- **Cause:** `testKeyNotificationKeepsAnActiveTextEditor` calls NSApp.activate
+  and makeKeyAndOrderFront. The wrapper detects Orca changing to MacPowerToys.
+- **Invariant:** Preserve the owner's foreground app. Use offscreen native
+  focus fixtures for unit checks. Keep tests that require activation in an
+  isolated account or VM. Never remove the wrapper's foreground guard.
+- **Check:** Run 63 records 475 passes, 5 skips, and no assertion failures
+  before exit 4. No retry runs. Further activation paths occur in
+  SystemMonitorTests and TrayPopoverLayoutTests. The orchestrator must separate
+  those cases before completing local execution. Log:
+  `tmp/redesign/logs/local-tests-app.log`.
+
 ## System Monitor Fan Control Packaging
 
 - **Symptom:** Quit blocks on a synchronous Fan queue or clears manual
@@ -459,6 +473,24 @@
 - **Check:** Apply different reverse settings to both profiles, send precise and
   coarse scroll events, then disable the tool and confirm events pass unchanged.
 
+## Input Devices Scroll Speed Endpoint, 2026-10-01
+
+- **Symptom:** Mouse reverse scrolling does nothing at displayed 3.0x,
+  although the tool, custom scrolling, profile, and scroll tap are enabled.
+- **Cause:** The native stepped slider saved `3.0000000000000004`.
+  `57acd38c` added a strict `0.35...3` guard, which returned pass-through
+  before reverse or smoothing ran. The installed signed `38158c11`
+  contains that guard and an enabled session scroll tap.
+- **Invariant:** Accept one floating-point step beyond each speed endpoint.
+  Reject nonfinite values and greater excursions. Honor the master and
+  profile gates. Do not change saved owner preferences to repair the range.
+- **Check:** `testReverseAtSavedSliderEndpointsFollowsBothGates` covers
+  both axes, mouse and trackpad, smoothing, both endpoints, and both gates.
+  Its source-derived CLI check fails before `59122487` and passes afterward.
+  The existing invalid-speed test also rejects two steps beyond each bound.
+  The one app/test compile gate fails in unowned `OnePlusType.swift:6`.
+  Hosted execution and signed hardware verification remain with integration.
+
 ## Input Devices Card Parity
 
 - **Symptom:** Device cards show false `Not reported` values, long names clip,
@@ -596,7 +628,7 @@
 - **Check:** The source-derived nested fixture fails before 7b606373 and passes
   afterward. The Swift 6 parser/regression typecheck passes. Run
   testMoleHistoryParsesNestedCountsTargetsAndOptionalMetadata on hosted CI.
-  syscare-ui owns matching 34pt header/body rows, 12pt insets, and optional
+  syscare-ui owns shared 33pt headers and 34pt body rows, 12pt insets, and optional
   trailing time/result columns. Compare populated signed captures in both
   appearances and inspect full raw JSON help. No cleanup is needed for this test.
 
@@ -667,6 +699,90 @@
   from each page and confirm the status stays at the bottom of the pane.
 
 ## System Monitor
+
+- **Symptom:** Window Overview and Settings rebuild their full page trees on
+  return. Retaining Overview without a visibility boundary keeps hidden
+  snapshot observations and process tasks active.
+- **Invariant:** Use OnePlusRetainedPage for only these two slow pages. Create
+  each host on first visit. Keep selection outside content equality, and
+  compare Overview inputs by history, profiles, hover, and focus. Forward the
+  required page environment keys, never the full scene environment. When
+  hidden, keep the last Content value without calling its live builder.
+  Deliver false visibility and layout before detaching. Clear the hosted
+  graph on dismantle; the window-close wrapper must release its owning graph.
+- **Check:** OnePlusRetainedPageTests compares conditional and retained
+  content: 20 unrelated selection builds become zero. Twenty hidden samples
+  cause zero builds, child tasks stop, 10 returns preserve state, cold hidden
+  hosts build a complete frame, and teardown releases the host. The single
+  app/test compile gate passes. Signed <=100ms and control checks remain open.
+  Report: `tmp/redesign/logs/w6-perf-pages.md`.
+
+- **Symptom:** Task Manager menu tab switches rebuild unchanged content in
+  retained native hosts. The trace spends 111-135ms in AttributeGraph and
+  only 2-5ms in natural-height measurement.
+- **Cause:** Each native host root update can evaluate the complete content
+  switch. A selection Binding is a dynamic property even inside an equality
+  boundary. It invalidates retained content when another tab becomes active.
+  The former probe used a constant binding and missed this dependency.
+- **Invariant:** Retain the shared hosts and metric-specific page states.
+  Compare content by page, model identities, and remote profiles. Keep the
+  selection binding in the tab strip. Pass selection actions into content
+  and Home tiles so hidden pages do not observe that binding. Put visibility and
+  sampling outside the equality boundary. Keep descriptors static and
+  formatting in the existing off-main projection. Do not cache page height.
+- **Check:** Run `python3 tmp/redesign/perf/perf-tm/check-retention.py`. It uses
+  the actual content fields and equality declaration in an offscreen host.
+  Twenty live selection changes rebuild old content 20 times and current
+  content zero times. Retained actions, child metrics, and environment still
+  update; profile and tab changes rebuild. The old source fails the check.
+  Signed after timing and complete-frame acceptance remain open. Commands:
+  `tmp/redesign/logs/w5-perf-tm.md`. Source fix: `027ea904`.
+
+- **Symptom:** A Task Manager page switch also lays out unrelated menu hosts.
+- **Cause:** Each switch writes an AppStorage value. The installed window
+  trace includes hidden menu layout and Switch token formatting during the
+  Task Manager page intervals. Preference changes reach those retained hosts.
+- **Invariant:** Keep navigation in local state. Read the saved page for the
+  initial frame, accept external page requests, and save on hide or close.
+  Panel persistence observes shell visibility in the tab strip, so a content
+  host becoming inactive during a tab change does not save a page.
+- **Check:** Run `python3 tmp/redesign/perf/perf-tm/check-window-selection.py`
+  and repeat with `panel`. Each uses the actual storage fields, getter, and
+  save method. Twenty switches make 20 old preference writes and zero current
+  writes. Initial restoration, hide persistence, external requests, and
+  reopen pass. The panel check exercises the actual visibility modifier.
+  Panel source: `e0432849`. Window source patch and signed acceptance:
+  `tmp/redesign/logs/w5-perf-tm.md`.
+
+- **Symptom:** Processes uses lock or gear fallbacks, and panel app rows
+  never show their real icons.
+- **Cause:** The panel bypasses the window's bundle cache. Row preparation
+  chooses symbols from protected status and system path rather than identity.
+- **Invariant:** Both lists use real bundle icons prepared off the main thread
+  and cached by bundle path. Use terminal for an absolute executable path
+  outside an app bundle. Unknown paths and pending or missing app artwork
+  leave the fixed icon slot blank. Do not draw generic fallback symbols.
+- **Check:** `f0eaaacd` passes the Light/Dark native slot render and the
+  actual-source Finder, cache, cancellation and off-main checks. The former
+  symbol rules fail the same check. The app and both test bundles compile.
+  Hosted tests and signed Processes window/panel acceptance remain open.
+
+- **Symptom:** Process sorting has no visible direction, app rows use generic
+  glyphs, Overview text is undersized, and Disk details repeat hero readings.
+- **Cause:** The custom table header draws only its label. Process rows carry
+  only a symbol. Overview uses raw font sizes, and Disk repeats the same values.
+- **Invariant:** Draw the native active sort indicator beside a stable label
+  inside the shared 33pt header. Cache real bundle icons outside drawing and off the
+  main thread; preserve the 15pt slot and 10pt text gap. Use only terminal for
+  command-line executables; pending app icons and unknown paths stay blank.
+  Use compact cardTitle and caption roles for 11pt and 9.5pt Overview text.
+  Keep Disk heroes and one natural 100pt Volume panel for Mount point and Status.
+- **Check:** Round 12 `23d1a768` passes 12 OnePlusTableTests, including light/dark
+  header paints and untinted image updates. The old header fails the same sort
+  regression. Actual-source checks pass cache reuse, eviction, cancellation,
+  bundle paths, Overview roles, and unique Disk rows. The single tests-mode gate
+  compiles the app and both desktop bundles. Hosted tests and signed interaction
+  remain with the orchestrator; see `tmp/redesign/logs/w3-tm-window.md`.
 
 - **Symptom:** Battery details collapse while pending, process clicks open
   sheets, or network and disk rates average time spent asleep.
@@ -771,7 +887,10 @@
 - **Invariant:** Inherit the app appearance on every Task Manager surface. Use
   one fixed settings header with 34pt rows and centered 24pt controls; place
   format-specific fields in one details row. Use 10pt detail gaps, 12pt card
-  padding, and compact 21pt values with 10pt units in the window and panel.
+  padding, and shared 27pt values at weight 550 with a 30.24pt line in both
+  densities. Units keep their role. Metric captions use dark #A0A0A0 or light
+  #5B5B5B. Textured metric cards use the 180 by 110pt grayscale ribbon at
+  0.07 opacity below content.
   Measure the complete 356pt menu shell before native presentation. Let the
   shared shell own its natural height and 90 percent visible-screen ceiling.
   The shared final-height callback updates the native popover without height
@@ -1306,3 +1425,25 @@
   On each helper tick, retain state only for configured SSH Anchor IDs.
 - **Check:** Run the Portman cache regression. Add and remove anchors repeatedly,
   then confirm helper state stays proportional to the current configuration.
+
+## Application Icons And Read Buffer Memory, 2026-10-01
+
+- **Symptom:** Opening System Care leaves 6.5 GB in 98 Foundation regions.
+- **Cause:** Each native app icon TIFF includes all image representations.
+  Retained NSImage copies use about 70.52 MiB per app. Chunked FileHandle
+  reads can retain every autoreleased NSData until the task ends. SSH key
+  setup had no default output cap; Portman read its whole output pipe.
+- **Invariant:** Cache only 80 x 80 app-icon pixels, pass CGImage directly,
+  remove deleted apps, and clear window caches on close. Drain one pool per
+  file or pipe chunk. SSHProcessRunner defaults to 4 MiB per pipe and stops
+  oversized children. Portman drains 64 KiB chunks with an 8 MiB total cap
+  and kills and reaps an oversized child.
+- **Check:** SystemCareTests.testApplicationIconsKeepOnlyDisplaySizedPixels,
+  SystemMonitorTests.testSubprocessDefaultOutputIsBounded,
+  MarketplaceInstallerTests.testStreamingSHA256ReleasesReadBuffers, and
+  PortmanTests.testPortScanCommandOutputIsBounded compile. Source-derived
+  probes reject old source: ten icons used 1,472 MiB; a 512 MiB checksum
+  used 516.89 MiB; both uncapped subprocess paths accepted oversized output.
+  Fixed probes use below 12 MiB for 91 icons, 8.97 MiB after cache clearing,
+  and 2.47 MiB for that checksum. Run hosted regressions, then record
+  footprint and vmmap per installed page, panel tab, and close.

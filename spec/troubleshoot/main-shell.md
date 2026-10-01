@@ -1,5 +1,71 @@
 # Main Shell Troubleshooting
 
+## Background window creation, run 60, 2026-10-01
+
+- **Symptom:** The owner lost game focus during capture of signed `adb39e46`.
+- **Cause:** The presenter called SwiftUI openWindow for cold windows,
+  without carrying false activation intent into native creation. It also
+  deminiaturized reused windows before checking intent, which makes them key.
+- **Invariant:** Background opens create a native window with the same scene
+  content, or remount a retained window. Both paths only order front. Keep
+  deminiaturization, key ordering, scene creation, and activation behind an
+  explicit open. Ruler and Settings keep their existing native intent guards.
+  Diagnostic panels stay nonactivating. Background Pick and Extract requests
+  open applets without starting selectors. Cloud Sync New transfer, Switch
+  Add account, and Diskman Choose folder requests stay pending until window
+  focus. Startup and launch-error alerts also wait for focus.
+- **Check:** `python3 tmp/redesign/checks/no-activation/check.py` executes the
+  maintained presenter, action router, and page router. It passes 26 background
+  window paths with zero activation calls, two captures, and three sheet
+  routes. The cold-open check failed on the old presenter. Ruler's existing
+  source check passes. The single compile gate found an undo-manager binding
+  error, now removed; final app-module and changed-test typechecks pass.
+  The installed app still stamps `adb39e46`. The orchestrator must install
+  clean current source before the guarded capture replay. Report:
+  `tmp/redesign/logs/w6-no-activation.md`.
+
+## Main Task Manager page retention, 2026-10-01
+
+- **Symptom:** Returning to the main Task Manager page rebuilds its settings.
+  Main sidebar navigation also writes preferences on every selection.
+- **Invariant:** Retain only the visited Task Manager page with
+  OnePlusRetainedPage. Keep sidebar selection in local state, restore the
+  saved initial page, and accept external preference requests. Save on shell
+  hide or disappearance, outside the retained content's visibility boundary.
+- **Check:** The actual-source probe in
+  `tmp/redesign/perf/perf-pages/check-main-selection.py` rejects the old source:
+  20 switches write 20 preferences before and zero after. Restoration, hide
+  save, external requests, reopen, and unchanged foreground pass. The shared
+  host regression and one app/test compile gate pass. Signed complete frames,
+  controls, and <=100ms acceptance remain with the orchestrator.
+
+## Background applet and page URLs, 2026-10-01
+
+- **Symptom:** The owner observed Brave lose foreground focus after opening
+  Color Picker Projects with `open -g`.
+- **Cause:** SwiftUI scene matching opened native windows before the router.
+  AppDelegate skipped those URLs, so the false activation intent introduced
+  in `d6ccf9cb` did not reach applets or ordinary page routes.
+- **Invariant:** AppDelegate sends every external URL through DeepLinkHandler.
+  All 13 scenes use empty external-event creation matches. Their shared root
+  uses empty preference and allowance matches to exclude existing scenes too.
+  A URL callback fallback uses the same handler. Store page requests before
+  presentation. Explicit launcher, menu, default app launch and Dock reopen
+  actions retain activation. Background window reuse only orders front.
+  Ruler Settings keeps its existing action, delegate and controller flag.
+- **Check:** The new source-routing regression rejects `d6ccf9cb` and accepts
+  all five final routing conditions. Actual-source non-GUI spies pass applet
+  reuse, explicit key ordering, one cold scene action, queued intent, plugin
+  guards, and Ruler Settings. Final application-file typecheck passes.
+  The single tests gate failed after removal of a list still used by
+  Command-Q; the list is restored. Hosted tests and the clean signed installed
+  app check remain with the orchestrator. Check both URL schemes, cold and
+  existing windows, Color Picker History/Projects/Settings, Awake Settings,
+  Text Extractor History/Settings, Ruler Settings, and ordinary workspace
+  pages. Require unchanged foreground identity after each background request
+  and activation after an explicit user open. Report:
+  `tmp/redesign/logs/w4-focus-fix.md`.
+
 ## Startup Readiness And Saved Data Recovery, 2026-10-01
 
 - **Symptom:** A requested built-in tool waits for archive restoration, or a
@@ -633,8 +699,9 @@ appearances in the signed build. Report: `tmp/redesign/logs/w1-panel-main.md`.
 - **Cause:** The main SwiftUI scene accepted an unmatched Ruler URL before the
   AppKit route ran. The Ruler route also built its windows before it closed an
   existing main window. Native SwiftUI scene links used a second manual route.
-- **Invariant:** Make the main scene handle only the `main` event. Use only
-  SwiftUI scene routing for native sub-app windows. For an AppKit sub-app,
+- **Invariant:** Disable automatic external-event matching for every scene.
+  AppDelegate routes native and AppKit sub-app URLs through DeepLinkHandler
+  and ToolActionRouter once, with background intent. For an AppKit sub-app,
   close the main window before synchronous window creation.
 - **Check:** Start from a stopped process and sample WindowServer windows every
   5 ms while opening one native sub-app and Ruler. No positive-size main window
@@ -767,6 +834,48 @@ and
 - **Check:** Hosted run `36705631910` passes the unchanged watched-key,
   same-value, unrelated-key, and stopped-observer regression.
 
+## Closed Tool Scenes Retain Their View Graphs, 2026-10-01
+
+- **Symptom:** Signed `e0432849` has zero listed windows and a 684.2M
+  physical footprint after all surfaces close.
+- **Cause:** Native SwiftUI scenes keep their root state after close. The
+  panel coordinator also keeps every visited tab's hosting root.
+- **Invariant:** Construct each scene through the lazy OnePlusWindowContent
+  closure. On native close, unmount the tool subtree and keep its native size.
+  Before ordering a cached window, call onePlusPrepareForOpening. Minimize
+  and occlusion keep scene state. Hidden panels empty inactive hosts before
+  eviction and keep only the measured current host. Keep template glyph
+  rasterization in the bounded ToolGlyph cache.
+- **Check:** OnePlusWindowContentTests releases three model instances across
+  three close/reopen cycles without ordering a window. The existing menu
+  state check drains autorelease pools, releases the inactive tab and keeps
+  the current value. All nine focused package checks and one app/test compile
+  gate pass. Commits: `44d8e12c`, `bc4132ca`, `329d6caf`. The orchestrator
+  still owns signed installation, the 30-second heap/footprint replay and
+  reopen timing. Report: `tmp/redesign/logs/w6-memory4.md`.
+
+## Closed Background Windows Keep Native Hosts, 2026-10-01
+
+- **Symptom:** Signed `d911b0fa`, PID 86076, remains at 327.5 MiB
+  after the owner's complete close pass. Its heap has 73 ViewGraphs,
+  29.8 MB of PropertyList elements, and 12 background window hosts.
+- **Cause:** OnePlusWindowContent releases tool models but the retained
+  native window still owns its hosting controller and view graph.
+- **Invariant:** BackgroundToolWindow keeps the native window and content
+  size, releases its controller on close, and rebuilds before orderFront,
+  orderFrontRegardless, or makeKeyAndOrderFront. Minimize and occlusion
+  keep content. SwiftUI-created scene windows retain the lazy close wrapper.
+- **Check:** The actual-source factory probe fails on `d911b0fa`: its model
+  releases but its controller and host remain. `2a036b02` releases all
+  three across three cycles and keeps size and foreground identity without
+  ordering any window. BackgroundToolWindowTests covers retained-window
+  ownership. The existing routing probe passes 26 background paths with
+  zero activation calls. The single app/test gate links the app but fails
+  on a missing Combine test import. `e8243b26` fixes it; the final test
+  typecheck passes. A complete gate remains with integration.
+  Signed recovery below 250 MB and reopen latency
+  remain with the orchestrator. Report: `tmp/redesign/logs/w7-memory5.md`.
+
 ## Retained Menu Tabs Keep Hidden Tasks Alive, 2026-10-01
 
 - **Symptom:** Cached inactive tabs leave both tab tasks live. A height cache
@@ -811,9 +920,9 @@ and
   which also occurs in panel diagnostic URLs. The trace contains 24-35ms
   native scene-root updates inside failing switches. This establishes an
   unwanted route overlap; the remaining latency needs a signed after check.
-- **Invariant:** Match the native `://open/system-monitor` URL portion.
-  AppDelegate already owns valid diagnostics. Keep the callback fallback,
-  native page routing, current height measurement, and timing endpoint.
+- **Invariant:** Disable automatic external-event matching for every scene.
+  AppDelegate owns diagnostics and tool/page URLs. Keep the shared handler
+  fallback, pending page routing, current height measurement, and timing endpoint.
 - **Check:** `python3 tmp/redesign/perf/r11-tm-route-check.py` passes eight
   native and eight diagnostic cases; the original condition fails. After
   signed installation, verify foreground preservation before the unchanged

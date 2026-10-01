@@ -1,5 +1,62 @@
 # Color Picker Request List
 
+Local verification, run 63, 2026-10-01: all 145 OnePlusUI tests pass.
+Header, chrome, focus, and scroll checks pass. The guarded app run stops
+after 475 passes and 5 skips when FocusEffectTests changes the foreground.
+This does not complete installed Color Picker interaction or screen capture.
+Report: `tmp/redesign/logs/w7-local-tests.md`.
+
+Background creation, run 60, 2026-10-01: cold and retained History, Projects,
+and Settings opens must preserve the frontmost app. A background Pick URL
+opens the applet; only an explicit Pick action starts the screen sampler.
+The actual-source probe passes cold and retained ordering without activation,
+plus the background Pick guard. The final app module and changed tests
+typecheck after repair of the single compile-gate error. The guarded
+installed replay remains with the orchestrator.
+Report: `tmp/redesign/logs/w6-no-activation.md`.
+
+Background opens, run 55, 2026-10-01: `a5a87ec8` routes every external
+window and page URL through the background-aware handler. Empty SwiftUI
+creation and reuse matches prevent Projects, History, and Settings from
+bypassing false activation intent. Explicit user opens retain activation.
+The source regression rejects `d6ccf9cb`; non-GUI router/presenter checks
+pass. Final app and changed-test typechecks pass without diagnostics.
+The one tests gate failed on a removed Command-Q ID list, now restored.
+Hosted execution and clean signed foreground checks remain with the
+orchestrator. Report: `tmp/redesign/logs/w4-focus-fix.md`.
+
+Scroll edges, 2026-10-01: the shared gear reserve is now scroll-content end
+padding. It does not reduce the applet body height. Projects includes that
+reserve in its natural scroll-height cap. All 15 focused package checks pass,
+including all 13 shared window canvases and both applet gear states at their
+minimum and maximum heights. The four regressions fail on the old source.
+Signed History, Projects, Settings, scrolling, and gear checks remain with the
+orchestrator. Report: `tmp/redesign/logs/w4-scroll-edges.md`.
+
+Round 48 header picks, 2026-10-01: `bd2e0963` implements Inset B
+(close x13, title 14pt after zoom) and Top B (title caps, icons, and action
+tops at y20). Applet and sheet header rows are 44pt; applet lights use C=27.
+The row amendment centers switch paint in its unchanged 24pt hit frame.
+Only the tallest action starts at y20; captions and smaller controls share
+its center and text baseline, with 12pt gaps. History and Projects toolbars
+use the shared row. Three focused package render checks pass in both
+appearances at 1x/2x. Signed review stays with the orchestrator.
+Report: `tmp/redesign/logs/w4-header-rows.md`.
+The body moves down 4pt with its existing gaps. Offscreen render and native
+geometry checks pass (42 checks) in both appearances at 1x/2x. One
+app/test compile gate passes. Cap strokes allow one physical pixel for
+antialiasing; action frames are exact. Signed pixel captures
+and real light hover remain with the orchestrator after installation.
+Report: `tmp/redesign/logs/w4-chrome.md`.
+
+Round 11 shared focus, 2026-10-01: native tables keep keyboard focus after
+row clicks without focus paint when accessibility modes are off. Key-window
+reactivation preserves valid responders and active text selection. Detached,
+hidden, disabled, or fully clipped responders are cleared. All six focus
+package checks and all 17 focused chrome checks pass. Signed Tab, Shift-Tab,
+arrows, Space, Return, VoiceOver, and scroll/tab checks remain with the
+orchestrator. Report: `tmp/redesign/logs/w3-chrome.md`.
+
 Glyph pass, 2026-10-01: `91d9a538` uses `ToolGlyph.colorPicker` in the
 launcher, Home, and separate placement. Status template images have a 14pt
 canvas and 11.2pt maximum ink. Headless checks pass at 1x, 2x, and 4x.
@@ -18,6 +75,16 @@ shared launcher Login Items query after unrelated defaults writes.
 The actual preference-observer check and both compile gates pass. Signed
 after measurements and complete first/late frames remain. The 250ms open
 and 100ms page limits stay open. Commands: `tmp/redesign/perf/w1-windows.md`.
+
+## Round 11 audit, 2026-10-01
+
+| Status | Task | Evidence | Remaining work |
+|---|---|---|---|
+| Source fixed | T076: Remove the empty Projects card tail. | `df0a2f5a` shows natural-height 44pt destinations directly below actions. Only longer lists use the capped scroller. Full-row hover, counts, minimum canvas, and gear reserve remain. | Signed short/long list and project-creation checks in both appearances. |
+| Source fixed | T077: Keep history separators inside each row. | `8fa61fbd` puts 1pt lines in bottom overlays; separators add no height to the 44pt pitch. | Signed row/action alignment and hover. |
+| Measured; source fixed | T078: Save growing pinned/project history off-main. | The actual 10,000-color, 100-project pin/save callback took 25ms. `66d13874` orders background encoding and writes; the callback is below 0.1ms and a drained reload equals memory. No pins are trimmed. `5ed9cbf0` adds `async throws`, encodes both arrays before writes, and preserves retryable current state. Native failure/retry/recovery checks pass. | Hosted regression and signed interaction. Lifecycle integration uses `try await ColorPickerService.shared.flushPersistence()` in a critical 10s stage before logs and Cloud Sync. |
+| Source fixed | T080: Undo reversible history and project actions. | `b8fc89fa` uses the owning window UndoManager for pin, delete, clear, project creation, and selection. Native fixture checks pass undo/redo, order, IDs, persistence, and unrelated changes. Colors from an undone project remain in Unfiled until redo. | Hosted AppletHistoryUndoTests and signed native Edit menu/confirmation checks. |
+| Source fixed | T081: Attach CSS Save to Color Picker. | `6be161e9` passes the initiating scene window to `beginSheetModal`; modeless fallback requires no owner. Atomic background export and visible errors remain. | Signed Cancel, Escape, failure, and appearance checks. |
 
 ## Production audit, 2026-10-01
 
@@ -78,7 +145,7 @@ remain with the orchestrator.
 
 | Status | Request | Evidence | Remaining work |
 |---|---|---|---|
-| Verify | Size the applet Settings page to its cards within 250 to 460pt. | Round 6 shows a blank tail because Settings always requested the maximum height. The applet now uses measured card height plus the shared 40pt titlebar, 16pt top gap, and 52pt gear reserve. The initial two-card budget gives 404pt. A height regression covers short content and the upper cap. | Recapture both appearances. Check the permission notice, scrolling at the cap, gear edge inset, and Settings-to-History return in the signed build. |
+| Verify | Size the applet Settings page to its cards within 250 to 460pt. | Round 6 shows a blank tail because Settings always requested the maximum height. The applet now uses measured card height plus the shared 44pt titlebar, 16pt top gap, and 52pt gear reserve. The 296pt content fixture gives 408pt; the two-card source budget gives 384pt. A height regression covers short content and the upper cap. | Recapture both appearances. Check the permission notice, scrolling at the cap, gear edge inset, and Settings-to-History return in the signed build. |
 | Verify | Fill the shortcut control column and use the control text role. | Signed `8cf8c02` round 4 captures confirm the full Settings gutters, complete minimum Projects row, Clear all copy, and aligned History rows. The shared recorder still paints a 116pt bezel inside the 160pt column and uses mono type. | Foundation must expose a fill-width recorder with control text and controlInk. Adopt it in the shared settings card and verify idle, recording, disabled, and cancel states. |
 | Verify | Pair the short embedded settings cards and use sentence case for clearing. | Round 3 review reuses the Global shortcut and Saved colors cards in equal columns when both fit; the applet keeps full-width stacked cards. The action and confirmation use `Clear all`. | Verify both hosts and clear confirmation in the signed build. |
 | Verify | Show complete project rows and use native list anatomy for history. | `projectsHeight` includes each project row and the 60pt project editor before the 460pt cap. History uses one card with stable row ids and `lineSoft` separators. | Verify the minimum and maximum window heights in the signed build. |
