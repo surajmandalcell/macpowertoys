@@ -587,3 +587,19 @@ and
   notification token on stop and deinitialization.
 - **Check:** Hosted run `36705631910` passes the unchanged watched-key,
   same-value, unrelated-key, and stopped-observer regression.
+
+## Retained Menu Tabs Keep Hidden Tasks Alive, 2026-10-01
+
+- **Symptom:** Cached inactive tabs leave both tab tasks live. A height cache
+  also leaves the panel at 600pt after content shrinks to 253pt or 133pt.
+- **Cause:** A detached NSHostingView does not apply its replacement hidden
+  environment until layout. Observed child changes can bypass a host-height
+  cache's invalidation.
+- **Invariant:** Deliver the hidden root through layout before detaching a
+  retained tab host. Cache the visited host, then measure natural height from
+  current content. Do not reuse an old height without a valid invalidation.
+- **Check:** `testVisitedTabRetainsControlStateAndStopsHiddenWork` keeps the
+  control value across visits, stops inactive and closed tasks, and resumes
+  only the active tab. The fixed-region shrink and destination-height checks
+  pass. Signed `198055e4` still fails the speed gates; rerun on the retention
+  fixes before claiming the 100ms target. Evidence: `tmp/redesign/perf/w1-panels.md`.
