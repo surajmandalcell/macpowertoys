@@ -241,6 +241,30 @@ struct SystemCareWindowView: View {
     @State private var pendingOperation: MoleOperation?
 
     var body: some View {
+        removalConfirmations
+        .confirmationDialog(
+            manager.molePath == nil ? "Install Mole with Homebrew?" : "Update Mole with Homebrew?",
+            isPresented: $showingInstallConfirmation
+        ) {
+            Button(manager.molePath == nil ? "Install" : "Update") { manager.installOrUpdateMole() }
+            Button("Cancel", role: .cancel) {}
+        }
+        .confirmationDialog(
+            pendingOperation.map { "Run \($0.title) in Terminal?" } ?? "Run maintenance?",
+            isPresented: Binding(get: { pendingOperation != nil }, set: { if !$0 { pendingOperation = nil } })
+        ) {
+            Button("Open Terminal", role: .destructive) {
+                guard let operation = pendingOperation else { return }
+                manager.openMole(operation, dryRun: false)
+                pendingOperation = nil
+            }
+            Button("Cancel", role: .cancel) { pendingOperation = nil }
+        } message: {
+            Text(pendingOperation.map { "mo \($0.rawValue) runs in Terminal. Review its plan and privilege requests there." } ?? "")
+        }
+    }
+
+    private var windowFrame: some View {
         OnePlusWindowRoot(canvas: .systemCare) {
             sidebar
         } content: {
@@ -252,6 +276,10 @@ struct SystemCareWindowView: View {
         .background(WindowAccessor(identifier: "system-care"))
         .quickLookPreview($previewURL)
         .buttonStyle(OnePlusButtonStyle())
+    }
+
+    private var preparedWindow: some View {
+        windowFrame
         .task {
             manager.refresh()
         }
@@ -289,6 +317,10 @@ struct SystemCareWindowView: View {
             open(route.page)
         }
         .background { shortcuts }
+    }
+
+    private var removalConfirmations: some View {
+        preparedWindow
         .confirmationDialog(
             "Move selected items to Trash?",
             isPresented: $showingTrashConfirmation
@@ -315,26 +347,6 @@ struct SystemCareWindowView: View {
             Button("Cancel", role: .cancel) { pendingUninstall = nil }
         } message: {
             Text("Mole shows its removal plan and any privilege request in Terminal.")
-        }
-        .confirmationDialog(
-            manager.molePath == nil ? "Install Mole with Homebrew?" : "Update Mole with Homebrew?",
-            isPresented: $showingInstallConfirmation
-        ) {
-            Button(manager.molePath == nil ? "Install" : "Update") { manager.installOrUpdateMole() }
-            Button("Cancel", role: .cancel) {}
-        }
-        .confirmationDialog(
-            pendingOperation.map { "Run \($0.title) in Terminal?" } ?? "Run maintenance?",
-            isPresented: Binding(get: { pendingOperation != nil }, set: { if !$0 { pendingOperation = nil } })
-        ) {
-            Button("Open Terminal", role: .destructive) {
-                guard let operation = pendingOperation else { return }
-                manager.openMole(operation, dryRun: false)
-                pendingOperation = nil
-            }
-            Button("Cancel", role: .cancel) { pendingOperation = nil }
-        } message: {
-            Text(pendingOperation.map { "mo \($0.rawValue) runs in Terminal. Review its plan and privilege requests there." } ?? "")
         }
     }
 
@@ -412,29 +424,34 @@ struct SystemCareWindowView: View {
                 }
             }
         } content: {
-            if manager.storageURL == nil {
-                OnePlusEmptyState(
-                    "Choose a folder",
-                    systemImage: "internaldrive",
-                    caption: "See the folders and files that use the most space."
-                ) {
-                    Button("Choose Folder…") { chooseStorageFolder() }
-                        .buttonStyle(OnePlusButtonStyle(.neutral))
-                        .disabled(manager.isWorking)
-                }
-                .frame(maxWidth: .infinity, maxHeight: .infinity)
-            } else {
-                storageBreadcrumbCard
-                if let issue = manager.storageIssue {
-                    OnePlusBanner("\(issue.url.path): \(issue.reason)", tone: .error) {
-                        Button("Choose Folder…") { chooseStorageFolder() }.disabled(manager.isWorking)
-                        Button("Retry") { manager.analyze(issue.url, resetBreadcrumbs: true) }.disabled(manager.isWorking)
-                    }
-                }
-                storageSummaryCard
-                storageTableCard
-                    .frame(maxHeight: .infinity, alignment: .top)
+            storageContent
+        }
+    }
+
+    @ViewBuilder
+    private var storageContent: some View {
+        if manager.storageURL == nil {
+            OnePlusEmptyState(
+                "Choose a folder",
+                systemImage: "internaldrive",
+                caption: "See the folders and files that use the most space."
+            ) {
+                Button("Choose Folder…") { chooseStorageFolder() }
+                    .buttonStyle(OnePlusButtonStyle(.neutral))
+                    .disabled(manager.isWorking)
             }
+            .frame(maxWidth: .infinity, maxHeight: .infinity)
+        } else {
+            storageBreadcrumbCard
+            if let issue = manager.storageIssue {
+                OnePlusBanner("\(issue.url.path): \(issue.reason)", tone: .error) {
+                    Button("Choose Folder…") { chooseStorageFolder() }.disabled(manager.isWorking)
+                    Button("Retry") { manager.analyze(issue.url, resetBreadcrumbs: true) }.disabled(manager.isWorking)
+                }
+            }
+            storageSummaryCard
+            storageTableCard
+                .frame(maxHeight: .infinity, alignment: .top)
         }
     }
 
@@ -567,33 +584,38 @@ struct SystemCareWindowView: View {
                 }
             }
         } content: {
-            startupDiskCard
-            if manager.cleanupScanOutcome != nil || manager.hasCleanupScan {
-                SystemCareScanCoverage(manager: manager)
-            }
-            if manager.hasCleanupScan {
-                cleanupSummary
-                if manager.cleanupCandidates.isEmpty {
-                    OnePlusEmptyState(manager.cleanupScanOutcome == .completed ? "No items in these locations" : "No candidates in retained results",
-                                      systemImage: "tray", caption: manager.cleanupScanOutcome == .completed ? "The selected locations were read successfully." : "Review coverage and retry the affected locations.")
-                        .frame(maxWidth: .infinity, maxHeight: .infinity)
-                } else {
-                    HStack(alignment: .top, spacing: OnePlusMetrics.cardGap) {
-                        cleanupLocations
-                            .frame(width: OnePlusMetrics.controlColumn * 2)
-                        cleanupItems
-                    }
-                    .frame(maxHeight: .infinity)
-                }
+            cleanupContent
+        }
+    }
+
+    @ViewBuilder
+    private var cleanupContent: some View {
+        startupDiskCard
+        if manager.cleanupScanOutcome != nil || manager.hasCleanupScan {
+            SystemCareScanCoverage(manager: manager)
+        }
+        if manager.hasCleanupScan {
+            cleanupSummary
+            if manager.cleanupCandidates.isEmpty {
+                OnePlusEmptyState(manager.cleanupScanOutcome == .completed ? "No items in these locations" : "No candidates in retained results",
+                                  systemImage: "tray", caption: manager.cleanupScanOutcome == .completed ? "The selected locations were read successfully." : "Review coverage and retry the affected locations.")
+                    .frame(maxWidth: .infinity, maxHeight: .infinity)
             } else {
-                HStack {
-                    scanButton
-                    Spacer()
-                    Text("Choose locations, then review the scan.").onePlusText(.caption)
+                HStack(alignment: .top, spacing: OnePlusMetrics.cardGap) {
+                    cleanupLocations
+                        .frame(width: OnePlusMetrics.controlColumn * 2)
+                    cleanupItems
                 }
-                cleanupLocations
-                Spacer(minLength: 0)
+                .frame(maxHeight: .infinity)
             }
+        } else {
+            HStack {
+                scanButton
+                Spacer()
+                Text("Choose locations, then review the scan.").onePlusText(.caption)
+            }
+            cleanupLocations
+            Spacer(minLength: 0)
         }
     }
 
