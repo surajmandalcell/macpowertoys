@@ -71,6 +71,7 @@ public struct OnePlusTabStrip<Value: Hashable, Tools: View>: View {
     @Binding private var selection: Value
     private let tools: Tools
     @Environment(\.onePlusDensity) private var density
+    @Environment(\.isEnabled) private var enabled
     @Environment(\.onePlusTimingWindow) private var timingWindow
     public init(tabs: [OnePlusTab<Value>], selection: Binding<Value>, layout: Layout = .workspace,
                 @ViewBuilder tools: () -> Tools) {
@@ -85,6 +86,13 @@ public struct OnePlusTabStrip<Value: Hashable, Tools: View>: View {
                         if let count = tab.count { OnePlusNavBadge(count, minimumDigits: tab.countDigits) }
                     }
                 }.buttonStyle(OnePlusTabButtonStyle(selected: selection == tab.id))
+                    .overlay(alignment: .bottom) {
+                        if selection == tab.id {
+                            OnePlusColor.accent.frame(height: 2)
+                                .opacity(enabled ? 1 : OnePlusMetrics.disabledOpacity)
+                                .allowsHitTesting(false)
+                        }
+                    }
                     .accessibilityAddTraits(selection == tab.id ? .isSelected : [])
             }
             Spacer(minLength: 8)
@@ -137,9 +145,6 @@ private struct OnePlusTabButtonBody<Label: View>: View {
                     .allowsHitTesting(false)
             }
             .frame(height: 36)
-            .overlay(alignment: .bottom) {
-                OnePlusColor.accent.frame(height: 2).opacity(selected ? 1 : 0)
-            }
             .overlay {
                 if enabled && focused && OnePlusFocusPolicy.shared.showsFocus {
                     RoundedRectangle(cornerRadius: OnePlusMetrics.navRowRadius).strokeBorder(OnePlusColor.focus, lineWidth: 1)
