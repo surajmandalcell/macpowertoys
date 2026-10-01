@@ -2,6 +2,16 @@
 
 Reviewed against current source and Git history on 2026-08-31.
 
+## Production audit, 2026-10-01
+
+| Status | Request | Evidence | Remaining work |
+|---|---|---|---|
+| Verify | Keep a protected running process attached and reject missing PIDs. | `bc131870` shares one positive-PID liveness check between attachment and timer expiry. Signal-zero probes accept EPERM as a running process. A source-derived check passed for this process, protected PID 1, invalid PIDs, and an exited child. `AwakeProcessTests` covers these cases. | Compile through the shared gate, run on CI, then test Attach, Detach, and process expiry in the signed app. |
+| Verify | Fit all eight quick times without clipped labels or a silent Add action. | `bc131870` keeps the single 8pt-spaced row scrollable and disables Add for zero, duplicate, and full preset lists. | Inspect eight long presets, Add, remove confirmation, and both settings hosts in the signed app. |
+| Verify | Audit Off, indefinite, timed, Until, display preference, assertion ownership, persistence, CLI actions, status, and settings routes. | All service and view paths were traced. Read-only `pmset -g assertions` confirms the existing installed app owns the display-sleep assertion. | The installed source stamp is `36c585b4`, not this audit source. Installation and signed interaction checks belong to the orchestrator. S5 and A4-A7 remain open. |
+| Verify | Apply the horizontal density and instant-motion correction. | `c03f046d` removes padded status, mode, quick-time, and process cards. Controls and related actions sit directly on the page. Preset and process help uses tooltips. Applet and embedded hosts disable implicit content animation. | Review both pages and both hosts after installation; confirm hover and page changes are instant. |
+
+
 ## OnePlusUI redesign, 2026-09-29
 
 Round 3a uses one cards-only AwakeSettingsView for embedded and standalone

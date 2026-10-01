@@ -1,5 +1,17 @@
 # Ruler Troubleshooting
 
+## Localized Settings Dimensions, 2026-10-01
+
+- **Symptom:** Millimeter or inch fields use a decimal dot in a locale that
+  requires a comma. The field formatter rejects the displayed value.
+- **Cause:** The controller used locale-free printf formatting while its
+  NumberFormatter used the current locale.
+- **Invariant:** Format each field with that field's NumberFormatter locale.
+  Keep pixel rounding and the existing millimeter and inch precision.
+- **Check:** German `25,5` and `3,125` and English `2.750` round trip through
+  Foundation. A native text field reads `25,5` as `25.5`. Run
+  `RulerDimensionLocaleTests` on CI and inspect both installed windows.
+
 ## OnePlusUI Settings Bodies, 2026-09-29
 
 - **Invariant:** Settings and Defaults retain their native independent
