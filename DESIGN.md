@@ -51,14 +51,14 @@ typography:
   regular: { sidebar-title: 12.5, nav: 12.5, caption-upper: 9, page-title: 24, subtitle: 12.5, tab: 12, section-title: 13, card-title: 12, row: 12, control: 12, caption: 10.5, table-header: 9, mono: 11, metric: 27, unit: 12 }
   compact: { sidebar-title: 12.5, nav: 11.5, caption-upper: 9, page-title: 20, subtitle: 10.5, tab: 11, section-title: 12, card-title: 11, row: 10.5, control: 10.5, caption: 9.5, table-header: 8.5, mono: 9.5, metric: 21, unit: 10 }
 rounded: { segment: 3, nav-row: 5, icon-button: 5, control: 6, menu-tile: 6, card: 8, window: 13 }
-spacing: { scale: [2, 4, 6, 8, 10, 12, 16, 20, 24, 28], gutter: 24, task-manager-gutter: 20, card-gap: 16, card-padding: 16, content-top: 16 }
+spacing: { scale: [2, 4, 6, 8, 10, 12, 16, 20, 24, 28], gutter: 24, task-manager-gutter: 20, card-gap: 16, card-padding: 16, content-top: 20 }
 geometry:
   title-row: 54
   centerline: 27            # traffic lights and sidebar title only
-  content-top: 16           # page title first line box top (owner 2026-09-30); sidebar content starts at 54
-  dot-title-cap-offset: 1   # optical offset within the regular page-title line box
-  applet-titlebar: 40
-  applet-centerline: 22
+  content-top: 20           # title paint and header control tops (Top B); sidebar content starts at 54
+  applet-titlebar: 44
+  applet-centerline: 27
+  traffic-light-leading-inset: 13
   sidebar-title-gap-after-zoom: 14
   search: { height: 32, inset-x: 12, below: 14 }
   nav-row: { regular: 32, compact: 29, gap: 2, container-inset: 10, padding: 10, icon: 15, icon-gap: 10 }
@@ -211,23 +211,14 @@ not stick to the window top.
 
 ### The content top line
 
-`T = 16` pt below the window's top edge (owner decision 2026-09-30, "top edge
-on titlebar"). The page title's first line box starts at `T`, so the title's
-top edge lines up with the top of the traffic lights and the sidebar title:
-the title reads as part of the titlebar row and never pokes above it.
-(Centering a 24 pt title on `C` put it too high; starting it at 58 put it too
-low.) Task Manager's dot-matrix title has no ascender space, so its glyph
-top aligns with the cap top of the text titles in the other windows, never
-above it (owner correction 2026-10-01: its header sat above the sidebar
-title row). Center the 20 pt dot canvas in the regular 28.8 pt title line
-box with the 1 pt optical cap offset. Measure the painted pixels, not the
-frames.
-Header top line (owner pick 2026-10-01, "Top B"): one line at y = 20, the
-top of the traffic lights. Nothing in a page header starts above it. The
-title's cap top, a tool icon beside the title (for example the 40 pt
-icon on main window tool pages), and every header button, select, and
-switch put their top edge on y = 20. Content below moves down by the same
-amount in every window so the stack keeps its spacing.
+Header top line (owner pick 2026-10-01, "Top B"): one line at y = 20,
+the top of the traffic lights. Align the title's painted cap top, the 40 pt
+tool icon, and every header button, select, and switch top to this line.
+Keep the title line box and the following gaps. The body moves down 4 pt.
+Use the text baseline and glyph bounds for system titles. Task Manager's
+20 pt dot canvas starts at its painted path top inside the regular 28.8 pt
+line box. Measure cap strokes in linear light at 1x and 2x to exclude the
+appearance-dependent antialiasing halo.
 
 Traffic-light inset (owner pick 2026-10-01, "Inset B"): the close button's
 left edge sits 13 pt from the window's left edge (was 9 pt), in every
@@ -236,10 +227,11 @@ the zoom button, so it moves right with the lights.
 
 The subtitle follows 2 pt below the title line, tabs follow, and the
 first content element starts 16 pt below them (about y = 80 on a page with a
-subtitle and tabs). Header actions center on the page title's first line.
+subtitle and tabs). Header actions align to the common top line.
 The sidebar keeps its own layout: title on `C`, first element at 54.
 
-Compact applets keep their 40 pt titlebar with `C = 22`.
+Compact applets and shared sheet headers use a 44 pt row. Applet lights
+use `C = 27`, and titles and 24 pt action frames start at y = 20.
 
 ### Spacing and radius scales
 
@@ -445,14 +437,38 @@ one darker surface step and never moves. Disabled is 0.38 opacity with no
 hover. Loading keeps the final bounds. Errors keep the bounds and add a
 caption.
 
-Focus (owner correction, repeated, binding): no focus ring, outline, or focus
-fill is ever drawn, and no control takes focus when a window or panel opens
-or when it is clicked with the mouse, unless the system asks for keyboard
-focus visuals: Full Keyboard Access (keyboard navigation) is on, or
-VoiceOver is running. Only then do controls show the 1 pt inset neutral
-focus line, which never changes layout or gets clipped. Text fields show
-only the caret when the person clicks into them. Keyboard operation keeps
-working in every case.
+Focus (owner correction, round 11, binding): draw no focus ring, outline,
+or focus fill unless Full Keyboard Access is on or VoiceOver is running.
+Only then show the 1 pt inset neutral focus line without layout changes or
+clipping. A native table or list keeps its first responder after a row click
+so arrows, type-select, Space for Quick Look, and Return work at once.
+Text fields keep editing and show the caret on click. Clear ordinary opening
+control focus once. Preserve valid visible responders on reactivation,
+including keyboard and accessibility focus. Clear only detached, hidden,
+disabled, or fully clipped responders. Keyboard operation keeps working.
+
+## Cards and tables (owner picks from Recap Pro, 2026-10-01)
+
+The owner chose these traits on the Recap Pro decision page. Values come
+from Recap Pro's own CSS at 100% scale. They apply to every card and table
+in windows and menu-bar panels.
+
+- A. Metric values use the full metric size: 27 pt, weight 550 (between
+  medium and semibold), 30.24 pt line, in compact density too (was 21 pt
+  semibold). Units keep their role.
+- B. Captions under metric values are quieter: `#A0A0A0` in dark (was
+  `#C8C8C8`); light keeps an equivalent contrast step. Values stay the
+  strongest text.
+- C. Metric cards use the quiet wave texture instead of the corner grain:
+  a 180 x 110 pt grayscale ribbon at 0.07 opacity, below all content.
+- H. Table header rows are 33 pt and body rows 34 pt in every density.
+- I. Table body rows alternate surfaces: odd rows `#202020`, even rows
+  `#242424` in dark, with a matching light step. Hover and selection still
+  paint the complete row on top.
+- Process lists show the real app icon when a process belongs to an app
+  bundle, and a terminal glyph for command-line processes. Show no generic
+  window or placeholder glyph; keep the icon slot so names stay aligned
+  (owner correction 2026-10-01).
 
 ## Horizontal density and native feel
 
@@ -605,8 +621,8 @@ separate tool panel.
 Awake, Color Picker, and Text Extractor stay compact applets with the same
 tokens, fixed sizes, and components.
 
-- One `window` surface with the ribbon texture, and a 40 pt custom titlebar:
-  traffic lights (close, minimize, disabled zoom) centered on `C = 22`, the
+- One `window` surface with the ribbon texture, and a 44 pt custom titlebar:
+  traffic lights (close, minimize, disabled zoom) centered on `C = 27`, the
   text title at 12.5 semibold 14 pt after the zoom button, and persistent page
   actions trailing 16 pt from the edge.
 - Body gutter 16 pt. Sections use `OnePlusCard` and `OnePlusSettingRow`.
@@ -689,10 +705,11 @@ Uses `diskman-fixed.html` for content, normalized to this file so it feels
 native: 1440 x 900, a 216 pt sidebar with ANALYZE (locations and Choose
 Folder) and DEVICES sections, the location name as the page title on `C` with
 its path as a mono subtitle, header actions (Rescan as primary, a more menu),
-a stats card (Space used in accent, Files, Folders, Last scan), tabs
+a plain horizontal 28 pt stats row (Space used in accent, Files, Folders,
+Last scan), tabs
 Visualization, Largest files N, and Results with a trailing Treemap or Rings
-segmented control and a sort select, a map card with a 260 pt inspector card,
-and the unreadable notice as a card row with its action. Treemap tiles use
+segmented control and a measure select, a map card with a 260 pt inspector card,
+and a plain unreadable row with its trailing count and action. Treemap tiles use
 the storage series `#66504A #4C6272 #6C5A43 #48645E #68546C #745047 #455D70
 #706048 #435E60 #5B4E67 #536149`, radius 4, a 1 pt translucent line, and
 grain 0.17 (0.22 selected). Native behaviors: double-click drills in, the
@@ -700,6 +717,11 @@ breadcrumb and Command-[ go back, Space shows Quick Look, context menus,
 drag-out, and Command-R rescans. Modify keeps its write lock and staged
 review in the same card and row language. Destructive steps use a native
 confirmation.
+
+Diskman Size cells keep their exact mono byte values beside a neutral 55 x 3 pt
+usage bar. Normalize bars to the largest item in the current filtered table.
+Use the shared 8 pt action gap and a 180 pt Size column. Sorting and native
+selection retain their existing behavior.
 
 ### Mac Tweaks
 
