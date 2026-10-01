@@ -48,6 +48,47 @@ final class DiskManagementTests: XCTestCase {
         XCTAssertThrowsError(try DiskManagement.quitBlockersAndEject([protected], request: request))
     }
 
+    func testProtectedPhysicalDisksStayBlockedAndExplainWhy() throws {
+        let info: [String: Any] = ["WholeDisk": true, "VirtualOrPhysical": "Physical", "Size": card.size,
+                                   "Writable": true, "RemovableMediaOrExternalDevice": true,
+                                   "Internal": true, "BusProtocol": "Secure Digital"]
+        XCTAssertNil(DiskManagement.modificationBlockReason(info, protectedReason: nil, mediaRegistryID: 1))
+        for reason in ["Startup disk", "Running app", "Source repository"] {
+            XCTAssertEqual(DiskManagement.modificationBlockReason(info, protectedReason: reason, mediaRegistryID: 1), reason)
+            var protected = card
+            protected.protectionReason = reason
+            for action in DiskAction.allCases where action != .verify && !action.needsPartition {
+                let request = DiskRequest(disk: protected, partition: nil, action: action,
+                                          name: "Data", format: "ExFAT", scheme: "GPT", size: "4G")
+                XCTAssertThrowsError(try DiskManagement.run(request)) { error in
+                    XCTAssertEqual(error.localizedDescription, reason)
+                }
+            }
+        }
+        var internalDisk = info
+        internalDisk["BusProtocol"] = "Apple Fabric"
+        XCTAssertTrue(try XCTUnwrap(DiskManagement.modificationBlockReason(internalDisk, protectedReason: nil, mediaRegistryID: 1)).contains("Internal"))
+        var image = info
+        image["VirtualOrPhysical"] = "Virtual"
+        XCTAssertNotNil(DiskManagement.modificationBlockReason(image, protectedReason: nil, mediaRegistryID: 1))
+        XCTAssertNotNil(DiskManagement.modificationBlockReason(info, protectedReason: nil, mediaRegistryID: nil))
+        XCTAssertEqual(DiskManagement.physicalDiskIDs(["APFSPhysicalStores": [["APFSPhysicalStore": "disk6s2"]]]), ["disk6"])
+        XCTAssertEqual(DiskManagement.physicalDiskIDs(["DeviceIdentifier": "disk3s1s1", "ParentWholeDisk": "disk3"]), ["disk3"])
+        XCTAssertEqual(DiskManagement.physicalDiskIDs(["APFSPhysicalStores": [["APFSPhysicalStore": "disk0s2"], ["APFSPhysicalStore": "disk2s2"]]]), ["disk0", "disk2"])
+        XCTAssertTrue(DiskManagement.physicalDiskIDs(["DeviceIdentifier": "disk10;erase"]).isEmpty)
+        XCTAssertTrue(DiskManagement.physicalDiskIDs(["APFSPhysicalStores": [["APFSPhysicalStore": "disk6s2"], [:]]]).isEmpty)
+    }
+
+    @MainActor func testPreviewCannotExecuteARequestOutsideTheView() async {
+        let model = DiskManagementModel(disks: [card], isPreview: true)
+        let request = DiskRequest(disk: card, partition: nil, action: .eraseDisk,
+                                  name: "Data", format: "ExFAT", scheme: "GPT", size: "")
+        await model.run(request)
+        XCTAssertFalse(model.isBusy)
+        XCTAssertNil(model.message)
+        XCTAssertNil(model.error)
+    }
+
     @MainActor func testInventorySelectsFirstDiskAndClearsRemovedTargets() {
         let model = DiskManagementModel()
         model.updateDisks([card])
@@ -189,6 +230,9 @@ final class DiskManagementTests: XCTestCase {
                                               scheme: "", size: "").arguments())
         XCTAssertThrowsError(try DiskRequest(disk: efiDisk, partition: efi,
                                               action: .eraseVolume, name: "EFI", format: "ExFAT",
+                                              scheme: "", size: "").arguments())
+        XCTAssertThrowsError(try DiskRequest(disk: efiDisk, partition: efi,
+                                              action: .repair, name: "", format: "",
                                               scheme: "", size: "").arguments())
         XCTAssertThrowsError(try DiskRequest(disk: exfatDisk, partition: exfatDisk.partitions[2],
                                               action: .mergePartitions, name: "Last", format: "ExFAT",

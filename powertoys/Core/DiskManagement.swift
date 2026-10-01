@@ -46,6 +46,7 @@ nonisolated struct ManagedDisk: Identifiable, Sendable {
     let manageable: Bool
     let mediaRegistryID: UInt64?
     let partitions: [ManagedPartition]
+    var protectionReason: String? = nil
 
     var unallocatedBytes: Int64 {
         max(0, size - partitions.filter { !$0.isAPFSVolume }.reduce(0) { $0 + $1.size })
@@ -237,7 +238,7 @@ nonisolated struct DiskRequest: Sendable {
         if [.eraseVolume, .deletePartition, .resizePartition].contains(action) && partition?.isAPFSVolume == true {
             throw DiskManagementError.invalidInput("Select the physical partition for this action.")
         }
-        if [.rename, .eraseVolume, .deletePartition, .resizePartition, .mergePartitions].contains(action) &&
+        if [.repair, .rename, .eraseVolume, .deletePartition, .resizePartition, .mergePartitions].contains(action) &&
             partition?.content == "EFI" {
             throw DiskManagementError.invalidInput("The EFI system partition cannot be changed here. Use a whole-disk action to replace the layout.")
         }
@@ -306,6 +307,7 @@ nonisolated enum DiskManagement {
 
     static func inventory() throws -> [ManagedDisk] {
         let list = try plist(["list", "-plist"])
+        let protected = try protectedDisks()
         let entries = list["AllDisksAndPartitions"] as? [[String: Any]] ?? []
         let containers = (try? plist(["apfs", "list", "-plist"]))?["Containers"] as? [[String: Any]] ?? []
         var apfsByStore: [String: (reference: String, volumes: [ManagedPartition])] = [:]
@@ -328,18 +330,16 @@ nonisolated enum DiskManagement {
             guard let id = entry["DeviceIdentifier"] as? String, validID(id),
                   let info = try? plist(["info", "-plist", id]),
                   info["WholeDisk"] as? Bool == true,
-                  info["VirtualOrPhysical"] as? String == "Physical" else { return nil }
+                  info["VirtualOrPhysical"] as? String == "Physical" || protected[id] != nil else { return nil }
             let size = (info["Size"] as? NSNumber)?.int64Value ?? 0
             let bus = info["BusProtocol"] as? String ?? "Unknown"
             let scheme = info["Content"] as? String ?? "Unknown"
             let path = info["DeviceTreePath"] as? String ?? ""
             let name = info["MediaName"] as? String ?? id
             let writable = info["Writable"] as? Bool == true
-            let removable = info["RemovableMediaOrExternalDevice"] as? Bool == true
-            let internalMedia = info["OSInternalMedia"] as? Bool == true
-            let internalBus = info["Internal"] as? Bool == true && bus != "Secure Digital"
             let registryID = mediaRegistryID(for: id)
-            let manageable = writable && removable && !internalMedia && !internalBus && size > 0 && registryID != nil
+            let protectionReason = modificationBlockReason(info, protectedReason: protected[id], mediaRegistryID: registryID)
+            let manageable = protectionReason == nil
             let partitions = (entry["Partitions"] as? [[String: Any]] ?? []).flatMap { part -> [ManagedPartition] in
                 guard let partID = part["DeviceIdentifier"] as? String, validID(partID) else { return [] }
                 let apfs = apfsByStore[partID]
@@ -347,7 +347,7 @@ nonisolated enum DiskManagement {
                 let fileSystem = mountPoint.flatMap {
                     (try? URL(fileURLWithPath: $0).resourceValues(forKeys: [.volumeLocalizedFormatDescriptionKey]))?
                         .volumeLocalizedFormatDescription
-                }
+                } ?? (try? plist(["info", "-plist", partID]))?["FilesystemUserVisibleName"] as? String
                 let physical = ManagedPartition(
                     id: partID, name: part["VolumeName"] as? String ?? partID,
                     content: part["Content"] as? String ?? "Unknown",
@@ -362,7 +362,7 @@ nonisolated enum DiskManagement {
             return ManagedDisk(id: id, name: name, size: size, bus: bus, scheme: scheme,
                                devicePath: path, writable: writable, manageable: manageable,
                                mediaRegistryID: registryID,
-                               partitions: partitions)
+                               partitions: partitions, protectionReason: protectionReason)
         }.sorted { $0.id.localizedStandardCompare($1.id) == .orderedAscending }
     }
 
@@ -371,6 +371,9 @@ nonisolated enum DiskManagement {
             throw DiskManagementError.invalidDevice
         }
         let arguments = try request.arguments()
+        if request.action != .verify, let reason = request.disk.protectionReason {
+            throw DiskManagementError.invalidInput(reason)
+        }
         if request.action != .verify && DiskWriteLock.isLocked(request.disk) {
             throw DiskManagementError.lockedDevice
         }
@@ -386,7 +389,7 @@ nonisolated enum DiskManagement {
             }) else { throw DiskManagementError.changedDevice }
         }
         guard request.action == .verify || current.manageable else {
-            throw DiskManagementError.unsafeDevice
+            throw DiskManagementError.invalidInput(current.protectionReason ?? DiskManagementError.unsafeDevice.localizedDescription)
         }
         if request.action != .verify && DiskWriteLock.isLocked(current) {
             throw DiskManagementError.lockedDevice
@@ -435,7 +438,10 @@ nonisolated enum DiskManagement {
         // Recheck the disk, lock, and live open files before sending any signal.
         let current = try inventory().first { $0.id == request.disk.id }
         guard let current, current.identity == request.disk.identity else { throw DiskManagementError.changedDevice }
-        guard current.manageable, !DiskWriteLock.isLocked(current) else { throw DiskManagementError.lockedDevice }
+        guard current.manageable else {
+            throw DiskManagementError.invalidInput(current.protectionReason ?? DiskManagementError.unsafeDevice.localizedDescription)
+        }
+        guard !DiskWriteLock.isLocked(current) else { throw DiskManagementError.lockedDevice }
         let live = Dictionary(uniqueKeysWithValues: ejectBlockers(on: current).map { ($0.pid, $0) })
         for blocker in blockers {
             guard let now = live[blocker.pid], now.started == blocker.started,
@@ -539,5 +545,60 @@ nonisolated enum DiskManagement {
         guard stores.count == 1, let id = stores[0]["DeviceIdentifier"] as? String,
               validID(id) else { return nil }
         return id
+    }
+
+    static func physicalDiskIDs(_ info: [String: Any]) -> [String] {
+        let stores = info["APFSPhysicalStores"] as? [[String: Any]] ?? []
+        let ids = stores.isEmpty ? [info["ParentWholeDisk"] as? String ?? info["DeviceIdentifier"] as? String ?? ""] :
+            stores.compactMap { $0["APFSPhysicalStore"] as? String }
+        let physical = ids.compactMap { id -> String? in
+            guard id.range(of: "^disk[0-9]+(s[0-9]+)*$", options: .regularExpression) != nil else { return nil }
+            return "disk" + id.dropFirst(4).prefix(while: { $0.isNumber })
+        }
+        return physical.count == max(1, stores.count) ? physical : []
+    }
+
+    static func modificationBlockReason(_ info: [String: Any], protectedReason: String?, mediaRegistryID: UInt64?) -> String? {
+        if let protectedReason { return protectedReason }
+        if info["OSInternalMedia"] as? Bool == true ||
+            info["Internal"] as? Bool == true && info["BusProtocol"] as? String != "Secure Digital" {
+            return "Internal disks are protected. Diskman cannot change or eject them."
+        }
+        guard info["WholeDisk"] as? Bool == true, info["VirtualOrPhysical"] as? String == "Physical" else {
+            return "Diskman only modifies physical disks."
+        }
+        guard info["Writable"] as? Bool == true else { return "This disk is read-only. Check its physical write lock." }
+        guard info["RemovableMediaOrExternalDevice"] as? Bool == true else {
+            return "Only removable or external disks can be changed."
+        }
+        guard ((info["Size"] as? NSNumber)?.int64Value ?? 0) > 0, mediaRegistryID != nil else {
+            return "The disk identity could not be verified. Reconnect it and refresh."
+        }
+        return nil
+    }
+
+    private static func protectedDisks() throws -> [String: String] {
+        let repository = URL(fileURLWithPath: #filePath).deletingLastPathComponent()
+            .deletingLastPathComponent().deletingLastPathComponent()
+        var paths = [(URL(fileURLWithPath: "/"), "The startup disk is protected. Diskman cannot change or eject it."),
+                     (Bundle.main.bundleURL, "This disk contains the running app. Diskman cannot change or eject it.")]
+        if FileManager.default.fileExists(atPath: repository.appendingPathComponent("powertoys.xcodeproj").path) {
+            paths.append((repository, "This disk contains the MacPowerToys source repository. Diskman cannot change or eject it."))
+        }
+        var result: [String: String] = [:]
+        for (path, reason) in paths {
+            guard let volume = try path.resolvingSymlinksInPath().resourceValues(forKeys: [.volumeURLKey]).volume,
+                  case let ids = physicalDiskIDs(try plist(["info", "-plist", volume.path])), !ids.isEmpty else {
+                throw DiskManagementError.invalidInput("The app's protected disks could not be verified. Refresh before making changes.")
+            }
+            for id in ids where result[id] == nil {
+                let info = try plist(["info", "-plist", id])
+                guard info["WholeDisk"] as? Bool == true, info["VirtualOrPhysical"] as? String != "Virtual" else {
+                    throw DiskManagementError.invalidInput("The app's physical disk could not be verified. Refresh before making changes.")
+                }
+                result[id] = reason
+            }
+        }
+        return result
     }
 }
