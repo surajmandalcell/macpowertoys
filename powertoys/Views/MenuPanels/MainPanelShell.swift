@@ -355,7 +355,6 @@ private struct TrayTabIcon: View {
 
     @ViewBuilder
     var body: some View {
-        Image(systemName: tab.symbol)
-            .font(.system(size: size, weight: .regular))
+        ToolGlyphImage(glyph: ToolGlyph(rawValue: tab.rawValue), size: size)
     }
 }
