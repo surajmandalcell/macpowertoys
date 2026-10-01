@@ -653,3 +653,21 @@ and
   only the active tab. The fixed-region shrink and destination-height checks
   pass. Signed `198055e4` still fails the speed gates; rerun on the retention
   fixes before claiming the 100ms target. Evidence: `tmp/redesign/perf/w1-panels.md`.
+
+
+## Menu Panels Use The Originating Display Ceiling, 2026-10-01
+
+- **Symptom:** Long content on a secondary display uses the primary display's
+  panel height. An explicit larger ceiling also shrinks to the primary limit.
+- **Cause:** The shared shell clamps supplied height against NSScreen.main.
+  Native presenters supply their ceiling only after the first host measurement.
+- **Invariant:** Supply the status button's screen ceiling before host creation
+  and measurement. Honor it directly. For Main MenuBarExtra, the existing
+  height bridge reads the attached host window's screen on the main actor.
+  Keep only a weak window reference. Natural height must still shrink.
+- **Check:** The old source fails the explicit ceiling regression. The new
+  source passes all initial height callbacks and the attached secondary-screen
+  fallback without ordering or activating a window. Fixed regions still shrink
+  to 253pt and 133pt. Commits: `b7e222d7`, `8801bfd9`, `0fa0407d`.
+  Physical first-frame checks on both stacked displays remain with the
+  orchestrator. Report: `tmp/redesign/logs/w3-perf-panels.md`.
