@@ -144,7 +144,7 @@ nonisolated struct MoleHistoryItem: Identifiable, Sendable {
     let detail: String
 }
 
-nonisolated enum MoleOperation: String, CaseIterable, Identifiable {
+nonisolated enum MoleOperation: String, CaseIterable, Identifiable, Sendable {
     case clean
     case optimize
     case purge
@@ -185,6 +185,9 @@ final class SystemCareManager {
 
     private(set) var molePath: URL?
     private(set) var moleVersion: String?
+    private(set) var supportedMolePreviews: Set<MoleOperation> = []
+    private(set) var canPreviewUninstall = false
+    private var supportsUninstallInventory = false
     private(set) var isWorking = false
     private(set) var canCancel = false
     private(set) var isCancelling = false
@@ -303,9 +306,8 @@ final class SystemCareManager {
             guard let self else { return }
             defer { finishWork() }
             do {
-                let result = try await Self.runWorker { (Self.detectMole(), Self.installedApplications()) }
-                molePath = result.0.path
-                moleVersion = result.0.version
+                let result = try await Self.runWorker { (Self.detectMole(), try Self.installedApplications()) }
+                applyMoleDetection(result.0)
                 applications = result.1
             } catch is CancellationError {
             } catch {
@@ -507,29 +509,103 @@ final class SystemCareManager {
                     _ = try Self.run(executable: brew, arguments: arguments, timeout: 300)
                     return Self.detectMole()
                 }
-                self.molePath = installation.path
-                self.moleVersion = installation.version
+                self.applyMoleDetection(installation)
             } catch {
                 self.errorMessage = error.localizedDescription
             }
         }
     }
 
+    private func applyMoleDetection(_ detection: MoleDetection) {
+        molePath = detection.path
+        moleVersion = detection.version
+        supportedMolePreviews = detection.previews
+        canPreviewUninstall = detection.uninstallPreview
+        supportsUninstallInventory = detection.uninstallInventory
+        if let error = detection.error { errorMessage = error }
+    }
+
+    func canPreview(_ operation: MoleOperation) -> Bool {
+        !isWorking && molePath != nil && supportedMolePreviews.contains(operation)
+    }
+
     func openMole(_ operation: MoleOperation, dryRun: Bool) {
-        guard let molePath else { return }
+        guard !isWorking, let molePath else { return }
+        guard !dryRun || supportedMolePreviews.contains(operation) else {
+            errorMessage = "This Mole version has no verified preview for \(operation.title). Update Mole first."
+            return
+        }
         openTerminal(arguments: [operation.rawValue] + (dryRun ? ["--dry-run"] : []), executable: molePath)
     }
 
+    func uninstallUnavailableReason(for application: InstalledApplication) -> String? {
+        guard molePath != nil else { return "Install Mole to review and uninstall applications." }
+        guard supportsUninstallInventory else { return "Update Mole to verify the selected application before uninstalling." }
+        return Self.uninstallRefusal(for: application, applications: applications)
+    }
+
+    nonisolated static func uninstallRefusal(
+        for application: InstalledApplication, applications: [InstalledApplication]
+    ) -> String? {
+        guard !application.name.isEmpty, !application.name.hasPrefix("-"),
+              application.name.rangeOfCharacter(from: .controlCharacters) == nil,
+              application.name == application.url.deletingPathExtension().lastPathComponent else {
+            return "The application name cannot be passed safely to Mole."
+        }
+        let matches = applications.filter { $0.name.lowercased() == application.name.lowercased() }
+        guard matches.count == 1 else { return "More than one application has this name, or the application is missing. Refresh the list before uninstalling." }
+        return matches[0].url.standardizedFileURL == application.url.standardizedFileURL
+            ? nil : "The selected bundle no longer matches the application list. Refresh before uninstalling."
+    }
+
+    nonisolated static func validatedUninstallName(for application: InstalledApplication, inventory: Data) throws -> String {
+        let rows = try JSONDecoder().decode([MoleUninstallApplication].self, from: inventory)
+        let name = application.name.lowercased()
+        let matches = rows.filter {
+            $0.name.lowercased() == name || URL(fileURLWithPath: $0.path).deletingPathExtension().lastPathComponent.lowercased() == name
+        }
+        guard matches.count == 1,
+              URL(fileURLWithPath: matches[0].path).standardizedFileURL == application.url.standardizedFileURL else {
+            throw SystemCareCommandError.failed("Mole could not resolve this name to the selected bundle alone. Name-based uninstall is disabled.")
+        }
+        return application.name
+    }
+
     func openMoleUninstall(_ application: InstalledApplication, dryRun: Bool) {
-        guard let molePath else { return }
-        openTerminal(
-            arguments: ["uninstall"] + (dryRun ? ["--dry-run"] : []) + [application.name],
-            executable: molePath
-        )
+        guard !isWorking, let molePath else { return }
+        if let reason = uninstallUnavailableReason(for: application) { errorMessage = reason; return }
+        guard !dryRun || canPreviewUninstall else {
+            errorMessage = "This Mole version has no verified uninstall preview. Update Mole first."
+            return
+        }
+        guard beginWork("Checking the selected application...") else { return }
+        task = Task { [weak self] in
+            guard let self else { return }
+            defer { finishWork() }
+            do {
+                let name = try await Self.runWorker {
+                    let liveApplications = try Self.installedApplications()
+                    if let reason = Self.uninstallRefusal(for: application, applications: liveApplications) {
+                        throw SystemCareCommandError.failed(reason)
+                    }
+                    let identity = try Self.fileIdentity(at: application.url)
+                    let inventory = try Self.run(executable: molePath, arguments: ["uninstall", "--list"])
+                    let name = try Self.validatedUninstallName(for: application, inventory: inventory)
+                    guard try Self.fileIdentity(at: application.url) == identity else {
+                        throw SystemCareCommandError.failed("The application changed during review. Refresh before uninstalling.")
+                    }
+                    return name
+                }
+                openTerminal(arguments: ["uninstall"] + (dryRun ? ["--dry-run"] : []) + [name], executable: molePath)
+            } catch is CancellationError {
+            } catch {
+                errorMessage = error.localizedDescription
+            }
+        }
     }
 
     func openMoleWhitelist() {
-        guard let molePath else { return }
+        guard !isWorking, let molePath else { return }
         openTerminal(arguments: ["clean", "--whitelist"], executable: molePath)
     }
 
@@ -758,30 +834,45 @@ final class SystemCareManager {
         }
     }
 
-    nonisolated private static func detectMole() -> (path: URL?, version: String?) {
+    nonisolated private static func detectMole() -> MoleDetection {
         let home = FileManager.default.homeDirectoryForCurrentUser.path
         let paths = ["/opt/homebrew/bin/mo", "/usr/local/bin/mo", "\(home)/.local/bin/mo"]
-        guard let path = firstExecutable(paths: paths) else { return (nil, nil) }
-        let output = (try? run(executable: path, arguments: ["--version"]))
-            .flatMap { String(data: $0, encoding: .utf8) }
-        let version = output?.split(separator: "\n").first(where: { $0.contains("Mole version") })
-            .map { $0.replacingOccurrences(of: "Mole version ", with: "") }
-        return (path, version)
+        guard let path = firstExecutable(paths: paths) else { return MoleDetection() }
+        var detection = MoleDetection(path: path)
+        do {
+            let output = String(decoding: try run(executable: path, arguments: ["--version"], timeout: 3, maximumOutputBytes: 65_536), as: UTF8.self)
+            detection.version = output.split(separator: "\n").first(where: { $0.contains("Mole version") })
+                .map { $0.replacingOccurrences(of: "Mole version ", with: "") }
+            for operation in MoleOperation.allCases {
+                try Task.checkCancellation()
+                let help = try run(executable: path, arguments: [operation.rawValue, "--help"], timeout: 3, maximumOutputBytes: 65_536)
+                if String(decoding: help, as: UTF8.self).contains("--dry-run") { detection.previews.insert(operation) }
+            }
+            let help = String(decoding: try run(executable: path, arguments: ["uninstall", "--help"], timeout: 3, maximumOutputBytes: 65_536), as: UTF8.self)
+            detection.uninstallPreview = help.contains("--dry-run")
+            detection.uninstallInventory = help.contains("--list")
+        } catch {
+            detection.error = "Mole capabilities could not be verified: \(error.localizedDescription)"
+        }
+        return detection
     }
 
-    nonisolated private static func installedApplications() -> [InstalledApplication] {
+    nonisolated private static func installedApplications() throws -> [InstalledApplication] {
         let home = FileManager.default.homeDirectoryForCurrentUser
-        return [URL(fileURLWithPath: "/Applications"), home.appendingPathComponent("Applications")]
-            .flatMap { root in
-                (try? FileManager.default.contentsOfDirectory(
-                    at: root,
-                    includingPropertiesForKeys: nil,
-                    options: [.skipsHiddenFiles]
-                )) ?? []
+        var applications: [InstalledApplication] = []
+        for root in [URL(fileURLWithPath: "/Applications"), home.appendingPathComponent("Applications")] {
+            try Task.checkCancellation()
+            do {
+                let children = try FileManager.default.contentsOfDirectory(
+                    at: root, includingPropertiesForKeys: nil, options: [.skipsHiddenFiles]
+                )
+                applications += children.filter { $0.pathExtension.lowercased() == "app" }
+                    .map { InstalledApplication(name: $0.deletingPathExtension().lastPathComponent, url: $0) }
+            } catch {
+                if SystemCareFileIssue(url: root, error: error).kind != .missing { throw error }
             }
-            .filter { $0.pathExtension.lowercased() == "app" }
-            .map { InstalledApplication(name: $0.deletingPathExtension().lastPathComponent, url: $0) }
-            .sorted { $0.name.localizedStandardCompare($1.name) == .orderedAscending }
+        }
+        return applications.sorted { $0.name.localizedStandardCompare($1.name) == .orderedAscending }
     }
 
     nonisolated private static func firstExecutable(paths: [String]) -> URL? {
@@ -876,6 +967,20 @@ nonisolated enum SystemCareCommandError: LocalizedError, Equatable {
         case .failed(let reason): reason
         }
     }
+}
+
+nonisolated private struct MoleDetection: Sendable {
+    var path: URL? = nil
+    var version: String? = nil
+    var previews: Set<MoleOperation> = []
+    var uninstallPreview = false
+    var uninstallInventory = false
+    var error: String? = nil
+}
+
+nonisolated private struct MoleUninstallApplication: Decodable {
+    let name: String
+    let path: String
 }
 
 nonisolated private struct StorageReport: Sendable {
