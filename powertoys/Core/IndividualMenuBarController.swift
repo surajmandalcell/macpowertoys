@@ -191,6 +191,8 @@ final class IndividualMenuBarController: NSObject {
         button.image = image
         button.imagePosition = .imageOnly
         button.identifier = NSUserInterfaceItemIdentifier("individual-menu.\(tool.id)")
+        button.setAccessibilityIdentifier("individual-menu.\(tool.id)")
+        button.setAccessibilityLabel(tool.title)
         button.target = self
         button.action = #selector(activate(_:))
         button.sendAction(on: [.leftMouseDown])
