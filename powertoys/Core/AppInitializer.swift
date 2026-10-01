@@ -24,11 +24,6 @@ final class AppInitializer {
     @ObservationIgnored private var restorationTask: Task<Void, Never>?
     private var isShuttingDown = false
     private var didConfigureStorage = false
-    private var restorationFinished = false
-    @ObservationIgnored private var initializationWaiter: CheckedContinuation<Void, Never>?
-    private let fanShutdown = AppShutdownStage()
-    private let logShutdown = AppShutdownStage()
-    private let cloudShutdown = AppShutdownStage()
     private(set) var formattingRevision = 0
     @ObservationIgnored private var formattingObservers: [NSObjectProtocol] = []
 
@@ -58,9 +53,7 @@ final class AppInitializer {
                 AppDataLocation.migrateLegacyStoreIfNeeded()
             }.value
         }
-        if isShuttingDown {
-            await withCheckedContinuation { initializationWaiter = $0 }
-        }
+        guard !isShuttingDown else { return }
         LogManager.shared.info("Startup migrations completed in \(started.duration(to: .now))", source: "AppInitializer")
         _ = SettingsManager.shared
         if SettingsManager.shared.isToolEnabled("awake") { _ = AwakeService.shared }
@@ -84,28 +77,24 @@ final class AppInitializer {
         routesReady()
         LogManager.shared.info("Built-in routes and status items ready in \(started.duration(to: .now))", source: "AppInitializer")
 
-        restorationTask = Task { await restoreServices() }
-        await openStorage()
-    }
-
-    private func restoreServices() async {
-        guard !restorationFinished, !isShuttingDown, !Task.isCancelled else { return }
-        await MarketplaceManager.shared.restore()
-        guard !Task.isCancelled else { return }
-        SettingsSyncManager.shared.startIfEnabled()
-        await SettingsManager.shared.reconcileNetToysLifecycle()
-        guard !Task.isCancelled else { return }
-        await LocalChangeHistory.shared.restore()
-        guard !Task.isCancelled else { return }
-        let hasContinuousJobs = await RcloneJobManager.hasPersistedContinuousJobs()
-        guard !Task.isCancelled else { return }
-        let shouldStartRclone = UserDefaults.standard.bool(forKey: "tool.rclone.startAtLaunch") || hasContinuousJobs
-        if shouldStartRclone && SettingsManager.shared.isToolEnabled("rclone") {
-            await openStorage()
-            guard !Task.isCancelled, !isShuttingDown, modelStore.container != nil else { return }
-            await RcloneJobManager.shared.start()
+        restorationTask = Task {
+            await MarketplaceManager.shared.restore()
+            guard !Task.isCancelled else { return }
+            SettingsSyncManager.shared.startIfEnabled()
+            await SettingsManager.shared.reconcileNetToysLifecycle()
+            guard !Task.isCancelled else { return }
+            await LocalChangeHistory.shared.restore()
+            guard !Task.isCancelled else { return }
+            let hasContinuousJobs = await RcloneJobManager.hasPersistedContinuousJobs()
+            guard !Task.isCancelled else { return }
+            let shouldStartRclone = UserDefaults.standard.bool(forKey: "tool.rclone.startAtLaunch") || hasContinuousJobs
+            if shouldStartRclone && SettingsManager.shared.isToolEnabled("rclone") {
+                await openStorage()
+                guard !Task.isCancelled, !isShuttingDown, modelStore.container != nil else { return }
+                await RcloneJobManager.shared.start()
+            }
         }
-        if !Task.isCancelled { restorationFinished = true }
+        await openStorage()
     }
 
     func openStorage() async {
@@ -119,37 +108,8 @@ final class AppInitializer {
         await LogManager.shared.pruneOldLogs()
     }
 
-    func shutdown() async throws {
-        guard !isShuttingDown else { throw CocoaError(.userCancelled) }
-        isShuttingDown = true
-        let restoration = restorationTask
-        restoration?.cancel()
+    func shutdown() async {
         LogManager.shared.info("App shutting down...", source: "AppInitializer")
-        do {
-            try await fanShutdown.run(name: "Fan Auto restoration", timeout: .seconds(20)) {
-                try await FanControlService.current?.restoreAutomaticOnExit()
-            }
-            try await logShutdown.run(name: "Saving logs", timeout: .seconds(10)) {
-                await LogManager.shared.flushPending()
-                if let failure = LogManager.shared.persistenceError {
-                    throw NSError(domain: "LogManager", code: 1, userInfo: [NSLocalizedDescriptionKey: failure])
-                }
-            }
-            try await cloudShutdown.run(name: "Saving Cloud Sync and stopping its engine", timeout: .seconds(30)) {
-                try await RcloneJobManager.shared.shutdownForTermination()
-            }
-        } catch {
-            isShuttingDown = false
-            initializationWaiter?.resume()
-            initializationWaiter = nil
-            restorationTask = Task {
-                await restoration?.value
-                guard state == .ready, !isShuttingDown else { return }
-                await openStorage()
-                await restoreServices()
-            }
-            throw error
-        }
         IndividualMenuBarController.shared.stop()
         PortmanMenuController.shared.stop()
         MicLockService.shared.stop()
@@ -166,49 +126,6 @@ final class AppInitializer {
             NSApp.appearance = nil
         }
         LogManager.shared.debug("Applied theme: \(storedTheme)", source: "AppInitializer")
-    }
-}
-
-@MainActor
-final class AppShutdownStage {
-    private var operationTask: Task<Void, Never>?
-    private var deadlineTask: Task<Void, Never>?
-    private var waiter: CheckedContinuation<Void, any Error>?
-
-    func run(name: String, timeout: Duration, operation: @escaping @MainActor () async throws -> Void) async throws {
-        guard waiter == nil else { throw CocoaError(.userCancelled) }
-        try await withCheckedThrowingContinuation { continuation in
-            waiter = continuation
-            if operationTask == nil {
-                operationTask = Task {
-                    do {
-                        try await operation()
-                        finish(.success(()))
-                    } catch {
-                        finish(.failure(NSError(domain: "AppShutdown", code: 1, userInfo: [
-                            NSLocalizedDescriptionKey: "\(name): \(error.localizedDescription)",
-                            NSUnderlyingErrorKey: error,
-                        ])))
-                    }
-                    operationTask = nil
-                }
-            }
-            deadlineTask = Task {
-                do { try await Task.sleep(for: timeout) } catch { return }
-                operationTask?.cancel()
-                finish(.failure(NSError(domain: "AppShutdown", code: 2, userInfo: [
-                    NSLocalizedDescriptionKey: "\(name) did not finish before its shutdown deadline.",
-                ])))
-            }
-        }
-    }
-
-    private func finish(_ result: Result<Void, any Error>) {
-        deadlineTask?.cancel()
-        deadlineTask = nil
-        let continuation = waiter
-        waiter = nil
-        continuation?.resume(with: result)
     }
 }
 
