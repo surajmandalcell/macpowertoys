@@ -15,8 +15,9 @@ public extension EnvironmentValues {
 public enum OnePlusMetrics {
     public static let titleRow: CGFloat = 54
     public static let centerline: CGFloat = 27
-    public static let appletTitlebar: CGFloat = 40
-    public static let appletCenterline: CGFloat = 22
+    public static let appletTitlebar: CGFloat = 44
+    public static let appletCenterline = centerline
+    public static let trafficLightLeadingInset: CGFloat = 13
     public static let sidebarTitleGapAfterZoom: CGFloat = 14
     public static let searchHeight: CGFloat = 32
     public static let searchInsetX: CGFloat = 12
@@ -45,9 +46,8 @@ public enum OnePlusMetrics {
     public static let cardGap: CGFloat = 16
     public static let cardPadding: CGFloat = 16
     public static let compactCardPadding: CGFloat = 12
-    /// First page-title line box, measured from the visible window top.
-    public static let contentTop: CGFloat = 16
-    public static let dotTitleCapOffset: CGFloat = 1
+    /// Painted title caps and header control tops, measured from the visible window top.
+    public static let contentTop: CGFloat = 20
     /// Gap below the fixed header, tabs, or toolbar before body content.
     public static let contentGap: CGFloat = 16
     public static let pageHeaderBottom: CGFloat = 0
@@ -61,7 +61,7 @@ public enum OnePlusMetrics {
     public static let windowRadius: CGFloat = 13
     public static let disabledOpacity: Double = 0.38
     public static let titlebarHeight = titleRow
-    public static let titleLeadingInset: CGFloat = 84
+    public static let titleLeadingInset: CGFloat = 88
     public static let fixedTitleLeadingInset = titleLeadingInset
     public static let trafficLightVerticalOffset: CGFloat = 11
     public static let contentControlHeight: CGFloat = 36

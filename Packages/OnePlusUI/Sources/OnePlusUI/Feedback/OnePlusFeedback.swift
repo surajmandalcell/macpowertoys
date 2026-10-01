@@ -72,6 +72,7 @@ public enum OnePlusSheetWidth: CGFloat, Sendable { case small = 420, medium = 56
 
 /// Present inside SwiftUI's native `.sheet` modifier.
 public struct OnePlusSheet<Body: View, Footer: View>: View {
+    @Environment(\.displayScale) private var displayScale
     let title: String
     let width: CGFloat
     let close: (() -> Void)?
@@ -84,15 +85,20 @@ public struct OnePlusSheet<Body: View, Footer: View>: View {
     }
     public var body: some View {
         VStack(spacing: 0) {
-            HStack {
-                Text(title).onePlusText(.sectionTitle).accessibilityAddTraits(.isHeader)
+            HStack(alignment: .top) {
+                OnePlusHeaderTitleLayout(text: title, pointSize: OnePlusTextRole.sectionTitle.size(for: .regular),
+                                         height: 24, scale: displayScale) {
+                    Text(title).onePlusText(.sectionTitle).lineLimit(1).accessibilityAddTraits(.isHeader)
+                }
                 Spacer()
                 if let close {
                     Button(action: close) { Image(systemName: "xmark") }
                         .buttonStyle(OnePlusButtonStyle(.icon, size: .small))
                         .help("Close").accessibilityLabel("Close").keyboardShortcut(.cancelAction)
                 }
-            }.padding(.horizontal, 20).frame(height: 40)
+            }.padding(.horizontal, 20).padding(.top, OnePlusMetrics.contentTop)
+                .frame(height: OnePlusMetrics.appletTitlebar, alignment: .top)
+                .environment(\.onePlusHeaderTopAligned, true)
             OnePlusColor.lineSoft.frame(height: 1)
             content.padding(20).frame(maxWidth: .infinity, alignment: .leading)
             if Footer.self != EmptyView.self {

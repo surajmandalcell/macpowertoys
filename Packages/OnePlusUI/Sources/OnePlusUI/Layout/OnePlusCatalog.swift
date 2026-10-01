@@ -28,6 +28,7 @@ public struct OnePlusToolPageHeader<Icon: View, Actions: View>: View {
     private let icon: Icon
     private let actions: Actions
     @Environment(\.onePlusDensity) private var density
+    @Environment(\.displayScale) private var displayScale
 
     public init(title: String, subtitle: String, @ViewBuilder icon: () -> Icon,
                 @ViewBuilder actions: () -> Actions) {
@@ -39,19 +40,22 @@ public struct OnePlusToolPageHeader<Icon: View, Actions: View>: View {
             icon.frame(width: OnePlusCatalogMetrics.iconSize, height: OnePlusCatalogMetrics.iconSize)
                 .accessibilityHidden(true)
             VStack(alignment: .leading, spacing: OnePlusCatalogMetrics.titleGap) {
-                Text(title).onePlusText(.pageTitle).lineLimit(1).help(title)
-                    .frame(height: OnePlusTitleStyle.system.lineHeight(for: density))
-                    .accessibilityAddTraits(.isHeader)
+                OnePlusHeaderTitleLayout(text: title, pointSize: OnePlusTextRole.pageTitle.size(for: density),
+                                         height: OnePlusTitleStyle.system.lineHeight(for: density), scale: displayScale) {
+                    Text(title).onePlusText(.pageTitle).lineLimit(1).help(title)
+                }.accessibilityAddTraits(.isHeader)
                 Text(subtitle).onePlusText(.subtitle).lineLimit(1).help(subtitle)
             }
             .frame(maxWidth: .infinity, alignment: .leading)
-            HStack(spacing: OnePlusMetrics.actionSpacing) { actions }
-                .frame(height: OnePlusTitleStyle.system.lineHeight(for: density)).fixedSize(horizontal: true, vertical: false)
+            HStack(alignment: .top, spacing: OnePlusMetrics.actionSpacing) { actions }
+                .frame(height: OnePlusTitleStyle.system.lineHeight(for: density), alignment: .top)
+                .fixedSize(horizontal: true, vertical: false)
         }
         .padding(.horizontal, density.gutter)
         .padding(.top, OnePlusMetrics.contentTop)
         .padding(.bottom, OnePlusMetrics.pageHeaderBottom)
         .background(OnePlusWindowDragArea())
+        .environment(\.onePlusHeaderTopAligned, true)
     }
 }
 

@@ -4,26 +4,33 @@ public struct OnePlusAppletTitlebar<Title: View, Actions: View>: View {
     let title: Title
     let actions: Actions
     let clearsTrafficLights: Bool
+    private var titleText = ""
     @Environment(\.onePlusZoomTrailingX) private var zoomTrailingX
+    @Environment(\.displayScale) private var displayScale
     public init(clearsTrafficLights: Bool = true, @ViewBuilder title: () -> Title, @ViewBuilder actions: () -> Actions) {
         self.clearsTrafficLights = clearsTrafficLights; self.title = title(); self.actions = actions()
     }
     public var body: some View {
-        HStack(spacing: 8) {
-            title.onePlusText(.sidebarTitle).lineLimit(1)
+        HStack(alignment: .top, spacing: 8) {
+            OnePlusHeaderTitleLayout(text: titleText, pointSize: OnePlusTextRole.sidebarTitle.size(for: .regular),
+                                     height: 24, scale: displayScale) {
+                title.onePlusText(.sidebarTitle).lineLimit(1)
+            }
             Spacer(minLength: 12)
             actions
         }
-        .frame(height: 24).padding(.top, 4)
+        .frame(height: 24, alignment: .top).padding(.top, OnePlusMetrics.contentTop)
         .padding(.leading, clearsTrafficLights ? OnePlusMetrics.titleStart(afterZoom: zoomTrailingX) : 16)
-        .padding(.trailing, 16).frame(height: 40)
+        .padding(.trailing, 16).frame(height: OnePlusMetrics.appletTitlebar)
         .background(OnePlusWindowDragArea())
+        .environment(\.onePlusHeaderTopAligned, true)
     }
 }
 
 public extension OnePlusAppletTitlebar where Title == Text {
     init(title: String, @ViewBuilder actions: () -> Actions) {
         self.init(title: { Text(title) }, actions: actions)
+        titleText = title
     }
 }
 

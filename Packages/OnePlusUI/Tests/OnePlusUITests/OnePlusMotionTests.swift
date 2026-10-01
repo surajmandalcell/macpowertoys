@@ -22,8 +22,7 @@ final class OnePlusMotionTests: XCTestCase {
         for case let file as URL in files where file.pathExtension == "swift" {
             let source = try String(contentsOf: file, encoding: .utf8)
             guard source.contains(".onHover") || source.contains("func mouseEntered(") else { continue }
-            let controls = source.replacingOccurrences(of: ".offset(y: OnePlusMetrics.dotTitleCapOffset)", with: "")
-            XCTAssertNil(forbidden.firstMatch(in: controls, range: NSRange(controls.startIndex..., in: controls)), file.path)
+            XCTAssertNil(forbidden.firstMatch(in: source, range: NSRange(source.startIndex..., in: source)), file.path)
         }
         for regression in [".scaleEffect(hover ? 1.01 : 1)", ".offset(x: hover ? 2 : 0)", ".animation(.easeInOut, value: hover)"] {
             XCTAssertNotNil(forbidden.firstMatch(in: regression, range: NSRange(regression.startIndex..., in: regression)))
