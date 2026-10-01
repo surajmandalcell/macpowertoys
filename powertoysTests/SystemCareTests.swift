@@ -192,6 +192,68 @@ final class SystemCareTests: XCTestCase {
         await fulfillment(of: [finished], timeout: 2)
     }
 
+    func testCleanupCoverageReportsLimitsMissingRootsAndPackages() throws {
+        let fixture = try Fixture()
+        defer { fixture.remove() }
+        _ = try fixture.candidate("a")
+        _ = try fixture.candidate("b")
+        let package = fixture.root.appendingPathComponent("z.app/Contents/Resources", isDirectory: true)
+        try FileManager.default.createDirectory(at: package, withIntermediateDirectories: true)
+        let payload = package.appendingPathComponent("payload")
+        try Data(repeating: 0xA5, count: 16_384).write(to: payload)
+        let values = try payload.resourceValues(forKeys: [.fileAllocatedSizeKey, .totalFileAllocatedSizeKey])
+        let expected = try XCTUnwrap(values.totalFileAllocatedSize ?? values.fileAllocatedSize)
+        XCTAssertEqual(try SystemCareManager.allocatedSize(of: fixture.root.appendingPathComponent("z.app")), Int64(expected))
+
+        let bounded = try SystemCareManager.cleanupReport(for: [.caches], homeDirectory: fixture.home, childLimit: 2)
+        XCTAssertEqual(bounded.candidates.count, 2)
+        XCTAssertEqual(bounded.coverage.first?.examinedCount, 2)
+        XCTAssertEqual(bounded.coverage.first?.isTruncated, true)
+        XCTAssertEqual(bounded.outcome, .partial)
+        let complete = try SystemCareManager.cleanupReport(for: [.caches], homeDirectory: fixture.home)
+        XCTAssertEqual(complete.outcome, .completed)
+        XCTAssertEqual(complete.candidates.count, 3)
+        let partial = try SystemCareManager.cleanupReport(for: [.caches, .logs], homeDirectory: fixture.home)
+        XCTAssertEqual(partial.outcome, .partial)
+        XCTAssertEqual(partial.coverage.last?.issues.first?.kind, .missing)
+        XCTAssertEqual(partial.candidates.count, 3)
+        try FileManager.default.createSymbolicLink(at: fixture.root.appendingPathComponent("link"), withDestinationURL: payload)
+        let linked = try SystemCareManager.cleanupReport(for: [.caches], homeDirectory: fixture.home)
+        XCTAssertEqual(linked.coverage.first?.issues.first?.kind, .unsafePath)
+        XCTAssertEqual(linked.candidates.count, 3)
+        XCTAssertEqual(SystemCareFileIssue(url: fixture.root, error: NSError(domain: NSPOSIXErrorDomain, code: 13)).kind, .accessDenied)
+        XCTAssertEqual(SystemCareFileIssue(url: fixture.root, error: NSError(domain: NSPOSIXErrorDomain, code: 5)).kind, .io)
+    }
+
+    func testRetryScansOnlyAffectedRootsAndKeepsSelection() async throws {
+        let fixture = try Fixture()
+        defer { fixture.remove() }
+        let candidate = try fixture.candidate("marker")
+        let manager = SystemCareManager(defaults: fixture.defaults, homeDirectory: fixture.home)
+        manager.scanCleanup(categories: [.caches, .logs])
+        try await waitUntilIdle(manager)
+        XCTAssertEqual(manager.cleanupScanOutcome, .partial)
+        manager.setCandidate(candidate.id, selected: false)
+        let logs = SystemCareManager.cleanupRoot(for: .logs, homeDirectory: fixture.home)
+        try FileManager.default.createDirectory(at: logs, withIntermediateDirectories: true)
+        let log = logs.appendingPathComponent("marker.log")
+        try Data("log".utf8).write(to: log)
+        manager.retryCleanupScan()
+        try await waitUntilIdle(manager)
+        XCTAssertEqual(manager.cleanupScanOutcome, .completed)
+        XCTAssertEqual(Set(manager.cleanupCandidates.map(\.id)), [candidate.id, log.path])
+        XCTAssertEqual(manager.selectedCandidateIDs, [log.path])
+
+        manager.analyze(logs, resetBreadcrumbs: true)
+        try await waitUntilIdle(manager)
+        XCTAssertFalse(manager.storageCountIsFiles)
+        manager.analyze(fixture.home.appendingPathComponent("missing"))
+        try await waitUntilIdle(manager)
+        XCTAssertEqual(manager.storageURL, logs)
+        XCTAssertEqual(manager.storageBreadcrumbs, [logs])
+        XCTAssertEqual(manager.storageIssue?.kind, .missing)
+    }
+
     private func waitUntilIdle(_ manager: SystemCareManager) async throws {
         let deadline = Date().addingTimeInterval(4)
         while manager.isWorking, Date() < deadline { try await Task.sleep(for: .milliseconds(10)) }

@@ -66,6 +66,50 @@ nonisolated struct CleanupScanSnapshot: Codable, Equatable, Sendable {
     let scannedAt: Date
     let candidates: [CleanupCandidate]
     var selectedCandidateIDs: Set<String>? = nil
+    var coverage: [CleanupRootCoverage]? = nil
+    var outcome: CleanupScanOutcome? = nil
+}
+
+nonisolated enum CleanupScanOutcome: String, Codable, Sendable {
+    case completed, partial, canceled, failed
+}
+
+nonisolated struct SystemCareFileIssue: Codable, Equatable, Sendable {
+    enum Kind: String, Codable, Sendable { case missing, accessDenied, unsafePath, io }
+    let url: URL
+    let kind: Kind
+    let reason: String
+
+    init(url: URL, error: Error) {
+        self.url = url
+        let error = error as NSError
+        let underlying = error.userInfo[NSUnderlyingErrorKey] as? NSError ?? error
+        if error.domain == "SystemCare", error.code == 1 { kind = .unsafePath }
+        else if (underlying.domain == NSPOSIXErrorDomain && [Int(EACCES), Int(EPERM)].contains(underlying.code))
+            || (error.domain == NSCocoaErrorDomain && error.code == NSFileReadNoPermissionError) { kind = .accessDenied }
+        else if (underlying.domain == NSPOSIXErrorDomain && underlying.code == Int(ENOENT))
+            || (error.domain == NSCocoaErrorDomain && error.code == NSFileReadNoSuchFileError) { kind = .missing }
+        else { kind = .io }
+        reason = error.localizedDescription
+    }
+}
+
+nonisolated struct CleanupRootCoverage: Codable, Equatable, Sendable {
+    let category: SystemCareCategoryID
+    let root: URL
+    var didReadRoot = false
+    var examinedCount = 0
+    var isTruncated = false
+    var issues: [SystemCareFileIssue] = []
+    var isComplete: Bool { didReadRoot && !isTruncated && issues.isEmpty }
+}
+
+nonisolated struct CleanupScanReport: Sendable {
+    let candidates: [CleanupCandidate]
+    let coverage: [CleanupRootCoverage]
+    var outcome: CleanupScanOutcome {
+        !coverage.isEmpty && coverage.allSatisfy(\.isComplete) ? .completed : .partial
+    }
 }
 
 nonisolated struct CleanupTrashFailure: Sendable {
@@ -158,6 +202,10 @@ final class SystemCareManager {
     private(set) var lastRecoveredBytes: Int64 = 0
     private(set) var lastTrashResult: CleanupTrashResult?
     private(set) var cleanupScanDate: Date?
+    private(set) var cleanupCoverage: [CleanupRootCoverage] = []
+    private(set) var cleanupScanOutcome: CleanupScanOutcome?
+    private(set) var storageCountIsFiles = false
+    private(set) var storageIssue: SystemCareFileIssue?
 
     private let defaults: UserDefaults
     private let homeDirectory: URL
@@ -188,11 +236,18 @@ final class SystemCareManager {
                     let candidates = saved.candidates.filter { Self.isSafe($0, homeDirectory: homeDirectory) }
                     let validIDs = Set(candidates.map(\.id))
                     return CleanupScanSnapshot(scannedAt: saved.scannedAt, candidates: candidates,
-                                               selectedCandidateIDs: saved.selectedCandidateIDs?.intersection(validIDs) ?? validIDs)
+                                               selectedCandidateIDs: saved.selectedCandidateIDs?.intersection(validIDs) ?? validIDs,
+                                               coverage: saved.coverage,
+                                               outcome: candidates.count == saved.candidates.count ? saved.outcome ?? .partial : .partial)
                 }
                 cleanupCandidates = snapshot.candidates
                 selectedCandidateIDs = snapshot.selectedCandidateIDs ?? []
                 cleanupScanDate = snapshot.scannedAt
+                cleanupCoverage = snapshot.coverage ?? []
+                cleanupScanOutcome = snapshot.outcome
+                if snapshot.outcome == .partial {
+                    errorMessage = "The saved scan has incomplete coverage or changed paths. Rescan before cleanup."
+                }
             } catch is CancellationError {
             } catch {
                 errorMessage = "The saved cleanup scan could not be restored. Rescan the locations."
@@ -268,22 +323,46 @@ final class SystemCareManager {
     }
 
     func scanCleanup(categories: Set<SystemCareCategoryID>) {
+        performCleanupScan(categories: categories, retry: false)
+    }
+
+    func retryCleanupScan() {
+        let affected = Set(cleanupCoverage.filter { !$0.isComplete }.map(\.category))
+        guard !affected.isEmpty else { return }
+        performCleanupScan(categories: affected, retry: true)
+    }
+
+    private func performCleanupScan(categories: Set<SystemCareCategoryID>, retry: Bool) {
+        guard !categories.isEmpty else { return }
         guard beginWork("Scanning selected locations...") else { return }
         let homeDirectory = homeDirectory
         task = Task { [weak self] in
             guard let self else { return }
             defer { finishWork() }
             do {
-                let candidates = try await Self.runWorker {
-                    try Self.cleanupCandidates(for: categories, homeDirectory: homeDirectory)
+                let report = try await Self.runWorker {
+                    try Self.cleanupReport(for: categories, homeDirectory: homeDirectory)
                 }
-                self.cleanupCandidates = candidates
-                self.selectedCandidateIDs = Set(candidates.map(\.id))
-                self.cleanupScanDate = Date()
+                let readable = Set(report.coverage.filter(\.didReadRoot).map(\.category))
+                let retained = self.cleanupCandidates.filter {
+                    readable.isEmpty || (!readable.contains($0.category) && (retry || categories.contains($0.category)))
+                }
+                let oldSelection = self.selectedCandidateIDs
+                self.cleanupCandidates = (retained + report.candidates).sorted { $0.size > $1.size }
+                self.selectedCandidateIDs = oldSelection.intersection(retained.map(\.id)).union(report.candidates.map(\.id))
+                self.cleanupCoverage = (retry ? self.cleanupCoverage.filter { !categories.contains($0.category) } : []) + report.coverage
+                self.cleanupScanOutcome = readable.isEmpty ? .failed
+                    : self.cleanupCoverage.allSatisfy(\.isComplete) ? .completed : .partial
+                if !readable.isEmpty { self.cleanupScanDate = Date() }
+                if self.cleanupScanOutcome != .completed {
+                    self.errorMessage = "Some locations were skipped or not fully scanned. Review coverage before cleanup."
+                }
                 self.persistCleanupScan()
             } catch is CancellationError {
+                self.cleanupScanOutcome = .canceled
                 return
             } catch {
+                self.cleanupScanOutcome = .failed
                 self.errorMessage = error.localizedDescription
             }
         }
@@ -309,6 +388,8 @@ final class SystemCareManager {
         cleanupCandidates.removeAll()
         selectedCandidateIDs.removeAll()
         cleanupScanDate = nil
+        cleanupCoverage = []
+        cleanupScanOutcome = nil
         defaults.removeObject(forKey: Self.cleanupScanKey)
     }
 
@@ -357,6 +438,7 @@ final class SystemCareManager {
 
     func analyze(_ url: URL, resetBreadcrumbs: Bool = false) {
         guard beginWork("Analyzing \(url.lastPathComponent.isEmpty ? url.path : url.lastPathComponent)...") else { return }
+        storageIssue = nil
         let mole = molePath
         task = Task { [weak self] in
             guard let self else { return }
@@ -372,6 +454,7 @@ final class SystemCareManager {
                 self.storageEntries = report.entries
                 self.storageTotal = report.totalSize
                 self.storageFileCount = report.totalFiles
+                self.storageCountIsFiles = report.countIsFiles
                 if resetBreadcrumbs || self.storageBreadcrumbs.isEmpty == true {
                     self.storageBreadcrumbs = [url]
                 } else if let index = self.storageBreadcrumbs.firstIndex(of: url) {
@@ -382,6 +465,7 @@ final class SystemCareManager {
             } catch is CancellationError {
                 return
             } catch {
+                self.storageIssue = SystemCareFileIssue(url: url, error: error)
                 self.errorMessage = error.localizedDescription
             }
         }
@@ -460,7 +544,8 @@ final class SystemCareManager {
               let data = try? JSONEncoder().encode(CleanupScanSnapshot(
                   scannedAt: cleanupScanDate,
                   candidates: cleanupCandidates,
-                  selectedCandidateIDs: selectedCandidateIDs
+                  selectedCandidateIDs: selectedCandidateIDs,
+                  coverage: cleanupCoverage, outcome: cleanupScanOutcome
               )) else { return }
         defaults.set(data, forKey: Self.cleanupScanKey)
     }
@@ -488,65 +573,94 @@ final class SystemCareManager {
         return script
     }
 
-    nonisolated private static func cleanupCandidates(
-        for categories: Set<SystemCareCategoryID>, homeDirectory: URL
-    ) throws -> [CleanupCandidate] {
-        var result: [CleanupCandidate] = []
-        for category in categories {
+    nonisolated static let cleanupChildLimit = 500
+
+    nonisolated static func cleanupReport(
+        for categories: Set<SystemCareCategoryID>, homeDirectory: URL,
+        childLimit: Int = cleanupChildLimit
+    ) throws -> CleanupScanReport {
+        var candidates: [CleanupCandidate] = []
+        var coverage: [CleanupRootCoverage] = []
+        for category in SystemCareCategoryID.allCases where categories.contains(category) {
             try Task.checkCancellation()
             let root = cleanupRoot(for: category, homeDirectory: homeDirectory)
-            let rootIdentity = try fileIdentity(at: root)
-            guard let children = try? FileManager.default.contentsOfDirectory(
-                at: root,
-                includingPropertiesForKeys: nil,
-                options: [.skipsHiddenFiles]
-            ) else { continue }
-
-            for url in children.prefix(500) {
-                try Task.checkCancellation()
-                if category == .installers {
-                    let extensions = Set(["dmg", "pkg", "mpkg", "iso", "xip"])
-                    guard extensions.contains(url.pathExtension.lowercased()) else { continue }
+            var location = CleanupRootCoverage(category: category, root: root)
+            do {
+                let rootIdentity = try fileIdentity(at: root)
+                let children = try FileManager.default.contentsOfDirectory(
+                    at: root, includingPropertiesForKeys: nil, options: [.skipsHiddenFiles]
+                ).sorted { $0.path < $1.path }
+                location.didReadRoot = true
+                location.isTruncated = children.count > max(childLimit, 0)
+                for url in children.prefix(max(childLimit, 0)) {
+                    try Task.checkCancellation()
+                    location.examinedCount += 1
+                    if category == .installers,
+                       !["dmg", "pkg", "mpkg", "iso", "xip"].contains(url.pathExtension.lowercased()) { continue }
+                    do {
+                        let identity = try fileIdentity(at: url)
+                        let size = try allocatedSize(of: url)
+                        guard try fileIdentity(at: url) == identity else {
+                            throw NSError(domain: "SystemCare", code: 1, userInfo: [
+                                NSLocalizedDescriptionKey: "The file changed while its size was read."
+                            ])
+                        }
+                        candidates.append(CleanupCandidate(url: url, allowedRoot: root, category: category,
+                                                           size: size, fileIdentity: identity, rootIdentity: rootIdentity))
+                    } catch is CancellationError {
+                        throw CancellationError()
+                    } catch {
+                        location.issues.append(SystemCareFileIssue(url: url, error: error))
+                    }
                 }
-                let identity = try fileIdentity(at: url)
-                let size = try allocatedSize(of: url)
-                guard try fileIdentity(at: url) == identity else { continue }
-                result.append(CleanupCandidate(
-                    url: url,
-                    allowedRoot: root,
-                    category: category,
-                    size: size,
-                    fileIdentity: identity,
-                    rootIdentity: rootIdentity
-                ))
+                guard try fileIdentity(at: root) == rootIdentity else {
+                    throw NSError(domain: "SystemCare", code: 1, userInfo: [
+                        NSLocalizedDescriptionKey: "The location changed during the scan."
+                    ])
+                }
+            } catch is CancellationError {
+                throw CancellationError()
+            } catch {
+                location.didReadRoot = false
+                candidates.removeAll { $0.category == category }
+                location.issues.append(SystemCareFileIssue(url: root, error: error))
             }
+            coverage.append(location)
         }
-        return result.sorted { $0.size > $1.size }
+        return CleanupScanReport(candidates: candidates.sorted { $0.size > $1.size }, coverage: coverage)
     }
 
-    nonisolated private static func allocatedSize(of url: URL) throws -> Int64 {
+    nonisolated static func allocatedSize(of url: URL) throws -> Int64 {
         let keys: Set<URLResourceKey> = [.isDirectoryKey, .isSymbolicLinkKey, .fileAllocatedSizeKey, .totalFileAllocatedSizeKey]
         let values = try url.resourceValues(forKeys: keys)
         if values.isSymbolicLink == true { return 0 }
         if values.isDirectory != true {
-            return Int64(values.totalFileAllocatedSize ?? values.fileAllocatedSize ?? 0)
+            guard let size = values.totalFileAllocatedSize ?? values.fileAllocatedSize else {
+                throw CocoaError(.fileReadUnknown)
+            }
+            return Int64(size)
         }
+        var readError: Error?
         guard let enumerator = FileManager.default.enumerator(
-            at: url,
-            includingPropertiesForKeys: Array(keys),
-            options: [.skipsPackageDescendants],
-            errorHandler: { _, _ in true }
-        ) else { return 0 }
+            at: url, includingPropertiesForKeys: Array(keys), options: [],
+            errorHandler: { _, error in readError = error; return false }
+        ) else { throw CocoaError(.fileReadUnknown) }
         var total: Int64 = 0
         for case let child as URL in enumerator {
             try Task.checkCancellation()
-            let childValues = try? child.resourceValues(forKeys: keys)
-            if childValues?.isSymbolicLink == true {
+            let childValues = try child.resourceValues(forKeys: keys)
+            if childValues.isSymbolicLink == true {
                 enumerator.skipDescendants()
-            } else if childValues?.isDirectory != true {
-                total += Int64(childValues?.totalFileAllocatedSize ?? childValues?.fileAllocatedSize ?? 0)
+            } else if childValues.isDirectory != true {
+                guard let bytes = childValues.totalFileAllocatedSize ?? childValues.fileAllocatedSize else {
+                    throw CocoaError(.fileReadUnknown)
+                }
+                let (sum, overflow) = total.addingReportingOverflow(Int64(bytes))
+                guard !overflow else { throw CocoaError(.fileReadTooLarge) }
+                total = sum
             }
         }
+        if let readError { throw readError }
         return total
     }
 
@@ -586,7 +700,8 @@ final class SystemCareManager {
     ) -> Bool {
         let root = cleanupRoot(for: candidate.category, homeDirectory: homeDirectory)
         let url = candidate.url.standardizedFileURL
-        guard candidate.allowedRoot.standardizedFileURL == root,
+        guard candidate.url.isFileURL, candidate.allowedRoot.isFileURL,
+              candidate.allowedRoot.standardizedFileURL == root,
               candidate.url.path == url.path,
               url != root, url.deletingLastPathComponent() == root,
               candidate.size >= 0,
@@ -617,7 +732,7 @@ final class SystemCareManager {
             ))
         }
         entries.sort { $0.size > $1.size }
-        return StorageReport(entries: entries, totalSize: total, totalFiles: entries.count)
+        return StorageReport(entries: entries, totalSize: total, totalFiles: entries.count, countIsFiles: false)
     }
 
     nonisolated private static func moleAnalyze(executable: URL, url: URL) throws -> StorageReport {
@@ -628,7 +743,7 @@ final class SystemCareManager {
                 StorageEntry(name: $0.name, url: URL(fileURLWithPath: $0.path), size: $0.size, isDirectory: $0.isDir)
             }.sorted { $0.size > $1.size },
             totalSize: report.totalSize,
-            totalFiles: report.totalFiles
+            totalFiles: report.totalFiles, countIsFiles: true
         )
     }
 
@@ -713,6 +828,7 @@ nonisolated private struct StorageReport: Sendable {
     let entries: [StorageEntry]
     let totalSize: Int64
     let totalFiles: Int
+    let countIsFiles: Bool
 }
 
 nonisolated private struct MoleAnalyzeReport: Decodable, Sendable {
