@@ -42,12 +42,11 @@ nonisolated enum TaskManagerMenuProjection {
             case .cpu:
                 data.value = percent(sample?.cpuUsage)
                 data.homeCaption = "Load \(load)"
-                data.caption = "Across \(ProcessInfo.processInfo.activeProcessorCount) cores"
+                data.caption = "\(ProcessInfo.processInfo.activeProcessorCount) logical CPUs"
                 data.accessories = [reading("User", percent(sample?.cpuDetails?.user)), reading("System", percent(sample?.cpuDetails?.system))]
                 data.rows = [reading("Load · 1 minute", load),
                              reading("Load · 5 minutes", sample?.loadAverage.map { decimal($0.1) } ?? "—"),
                              reading("Load · 15 minutes", sample?.loadAverage.map { decimal($0.2) } ?? "—"),
-                             reading("Logical CPUs", String(ProcessInfo.processInfo.activeProcessorCount)),
                              reading("Thermal pressure", sample?.thermalState ?? "—")]
                 data.chart.primary = history.samples(for: .cpu).compactMap(\.cpuUsage)
             case .gpu:
@@ -65,7 +64,7 @@ nonisolated enum TaskManagerMenuProjection {
                 data.caption = sample?.memoryTotal != nil ? "\(total) unified memory" : "—"
                 data.accessories = [reading("Used", data.homeValue)]
                 data.rows = [reading("Applications", allocation.map { bytes($0.applications) } ?? "—"), reading("Wired", allocation.map { bytes($0.wired) } ?? "—"),
-                             reading("Available", available), reading("Total", total),
+                             reading("Available", available),
                              reading("Compressed", allocation.map { bytes($0.compressed) } ?? "—"),
                              reading("Swap used", sample?.memoryDetails?.swapUsed.map(bytes) ?? "—")]
                 data.chart.primary = history.samples(for: .memory).compactMap { $0.memoryUsed.map { Double($0) / 1_073_741_824 } }
