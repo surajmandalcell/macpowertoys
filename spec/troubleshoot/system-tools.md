@@ -439,7 +439,7 @@
   show a battery row for the built-in keyboard. Use two top-aligned device-card
   columns so long titles remain readable. In regular density, show Mouse and
   Trackpad profile cards in equal columns. In compact density, stack the same
-  cards. Both profiles keep the same six labeled setting rows.
+  cards. Both profiles keep the same seven labeled setting rows.
 - **Check:** `testDeviceCardsOmitUnavailableValues` covers sparse and detailed
   devices. `testMouseAndTrackpadProfileCardsShareOneHeight` compares both
   profile cards at 340pt. Inspect both profiles and the fixed Scroll device
@@ -486,6 +486,32 @@
 - **Check:** Use sustained wheel input, then lock and unlock the session. Confirm
   the selected profile continues without toggling Input control or reopening the
   window.
+
+## Input Devices Panel And Scroll Ownership, 2026-10-01
+
+- **Symptom:** The panel hides both profiles behind one link. Refresh performs
+  HID enumeration on the main actor and replaces an active event tap. Pending
+  smoothing steps can still post after tool disablement because the saved
+  scroll-control preference remains on.
+- **Cause:** One shared disclosure gate owns both profiles. Refresh couples
+  device discovery to tap creation, and delayed steps check only the preference.
+- **Invariant:** Devices, Mouse, Trackpad, and Scroll device have independent
+  persisted disclosures. Show every detected device and all seven profile rows.
+  Keep one "Use custom scrolling" switch with a help-glyph explanation.
+  Put counts and status on the trailing side of their row. Keep the master
+  switch and device selector outside cards. Compact disclosures have no card
+  border. Reserve only the switch width, so labels use the available space.
+  Use instant content changes and color-only hover feedback. Enumerate HID
+  devices on one coalesced utility task. Reuse an active tap. Tool disablement
+  cancels discovery and invalidates queued smoothing steps by session generation.
+  Report the effective override profile and real tap state. Omit zero device IDs
+  and absent metadata; show reported location and input-report size.
+- **Check:** The read-only source probe finds the USB receiver and internal
+  trackpad and passes profile, override, Shift, horizontal, and invalid-speed
+  checks. Compile `InputDevicesTests` here and run them on hosted CI. In the
+  final signed app, test every disclosure across panel recreation, both profile
+  gates, permission recovery, tap refresh, and immediate disablement during a
+  smoothed notch. Preserve the owner's scroll preferences.
 
 ## System Care And Mole
 
