@@ -262,7 +262,7 @@ private extension RulerWindowLayout {
 }
 
 #if !SNAPSHOT_GENERATOR
-final class RulerWindow: NSPanel {
+class RulerWindow: NSPanel {
     let horizontalRule: HorizontalRule
     let verticalRule: VerticalRule
 
@@ -1172,7 +1172,10 @@ final class RulerController: NSWindowController, NSWindowDelegate, NotificationO
         }
     }
 
-    convenience init(frame: NSRect) {
+    convenience init(
+        frame: NSRect,
+        windowFactory: (NSRect, RulerSettings) -> RulerWindow = { RulerWindow(frame: $0, settings: $1) }
+    ) {
         let layout = RulerWindowLayout.layout(groupFrame: frame, zeroCorner: prefs.zeroCorner)
         let state = RulerInstanceState(
             settings: RulerSettings(defaults: prefs),
@@ -1183,23 +1186,30 @@ final class RulerController: NSWindowController, NSWindowDelegate, NotificationO
             )
         )
 
-        self.init(state: state, followsDefaultPreferences: true)
+        self.init(state: state, followsDefaultPreferences: true, windowFactory: windowFactory)
     }
 
-    convenience init(state: RulerInstanceState) {
-        self.init(state: state, followsDefaultPreferences: false)
+    convenience init(
+        state: RulerInstanceState,
+        windowFactory: (NSRect, RulerSettings) -> RulerWindow = { RulerWindow(frame: $0, settings: $1) }
+    ) {
+        self.init(state: state, followsDefaultPreferences: false, windowFactory: windowFactory)
     }
 
-    private init(state: RulerInstanceState, followsDefaultPreferences: Bool) {
+    private init(
+        state: RulerInstanceState,
+        followsDefaultPreferences: Bool,
+        windowFactory: (NSRect, RulerSettings) -> RulerWindow
+    ) {
         self.state = state
         self.followsDefaultPreferences = followsDefaultPreferences
         let layout = state.layout.layout(zeroCorner: state.settings.zeroCorner)
-        rulerWindow = RulerWindow(
-            frame: layout.visibleFrame(
+        rulerWindow = windowFactory(
+            layout.visibleFrame(
                 showsHorizontalRule: state.visibility.showsHorizontal,
                 showsVerticalRule: state.visibility.showsVertical
             ),
-            settings: state.settings
+            state.settings
         )
         super.init(window: rulerWindow)
 
