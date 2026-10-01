@@ -1,5 +1,6 @@
 import SwiftUI
 import OnePlusUI
+import ServiceManagement
 
 struct ToolSidebarView: View {
     @Binding var selectedTool: String?
@@ -38,8 +39,12 @@ struct ToolSidebarView: View {
             }
             OnePlusNavRow("Exit", systemImage: "rectangle.portrait.and.arrow.right") { NSApp.terminate(nil) }
         }
-        .onChange(of: modifiedRevision, initial: true) { _, _ in
-            hasChanges = SettingsRegistry.hasChanges()
+        .task(id: modifiedRevision) {
+            // Login Items status waits on a system service; never query it during layout.
+            let status = await Task.detached(priority: .utility) { SMAppService.mainApp.status }.value
+            guard !Task.isCancelled else { return }
+            hasChanges = status == .enabled || status == .requiresApproval
+                || SettingsRegistry.entries.contains { $0.id != "app.openAtLogin" && $0.isModified() }
         }
         .onChange(of: searchText, initial: true) { _, _ in refreshVisibleTools() }
         .onReceive(NotificationCenter.default.publisher(for: .marketplaceReceiptsChanged)) { _ in refreshVisibleTools() }
