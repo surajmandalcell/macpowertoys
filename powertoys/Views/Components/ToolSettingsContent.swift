@@ -51,23 +51,26 @@ struct ToolSettingsContent: View {
 }
 
 struct RulerLauncherSettingsView: View {
+    @State private var settings = SettingsManager.shared
+
     var body: some View {
-        HStack(alignment: .top, spacing: OnePlusMetrics.cardGap) {
-            OnePlusCard {
-                OnePlusCardHeader("Ruler", systemImage: ToolGlyph.ruler.symbol, iconRotation: ToolGlyph.ruler.rotation)
-                OnePlusSettingRow("Active rulers", separator: false) {
-                    Button("Open Ruler Settings") {
-                        ToolActionRouter.shared.execute(ToolActionRequest(action: .rulerSettings))
-                    }.buttonStyle(OnePlusButtonStyle())
+        HStack(spacing: OnePlusMetrics.actionSpacing) {
+            Button {
+                ToolActionRouter.shared.execute(ToolActionRequest(action: .rulerSettings))
+            } label: {
+                Label {
+                    Text("Open Ruler Settings")
+                } icon: {
+                    Image(systemName: ToolGlyph.ruler.symbol).rotationEffect(.degrees(ToolGlyph.ruler.rotation))
                 }
             }
-            OnePlusCard {
-                OnePlusCardHeader("Defaults", systemImage: "slider.horizontal.3")
-                OnePlusSettingRow("New rulers", separator: false) {
-                    Button("Open Defaults") { AppDelegate.current?.openPreferences(self) }
-                        .buttonStyle(OnePlusButtonStyle())
-                }
-            }
+            .buttonStyle(OnePlusButtonStyle())
+            .help("Settings for the active rulers")
+            Button("Open Defaults") { AppDelegate.current?.openPreferences(self) }
+                .buttonStyle(OnePlusButtonStyle())
+                .help("Defaults for new rulers")
         }
+        .frame(maxWidth: .infinity, alignment: .leading)
+        .disabled(!settings.isToolEnabled("ruler") || settings.isToolTransitioning("ruler"))
     }
 }

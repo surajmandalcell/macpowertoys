@@ -19,6 +19,7 @@ struct MarketplaceSettingsView: View {
 
     var body: some View {
         VStack(alignment: .leading, spacing: OnePlusMetrics.cardGap) {
+            sourceEntry
             sourcesCard
             toolCards
             if let toolError { OnePlusBanner(toolError, tone: .error).textSelection(.enabled) }
@@ -59,15 +60,21 @@ struct MarketplaceSettingsView: View {
     }
 
     private var sourcesCard: some View {
-        OnePlusCard {
-            OnePlusCardHeader("Sources", systemImage: "shippingbox") {
+        VStack(alignment: .leading, spacing: OnePlusMetrics.actionSpacing) {
+            HStack {
+                OnePlusSectionTitle("Sources")
                 if refreshing { ProgressView().controlSize(.small).accessibilityLabel("Refreshing sources") }
             }
-            OnePlusSettingRow("Built-in tools", caption: "Included with MacPowerToys") {
-                Text("Built-in").onePlusText(.caption)
+            OnePlusSettingRow("Built-in tools", separator: !sources.isEmpty) {
+                Text(String(ToolRegistry.builtInTools.count)).onePlusText(.caption)
             }
             ForEach(sources) { source in sourceRow(source) }
-            HStack(spacing: OnePlusMetrics.cardGap) {
+        }
+    }
+
+    private var sourceEntry: some View {
+        VStack(alignment: .leading, spacing: OnePlusMetrics.actionSpacing) {
+            HStack(spacing: OnePlusMetrics.actionSpacing) {
                 Text("Catalog URL").onePlusText(.row).fixedSize()
                 OnePlusTextField("https://raw.githubusercontent.com/user/repo/main/catalog.json", text: $newSourceText,
                                  onSubmit: addSource)
@@ -79,10 +86,9 @@ struct MarketplaceSettingsView: View {
                     .fixedSize(horizontal: true, vertical: false)
                     .disabled(busy || newSourceText.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty)
             }
-            .padding(.horizontal, OnePlusMetrics.cardPadding)
             .frame(height: OnePlusMetrics.settingRow)
             if let sourceError {
-                OnePlusBanner(sourceError, tone: .error).padding(OnePlusMetrics.cardPadding)
+                OnePlusBanner(sourceError, tone: .error)
             }
         }
     }
@@ -90,14 +96,15 @@ struct MarketplaceSettingsView: View {
     private func sourceRow(_ source: MarketplaceSource) -> some View {
         VStack(alignment: .leading, spacing: OnePlusMetrics.actionSpacing) {
             HStack(spacing: OnePlusCatalogMetrics.gap) {
-                VStack(alignment: .leading, spacing: OnePlusCatalogMetrics.titleGap) {
-                    Text(source.displayName).onePlusText(.cardTitle).lineLimit(1).help(source.displayName)
-                    Text(source.url.absoluteString).onePlusText(.mono).lineLimit(1).truncationMode(.middle)
-                        .help(source.url.absoluteString).textSelection(.enabled)
-                    if let refreshed = source.lastRefreshed, source.lastError == nil {
-                        Text("Updated \(refreshed.formatted(.relative(presentation: .named)))").onePlusText(.caption)
-                    }
-                }.frame(maxWidth: .infinity, alignment: .leading)
+                Text(source.displayName).onePlusText(.cardTitle).lineLimit(1).help(source.displayName)
+                Text(source.url.absoluteString).onePlusText(.mono).lineLimit(1).truncationMode(.middle)
+                    .help(source.url.absoluteString).textSelection(.enabled)
+                    .frame(maxWidth: .infinity, alignment: .trailing)
+                if let refreshed = source.lastRefreshed, source.lastError == nil {
+                    Text(refreshed.formatted(.relative(presentation: .named))).onePlusText(.caption)
+                        .fixedSize()
+                        .help("Last updated \(refreshed.formatted())")
+                }
                 if busyID == source.id { ProgressView().controlSize(.small) }
                 Button { run(id: source.id) { await manager.refresh(source.url) } } label: { Image(systemName: "arrow.clockwise") }
                     .buttonStyle(OnePlusButtonStyle(.icon)).help("Refresh \(source.displayName)")
@@ -118,8 +125,11 @@ struct MarketplaceSettingsView: View {
     }
 
     private func toolsCard(_ title: String, entries: [MarketplaceEntry], empty: String) -> some View {
-        OnePlusCard {
-            OnePlusCardHeader(title, systemImage: "square.grid.2x2") { OnePlusBadge(entries.count) }
+        VStack(alignment: .leading, spacing: OnePlusMetrics.actionSpacing) {
+            HStack {
+                OnePlusSectionTitle(title)
+                Text(String(entries.count)).onePlusText(.caption)
+            }
             if entries.isEmpty { OnePlusEmptyState("No tools here", systemImage: "shippingbox", caption: empty) }
             else {
                 LazyVStack(spacing: 0) { ForEach(entries) { entry in toolRow(entry) } }
@@ -134,17 +144,21 @@ struct MarketplaceSettingsView: View {
             VStack(alignment: .leading, spacing: OnePlusCatalogMetrics.titleGap) {
                 HStack(spacing: OnePlusMetrics.actionSpacing) {
                     Text(entry.name).onePlusText(.cardTitle).lineLimit(1).help(entry.name)
+                    Spacer(minLength: OnePlusMetrics.actionSpacing)
                     Text(status(entry)).onePlusText(.caption)
                 }
-                Text(entry.summary).onePlusText(.row).foregroundStyle(OnePlusColor.secondary).lineLimit(2).help(entry.summary)
-                Text(versionText).onePlusText(.caption).lineLimit(1).help(versionText)
+                Text(entry.summary).onePlusText(.row, color: OnePlusColor.secondary).lineLimit(2).help(entry.summary)
             }.frame(maxWidth: .infinity, alignment: .leading)
+            Text(versionText).onePlusText(.caption).lineLimit(1)
+                .help(versionText + " · " + entry.sourceName)
+                .frame(maxWidth: OnePlusCatalogMetrics.placementWidth, alignment: .trailing)
             HStack(spacing: OnePlusMetrics.actionSpacing) {
                 if busyID == entry.id { ProgressView().controlSize(.small).accessibilityLabel("Updating \(entry.name)") }
                 actions(entry)
             }.fixedSize()
         }
         .padding(OnePlusMetrics.cardPadding)
+        .onePlusRowHover()
         .overlay(alignment: .bottom) { OnePlusColor.lineSoft.frame(height: 1) }
         .contextMenu { actions(entry) }
     }
@@ -172,9 +186,9 @@ struct MarketplaceSettingsView: View {
 
     private func version(_ entry: MarketplaceEntry) -> String {
         switch entry.status {
-        case .updateAvailable: "Version \(entry.receipt?.version ?? "?") → \(entry.manifest?.version ?? "?") · \(entry.sourceName)"
+        case .updateAvailable: "Version \(entry.receipt?.version ?? "?") → \(entry.manifest?.version ?? "?")"
         case .incompatible: "Requires MacPowerToys \(entry.manifest?.minHostVersion ?? "?") and macOS \(entry.manifest?.minMacOSVersion ?? "?")"
-        default: "Version \(entry.receipt?.version ?? entry.manifest?.version ?? "?") · \(entry.sourceName)"
+        default: "Version \(entry.receipt?.version ?? entry.manifest?.version ?? "?")"
         }
     }
 
