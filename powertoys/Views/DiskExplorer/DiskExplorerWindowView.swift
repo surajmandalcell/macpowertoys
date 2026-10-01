@@ -39,6 +39,7 @@ struct DiskExplorerWindowView: View {
     @State private var historyIndex = -1
     @State private var hoveredDetail: String?
     @State private var previewURL: URL?
+    @State private var previewURLs: [URL] = []
     @State private var showingReview = false
     @State private var showingFolder = false
     @State private var pendingDevice: String?
@@ -94,7 +95,7 @@ struct DiskExplorerWindowView: View {
             .task { if scansOnAppear { await model.refreshVolumes() } }
             .onDisappear {
                 model.leave(); inventoryTask?.cancel(); inventoryTask = nil
-                selectedID = nil; selection = []; history = []; previewURL = nil
+                selectedID = nil; selection = []; history = []; previewURL = nil; previewURLs = []
             }
             .onChange(of: page) { _, next in
                 if next != .explore { model.cancel() }
@@ -110,7 +111,7 @@ struct DiskExplorerWindowView: View {
             .onChange(of: resultTab) { _, _ in selection = []; search = ""; hoveredDetail = nil }
             .onChange(of: chartStyle) { _, _ in hoveredDetail = nil }
             .onChange(of: diskManagement.disks.map(\.id)) { _, _ in selectPendingDevice() }
-            .quickLookPreview($previewURL)
+            .quickLookPreview($previewURL, in: previewURLs)
             .sheet(isPresented: $showingFolder) { folderSheet }
             .sheet(isPresented: $showingReview) { DiskExplorerReviewSheet(model: model, includeHidden: includeHidden) }
             .sheet(item: $diskManagement.blockedEject) { DiskBlockedEjectSheet(model: diskManagement, blocked: $0) }
@@ -266,8 +267,8 @@ struct DiskExplorerWindowView: View {
         HStack(spacing: OnePlusMetrics.actionSpacing) {
             Text(title).onePlusText(.caption)
             Spacer(minLength: 0)
-            Text(value).onePlusText(.mono)
-                .foregroundStyle(accent ? OnePlusColor.accent : OnePlusColor.ink).monospacedDigit().lineLimit(1)
+            Text(value).onePlusText(.mono, color: accent ? OnePlusColor.accent : OnePlusColor.ink)
+                .monospacedDigit().lineLimit(1)
         }.frame(maxWidth: .infinity)
     }
     @ViewBuilder private var tabTools: some View {
@@ -433,7 +434,12 @@ struct DiskExplorerWindowView: View {
         guard entry.kind != .aggregate else { return }
         if entry.kind == .directory { navigate(entry) } else { NSWorkspace.shared.open(entry.url) }
     }
-    private func preview(_ entry: DiskEntry) { if entry.kind != .aggregate { previewURL = entry.url } }
+    private func preview(_ entry: DiskEntry) { preview([entry]) }
+    private func preview(_ entries: [DiskEntry]) {
+        let urls = DiskEntryPresentation.previewURLs(entries)
+        guard let first = urls.first else { return }
+        previewURLs = urls; previewURL = first
+    }
     private func navigate(_ entry: DiskEntry) {
         guard entry.kind == .directory, entry.id != model.current?.id else { return }
         if history.isEmpty, let current = model.current { history = [current.id]; historyIndex = 0 }
@@ -454,7 +460,7 @@ struct DiskExplorerWindowView: View {
             .init("Open") { files.forEach(open) },
             .init("Open With...") { DiskEntryPresentation.openWith(files.map(\.url)) },
             .init("Reveal in Finder") { NSWorkspace.shared.activateFileViewerSelecting(files.map(\.url)) },
-            .init("Quick Look") { preview(files[0]) },
+            .init("Quick Look") { preview(files) },
             .init("Copy Path") { DiskEntryPresentation.copy(files.map { $0.url.path }) },
             .init(allMarked ? "Unmark" : "Mark for removal", enabled: canRemove(files)) {
                 files.forEach { if allMarked || model.marks[$0.id] == nil { model.toggleMark($0) } }
