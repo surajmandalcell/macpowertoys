@@ -23,7 +23,7 @@ final class TrayFanUITests: XCTestCase {
         tray.click()
         app.buttons["tray.tab.home"].click()
         XCTAssertFalse(app.buttons["tray.tab.system-monitor"].exists)
-        XCTAssertFalse(app.buttons["Auto"].exists)
+        XCTAssertTrue(app.buttons["Auto"].waitForExistence(timeout: 10))
 
         let homeCapture = XCTAttachment(screenshot: app.screenshot())
         homeCapture.name = "Main menu without System Monitor"
