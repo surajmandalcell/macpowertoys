@@ -183,10 +183,10 @@ final class SystemCareTests: XCTestCase {
     func testCancellationWaitsForDetachedWorkerExit() async throws {
         let started = expectation(description: "Worker started")
         let canceled = expectation(description: "Worker received cancellation")
-        let finished = expectation(description: "Outer task finished")
+        var finished = false
         let release = DispatchSemaphore(value: 0)
         let task = Task {
-            defer { finished.fulfill() }
+            defer { finished = true }
             do {
                 _ = try await SystemCareManager.runWorker {
                     started.fulfill()
@@ -205,12 +205,11 @@ final class SystemCareTests: XCTestCase {
         await fulfillment(of: [started], timeout: 2)
         task.cancel()
         await fulfillment(of: [canceled], timeout: 2)
-        finished.isInverted = true
-        await fulfillment(of: [finished], timeout: 0.05)
-        finished.isInverted = false
+        try await Task.sleep(for: .milliseconds(50))
+        XCTAssertFalse(finished, "Cancellation must wait for the worker to exit")
         release.signal()
         await task.value
-        await fulfillment(of: [finished], timeout: 2)
+        XCTAssertTrue(finished)
     }
 
     func testCleanupCoverageReportsLimitsMissingRootsAndPackages() throws {
