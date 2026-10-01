@@ -9,12 +9,23 @@ struct ShortcutRecorderField: View {
     @State private var shortcuts = GlobalShortcutManager.shared
     @State private var isRecording = false
     @State private var monitor: Any?
+    @State private var recordingWindowNumber: Int?
+
+    private var registrationError: String? {
+        if case .failed(let message) = shortcuts.registrationStatus[action] { return message }
+        return nil
+    }
 
     var body: some View {
         Button {
             isRecording ? stopRecording() : startRecording()
         } label: {
-            Text(isRecording ? "Type shortcut…" : shortcuts.shortcut(for: action).display)
+            Group {
+                if isRecording { Text("Type shortcut…") }
+                else if registrationError != nil {
+                    Label("Change Shortcut", systemImage: "exclamationmark.triangle")
+                } else { Text(shortcuts.shortcut(for: action).display) }
+            }
                 .onePlusText(.control)
                 .foregroundStyle(OnePlusColor.controlInk)
                 .lineLimit(1)
@@ -23,12 +34,21 @@ struct ShortcutRecorderField: View {
         .buttonStyle(OnePlusButtonStyle())
         .onePlusNeutralControls()
         .environment(\.onePlusControlState, isRecording ? .focus : .rest)
-        .help(isRecording ? "Press the new keys, or Escape to cancel" : "Click, then press the new shortcut")
-        .accessibilityLabel("Record keyboard shortcut")
+        .help(registrationError ?? (isRecording ? "Press the new keys, or Escape to cancel" : "Click, then press the new shortcut"))
+        .accessibilityLabel("\(registrationError == nil ? "Record" : "Change") \(action.title) shortcut")
+        .accessibilityValue(shortcuts.shortcut(for: action).display)
+        .onReceive(NotificationCenter.default.publisher(for: NSWindow.didResignKeyNotification)) { notification in
+            if (notification.object as? NSWindow)?.windowNumber == recordingWindowNumber { stopRecording() }
+        }
+        .onChange(of: shortcuts.isEnabled(action)) { _, enabled in
+            if !enabled { stopRecording() }
+        }
         .onDisappear { stopRecording() }
     }
 
     private func startRecording() {
+        guard let window = NSApp.keyWindow else { return }
+        recordingWindowNumber = window.windowNumber
         isRecording = true
         monitor = NSEvent.addLocalMonitorForEvents(matching: .keyDown) { event in
             handle(event) ? nil : event
@@ -39,10 +59,11 @@ struct ShortcutRecorderField: View {
         isRecording = false
         if let monitor { NSEvent.removeMonitor(monitor) }
         monitor = nil
+        recordingWindowNumber = nil
     }
 
     private func handle(_ event: NSEvent) -> Bool {
-        guard isRecording else { return false }
+        guard isRecording, Self.accepts(event, windowNumber: recordingWindowNumber) else { return false }
         if event.keyCode == UInt16(kVK_Escape) {
             stopRecording()
             return true
@@ -51,6 +72,11 @@ struct ShortcutRecorderField: View {
         shortcuts.setShortcut(shortcut, for: action)
         stopRecording()
         return true
+    }
+
+    static func accepts(_ event: NSEvent, windowNumber: Int?) -> Bool {
+        guard let windowNumber else { return false }
+        return event.windowNumber == windowNumber
     }
 
     static func shortcut(from event: NSEvent) -> GlobalShortcut? {
@@ -102,10 +128,16 @@ struct ShortcutPermissionNotice: View {
 
     var body: some View {
         if shortcuts.needsAccessibilityPermission(for: action) {
-            OnePlusBanner("macOS reserves this screenshot shortcut. Accessibility access lets MacPowerToys override it.", tone: .warning) {
+            HStack(spacing: OnePlusMetrics.actionSpacing) {
+                Text("Accessibility access needed")
+                    .onePlusText(.caption, color: OnePlusColor.warn)
+                Spacer(minLength: OnePlusMetrics.actionSpacing)
                 Button("Allow Access…") { shortcuts.requestAccessibilityPermission() }
+                    .buttonStyle(OnePlusButtonStyle(.ghost))
             }
-            .padding(.top, 8)
+            .help("macOS reserves screenshot shortcuts. Accessibility access lets MacPowerToys use them.")
+        } else if case .failed(let message) = shortcuts.registrationStatus[action] {
+            Text(message).onePlusText(.caption, color: OnePlusColor.warn)
         }
     }
 }

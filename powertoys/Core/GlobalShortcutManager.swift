@@ -1,7 +1,9 @@
+import AppKit
 import ApplicationServices
 import Carbon.HIToolbox
 import Foundation
 import Observation
+import OnePlusUI
 
 enum GlobalShortcutKey: String, CaseIterable, Identifiable {
     case a, b, c, d, e, f, g, h, i, j, k, l, m
@@ -47,7 +49,15 @@ struct GlobalShortcut: Equatable {
     var carbonModifiers: UInt32
     var keyLabel: String
 
+    static let unset = Self(keyCode: 0, carbonModifiers: 0, keyLabel: "")
+    var isSet: Bool { carbonModifiers != 0 && !keyLabel.isEmpty }
+
+    func hasSameChord(as other: Self) -> Bool {
+        keyCode == other.keyCode && carbonModifiers == other.carbonModifiers
+    }
+
     var display: String {
+        guard isSet else { return "Not set" }
         var symbols = ""
         if carbonModifiers & UInt32(controlKey) != 0 { symbols += "⌃" }
         if carbonModifiers & UInt32(optionKey) != 0 { symbols += "⌥" }
@@ -76,6 +86,7 @@ enum GlobalShortcutAction: UInt32, CaseIterable, Identifiable {
     case colorPicker = 3
     case textExtractor = 4
     case portman = 5
+    case mainPanel = 6
 
     var id: UInt32 { rawValue }
     var defaultsName: String {
@@ -83,6 +94,15 @@ enum GlobalShortcutAction: UInt32, CaseIterable, Identifiable {
         case .colorPicker: "color-picker"
         case .textExtractor: "text-extractor"
         case .portman: "portman"
+        case .mainPanel: "main-panel"
+        }
+    }
+    var title: String {
+        switch self {
+        case .colorPicker: "Pick Color"
+        case .textExtractor: "Extract Text"
+        case .portman: "Portman"
+        case .mainPanel: "Quick Access"
         }
     }
     var defaultShortcut: GlobalShortcut {
@@ -105,30 +125,43 @@ enum GlobalShortcutAction: UInt32, CaseIterable, Identifiable {
                 carbonModifiers: UInt32(optionKey | cmdKey),
                 keyLabel: "P"
             )
+        case .mainPanel: .unset
         }
     }
-    var toolAction: ToolActionID {
+    var toolAction: ToolActionID? {
         switch self {
         case .colorPicker: .colorPickerPick
         case .textExtractor: .textExtractorCapture
         case .portman: .portmanOpen
+        case .mainPanel: nil
         }
     }
-    var toolID: String { toolAction.toolID }
+    var toolID: String { toolAction?.toolID ?? "main" }
 }
 
 @Observable
 @MainActor
 final class GlobalShortcutManager {
+    enum RegistrationStatus: Equatable {
+        case unset, disabled, unavailable, registered, needsAccessibility
+        case failed(String)
+    }
     static let shared = GlobalShortcutManager()
     static weak var current: GlobalShortcutManager?
 
     private var eventHandler: EventHandlerRef?
+    private var eventHandlerStatus: OSStatus = noErr
     private var hotKeys: [UInt32: EventHotKeyRef] = [:]
     private var reservedShortcutTap: CFMachPort?
     private var reservedShortcutTapSource: CFRunLoopSource?
+    private var registeredReservedActions: Set<GlobalShortcutAction> = []
     private var shortcuts: [GlobalShortcutAction: GlobalShortcut]
     private var enabledActions: Set<GlobalShortcutAction>
+    private(set) var registrationStatus: [GlobalShortcutAction: RegistrationStatus] = [:]
+
+    private static let awakeShortcut = GlobalShortcut(
+        keyCode: UInt32(kVK_ANSI_A), carbonModifiers: UInt32(controlKey | optionKey | cmdKey), keyLabel: "A"
+    )
 
     var eventHandlerOwnerCount: Int { eventHandler == nil ? 0 : 1 }
     var hotKeyOwnerCount: Int { hotKeys.count }
@@ -144,7 +177,7 @@ final class GlobalShortcutManager {
         Self.current = self
 
         var eventType = EventTypeSpec(eventClass: OSType(kEventClassKeyboard), eventKind: UInt32(kEventHotKeyPressed))
-        InstallEventHandler(
+        eventHandlerStatus = InstallEventHandler(
             GetApplicationEventTarget(),
             Self.handleEvent,
             1,
@@ -156,7 +189,7 @@ final class GlobalShortcutManager {
             let legacyModifiers = UInt32(controlKey | optionKey | cmdKey)
             register(id: 2, keyCode: UInt32(kVK_ANSI_A), modifiers: legacyModifiers)
         }
-        for action in enabledActions where isToolAvailable(action) { register(action) }
+        for action in GlobalShortcutAction.allCases { register(action) }
         refreshReservedShortcutTap()
 
         NotificationCenter.default.addObserver(
@@ -174,8 +207,10 @@ final class GlobalShortcutManager {
         let prefix = "shortcut.\(action.defaultsName)"
         if let keyCode = defaults.object(forKey: "\(prefix).keyCode") as? Int,
            let modifiers = defaults.object(forKey: "\(prefix).modifiers") as? Int,
-           let label = defaults.string(forKey: "\(prefix).keyLabel") {
-            return GlobalShortcut(keyCode: UInt32(keyCode), carbonModifiers: UInt32(modifiers), keyLabel: label)
+           let label = defaults.string(forKey: "\(prefix).keyLabel"),
+           let validKeyCode = UInt32(exactly: keyCode),
+           let validModifiers = UInt32(exactly: modifiers) {
+            return GlobalShortcut(keyCode: validKeyCode, carbonModifiers: validModifiers, keyLabel: label)
         }
         if let legacy = defaults.string(forKey: "\(prefix).key")
             .flatMap(GlobalShortcutKey.init(rawValue:)) {
@@ -196,38 +231,45 @@ final class GlobalShortcutManager {
         enabledActions.contains(action)
     }
 
-    func setShortcut(_ shortcut: GlobalShortcut, for action: GlobalShortcutAction) {
-        guard shortcut != self.shortcut(for: action) else { return }
+    @discardableResult
+    func setShortcut(_ shortcut: GlobalShortcut, for action: GlobalShortcutAction) -> Bool {
+        if shortcut.hasSameChord(as: self.shortcut(for: action)),
+           hotKeys[action.rawValue] != nil || registeredReservedActions.contains(action) {
+            registrationStatus[action] = .registered
+            return true
+        }
+        if isEnabled(action) && isToolAvailable(action) {
+            guard replaceRegistration(for: action, with: shortcut) else { return false }
+        }
         shortcuts[action] = shortcut
         let prefix = "shortcut.\(action.defaultsName)"
         UserDefaults.standard.set(Int(shortcut.keyCode), forKey: "\(prefix).keyCode")
         UserDefaults.standard.set(Int(shortcut.carbonModifiers), forKey: "\(prefix).modifiers")
         UserDefaults.standard.set(shortcut.keyLabel, forKey: "\(prefix).keyLabel")
-        if isEnabled(action) && isToolAvailable(action) {
-            unregister(id: action.rawValue)
-            register(action)
-        }
         refreshReservedShortcutTap()
+        if !isEnabled(action) || !isToolAvailable(action) { register(action) }
+        return true
     }
 
     func setEnabled(_ enabled: Bool, for action: GlobalShortcutAction) {
         guard enabled != isEnabled(action) else { return }
         if enabled {
             enabledActions.insert(action)
-            if isToolAvailable(action) { register(action) }
+            register(action)
         } else {
             enabledActions.remove(action)
             unregister(id: action.rawValue)
+            registrationStatus[action] = .disabled
         }
         UserDefaults.standard.set(enabled, forKey: "shortcut.\(action.defaultsName).enabled")
         refreshReservedShortcutTap()
     }
 
     func needsAccessibilityPermission(for action: GlobalShortcutAction) -> Bool {
-        isEnabled(action)
+        registrationStatus[action] == .needsAccessibility || (isEnabled(action)
             && isToolAvailable(action)
             && shortcut(for: action).overridesSystemScreenshotShortcut
-            && reservedShortcutTap == nil
+            && reservedShortcutTap == nil)
     }
 
     func requestAccessibilityPermission() {
@@ -248,12 +290,70 @@ final class GlobalShortcutManager {
 
     private func register(_ action: GlobalShortcutAction) {
         let shortcut = shortcut(for: action)
-        guard Self.usesCarbonHotKey(for: shortcut) else { return }
-        register(id: action.rawValue, keyCode: shortcut.keyCode, modifiers: shortcut.carbonModifiers)
+        guard isEnabled(action) else { registrationStatus[action] = .disabled; return }
+        guard isToolAvailable(action) else { registrationStatus[action] = .unavailable; return }
+        _ = replaceRegistration(for: action, with: shortcut)
+    }
+
+    static func conflictMessage(
+        for shortcut: GlobalShortcut, action: GlobalShortcutAction,
+        shortcuts: [GlobalShortcutAction: GlobalShortcut], enabled: Set<GlobalShortcutAction>, awakeEnabled: Bool
+    ) -> String? {
+        guard shortcut.isSet else { return nil }
+        if awakeEnabled && shortcut.hasSameChord(as: awakeShortcut) { return "Already used for Awake." }
+        if let other = GlobalShortcutAction.allCases.first(where: {
+            $0 != action && enabled.contains($0) && shortcuts[$0]?.hasSameChord(as: shortcut) == true
+        }) { return "Already used for \(other.title)." }
+        return nil
+    }
+
+    private func replaceRegistration(for action: GlobalShortcutAction, with shortcut: GlobalShortcut) -> Bool {
+        if let message = Self.conflictMessage(
+            for: shortcut, action: action, shortcuts: shortcuts,
+            enabled: Set(enabledActions.filter(isToolAvailable)),
+            awakeEnabled: SettingsManager.shared.isToolEnabled("awake")
+        ) {
+            registrationStatus[action] = .failed(message)
+            return false
+        }
+        guard shortcut.isSet else {
+            unregister(id: action.rawValue)
+            registrationStatus[action] = .unset
+            return true
+        }
+        if !Self.usesCarbonHotKey(for: shortcut) {
+            guard ensureReservedShortcutTap() else {
+                registrationStatus[action] = AXIsProcessTrusted()
+                    ? .failed("Cannot register this shortcut.") : .needsAccessibility
+                return false
+            }
+            unregister(id: action.rawValue)
+            registeredReservedActions.insert(action)
+            registrationStatus[action] = .registered
+            return true
+        }
+        guard eventHandlerStatus == noErr else {
+            registrationStatus[action] = .failed("Cannot register shortcuts (\(eventHandlerStatus)).")
+            return false
+        }
+        var reference: EventHotKeyRef?
+        let status = RegisterEventHotKey(
+            shortcut.keyCode, shortcut.carbonModifiers,
+            EventHotKeyID(signature: OSType(0x50545759), id: action.rawValue),
+            GetApplicationEventTarget(), 0, &reference
+        )
+        guard status == noErr, let reference else {
+            registrationStatus[action] = .failed("Cannot register this shortcut (\(status)).")
+            return false
+        }
+        unregister(id: action.rawValue)
+        hotKeys[action.rawValue] = reference
+        registrationStatus[action] = .registered
+        return true
     }
 
     static func usesCarbonHotKey(for shortcut: GlobalShortcut) -> Bool {
-        !shortcut.overridesSystemScreenshotShortcut
+        shortcut.isSet && !shortcut.overridesSystemScreenshotShortcut
     }
 
     private func register(id: UInt32, keyCode: UInt32, modifiers: UInt32) {
@@ -271,16 +371,36 @@ final class GlobalShortcutManager {
     }
 
     private func unregister(id: UInt32) {
+        if let action = GlobalShortcutAction(rawValue: id) { registeredReservedActions.remove(action) }
         guard let reference = hotKeys.removeValue(forKey: id) else { return }
         _ = UnregisterEventHotKey(reference)
     }
 
     private func refreshReservedShortcutTap() {
-        stopReservedShortcutTap()
-        let needsTap = enabledActions.contains {
+        let reservedActions = enabledActions.filter {
             isToolAvailable($0) && shortcut(for: $0).overridesSystemScreenshotShortcut
         }
-        guard needsTap, AXIsProcessTrusted() else { return }
+        registeredReservedActions.formIntersection(reservedActions)
+        guard !reservedActions.isEmpty else { stopReservedShortcutTap(); return }
+        let ready = ensureReservedShortcutTap()
+        for action in reservedActions {
+            if let message = Self.conflictMessage(
+                for: shortcut(for: action), action: action, shortcuts: shortcuts,
+                enabled: Set(enabledActions.filter(isToolAvailable)),
+                awakeEnabled: SettingsManager.shared.isToolEnabled("awake")
+            ) {
+                registrationStatus[action] = .failed(message)
+                continue
+            }
+            if ready { registeredReservedActions.insert(action) }
+            registrationStatus[action] = ready ? .registered
+                : AXIsProcessTrusted() ? .failed("Cannot register this shortcut.") : .needsAccessibility
+        }
+    }
+
+    private func ensureReservedShortcutTap() -> Bool {
+        if reservedShortcutTap != nil { return true }
+        guard AXIsProcessTrusted() else { return false }
         let mask = CGEventMask(1) << CGEventType.keyDown.rawValue
         guard let tap = CGEvent.tapCreate(
             tap: .cgSessionEventTap,
@@ -289,12 +409,13 @@ final class GlobalShortcutManager {
             eventsOfInterest: mask,
             callback: Self.handleReservedShortcutEvent,
             userInfo: Unmanaged.passUnretained(self).toOpaque()
-        ) else { return }
+        ) else { return false }
         let source = CFMachPortCreateRunLoopSource(kCFAllocatorDefault, tap, 0)
         reservedShortcutTap = tap
         reservedShortcutTapSource = source
         CFRunLoopAddSource(CFRunLoopGetMain(), source, .commonModes)
         CGEvent.tapEnable(tap: tap, enable: true)
+        return true
     }
 
     private func stopReservedShortcutTap() {
@@ -304,10 +425,11 @@ final class GlobalShortcutManager {
         if let tap = reservedShortcutTap { CFMachPortInvalidate(tap) }
         reservedShortcutTapSource = nil
         reservedShortcutTap = nil
+        registeredReservedActions.removeAll()
     }
 
     private func reservedAction(keyCode: UInt32, flags: CGEventFlags) -> GlobalShortcutAction? {
-        enabledActions.first {
+        registeredReservedActions.first {
             let shortcut = shortcut(for: $0)
             return isToolAvailable($0)
                 && shortcut.overridesSystemScreenshotShortcut
@@ -316,7 +438,7 @@ final class GlobalShortcutManager {
     }
 
     private func isToolAvailable(_ action: GlobalShortcutAction) -> Bool {
-        SettingsManager.shared.isToolEnabled(action.toolID)
+        action == .mainPanel || SettingsManager.shared.isToolEnabled(action.toolID)
     }
 
     private func refreshToolAvailability(_ toolID: String) {
@@ -332,14 +454,24 @@ final class GlobalShortcutManager {
         }
         for action in GlobalShortcutAction.allCases where action.toolID == toolID {
             unregister(id: action.rawValue)
-            if enabledActions.contains(action) && isToolAvailable(action) {
-                register(action)
-            }
+            register(action)
         }
         refreshReservedShortcutTap()
     }
 
     private func run(id: UInt32) {
+        if id == GlobalShortcutAction.mainPanel.rawValue {
+            guard isEnabled(.mainPanel) else { return }
+            guard let button = DiagnosticsPanel.main.statusButton else {
+                registrationStatus[.mainPanel] = .failed("Show the menu bar icon in General to use Quick Access.")
+                return
+            }
+            if DiagnosticsMenuPanels.shared.mainWindow?.isVisible != true {
+                OnePlusPanelTimings.shared.begin(panel: "main", input: "shortcut")
+            }
+            button.performClick(nil)
+            return
+        }
         let action: ToolActionID? = switch id {
         case 2: .awakeToggle
         default: GlobalShortcutAction(rawValue: id)?.toolAction
