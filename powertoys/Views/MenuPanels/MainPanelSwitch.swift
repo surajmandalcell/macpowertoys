@@ -10,7 +10,7 @@ struct SwitchTrayView: View {
     @AppStorage(SwitchTrayUsagePreferences.periodKey) private var tokenPeriod = SwitchTrayTokenPeriod.sinceReset.rawValue
 
     init() {
-        _model = State(initialValue: SwitchWorkspaceModel())
+        _model = State(initialValue: SwitchWorkspaceModel.shared)
     }
 
     init(model: SwitchWorkspaceModel) {
@@ -47,15 +47,11 @@ struct SwitchTrayView: View {
     private var header: some View {
         OnePlusMenuControlRow("CLI accounts", systemImage: TrayTab.switchAccounts.symbol) {
             HStack(spacing: OnePlusMetrics.actionSpacing) {
-                if model.accounts.contains(where: { account in
-                    account.identity.providerID == .codex
-                        && (SwitchTrayUsagePreferences.explicitValue(for: account.id) ?? defaultShowUsage)
-                        && !Self.hasUsageLimits(model.usage[account.id])
-                }) {
+                if let usageWarning {
                     Image(systemName: "exclamationmark.circle.fill")
                         .onePlusText(.caption, color: OnePlusColor.warn)
-                        .accessibilityLabel("Usage limits are not loaded")
-                        .help("Usage limits are not loaded for some accounts. Refresh accounts and usage to load them.")
+                        .accessibilityLabel(usageWarning)
+                        .help(usageWarning)
                 }
                 Button {
                     Task {
@@ -73,6 +69,16 @@ struct SwitchTrayView: View {
                 .help("Refresh accounts and usage")
             }
         }
+    }
+
+    private var usageWarning: String? {
+        if let error = model.usageCacheError { return error }
+        guard model.accounts.contains(where: { account in
+            account.identity.providerID == .codex
+                && (SwitchTrayUsagePreferences.explicitValue(for: account.id) ?? defaultShowUsage)
+                && !Self.hasUsageLimits(model.usage[account.id])
+        }) else { return nil }
+        return "Usage limits are not loaded for some accounts. Refresh accounts and usage to load them."
     }
 
     nonisolated static func hasUsageLimits(_ snapshot: CodexAccountUsageSnapshot?) -> Bool {
@@ -114,7 +120,7 @@ struct SwitchTrayView: View {
                 }
                 if showsUsage, let snapshot = model.usage[account.id],
                    let period = SwitchTrayTokenPeriod(rawValue: tokenPeriod) {
-                    Text("\(period.tokens(in: snapshot).formatted(.number.notation(.compactName))) tokens")
+                    Text("\(period.tokens(in: snapshot, dailyUsage: model.dailyUsage[account.id]).formatted(.number.notation(.compactName))) tokens")
                         .onePlusText(.caption).help(period.label)
                 }
             }
