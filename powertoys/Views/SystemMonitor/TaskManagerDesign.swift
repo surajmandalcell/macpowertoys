@@ -118,6 +118,7 @@ nonisolated enum TaskManagerChartGeometry {
 private struct TaskManagerChartTextInput: Equatable, Sendable {
     let values: [Double]
     let unit: String
+    let isVisible: Bool
 }
 
 struct TaskManagerHistoryChart: View {
@@ -137,6 +138,7 @@ struct TaskManagerHistoryChart: View {
     @State private var hoverX: CGFloat?
     @State private var hoverLabels: [String] = []
     @State private var accessibilityText = "No history"
+    @Environment(\.onePlusIsVisible) private var isVisible
 
     @ViewBuilder
     var body: some View {
@@ -209,7 +211,8 @@ struct TaskManagerHistoryChart: View {
         }
         .clipped()
         .accessibilityLabel(accessibilityText)
-        .task(id: TaskManagerChartTextInput(values: values, unit: unit)) {
+        .task(id: TaskManagerChartTextInput(values: values, unit: unit, isVisible: isVisible)) {
+            guard isVisible else { return }
             let values = values
             let unit = unit
             let labels = await Task.detached(priority: .utility) {
