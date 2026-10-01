@@ -16,7 +16,6 @@ struct HomeView: View {
     @State private var filter = MainCatalogFilter.all
     @AppStorage("main.settingsTab") private var storedSettingsTab = MainSettingsTab.general.rawValue
     @State private var focusedToolID: String?
-    @State private var manualToolID: String?
     @State private var modifiedRevision = 0
     @State private var shortcutTools: [any Tool] = []
     @State private var preferenceObserver: ToolSettingsPreferenceObserver?
@@ -61,7 +60,6 @@ struct HomeView: View {
         }
         .onChange(of: selectedTool) { _, value in
             if value != "all-tools" { query = "" }
-            if value != manualToolID { manualToolID = nil }
             focusedToolID = nil
         }
         .onReceive(NotificationCenter.default.publisher(for: .marketplaceReceiptsChanged)) { _ in
@@ -91,7 +89,7 @@ struct HomeView: View {
         case "modified":
             MainModifiedView { modifiedRevision += 1 }
         case let toolID?:
-            ToolAboutView(toolId: toolID, startsWithGuide: manualToolID == toolID, changed: { modifiedRevision += 1 })
+            ToolAboutView(toolId: toolID, changed: { modifiedRevision += 1 })
         default:
             OnePlusEmptyState("Select a tool", systemImage: "wrench.adjustable",
                               caption: "Choose a tool from the sidebar.")
@@ -119,13 +117,12 @@ struct HomeView: View {
         guard let route = MainPageRoute.resolve(id, toolIDs: ToolRegistry.allTools.map(\.id),
                                                savedSettingsTab: storedSettingsTab) else { return }
         query = ""
-        manualToolID = nil
         switch route {
         case .catalog(let requestedFilter): filter = requestedFilter; selectedTool = "all-tools"
         case .settings(let tab): storedSettingsTab = tab.rawValue; selectedTool = "settings"
         case .modified: selectedTool = "modified"
         case .tool(let id): selectedTool = id
-        case .manual(let id): manualToolID = id; selectedTool = id
+        case .manual(let id): MainToolTab.select(.guide, for: id); selectedTool = id
         }
     }
 

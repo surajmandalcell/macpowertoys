@@ -65,7 +65,7 @@ struct MainToolContextMenu: View {
 
     var body: some View {
         Button("Settings") {
-            UserDefaults.standard.set(MainToolTab.settings.rawValue, forKey: MainToolTab.storageKey(for: tool.id))
+            MainToolTab.select(.settings, for: tool.id)
             select()
         }
         MainOpenToolButton(toolID: tool.id, toolName: tool.name)

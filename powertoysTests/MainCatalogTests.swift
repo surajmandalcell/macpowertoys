@@ -17,7 +17,7 @@ final class MainCatalogTests: XCTestCase {
         let tool = try sourceFile("powertoys/Views/ToolAboutView.swift")
         XCTAssertFalse(tool.contains(".id(tool.id)"))
         XCTAssertTrue(tool.contains("MainToolTab(rawValue: storedTab) ?? .settings"))
-        XCTAssertTrue(tool.contains("if startsWithGuide { storedTab = MainToolTab.guide.rawValue }"))
+        XCTAssertTrue(home.contains("case .manual(let id): MainToolTab.select(.guide, for: id)"))
 
         let sidebar = try sourceFile("powertoys/Views/ToolSidebarView.swift")
         XCTAssertTrue(sidebar.contains("@State private var hasChanges = false"))
