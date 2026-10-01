@@ -24,7 +24,7 @@
   skin or its cells. The header and body therefore used different insets.
 - **Invariant:** Define each column once. Pass those models to
   `onePlusNativeTable(columns:)` and apply `onePlusTableCell(_:position:)` to
-  every cell. Keep 12pt adjoining insets, a 116pt Time column, and a 215pt
+  every cell. Keep 12pt adjoining insets, a 160pt Time column, and a 215pt
   Source column. Give Level a fixed glyph lane and the same header label inset.
   Truncate Source in its padded bounds. Keep full text in the detail sheet.
 - **Check:** The shared column geometry regression checks header and cell
@@ -87,3 +87,22 @@
   Detached cancellation passes with the fix and fails when forwarding is
   removed. Focused XCTest regressions cover these paths and an in-memory
   SwiftData round trip. Hosted execution and signed interaction remain open.
+
+## Localized display and restored preferences, 2026-10-01
+
+- **Symptom:** Row times use a fixed 24-hour clock while the range uses a
+  fixed 12-hour clock. The selected page and sort reset when Logs reopens.
+- **Cause:** Display formatters use POSIX patterns. Page and sort live only
+  in view state.
+- **Invariant:** Prepare rows, detail times, and ranges with localized `j`
+  clock templates and one locale, calendar, and timezone snapshot per request.
+  Observe `AppInitializer.shared.formattingRevision`; reject stale results.
+  Keep copied and exported timestamps in the existing POSIX format.
+  Restore validated `logs.page`, `logs.sortColumn`, and `logs.sortDirection`.
+  Unknown pages fall back to Internal Logs; unknown sorts use newest first.
+  Explicit valid routes override the saved page. Search stays transient.
+- **Check:** Run `tmp/redesign/tools/audit-logs-r11-check.py` for locale,
+  timezone, range, comparator, page fallback, and native font-width checks.
+  Compile `SystemLogReaderTests` through the shared build gate. Hosted CI
+  and the orchestrator must verify preference restoration, route precedence,
+  live locale changes, and both appearances on the signed installed app.

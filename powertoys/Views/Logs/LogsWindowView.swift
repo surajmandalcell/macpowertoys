@@ -4,10 +4,12 @@ import OSLog
 import SwiftUI
 import UniformTypeIdentifiers
 
-private enum LogsPage: String, CaseIterable, Identifiable, Sendable {
+nonisolated enum LogsPage: String, CaseIterable, Identifiable, Sendable {
     case internalLogs = "internal"
     case systemIssues = "system"
     case settings
+
+    static func restored(_ id: String) -> Self { Self(rawValue: id) ?? .internalLogs }
 
     var id: String { rawValue }
     var title: String {
@@ -127,20 +129,24 @@ final class SystemLogReader {
     }
 }
 
-nonisolated private struct LogsRow: Identifiable, Sendable {
+nonisolated struct LogsRow: Identifiable, Sendable {
     let id: String
     let timestamp: Date
     let time: String
+    let detailTime: String
+    let exportTime: String
     let level: String
     let levelFilter: LogLevel
     let symbol: String
     let source: String
     let message: String
 
-    init(_ entry: LogEntryData, time: String) {
+    init(_ entry: LogEntryData, time: String, detailTime: String, exportTime: String) {
         id = entry.id.uuidString
         timestamp = entry.timestamp
         self.time = time
+        self.detailTime = detailTime
+        self.exportTime = exportTime
         levelFilter = entry.level
         switch entry.level {
         case .error: (level, symbol) = ("Error", "xmark.circle.fill")
@@ -152,10 +158,12 @@ nonisolated private struct LogsRow: Identifiable, Sendable {
         message = entry.message
     }
 
-    init(_ entry: SystemLogLine, time: String) {
+    init(_ entry: SystemLogLine, time: String, detailTime: String, exportTime: String) {
         id = entry.id.uuidString
         timestamp = entry.timestamp
         self.time = time
+        self.detailTime = detailTime
+        self.exportTime = exportTime
         level = entry.level.rawValue
         levelFilter = .error
         symbol = entry.level == .fault ? "bolt.trianglebadge.exclamationmark.fill" : "xmark.circle.fill"
@@ -188,37 +196,73 @@ nonisolated enum LogsPresentation {
                 || message.localizedCaseInsensitiveContains(search))
     }
 
-    static func rowTime(_ date: Date, timeZone: TimeZone = .current) -> String {
-        rowTimeFormatter(timeZone: timeZone).string(from: date)
+    static func rowTimeFormatter(locale: Locale = .current, calendar: Calendar = .current,
+                                 timeZone: TimeZone = .current) -> DateFormatter {
+        formatter("Mdjmmss", locale: locale, calendar: calendar, timeZone: timeZone)
     }
 
-    static func rowTimeFormatter(timeZone: TimeZone = .current) -> DateFormatter {
-        formatter("MM-dd HH:mm:ss", timeZone: timeZone)
+    static func formatter(_ template: String, locale: Locale = .current, calendar: Calendar = .current,
+                          timeZone: TimeZone = .current) -> DateFormatter {
+        let formatter = DateFormatter()
+        formatter.locale = locale
+        formatter.calendar = calendar
+        formatter.timeZone = timeZone
+        formatter.setLocalizedDateFormatFromTemplate(template)
+        return formatter
     }
 
-    static func span(from first: Date, to last: Date, timeZone: TimeZone = .current) -> String {
-        var calendar = Calendar(identifier: .gregorian)
+    static func span(from first: Date, to last: Date, locale: Locale = .current,
+                     calendar: Calendar = .current, timeZone: TimeZone = .current) -> String {
+        var calendar = calendar
         calendar.timeZone = timeZone
         if calendar.isDate(first, inSameDayAs: last) {
-            let date = formatter("yyyy-MM-dd", timeZone: timeZone).string(from: first)
-            let time = formatter("h:mm:ss a", timeZone: timeZone)
+            let date = formatter("yMMMd", locale: locale, calendar: calendar, timeZone: timeZone).string(from: first)
+            let time = formatter("jmmss", locale: locale, calendar: calendar, timeZone: timeZone)
             return "\(date), \(time.string(from: first)) – \(time.string(from: last))"
         }
-        let dateTime = formatter("yyyy-MM-dd, h:mm a", timeZone: timeZone)
+        let dateTime = formatter("yMMMdjmmss", locale: locale, calendar: calendar, timeZone: timeZone)
         return "\(dateTime.string(from: first)) – \(dateTime.string(from: last))"
     }
 
-    private static func formatter(_ format: String, timeZone: TimeZone) -> DateFormatter {
+    static func exportTimeFormatter(timeZone: TimeZone = .current) -> DateFormatter {
         let formatter = DateFormatter()
         formatter.locale = Locale(identifier: "en_US_POSIX")
         formatter.timeZone = timeZone
-        formatter.dateFormat = format
+        formatter.dateFormat = "MM-dd HH:mm:ss"
         return formatter
+    }
+
+    static func sortOrder(column: String, direction: String) -> [KeyPathComparator<LogsRow>] {
+        guard direction == "ascending" || direction == "descending" else {
+            return [KeyPathComparator(\LogsRow.timestamp, order: .reverse)]
+        }
+        let order: SortOrder = direction == "ascending" ? .forward : .reverse
+        switch column {
+        case "time": return [KeyPathComparator(\LogsRow.timestamp, order: order)]
+        case "level": return [KeyPathComparator(\LogsRow.level, order: order)]
+        case "source": return [KeyPathComparator(\LogsRow.source, order: order)]
+        case "message": return [KeyPathComparator(\LogsRow.message, order: order)]
+        default: return [KeyPathComparator(\LogsRow.timestamp, order: .reverse)]
+        }
+    }
+
+    static func sortColumn(for comparator: KeyPathComparator<LogsRow>) -> String? {
+        switch comparator.keyPath {
+        case \LogsRow.timestamp: "time"
+        case \LogsRow.level: "level"
+        case \LogsRow.source: "source"
+        case \LogsRow.message: "message"
+        default: nil
+        }
     }
 }
 
 struct LogsWindowView: View {
-    @State private var page = LogsPage.internalLogs
+    @AppStorage("logs.page") private var storedPage = LogsPage.internalLogs.rawValue
+    private var page: LogsPage {
+        get { LogsPage.restored(storedPage) }
+        nonmutating set { storedPage = newValue.rawValue }
+    }
     @State private var selectedLevels = Set(LogLevel.allCases)
     @State private var systemRange = SystemLogRange.oneHour
     @State private var systemLogs = SystemLogReader()
@@ -228,7 +272,7 @@ struct LogsWindowView: View {
     var body: some View {
         OnePlusWindowRoot(canvas: .logs) {
             LogsSidebar(
-                page: $page,
+                page: Binding(get: { page }, set: { page = $0 }),
                 selectedLevels: $selectedLevels,
                 systemLogs: systemLogs,
                 search: $search,
@@ -240,6 +284,7 @@ struct LogsWindowView: View {
             .background(WindowAccessor(identifier: "logs"))
             .buttonStyle(OnePlusButtonStyle())
             .onAppear {
+                storedPage = page.rawValue
                 if page == .systemIssues && systemLogs.entries.isEmpty && !systemLogs.isLoading {
                     systemLogs.refresh(range: systemRange)
                 }
@@ -378,7 +423,7 @@ private struct LogsSidebar: View {
 
 private struct LogsPageView: View {
     private static let columns: [OnePlusGridColumn] = [
-        OnePlusGridColumn("Time", width: 116, textRole: .mono),
+        OnePlusGridColumn("Time", width: 160, textRole: .mono),
         OnePlusGridColumn("Level", width: 96, textColor: OnePlusColor.secondary,
                           headerLabelInset: OnePlusMetrics.navIcon + OnePlusMetrics.spacing[1]),
         OnePlusGridColumn("Source", width: 215),
@@ -393,6 +438,8 @@ private struct LogsPageView: View {
 
     @State private var logManager = LogManager.shared
     @State private var selection: Set<String> = []
+    @AppStorage("logs.sortColumn") private var sortColumn = "time"
+    @AppStorage("logs.sortDirection") private var sortDirection = "descending"
     @State private var sortOrder = [KeyPathComparator(\LogsRow.timestamp, order: .reverse)]
     @State private var visibleRows: [LogsRow] = []
     @State private var visibleSpan: String?
@@ -524,7 +571,10 @@ private struct LogsPageView: View {
             }
         }
         .accessibilityIdentifier("logs.\(page.rawValue)")
-        .task { rebuildRows() }
+        .task {
+            sortOrder = LogsPresentation.sortOrder(column: sortColumn, direction: sortDirection)
+            rebuildRows()
+        }
         .onChange(of: page) {
             selection.removeAll()
             sourceFilter = nil
@@ -535,6 +585,7 @@ private struct LogsPageView: View {
         .onChange(of: selectedLevels) { rebuildRows() }
         .onChange(of: internalVersion) { rebuildRows() }
         .onChange(of: systemVersion) { rebuildRows() }
+        .onChange(of: AppInitializer.shared.formattingRevision) { rebuildRows() }
         .onDisappear {
             rowLoadTask?.cancel()
             rowLoadTask = nil
@@ -566,7 +617,11 @@ private struct LogsPageView: View {
         Binding(
             get: { sortOrder },
             set: {
+                guard let comparator = $0.first,
+                      let column = LogsPresentation.sortColumn(for: comparator) else { return }
                 sortOrder = $0
+                sortColumn = column
+                sortDirection = comparator.order == .forward ? "ascending" : "descending"
                 rebuildRows()
             }
         )
@@ -581,13 +636,24 @@ private struct LogsPageView: View {
         let sourceFilter = sourceFilter
         let search = search
         let sortOrder = sortOrder
+        let formattingRevision = AppInitializer.shared.formattingRevision
 
         rowLoadTask = Task {
             let prepared = await Task.detached(priority: .userInitiated) {
-                let rowTimeFormatter = LogsPresentation.rowTimeFormatter()
+                // Snapshot formatting context once per revision, away from rendering.
+                let locale = Locale.current
+                let calendar = Calendar.current
+                let timeZone = TimeZone.current
+                let rowTimeFormatter = LogsPresentation.rowTimeFormatter(locale: locale, calendar: calendar, timeZone: timeZone)
+                let detailFormatter = LogsPresentation.formatter("yMMMdjmmss", locale: locale, calendar: calendar, timeZone: timeZone)
+                let exportFormatter = LogsPresentation.exportTimeFormatter(timeZone: timeZone)
                 let source = page == .internalLogs
-                    ? internalEntries.map { LogsRow($0, time: rowTimeFormatter.string(from: $0.timestamp)) }
-                    : systemEntries.map { LogsRow($0, time: rowTimeFormatter.string(from: $0.timestamp)) }
+                    ? internalEntries.map { LogsRow($0, time: rowTimeFormatter.string(from: $0.timestamp),
+                                               detailTime: detailFormatter.string(from: $0.timestamp),
+                                               exportTime: exportFormatter.string(from: $0.timestamp)) }
+                    : systemEntries.map { LogsRow($0, time: rowTimeFormatter.string(from: $0.timestamp),
+                                               detailTime: detailFormatter.string(from: $0.timestamp),
+                                               exportTime: exportFormatter.string(from: $0.timestamp)) }
                 let rows = source
                     .filter {
                         LogsPresentation.includes(level: $0.levelFilter, source: $0.source, message: $0.message,
@@ -598,13 +664,15 @@ private struct LogsPageView: View {
                 let lastTimestamp = rows.map(\.timestamp).max()
                 let span: String?
                 if let firstTimestamp, let lastTimestamp {
-                    span = LogsPresentation.span(from: firstTimestamp, to: lastTimestamp)
+                    span = LogsPresentation.span(from: firstTimestamp, to: lastTimestamp,
+                                                 locale: locale, calendar: calendar, timeZone: timeZone)
                 } else {
                     span = nil
                 }
                 return PreparedLogs(rows: rows, span: span, sources: Set(source.map(\.source)).sorted())
             }.value
             guard !Task.isCancelled else { return }
+            guard formattingRevision == AppInitializer.shared.formattingRevision else { return }
             visibleRows = prepared.rows
             visibleSpan = prepared.span
             sources = prepared.sources
@@ -640,7 +708,7 @@ private struct LogsPageView: View {
     }
 
     private func rowText(_ row: LogsRow) -> String {
-        "[\(row.time)] [\(row.level)] \(row.source): \(row.message)"
+        "[\(row.exportTime)] [\(row.level)] \(row.source): \(row.message)"
     }
 
     private func copyRows() { copy(selectedOrVisibleRows().map(rowText).joined(separator: "\n")) }
@@ -681,7 +749,7 @@ private struct LogDetailSheet: View {
         OnePlusSheet("Log Entry", width: .large, close: close) {
             ScrollView {
                 VStack(alignment: .leading, spacing: OnePlusMetrics.spacing[3]) {
-                    OnePlusKeyValueRow("Time", value: row.timestamp.formatted(date: .abbreviated, time: .standard), monospaced: true)
+                    OnePlusKeyValueRow("Time", value: row.detailTime, monospaced: true)
                     OnePlusKeyValueRow("Level", value: row.level)
                     HStack(alignment: .firstTextBaseline, spacing: OnePlusMetrics.spacing[2]) {
                         Text("Source").onePlusText(.caption)
