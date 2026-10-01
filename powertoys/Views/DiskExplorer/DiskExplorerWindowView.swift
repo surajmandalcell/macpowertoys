@@ -4,7 +4,13 @@ import OnePlusUI
 import QuickLook
 import SwiftUI
 
-private enum DiskExplorerPage: Hashable { case explore, modify, settings, about }
+enum DiskExplorerPage: String, Hashable {
+    case explore, modify, settings, about
+    static func restored(_ id: String?, hasDevices: Bool) -> Self {
+        let page = id.flatMap(Self.init(rawValue:)) ?? .explore
+        return page == .modify && !hasDevices ? .explore : page
+    }
+}
 
 private struct DiskExplorerLiveUpdateObserver: View {
     @Environment(\.onePlusIsVisible) private var isVisible
@@ -17,9 +23,9 @@ private struct DiskExplorerLiveUpdateObserver: View {
 }
 
 enum DiskResultTab: String, CaseIterable, Identifiable {
-    case visualization = "Visualization"
-    case largestFiles = "Largest files"
-    case results = "Results"
+    case visualization
+    case largestFiles = "largest-files"
+    case results
     var id: String { rawValue }
 }
 
@@ -49,6 +55,8 @@ struct DiskExplorerWindowView: View {
     @AppStorage("diskExplorer.chartMeasure") private var chartMeasure = DiskChartMeasure.space.rawValue
     @AppStorage("diskExplorer.apparentSize") private var apparentSize = false
     @AppStorage("diskExplorer.includeHidden") private var includeHidden = true
+    @AppStorage("diskExplorer.page") private var savedPage = DiskExplorerPage.explore.rawValue
+    @AppStorage("diskExplorer.resultTab") private var savedResultTab = DiskResultTab.visualization.rawValue
 
     private var chart: DiskChartStyle { DiskChartStyle(rawValue: chartStyle) ?? .treemap }
     private var measure: DiskChartMeasure { DiskChartMeasure(rawValue: chartMeasure) ?? .space }
@@ -69,7 +77,7 @@ struct DiskExplorerWindowView: View {
     }
 
     @MainActor init() { self.init(model: DiskExplorerModel()) }
-    @MainActor init(model: DiskExplorerModel, scansOnAppear: Bool = true, initialTab: DiskResultTab = .visualization) {
+    @MainActor init(model: DiskExplorerModel, scansOnAppear: Bool = true, initialTab: DiskResultTab? = nil) {
         _model = State(initialValue: model)
         #if DEBUG
         _diskManagement = State(initialValue: ProcessInfo.processInfo.environment["MACPOWERTOYS_UI_TEST"] == "1"
@@ -78,8 +86,11 @@ struct DiskExplorerWindowView: View {
         #else
         _diskManagement = State(initialValue: DiskManagementModel(disks: Self.retainedDisks))
         #endif
-        _resultTab = State(initialValue: initialTab)
         self.scansOnAppear = scansOnAppear
+        _page = State(initialValue: scansOnAppear ? DiskExplorerPage.restored(
+            UserDefaults.standard.string(forKey: "diskExplorer.page"), hasDevices: !_diskManagement.wrappedValue.disks.isEmpty) : .explore)
+        _resultTab = State(initialValue: initialTab ?? (scansOnAppear ? DiskResultTab(
+            rawValue: UserDefaults.standard.string(forKey: "diskExplorer.resultTab") ?? "") : nil) ?? .visualization)
     }
 
     var body: some View {
@@ -89,8 +100,11 @@ struct DiskExplorerWindowView: View {
             .background(WindowAccessor(identifier: "disk-explorer"))
             .background { shortcuts }
             .onAppear {
+                if scansOnAppear { savedPage = page.rawValue; savedResultTab = resultTab.rawValue }
                 if scansOnAppear && !diskManagement.isPreview { refreshInventory() }
-                if scansOnAppear, let source = model.sourceURL, model.result == nil, !model.isScanning { startScan(source) }
+                if scansOnAppear, page == .explore, let source = model.sourceURL, model.result == nil, !model.isScanning {
+                    model.start(source, includeHidden: includeHidden)
+                }
             }
             .task { if scansOnAppear { await model.refreshVolumes() } }
             .onDisappear {
@@ -98,6 +112,7 @@ struct DiskExplorerWindowView: View {
                 selectedID = nil; selection = []; history = []; previewURL = nil; previewURLs = []
             }
             .onChange(of: page) { _, next in
+                if scansOnAppear { savedPage = next.rawValue }
                 if next != .explore { model.cancel() }
                 model.setPresentationActive(presentsLiveUpdates && next == .explore)
             }
@@ -108,7 +123,10 @@ struct DiskExplorerWindowView: View {
                 if page == .explore, let source = model.sourceURL { startScan(source) }
             }
             .onChange(of: model.current?.id) { _, _ in selectedID = nil; selection = []; hoveredDetail = nil }
-            .onChange(of: resultTab) { _, _ in selection = []; search = ""; hoveredDetail = nil }
+            .onChange(of: resultTab) { _, next in
+                if scansOnAppear { savedResultTab = next.rawValue }
+                selection = []; search = ""; hoveredDetail = nil
+            }
             .onChange(of: chartStyle) { _, _ in hoveredDetail = nil }
             .onChange(of: diskManagement.disks.map(\.id)) { _, _ in selectPendingDevice() }
             .quickLookPreview($previewURL, in: previewURLs)
