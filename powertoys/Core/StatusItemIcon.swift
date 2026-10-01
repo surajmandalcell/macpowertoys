@@ -19,7 +19,8 @@ enum StatusItemIcon {
     static func attachmentSymbol(_ name: String) -> NSImage? {
         let key = "attachment." + name
         if let image = symbols[key] { return image }
-        guard let source = symbol(name) else { return nil }
+        guard let source = symbol(name)?.copy() as? NSImage else { return nil }
+        source.isTemplate = false
         let image = NSImage(size: source.size, flipped: false) { bounds in
             source.draw(in: bounds)
             NSColor.labelColor.setFill()

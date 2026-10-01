@@ -60,6 +60,7 @@ final class SystemMonitorStatusTests: XCTestCase {
     func testAttachmentTintFollowsNativeAppearanceWithoutChangingGeometry() throws {
         let image = try XCTUnwrap(StatusItemIcon.attachmentSymbol("cpu"))
         XCTAssertFalse(image.isTemplate)
+        XCTAssertTrue(try XCTUnwrap(StatusItemIcon.symbol("cpu")).isTemplate)
         var brightness: [CGFloat] = []
         for name in [NSAppearance.Name.aqua, .darkAqua] {
             let bitmap = try XCTUnwrap(NSBitmapImageRep(bitmapDataPlanes: nil, pixelsWide: 28, pixelsHigh: 28,
