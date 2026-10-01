@@ -9,7 +9,60 @@ import SwiftUI
 
 extension Notification.Name {
     static let commandOpenSettings = Notification.Name("commandOpenSettings")
-    static let commandNewTransfer = Notification.Name("commandNewTransfer")
+}
+
+struct AppCommandAction {
+    let title: String
+    let perform: () -> Void
+}
+
+private struct AppNewTransferKey: FocusedValueKey { typealias Value = () -> Void }
+private struct AppRefreshKey: FocusedValueKey { typealias Value = () -> Void }
+private struct AppUploadKey: FocusedValueKey { typealias Value = () -> Void }
+private struct AppQuickLookKey: FocusedValueKey { typealias Value = () -> Void }
+private struct AppCopyPathKey: FocusedValueKey { typealias Value = () -> Void }
+private struct AppInspectKey: FocusedValueKey { typealias Value = () -> Void }
+private struct AppOpenSettingsKey: FocusedValueKey { typealias Value = () -> Void }
+private struct AppGlobalSearchKey: FocusedValueKey { typealias Value = () -> Void }
+private struct AppFindKey: FocusedValueKey { typealias Value = AppCommandAction }
+
+extension FocusedValues {
+    var appNewTransfer: (() -> Void)? {
+        get { self[AppNewTransferKey.self] }
+        set { self[AppNewTransferKey.self] = newValue }
+    }
+    var appRefresh: (() -> Void)? {
+        get { self[AppRefreshKey.self] }
+        set { self[AppRefreshKey.self] = newValue }
+    }
+    var appUpload: (() -> Void)? {
+        get { self[AppUploadKey.self] }
+        set { self[AppUploadKey.self] = newValue }
+    }
+    var appQuickLook: (() -> Void)? {
+        get { self[AppQuickLookKey.self] }
+        set { self[AppQuickLookKey.self] = newValue }
+    }
+    var appCopyPath: (() -> Void)? {
+        get { self[AppCopyPathKey.self] }
+        set { self[AppCopyPathKey.self] = newValue }
+    }
+    var appInspect: (() -> Void)? {
+        get { self[AppInspectKey.self] }
+        set { self[AppInspectKey.self] = newValue }
+    }
+    var appOpenSettings: (() -> Void)? {
+        get { self[AppOpenSettingsKey.self] }
+        set { self[AppOpenSettingsKey.self] = newValue }
+    }
+    var appGlobalSearch: (() -> Void)? {
+        get { self[AppGlobalSearchKey.self] }
+        set { self[AppGlobalSearchKey.self] = newValue }
+    }
+    var appFind: AppCommandAction? {
+        get { self[AppFindKey.self] }
+        set { self[AppFindKey.self] = newValue }
+    }
 }
 
 @MainActor
@@ -192,12 +245,23 @@ enum FreeRulerCommand: CaseIterable {
 
 struct AppCommands: Commands {
     @ObservedObject private var ruler = FreeRulerCommandContext.shared
+    @FocusedValue(\.appNewTransfer) private var newTransfer
+    @FocusedValue(\.appRefresh) private var refresh
+    @FocusedValue(\.appUpload) private var upload
+    @FocusedValue(\.appQuickLook) private var quickLook
+    @FocusedValue(\.appCopyPath) private var copyPath
+    @FocusedValue(\.appInspect) private var inspect
+    @FocusedValue(\.appOpenSettings) private var openSettings
+    @FocusedValue(\.appGlobalSearch) private var globalSearch
+    @FocusedValue(\.appFind) private var find
+    @State private var quitTitle = Self.quitMenuTitle(toolID: nil)
 
     var body: some Commands {
         CommandGroup(replacing: .appSettings) {
             if ruler.showsHostCommands {
                 Button("Settings…") {
-                    NotificationCenter.default.post(name: .commandOpenSettings, object: nil)
+                    if let openSettings { openSettings() }
+                    else { openCurrentSettings() }
                 }
                 .keyboardShortcut(",", modifiers: .command)
             } else {
@@ -216,35 +280,113 @@ struct AppCommands: Commands {
         CommandGroup(replacing: .newItem) {
             if ruler.showsHostCommands {
                 Button("New Transfer") {
-                    NotificationCenter.default.post(name: .commandNewTransfer, object: nil)
+                    newTransfer?()
                 }
                 .keyboardShortcut("n", modifiers: .command)
+                .disabled(newTransfer == nil)
             }
+        }
+
+        CommandGroup(replacing: .appInfo) {
+            Button("About MacPowerToys") { openAbout() }
+        }
+
+        CommandGroup(after: .appInfo) {
+            Button("Check for Updates…") {
+                openAbout()
+                HostUpdateChecker.shared.check()
+            }
+            .disabled(HostUpdateChecker.shared.isChecking)
+        }
+
+        CommandGroup(after: .textEditing) {
+            Button(find?.title ?? "Find") { find?.perform() }
+                .keyboardShortcut("f", modifiers: .command)
+                .disabled(find == nil)
+            Button("Global Search") { globalSearch?() }
+                .keyboardShortcut("f", modifiers: [.command, .shift])
+                .disabled(globalSearch == nil)
+        }
+
+        CommandMenu("Actions") {
+            Button("Refresh") { refresh?() }
+                .keyboardShortcut("r", modifiers: .command)
+                .disabled(refresh == nil)
+            Button("Upload…") { upload?() }
+                .keyboardShortcut("u", modifiers: [.command, .shift])
+                .disabled(upload == nil)
+            Button("Quick Look") { quickLook?() }
+                .keyboardShortcut("y", modifiers: .command)
+                .disabled(quickLook == nil)
+            Button("Copy Path") { copyPath?() }
+                .keyboardShortcut("c", modifiers: [.command, .option])
+                .disabled(copyPath == nil)
+            Button("Inspect Process") { inspect?() }
+                .keyboardShortcut("i", modifiers: .command)
+                .disabled(inspect == nil)
         }
 
         CommandGroup(replacing: .appTermination) {
-            Button("Quit MacPowerToys") {
+            Button(quitTitle) {
                 AppDelegate.current?.handleQuitCommand()
             }
             .keyboardShortcut("q", modifiers: .command)
+            .onAppear(perform: updateQuitTitle)
+            .onReceive(NotificationCenter.default.publisher(for: NSWindow.didBecomeKeyNotification)) { _ in
+                updateQuitTitle()
+            }
+            .onReceive(NotificationCenter.default.publisher(for: NSWindow.didResignKeyNotification)) { _ in
+                updateQuitTitle()
+            }
+
+            Button("Quit MacPowerToys") { AppDelegate.current?.quitFromStatusItem() }
+                .keyboardShortcut("q", modifiers: [.command, .option])
         }
 
         CommandMenu("Utilities") {
-            Button("Toggle Awake") {
-                ToolActionRouter.shared.execute(ToolActionRequest(action: .awakeToggle))
-            }
+            Toggle("Awake", isOn: Binding(
+                get: { SettingsManager.shared.isToolEnabled("awake") && AwakeService.shared.isActive },
+                set: { _ in ToolActionRouter.shared.execute(ToolActionRequest(action: .awakeToggle)) }
+            ))
             .keyboardShortcut("a", modifiers: [.command, .option, .control])
+            .disabled(!SettingsManager.shared.isToolEnabled("awake"))
 
             Button("Pick Color") {
                 ToolActionRouter.shared.execute(ToolActionRequest(action: .colorPickerPick))
             }
             .keyboardShortcut("c", modifiers: [.command, .option, .control])
+            .disabled(!SettingsManager.shared.isToolEnabled("color-picker") || ColorPickerService.shared.isPicking)
 
             Button("Extract Text") {
                 ToolActionRouter.shared.execute(ToolActionRequest(action: .textExtractorCapture))
             }
             .keyboardShortcut("t", modifiers: [.command, .option, .control])
+            .disabled(!SettingsManager.shared.isToolEnabled("text-extractor")
+                      || TextExtractorService.shared.state == .selecting
+                      || TextExtractorService.shared.state == .recognizing)
         }
+    }
+
+    private func openAbout() {
+        ToolActionRouter.shared.open(toolID: "main", page: "settings-about")
+    }
+
+    private func openCurrentSettings() {
+        let window = NSApp.keyWindow ?? NSApp.mainWindow
+        if let toolID = AppDelegate.quitCommandToolID(for: window) {
+            ToolActionRouter.shared.open(toolID: toolID, page: "settings")
+        } else {
+            ToolActionRouter.shared.open(toolID: "main", page: "settings")
+        }
+    }
+
+    private func updateQuitTitle() {
+        quitTitle = Self.quitMenuTitle(toolID: AppDelegate.quitCommandToolID(for: NSApp.keyWindow ?? NSApp.mainWindow))
+    }
+
+    static func quitMenuTitle(toolID: String?) -> String {
+        if let toolID, let tool = ToolRegistry.tool(for: toolID) { return "Close \(tool.name)" }
+        return "Press ⌘Q again to quit"
     }
 }
 
