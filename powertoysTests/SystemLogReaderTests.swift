@@ -33,7 +33,7 @@ final class SystemLogReaderTests: XCTestCase {
         XCTAssertTrue(LogManager.merging([], with: []).isEmpty)
     }
 
-    func testPersistenceRoundTripAndRetentionBoundary() async throws {
+    @MainActor func testPersistenceRoundTripAndRetentionBoundary() async throws {
         let container = try ModelContainer(for: LogEntry.self,
             configurations: ModelConfiguration(isStoredInMemoryOnly: true, cloudKitDatabase: .none))
         let store = LogPersistence(modelContainer: container)
