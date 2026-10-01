@@ -29,7 +29,8 @@ final class ToolGlyphTests: XCTestCase {
             XCTAssertEqual(image.size, NSSize(width: 14, height: 14))
             for scale in [CGFloat(1), 2, 4] {
                 let bounds = try inkBounds(image, scale: scale)
-                XCTAssertEqual(max(bounds.width, bounds.height), 11.2, accuracy: max(0.5, 1 / scale))
+                // Allow one antialiased edge pixel on each side.
+                XCTAssertEqual(max(bounds.width, bounds.height), 11.2, accuracy: max(0.5, 2 / scale))
                 XCTAssertEqual(bounds.midX, 7, accuracy: 0.5)
                 XCTAssertEqual(bounds.midY, 7, accuracy: 0.5)
             }
