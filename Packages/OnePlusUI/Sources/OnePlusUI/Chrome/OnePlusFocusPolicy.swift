@@ -21,8 +21,9 @@ public final class OnePlusFocusPolicy {
         fullKeyboardAccess || voiceOver
     }
 
-    public static func acceptsFocus(isVisible: Bool, pointer: Bool, textInput: Bool) -> Bool {
-        isVisible && (!pointer || textInput)
+    public static func acceptsFocus(isVisible: Bool, pointer: Bool, textInput: Bool,
+                                    selectionInput: Bool = false) -> Bool {
+        isVisible && (!pointer || textInput || selectionInput)
     }
 
     public func install() {
@@ -43,11 +44,10 @@ public final class OnePlusFocusPolicy {
             forName: .init("com.apple.KeyboardUIModeChanged"), object: nil, queue: .main) { [weak self] _ in
                 MainActor.assumeIsolated { self?.refresh() }
             }
-        observers.append(center.addObserver(forName: NSWindow.didBecomeKeyNotification, object: nil, queue: .main) { [weak self] _ in
+        observers.append(center.addObserver(forName: NSWindow.didBecomeKeyNotification, object: nil, queue: .main) { [weak self] note in
+            let window = note.object as? NSWindow
             MainActor.assumeIsolated {
-                guard let window = NSApp.keyWindow else { return }
-                self?.configure(window)
-                if !Self.isTextInput(window.firstResponder) { window.makeFirstResponder(window) }
+                if let window { self?.configure(window) }
             }
         })
         observers.append(center.addObserver(forName: NSWindow.didUpdateNotification, object: nil, queue: .main) { [weak self] note in
@@ -93,11 +93,25 @@ public final class OnePlusFocusPolicy {
 
     public func configure(_ window: NSWindow) {
         install()
-        guard windows.member(window) == nil else { return }
+        guard windows.member(window) == nil else {
+            Self.clearInvalidFocus(in: window)
+            return
+        }
         windows.add(window)
         window.initialFirstResponder = nil
-        window.makeFirstResponder(window)
+        if !showsFocus, !Self.isTextInput(window.firstResponder), !Self.isSelectionInput(window.firstResponder) {
+            window.makeFirstResponder(window)
+        }
+        Self.clearInvalidFocus(in: window)
         configureRings(window.contentView)
+    }
+
+    private static func clearInvalidFocus(in window: NSWindow) {
+        guard let view = window.firstResponder as? NSView else { return }
+        if view.window !== window || view.isHiddenOrHasHiddenAncestor || view.visibleRect.intersection(view.bounds).isEmpty ||
+            !view.acceptsFirstResponder || (view as? NSControl)?.isEnabled == false {
+            window.makeFirstResponder(window)
+        }
     }
 
     private func configureRings(_ view: NSView?) {
@@ -110,7 +124,7 @@ public final class OnePlusFocusPolicy {
     public static func dismissPointerFocus(in window: NSWindow, at point: NSPoint) {
         var hit = window.contentView?.hitTest(point)
         while let view = hit {
-            if isTextInput(view) { return }
+            if isTextInput(view) || isSelectionInput(view) { return }
             hit = view.superview
         }
         window.makeFirstResponder(window)
@@ -120,6 +134,10 @@ public final class OnePlusFocusPolicy {
         if let field = responder as? NSTextField { return field.isEditable || field.isSelectable }
         if let editor = responder as? NSTextView { return editor.isEditable || editor.isSelectable }
         return false
+    }
+
+    private static func isSelectionInput(_ responder: NSResponder?) -> Bool {
+        responder is NSTableView || responder is NSCollectionView || responder is NSBrowser
     }
 
     static func isPointerEvent(_ type: NSEvent.EventType?) -> Bool {
@@ -133,7 +151,8 @@ public final class OnePlusFocusPolicy {
         if !shared.installed { return true }
         if responder == nil || responder === window { return true }
         if shared.windows.member(window) == nil { return true }
-        return acceptsFocus(isVisible: window.isVisible, pointer: pointer, textInput: isTextInput(responder))
+        return acceptsFocus(isVisible: window.isVisible, pointer: pointer && !shared.showsFocus,
+                            textInput: isTextInput(responder), selectionInput: isSelectionInput(responder))
     }
 
     private static var hookInstalled = false
