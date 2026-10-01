@@ -45,35 +45,6 @@ nonisolated enum SSHKeyAccessCheck: Equatable, Sendable {
     case needsPassword(SSHRemoteKind)
 }
 
-nonisolated enum SSHKeyAccessError: LocalizedError {
-    case unsafeAlias
-    case noPublicKey
-    case invalidPublicKey
-    case passwordRejected
-    case connectionFailed(String)
-    case installFailed(String)
-    case verificationFailed
-    case timeout
-    case outputLimit
-    case processLaunchFailed(String)
-
-    var errorDescription: String? {
-        switch self {
-        case .unsafeAlias: "The SSH alias is not safe to pass to OpenSSH."
-        case .noPublicKey: "No public key was found for this SSH host."
-        case .invalidPublicKey: "The selected SSH public key is invalid."
-        case .passwordRejected: "Windows did not accept the SSH password."
-        case .connectionFailed(let message): message
-        case .installFailed(let message): message
-        case .verificationFailed:
-            "The key was installed, but key-only login still failed. Check sshd_config and authorized_keys permissions."
-        case .timeout: "SSH key setup timed out."
-        case .outputLimit: "Process output exceeded its limit."
-        case .processLaunchFailed(let message): "SSH could not start: \(message)"
-        }
-    }
-}
-
 nonisolated enum SSHKeyAccessConfiguration {
     static let sshURL = URL(fileURLWithPath: "/usr/bin/ssh")
     static let sshCopyIDURL = URL(fileURLWithPath: "/usr/bin/ssh-copy-id")
@@ -156,16 +127,7 @@ if($a){
 
     static let windowsEncodedCommand = windowsScript.data(using: .utf16LittleEndian)!.base64EncodedString()
 
-    static func baseEnvironment() -> [String: String] {
-        let current = ProcessInfo.processInfo.environment
-        var environment = [
-            "HOME": FileManager.default.homeDirectoryForCurrentUser.path,
-            "PATH": "/usr/bin:/bin",
-            "LC_ALL": "C",
-        ]
-        if let socket = current["SSH_AUTH_SOCK"] { environment["SSH_AUTH_SOCK"] = socket }
-        return environment
-    }
+    static func baseEnvironment() -> [String: String] { SSHProcessRunner.baseEnvironment() }
 
     private static func validate(alias: String) throws {
         guard !alias.hasPrefix("-"), SSHConfigEditor.isSafeToken(alias) else {
@@ -247,94 +209,6 @@ nonisolated final class SSHAskpassChannel: @unchecked Sendable {
     }
 
     deinit { cleanup() }
-}
-
-nonisolated struct SSHProcessResult: Sendable {
-    let status: Int32
-    let standardOutput: String
-    let standardError: String
-}
-
-nonisolated enum SSHProcessRunner {
-    static func run(
-        executableURL: URL,
-        arguments: [String],
-        environment: [String: String] = SSHKeyAccessConfiguration.baseEnvironment(),
-        standardInput: Data? = nil,
-        maximumOutputBytes: Int? = nil,
-        timeout: TimeInterval
-    ) async throws -> SSHProcessResult {
-        let worker = Task.detached(priority: .userInitiated) {
-            let process = Process()
-            let output = Pipe()
-            let error = Pipe()
-            let input = standardInput == nil ? nil : Pipe()
-            process.executableURL = executableURL
-            process.arguments = arguments
-            process.environment = environment
-            process.standardOutput = output
-            process.standardError = error
-            process.standardInput = input
-            do {
-                try process.run()
-            } catch {
-                throw SSHKeyAccessError.processLaunchFailed(error.localizedDescription)
-            }
-            let outputReader = Task.detached {
-                read(output.fileHandleForReading, maximumBytes: maximumOutputBytes)
-            }
-            let errorReader = Task.detached {
-                read(error.fileHandleForReading, maximumBytes: maximumOutputBytes)
-            }
-            if let standardInput, let input {
-                input.fileHandleForWriting.write(standardInput)
-                try? input.fileHandleForWriting.close()
-            }
-            let deadline = Date().addingTimeInterval(timeout)
-            while process.isRunning, !Task.isCancelled, Date() < deadline {
-                usleep(20_000)
-            }
-            let wasCancelled = Task.isCancelled
-            let timedOut = process.isRunning && Date() >= deadline
-            if process.isRunning {
-                process.terminate()
-                let killDeadline = Date().addingTimeInterval(2)
-                while process.isRunning, Date() < killDeadline {
-                    usleep(20_000)
-                }
-                if process.isRunning { Darwin.kill(process.processIdentifier, SIGKILL) }
-            }
-            process.waitUntilExit()
-            let outputResult = await outputReader.value
-            let errorResult = await errorReader.value
-            if wasCancelled { throw CancellationError() }
-            if timedOut { throw SSHKeyAccessError.timeout }
-            if outputResult.exceeded || errorResult.exceeded { throw SSHKeyAccessError.outputLimit }
-            return SSHProcessResult(
-                status: process.terminationStatus,
-                standardOutput: String(decoding: outputResult.data, as: UTF8.self),
-                standardError: String(decoding: errorResult.data, as: UTF8.self)
-            )
-        }
-        return try await withTaskCancellationHandler {
-            try await worker.value
-        } onCancel: {
-            worker.cancel()
-        }
-    }
-
-    private static func read(_ handle: FileHandle, maximumBytes: Int?) -> (data: Data, exceeded: Bool) {
-        var data = Data()
-        var exceeded = false
-        while true {
-            let chunk = handle.readData(ofLength: 8_192)
-            if chunk.isEmpty { break }
-            let remaining = maximumBytes.map { max($0 - data.count, 0) } ?? chunk.count
-            data.append(chunk.prefix(remaining))
-            exceeded = exceeded || chunk.count > remaining
-        }
-        return (data, exceeded)
-    }
 }
 
 nonisolated enum SSHKeyAccessInstaller {

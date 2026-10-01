@@ -72,6 +72,40 @@ final class NetToysTests: XCTestCase {
         )
     }
 
+    func testConfigurationEditsPreserveConcurrentRecoveryAndWiFiChanges() throws {
+        let directory = FileManager.default.temporaryDirectory.appendingPathComponent(UUID().uuidString)
+        try FileManager.default.createDirectory(at: directory, withIntermediateDirectories: true)
+        defer { try? FileManager.default.removeItem(at: directory) }
+        let url = directory.appendingPathComponent("configuration.json")
+        let anchor = SSHAnchorConfiguration(
+            hostAlias: "box", hostName: "192.0.2.1", port: 22, identity: .stableMAC("001122334455")
+        )
+        let original = NetToysConfiguration(anchors: [anchor])
+        try JSONEncoder().encode(original).write(to: url)
+        var recovered = original
+        recovered.anchors[0].hostName = "192.0.2.2"
+        recovered.anchors[0].localHostName = "192.0.2.2"
+        _ = try NetToysConfigurationStore.saveChanges(recovered, since: original, to: url)
+        var wifiEdit = original
+        wifiEdit.wifiPriority.ssids = ["Home", "Office"]
+        _ = try NetToysConfigurationStore.saveChanges(wifiEdit, since: original, to: url)
+        var anchorEdit = original
+        anchorEdit.anchors[0].isEnabled = false
+        let merged = try NetToysConfigurationStore.saveChanges(anchorEdit, since: original, to: url)
+        XCTAssertEqual(merged.wifiPriority.ssids, ["Home", "Office"])
+        XCTAssertEqual(merged.anchors[0].hostName, "192.0.2.2")
+        XCTAssertEqual(merged.anchors[0].localHostName, "192.0.2.2")
+        XCTAssertFalse(merged.anchors[0].isEnabled)
+        var removed = merged
+        removed.anchors = []
+        _ = try NetToysConfigurationStore.saveChanges(removed, since: merged, to: url)
+        let staleRecovery = try NetToysConfigurationStore.saveChanges(recovered, since: original, to: url)
+        XCTAssertTrue(staleRecovery.anchors.isEmpty)
+        try Data("invalid JSON".utf8).write(to: url)
+        XCTAssertThrowsError(try NetToysConfigurationStore.saveChanges(wifiEdit, since: original, to: url))
+        XCTAssertEqual(try Data(contentsOf: url), Data("invalid JSON".utf8))
+    }
+
     func testSSHAnchorFeatureGatePreservesPerAnchorChoices() throws {
         let enabled = SSHAnchorConfiguration(
             hostAlias: "enabled",

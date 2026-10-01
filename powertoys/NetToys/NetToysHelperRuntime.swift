@@ -372,7 +372,7 @@ actor NetToysHelperRuntime {
             verify: { host, port in
                 await TCPPortProbe.check(host: host, port: port, timeoutMilliseconds: 900).state == .open
             },
-            commit: { try NetToysConfigurationStore.save(updated) }
+            commit: { _ = try NetToysConfigurationStore.saveChanges(updated, since: latest) }
         )
     }
 
@@ -385,7 +385,7 @@ actor NetToysHelperRuntime {
               current.hostName == expectedHostName,
               let updated = try? latest.replacingAnchor(anchor)
         else { return }
-        try? NetToysConfigurationStore.save(updated)
+        _ = try? NetToysConfigurationStore.saveChanges(updated, since: latest)
     }
 
     private func synchronizedAnchor(_ anchor: SSHAnchorConfiguration) -> SSHAnchorConfiguration {
@@ -400,7 +400,7 @@ actor NetToysHelperRuntime {
         if copy.route == .local { copy.localHostName = entry.hostName }
         let configuration = NetToysConfigurationStore.load()
         if let updated = try? configuration.replacingAnchor(copy) {
-            try? NetToysConfigurationStore.save(updated)
+            _ = try? NetToysConfigurationStore.saveChanges(updated, since: configuration)
         }
         return copy
     }
