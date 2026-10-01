@@ -291,6 +291,21 @@ identity colors. Hover, press, tab, and content changes are instant. Check
 unloaded and loaded limits, account switching, nested row controls, and both
 appearances in the signed build. Report: `tmp/redesign/logs/w1-panel-main.md`.
 
+## Switch panel account errors, 2026-10-01
+
+- **Symptom:** Signed `198055e4` shows a coral account error sentence below
+  the first Codex quota bar in the r10 main Switch capture.
+- **Cause:** `accountContent` appends `Text(error)` below the usage bars.
+- **Invariant:** Keep account identity on one line. Provider names stay in
+  help and accessibility text. Account errors use one small trailing orange
+  exclamation glyph with the complete error as help and accessibility text.
+  Keep the shared header missing-limit warning, usage bars, token totals,
+  default marker, and full-row switching action.
+- **Check:** In the updated signed build, compare failed and successful
+  accounts in both appearances. An error adds no text row or height. Hover
+  the glyph and require the full message. Check long names, retained quotas,
+  both usage windows, default actions, and VoiceOver. Fix: `47e98b79`.
+
 ## Combined Menu Icon And Tab Outline
 
 - **Symptom:** The MacPowerToys status glyph looks slightly too large, and an
