@@ -112,15 +112,6 @@ nonisolated enum FanCommand {
         }
     }
 
-    static func apply(_ preset: FanPreset) async throws {
-        try await withCheckedThrowingContinuation { (continuation: CheckedContinuation<Void, any Error>) in
-            apply(preset) { message in
-                if let message { continuation.resume(throwing: FanError(message)) }
-                else { continuation.resume() }
-            }
-        }
-    }
-
     private static func applyOnQueue(_ preset: FanPreset) throws {
         if let smctlPath {
             _ = try run(smctlPath, arguments(for: preset))
@@ -313,7 +304,7 @@ final class FanControlService {
     @ObservationIgnored private var lastDisplayPublication: ContinuousClock.Instant?
     @ObservationIgnored private var displayRevision = 0
     @ObservationIgnored private let readSnapshot: @Sendable () -> FanSnapshot?
-    @ObservationIgnored private let applyPreset: @Sendable (FanPreset) async throws -> Void
+    @ObservationIgnored private let applyPreset: @Sendable (FanPreset, @escaping @Sendable (String?) -> Void) -> Void
     private var owners = Set<String>()
     private var pollTask: Task<Void, Never>?
     private var coolResetTask: Task<Void, Never>?
@@ -330,7 +321,7 @@ final class FanControlService {
     }
 
     init(readSnapshot: @escaping @Sendable () -> FanSnapshot?,
-         applyPreset: @escaping @Sendable (FanPreset) async throws -> Void = { try await FanCommand.apply($0) }) {
+         applyPreset: @escaping @Sendable (FanPreset, @escaping @Sendable (String?) -> Void) -> Void = FanCommand.apply) {
         self.readSnapshot = readSnapshot
         self.applyPreset = applyPreset
     }
@@ -418,31 +409,28 @@ final class FanControlService {
         errorMessage = nil
         commandRevision &+= 1
         let currentCommand = commandRevision
-        let applyPreset = applyPreset
-        Task { [weak self] in
-            var commandError: String?
-            do { try await applyPreset(preset) }
-            catch { commandError = error.localizedDescription }
-            guard let self else { return }
-            guard currentCommand == self.commandRevision else { return }
-            self.hasPendingManualCommand = false
-            if let commandError {
-                self.errorMessage = commandError
-            } else {
-                self.coolResetTask?.cancel()
-                self.coolResetTask = nil
-                self.ownsManualControl = preset != .auto
-                self.selectedPreset = preset
-                if preset == .cool {
-                    self.coolResetTask = Task { [weak self] in
-                        try? await Task.sleep(for: .seconds(600))
-                        guard !Task.isCancelled else { return }
-                        self?.select(.auto)
+        applyPreset(preset) { [weak self] commandError in
+            Task { @MainActor [weak self] in
+                guard let self, currentCommand == self.commandRevision else { return }
+                self.hasPendingManualCommand = false
+                if let commandError {
+                    self.errorMessage = commandError
+                } else {
+                    self.coolResetTask?.cancel()
+                    self.coolResetTask = nil
+                    self.ownsManualControl = preset != .auto
+                    self.selectedPreset = preset
+                    if preset == .cool {
+                        self.coolResetTask = Task { [weak self] in
+                            try? await Task.sleep(for: .seconds(600))
+                            guard !Task.isCancelled else { return }
+                            self?.select(.auto)
+                        }
                     }
                 }
+                await self.refresh()
+                self.isChanging = false
             }
-            await self.refresh()
-            self.isChanging = false
         }
     }
 
@@ -459,7 +447,12 @@ final class FanControlService {
             isChanging = false
         }
         do {
-            try await applyPreset(.auto)
+            try await withCheckedThrowingContinuation { (continuation: CheckedContinuation<Void, any Error>) in
+                applyPreset(.auto) { message in
+                    if let message { continuation.resume(throwing: FanError(message)) }
+                    else { continuation.resume() }
+                }
+            }
             ownsManualControl = false
             hasPendingManualCommand = false
             selectedPreset = .auto
