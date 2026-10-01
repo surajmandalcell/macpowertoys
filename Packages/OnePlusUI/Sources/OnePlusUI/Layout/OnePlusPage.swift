@@ -223,6 +223,8 @@ public struct OnePlusPage<Header: View, Tabs: View, Content: View>: View {
     private let scrolls: Bool
     private let layout: Layout
     @Environment(\.onePlusDensity) private var density
+    @Environment(\.onePlusPageScrollBottomInset) private var inheritedBottomInset
+    @State private var footerHeight: CGFloat = 0
     public init<Toolbar: View, Footer: View>(scrolls: Bool = true, layout: Layout = .workspace,
                 @ViewBuilder header: () -> Header, @ViewBuilder tabs: () -> Tabs,
                 @ViewBuilder toolbar: () -> Toolbar = { EmptyView() },
@@ -249,19 +251,31 @@ public struct OnePlusPage<Header: View, Tabs: View, Content: View>: View {
                 }
             } else {
                 bodyContent.frame(maxHeight: .infinity, alignment: .topLeading)
-                    .padding(.bottom, footer == nil ? bottomInset : 0)
+                    .environment(\.onePlusPageScrollBottomInset, scrollBottomInset)
             }
-            if let footer {
-                OnePlusFixedRegionLayout(gutter: gutter, bottomInset: bottomInset,
-                                        emptyInset: scrolls ? 0 : bottomInset) {
-                    footer
-                }.fixedSize(horizontal: false, vertical: true)
+            if !scrolls {
+                footerRegion
             }
         }.frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topLeading)
+            .overlay(alignment: .bottom) {
+                if scrolls {
+                    footerRegion.background(OnePlusColor.window)
+                        .onGeometryChange(for: CGFloat.self) { $0.size.height } action: { footerHeight = $0 }
+                }
+            }
     }
     private var gutter: CGFloat { layout == .applet ? OnePlusMetrics.appletGutter : density.gutter }
-    private var bottomInset: CGFloat { layout == .applet ? 0 : scrolls ? OnePlusMetrics.gutter : density.gutter }
-    private var scrollBottomInset: CGFloat { footer == nil ? bottomInset : 0 }
+    private var bottomInset: CGFloat { layout == .applet ? 0 : OnePlusMetrics.gutter }
+    private var scrollBottomInset: CGFloat {
+        max(inheritedBottomInset, scrolls ? max(bottomInset, footerHeight) : footer == nil ? bottomInset : 0)
+    }
+    @ViewBuilder private var footerRegion: some View {
+        if let footer {
+            OnePlusFixedRegionLayout(gutter: gutter, bottomInset: bottomInset, emptyInset: 0) {
+                VStack(alignment: .leading, spacing: OnePlusMetrics.contentGap) { footer }
+            }.fixedSize(horizontal: false, vertical: true)
+        }
+    }
     private var bodyContent: some View {
         VStack(alignment: .leading, spacing: OnePlusMetrics.cardGap) { content }
             .frame(maxWidth: .infinity, maxHeight: scrolls ? nil : .infinity, alignment: .topLeading)

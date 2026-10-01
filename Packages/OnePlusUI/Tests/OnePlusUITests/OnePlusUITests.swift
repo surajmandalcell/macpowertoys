@@ -204,10 +204,10 @@ final class OnePlusUITests: XCTestCase {
         }
     }
 
-    func testFloatingGearReservesItsBodyArea() {
+    func testFloatingGearDoesNotChangeBodySize() {
         let host = NSHostingView(rootView: Color.clear.frame(width: 300, height: 100)
             .onePlusFloatingSettings(isActive: false) {})
-        XCTAssertEqual(host.fittingSize.height, 152)
+        XCTAssertEqual(host.fittingSize.height, 100)
         XCTAssertEqual(host.fittingSize.width, 300)
     }
 

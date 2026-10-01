@@ -264,7 +264,8 @@ struct ColorHistoryView: View {
                 }
             }
             .onePlusScrollIndicators()
-            .frame(maxHeight: CGFloat(service.projects.count + 1) * OnePlusMetrics.settingRow)
+            .frame(maxHeight: CGFloat(service.projects.count + 1) * OnePlusMetrics.settingRow
+                + OnePlusMetrics.floatingSettingsInset)
         }
         .frame(maxHeight: .infinity, alignment: .top)
         .padding(.horizontal, OnePlusMetrics.appletGutter)

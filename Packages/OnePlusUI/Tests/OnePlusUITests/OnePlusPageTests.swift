@@ -104,7 +104,7 @@ final class OnePlusPageTests: XCTestCase {
             let view = try XCTUnwrap(descendants(host).first { $0.identifier?.rawValue == name })
             let frame = view.convert(view.bounds, to: host)
             XCTAssertEqual(frame.minY, 66, accuracy: 0.01)
-            XCTAssertEqual(frame.maxY, 476, accuracy: 0.01)
+            XCTAssertEqual(frame.maxY, 500, accuracy: 0.01)
         }
     }
 
@@ -160,9 +160,11 @@ final class OnePlusPageTests: XCTestCase {
                        OnePlusMetrics.contentGap, accuracy: 0.5)
     }
 
-    func testFixedPageReservesItsDensityGutterBelowTheRowViewport() throws {
-        for density in OnePlusDensity.allCases {
-        let host = NSHostingView(rootView: OnePlusPage(scrolls: false) {
+    func testFixedPageScrollViewportReachesTheHostBottom() throws {
+        let canvases: [OnePlusWindowCanvas] = [.main, .diskExplorer, .netToys, .rclone, .systemCare,
+            .switchAccounts, .macTweaks, .systemMonitor, .logs, .inputDevices, .awake, .colorPicker, .textExtractor]
+        for canvas in canvases {
+        let host = NSHostingView(rootView: OnePlusPage(scrolls: false, layout: canvas.isApplet ? .applet : .workspace) {
             PageRegionProbe("header").frame(height: 50)
         } content: {
             ScrollView {
@@ -173,19 +175,27 @@ final class OnePlusPageTests: XCTestCase {
             }
             .onePlusScrollIndicators()
             .overlay { PageRegionProbe("scroll-frame") }
-        }.onePlusDensity(density))
-        let window = NSWindow(contentRect: CGRect(x: -2000, y: -2000, width: 600, height: 500),
+        }.onePlusDensity(canvas.density))
+        let window = NSWindow(contentRect: CGRect(origin: CGPoint(x: -10000, y: -10000), size: canvas.size),
                               styleMask: .borderless, backing: .buffered, defer: false)
+        window.isReleasedWhenClosed = false
         window.contentView = host
-        host.frame = CGRect(x: 0, y: 0, width: 600, height: 500)
+        defer { window.close() }
         host.layoutSubtreeIfNeeded()
         RunLoop.main.run(until: Date(timeIntervalSinceNow: 0.05))
         host.layoutSubtreeIfNeeded()
         let views = descendants(host)
         let scrollFrame = try XCTUnwrap(views.first { $0.identifier?.rawValue == "scroll-frame" })
         let scroll = try XCTUnwrap(views.compactMap { $0 as? NSScrollView }.first)
-        XCTAssertEqual(scrollFrame.convert(scrollFrame.bounds, to: host).maxY, host.bounds.maxY - density.gutter, accuracy: 0.5)
-        XCTAssertEqual(scroll.contentInsets.bottom, 0, accuracy: 0.5)
+        XCTAssertEqual(scrollFrame.convert(scrollFrame.bounds, to: host).maxY, host.bounds.maxY, accuracy: 0.5)
+        XCTAssertEqual(scroll.contentView.convert(scroll.contentView.bounds, to: host).maxY, host.bounds.maxY, accuracy: 0.5)
+        let end = CGRect(x: 0, y: 10000, width: scroll.contentView.bounds.width, height: scroll.contentView.bounds.height)
+        scroll.contentView.scroll(to: scroll.contentView.constrainBoundsRect(end).origin)
+        scroll.reflectScrolledClipView(scroll.contentView)
+        host.layoutSubtreeIfNeeded()
+        let row = try XCTUnwrap(descendants(host).first { $0.identifier?.rawValue == "last-row" })
+        XCTAssertEqual(row.convert(row.bounds, to: host).maxY,
+                       canvas.size.height - (canvas.isApplet ? 0 : 24), accuracy: 0.5)
         }
     }
 
@@ -202,7 +212,7 @@ final class OnePlusPageTests: XCTestCase {
             host.layoutSubtreeIfNeeded()
             let table = try XCTUnwrap(descendants(host).first { $0.identifier?.rawValue == "table" })
             XCTAssertEqual(table.convert(table.bounds, to: host).maxY,
-                           500 - 24 - (showsNotice ? 60 : 0), accuracy: 0.5)
+                           500 - (showsNotice ? 84 : 0), accuracy: 0.5)
         }
     }
 
@@ -234,6 +244,71 @@ final class OnePlusPageTests: XCTestCase {
             XCTAssertEqual(footer.minY - rows.maxY, 16, accuracy: 0.5)
             XCTAssertEqual(rows.minX, 16, accuracy: 0.5)
             XCTAssertEqual(rows.maxX, 404, accuracy: 0.5)
+        }
+    }
+
+    func testScrollingPageClipsAtHostBottomWithFooterClearanceInsideContent() throws {
+        for density in OnePlusDensity.allCases {
+            for showsFooter in [false, true] {
+                let host = NSHostingView(rootView: OnePlusPage {
+                    PageRegionProbe("header").frame(height: 50)
+                } footer: {
+                    if showsFooter { PageRegionProbe("footer").frame(height: 22) }
+                } content: {
+                    Color.clear.frame(height: 900)
+                    PageRegionProbe("last-row").frame(height: 40)
+                }.onePlusDensity(density))
+                let window = NSWindow(contentRect: CGRect(x: -10000, y: -10000, width: 600, height: 500),
+                                      styleMask: .borderless, backing: .buffered, defer: false)
+                window.isReleasedWhenClosed = false
+                window.contentView = host
+                defer { window.close() }
+                host.layoutSubtreeIfNeeded()
+                RunLoop.main.run(until: Date(timeIntervalSinceNow: 0.05))
+                host.layoutSubtreeIfNeeded()
+                let scroll = try XCTUnwrap(descendants(host).compactMap { $0 as? NSScrollView }.first)
+                XCTAssertEqual(scroll.contentView.convert(scroll.contentView.bounds, to: host).maxY, 500, accuracy: 0.5)
+                let end = CGRect(x: 0, y: 10000, width: scroll.contentView.bounds.width, height: scroll.contentView.bounds.height)
+                scroll.contentView.scroll(to: scroll.contentView.constrainBoundsRect(end).origin)
+                scroll.reflectScrolledClipView(scroll.contentView)
+                host.layoutSubtreeIfNeeded()
+                let row = try XCTUnwrap(descendants(host).first { $0.identifier?.rawValue == "last-row" })
+                XCTAssertEqual(row.convert(row.bounds, to: host).maxY,
+                               showsFooter ? 438 : 476, accuracy: 0.5)
+                if showsFooter {
+                    let footer = try XCTUnwrap(descendants(host).first { $0.identifier?.rawValue == "footer" })
+                    XCTAssertEqual(footer.convert(footer.bounds, to: host).minY, 454, accuracy: 0.5)
+                }
+            }
+        }
+    }
+
+    func testAppletGearKeepsTheViewportAndOnlyPadsTheScrollEnd() throws {
+        for canvas: OnePlusWindowCanvas in [.awake, .colorPicker, .textExtractor] {
+        for height in Set([canvas.size.height, canvas.heightRange?.upperBound ?? canvas.size.height]) {
+        for isActive in [false, true] {
+        let host = NSHostingView(rootView: OnePlusPage(layout: .applet) {
+            OnePlusAppletTitlebar(title: "Applet") { EmptyView() }
+        } content: {
+            Color.clear.frame(height: 900)
+            PageRegionProbe("last-row").frame(height: 40)
+        }.onePlusFloatingSettings(isActive: isActive) {})
+        let window = NSWindow(contentRect: CGRect(x: -10000, y: -10000, width: canvas.size.width, height: height),
+                              styleMask: .borderless, backing: .buffered, defer: false)
+        window.isReleasedWhenClosed = false
+        window.contentView = host
+        defer { window.close() }
+        host.layoutSubtreeIfNeeded()
+        let scroll = try XCTUnwrap(descendants(host).compactMap { $0 as? NSScrollView }.first)
+        XCTAssertEqual(scroll.contentView.convert(scroll.contentView.bounds, to: host).maxY, height, accuracy: 0.5)
+        let end = CGRect(x: 0, y: 10000, width: scroll.contentView.bounds.width, height: scroll.contentView.bounds.height)
+        scroll.contentView.scroll(to: scroll.contentView.constrainBoundsRect(end).origin)
+        scroll.reflectScrolledClipView(scroll.contentView)
+        host.layoutSubtreeIfNeeded()
+        let row = try XCTUnwrap(descendants(host).first { $0.identifier?.rawValue == "last-row" })
+        XCTAssertEqual(row.convert(row.bounds, to: host).maxY, height - 52, accuracy: 0.5)
+        }
+        }
         }
     }
 
