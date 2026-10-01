@@ -385,6 +385,10 @@ Report: `tmp/redesign/logs/w8-tests-quiet.md`.
   Show it in the fixed status footer. Updating the next scan's target does not
   relabel or discard retained results. Clear completed metadata when probing
   starts or results are imported; set it from the actual completed scan target.
+  Compare that target with the next scan input before showing scan advice.
+  A different target shows "Results are from <target>. Scan to refresh."
+  Keep this note and current-target no-hosts advice on one quiet toolbar row,
+  without a padded card. Filters and search must not restore the stale warning.
 - **Check:** The restoration regression changes the active network and verifies
   that rows and the completed target still describe the archived run. Read the
   archive's actual target, addresses, date, and duration before treating a still
@@ -392,6 +396,10 @@ Report: `tmp/redesign/logs/w8-tests-quiet.md`.
   and probes found three live hosts on `192.168.1.0/24` in 11.3 seconds, including
   gateway ports 80 and 443. Signed app privacy and a fresh scan remain separate
   verification gates. Do not change probes based only on a restored result.
+  Run 69 NetToys commit `746abf9` passes all 100 package tests. Its focused
+  regression checks stale and current targets, an empty Alive filter, whitespace,
+  scanning, reachable rows, reset, and retained target, duration, and results.
+  Signed dark/light toolbar review remains with the orchestrator.
 
 ## SSH Anchor Tailscale Fallback
 

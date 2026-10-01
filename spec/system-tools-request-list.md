@@ -300,6 +300,14 @@ comparison remain with the orchestrator, who owns installation. Report:
 
 ## NetToys
 
+Run 69 Scanner correction, 2026-10-01: NetToys `746abf9` gives stale results
+one quiet toolbar note and preserves "Last scan: <target>" in the footer.
+Current-target all-down scans use the same inline text style. The padded
+no-hosts card and duplicate empty-table warning are removed. All 100 package
+tests pass, including the focused target, filter, scanning, and reset check.
+The orchestrator owns publication, dependency adoption, signed installation,
+and both-appearance review. Report: `tmp/redesign/logs/w11-nettoys-stale.md`.
+
 Production panel correction, 2026-10-01: `f9622ca5` replaces one-value tiles
 and disclosure cards with direct shared rows. Metadata stays on the trailing
 side. Helper update status is behind an info glyph with help. Blue identity,
