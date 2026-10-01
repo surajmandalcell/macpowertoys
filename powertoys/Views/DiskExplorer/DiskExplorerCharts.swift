@@ -115,6 +115,12 @@ nonisolated struct DiskChartInput: Sendable {
     private var treemaps: [DiskChartCacheKey: [DiskChartTile]] = [:]
     private var rings: [DiskChartCacheKey: [DiskRingSegment]] = [:]
 
+    func clear() {
+        revision = nil
+        treemaps.removeAll()
+        rings.removeAll()
+    }
+
     func treemap(for key: DiskChartCacheKey) -> [DiskChartTile]? {
         guard revision == key.revision else { return nil }
         return treemaps[key]
