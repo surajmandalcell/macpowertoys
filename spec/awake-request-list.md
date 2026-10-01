@@ -8,7 +8,8 @@ Applet critique item 2: steady active status uses the existing `.online` state,
 with neutral text and a filled 4pt dot. Off keeps its hollow muted dot.
 The regular row role, Turn Off action, row height, and assertion error banner
 remain. The signed `43ce0eb9` dark/light captures show the original green line.
-Source parsing passes. The combined compile gate is pending. Signed recapture
+Source fix: `7a8a6c41`. Parsing and the single combined app/test-bundle
+compile gate pass. Tests were compiled, not executed. Signed recapture
 remains with the orchestrator.
 
 ## Round 11 audit, 2026-10-01
