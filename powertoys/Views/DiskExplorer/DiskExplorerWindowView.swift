@@ -109,6 +109,7 @@ struct DiskExplorerWindowView: View {
             .task { if scansOnAppear { await model.refreshVolumes() } }
             .onDisappear {
                 model.leave(); inventoryTask?.cancel(); inventoryTask = nil
+                chartLayouts.clear()
                 selectedID = nil; selection = []; history = []; previewURL = nil; previewURLs = []
             }
             .onChange(of: page) { _, next in
@@ -244,7 +245,7 @@ struct DiskExplorerWindowView: View {
     }
 
     private var headerActions: some View {
-        HStack(spacing: OnePlusMetrics.actionSpacing) {
+        OnePlusHeaderActions {
             if model.isScanning {
                 Button("Stop", systemImage: "stop.fill") { model.cancel() }.buttonStyle(OnePlusButtonStyle())
             } else {
@@ -498,6 +499,7 @@ struct DiskExplorerWindowView: View {
         entries.forEach { if model.marks[$0.id] == nil { model.toggleMark($0) } }; showingReview = true
     }
     private func startScan(_ url: URL) {
+        chartLayouts.clear()
         page = .explore; resultTab = .visualization; selection = []; selectedID = nil
         history = []; historyIndex = -1; search = ""; model.start(url, includeHidden: includeHidden)
     }
