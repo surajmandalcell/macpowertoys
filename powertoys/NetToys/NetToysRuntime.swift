@@ -2,6 +2,134 @@ import Darwin
 import Foundation
 @preconcurrency import CoreWLAN
 
+nonisolated enum SSHKeyAccessError: LocalizedError {
+    case unsafeAlias
+    case noPublicKey
+    case invalidPublicKey
+    case passwordRejected
+    case connectionFailed(String)
+    case installFailed(String)
+    case verificationFailed
+    case timeout
+    case outputLimit
+    case processLaunchFailed(String)
+
+    var errorDescription: String? {
+        switch self {
+        case .unsafeAlias: "The SSH alias is not safe to pass to OpenSSH."
+        case .noPublicKey: "No public key was found for this SSH host."
+        case .invalidPublicKey: "The selected SSH public key is invalid."
+        case .passwordRejected: "Windows did not accept the SSH password."
+        case .connectionFailed(let message): message
+        case .installFailed(let message): message
+        case .verificationFailed:
+            "The key was installed, but key-only login still failed. Check sshd_config and authorized_keys permissions."
+        case .timeout: "SSH key setup timed out."
+        case .outputLimit: "Process output exceeded its limit."
+        case .processLaunchFailed(let message): "SSH could not start: \(message)"
+        }
+    }
+}
+
+nonisolated struct SSHProcessResult: Sendable {
+    let status: Int32
+    let standardOutput: String
+    let standardError: String
+}
+
+nonisolated enum SSHProcessRunner {
+    static func baseEnvironment() -> [String: String] {
+        let current = ProcessInfo.processInfo.environment
+        var environment = [
+            "HOME": FileManager.default.homeDirectoryForCurrentUser.path,
+            "PATH": "/usr/bin:/bin",
+            "LC_ALL": "C",
+        ]
+        if let socket = current["SSH_AUTH_SOCK"] { environment["SSH_AUTH_SOCK"] = socket }
+        return environment
+    }
+
+    static func run(
+        executableURL: URL,
+        arguments: [String],
+        environment: [String: String] = baseEnvironment(),
+        standardInput: Data? = nil,
+        maximumOutputBytes: Int? = nil,
+        timeout: TimeInterval
+    ) async throws -> SSHProcessResult {
+        let worker = Task.detached(priority: .userInitiated) {
+            let process = Process()
+            let output = Pipe()
+            let error = Pipe()
+            let input = standardInput == nil ? nil : Pipe()
+            process.executableURL = executableURL
+            process.arguments = arguments
+            process.environment = environment
+            process.standardOutput = output
+            process.standardError = error
+            process.standardInput = input
+            do {
+                try process.run()
+            } catch {
+                throw SSHKeyAccessError.processLaunchFailed(error.localizedDescription)
+            }
+            let outputReader = Task.detached {
+                read(output.fileHandleForReading, maximumBytes: maximumOutputBytes)
+            }
+            let errorReader = Task.detached {
+                read(error.fileHandleForReading, maximumBytes: maximumOutputBytes)
+            }
+            if let standardInput, let input {
+                input.fileHandleForWriting.write(standardInput)
+                try? input.fileHandleForWriting.close()
+            }
+            let deadline = Date().addingTimeInterval(timeout)
+            while process.isRunning, !Task.isCancelled, Date() < deadline {
+                usleep(20_000)
+            }
+            let wasCancelled = Task.isCancelled
+            let timedOut = process.isRunning && Date() >= deadline
+            if process.isRunning {
+                process.terminate()
+                let killDeadline = Date().addingTimeInterval(2)
+                while process.isRunning, Date() < killDeadline {
+                    usleep(20_000)
+                }
+                if process.isRunning { Darwin.kill(process.processIdentifier, SIGKILL) }
+            }
+            process.waitUntilExit()
+            let outputResult = await outputReader.value
+            let errorResult = await errorReader.value
+            if wasCancelled { throw CancellationError() }
+            if timedOut { throw SSHKeyAccessError.timeout }
+            if outputResult.exceeded || errorResult.exceeded { throw SSHKeyAccessError.outputLimit }
+            return SSHProcessResult(
+                status: process.terminationStatus,
+                standardOutput: String(decoding: outputResult.data, as: UTF8.self),
+                standardError: String(decoding: errorResult.data, as: UTF8.self)
+            )
+        }
+        return try await withTaskCancellationHandler {
+            try await worker.value
+        } onCancel: {
+            worker.cancel()
+        }
+    }
+
+    private static func read(_ handle: FileHandle, maximumBytes: Int?) -> (data: Data, exceeded: Bool) {
+        var data = Data()
+        var exceeded = false
+        while true {
+            let chunk = handle.readData(ofLength: 8_192)
+            if chunk.isEmpty { break }
+            let remaining = maximumBytes.map { max($0 - data.count, 0) } ?? chunk.count
+            data.append(chunk.prefix(remaining))
+            exceeded = exceeded || chunk.count > remaining
+        }
+        return (data, exceeded)
+    }
+}
+
 nonisolated struct LocalIPv4Network: Equatable, Sendable {
     enum NetworkError: LocalizedError {
         case tooManyTargets(Int)
@@ -477,6 +605,30 @@ nonisolated struct NetToysConfiguration: Codable, Equatable, Sendable {
         copy.anchors[index] = anchor
         return copy
     }
+
+    mutating func applyEdits(_ edited: Self, since original: Self) {
+        if edited.probeInterval != original.probeInterval { probeInterval = edited.probeInterval }
+        if edited.sshAnchorEnabled != original.sshAnchorEnabled { sshAnchorEnabled = edited.sshAnchorEnabled }
+        if edited.recordsNetworkHistory != original.recordsNetworkHistory { recordsNetworkHistory = edited.recordsNetworkHistory }
+        if edited.wifiPriority != original.wifiPriority { wifiPriority = edited.wifiPriority }
+        let removed = Set(original.anchors.map(\.id)).subtracting(edited.anchors.map(\.id))
+        anchors.removeAll { removed.contains($0.id) }
+        for anchor in edited.anchors {
+            guard let before = original.anchors.first(where: { $0.id == anchor.id }) else {
+                if !anchors.contains(where: { $0.id == anchor.id }) { anchors.append(anchor) }
+                continue
+            }
+            guard let index = anchors.firstIndex(where: { $0.id == anchor.id }) else { continue }
+            if anchor.isEnabled != before.isEnabled { anchors[index].isEnabled = anchor.isEnabled }
+            if anchor.hostAlias != before.hostAlias { anchors[index].hostAlias = anchor.hostAlias }
+            if anchor.hostName != before.hostName { anchors[index].hostName = anchor.hostName }
+            if anchor.port != before.port { anchors[index].port = anchor.port }
+            if anchor.identity != before.identity { anchors[index].identity = anchor.identity }
+            if anchor.localHostName != before.localHostName { anchors[index].localHostName = anchor.localHostName }
+            if anchor.tailscaleFallback != before.tailscaleFallback { anchors[index].tailscaleFallback = anchor.tailscaleFallback }
+            if anchor.keyAccessVerifiedAt != before.keyAccessVerifiedAt { anchors[index].keyAccessVerifiedAt = anchor.keyAccessVerifiedAt }
+        }
+    }
 }
 
 nonisolated struct WiFiPriorityConfiguration: Codable, Equatable, Sendable {
@@ -770,22 +922,19 @@ nonisolated enum WiFiNetworkController {
     }
 
     private static func runNetworkSetup(_ arguments: [String]) async -> (status: Int32, output: String) {
-        await Task.detached(priority: .utility) {
-            let process = Process()
-            let output = Pipe()
-            process.executableURL = URL(fileURLWithPath: "/usr/sbin/networksetup")
-            process.arguments = arguments
-            process.standardOutput = output
-            process.standardError = output
-            do {
-                try process.run()
-                let data = output.fileHandleForReading.readDataToEndOfFile()
-                process.waitUntilExit()
-                return (process.terminationStatus, String(decoding: data, as: UTF8.self))
-            } catch {
-                return (-1, error.localizedDescription)
-            }
-        }.value
+        do {
+            let result = try await SSHProcessRunner.run(
+                executableURL: URL(fileURLWithPath: "/usr/sbin/networksetup"),
+                arguments: arguments,
+                maximumOutputBytes: 1_048_576,
+                timeout: 15
+            )
+            return (result.status, result.standardOutput + result.standardError)
+        } catch SSHKeyAccessError.timeout {
+            return (-1, "The Wi-Fi request timed out. Try again.")
+        } catch {
+            return (-1, error.localizedDescription)
+        }
     }
 }
 
@@ -854,6 +1003,27 @@ nonisolated enum NetToysPaths {
 }
 
 nonisolated enum NetToysConfigurationStore {
+    static func saveChanges(
+        _ edited: NetToysConfiguration,
+        since original: NetToysConfiguration,
+        to url: URL = NetToysPaths.configuration
+    ) throws -> NetToysConfiguration {
+        let directory = url.deletingLastPathComponent()
+        try FileManager.default.createDirectory(at: directory, withIntermediateDirectories: true)
+        let descriptor = open(url.appendingPathExtension("lock").path, O_CREAT | O_RDWR, S_IRUSR | S_IWUSR)
+        guard descriptor >= 0 else { throw POSIXError(.init(rawValue: errno) ?? .EIO) }
+        defer { close(descriptor) }
+        guard flock(descriptor, LOCK_EX) == 0 else { throw POSIXError(.init(rawValue: errno) ?? .EIO) }
+        defer { flock(descriptor, LOCK_UN) }
+        var latest = FileManager.default.fileExists(atPath: url.path)
+            ? try JSONDecoder().decode(NetToysConfiguration.self, from: Data(contentsOf: url))
+            : NetToysConfiguration()
+        latest.applyEdits(edited, since: original)
+        try JSONEncoder().encode(latest).write(to: url, options: .atomic)
+        try FileManager.default.setAttributes([.posixPermissions: 0o600], ofItemAtPath: url.path)
+        return latest
+    }
+
     static func load() -> NetToysConfiguration {
         guard let data = try? Data(contentsOf: NetToysPaths.configuration),
               let value = try? JSONDecoder().decode(NetToysConfiguration.self, from: data)

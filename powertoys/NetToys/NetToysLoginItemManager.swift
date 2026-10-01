@@ -47,7 +47,7 @@ final class NetToysLoginItemManager {
             if service.status == .enabled { try await service.unregister() }
             try? FileManager.default.removeItem(at: NetToysPaths.helperStatus)
             if !FileManager.default.fileExists(atPath: NetToysPaths.configuration.path) {
-                try NetToysConfigurationStore.save(NetToysConfiguration())
+                _ = try NetToysConfigurationStore.saveChanges(NetToysConfiguration(), since: NetToysConfiguration())
             }
             try service.register()
         } catch {
