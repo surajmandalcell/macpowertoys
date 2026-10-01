@@ -56,7 +56,13 @@ final class OnePlusChromeTests: XCTestCase {
             NotificationCenter.default.post(name: NSWindow.didResizeNotification, object: window)
             RunLoop.main.run(until: Date(timeIntervalSinceNow: 0.05))
             XCTAssertEqual(window.frame.height, height)
+            XCTAssertTrue(window.styleMask.contains(.miniaturizable))
+            let minimize = window.standardWindowButton(.miniaturizeButton)!
+            XCTAssertTrue(minimize.isEnabled)
+            XCTAssertNotNil(minimize.action)
+            XCTAssertTrue(window.responds(to: #selector(NSWindow.miniaturize(_:))))
             let zoom = window.standardWindowButton(.zoomButton)!
+            XCTAssertFalse(zoom.isEnabled)
             XCTAssertEqual(height - zoom.convert(zoom.bounds, to: nil).midY, canvas.centerline, accuracy: 0.5)
         }
     }
