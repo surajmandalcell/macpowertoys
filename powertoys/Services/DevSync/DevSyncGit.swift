@@ -188,7 +188,7 @@ nonisolated enum DevGit {
         var data = Data()
         var exceeded = false
         while true {
-            let chunk = handle.readData(ofLength: 64 * 1_024)
+            let chunk = autoreleasepool { handle.readData(ofLength: 64 * 1_024) }
             guard !chunk.isEmpty else { return (data, exceeded) }
             let remaining = max(maximumBytes - data.count, 0)
             data.append(contentsOf: chunk.prefix(remaining))

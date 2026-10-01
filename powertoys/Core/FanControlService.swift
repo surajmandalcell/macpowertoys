@@ -176,7 +176,7 @@ nonisolated enum FanCommand {
         var data = Data()
         var exceeded = false
         while true {
-            let chunk = pipe.fileHandleForReading.readData(ofLength: 8_192)
+            let chunk = autoreleasepool { pipe.fileHandleForReading.readData(ofLength: 8_192) }
             if chunk.isEmpty { break }
             let remaining = max(262_144 - data.count, 0)
             data.append(contentsOf: chunk.prefix(remaining))

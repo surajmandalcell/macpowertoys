@@ -1,4 +1,5 @@
 import CryptoKit
+import Darwin
 import XCTest
 @testable import powertoys
 
@@ -219,6 +220,33 @@ final class MarketplaceInstallerTests: XCTestCase {
             try MarketplaceInstaller.sha256(of: file),
             "ba7816bf8f01cfea414140de5dae2223b00361a396177a9cb410ff61f20015ad"
         )
+    }
+
+    func testStreamingSHA256ReleasesReadBuffers() async throws {
+        try FileManager.default.createDirectory(at: root, withIntermediateDirectories: true)
+        let file = root.appendingPathComponent("large-archive")
+        XCTAssertTrue(FileManager.default.createFile(atPath: file.path, contents: nil))
+        let handle = try FileHandle(forWritingTo: file)
+        try handle.truncate(atOffset: 128 * 1_024 * 1_024)
+        try handle.close()
+        let growth = try await Task.detached {
+            func footprint() throws -> UInt64 {
+                var info = task_vm_info_data_t()
+                var count = mach_msg_type_number_t(MemoryLayout<task_vm_info_data_t>.size / MemoryLayout<integer_t>.size)
+                let result = withUnsafeMutablePointer(to: &info) {
+                    $0.withMemoryRebound(to: integer_t.self, capacity: Int(count)) {
+                        task_info(mach_task_self_, task_flavor_t(TASK_VM_INFO), $0, &count)
+                    }
+                }
+                guard result == KERN_SUCCESS else { throw POSIXError(.EIO) }
+                return info.phys_footprint
+            }
+            let before = try footprint()
+            _ = try MarketplaceInstaller.sha256(of: file)
+            let after = try footprint()
+            return after > before ? after - before : 0
+        }.value
+        XCTAssertLessThan(growth, 64 * 1_024 * 1_024)
     }
 
     func testCommandCancellationTerminatesProcessPromptly() async throws {
