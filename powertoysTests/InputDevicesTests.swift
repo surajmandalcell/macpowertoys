@@ -253,6 +253,20 @@ final class InputDevicesTests: XCTestCase {
         XCTAssertEqual(cardHeight(expanded) - cardHeight(collapsed), 7 * 44, accuracy: 1)
     }
 
+    func testProfileDisclosureHeaderKeepsDirectionAndSpeedWhenCollapsed() {
+        var profile = InputScrollProfile(reverseVertical: true, speed: 3)
+        var expanded = false
+        let card = InputScrollProfileCard(title: "Mouse", icon: "computermouse", deviceCount: 2,
+                                         profile: Binding(get: { profile }, set: { profile = $0 }),
+                                         isExpanded: Binding(get: { expanded }, set: { expanded = $0 }))
+        XCTAssertEqual(card.headerDetail, "Reversed \(3.0.formatted(.number.precision(.fractionLength(2))))×")
+        profile.reverseVertical = false
+        profile.speed = 0.35
+        XCTAssertEqual(card.headerDetail, "System \(0.35.formatted(.number.precision(.fractionLength(2))))×")
+        expanded = true
+        XCTAssertEqual(card.headerDetail, "2 connected")
+    }
+
     func testProfileRowsFollowTheirGates() throws {
         let source = try String(contentsOf: URL(fileURLWithPath: #filePath)
             .deletingLastPathComponent().deletingLastPathComponent()
