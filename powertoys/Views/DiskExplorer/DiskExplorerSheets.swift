@@ -12,8 +12,12 @@ struct DiskExplorerReviewSheet: View {
     var body: some View {
         OnePlusSheet("Review items", width: .large) {
             VStack(alignment: .leading, spacing: OnePlusMetrics.cardGap) {
-                Text("\(count) · \(model.markedBytes.diskSize)").onePlusText(.sectionTitle)
-                    .accessibilityIdentifier("diskman.reviewSummary")
+                HStack {
+                    Text("Selected").onePlusText(.row)
+                    Spacer()
+                    Text("\(count) · \(model.markedBytes.diskSize)").onePlusText(.mono)
+                        .accessibilityIdentifier("diskman.reviewSummary")
+                }
                 ScrollView {
                     LazyVStack(spacing: 0) {
                         ForEach(model.markedEntries) { entry in
