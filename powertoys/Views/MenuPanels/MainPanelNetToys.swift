@@ -82,7 +82,7 @@ struct NetToysTrayView: View {
                     symbol: "link",
                     isOn: Binding(
                         get: { configuration.sshAnchorEnabled },
-                        set: { configuration.sshAnchorEnabled = $0; save() }
+                        set: { enabled in save { $0.sshAnchorEnabled = enabled } }
                     ),
                     disabled: configuration.anchors.isEmpty,
                     isExpanded: $anchorExpanded
@@ -102,10 +102,8 @@ struct NetToysTrayView: View {
                     symbol: "wifi",
                     isOn: Binding(
                         get: { configuration.wifiPriority.isEnabled },
-                        set: {
-                            configuration.wifiPriority.isEnabled = $0
-                                && configuration.wifiPriority.ssids.count >= 2
-                            save()
+                        set: { enabled in
+                            save { $0.wifiPriority.isEnabled = enabled && $0.wifiPriority.ssids.count >= 2 }
                         }
                     ),
                     disabled: configuration.wifiPriority.ssids.count < 2,
@@ -130,7 +128,7 @@ struct NetToysTrayView: View {
                     symbol: "chart.xyaxis.line",
                     isOn: Binding(
                         get: { configuration.recordsNetworkHistory },
-                        set: { configuration.recordsNetworkHistory = $0; save() }
+                        set: { enabled in save { $0.recordsNetworkHistory = enabled } }
                     ),
                     isExpanded: $historyExpanded
                 ) {
@@ -333,9 +331,12 @@ struct NetToysTrayView: View {
         ToolActionRouter.shared.open(toolID: "nettoys", page: page.pageID)
     }
 
-    private func save() {
+    private func save(_ edit: (inout NetToysConfiguration) -> Void) {
+        let original = configuration
+        var edited = original
+        edit(&edited)
         do {
-            try NetToysConfigurationStore.save(configuration)
+            configuration = try NetToysConfigurationStore.saveChanges(edited, since: original)
             errorMessage = nil
         } catch {
             errorMessage = error.localizedDescription
