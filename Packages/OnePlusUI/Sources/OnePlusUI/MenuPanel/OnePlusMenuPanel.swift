@@ -334,7 +334,6 @@ public struct OnePlusMenuTabStrip<Value: Hashable>: View {
                     OnePlusMenuTabIcon(symbol: tab.systemImage, selected: selection == tab.id)
                 }
                 .buttonStyle(OnePlusInteractionStyle(selected: selection == tab.id))
-                .focusEffectDisabled()
                 .help(tab.title).accessibilityLabel(tab.title).accessibilityAddTraits(selection == tab.id ? .isSelected : [])
                 .modifier(OnePlusOptionalIdentifier(value: tab.accessibilityIdentifier))
                 .contextMenu {
@@ -349,8 +348,11 @@ public struct OnePlusMenuTabStrip<Value: Hashable>: View {
                 }
             }
         }
-        .onMoveCommand { direction in
-            if let next = OnePlusSegmented<Value>.nextSelection(in: tabs.map(\.id), current: selection, direction: direction == .left ? -1 : 1) { selection = next }
+        .onKeyPress(keys: [.leftArrow, .rightArrow]) { press in
+            guard press.modifiers.isEmpty else { return .ignored }
+            if let next = OnePlusSegmented<Value>.nextSelection(in: tabs.map(\.id), current: selection,
+                                                              direction: press.key == .leftArrow ? -1 : 1) { selection = next }
+            return .handled
         }
     }
 }
