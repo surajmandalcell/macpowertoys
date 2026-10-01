@@ -26,7 +26,7 @@ struct SwitchTrayView: View {
                 Text("No saved accounts").onePlusText(.caption)
             } else {
                 VStack(spacing: OnePlusMenuMetrics.tileGap) {
-                    ForEach(model.accounts) { account in accountCard(account) }
+                    ForEach(model.accounts) { account in accountRow(account) }
                 }
             }
         }
@@ -80,22 +80,22 @@ struct SwitchTrayView: View {
         return bucket?.primary?.usedPercent != nil || bucket?.secondary?.usedPercent != nil
     }
 
-    private func accountCard(_ account: AccountRecord) -> some View {
+    private func accountRow(_ account: AccountRecord) -> some View {
         let isDefault = model.snapshot?.status.isDefault(account) == true
         let showsUsage = SwitchTrayUsagePreferences.explicitValue(for: account.id) ?? defaultShowUsage
         return Button {
-                guard !isDefault else { return }
-                Task { await model.makeDefault(account.id) }
-            } label: {
-                accountContent(account, isDefault: isDefault, showsUsage: showsUsage)
-                    .padding(OnePlusMenuMetrics.bodyInset)
-                    .frame(maxWidth: .infinity, alignment: .leading)
-                    .contentShape(Rectangle())
-            }
-            .buttonStyle(OnePlusInteractionStyle(radius: OnePlusMetrics.menuTileRadius))
-            .disabled(model.isWorking)
-            .accessibilityIdentifier("switch.tray.account.\(account.id)")
-            .accessibilityValue(isDefault ? "Default" : "Make default")
+            guard !isDefault else { return }
+            Task { await model.makeDefault(account.id) }
+        } label: {
+            accountContent(account, isDefault: isDefault, showsUsage: showsUsage)
+                .padding(OnePlusMenuMetrics.bodyInset)
+                .frame(maxWidth: .infinity, alignment: .leading)
+                .contentShape(Rectangle())
+        }
+        .buttonStyle(OnePlusInteractionStyle(radius: OnePlusMetrics.menuTileRadius))
+        .disabled(model.isWorking)
+        .accessibilityIdentifier("switch.tray.account.\(account.id)")
+        .accessibilityValue(isDefault ? "Default" : "Make default")
     }
 
     private func accountContent(_ account: AccountRecord, isDefault: Bool, showsUsage: Bool) -> some View {

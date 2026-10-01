@@ -27,33 +27,23 @@ struct CloudSyncTrayView: View {
                 ToolActionRouter.shared.open(toolID: "rclone", page: "new-transfer")
             }
             if manager.remotes.isEmpty {
-                OnePlusMenuCard {
-                    Text(manager.daemonIsHealthy ? "No remotes loaded" : "Open Cloud Sync to load remotes")
-                        .onePlusText(.caption)
-                }
+                Text(manager.daemonIsHealthy ? "No remotes loaded" : "Open Cloud Sync to load remotes")
+                    .onePlusText(.caption)
             } else {
-                ForEach(manager.remotes) { remote in remoteCard(remote) }
+                ForEach(manager.remotes) { remote in remoteRow(remote) }
             }
             if jobs.isEmpty {
                 if manager.remotes.isEmpty {
-                    OnePlusMenuCard { Text("No transfers yet").onePlusText(.caption) }
+                    Text("No transfers yet").onePlusText(.caption)
                 }
             } else {
-                HStack(spacing: OnePlusMenuMetrics.tileGap) {
-                    OnePlusMenuTile(span: 2) {
-                        VStack(alignment: .leading, spacing: OnePlusMetrics.navRowGap) {
-                            Label("Active transfers", systemImage: "cloud").onePlusText(.caption)
-                            Text(String(activeJobs.count)).onePlusText(.metric, color: OnePlusColor.dataBlue)
-                            Text(RcloneFormat.speed(activeJobs.reduce(0) { $0 + $1.stats.speed }))
-                                .onePlusText(.caption).monospacedDigit()
-                        }
-                    }
-                    OnePlusMenuTile {
-                        VStack(alignment: .leading, spacing: OnePlusMetrics.navRowGap) {
-                            Text("Recent").onePlusText(.caption)
-                            Text(String(recentJobs.count)).onePlusText(.metric)
-                        }
-                    }
+                HStack(spacing: OnePlusMetrics.actionSpacing) {
+                    Label("Active", systemImage: "cloud").onePlusText(.caption)
+                    Text(String(activeJobs.count)).onePlusText(.row, color: OnePlusColor.dataBlue)
+                    Text(RcloneFormat.speed(activeJobs.reduce(0) { $0 + $1.stats.speed }))
+                        .onePlusText(.caption).monospacedDigit()
+                    Spacer(minLength: OnePlusMenuMetrics.tileGap)
+                    Text("Recent \(recentJobs.count)").onePlusText(.caption)
                 }
                 jobSection("Active", jobs: activeJobs)
                 jobSection("Recent", jobs: recentJobs)
@@ -72,25 +62,27 @@ struct CloudSyncTrayView: View {
         }
     }
 
-    private func remoteCard(_ remote: RcloneRemote) -> some View {
+    private func remoteRow(_ remote: RcloneRemote) -> some View {
         let lastTransfer = remoteTransfers[remote.name]
-        return OnePlusMenuCard {
-            VStack(alignment: .leading, spacing: OnePlusMenuMetrics.tileGap) {
-                HStack(spacing: OnePlusMetrics.actionSpacing) {
-                    Image(systemName: remote.icon).onePlusText(.row)
-                    Text(remote.displayName).onePlusText(.row, color: OnePlusColor.dataBlue)
-                        .lineLimit(1).help(remote.displayName)
-                    Spacer(minLength: OnePlusMenuMetrics.tileGap)
-                    Text(lastTransfer?.state.displayName ?? "Configured").onePlusText(.caption)
-                }
-                if let lastTransfer {
-                    Text("\(lastTransfer.finishedAt == nil ? "Started" : "Last transfer") · \((lastTransfer.finishedAt ?? lastTransfer.createdAt).formatted(date: .abbreviated, time: .shortened))")
-                        .onePlusText(.caption)
-                } else {
-                    Text("No transfers yet · \(remote.typeLabel)").onePlusText(.caption)
-                }
+        return HStack(spacing: OnePlusMetrics.actionSpacing) {
+            Image(systemName: remote.icon).onePlusText(.row)
+                .frame(width: OnePlusMetrics.compactControlHeight)
+            VStack(alignment: .leading, spacing: OnePlusMetrics.navRowGap) {
+                Text(remote.displayName).onePlusText(.row, color: OnePlusColor.dataBlue)
+                    .lineLimit(1).help(remote.displayName)
+                Text(remote.typeLabel).onePlusText(.caption).lineLimit(1)
+            }
+            Spacer(minLength: OnePlusMenuMetrics.tileGap)
+            Text(lastTransfer?.state.displayName ?? "No transfers").onePlusText(.caption)
+            if let lastTransfer {
+                let date = lastTransfer.finishedAt ?? lastTransfer.createdAt
+                Text(date, format: .dateTime.hour().minute()).onePlusText(.caption).monospacedDigit()
+                    .help(date.formatted(date: .abbreviated, time: .shortened))
             }
         }
+        .padding(.vertical, OnePlusMenuMetrics.tileGap)
+        .padding(.horizontal, 1)
+        .onePlusRowHover(radius: OnePlusMetrics.menuTileRadius)
     }
 
     @ViewBuilder
@@ -115,86 +107,81 @@ private struct TrayTransferRow: View {
     @State private var showsError = false
 
     var body: some View {
-        OnePlusMenuCard {
-            VStack(alignment: .leading, spacing: OnePlusMenuMetrics.tileGap) {
-                HStack(spacing: OnePlusMenuMetrics.tileGap) {
-                    Button {
-                        manager.setExpanded(!job.isExpanded, for: job)
-                    } label: {
-                        Image(systemName: job.isExpanded ? "chevron.down" : "chevron.right")
-                            .onePlusText(.caption)
-                            .frame(width: OnePlusMetrics.compactControlHeight, height: OnePlusMetrics.compactControlHeight)
-                            .contentShape(Rectangle())
-                    }
-                    .buttonStyle(OnePlusInteractionStyle(radius: OnePlusMetrics.iconButtonRadius))
-                    .accessibilityLabel(job.isExpanded ? "Hide transfer files" : "Show transfer files")
-                    .help(job.isExpanded ? "Hide transfer files" : "Show transfer files")
-                    Image(systemName: job.operation.icon).onePlusText(.caption)
-                    Text("\(job.sourceDisplay) → \(job.destinationDisplay)")
-                        .onePlusText(.row).lineLimit(1).truncationMode(.middle)
-                        .help("\(job.sourceDisplay) → \(job.destinationDisplay)")
-                    Spacer(minLength: 4)
-                    if job.state == .failed, job.errorMessage?.isEmpty == false {
-                        Button { showsError.toggle() } label: { stateBadge }
-                            .buttonStyle(OnePlusInteractionStyle(radius: OnePlusMetrics.iconButtonRadius))
-                            .accessibilityLabel(showsError ? "Hide transfer error" : "Show transfer error")
-                    } else {
-                        stateBadge
-                    }
-                    if job.canPause {
-                        transferButton("Pause transfer", symbol: "pause.fill") { manager.pause(job) }
-                    } else if job.canResume {
-                        transferButton("Resume transfer", symbol: "play.fill") { manager.resume(job) }
-                    } else if job.canRetry {
-                        transferButton("Retry transfer", symbol: "arrow.clockwise") { manager.retry(job) }
-                    }
+        VStack(alignment: .leading, spacing: OnePlusMenuMetrics.tileGap) {
+            HStack(spacing: OnePlusMenuMetrics.tileGap) {
+                Button {
+                    manager.setExpanded(!job.isExpanded, for: job)
+                } label: {
+                    Image(systemName: job.isExpanded ? "chevron.down" : "chevron.right")
+                        .onePlusText(.caption)
+                        .frame(width: OnePlusMetrics.compactControlHeight, height: OnePlusMetrics.compactControlHeight)
+                        .contentShape(Rectangle())
                 }
-
-                if job.effectiveTotalBytes > 0 || job.state.isActive {
-                    OnePlusUsageBar(value: job.progressFraction, color: stateColor)
-                    HStack(spacing: OnePlusMenuMetrics.tileGap) {
-                        Text("\(RcloneFormat.bytes(job.displayBytes)) of \(RcloneFormat.bytes(job.effectiveTotalBytes))")
-                        if job.effectiveTotalFiles > 0 {
-                            Text("· \(job.displayFiles) of \(job.effectiveTotalFiles) files")
-                        }
-                        Spacer(minLength: OnePlusMenuMetrics.tileGap)
-                    }
-                    .onePlusText(.caption)
-                    .lineLimit(1).monospacedDigit()
-                    if job.stats.speed > 0 || job.displayEta != nil {
-                        HStack {
-                            if job.stats.speed > 0 { Text(RcloneFormat.speed(job.stats.speed)) }
-                            Spacer()
-                            if job.displayEta != nil { Text("ETA \(RcloneFormat.eta(job.displayEta))") }
-                        }.onePlusText(.caption).monospacedDigit()
-                    }
+                .buttonStyle(OnePlusInteractionStyle(radius: OnePlusMetrics.iconButtonRadius))
+                .accessibilityLabel(job.isExpanded ? "Hide transfer files" : "Show transfer files")
+                .help(job.isExpanded ? "Hide transfer files" : "Show transfer files")
+                Image(systemName: job.operation.icon).onePlusText(.caption)
+                Text("\(job.sourceDisplay) → \(job.destinationDisplay)")
+                    .onePlusText(.row).lineLimit(1).truncationMode(.middle)
+                    .help("\(job.sourceDisplay) → \(job.destinationDisplay)")
+                Spacer(minLength: 4)
+                if job.state == .failed, job.errorMessage?.isEmpty == false {
+                    Button { showsError.toggle() } label: { stateBadge }
+                        .buttonStyle(OnePlusInteractionStyle(radius: OnePlusMetrics.iconButtonRadius))
+                        .accessibilityLabel(showsError ? "Hide transfer error" : "Show transfer error")
+                } else {
+                    stateBadge
                 }
-
-                if showsError, let error = job.errorMessage, !error.isEmpty {
-                    Text(error)
-                        .onePlusText(.caption, color: OnePlusColor.danger)
-                        .lineLimit(2).help(error)
-                }
-
-                if job.isExpanded {
-                    VStack(alignment: .leading, spacing: OnePlusMenuMetrics.tileGap) {
-                        if job.stats.transferring.isEmpty {
-                            Text(job.state.isTerminal ? "No in-flight files" : "Waiting for file activity")
-                                .onePlusText(.caption)
-                        } else {
-                            ForEach(Array(job.stats.transferring.prefix(4))) { file in
-                                TrayTransferFileRow(file: file)
-                            }
-                            if job.stats.transferring.count > 4 {
-                                Text("\(job.stats.transferring.count - 4) more in-flight files")
-                                    .onePlusText(.caption)
-                            }
-                        }
-                    }
-                    .padding(.leading, OnePlusMetrics.compactControlHeight + OnePlusMenuMetrics.tileGap)
+                if job.canPause {
+                    transferButton("Pause transfer", symbol: "pause.fill") { manager.pause(job) }
+                } else if job.canResume {
+                    transferButton("Resume transfer", symbol: "play.fill") { manager.resume(job) }
+                } else if job.canRetry {
+                    transferButton("Retry transfer", symbol: "arrow.clockwise") { manager.retry(job) }
                 }
             }
+
+            if job.effectiveTotalBytes > 0 || job.state.isActive {
+                OnePlusUsageBar(value: job.progressFraction, color: stateColor)
+                HStack(spacing: OnePlusMenuMetrics.tileGap) {
+                    Text("\(RcloneFormat.bytes(job.displayBytes)) of \(RcloneFormat.bytes(job.effectiveTotalBytes))")
+                    if job.effectiveTotalFiles > 0 {
+                        Text("· \(job.displayFiles) of \(job.effectiveTotalFiles) files")
+                    }
+                    Spacer(minLength: OnePlusMenuMetrics.tileGap)
+                    if job.stats.speed > 0 { Text(RcloneFormat.speed(job.stats.speed)) }
+                    if job.displayEta != nil { Text("ETA \(RcloneFormat.eta(job.displayEta))") }
+                }
+                .onePlusText(.caption)
+                .lineLimit(1).monospacedDigit()
+            }
+
+            if showsError, let error = job.errorMessage, !error.isEmpty {
+                Text(error)
+                    .onePlusText(.caption, color: OnePlusColor.danger)
+                    .lineLimit(2).help(error)
+            }
+
+            if job.isExpanded {
+                VStack(alignment: .leading, spacing: OnePlusMenuMetrics.tileGap) {
+                    if job.stats.transferring.isEmpty {
+                        Text(job.state.isTerminal ? "No in-flight files" : "Waiting for file activity")
+                            .onePlusText(.caption)
+                    } else {
+                        ForEach(Array(job.stats.transferring.prefix(4))) { file in
+                            TrayTransferFileRow(file: file)
+                        }
+                        if job.stats.transferring.count > 4 {
+                            Text("\(job.stats.transferring.count - 4) more in-flight files")
+                                .onePlusText(.caption)
+                        }
+                    }
+                }
+                .padding(.leading, OnePlusMetrics.compactControlHeight + OnePlusMenuMetrics.tileGap)
+            }
         }
+        .padding(OnePlusMenuMetrics.bodyInset)
+        .onePlusRowHover(radius: OnePlusMetrics.menuTileRadius)
     }
 
     private var stateBadge: some View {
