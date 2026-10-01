@@ -68,6 +68,17 @@ nonisolated struct CleanupScanSnapshot: Codable, Equatable, Sendable {
     var selectedCandidateIDs: Set<String>? = nil
 }
 
+nonisolated struct CleanupTrashFailure: Sendable {
+    let id: String
+    let reason: String
+}
+
+nonisolated struct CleanupTrashResult: Sendable {
+    let movedCount: Int
+    let movedBytes: Int64
+    let failures: [CleanupTrashFailure]
+}
+
 nonisolated struct StorageEntry: Identifiable, Equatable, Sendable {
     let name: String
     let url: URL
@@ -143,15 +154,24 @@ final class SystemCareManager {
     private(set) var applications: [InstalledApplication] = []
     private(set) var history: [MoleHistoryItem] = []
     private(set) var lastRecoveredBytes: Int64 = 0
+    private(set) var lastTrashResult: CleanupTrashResult?
     private(set) var cleanupScanDate: Date?
 
     private let defaults: UserDefaults
     private let homeDirectory: URL
+    private let trashItem: @Sendable (URL) throws -> Void
     private var task: Task<Void, Never>?
 
-    init(defaults: UserDefaults = .standard, homeDirectory: URL = FileManager.default.homeDirectoryForCurrentUser) {
+    init(
+        defaults: UserDefaults = .standard,
+        homeDirectory: URL = FileManager.default.homeDirectoryForCurrentUser,
+        trashItem: @escaping @Sendable (URL) throws -> Void = {
+            try FileManager.default.trashItem(at: $0, resultingItemURL: nil)
+        }
+    ) {
         self.defaults = defaults
         self.homeDirectory = homeDirectory
+        self.trashItem = trashItem
         guard let data = defaults.data(forKey: Self.cleanupScanKey),
               let snapshot = try? JSONDecoder().decode(CleanupScanSnapshot.self, from: data)
         else { return }
@@ -213,13 +233,16 @@ final class SystemCareManager {
     }
 
     func setCandidate(_ id: String, selected: Bool) {
+        guard !isWorking, cleanupCandidates.contains(where: { $0.id == id }) else { return }
         if selected { selectedCandidateIDs.insert(id) }
         else { selectedCandidateIDs.remove(id) }
         persistCleanupScan()
     }
 
     func setCandidates(_ ids: Set<String>, selected: Bool) {
-        if selected { selectedCandidateIDs.formUnion(ids) }
+        guard !isWorking else { return }
+        let validIDs = ids.intersection(cleanupCandidates.map(\.id))
+        if selected { selectedCandidateIDs.formUnion(validIDs) }
         else { selectedCandidateIDs.subtract(ids) }
         persistCleanupScan()
     }
@@ -233,41 +256,46 @@ final class SystemCareManager {
     }
 
     func moveSelectedToTrash() {
+        guard !isWorking else { return }
         let candidates = cleanupCandidates.filter { selectedCandidateIDs.contains($0.id) }
         guard !candidates.isEmpty else { return }
+        let originalSelectedIDs = Set(candidates.map(\.id))
         isWorking = true
         errorMessage = nil
         progressMessage = "Moving selected items to Trash…"
         let homeDirectory = homeDirectory
+        let trashItem = trashItem
         task = Task { [weak self] in
             let outcome = await Task.detached(priority: .utility) {
                 var recovered: Int64 = 0
-                var failures: [(id: String, name: String)] = []
+                var movedCount = 0
+                var failures: [CleanupTrashFailure] = []
                 for candidate in candidates {
                     guard Self.isSafe(candidate, homeDirectory: homeDirectory) else {
-                        failures.append((candidate.id, candidate.name))
+                        failures.append(CleanupTrashFailure(id: candidate.id, reason: "The path or file identity changed. Rescan before retrying."))
                         continue
                     }
                     do {
-                        try FileManager.default.trashItem(at: candidate.url, resultingItemURL: nil)
+                        try trashItem(candidate.url)
                         recovered += candidate.size
+                        movedCount += 1
                     } catch {
-                        failures.append((candidate.id, candidate.name))
+                        failures.append(CleanupTrashFailure(id: candidate.id, reason: error.localizedDescription))
                     }
                 }
-                return (recovered, failures)
+                return CleanupTrashResult(movedCount: movedCount, movedBytes: recovered, failures: failures)
             }.value
-            self?.lastRecoveredBytes = outcome.0
-            let failedIDs = Set(outcome.1.map(\.id))
-            self?.cleanupCandidates.removeAll {
-                self?.selectedCandidateIDs.contains($0.id) == true && !failedIDs.contains($0.id)
-            }
+            self?.lastRecoveredBytes = outcome.movedBytes
+            self?.lastTrashResult = outcome
+            let failedIDs = Set(outcome.failures.map(\.id))
+            let successfulIDs = originalSelectedIDs.subtracting(failedIDs)
+            self?.cleanupCandidates.removeAll { successfulIDs.contains($0.id) }
             self?.selectedCandidateIDs = failedIDs
             self?.persistCleanupScan()
             self?.isWorking = false
             self?.progressMessage = nil
-            if !outcome.1.isEmpty {
-                self?.errorMessage = "Could not move \(outcome.1.count) item(s) to Trash."
+            if !outcome.failures.isEmpty {
+                self?.errorMessage = "Could not move \(outcome.failures.count) item(s) to Trash."
             }
         }
     }
