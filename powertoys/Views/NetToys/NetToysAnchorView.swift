@@ -558,6 +558,7 @@ struct NetToysAnchorView: View {
                               selection: Binding(get: { model.configuration.probeInterval }, set: model.setProbeInterval),
                               accessibilityLabel: "Check interval")
             }
+            .environment(\.onePlusCardPadding, 0)
         }
     }
 
