@@ -47,15 +47,7 @@ struct FanControlView: View {
         OnePlusMenuControlRow("Fan", systemImage: "fanblades", status: compactStatus) {
             HStack(spacing: 2) {
                 if display.hasError || (display.hasCompletedRead && !display.canControl) {
-                    Button { showsSetup = true } label: {
-                        Image(systemName: "exclamationmark.triangle")
-                            .foregroundStyle(OnePlusColor.warn)
-                    }
-                    .buttonStyle(OnePlusButtonStyle(.icon, size: .small))
-                    .accessibilityLabel(!display.hasError ? "Set up fan control" : "Fan control issue")
-                    .accessibilityHint(detail)
-                    .accessibilityIdentifier("fan-control.setup")
-                    .help(detail)
+                    setupButton
                 }
                 presetButtons
             }
@@ -65,6 +57,18 @@ struct FanControlView: View {
 
     private var compactStatus: String {
         display.status
+    }
+
+    private var setupButton: some View {
+        Button { showsSetup = true } label: {
+            Image(systemName: "exclamationmark.triangle")
+                .foregroundStyle(OnePlusColor.warn)
+        }
+        .buttonStyle(OnePlusButtonStyle(.icon, size: .small))
+        .accessibilityLabel(!display.hasError ? "Set up fan control" : "Fan control issue")
+        .accessibilityHint(detail)
+        .accessibilityIdentifier("fan-control.setup")
+        .help(detail)
     }
 
     private var setupPopover: some View {
@@ -117,18 +121,21 @@ struct FanControlView: View {
             }
             OnePlusSettingRow(
                 "Fan control",
-                caption: detail,
                 controlWidth: 160
             ) {
-                Toggle("Fan control", isOn: fanControlBinding)
-                    .labelsHidden()
-                    .toggleStyle(OnePlusSwitchStyle())
-                    .disabled(display.isChanging)
-                    .accessibilityIdentifier("fan-control.enabled")
+                HStack(spacing: OnePlusMetrics.spacing[0]) {
+                    if display.hasError || (display.hasCompletedRead && !display.canControl) { setupButton }
+                    Toggle("Fan control", isOn: fanControlBinding)
+                        .labelsHidden()
+                        .toggleStyle(OnePlusSwitchStyle())
+                        .disabled(display.isChanging)
+                        .accessibilityIdentifier("fan-control.enabled")
+                }
+                .help(detail)
+                .accessibilityHint(detail)
             }
             OnePlusSettingRow(
                 "Preset",
-                caption: activePreset?.rawValue,
                 controlWidth: 160,
                 separator: false
             ) {
