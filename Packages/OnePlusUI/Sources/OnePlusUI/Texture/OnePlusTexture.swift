@@ -57,8 +57,8 @@ public extension View {
 }
 
 @MainActor
-enum OnePlusChartPattern {
-    static let pattern: CGPattern = {
+public enum OnePlusChartPattern {
+    public static let pattern: CGPattern = {
         var callbacks = CGPatternCallbacks(version: 0, drawPattern: { _, context in
             context.setAlpha(0.65)
             context.fill(CGRect(x: 0, y: 0, width: 0.65, height: 0.65))

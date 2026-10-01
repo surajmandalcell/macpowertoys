@@ -133,12 +133,13 @@ struct TaskManagerHistoryChart: View {
     var middleScaleLabel: String?
     var lowerScaleLabel: String?
     var scaleLabels: [String] = []
-    var primaryColor = TaskManagerTheme.ink.opacity(0.76)
+    var primaryColor = OnePlusColor.chartLine
     var secondaryColor = TaskManagerTheme.accent
     @State private var hoverX: CGFloat?
     @State private var hoverLabels: [String] = []
     @State private var accessibilityText = "No history"
     @Environment(\.onePlusIsVisible) private var isVisible
+    @Environment(\.colorScheme) private var colorScheme
 
     @ViewBuilder
     var body: some View {
@@ -157,7 +158,7 @@ struct TaskManagerHistoryChart: View {
                                           y: proxy.size.height * gridFractions[index])
                         }
                     }
-                    .font(.system(size: 8))
+                    .onePlusText(.caption)
                     .monospacedDigit()
                     .foregroundStyle(TaskManagerTheme.muted)
                     .frame(width: 54, alignment: .trailing)
@@ -188,7 +189,7 @@ struct TaskManagerHistoryChart: View {
                         .frame(width: 1)
                         .overlay(alignment: .topLeading) {
                             Text(hoverLabels.indices.contains(index) ? hoverLabels[index] : "…")
-                                .font(.system(size: 9, design: .monospaced))
+                                .onePlusText(.mono)
                                 .foregroundStyle(TaskManagerTheme.ink)
                                 .padding(.horizontal, 6)
                                 .padding(.vertical, 4)
@@ -276,28 +277,30 @@ struct TaskManagerHistoryChart: View {
             append(points, to: &area)
             area.addLine(to: CGPoint(x: size.width, y: size.height))
             area.closeSubpath()
-            context.drawLayer { layer in
-                layer.clip(to: area)
-                let order = [0, 8, 2, 10, 12, 4, 14, 6, 3, 11, 1, 9, 15, 7, 13, 5]
-                var dots = Path()
-                let pitch: CGFloat = 4
-                for row in 0..<Int(ceil(size.height / pitch)) {
-                    let density = (1 - CGFloat(row) * pitch / max(size.height, 1)) * 0.55
-                    for column in 0..<Int(ceil(size.width / pitch))
-                    where CGFloat(order[(row % 4) * 4 + column % 4]) / 16 < density {
-                        dots.addEllipse(in: CGRect(x: CGFloat(column) * pitch + 1.5,
-                                                   y: CGFloat(row) * pitch + 1.5,
-                                                   width: 0.8, height: 0.8))
-                    }
-                }
-                layer.fill(dots, with: .color(TaskManagerTheme.ink.opacity(0.22)))
+            context.withCGContext { cg in
+                cg.saveGState()
+                cg.addPath(area.cgPath)
+                cg.clip()
+                cg.beginTransparencyLayer(auxiliaryInfo: nil)
+                cg.setFillColorSpace(CGColorSpace(patternBaseSpace: CGColorSpaceCreateDeviceRGB())!)
+                let gray: CGFloat = colorScheme == .dark ? 1 : 0
+                var components: [CGFloat] = [gray, gray, gray, 1]
+                cg.setFillPattern(OnePlusChartPattern.pattern, colorComponents: &components)
+                cg.fill(CGRect(origin: .zero, size: size))
+                cg.setBlendMode(.destinationIn)
+                let gradient = CGGradient(colorsSpace: CGColorSpaceCreateDeviceRGB(),
+                                          colors: [CGColor(gray: 0, alpha: 0.22), CGColor(gray: 0, alpha: 0.02)] as CFArray,
+                                          locations: [0, 1])!
+                cg.drawLinearGradient(gradient, start: .zero, end: CGPoint(x: 0, y: size.height), options: [])
+                cg.endTransparencyLayer()
+                cg.restoreGState()
             }
         }
         var path = Path()
         path.move(to: points[0])
         append(Array(points.dropFirst()), after: points[0], to: &path)
         context.stroke(path, with: .color(color),
-                       style: StrokeStyle(lineWidth: compact ? 1 : 1.2, lineCap: .round, lineJoin: .round))
+                       style: StrokeStyle(lineWidth: 1.2, lineCap: .round, lineJoin: .round))
         if points.count == 1 {
             context.fill(
                 Path(ellipseIn: CGRect(x: points[0].x - 1.5, y: points[0].y - 1.5, width: 3, height: 3)),

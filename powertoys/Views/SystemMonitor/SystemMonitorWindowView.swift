@@ -138,6 +138,9 @@ struct SystemMonitorWindowView: View {
     @State private var reportSearch = ""
     @State private var reportAction: TaskManagerSystemReportAction?
     @State private var processSearchFocusTrigger = 0
+    @State private var reportSearchFocusTrigger = 0
+    @State private var hoveredMetric: String?
+    @FocusState private var focusedMetric: String?
     @State private var remoteAddRequest = 0
     @State private var isWindowActive = false
 
@@ -194,16 +197,16 @@ struct SystemMonitorWindowView: View {
             SystemMonitorRemoteSessions.shared.savedProfiles = profiles
             remoteProfiles = profiles
         }
-        .overlay(alignment: .topLeading) {
-            Button("") {
+        .focusedSceneValue(\.appFind, AppCommandAction(
+            title: page == .report ? "Find in System Report" : "Find Process"
+        ) {
+            if page == .report { reportSearchFocusTrigger &+= 1 }
+            else {
                 pageID = SystemMonitorPage.processes.rawValue
                 processSearchFocusTrigger &+= 1
             }
-            .keyboardShortcut("k", modifiers: .command)
-            .frame(width: 0, height: 0)
-            .opacity(0)
-            .accessibilityHidden(true)
-        }
+        })
+        .focusedSceneValue(\.appOpenSettings, { pageID = SystemMonitorPage.settings.rawValue })
     }
 
     private func updateSamplingForWindowVisibility() {
@@ -276,7 +279,7 @@ struct SystemMonitorWindowView: View {
         case .report:
             TaskManagerHeader(title: page.title, subtitle: page.subtitle) {
                 HStack(spacing: 8) {
-                    TaskManagerSearchField(prompt: "Search all system information", text: $reportSearch, width: 320)
+                    TaskManagerSearchField(prompt: "Search all system information", text: $reportSearch, width: 320, focusTrigger: reportSearchFocusTrigger)
                     reportButton("doc.on.doc", label: "Copy current report") { reportAction = .copy }
                     OnePlusMenuButton(
                         "Export system report", systemImage: "square.and.arrow.down", variant: .borderedIcon,
@@ -359,8 +362,8 @@ struct SystemMonitorWindowView: View {
     }
 
     private var overviewPage: some View {
-        VStack(spacing: 10) {
-            LazyVGrid(columns: Array(repeating: GridItem(.flexible(), spacing: 10, alignment: .top), count: 4), spacing: 10) {
+        VStack(spacing: OnePlusMetrics.cardGap) {
+            LazyVGrid(columns: Array(repeating: GridItem(.flexible(), spacing: OnePlusMetrics.cardGap, alignment: .top), count: 4), spacing: OnePlusMetrics.cardGap) {
                 metricCard(.cpu, value: percent(service.snapshot?.cpuUsage), detail: "Across \(ProcessInfo.processInfo.activeProcessorCount) cores",
                            values: chartHistory(.cpu).values, range: 0...100)
                 metricCard(.gpu, value: percent(service.snapshot?.gpuUsage), detail: "Graphics utilization",
@@ -384,7 +387,7 @@ struct SystemMonitorWindowView: View {
 
             remoteOverview
 
-            LazyVGrid(columns: detailColumns, spacing: 10) {
+            LazyVGrid(columns: detailColumns, spacing: OnePlusMetrics.cardGap) {
                 SystemMonitorOverviewProcessesView {
                     pageID = SystemMonitorPage.processes.rawValue
                 } onSelect: { process in
@@ -407,7 +410,8 @@ struct SystemMonitorWindowView: View {
         accent: Bool = false,
         footer: MetricFooter = .none
     ) -> some View {
-        Button {
+        let identity = title ?? metric.title
+        return Button {
             pageID = switch metric {
             case .cpu: SystemMonitorPage.cpu.rawValue
             case .gpu: SystemMonitorPage.gpu.rawValue
@@ -428,7 +432,7 @@ struct SystemMonitorWindowView: View {
                             unit: metric == .network ? "/s" : "%",
                             compact: true,
                             sampleCapacity: historySampleCapacity,
-                            primaryColor: accent ? TaskManagerTheme.accent : TaskManagerTheme.ink.opacity(0.76)
+                            primaryColor: accent ? TaskManagerTheme.accent : OnePlusColor.chartLine
                         )
                             .frame(height: 33)
                             .padding(.horizontal, 11)
@@ -437,16 +441,19 @@ struct SystemMonitorWindowView: View {
                     VStack(alignment: .leading, spacing: 0) {
                         HStack(spacing: 7) {
                             monitorIcon(metric)
+                                .font(.system(size: 13))
                                 .foregroundStyle(TaskManagerTheme.secondary)
-                            Text(title ?? metric.title)
+                            Text(identity)
                                 .font(.system(size: 10, weight: .medium))
-                                .foregroundStyle(TaskManagerTheme.secondary)
+                                .foregroundStyle(OnePlusColor.chartSeries[0])
                             Spacer()
                             Image(systemName: "chevron.right")
                                 .font(.system(size: 8, weight: .medium))
                                 .foregroundStyle(TaskManagerTheme.muted)
+                                .frame(width: 8, height: 12)
+                                .opacity(hoveredMetric == identity || (OnePlusFocusPolicy.shared.showsFocus && focusedMetric == identity) ? 1 : 0)
                         }
-                        metricValue(value)
+                        metricValue(value, overview: true, thermal: metric == .thermal)
                             .padding(.top, 7)
                         Text(detail)
                             .font(.system(size: 9))
@@ -465,6 +472,8 @@ struct SystemMonitorWindowView: View {
             .contentShape(Rectangle())
         }
         .buttonStyle(UtilityInteractionButtonStyle(cornerRadius: TaskManagerTheme.panelRadius))
+        .onHover { hoveredMetric = $0 ? identity : nil }
+        .focused($focusedMetric, equals: identity)
         .accessibilityLabel("Open \(title ?? metric.title), \(value)")
     }
 
@@ -536,7 +545,7 @@ struct SystemMonitorWindowView: View {
                 )
             } else {
                 ScrollView(.horizontal) {
-                    LazyHStack(spacing: 10) {
+                    LazyHStack(spacing: OnePlusMetrics.cardGap) {
                         ForEach(remoteProfiles) { profile in
                             TaskManagerRemoteCard(
                                 profile: profile,
@@ -635,7 +644,7 @@ struct SystemMonitorWindowView: View {
                     HStack(spacing: 20) {
                         ForEach(stats.indices, id: \.self) { index in
                             HStack(alignment: .firstTextBaseline, spacing: OnePlusMetrics.spacing[2]) {
-                                Text(stats[index].0).font(.system(size: 8)).foregroundStyle(TaskManagerTheme.muted)
+                                Text(stats[index].0).onePlusText(.caption).foregroundStyle(TaskManagerTheme.muted)
                                 Text(stats[index].1)
                                     .font(.system(size: 12))
                                     .monospacedDigit()
@@ -666,7 +675,7 @@ struct SystemMonitorWindowView: View {
                     Spacer()
                     Text("Now")
                 }
-                .font(.system(size: 8, design: .monospaced))
+                .onePlusText(.mono)
                 .foregroundStyle(TaskManagerTheme.muted)
                 .padding(.leading, 74)
                 .padding(.trailing, 12)
@@ -675,13 +684,12 @@ struct SystemMonitorWindowView: View {
                         ForEach(seriesLabels.indices, id: \.self) { index in
                             chartLegend(
                                 seriesLabels[index],
-                                color: index == 0 ? TaskManagerTheme.ink.opacity(0.76) : TaskManagerTheme.accent
+                                color: index == 0 ? OnePlusColor.chartLine : TaskManagerTheme.accent
                             )
                         }
                         Spacer()
                     }
-                    .padding(.leading, 74)
-                    .padding(.trailing, 12)
+                    .padding(.horizontal, 12)
                 }
             }
             .padding(.bottom, 12)
@@ -690,7 +698,7 @@ struct SystemMonitorWindowView: View {
     }
 
     private var cpuPage: some View {
-        VStack(spacing: 10) {
+        VStack(spacing: OnePlusMetrics.cardGap) {
             detailHero(
                 label: "CPU usage", value: service.snapshot?.cpuUsage.map(Self.decimal) ?? "—", unit: "%",
                 detail: "Across \(ProcessInfo.processInfo.activeProcessorCount) logical cores",
@@ -704,7 +712,7 @@ struct SystemMonitorWindowView: View {
                     ("Idle", service.snapshot?.cpuDetails.map { "\(Int($0.idle.rounded()))%" } ?? "—"),
                 ]
             )
-            LazyVGrid(columns: detailColumns, spacing: 10) {
+            LazyVGrid(columns: detailColumns, spacing: OnePlusMetrics.cardGap) {
                 coreActivity
                 informationPanel("Load average", rows: [
                     ("1 minute", service.snapshot?.loadAverage.map { Self.decimal($0.0) } ?? "—"),
@@ -723,7 +731,7 @@ struct SystemMonitorWindowView: View {
             VStack(alignment: .leading, spacing: 0) {
                 OnePlusCardHeader("Core activity") {
                     Text(coreLayoutDescription)
-                        .font(.system(size: 8.5))
+                        .onePlusText(.caption)
                         .foregroundStyle(TaskManagerTheme.secondary)
                 }
                 VStack(alignment: .leading, spacing: 8) {
@@ -739,7 +747,7 @@ struct SystemMonitorWindowView: View {
                             .foregroundStyle(TaskManagerTheme.muted)
                             .frame(maxWidth: .infinity, minHeight: 92)
                     } else {
-                        HStack(alignment: .bottom, spacing: 5) {
+                        HStack(alignment: .bottom, spacing: 3) {
                             ForEach(cores.indices, id: \.self) { index in
                                 if isFirstEfficiencyCore(index) {
                                     Rectangle()
@@ -749,10 +757,9 @@ struct SystemMonitorWindowView: View {
                                 }
                                 VStack(spacing: 6) {
                                     Text("\(Int(cores[index].rounded()))%")
-                                        .font(.system(size: 8.5, weight: .medium, design: .monospaced))
+                                        .onePlusText(.mono)
                                         .foregroundStyle(TaskManagerTheme.ink)
                                         .lineLimit(1)
-                                        .minimumScaleFactor(0.7)
                                     GeometryReader { proxy in
                                         let fraction = CGFloat(min(max(cores[index] / 100, 0), 1))
                                         ZStack(alignment: .bottom) {
@@ -765,7 +772,7 @@ struct SystemMonitorWindowView: View {
                                     }
                                     .frame(height: 54)
                                     Text(coreLabel(index))
-                                        .font(.system(size: 7.5, weight: .medium, design: .monospaced))
+                                        .onePlusText(.mono)
                                         .foregroundStyle(TaskManagerTheme.muted)
                                 }
                                 .frame(maxWidth: .infinity)
@@ -787,7 +794,7 @@ struct SystemMonitorWindowView: View {
                 .fill(color)
                 .frame(width: 6, height: 6)
             Text(title)
-                .font(.system(size: 8))
+                .onePlusText(.caption)
                 .foregroundStyle(TaskManagerTheme.secondary)
         }
     }
@@ -803,7 +810,7 @@ struct SystemMonitorWindowView: View {
     }
 
     private var gpuPage: some View {
-        VStack(spacing: 10) {
+        VStack(spacing: OnePlusMetrics.cardGap) {
             detailHero(
                 label: "GPU usage", value: service.snapshot?.gpuUsage.map(Self.decimal) ?? "—", unit: "%",
                 detail: "Integrated graphics",
@@ -817,7 +824,7 @@ struct SystemMonitorWindowView: View {
     }
 
     private var memoryPage: some View {
-        VStack(spacing: 10) {
+        VStack(spacing: OnePlusMetrics.cardGap) {
             detailHero(
                 label: "Memory in use", value: service.snapshot?.memoryUsed.map(Self.bytes) ?? "—",
                 detail: "\(service.snapshot?.memoryTotal.map(Self.bytes) ?? "—") unified memory",
@@ -829,7 +836,7 @@ struct SystemMonitorWindowView: View {
                 seriesLabels: ["Used memory"],
                 stats: [("Used", service.snapshot?.memoryUsage.percent ?? "—"), ("Available", memoryAvailable)]
             )
-            LazyVGrid(columns: detailColumns, spacing: 10) {
+            LazyVGrid(columns: detailColumns, spacing: OnePlusMetrics.cardGap) {
                 memoryAllocationPanel(header: "Allocation")
                 informationPanel("Virtual memory", rows: [
                         ("Swap used", service.snapshot?.memoryDetails?.swapUsed.map(Self.bytes) ?? "—"),
@@ -843,7 +850,7 @@ struct SystemMonitorWindowView: View {
     }
 
     private var networkPage: some View {
-        VStack(spacing: 10) {
+        VStack(spacing: OnePlusMetrics.cardGap) {
             detailHero(
                 label: "Download", value: service.snapshot?.networkDownload.map(Self.rate) ?? "—",
                 detail: "All active non-loopback interfaces",
@@ -867,7 +874,7 @@ struct SystemMonitorWindowView: View {
     }
 
     private var diskPage: some View {
-        VStack(spacing: 10) {
+        VStack(spacing: OnePlusMetrics.cardGap) {
             TaskManagerPanel(textured: true) {
                 VStack(alignment: .leading, spacing: 16) {
                     HStack(alignment: .top) {
@@ -901,7 +908,7 @@ struct SystemMonitorWindowView: View {
                     ("Read total", service.snapshot?.diskDetails.map { Self.diskBytes(Int64(clamping: $0.readTotal)) } ?? "—"),
                 ]
             )
-            LazyVGrid(columns: detailColumns, spacing: 10) {
+            LazyVGrid(columns: detailColumns, spacing: OnePlusMetrics.cardGap) {
                 informationPanel("Volume", rows: [("Mount point", "/"), ("Used", service.snapshot?.diskUsed.map(Self.diskBytes) ?? "—"), ("Available", diskAvailable)])
                 informationPanel("Storage", rows: [
                     ("Capacity", service.snapshot?.diskTotal.map(Self.diskBytes) ?? "—"),
@@ -915,7 +922,7 @@ struct SystemMonitorWindowView: View {
 
     @ViewBuilder
     private var batteryPage: some View {
-        if service.snapshot?.unavailableMetrics.contains(.battery) == true {
+        if service.snapshot?.unavailableMetrics.contains(.battery) == true, service.snapshot?.batteryPercent == nil {
             TaskManagerPanel {
                 OnePlusEmptyState(
                     "No internal battery",
@@ -924,7 +931,7 @@ struct SystemMonitorWindowView: View {
                 )
             }
         } else {
-            VStack(spacing: 10) {
+            VStack(spacing: OnePlusMetrics.cardGap) {
             detailHero(
                 label: "Battery charge", value: service.snapshot?.batteryPercent.map(String.init) ?? "—", unit: "%",
                 detail: batteryDetail,
@@ -933,8 +940,8 @@ struct SystemMonitorWindowView: View {
                 seriesLabels: ["Battery charge"],
                 stats: [("Power source", powerSourceDetail)]
             )
-            LazyVGrid(columns: detailColumns, spacing: 10) {
-                informationPanel("Battery details", rows: batteryDetailRows)
+            LazyVGrid(columns: detailColumns, spacing: OnePlusMetrics.cardGap) {
+                informationPanel("Battery details", rows: batteryDetailRows, pending: service.snapshot?.batteryPercent == nil)
                 powerDrawPanel
             }
         }
@@ -955,7 +962,7 @@ struct SystemMonitorWindowView: View {
     }
 
     private var sensorsPage: some View {
-        VStack(spacing: 10) {
+        VStack(spacing: OnePlusMetrics.cardGap) {
             detailHero(
                 label: "Thermal pressure", value: service.snapshot?.thermalState ?? "—",
                 detail: "System-reported thermal state",
@@ -971,13 +978,13 @@ struct SystemMonitorWindowView: View {
 
     private var detailColumns: [GridItem] {
         [
-            GridItem(.flexible(), spacing: 10, alignment: .top),
+            GridItem(.flexible(), spacing: OnePlusMetrics.cardGap, alignment: .top),
             GridItem(.flexible(), alignment: .top),
         ]
     }
 
     private var aboutPage: some View {
-        VStack(spacing: 10) {
+        VStack(spacing: OnePlusMetrics.cardGap) {
             OnePlusCard(textured: true) {
                 HStack(spacing: 12) {
                     Image("SystemMonitorLogo")
@@ -991,20 +998,20 @@ struct SystemMonitorWindowView: View {
                 }
                 .padding(12)
             }
-            LazyVGrid(columns: [GridItem(.flexible(), spacing: 10, alignment: .top), GridItem(.flexible(), alignment: .top)], spacing: 10) {
+            LazyVGrid(columns: [GridItem(.flexible(), spacing: OnePlusMetrics.cardGap, alignment: .top), GridItem(.flexible(), alignment: .top)], spacing: OnePlusMetrics.cardGap) {
                 aboutPanel("Main window", icon: "display", text: "Processes, compute, memory, storage, network, battery, and thermal activity in dedicated workspaces.")
                 aboutPanel("Menu bar", icon: "chart.bar.xaxis", text: "A compact panel with icon tabs, live metrics, remote instances, processes, and fan controls.")
             }
-            informationPanel("Keyboard shortcuts", rows: [("Find a process", "⌘ K"), ("Dismiss a sheet or menu", "Esc")])
+            informationPanel("Keyboard shortcuts", rows: [("Find a process", "⌘ F"), ("Dismiss a sheet or menu", "Esc")])
         }
     }
 
-    private func informationPanel(_ title: String, rows: [(String, String)]) -> some View {
+    private func informationPanel(_ title: String, rows: [(String, String)], pending: Bool = false) -> some View {
         let hasMissingValue = rows.contains { $0.1 == "—" }
         return TaskManagerPanel {
             VStack(spacing: 0) {
                 OnePlusCardHeader(title) {
-                    if hasMissingValue {
+                    if hasMissingValue && !pending {
                         Image(systemName: "info.circle")
                             .help("Some details are not reported for this Mac.")
                             .accessibilityLabel("Some details are not reported for this Mac.")
@@ -1015,7 +1022,7 @@ struct SystemMonitorWindowView: View {
                         Text(rows[index].0).foregroundStyle(TaskManagerTheme.secondary)
                         Spacer(minLength: 12)
                         Text(rows[index].1)
-                            .foregroundStyle(TaskManagerTheme.ink)
+                            .foregroundStyle(rows[index].1 == "—" ? TaskManagerTheme.muted : TaskManagerTheme.ink)
                             .monospacedDigit()
                             .multilineTextAlignment(.trailing)
                             .textSelection(.enabled)
@@ -1077,20 +1084,22 @@ struct SystemMonitorWindowView: View {
 
     private func detailStat(_ title: String, _ value: String) -> some View {
         VStack(alignment: .trailing, spacing: 5) {
-            Text(title).font(.system(size: 8)).foregroundStyle(TaskManagerTheme.muted)
+            Text(title).onePlusText(.caption).foregroundStyle(TaskManagerTheme.muted)
             Text(value).font(.system(size: 12)).monospacedDigit()
         }
         .padding(.leading, 24)
     }
 
-    private func metricValue(_ text: String) -> some View {
+    private func metricValue(_ text: String, overview: Bool = false, thermal: Bool = false) -> some View {
         let parts = TaskManagerMetricText.parts(text)
         return HStack(alignment: .firstTextBaseline, spacing: 3) {
             Text(parts.value)
                 .onePlusText(.metric)
+                .font(.system(size: overview ? (thermal ? 23 : 27) : 21, weight: overview ? .regular : .semibold))
             if !parts.unit.isEmpty {
                 Text(parts.unit)
                     .onePlusText(.unit)
+                    .font(.system(size: overview ? 12 : 10))
             }
         }
         .lineLimit(1)
@@ -1100,7 +1109,7 @@ struct SystemMonitorWindowView: View {
     private func chartLegend(_ title: String, color: Color) -> some View {
         HStack(spacing: 5) {
             Rectangle().fill(color).frame(width: 9, height: 2)
-            Text(title).font(.system(size: 8)).foregroundStyle(TaskManagerTheme.secondary)
+            Text(title).onePlusText(.caption).foregroundStyle(TaskManagerTheme.secondary)
         }
     }
 
@@ -1108,7 +1117,7 @@ struct SystemMonitorWindowView: View {
 
     @ViewBuilder
     private func monitorIcon(_ metric: SystemMonitorMenuMetric) -> some View {
-        if metric == .gpu { GPUCardIcon() } else { Image(systemName: metric.symbol).font(.system(size: 11)) }
+        if metric == .gpu { GPUCardIcon() } else { Image(systemName: metric.symbol) }
     }
 
     private var memoryDetail: String {
@@ -1170,15 +1179,18 @@ struct SystemMonitorWindowView: View {
     }
 
     private var batteryDetailRows: [(String, String)] {
-        guard let details = service.snapshot?.batteryDetails else { return [] }
-        var rows: [(String, String)] = []
-        if let health = details.health { rows.append(("Health", health)) }
-        if let cycleCount = details.cycleCount { rows.append(("Cycle count", String(cycleCount))) }
-        if let voltage = details.voltageMillivolts {
-            rows.append(("Voltage", "\((Double(voltage) / 1_000).formatted(.number.precision(.fractionLength(2)))) V"))
-        }
-        if let amperage = details.amperageMilliamps { rows.append(("Amperage", "\(amperage) mA")) }
-        return rows
+        Self.batteryDetailRows(for: service.snapshot?.batteryDetails)
+    }
+
+    nonisolated static func batteryDetailRows(for details: SystemMonitorBatteryDetails?) -> [(String, String)] {
+        [
+            ("Health", details?.health ?? "—"),
+            ("Cycle count", details?.cycleCount.map(String.init) ?? "—"),
+            ("Voltage", details?.voltageMillivolts.map {
+                "\((Double($0) / 1_000).formatted(.number.precision(.fractionLength(2)))) V"
+            } ?? "—"),
+            ("Amperage", details?.amperageMilliamps.map { "\($0) mA" } ?? "—"),
+        ]
     }
 
     private func percent(_ value: Double?) -> String { value.map { "\(Int($0.rounded()))%" } ?? "—" }
@@ -1230,7 +1242,7 @@ struct SystemMonitorSettingsContent: View {
     init() {}
 
     var body: some View {
-        VStack(alignment: .leading, spacing: density == .compact ? 10 : 16) {
+        VStack(alignment: .leading, spacing: OnePlusMetrics.cardGap) {
             displaySection
             itemsSection
         }
