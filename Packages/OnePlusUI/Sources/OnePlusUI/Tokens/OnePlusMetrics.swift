@@ -134,7 +134,6 @@ public enum OnePlusMotion {
     public static let hover = 0.0
     public static let selection = 0.0
     public static let content = 0.0
-    public static let scrollIndicatorFade = 0.12
     public static let interactionDuration = hover
     public static func animation(reduceMotion _: Bool, duration _: Double = hover) -> Animation? {
         nil
