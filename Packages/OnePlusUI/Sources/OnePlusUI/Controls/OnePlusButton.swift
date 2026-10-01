@@ -56,7 +56,6 @@ private struct OnePlusButtonBody<Label: View>: View {
     @Environment(\.onePlusDensity) private var density
     @Environment(\.onePlusControlHeight) private var controlHeight
     @Environment(\.onePlusControlState) private var sample
-    @Environment(\.accessibilityReduceMotion) private var reduceMotion
     @State private var hovering = false
     let label: Label
     let pressed: Bool
@@ -70,16 +69,19 @@ private struct OnePlusButtonBody<Label: View>: View {
     }
     private var isIcon: Bool { style.variant == .icon || style.variant == .borderedIcon }
     private var radius: CGFloat { isIcon || style.size == .small ? 5 : 6 }
+    private var pointSize: CGFloat { style.size == .small ? 11 : OnePlusTextRole.control.size(for: density) }
+    private var weight: Font.Weight { style.variant == .primary ? .medium : .regular }
 
     var body: some View {
-        HStack(spacing: 6) {
+        OnePlusControlContentLayout(pointSize: pointSize, iconIndex: isIcon ? 0 : style.variant == .link ? 1 : nil) {
             label
             if style.variant == .link {
-                Image(systemName: "arrow.right").font(.system(size: 10)).accessibilityHidden(true)
+                Image(systemName: "arrow.right").accessibilityHidden(true)
             }
         }
-        .font(.system(size: isIcon ? 14 : style.size == .small ? 11 : OnePlusTextRole.control.size(for: density),
-                      weight: style.variant == .primary ? .medium : .regular))
+        .font(.system(size: pointSize, weight: weight))
+        .imageScale(.medium)
+        .labelStyle(OnePlusButtonLabelStyle(pointSize: pointSize, iconOnly: isIcon))
         .foregroundStyle(foreground)
         .tint(foreground)
         .padding(.horizontal, isIcon ? 0 : style.horizontalPadding)
@@ -90,7 +92,6 @@ private struct OnePlusButtonBody<Label: View>: View {
         .contentShape(RoundedRectangle(cornerRadius: radius))
         .opacity(enabled ? 1 : OnePlusMetrics.disabledOpacity)
         .onHover { hovering = $0 }
-        .animation(OnePlusMotion.animation(reduceMotion: reduceMotion), value: isHovering || isPressed)
     }
 
     private var foreground: Color {
@@ -124,6 +125,60 @@ private struct OnePlusButtonBody<Label: View>: View {
     }
 }
 
+struct OnePlusButtonLabelStyle: LabelStyle {
+    let pointSize: CGFloat
+    var iconOnly = false
+    @ViewBuilder func makeBody(configuration: Configuration) -> some View {
+        if iconOnly { configuration.icon }
+        else {
+            OnePlusControlContentLayout(pointSize: pointSize) {
+                configuration.icon
+                configuration.title
+            }
+        }
+    }
+}
+
+struct OnePlusControlContentLayout: Layout {
+    let pointSize: CGFloat
+    var spacing: CGFloat = 6
+    var iconIndex: Int? = 0
+
+    func sizeThatFits(proposal: ProposedViewSize, subviews: Subviews, cache: inout ()) -> CGSize {
+        let sizes = dimensions(in: proposal, subviews: subviews)
+        return CGSize(width: sizes.reduce(0) { $0 + $1.width } + CGFloat(max(0, sizes.count - 1)) * spacing,
+                      height: sizes.map(\.height).max() ?? 0)
+    }
+
+    func placeSubviews(in bounds: CGRect, proposal: ProposedViewSize, subviews: Subviews, cache: inout ()) {
+        let sizes = dimensions(in: ProposedViewSize(bounds.size), subviews: subviews)
+        var x = bounds.minX
+        for index in subviews.indices {
+            let dimensions = sizes[index]
+            // ponytail: SF Symbols use a half-point optical correction; add symbol metrics if bitmap checks exceed 0.5 pt.
+            let center = index == iconIndex ? dimensions.height / 2 + 0.5
+                : dimensions[.firstTextBaseline] - NSFont.systemFont(ofSize: pointSize).capHeight / 2
+            subviews[index].place(at: CGPoint(x: x, y: bounds.midY - center), anchor: .topLeading,
+                                  proposal: ProposedViewSize(width: dimensions.width, height: dimensions.height))
+            x += dimensions.width + spacing
+        }
+    }
+
+    private func dimensions(in proposal: ProposedViewSize, subviews: Subviews) -> [ViewDimensions] {
+        let iconWidth = iconIndex.flatMap { subviews.indices.contains($0) ? subviews[$0].sizeThatFits(.unspecified).width : nil } ?? 0
+        let labelWidth = proposal.width.map { max(0, $0 - iconWidth - CGFloat(max(0, subviews.count - 1)) * spacing) }
+        return subviews.indices.map { index in
+            subviews[index].dimensions(in: index == iconIndex ? .unspecified : ProposedViewSize(width: labelWidth, height: proposal.height))
+        }
+    }
+
+    func explicitAlignment(of guide: VerticalAlignment, in bounds: CGRect, proposal: ProposedViewSize,
+                           subviews: Subviews, cache: inout ()) -> CGFloat? {
+        guard guide == .firstTextBaseline || guide == .lastTextBaseline else { return nil }
+        return bounds.midY + NSFont.systemFont(ofSize: pointSize).capHeight / 2
+    }
+}
+
 /// Paint-only feedback for caller-owned row geometry.
 public struct OnePlusInteractionStyle: ButtonStyle {
     let selected: Bool
@@ -142,7 +197,6 @@ public struct OnePlusInteractionStyle: ButtonStyle {
 private struct OnePlusInteractionBody<Label: View>: View {
     @Environment(\.isEnabled) private var enabled
     @Environment(\.isFocused) private var focused
-    @Environment(\.accessibilityReduceMotion) private var reduceMotion
     @State private var hover = false
     let label: Label
     let pressed: Bool
@@ -158,7 +212,6 @@ private struct OnePlusInteractionBody<Label: View>: View {
             .opacity(enabled ? 1 : disabledOpacity)
             .contentShape(RoundedRectangle(cornerRadius: radius))
             .onHover { hover = $0 }
-            .animation(OnePlusMotion.animation(reduceMotion: reduceMotion), value: hover || pressed)
     }
 }
 

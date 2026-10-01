@@ -35,7 +35,6 @@ public struct OnePlusSegmented<Value: Hashable>: View {
     @Environment(\.onePlusDensity) private var density
     @Environment(\.onePlusControlHeight) private var controlHeight
     @Environment(\.isEnabled) private var enabled
-    @Environment(\.accessibilityReduceMotion) private var reduceMotion
 
     public init(choices: [(Value, String)], selection: Binding<Value>, accessibilityLabel: String = "Selection",
                 accessibilityIdentifierPrefix: String? = nil, width: CGFloat? = nil) {
@@ -89,7 +88,6 @@ public struct OnePlusSegmented<Value: Hashable>: View {
         .background(OnePlusColor.track, in: RoundedRectangle(cornerRadius: 6))
         .overlay { RoundedRectangle(cornerRadius: 6).strokeBorder(OnePlusColor.line, lineWidth: 1) }
         .opacity(enabled ? 1 : OnePlusMetrics.disabledOpacity)
-        .animation(OnePlusMotion.animation(reduceMotion: reduceMotion, duration: OnePlusMotion.selection), value: selection)
         .onMoveCommand { direction in
             guard enabled else { return }
             let delta = direction == .left || direction == .up ? -1 : 1
@@ -113,7 +111,7 @@ private struct OnePlusSegmentLabel: View {
     @State private var hover = false
     private var hovering: Bool { enabled && (hover || sample == .hover) }
     var body: some View {
-        Group {
+        OnePlusControlContentLayout(pointSize: OnePlusTextRole.control.size(for: density), iconIndex: symbol == nil ? nil : 0) {
             if let symbol { Image(systemName: symbol).accessibilityLabel(title) }
             else { Text(title) }
         }.onePlusText(.control, color: selected || hovering ? OnePlusColor.ink : OnePlusColor.secondary)
@@ -150,9 +148,9 @@ public struct OnePlusMenuLabel: View {
         self.expanded = expanded
     }
     public var body: some View {
-        HStack(spacing: 8) {
+        OnePlusControlContentLayout(pointSize: OnePlusTextRole.control.size(for: density), spacing: 8, iconIndex: 1) {
             Text(title).lineLimit(1).frame(maxWidth: .infinity, alignment: .leading)
-            Image(systemName: "chevron.down").font(.system(size: 10)).accessibilityHidden(true)
+            Image(systemName: "chevron.down").accessibilityHidden(true)
         }
         .onePlusText(.control).padding(.horizontal, 10).frame(width: width, height: controlHeight ?? density.controlHeight)
         .background(enabled && (focused || hover || expanded) ? OnePlusColor.raisedHover : OnePlusColor.raised,
