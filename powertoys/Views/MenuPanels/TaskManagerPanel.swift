@@ -100,6 +100,10 @@ struct SystemMonitorTrayView: View {
     @State private var processModel = TaskManagerMenuProcessModel.shared
     @State private var presentation = TaskManagerMenuPresentation()
     @State private var selectionTask: Task<Void, Never>?
+    private static let tabs = SystemMonitorTrayPage.allCases.map {
+        OnePlusMenuTab($0, $0.title, systemImage: $0.symbol,
+                       accessibilityIdentifier: "system-monitor.tray.\($0.rawValue)")
+    }
 
     init(
         remoteProfiles: [SystemMonitorRemoteProfile] = [],
@@ -138,10 +142,7 @@ struct SystemMonitorTrayView: View {
     var body: some View {
         OnePlusMenuPanel(contentID: pageID) {
             OnePlusMenuTabStrip(
-                tabs: SystemMonitorTrayPage.allCases.map {
-                    OnePlusMenuTab($0, $0.title, systemImage: $0.symbol,
-                                   accessibilityIdentifier: "system-monitor.tray.\($0.rawValue)")
-                },
+                tabs: Self.tabs,
                 selection: selection
             )
         } actions: {
@@ -150,17 +151,10 @@ struct SystemMonitorTrayView: View {
             }
             .accessibilityIdentifier("system-monitor.menu.open-app")
         } content: {
-            Group {
-                switch page {
-                case .home: homePage
-                case .processes: TaskManagerMenuProcessesView(model: processModel)
-                default:
-                    if let state = presentation.pages[page] {
-                        TaskManagerMenuDetailPage(page: page, state: state)
-                    }
-                }
-            }
-            .modifier(TaskManagerMenuSampling(page: page, presentation: presentation))
+            TaskManagerMenuContent(page: page, presentation: presentation, processModel: processModel,
+                                   remoteProfiles: remoteProfiles, selection: selection)
+                .equatable()
+                .modifier(TaskManagerMenuSampling(page: page, presentation: presentation))
         }
         .onOnePlusMenuHeightChange(onPreferredHeight)
         .onePlusPanelTimings(panel: "system-monitor", tab: pageID)
@@ -171,6 +165,33 @@ struct SystemMonitorTrayView: View {
             if let destination = SystemMonitorTrayPage(rawValue: id) { select(destination) }
         }
         .onDisappear { selectionTask?.cancel() }
+    }
+}
+
+private struct TaskManagerMenuContent: View, Equatable {
+    let page: SystemMonitorTrayPage
+    let presentation: TaskManagerMenuPresentation
+    let processModel: TaskManagerMenuProcessModel
+    let remoteProfiles: [SystemMonitorRemoteProfile]
+    let selection: Binding<SystemMonitorTrayPage>
+
+    static func == (lhs: Self, rhs: Self) -> Bool {
+        // Selection bindings address the same retained tray storage.
+        lhs.page == rhs.page && lhs.presentation === rhs.presentation
+            && lhs.processModel === rhs.processModel && lhs.remoteProfiles == rhs.remoteProfiles
+    }
+
+    var body: some View {
+        Group {
+            switch page {
+            case .home: homePage
+            case .processes: TaskManagerMenuProcessesView(model: processModel)
+            default:
+                if let state = presentation.pages[page] {
+                    TaskManagerMenuDetailPage(page: page, state: state)
+                }
+            }
+        }
     }
 
     private var homePage: some View {
