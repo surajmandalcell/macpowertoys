@@ -98,14 +98,22 @@ struct TrayPopoverView: View {
             )
         } actions: {
             OnePlusMenuOpenApp {
-                openWindow(id: "main")
-                NSApp.activate(ignoringOtherApps: true)
+                if selectedTab == .systemCare {
+                    ToolActionRouter.shared.open(toolID: "system-care", page: "cleanup")
+                } else {
+                    openWindow(id: "main")
+                    NSApp.activate(ignoringOtherApps: true)
+                }
             }
             Button {
-                openWindow(id: "main")
-                NSApp.activate(ignoringOtherApps: true)
-                DispatchQueue.main.async {
-                    NotificationCenter.default.post(name: .openToolSettings, object: "home")
+                if selectedTab == .systemCare {
+                    ToolActionRouter.shared.open(toolID: "system-care", page: "settings/general")
+                } else {
+                    openWindow(id: "main")
+                    NSApp.activate(ignoringOtherApps: true)
+                    DispatchQueue.main.async {
+                        NotificationCenter.default.post(name: .openToolSettings, object: "home")
+                    }
                 }
             } label: {
                 Image(systemName: "gearshape")
@@ -119,6 +127,10 @@ struct TrayPopoverView: View {
             .buttonStyle(OnePlusButtonStyle(.icon, size: .small))
             .accessibilityLabel("Quit MacPowerToys")
             .help("Quit MacPowerToys")
+        } toolbar: {
+            if selectedTab == .systemCare { systemCareRegion(.toolbar) }
+        } footer: {
+            if selectedTab == .systemCare { systemCareRegion(.footer) }
         } content: {
             tabContent
         }
@@ -152,7 +164,7 @@ struct TrayPopoverView: View {
         case .inputDevices:
             InputDevicesTrayView()
         case .systemCare:
-            SystemCareTrayView(snapshot: $careSnapshot, disk: startupDisk, diskLoaded: diskLoaded)
+            systemCareRegion(.rows)
         case .systemMonitor:
             EmptyView()
         case .netToys:
@@ -160,6 +172,10 @@ struct TrayPopoverView: View {
         case .switchAccounts:
             SwitchTrayView(model: switchModel)
         }
+    }
+
+    private func systemCareRegion(_ region: SystemCareTrayView.Region) -> some View {
+        SystemCareTrayView(snapshot: $careSnapshot, disk: startupDisk, diskLoaded: diskLoaded, region: region)
     }
 
     private func select(_ tab: TrayTab) {
