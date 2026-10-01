@@ -5,6 +5,31 @@ import XCTest
 
 @MainActor
 final class OnePlusMenuSizingTests: XCTestCase {
+    func testVisitedTabRetainsControlStateAndStopsHiddenWork() throws {
+        let selection = MenuTabSelection()
+        let probe = MenuTabProbe()
+        let host = NSHostingView(rootView: MenuTabContent(selection: selection, probe: probe))
+        host.frame.size = NSSize(width: 356, height: 600)
+        func layout() {
+            host.layoutSubtreeIfNeeded()
+            RunLoop.main.run(until: Date(timeIntervalSinceNow: 0.03))
+            host.layoutSubtreeIfNeeded()
+        }
+        layout()
+        let first = try XCTUnwrap(probe.markers[0])
+        first.count.wrappedValue = 7
+        layout()
+        XCTAssertEqual(first.count.wrappedValue, 7)
+        selection.tab = 1
+        layout()
+        XCTAssertEqual(probe.liveTabs, [1])
+        selection.tab = 0
+        layout()
+        XCTAssertEqual(probe.markers[0]?.count.wrappedValue, 7)
+        XCTAssertEqual(probe.liveTabs, [0])
+        XCTAssertEqual(host.fittingSize.height, 48 + 11 + 120, accuracy: 0.5)
+    }
+
     func testOfflineHostReadingsUseMutedInkInBothAppearances() throws {
         for name in [NSAppearance.Name.darkAqua, .aqua] {
             for online in [false, true] {
@@ -214,5 +239,58 @@ private struct MenuSizingContent: View {
     func content() -> some View {
         buildCount += 1
         return Color.clear.frame(height: 80)
+    }
+}
+
+@MainActor private final class MenuTabSelection: ObservableObject {
+    @Published var tab = 0
+}
+@MainActor private final class MenuTabProbe {
+    var markers: [Int: MenuTabMarker.View] = [:]
+    var liveTabs = Set<Int>()
+}
+private struct MenuTabContent: View {
+    @ObservedObject var selection: MenuTabSelection
+    let probe: MenuTabProbe
+    var body: some View {
+        OnePlusMenuPanelShell(maximumHeight: 600, contentID: selection.tab,
+                             tabs: EmptyView(), actions: EmptyView()) {
+            if selection.tab == 0 {
+                MenuStatefulTab(tab: 0, probe: probe).frame(height: 120)
+            } else {
+                MenuStatefulTab(tab: 1, probe: probe).frame(height: 900)
+            }
+        }.environment(\.onePlusIsVisible, true)
+    }
+}
+private struct MenuStatefulTab: View {
+    let tab: Int
+    let probe: MenuTabProbe
+    @State private var count = 0
+    @Environment(\.onePlusIsVisible) private var visible
+    var body: some View {
+        MenuTabMarker(tab: tab, count: $count, probe: probe)
+            .task(id: visible) {
+                guard visible else { return }
+                probe.liveTabs.insert(tab)
+                defer { probe.liveTabs.remove(tab) }
+                do { try await Task.sleep(for: .seconds(60)) } catch {}
+            }
+    }
+}
+private struct MenuTabMarker: NSViewRepresentable {
+    let tab: Int
+    @Binding var count: Int
+    let probe: MenuTabProbe
+    func makeNSView(context: Context) -> View {
+        let view = View(count: $count)
+        probe.markers[tab] = view
+        return view
+    }
+    func updateNSView(_ view: View, context: Context) { view.count = $count }
+    final class View: NSView {
+        var count: Binding<Int>
+        init(count: Binding<Int>) { self.count = count; super.init(frame: .zero) }
+        @available(*, unavailable) required init?(coder: NSCoder) { fatalError() }
     }
 }

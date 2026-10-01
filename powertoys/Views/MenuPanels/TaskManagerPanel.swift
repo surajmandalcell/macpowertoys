@@ -124,7 +124,7 @@ struct SystemMonitorTrayView: View {
     }
 
     var body: some View {
-        OnePlusMenuPanel {
+        OnePlusMenuPanel(contentID: pageID) {
             OnePlusMenuTabStrip(
                 tabs: SystemMonitorTrayPage.allCases.map {
                     OnePlusMenuTab($0, $0.title, systemImage: $0.symbol,

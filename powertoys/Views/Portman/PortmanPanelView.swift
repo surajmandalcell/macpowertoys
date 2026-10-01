@@ -262,7 +262,7 @@ struct PortmanPanelView: View {
     }
 
     private var panel: some View {
-        OnePlusMenuPanel {
+        OnePlusMenuPanel(contentID: page.panelID) {
             OnePlusMenuTabStrip(tabs: [
                 OnePlusMenuTab(.local, "Servers", systemImage: "server.rack", accessibilityIdentifier: "portman.page.Servers"),
                 OnePlusMenuTab(.forward, "Forward", systemImage: "arrow.left.arrow.right", accessibilityIdentifier: "portman.page.Forward"),

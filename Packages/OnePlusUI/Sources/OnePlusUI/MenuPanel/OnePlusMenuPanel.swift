@@ -30,19 +30,21 @@ public struct OnePlusMenuPanel<Tabs: View, Actions: View, Body: View>: View {
     let actions: Actions
     let content: () -> Body
     let maximumHeight: CGFloat?
+    let contentID: AnyHashable
     private let toolbar: (() -> AnyView)?
     private let footer: (() -> AnyView)?
-    public init<Toolbar: View, Footer: View>(maximumHeight: CGFloat? = nil, @ViewBuilder tabs: () -> Tabs,
+    public init<Toolbar: View, Footer: View>(maximumHeight: CGFloat? = nil, contentID: AnyHashable = 0, @ViewBuilder tabs: () -> Tabs,
                 @ViewBuilder actions: () -> Actions,
                 @ViewBuilder toolbar: @escaping () -> Toolbar = { EmptyView() },
                 @ViewBuilder footer: @escaping () -> Footer = { EmptyView() },
                 @ViewBuilder content: @escaping () -> Body) {
         self.maximumHeight = maximumHeight; self.tabs = tabs(); self.actions = actions(); self.content = content
+        self.contentID = contentID
         self.toolbar = Toolbar.self == EmptyView.self ? nil : { AnyView(toolbar()) }
         self.footer = Footer.self == EmptyView.self ? nil : { AnyView(footer()) }
     }
     public var body: some View {
-        OnePlusMenuPanelShell(maximumHeight: maximumHeight, tabs: tabs, actions: actions,
+        OnePlusMenuPanelShell(maximumHeight: maximumHeight, contentID: contentID, tabs: tabs, actions: actions,
                               toolbar: toolbar, footer: footer, content: content)
             .onePlusLiveUpdates()
     }
@@ -50,6 +52,7 @@ public struct OnePlusMenuPanel<Tabs: View, Actions: View, Body: View>: View {
 
 struct OnePlusMenuPanelShell<Tabs: View, Actions: View, Body: View>: View {
     let maximumHeight: CGFloat?
+    let contentID: AnyHashable
     let tabs: Tabs
     let actions: Actions
     let content: () -> Body
@@ -57,10 +60,11 @@ struct OnePlusMenuPanelShell<Tabs: View, Actions: View, Body: View>: View {
     let footer: (() -> AnyView)?
     @Environment(\.onePlusMenuHeightChanged) private var heightChanged
 
-    init(maximumHeight: CGFloat?, tabs: Tabs, actions: Actions,
+    init(maximumHeight: CGFloat?, contentID: AnyHashable = 0, tabs: Tabs, actions: Actions,
          toolbar: (() -> AnyView)? = nil, footer: (() -> AnyView)? = nil,
          content: @escaping () -> Body) {
         self.maximumHeight = maximumHeight
+        self.contentID = contentID
         self.tabs = tabs
         self.actions = actions
         self.content = content
@@ -81,7 +85,7 @@ struct OnePlusMenuPanelShell<Tabs: View, Actions: View, Body: View>: View {
             }.padding(.horizontal, 8).padding(.top, OnePlusMenuMetrics.topBarTop).padding(.bottom, OnePlusMenuMetrics.topBarBottom)
                 .frame(height: OnePlusMenuMetrics.topBar - 2)
             fixedRegion(toolbar?() ?? AnyView(EmptyView()), top: 3, bottom: 5)
-            OnePlusMenuScrollContent(content: VStack(alignment: .leading, spacing: 5) { content() }
+            OnePlusMenuScrollContent(contentID: contentID, content: VStack(alignment: .leading, spacing: 5) { content() }
                 .frame(width: OnePlusMenuMetrics.bodyWidth).padding(.horizontal, OnePlusMenuMetrics.bodyInset))
             fixedRegion(footer?() ?? AnyView(EmptyView()), top: 5, bottom: 8)
         }.padding(1).frame(width: 356).fixedSize(horizontal: false, vertical: true)
@@ -183,30 +187,52 @@ private struct OnePlusMenuPanelLayout: Layout {
 }
 
 private struct OnePlusMenuScrollContent<Content: View>: NSViewRepresentable {
+    let contentID: AnyHashable
     let content: Content
+
+    final class Coordinator {
+        // ponytail: visited tab IDs live with the panel; add eviction for unbounded IDs.
+        var hosts: [AnyHashable: OnePlusMenuHostingView<AnyView>] = [:]
+        var selected: AnyHashable?
+    }
+    func makeCoordinator() -> Coordinator { Coordinator() }
 
     func makeNSView(context: Context) -> NSScrollView {
         let scroll = OnePlusMenuScrollView()
         scroll.drawsBackground = false
-        let host = OnePlusMenuHostingView(rootView: AnyView(root(in: context)))
-        host.scroll = scroll
-        scroll.documentView = host
+        updateNSView(scroll, context: context)
         scroll.configureOnePlusScrollIndicators(axes: .vertical)
         return scroll
     }
 
     func updateNSView(_ scroll: NSScrollView, context: Context) {
-        guard let host = scroll.documentView as? NSHostingView<AnyView> else { return }
-        host.rootView = AnyView(root(in: context))
+        let cache = context.coordinator
+        if cache.selected != contentID, let previous = scroll.documentView as? OnePlusMenuHostingView<AnyView> {
+            previous.scroll = nil
+            if let inactiveRoot = previous.inactiveRoot {
+                previous.rootView = inactiveRoot
+                // Deliver visibility before detaching, so retained tasks cancel now.
+                previous.layoutSubtreeIfNeeded()
+            }
+        }
+        let active = AnyView(root(in: context, visible: context.environment.onePlusIsVisible))
+        let host = cache.hosts[contentID] ?? OnePlusMenuHostingView(rootView: active)
+        host.inactiveRoot = AnyView(root(in: context, visible: false))
+        host.rootView = active
+        host.invalidateIntrinsicContentSize()
+        host.scroll = scroll
+        if scroll.documentView !== host { scroll.documentView = host }
+        cache.hosts[contentID] = host
+        cache.selected = contentID
     }
 
-    private func root(in context: Context) -> some View {
+    private func root(in context: Context, visible: Bool) -> some View {
         // ponytail: forward panel keys only; add a key when body content needs it.
         content
             .onePlusDensity(context.environment.onePlusDensity)
             .environment(\.onePlusCardPadding, context.environment.onePlusCardPadding)
             .environment(\.onePlusControlHeight, context.environment.onePlusControlHeight)
-            .environment(\.onePlusIsVisible, context.environment.onePlusIsVisible)
+            .environment(\.onePlusIsVisible, visible)
             .environment(\.colorScheme, context.environment.colorScheme)
             .environment(\.isEnabled, context.environment.isEnabled)
             .onePlusNeutralControls()
@@ -230,6 +256,7 @@ private final class OnePlusMenuScrollView: NSScrollView {
 
 private final class OnePlusMenuHostingView<Content: View>: NSHostingView<Content> {
     weak var scroll: NSScrollView?
+    var inactiveRoot: Content?
     private var measuredHeight: CGFloat?
     override func layout() {
         super.layout()
