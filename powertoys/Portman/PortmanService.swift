@@ -535,7 +535,7 @@ nonisolated enum PortmanScanner {
             let name = String(fields[0])
             for mapping in fields[1].split(separator: ",") {
                 let sides = mapping.trimmingCharacters(in: .whitespaces).components(separatedBy: "->")
-                guard sides.count == 2,
+                guard sides.count == 2, sides[1].hasSuffix("/tcp"),
                       let port = UInt16(sides[0].split(separator: ":").last ?? ""),
                       let index = ports.firstIndex(where: { $0.port == port }) else { continue }
                 ports[index].container = name
@@ -583,7 +583,11 @@ nonisolated enum PortmanScanner {
         let process = parts.first?.trimmingCharacters(in: .whitespacesAndNewlines)
         let container = parts.dropFirst().joined(separator: "\n")
             .split(whereSeparator: \.isNewline)
-            .first { $0.contains(":\(port)->") }
+            .first { line in
+                line.split(separator: ",").contains {
+                    $0.contains(":\(port)->") && $0.hasSuffix("/tcp")
+                }
+            }
             .flatMap { $0.split(separator: "|", maxSplits: 1).first }
             .map(String.init)
         return (process?.isEmpty == false ? process : nil, container)
@@ -663,21 +667,6 @@ final class PortmanService {
     private var handledCleanupProcessIDs = Set<String>()
     private var lastCleanupMode: PortmanCleanupMode?
     private var metadataCheckedIDs = Set<String>()
-
-    var suggestedCleanupIDs: Set<String> {
-        let now = Date()
-        return Set(localPorts.filter { port in
-            PortmanCleanupPolicy.suggested(
-                port: port, highUsage: PortmanCleanupPolicy.highUsage(in: history[port.id] ?? []),
-                folder: metadata[port.id]?.folder,
-                lastConnectionAt: lastConnectionAt[port.processID], now: now,
-                idleHours: PortmanPreferences.idleSuggestionHours,
-                runningDays: PortmanPreferences.runningSuggestionDays,
-                mode: PortmanPreferences.cleanupMode,
-                includeDeletedFolders: PortmanPreferences.includeDeletedFolders
-            )
-        }.map(\.processID))
-    }
 
     func beginMonitoring() {
         monitoringCount += 1
@@ -767,7 +756,29 @@ final class PortmanService {
             githubLinks = githubLinks.filter { key, _ in ports.contains { $0.id == key } }
             restartableIDs.formIntersection(Set(ports.map(\.id)))
             lastConnectionAt = lastConnectionAt.filter { key, _ in ports.contains { $0.processID == key } }
-            handleCleanupSuggestions()
+            if PortmanPreferences.cleanupMode == .automatic {
+                let history = history
+                let metadata = metadata
+                let lastConnectionAt = lastConnectionAt
+                let suggestions = await Task.detached(priority: .utility) {
+                    Set(ports.filter { port in
+                        PortmanCleanupPolicy.suggested(
+                            port: port, highUsage: PortmanCleanupPolicy.highUsage(in: history[port.id] ?? []),
+                            folder: metadata[port.id]?.folder,
+                            lastConnectionAt: lastConnectionAt[port.processID], now: now,
+                            idleHours: PortmanPreferences.idleSuggestionHours,
+                            runningDays: PortmanPreferences.runningSuggestionDays,
+                            mode: PortmanPreferences.cleanupMode,
+                            includeDeletedFolders: PortmanPreferences.includeDeletedFolders
+                        )
+                    }.map(\.processID))
+                }.value
+                guard !Task.isCancelled, monitoringCount > 0 else { return }
+                handleCleanupSuggestions(suggestions)
+            } else {
+                handledCleanupProcessIDs = []
+                lastCleanupMode = PortmanPreferences.cleanupMode
+            }
             NotificationCenter.default.post(name: .portmanSnapshotChanged, object: nil)
         } catch {
             guard !Task.isCancelled, monitoringCount > 0 else { return }
@@ -999,14 +1010,13 @@ final class PortmanService {
         } catch { controlError = error.localizedDescription }
     }
 
-    private func handleCleanupSuggestions() {
+    private func handleCleanupSuggestions(_ ids: Set<String>) {
         let mode = PortmanPreferences.cleanupMode
         if mode != lastCleanupMode {
             handledCleanupProcessIDs = []
             lastCleanupMode = mode
         }
         guard mode == .automatic else { return }
-        let ids = suggestedCleanupIDs
         handledCleanupProcessIDs.formIntersection(ids)
         var seen = Set<String>()
         let fresh = localPorts.filter {
