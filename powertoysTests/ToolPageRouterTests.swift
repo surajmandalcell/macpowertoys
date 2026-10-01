@@ -5,6 +5,23 @@ import Testing
 @testable import powertoys
 
 struct ToolPageRouterTests {
+    @Test func closeWindowDiagnosticsRequireOneBoundedToolID() throws {
+        for scheme in ["macpowertoys", "powertoys"] {
+            for tool in ["main", "system-monitor", "disk-explorer", "rclone"] {
+                #expect(DiagnosticsRoute.parse(try #require(URL(string: "\(scheme)://diagnostics/close-window/\(tool)")))
+                    == .closeWindow(tool))
+            }
+        }
+        for value in ["https://diagnostics/close-window/main", "powertoys://open/close-window/main",
+                      "powertoys://diagnostics/close-window/", "powertoys://diagnostics/close-window/main/",
+                      "powertoys://diagnostics/close-window/main?extra=1", "powertoys://user@diagnostics/close-window/main",
+                      "powertoys://diagnostics:123/close-window/main", "powertoys://diagnostics/close-window/main#extra",
+                      "powertoys://diagnostics/close-window/Main", "powertoys://diagnostics/close-window/bad%20id",
+                      "powertoys://diagnostics/close-window/" + String(repeating: "a", count: 81)] {
+            #expect(DiagnosticsRoute.parse(try #require(URL(string: value))) == nil)
+        }
+    }
+
     @Test func timingAndIndividualPanelRoutesRequireExactPaths() throws {
         for scheme in ["macpowertoys", "powertoys"] {
             #expect(DiagnosticsRoute.parse(try #require(URL(string: "\(scheme)://diagnostics/timings"))) == .timings)
