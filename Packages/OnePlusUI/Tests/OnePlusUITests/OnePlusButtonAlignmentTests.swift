@@ -22,9 +22,11 @@ final class OnePlusButtonAlignmentTests: XCTestCase {
                                 Image(systemName: symbol).foregroundStyle(Color(red: 0, green: 0, blue: 1))
                             }
                         }.buttonStyle(OnePlusButtonStyle(variant, size: size))
-                        try assertCenters(view.onePlusDensity(density), height: height,
-                                          context: "\(density) \(String(describing: size)) \(variant) \(symbol)",
-                                          components: variant == .icon || variant == .borderedIcon ? ["glyph"] : ["label", "glyph"])
+                        try autoreleasepool {
+                            try assertCenters(view.onePlusDensity(density), height: height,
+                                              context: "\(density) \(String(describing: size)) \(variant) \(symbol)",
+                                              components: variant == .icon || variant == .borderedIcon ? ["glyph"] : ["label", "glyph"])
+                        }
                     }
                 }
             }
