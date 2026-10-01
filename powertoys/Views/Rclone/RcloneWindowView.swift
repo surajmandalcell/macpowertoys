@@ -32,20 +32,12 @@ struct RcloneWindowView: View {
         } content: {
             contentArea
         }
+        .disabled(manager.isShuttingDown)
         .environment(manager)
         .buttonStyle(OnePlusButtonStyle())
         .background(WindowAccessor(identifier: "rclone"))
-        .onReceive(NotificationCenter.default.publisher(for: .commandOpenSettings)) { _ in
-            guard NSApp.keyWindow?.identifier?.rawValue.hasPrefix("rclone") == true else { return }
-            content = .settings
-        }
-        .onReceive(NotificationCenter.default.publisher(for: .commandNewTransfer)) { _ in
-            guard NSApp.keyWindow?.identifier?.rawValue.hasPrefix("rclone") == true else { return }
-            manager.isPresentingNewTransfer = true
-        }
-        .onReceive(NotificationCenter.default.publisher(for: .newTransferRequested)) { _ in
-            manager.isPresentingNewTransfer = true
-        }
+        .focusedSceneValue(\.appNewTransfer, manager.isPresentingNewTransfer || showAddRemote || manager.isShuttingDown ? nil : { manager.isPresentingNewTransfer = true })
+        .focusedSceneValue(\.appOpenSettings, manager.isPresentingNewTransfer || showAddRemote || manager.isShuttingDown ? nil : { content = .settings })
         .sheet(isPresented: $manager.isPresentingNewTransfer) {
             NewTransferSheet()
                 .environment(manager)
