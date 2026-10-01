@@ -177,7 +177,7 @@ public struct OnePlusNativeTable: NSViewRepresentable {
             let hasUsage = item.usage[index] != nil
             let base = index == 0 ? Self.primaryCellID.rawValue : "\(Self.textCellID.rawValue).\(index)"
             let identifier = NSUserInterfaceItemIdentifier(base + (hasUsage ? ".usage" : ""))
-            let cell = tableView.makeView(withIdentifier: identifier, owner: self) as? NSTableCellView
+            let cell = tableView.makeView(withIdentifier: identifier, owner: self) as? StorageTextCell
                 ?? makeTextCell(identifier: identifier, includesIcon: index == 0, hasUsage: hasUsage, column: owner.columns[index])
             cell.subviews.compactMap { $0 as? OnePlusTableUsageBar }.first?.value = item.usage[index] ?? 0
             guard let text = cell.textField else { return cell }
@@ -190,7 +190,10 @@ public struct OnePlusNativeTable: NSViewRepresentable {
             }
             text.font = role == .mono ? .monospacedSystemFont(ofSize: role.size(for: density), weight: weight)
                 : .systemFont(ofSize: role.size(for: density), weight: weight)
-            text.textColor = NSColor(owner.columns[index].textColor ?? owner.columns[index].textRole.map(\.color) ?? (index == 0 ? OnePlusColor.ink : OnePlusColor.secondary))
+            cell.restingInk = NSColor(owner.columns[index].textColor ?? owner.columns[index].textRole.map(\.color) ?? (index == 0 ? OnePlusColor.ink : OnePlusColor.secondary))
+            let semantic = owner.columns[index].textColor
+            cell.preservesSemanticInk = semantic == OnePlusColor.danger || semantic == OnePlusColor.warn || semantic == OnePlusColor.ok
+            cell.selected = tableView.selectedRowIndexes.contains(row)
             text.alignment = owner.columns[index].nsTextAlignment
             cell.imageView?.image = NSImage(systemSymbolName: item.symbol, accessibilityDescription: nil)
             return cell
@@ -202,8 +205,8 @@ public struct OnePlusNativeTable: NSViewRepresentable {
             button.setAccessibilityLabel("File actions")
             return button
         }
-        private func makeTextCell(identifier: NSUserInterfaceItemIdentifier, includesIcon: Bool, hasUsage: Bool, column: OnePlusGridColumn) -> NSTableCellView {
-            let cell = NSTableCellView()
+        private func makeTextCell(identifier: NSUserInterfaceItemIdentifier, includesIcon: Bool, hasUsage: Bool, column: OnePlusGridColumn) -> StorageTextCell {
+            let cell = StorageTextCell()
             cell.identifier = identifier
             let text = NSTextField(labelWithString: "")
             text.lineBreakMode = .byTruncatingMiddle
@@ -327,11 +330,27 @@ final class StorageTable: NSTableView {
     }
 }
 
+private final class StorageTextCell: NSTableCellView {
+    var restingInk = NSColor(OnePlusColor.ink) { didSet { updateInk() } }
+    var preservesSemanticInk = false { didSet { updateInk() } }
+    var selected = false { didSet { updateInk() } }
+    override var backgroundStyle: NSView.BackgroundStyle { didSet { updateInk() } }
+    private func updateInk() {
+        textField?.cell?.backgroundStyle = .normal
+        textField?.textColor = selected && !preservesSemanticInk ? NSColor(OnePlusColor.ink) : restingInk
+    }
+}
+
 private final class StorageRow: NSTableRowView {
     private var hovering = false
     private var hoverArea: NSTrackingArea?
-    override var isSelected: Bool { didSet { updateActionVisibility() } }
-    override func layout() { super.layout(); updateActionVisibility() }
+    override var isSelected: Bool { didSet { updateCells(); needsDisplay = true } }
+    override var isEmphasized: Bool { didSet { needsDisplay = true } }
+    override func layout() { super.layout(); updateCells() }
+    private func updateCells() {
+        for column in 0..<numberOfColumns { (view(atColumn: column) as? StorageTextCell)?.selected = isSelected }
+        updateActionVisibility()
+    }
     override func draw(_ dirtyRect: NSRect) {
         super.draw(dirtyRect)
         drawSeparator(in: dirtyRect)
@@ -353,7 +372,7 @@ private final class StorageRow: NSTableRowView {
         NSColor(hovering ? OnePlusColor.raised : OnePlusColor.panel).setFill(); bounds.fill()
     }
     override func drawSelection(in dirtyRect: NSRect) {
-        NSColor(OnePlusColor.selection).setFill(); bounds.fill()
+        NSColor(isEmphasized ? OnePlusColor.selection : OnePlusColor.selectionInactive).setFill(); bounds.fill()
     }
     override func drawSeparator(in dirtyRect: NSRect) {
         NSColor(OnePlusColor.lineSoft).setFill()

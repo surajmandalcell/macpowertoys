@@ -15,12 +15,13 @@ colors:
   field-focus: { dark: "#2B2B2B", light: "#EAEAEA" }
   track: { dark: "#181818", light: "#E4E4E4" }
   selection: { dark: "#343434", light: "#D4D4D4" }
+  selection-inactive: { dark: "#292929", light: "#E0E0E0" }
   selected-control: { dark: "#424242", light: "#FFFFFF" }
   line: { dark: "#343434", light: "#D1D1D1" }
   line-soft: { dark: "#2B2B2B", light: "#E1E1E1" }
   ink: { dark: "#EDEDED", light: "#242424" }
   secondary: { dark: "#A3A3A3", light: "#656565" }
-  muted: { dark: "#8A8A8A", light: "#707070" }  # at least 4.5:1 on panel and window
+  muted: { dark: "#BCBCBC", light: "#565656" }  # at least 4.5:1 including card grain
   control-ink: { dark: "#DEDEDE", light: "#343434" }
   accent: { dark: "#EE5B50", light: "#D94F45" }
   data-blue: { dark: "#8AAEEA", light: "#3564A4" } # Cloud Sync progress and network data
@@ -30,10 +31,22 @@ colors:
   primary-fill: { dark: "#DDDDDD", light: "#383838" }
   primary-ink: { dark: "#252525", light: "#FFFFFF" }
   ok: { dark: "#7FA889", light: "#3F7A4E" }
-  warn: { dark: "#F29A68", light: "#C06A32" }
-  danger: { dark: "#E99B91", light: "#B8463B" }
+  warn: { dark: "#FFC09A", light: "#8B461C" }
+  danger: { dark: "#FFB6AC", light: "#9B382F" }
   danger-fill: { dark: "#382624", light: "#FBE9E7" }
   danger-line: { dark: "#6D4541", light: "#E3B3AD" }
+high-contrast:
+  ink: { dark: "#FFFFFF", light: "#000000" }
+  secondary-and-muted: { dark: "#DADADA", light: "#444444" }
+  control-ink: { dark: "#FFFFFF", light: "#000000" }
+  warn: { dark: "#FFE0C0", light: "#6B3208" }
+  danger: { dark: "#FFCCC6", light: "#792820" }
+  line: { dark: "#A0A0A0", light: "#707070" }
+  line-soft: { dark: "#919191", light: "#777777" }
+  danger-line: { dark: "#E99B91", light: "#9B382F" }
+  focus: { dark: "#C0C0C0", light: "#505050" }
+  selection: { dark: "#3D3D3D", light: "#C8C8C8" }
+  selection-inactive: { dark: "#2B2B2B", light: "#DDDDDD" }
 typography:
   regular: { sidebar-title: 12.5, nav: 12.5, caption-upper: 9, page-title: 24, subtitle: 12.5, tab: 12, section-title: 13, card-title: 12, row: 12, control: 12, caption: 10.5, table-header: 9, mono: 11, metric: 27, unit: 12 }
   compact: { sidebar-title: 12.5, nav: 11.5, caption-upper: 9, page-title: 20, subtitle: 10.5, tab: 11, section-title: 12, card-title: 11, row: 10.5, control: 10.5, caption: 9.5, table-header: 8.5, mono: 9.5, metric: 21, unit: 10 }
