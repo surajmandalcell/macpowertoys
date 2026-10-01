@@ -2,6 +2,13 @@
 
 ## Production audit, 2026-10-01
 
+- [x] Preserve reset actions and Modified entries whenever an exact-value backup exists, even at an explicit or absent system default. Disable new edits on unsupported OS releases while keeping restore available.
+- [x] Preflight managed preferences and external changes before any reset write. Reset tracked originals and untracked defaults in one operation. Do not create a reverse-reset backup for an untracked default reset. Protect unreadable backup records and their nested values. Core checkpoints: `c2000537`, `66adbe1c`.
+- [x] Show loading and custom values truthfully. Surface microphone and meter errors. Use full-row Modified hover and one-line About values with tooltips. UI checkpoint: `6503e8b0`.
+- [x] Enable Awake consistently from Power and search. Show actual assertion state and remaining time. Confirm affected-app restart, wait for termination, and reopen in the background with visible failures.
+- [x] Apply the binding horizontal-density and motion correction: put single control rows directly on the page, remove preview-only cards, move About version to the trailing side, put help in tooltips, remove notice transitions and refresh rotation, and keep all nine previews static. Update the hosted hover test to require still frames. This supersedes earlier hover-film requirements.
+- [~] Ten installed baseline pages were captured without clicks or foreground activation. A read-only probe read all 27 exact-domain keys for 25 controls. Before and after snapshots match; no test write or affected-app restart was performed.
+- [~] Focused preference and UI tests type-check with the XCTest overlay. The read-only backup predicate check passes and fails when backup awareness is removed. Final shared build-for-testing passes for the Debug app and both test bundles after concurrent unowned errors. Five requests per gate mode completed. Log: `tmp/redesign/logs/audit-tweaks-tests-fifth.log`. Hosted test execution and final signed interaction checks remain with the orchestrator. Audit report: `tmp/redesign/logs/w1-audit-tweaks.md`.
 - [x] Main launcher follow-up, `5a3e95b5`: use `needsReset(selection, hasBackup:)` in embedded Settings. A saved original keeps reset available at the default. Put Review changes directly on the page; remove its single-row Preferences card and inline help. Keep operation notices visible.
 - [x] Main documentation follow-up, `b4fd441d`: add the README tool entry and short section. Extend How to use with all pages, search, reset, Modified, exact-value backups, OS edit gates, static previews, restart or Later, Mic Lock, and shared Awake controls. Both shared compile modes pass. Hosted tests and signed interaction checks remain. Report: `tmp/redesign/logs/w1-main.md`.
 
