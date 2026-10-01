@@ -393,7 +393,9 @@
   were inserted beside the metrics rather than replacing them, the memory
   breakdown used whole-Mac statistics, and a conditional matched-geometry line
   moved while the page body faded. Both SSH paths originally forced key login.
-- **Invariant:** Use the smaller socket glyph in the status item and header.
+- **Invariant:** Use the shared Portman SF identity for its status image, with
+  the 14pt canvas and 11.2pt maximum ink span measured from the old socket.
+  This follows the 2026-10-01 shared tool-glyph requirement.
   Give rows a wider inset hover surface and preserve inner text padding. Keep
   one fixed trailing slot: graph plus memory at rest, link plus stop on hover,
   with blue/red action feedback and no width shift. Show only listening-process

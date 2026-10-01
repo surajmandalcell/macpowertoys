@@ -1,5 +1,11 @@
 # Ruler Request List
 
+Glyph pass, 2026-10-01: `91d9a538` defines Ruler at -45 degrees in
+`ToolGlyph`. Sidebar, fallback tile, Home action, and launcher Settings use
+that definition. The 14-tool contact sheet was reviewed at 16pt and 32pt in
+both appearances. Signed review of those surfaces remains with the
+orchestrator.
+
 Reviewed against the pinned [FreeRuler](https://github.com/pascalpp/FreeRuler)
 source at commit `d38ca4f673f16c51485940e63eeee68babfbfeed` on 2026-08-31.
 Update this list whenever Ruler requirements or verification results change.

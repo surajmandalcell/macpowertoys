@@ -1,5 +1,15 @@
 # Portman request list
 
+## Status glyph, 2026-10-01
+
+The owner now requires one SF Symbol identity on every glyph surface.
+`91d9a538` uses `ToolGlyph.portman` and preserves the trailing server count.
+The old socket status image measured 14pt square with 11.2pt by 10.6pt ink.
+All status images now use a centered 11.2pt maximum ink span on a 14pt
+template canvas. The native status item keeps system button margins and
+a single space before its count. Headless geometry checks pass. The signed
+menu-bar comparison remains with the orchestrator.
+
 ## OnePlusUI redesign, 2026-09-29
 
 Round 3a uses one cards-only PortmanSettingsView. The caller owns search,

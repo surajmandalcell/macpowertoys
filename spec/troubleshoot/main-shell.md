@@ -1,5 +1,22 @@
 # Main Shell Troubleshooting
 
+## Tool Glyphs And Status Image Size, 2026-10-01
+
+- **Symptom:** Sidebar and panel glyphs differ from approved tool icons. Native
+  status items look larger than Portman, and one Memory item hides the Task
+  Manager identity.
+- **Cause:** Tool symbols were copied across enums. Native SF images kept
+  intrinsic bounds, and equal point sizes did not give equal painted sizes.
+- **Invariant:** `ToolGlyph` owns the 14 unique tool symbols and Ruler angle.
+  `StatusItemIcon` caches template images on a 14pt canvas with a centered
+  11.2pt maximum ink span, measured from the old Portman socket. Rasterize
+  once at 4x to keep SF hinting from changing geometry at display scale.
+  Use the Task Manager glyph when exactly one metric is enabled; retain saved
+  per-metric choices for multiple metrics and preserve Value Only behavior.
+- **Check:** Run `ToolGlyphTests` on hosted CI. Compare the 16pt/32pt contact
+  sheet in both appearances. After signed installation, capture only the
+  menu bar with `screencapture -R` and inspect all separate/grouped styles.
+
 ## Diagnostic Panel URLs Consumed By Native Scenes, 2026-09-30
 
 - **Symptom:** In signed `db471735`, background main and Task Manager panel
@@ -135,7 +152,9 @@
   the tab group to the leading edge and those three app controls to one fixed
   trailing group; do not distribute the six controls as one centered row. Use
   the same 12pt symbol inside every 24pt tab and outer chrome control. Cloud
-  Sync uses two overlapping clouds instead of a single-cloud symbol.
+  Sync uses `ToolGlyph.cloudSync`, the same single cloud as its sidebar
+  and separate status item. Tool identity symbols keep their shape and weight
+  on selection; color changes at once.
 - **Check:** Exercise short and overflowing tab sets, confirm Home then Cloud
   Sync appear first, reorder two complex tabs, relaunch, and confirm order and
   selection persist. Compare Home and Cloud Sync alignment in light, dark,

@@ -1,5 +1,10 @@
 # Color Picker Request List
 
+Glyph pass, 2026-10-01: `91d9a538` uses `ToolGlyph.colorPicker` in the
+launcher, Home, and separate placement. Status template images have a 14pt
+canvas and 11.2pt maximum ink. Headless checks pass at 1x, 2x, and 4x.
+The signed status image and both appearances remain with the orchestrator.
+
 Reviewed against the current app source on 2026-08-31. Update this list when a
 direct user correction or verified result changes a status.
 

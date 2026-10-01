@@ -1,5 +1,15 @@
 # Tool icon refresh request list
 
+## Tool glyphs, 2026-10-01
+
+`91d9a538` keeps the approved bitmap and SVG tool icons and defines 14 unique
+SF Symbols in `ToolGlyph`. Ruler is slanted, Switch uses `power.circle.fill`,
+System Care uses `tray.and.arrow.up`, and Diskman uses `opticaldisc`.
+Launcher, panel, and status identity glyphs use those shared definitions.
+The icon/glyph contact sheet was reviewed at 16pt and 32pt in both appearances:
+`tmp/redesign/captures/glyphs-status/contact-sheet.png`. Signed surface review
+remains with the orchestrator.
+
 Requested on 2026-09-25. The owner selected Disk Explorer option 02,
 **Sector platter**, from `tmp/disk-explorer/index.index2.html` and asked for
 System Care, Text Extractor, Input Devices, NetToys, and Color Picker to be
