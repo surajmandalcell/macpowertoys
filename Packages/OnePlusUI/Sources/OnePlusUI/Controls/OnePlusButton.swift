@@ -17,7 +17,7 @@ public extension EnvironmentValues {
 }
 
 public struct OnePlusButtonStyle: ButtonStyle {
-    public enum Variant: String, CaseIterable, Sendable { case neutral, primary, ghost, destructive, icon, borderedIcon, link }
+    public enum Variant: String, CaseIterable, Sendable { case neutral, primary, accentPrimary, ghost, destructive, icon, borderedIcon, link }
     public enum Size: Sendable { case regular, small }
     let variant: Variant
     let size: Size?
@@ -70,7 +70,7 @@ private struct OnePlusButtonBody<Label: View>: View {
     private var isIcon: Bool { style.variant == .icon || style.variant == .borderedIcon }
     private var radius: CGFloat { isIcon || style.size == .small ? 5 : 6 }
     private var pointSize: CGFloat { style.size == .small ? 11 : OnePlusTextRole.control.size(for: density) }
-    private var weight: Font.Weight { style.variant == .primary ? .medium : .regular }
+    private var weight: Font.Weight { style.variant == .primary || style.variant == .accentPrimary ? .medium : .regular }
 
     var body: some View {
         OnePlusControlContentLayout(pointSize: pointSize, iconIndex: isIcon ? 0 : style.variant == .link ? 1 : nil) {
@@ -97,6 +97,7 @@ private struct OnePlusButtonBody<Label: View>: View {
     private var foreground: Color {
         switch style.variant {
         case .primary: OnePlusColor.primaryInk
+        case .accentPrimary: OnePlusColor.accentPrimaryInk
         case .destructive: OnePlusColor.danger
         case .ghost, .icon, .link: isHovering || isFocused ? OnePlusColor.ink : OnePlusColor.secondary
         case .neutral, .borderedIcon: OnePlusColor.controlInk
@@ -104,9 +105,13 @@ private struct OnePlusButtonBody<Label: View>: View {
     }
 
     private var background: Color {
+        if style.variant == .accentPrimary {
+            return isPressed ? OnePlusColor.accentPrimaryPressed : isHovering ? OnePlusColor.accentPrimaryHover : OnePlusColor.accent
+        }
         if isPressed { return style.variant == .primary ? OnePlusColor.primaryPressed : OnePlusColor.pressed }
         if isFocused { return style.variant == .primary ? OnePlusColor.primaryFill : OnePlusColor.fieldFocus }
         switch style.variant {
+        case .accentPrimary: return OnePlusColor.accent
         case .primary: return isHovering ? OnePlusColor.primaryHover : OnePlusColor.primaryFill
         case .destructive: return OnePlusColor.dangerFill
         case .neutral, .borderedIcon: return isHovering ? OnePlusColor.raisedHover : OnePlusColor.raised

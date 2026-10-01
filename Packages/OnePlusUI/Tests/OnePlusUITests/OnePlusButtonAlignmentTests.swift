@@ -15,7 +15,7 @@ final class OnePlusButtonAlignmentTests: XCTestCase {
                             Label {
                                 Text("HILT").foregroundStyle(.green)
                             } icon: {
-                                Image(systemName: symbol).foregroundStyle(.red)
+                                Image(systemName: symbol).foregroundStyle(Color(red: 0, green: 0, blue: 1))
                             }
                         }.buttonStyle(OnePlusButtonStyle(variant, size: size))
                         try assertCenters(view.onePlusDensity(density), height: height,
@@ -33,7 +33,7 @@ final class OnePlusButtonAlignmentTests: XCTestCase {
                 Label {
                     Text(title).foregroundStyle(.green)
                 } icon: {
-                    Image(systemName: symbol).rotationEffect(.degrees(symbol == "ruler" ? -45 : 0)).foregroundStyle(.red)
+                    Image(systemName: symbol).rotationEffect(.degrees(symbol == "ruler" ? -45 : 0)).foregroundStyle(Color(red: 0, green: 0, blue: 1))
                 }
             }
             try assertCenters(tile.onePlusDensity(.compact), height: 32, context: title)
@@ -49,7 +49,7 @@ final class OnePlusButtonAlignmentTests: XCTestCase {
                                       height: density.controlHeight, context: "text \(variant)", components: ["label"])
                 }
                 guard variant == .icon || variant == .borderedIcon else { continue }
-                try assertCenters(Button {} label: { Image(systemName: "circle.fill").foregroundStyle(.red) }
+                try assertCenters(Button {} label: { Image(systemName: "circle.fill").foregroundStyle(Color(red: 0, green: 0, blue: 1)) }
                     .buttonStyle(OnePlusButtonStyle(variant)).onePlusDensity(density),
                                   height: density.controlHeight, context: "icon \(variant)", components: ["glyph"])
             }
@@ -94,6 +94,23 @@ final class OnePlusButtonAlignmentTests: XCTestCase {
         }
     }
 
+    func testAccentPrimaryInkMeetsContrastInEachAppearanceAndState() throws {
+        func luminance(_ color: NSColor) -> CGFloat {
+            let channels = [color.redComponent, color.greenComponent, color.blueComponent]
+                .map { $0 <= 0.04045 ? $0 / 12.92 : pow(($0 + 0.055) / 1.055, 2.4) }
+            return channels[0] * 0.2126 + channels[1] * 0.7152 + channels[2] * 0.0722
+        }
+        for name in [NSAppearance.Name.darkAqua, .aqua] {
+            try XCTUnwrap(NSAppearance(named: name)).performAsCurrentDrawingAppearance {
+                let ink = luminance(NSColor(OnePlusColor.accentPrimaryInk).usingColorSpace(.sRGB)!)
+                for fill in [OnePlusColor.accent, OnePlusColor.accentPrimaryHover, OnePlusColor.accentPrimaryPressed] {
+                    let ground = luminance(NSColor(fill).usingColorSpace(.sRGB)!)
+                    XCTAssertGreaterThanOrEqual((max(ink, ground) + 0.05) / (min(ink, ground) + 0.05), 4.5)
+                }
+            }
+        }
+    }
+
     private func assertCenters<V: View>(_ view: V, height: CGFloat, context: String,
                                        components: [String] = ["label", "glyph"],
                                        monochrome: Bool = false, trailingGlyph: Bool = false, leadingGlyph: Bool = false,
@@ -126,7 +143,7 @@ final class OnePlusButtonAlignmentTests: XCTestCase {
                             }
                         } else if color.greenComponent > 0.5 && color.greenComponent - color.redComponent > 0.3 {
                             painted.append((x, y, true))
-                        } else if color.redComponent > 0.5 && color.redComponent - color.greenComponent > 0.3 {
+                        } else if color.blueComponent > 0.5 && color.blueComponent - color.greenComponent > 0.3 {
                             painted.append((x, y, false))
                         }
                     }
