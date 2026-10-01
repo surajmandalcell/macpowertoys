@@ -133,6 +133,50 @@ final class CloudSyncStateTests: XCTestCase {
         XCTAssertFalse(IgnoreMatcher.matches(path: "Sources/main.swift", name: "main.swift", isDir: false, pattern: "*.tmp"))
     }
 
+    func testTerminationSnapshotIsPausedAndResumableWithoutChangingLiveJob() {
+        let job = makeJob(createdAt: Date(timeIntervalSince1970: 1))
+        job.state = .running
+        job.stats.bytes = 400
+        job.stats.totalBytes = 1_000
+        job.stats.transfers = 3
+        job.stats.totalTransfers = 10
+        let snapshot = job.terminationSnapshot
+        let restored = TransferJob(snapshot: snapshot)
+        XCTAssertEqual(snapshot.state, TransferState.paused.rawValue)
+        XCTAssertEqual(snapshot.autoResumeOnLaunch, true)
+        XCTAssertEqual(restored.id, job.id)
+        XCTAssertEqual(restored.displayBytes, 400)
+        XCTAssertEqual(restored.displayFiles, 3)
+        XCTAssertEqual(job.state, .running)
+        XCTAssertEqual(job.stats.bytes, 400)
+        job.state = .paused
+        job.autoResumeOnLaunch = false
+        XCTAssertEqual(job.terminationSnapshot.autoResumeOnLaunch, false)
+    }
+
+    func testUploadValidationRejectsUnsupportedAndMissingURLs() throws {
+        let directory = FileManager.default.temporaryDirectory.appendingPathComponent(UUID().uuidString)
+        try FileManager.default.createDirectory(at: directory, withIntermediateDirectories: true)
+        defer { try? FileManager.default.removeItem(at: directory) }
+        let file = directory.appendingPathComponent("file.txt")
+        try Data("fixture".utf8).write(to: file)
+        XCTAssertEqual(RcloneJobManager.supportedUploadURL(file), file.standardizedFileURL)
+        XCTAssertEqual(RcloneJobManager.supportedUploadURL(directory)?.path, directory.path)
+        XCTAssertNil(RcloneJobManager.supportedUploadURL(URL(string: "https://example.com/file")!))
+        XCTAssertNil(RcloneJobManager.supportedUploadURL(URL(string: "file://example.com/file")!))
+        XCTAssertNil(RcloneJobManager.supportedUploadURL(directory.appendingPathComponent("missing")))
+    }
+
+    func testUnsupportedDropsDoNotQueueTransfers() {
+        let manager = RcloneJobManager()
+        let count = manager.createDroppedTransfers(
+            urls: [URL(string: "https://example.com/file")!],
+            remote: RcloneRemote(name: "fixture", type: "local"), directoryPath: ""
+        )
+        XCTAssertEqual(count, 0)
+        XCTAssertTrue(manager.jobs.isEmpty)
+    }
+
     private func makeJob(kind: TransferKind = .directory, createdAt: Date) -> TransferJob {
         TransferJob(
             operation: .copy,
