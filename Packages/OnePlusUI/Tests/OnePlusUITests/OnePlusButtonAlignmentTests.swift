@@ -72,6 +72,12 @@ final class OnePlusButtonAlignmentTests: XCTestCase {
                                                selection: .constant(0), accessibilityLabel: "Shape")
                 .onePlusDensity(density), height: density.controlHeight, context: "icon segment \(density)",
                               components: ["glyph"], monochrome: true)
+            try assertCenters(OnePlusMenuButton("Actions", variant: .borderedIcon, items: []).onePlusDensity(density),
+                              height: density.controlHeight, context: "default ellipsis \(density)",
+                              components: ["glyph"], monochrome: true)
+            try assertCenters(Button("HILT") {}.buttonStyle(OnePlusButtonStyle(.link)).onePlusDensity(density),
+                              height: density.controlHeight, context: "link arrow \(density)",
+                              monochrome: true, trailingGlyph: true)
             try assertCenters(OnePlusMenuLabel(title: "HILT", width: 160).onePlusDensity(density),
                               height: density.controlHeight, context: "select \(density)",
                               monochrome: true, trailingGlyph: true)
