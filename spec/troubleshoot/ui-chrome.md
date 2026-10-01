@@ -21,6 +21,25 @@
   Signed visual review and nested control interaction remain with the
   orchestrator. Report: `tmp/redesign/logs/w1-components.md`.
 
+## Page Cap Tops And Native Hover Containers, 2026-10-01
+
+- **Symptom:** Installed Task Manager dots start at y16. Regular page title
+  paint starts at y21. Native lights start at y20 and center at y27.
+- **Cause:** Dot headers used a 20pt line box with no text cap space. The
+  chrome moved native buttons inside their old 32pt titlebar container.
+- **Invariant:** Keep T=16. Center the 20pt dots in the regular 28.8pt line
+  box with the shared 1pt optical cap offset. Keep native button frames
+  centered in their parent. Move the enclosing native titlebar container,
+  then update its ancestor tracking areas. Reapply on key, resize, full-screen,
+  appearance, and native layout changes. Keep deferred, coalesced work.
+- **Check:** The new pixel and native geometry regressions fail on the old
+  source. Eighteen focused package tests pass. Pixels are checked at 1x and
+  2x in Light and Dark. Native checks cover all three lights, tracking areas,
+  hit tests, late resets, and both centerlines. Exact scene nesting keeps the
+  660pt canvas and first body row at y75.8. The installed before table is in
+  `tmp/redesign/logs/w1-chrome.md`. Signed captures and real pointer glyphs
+  after installation remain with the orchestrator.
+
 ## Menu Hosts Ignore App Appearance, 2026-09-30
 
 - **Symptom:** Round 6 dark captures show light main and Task Manager panels.
