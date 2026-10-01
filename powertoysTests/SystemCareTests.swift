@@ -260,6 +260,48 @@ final class SystemCareTests: XCTestCase {
         XCTAssertFalse(manager.isWorking)
     }
 
+    func testMoleReadsBoundOutputTimeoutAndCancellation() async throws {
+        do {
+            _ = try await SystemCareManager.runWorker {
+                try SystemCareManager.run(executable: URL(fileURLWithPath: "/usr/bin/yes"),
+                                          arguments: [], timeout: 2, maximumOutputBytes: 8_192)
+            }
+            XCTFail("Oversized output was accepted")
+        } catch { XCTAssertEqual(error as? SystemCareCommandError, .outputLimit) }
+        let startedAt = Date()
+        do {
+            _ = try await SystemCareManager.runWorker {
+                try SystemCareManager.run(executable: URL(fileURLWithPath: "/bin/sh"),
+                                          arguments: ["-c", "trap '' TERM; while :; do :; done"], timeout: 0.1)
+            }
+            XCTFail("Stalled command was accepted")
+        } catch { XCTAssertEqual(error as? SystemCareCommandError, .timeout) }
+        XCTAssertLessThan(Date().timeIntervalSince(startedAt), 2)
+
+        let fixture = try Fixture()
+        defer { fixture.remove() }
+        let pidFile = fixture.home.appendingPathComponent("child.pid")
+        let task = Task {
+            try await SystemCareManager.runWorker {
+                try SystemCareManager.run(executable: URL(fileURLWithPath: "/bin/sh"),
+                    arguments: ["-c", "echo $$ > \"$1\"; trap '' TERM; while :; do :; done", "fixture", pidFile.path], timeout: 3)
+            }
+        }
+        let deadline = Date().addingTimeInterval(2)
+        while !FileManager.default.fileExists(atPath: pidFile.path), Date() < deadline {
+            try await Task.sleep(for: .milliseconds(10))
+        }
+        let pidText = try String(contentsOf: pidFile, encoding: .utf8).trimmingCharacters(in: .whitespacesAndNewlines)
+        let pid = try XCTUnwrap(Int32(pidText))
+        task.cancel()
+        do {
+            _ = try await task.value
+            XCTFail("Canceled command was accepted")
+        } catch { XCTAssertTrue(error is CancellationError) }
+        XCTAssertEqual(kill(pid, 0), -1)
+        XCTAssertEqual(errno, ESRCH)
+    }
+
     private struct Fixture {
         let home: URL
         let suite = "SystemCareTests.\(UUID().uuidString)"
