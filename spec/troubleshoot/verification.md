@@ -252,3 +252,21 @@
 Reference: rclone documents both the optional
 [`Copy` feature](https://rclone.org/overview/#optional-features) and the
 [`--disable copy` control](https://rclone.org/docs/#disable-string).
+
+## Cloud Sync Shutdown Loses Retry State
+
+- **Symptom:** A transfer save failure is silent, retrying the same revision
+  writes nothing, and early quit can race startup or replace new history.
+- **Cause:** The writer advanced its revision before an atomic write succeeded.
+  Shutdown persisted after service awaits. Queue loading marked completion
+  before its read, and history restore replaced records made during its read.
+- **Invariant:** Advance the writer revision only after a successful write.
+  Join pending queue restoration, save paused resume snapshots and history,
+  and report errors before daemon teardown. Merge history by ID once. Check
+  cancellation and shutdown state after startup awaits; reject stale daemon
+  startup generations. The termination owner cancels quit on failure or timeout.
+- **Check:** Use an isolated local daemon with optional Copy disabled. Save
+  while one file is complete and another is active, restart only that daemon,
+  resume the same job ID, and compare hashes and file counts. Inject a writer
+  failure, retry the same revision, add history during restore, and cancel
+  daemon startup during health checks. Do not use the owner's app or remotes.
