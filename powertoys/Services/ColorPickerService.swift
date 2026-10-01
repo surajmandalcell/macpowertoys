@@ -38,6 +38,7 @@ final class ColorPickerService {
     private let selectedProjectKey = "color-picker.selected-project.v1"
     private let formatKey = "color-picker.format.v1"
     private let maximumHistory = 100
+    @ObservationIgnored private var persistenceTask: Task<Void, Never>?
 
     init(defaults: UserDefaults = .standard, sampler: any ColorSampling = NSColorSampler()) {
         self.defaults = defaults
@@ -189,11 +190,28 @@ final class ColorPickerService {
         save()
     }
 
-    private func save() {
-        defaults.set(try? JSONEncoder().encode(history), forKey: historyKey)
+    func flushPersistence() async {
+        await persistenceTask?.value
     }
 
-    private func saveProjects() {
-        defaults.set(try? JSONEncoder().encode(projects), forKey: projectsKey)
+    private func save() {
+        let history = history
+        let projects = projects
+        // UserDefaults is thread-safe; the task chain orders snapshot writes.
+        nonisolated(unsafe) let defaults = defaults
+        let historyKey = historyKey
+        let projectsKey = projectsKey
+        let previous = persistenceTask
+        persistenceTask = Task.detached(priority: .utility) {
+            await previous?.value
+            if let data = try? JSONEncoder().encode(history) {
+                defaults.set(data, forKey: historyKey)
+            }
+            if let data = try? JSONEncoder().encode(projects) {
+                defaults.set(data, forKey: projectsKey)
+            }
+        }
     }
+
+    private func saveProjects() { save() }
 }
