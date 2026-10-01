@@ -62,6 +62,25 @@ compile. Evidence: `tmp/redesign/logs/w3-audit-portman-debug-final.log`.
 The newer duplicate was canceled under the latest orchestrator instruction.
 Hosted execution and signed interaction checks remain open.
 
+## Round 12 review, 2026-10-01
+
+Panels-r11 item 1 and applets-r11 item 1 are source-fixed in `f59a6d0d`.
+The supplied signed `43ce0eb9` captures show the same all-row action defect
+in both appearances. The shared localRow condition now uses actual row hover,
+keyboard focus, or accessibility focus. Global focus-paint mode does not
+replace rest metrics. Memory and uptime remain in the details button value.
+The fixed 134pt slot, colors, sparklines, and row geometry remain.
+
+The extracted production condition passes 200 state combinations. The prior
+condition fails 10. Evidence: `tmp/redesign/logs/w3-audit-portman-r12-focus.log`
+and `w3-audit-portman-r12-focus-before.log` in the same directory.
+The existing hosted hover regression checks absent rest actions and metric
+values in both states. One tests-mode gate is pending after the source commit.
+Hosted execution and signed rest/one-focused-row captures in both appearances
+remain with the orchestrator. The shared UI chrome topic is updated in place;
+its isolated patch is `tmp/redesign/logs/audit-portman-r12-ui-chrome.patch`.
+This patch remains for integration because the topic has other owners' edits.
+
 ## Status glyph, 2026-10-01
 
 The owner now requires one SF Symbol identity on every glyph surface.
