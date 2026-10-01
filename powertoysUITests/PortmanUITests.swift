@@ -35,16 +35,18 @@ final class PortmanUITests: XCTestCase {
             return
         }
         let bar = app.descendants(matching: .any)["portman.memoryBreakdown"]
+        let fullRow = app.descendants(matching: .any)["portman.local.row.7414"]
         XCTAssertTrue(bar.exists)
-        XCTAssertEqual(row.frame.minX, bar.frame.minX, accuracy: 1)
-        XCTAssertEqual(row.frame.width, bar.frame.width, accuracy: 1)
+        XCTAssertTrue(fullRow.exists)
+        XCTAssertEqual(fullRow.frame.minX, bar.frame.minX, accuracy: 1)
+        XCTAssertEqual(fullRow.frame.width, bar.frame.width, accuracy: 1)
         let sort = app.descendants(matching: .any)["portman.sort"]
         XCTAssertTrue(sort.isHittable, "Sort by is clipped below the four-server panel")
         attach(app.screenshot(), named: "Portman four servers and footer")
     }
 
     @MainActor
-    func testServerHoverReplacesMetricsWithActions() throws {
+    func testServerHoverKeepsActionsVisibleAndStill() throws {
         let listener = Process()
         listener.executableURL = URL(fileURLWithPath: "/usr/bin/nc")
         listener.arguments = ["-l", "7265"]
@@ -75,10 +77,15 @@ final class PortmanUITests: XCTestCase {
         XCTAssertEqual(sort.value as? String, "Memory")
         attach(app.screenshot(), named: "Portman sorted by memory")
 
-        row.coordinate(withNormalizedOffset: CGVector(dx: 0.05, dy: 0.5)).hover()
         let link = app.buttons["portman.link.7265"]
-        XCTAssertTrue(link.waitForExistence(timeout: 5), "Row hover did not show the link action")
-        XCTAssertTrue(app.buttons["portman.stop.7265"].exists)
+        let stop = app.buttons["portman.stop.7265"]
+        XCTAssertTrue(link.isHittable, "The link action is missing at rest")
+        XCTAssertTrue(stop.isHittable, "The stop action is missing at rest")
+        let linkFrame = link.frame
+        let stopFrame = stop.frame
+        row.coordinate(withNormalizedOffset: CGVector(dx: 0.05, dy: 0.5)).hover()
+        XCTAssertEqual(link.frame, linkFrame, "Hover moved the link action")
+        XCTAssertEqual(stop.frame, stopFrame, "Hover moved the stop action")
         attach(app.screenshot(), named: "Portman server hover")
 
         link.hover()
@@ -110,16 +117,16 @@ final class PortmanUITests: XCTestCase {
         XCTAssertTrue(ready.waitForExistence(timeout: 10), app.debugDescription)
         if app.staticTexts["No servers listening"].exists {
             XCTAssertTrue(app.staticTexts["0 KB"].isHittable)
-            XCTAssertTrue(app.staticTexts["Local development ports 3000–9999 will appear here."].isHittable,
-                          "The empty-state explanation is clipped below the menu-bar panel")
+            XCTAssertTrue(app.staticTexts["No servers listening"].isHittable)
+            XCTAssertFalse(app.staticTexts["Local development ports 3000–9999 will appear here."].exists,
+                           "The empty-state help must stay in its tooltip")
         } else {
             XCTAssertTrue(app.descendants(matching: .any)["portman.sort"].isHittable)
         }
         attach(app.screenshot(), named: "Portman Servers")
 
         forward.coordinate(withNormalizedOffset: CGVector(dx: 0.95, dy: 0.5)).click()
-        XCTAssertTrue(app.staticTexts["SSH port forwarding"].waitForExistence(timeout: 5))
-        XCTAssertTrue(app.textFields["SSH alias or username at IP address"].exists)
+        XCTAssertTrue(app.textFields["SSH alias or username at IP address"].waitForExistence(timeout: 5))
         attach(app.screenshot(), named: "Portman Forward")
 
         let host = app.textFields["SSH alias or username at IP address"]
@@ -130,7 +137,7 @@ final class PortmanUITests: XCTestCase {
             attach(app.screenshot(), named: "Portman invalid host")
             XCTFail("The invalid SSH host did not show an error.\n\(app.debugDescription)")
         }
-        XCTAssertFalse(app.staticTexts["0 ports on -bad"].exists,
+        XCTAssertFalse(app.buttons["Clear scan"].exists,
                        "A failed scan was presented as a completed result")
         host.click()
         app.typeKey("a", modifierFlags: .command)
@@ -232,14 +239,14 @@ final class PortmanUITests: XCTestCase {
         let forward = app.buttons["portman.page.Forward"]
         XCTAssertTrue(forward.waitForExistence(timeout: 20))
         forward.click()
-        XCTAssertTrue(app.staticTexts["SSH port forwarding"].waitForExistence(timeout: 5))
+        XCTAssertTrue(app.textFields["SSH alias or username at IP address"].waitForExistence(timeout: 5))
 
         let statusItem = app.menuBars.statusItems["portman.statusItem"]
         XCTAssertTrue(statusItem.waitForExistence(timeout: 5))
         statusItem.click()
-        XCTAssertFalse(app.staticTexts["SSH port forwarding"].exists)
+        XCTAssertFalse(app.textFields["SSH alias or username at IP address"].exists)
         statusItem.click()
-        XCTAssertTrue(app.staticTexts["SSH port forwarding"].waitForExistence(timeout: 20),
+        XCTAssertTrue(app.textFields["SSH alias or username at IP address"].waitForExistence(timeout: 20),
                       "Portman returned to Servers after reopening its panel")
         attach(app.screenshot(), named: "Portman Forward after reopening")
         app.buttons["portman.page.Servers"].click()

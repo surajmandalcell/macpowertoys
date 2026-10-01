@@ -1,5 +1,34 @@
 # Portman request list
 
+## Production audit, 2026-10-01
+
+S5 and A4-A7 remain in progress until the orchestrator installs the final
+signed build and checks the controls. The audit report is
+`tmp/redesign/logs/w1-audit-portman.md`. The binding density and motion
+correction supersedes the older card and hover-swap layouts below.
+
+The source fixes cleanup totals for overlapping selected process trees and
+excludes protected descendants from the forecast. Name sorting uses the
+visible project title. Settings search matches the visible labels. Remote
+Docker metadata matches TCP mappings only. A host without ss or lsof reports
+a scan error. Automatic cleanup checks folders outside the main actor.
+Focused tests cover these logic changes.
+
+Forward's toolbar, remote rows, tunnel rows, empty states, and Settings use
+direct sections and rows. Uptime, counts, state, and process metadata use the
+trailing side of rows. Server actions stay visible at rest. Hover changes
+color without swapping or fading content. Help stays in tooltips. Detail
+actions use shared controls and a shared popup. Complete rows include actions
+and values in their hover fill.
+
+Standalone checks of the current scanner and projection pass. A disposable
+HTTP server and SSH daemon pass discovery, process stats, loopback HTTP
+forwarding, forwarding stop, stale process rejection, and guarded server stop.
+No existing server, forward, user key, or credential store was changed.
+Supplied dark and light captures are baseline evidence. Background panel
+routes were attempted; installed capture and build results are in the report.
+Local app-hosted tests and installation belong to the orchestrator.
+
 ## Status glyph, 2026-10-01
 
 The owner now requires one SF Symbol identity on every glyph surface.
