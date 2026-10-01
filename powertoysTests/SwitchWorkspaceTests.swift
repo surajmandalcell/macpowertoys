@@ -268,6 +268,145 @@ final class SwitchWorkspaceTests: XCTestCase {
                        0o700)
     }
 
+    func testRetainedUsageSurvivesFailureAndClearsQuotasWhenSignInIsRequired() async throws {
+        let files = FileManager.default
+        let root = files.temporaryDirectory.appending(path: "mpt-switch-cache-\(UUID().uuidString)")
+        defer { try? files.removeItem(at: root) }
+        let paths = ManagerPaths.environment(["AI_MANAGER_ROOT": root.path,
+                                               "AI_MANAGER_CODEX_EXECUTABLE": root.appending(path: "missing-codex").path])
+        let model = SwitchWorkspaceModel(paths: paths)
+        await model.load()
+        try await importAccount(named: "cached", into: model, root: root)
+        let account = try XCTUnwrap(model.accounts.first)
+        let cached = sampleUsage()
+        let cache = try CodexUsageStatisticsCache(
+            databaseURL: paths.applicationSupport.appending(path: "cache/account-usage.sqlite"),
+            activityDatabaseURL: paths.applicationSupport.appending(path: "activity/daily.sqlite"))
+        try await cache.upsertSuccess(accountID: account.id, snapshot: cached)
+        try await cache.upsertSuccess(accountID: account.id, snapshot: .init(
+            account: cached.account, requiresOpenAIAuthentication: cached.requiresOpenAIAuthentication,
+            rateLimits: cached.rateLimits, usage: cached.usage, dailyUsage: [],
+            fetchedAt: cached.fetchedAt.addingTimeInterval(1)))
+        try "model = \"gpt-test\"\n".write(to: paths.defaultHome.appending(path: "config.toml"),
+                                         atomically: true, encoding: .utf8)
+        try Data("{\"gpt-test\":{\"input_cost_per_token\":0.000002,\"output_cost_per_token\":0.00001}}".utf8)
+            .write(to: paths.applicationSupport.appending(path: "cache/model-pricing.json"))
+        await model.loadAPIPricing()
+        XCTAssertEqual(model.apiPrice?.inputEquivalent(for: 1_000_000), 2)
+        XCTAssertEqual(model.apiPrice?.outputEquivalent(for: 1_000_000), 10)
+
+        await model.refresh()
+        XCTAssertEqual(model.dailyUsage[account.id]?.count, cached.dailyUsage.count)
+        let defaultBefore = model.snapshot?.status.firstDefaultAccountID
+        await model.loadUsage(account.id)
+        XCTAssertNotNil(model.usage[account.id])
+        XCTAssertNotNil(model.usageErrors[account.id])
+        XCTAssertEqual(model.snapshot?.status.firstDefaultAccountID, defaultBefore)
+
+        let originalAuth = try Data(contentsOf: account.credentialFile)
+        try Data("{}".utf8).write(to: account.credentialFile, options: .atomic)
+        await model.verify(account.id)
+        XCTAssertEqual(model.selectedAccount?.verification.state, .needsSignIn)
+        XCTAssertNil(model.usage[account.id])
+        XCTAssertEqual(model.dailyUsage[account.id]?.count, cached.dailyUsage.count)
+        try originalAuth.write(to: account.credentialFile, options: .atomic)
+        let reopened = SwitchWorkspaceModel(paths: paths)
+        await reopened.load()
+        XCTAssertNil(reopened.errorMessage)
+        XCTAssertEqual(reopened.accounts.count, 1)
+        XCTAssertNil(reopened.usage[account.id])
+        XCTAssertEqual(reopened.dailyUsage[account.id]?.count, cached.dailyUsage.count)
+    }
+
+    func testDailyActivityUsesYesterdayAndKeepsTotalsOutsideTheSelectedPeriod() throws {
+        let formatter = ISO8601DateFormatter()
+        formatter.formatOptions = [.withFullDate]
+        formatter.timeZone = TimeZone(secondsFromGMT: 0)
+        let now = try XCTUnwrap(formatter.date(from: "2026-10-01"))
+        let rows: [CodexDailyUsageSnapshot] = [
+            .init(startDate: "2026-10-01", tokens: 10),
+            .init(startDate: "2026-09-30", tokens: 30),
+            .init(startDate: "2026-09-31", tokens: 999),
+            .init(startDate: "2026-09-30", tokens: -10),
+            .init(startDate: "2025-12-31", tokens: 1_000_000)]
+        let yesterday = SwitchActivityGrid.makePresentation(rows: rows, period: .yesterday, now: now)
+        let days = yesterday.weeks.flatMap { $0 }.compactMap { $0 }
+        XCTAssertEqual(days.map(\.date), [try XCTUnwrap(formatter.date(from: "2026-09-30"))])
+        XCTAssertEqual(days.map(\.tokens), [30])
+        XCTAssertEqual(days.first?.level, 0)
+        XCTAssertEqual(yesterday.totals["today"], 10)
+        XCTAssertEqual(yesterday.totals["yesterday"], 30)
+        let emptyToday = SwitchActivityGrid.makePresentation(rows: Array(rows.suffix(1)), period: .today, now: now)
+        XCTAssertTrue(emptyToday.hasData)
+        XCTAssertEqual(emptyToday.totals["today"], 0)
+        let overflow = SwitchActivityGrid.makePresentation(rows: [
+            .init(startDate: "2026-10-01", tokens: Int64.max),
+            .init(startDate: "2026-10-01", tokens: 1)], period: .today, now: now)
+        XCTAssertEqual(overflow.weeks.flatMap { $0 }.compactMap { $0 }.first?.tokens, Int64.max)
+    }
+
+    func testFailedSwitchReconcilesCoreStatusAndPreservesTheDefault() async throws {
+        let files = FileManager.default
+        let root = files.temporaryDirectory.appending(path: "mpt-switch-fault-\(UUID().uuidString)")
+        defer { try? files.removeItem(at: root) }
+        let paths = ManagerPaths.environment(["AI_MANAGER_ROOT": root.path])
+        let model = SwitchWorkspaceModel(paths: paths)
+        await model.load()
+        try await importAccount(named: "first", into: model, root: root)
+        try await importAccount(named: "second", into: model, root: root)
+        let first = try XCTUnwrap(model.accounts.first { $0.identity.email == "first@example.test" })
+        let second = try XCTUnwrap(model.accounts.first { $0.identity.email == "second@example.test" })
+        await model.makeDefault(first.id)
+        let manager = try AccountManager(paths: paths, writerCheck: { _ in .inactive }, faultInjector: { point in
+            if point == .afterDefaultCredentialPublication { throw AIManagerError.operationFailed("Synthetic switch interruption") }
+        })
+        let interrupted = SwitchWorkspaceModel(paths: paths, manager: manager)
+        await interrupted.load()
+        await interrupted.makeDefault(second.id)
+        let current = try await manager.status()
+        XCTAssertNotNil(interrupted.errorMessage)
+        XCTAssertFalse(interrupted.isWorking)
+        XCTAssertEqual(interrupted.snapshot?.status, current)
+        XCTAssertEqual(current.firstDefaultAccountID, first.id)
+    }
+
+    func testClaudeProfilesResumeVerifyAndLaunchWithoutChangingCodex() async throws {
+        let files = FileManager.default
+        let root = files.temporaryDirectory.appending(path: "mpt-switch-claude-\(UUID().uuidString)")
+        defer { try? files.removeItem(at: root) }
+        try files.createDirectory(at: root, withIntermediateDirectories: true)
+        let executable = root.appending(path: "claude")
+        try "#!/bin/sh\nprintf '%s\\n' '{\"loggedIn\":true,\"email\":\"claude@example.test\"}'\n"
+            .write(to: executable, atomically: true, encoding: .utf8)
+        try files.setAttributes([.posixPermissions: 0o700], ofItemAtPath: executable.path)
+        let paths = ManagerPaths.environment(["AI_MANAGER_ROOT": root.path,
+                                               "AI_MANAGER_CLAUDE_EXECUTABLE": executable.path])
+        let runner = AccountLoginRunner(launch: { _, _ in })
+        let manager = try AccountManager(paths: paths, writerCheck: { _ in .inactive }, loginRunner: runner)
+        let model = SwitchWorkspaceModel(paths: paths, manager: manager)
+        await model.load()
+        try await importAccount(named: "codex", into: model, root: root)
+        let codex = try XCTUnwrap(model.accounts.first)
+        await model.makeDefault(codex.id)
+        await model.beginLogin(providerID: .claudeCode)
+
+        let reopened = SwitchWorkspaceModel(paths: paths, manager: manager)
+        await reopened.load()
+        XCTAssertNotNil(reopened.login)
+        await reopened.checkLogin()
+        let claude = try XCTUnwrap(reopened.accounts.first { $0.identity.providerID == .claudeCode })
+        await reopened.verify(claude.id)
+        await reopened.openAccount(claude.id)
+        XCTAssertNil(reopened.errorMessage)
+        XCTAssertEqual(reopened.snapshot?.status.defaultAccountID(for: .codex), codex.id)
+        XCTAssertEqual(reopened.snapshot?.status.defaultAccountID(for: .claudeCode), claude.id)
+        let script = paths.applicationSupport.appending(path: "Launch/Open MacPowerToys Switch.command")
+        let contents = try String(contentsOf: script, encoding: .utf8)
+        XCTAssertTrue(contents.contains("export CLAUDE_CONFIG_DIR='\(claude.home.path)'"))
+        XCTAssertTrue(contents.contains("unset OPENAI_API_KEY CODEX_ACCESS_TOKEN XAI_API_KEY ANTHROPIC_API_KEY"))
+        XCTAssertNil(reopened.usage[claude.id])
+    }
+
     private func importAccount(named name: String, into model: SwitchWorkspaceModel,
                                root: URL) async throws {
         let files = FileManager.default

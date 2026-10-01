@@ -44,6 +44,9 @@ struct SwitchSettingsContent: View {
                 dataLocationRow("Codex account vault", url: paths.credentialStore)
                 dataLocationRow("Grok Build home", url: paths.grokHome)
                 dataLocationRow("Grok Build account vault", url: paths.grokCredentialStore)
+                dataLocationRow("Claude Code profiles", url: paths.applicationSupport.appending(path: "claude-code-profiles"))
+                dataLocationRow("Usage history", url: paths.applicationSupport.appending(path: "activity/daily.sqlite"))
+                dataLocationRow("Recovery backups", url: paths.applicationSupport.appending(path: "backups"))
             }
         }
         .buttonStyle(OnePlusButtonStyle())
