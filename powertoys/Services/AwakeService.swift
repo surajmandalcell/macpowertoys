@@ -50,13 +50,17 @@ final class AwakeService {
     var assertionOwnerCount: Int { assertionID == 0 ? 0 : 1 }
 
     func setMode(_ mode: AwakeMode, duration: TimeInterval? = nil, until date: Date? = nil) {
-        configuration.mode = mode
         switch mode {
         case .passive, .indefinite:
             configuration.expiresAt = nil
             timedDeadline = nil
         case .timed:
-            let seconds = max(1, duration ?? configuration.intervalSeconds)
+            let requestedSeconds = duration ?? configuration.intervalSeconds
+            guard Self.isValidDuration(requestedSeconds) else {
+                assertionError = "Enter a valid duration."
+                return
+            }
+            let seconds = max(1, requestedSeconds)
             configuration.intervalSeconds = seconds
             configuration.expiresAt = Date().addingTimeInterval(seconds)
             timedDeadline = .now.advanced(by: .seconds(seconds))
@@ -64,7 +68,13 @@ final class AwakeService {
             configuration.expiresAt = date ?? configuration.expiresAt ?? Date().addingTimeInterval(3600)
             timedDeadline = nil
         }
+        configuration.mode = mode
         applyConfiguration()
+    }
+
+    static func isValidDuration(_ seconds: TimeInterval) -> Bool {
+        // ponytail: cap timed intervals at 68 years; use Indefinite for longer sessions.
+        seconds.isFinite && (0...TimeInterval(Int32.max)).contains(seconds)
     }
 
     func setKeepDisplayOn(_ enabled: Bool) {
@@ -84,7 +94,8 @@ final class AwakeService {
     }
 
     func setPresets(_ presets: [TimeInterval]) {
-        configuration.presets = Array(Set(presets.filter { $0 >= 60 })).sorted().prefix(8).map { $0 }
+        configuration.presets = Array(Set(presets.filter { $0 >= 60 && Self.isValidDuration($0) }))
+            .sorted().prefix(8).map { $0 }
         save()
     }
 
@@ -238,10 +249,12 @@ final class AwakeService {
     }()
 
     static func presetLabel(_ seconds: TimeInterval) -> String {
-        presetFormatter.string(from: seconds) ?? duration(seconds)
+        guard isValidDuration(seconds) else { return duration(0) }
+        return presetFormatter.string(from: seconds) ?? duration(seconds)
     }
 
     static func duration(_ seconds: TimeInterval) -> String {
+        guard isValidDuration(seconds) else { return "00:00" }
         let value = max(0, Int(seconds.rounded()))
         let hours = value / 3600
         let minutes = (value % 3600) / 60
