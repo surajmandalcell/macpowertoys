@@ -14,10 +14,12 @@ public struct OnePlusAreaChart: View {
     private let values: [Double]
     private let range: ClosedRange<Double>
     private let color: Color
-    public init(values: [Double], range: ClosedRange<Double> = 0...100, color: Color = OnePlusColor.chartLine) {
-        self.values = values; self.range = range; self.color = color
+    private let quietBackground: Bool
+    public init(values: [Double], range: ClosedRange<Double> = 0...100, color: Color = OnePlusColor.chartLine,
+                quietBackground: Bool = false) {
+        self.values = values; self.range = range; self.color = color; self.quietBackground = quietBackground
     }
-    public var body: some View { OnePlusPlot(values: values, range: range, color: color, area: true) }
+    public var body: some View { OnePlusPlot(values: values, range: range, color: color, area: true, quietBackground: quietBackground) }
 }
 
 private struct OnePlusPlot: View {
@@ -26,14 +28,17 @@ private struct OnePlusPlot: View {
     let range: ClosedRange<Double>
     let color: Color
     let area: Bool
+    var quietBackground = false
     var body: some View {
-        let paths = OnePlusChartPaths.cached(values: values, range: range)
+        let paths = OnePlusChartPaths.cached(values: values, range: range, smoothed: quietBackground)
         Canvas { context, size in
             let width = size.width.isFinite ? max(0, size.width) : 0
             let height = size.height.isFinite ? max(0, size.height) : 0
             let transform = CGAffineTransform(scaleX: width, y: max(0, height - 2))
             let line = paths.line.applying(transform)
-            if area {
+            if area && quietBackground {
+                context.fill(paths.area.applying(transform), with: .color(color.opacity(0.07)))
+            } else if area {
                 for y in [CGFloat(0), 0.5, 1] {
                     var grid = Path()
                     grid.move(to: CGPoint(x: 0, y: y * height))
@@ -59,7 +64,8 @@ private struct OnePlusPlot: View {
                     cg.restoreGState()
                 }
             }
-            context.stroke(line, with: .color(color), style: StrokeStyle(lineWidth: 1.2, lineCap: .round, lineJoin: .round))
+            context.stroke(line, with: .color(color.opacity(quietBackground ? 0.35 : 1)),
+                           style: StrokeStyle(lineWidth: quietBackground ? 1 : 1.2, lineCap: .round, lineJoin: .round))
         }
         .clipped().accessibilityElement(children: .ignore)
         .accessibilityLabel(values.last.flatMap { $0.isFinite ? "Latest value \($0.formatted())" : nil } ?? "No history")
@@ -73,14 +79,14 @@ final class OnePlusChartPaths {
     private static let cache: NSCache<NSString, OnePlusChartPaths> = {
         let cache = NSCache<NSString, OnePlusChartPaths>(); cache.countLimit = 128; return cache
     }()
-    static func cached(values: [Double], range: ClosedRange<Double>) -> OnePlusChartPaths {
-        let key = "\(range)|\(values)" as NSString
+    static func cached(values: [Double], range: ClosedRange<Double>, smoothed: Bool = false) -> OnePlusChartPaths {
+        let key = "\(range)|\(values)|\(smoothed)" as NSString
         if let result = cache.object(forKey: key) { return result }
-        let result = OnePlusChartPaths(values: values, range: range)
+        let result = OnePlusChartPaths(values: values, range: range, smoothed: smoothed)
         cache.setObject(result, forKey: key)
         return result
     }
-    init(values: [Double], range: ClosedRange<Double>) {
+    init(values: [Double], range: ClosedRange<Double>, smoothed: Bool = false) {
         var line = Path()
         var area = Path()
         let lower = range.lowerBound.isFinite ? range.lowerBound : 0
@@ -102,8 +108,17 @@ final class OnePlusChartPaths {
             if last == nil {
                 line.move(to: point)
                 area.move(to: CGPoint(x: point.x, y: 1))
-            } else { line.addLine(to: point) }
-            area.addLine(to: point)
+                area.addLine(to: point)
+            } else if smoothed, let last {
+                let middle = (last.x + point.x) / 2
+                let control1 = CGPoint(x: middle, y: last.y)
+                let control2 = CGPoint(x: middle, y: point.y)
+                line.addCurve(to: point, control1: control1, control2: control2)
+                area.addCurve(to: point, control1: control1, control2: control2)
+            } else {
+                line.addLine(to: point)
+                area.addLine(to: point)
+            }
             last = point
         }
         if let last {

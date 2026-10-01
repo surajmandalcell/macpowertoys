@@ -127,26 +127,39 @@ final class OnePlusRowAndTabGeometryTests: XCTestCase {
         }
     }
 
-    func testHistoryBackgroundCoversTileOutsideContentPaddingInBothAppearances() throws {
+    func testHistoryBackgroundStaysQuietAndBelowLabelsInBothAppearances() throws {
         for appearance in [NSAppearance.Name.aqua, .darkAqua] {
-            var renders: [NSBitmapImageRep] = []
-            for values in [[], [50.0, 50.0]] {
-                let host = NSHostingView(rootView: OnePlusMenuTile(height: 70, textured: false) {
-                    Color.clear.frame(width: 1, height: 1)
-                }.historyBackground(values: values))
-                let window = attach(host, width: OnePlusMenuMetrics.columnWidth(span: 1), height: 70, appearance: appearance)
-                defer { window.close() }
-                renders.append(try bitmap(host))
-            }
-            let scale = CGFloat(renders[0].pixelsHigh) / 70
-            for x in [2, renders[0].pixelsWide - 3] {
-                let differences = try (30...38).map { y in
-                    let rest = try XCTUnwrap(renders[0].colorAt(x: x, y: Int(CGFloat(y) * scale)))
-                    let history = try XCTUnwrap(renders[1].colorAt(x: x, y: Int(CGFloat(y) * scale)))
-                    return abs(rest.redComponent - history.redComponent) + abs(rest.blueComponent - history.blueComponent)
+            for ink in [OnePlusColor.chartLine, OnePlusColor.accent] {
+                var renders: [NSBitmapImageRep] = []
+                for values in [[], [50.0, 50.0], (0..<120).map { $0.isMultiple(of: 2) ? 0.0 : 100.0 }] {
+                    let host = NSHostingView(rootView: OnePlusMenuTile(height: 70, textured: false) {
+                        Color.clear.frame(width: 1, height: 1)
+                    }.historyBackground(values: values, color: ink))
+                    let window = attach(host, width: OnePlusMenuMetrics.columnWidth(span: 1), height: 70, appearance: appearance)
+                    defer { window.close() }
+                    renders.append(try bitmap(host))
                 }
-                XCTAssertGreaterThan(differences.max() ?? 0, 0.08)
-                XCTAssertLessThan(differences.max() ?? 0, 0.4)
+                let scale = CGFloat(renders[0].pixelsHigh) / 70
+                func difference(_ render: Int, _ x: Int, _ y: Int) throws -> CGFloat {
+                    let rest = try XCTUnwrap(renders[0].colorAt(x: x, y: Int(CGFloat(y) * scale)))
+                    let history = try XCTUnwrap(renders[render].colorAt(x: x, y: Int(CGFloat(y) * scale)))
+                    return max(abs(rest.redComponent - history.redComponent),
+                               abs(rest.greenComponent - history.greenComponent),
+                               abs(rest.blueComponent - history.blueComponent))
+                }
+                for render in 1...2 {
+                    for y in 2..<27 {
+                        XCTAssertEqual(try difference(render, renders[0].pixelsWide / 2, y), 0, accuracy: 0.001)
+                    }
+                }
+                for x in [2, renders[0].pixelsWide - 3] {
+                    let differences = try (46...51).map { try difference(1, x, $0) }
+                    XCTAssertGreaterThan(differences.max() ?? 0, 0.04)
+                    XCTAssertLessThan(differences.max() ?? 0, 0.32)
+                    let fill = try difference(1, x, 60)
+                    XCTAssertGreaterThan(fill, 0.005)
+                    XCTAssertLessThan(fill, 0.065)
+                }
             }
         }
     }
