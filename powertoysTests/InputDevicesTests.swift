@@ -1,5 +1,6 @@
 import SwiftUI
 import XCTest
+import OnePlusUI
 @testable import powertoys
 
 @MainActor
@@ -298,6 +299,40 @@ final class InputDevicesTests: XCTestCase {
         XCTAssertEqual(card.headerDetail, "System \(0.35.formatted(.number.precision(.fractionLength(2))))×")
         expanded = true
         XCTAssertEqual(card.headerDetail, "2 connected")
+    }
+
+    func testDevicesCaptionAndRefreshKeepTheSameHeaderCenter() throws {
+        for appearance in [NSAppearance.Name.aqua, .darkAqua] {
+            let host = NSHostingView(rootView: InputDisclosureHeader(title: "Devices", detail: "2 connected",
+                isExpanded: .constant(false), refreshAction: {})
+                .environment(\.onePlusCardPadding, 0).onePlusDensity(.compact)
+                .frame(width: 340, height: 40).background(OnePlusColor.panel))
+            let window = NSWindow(contentRect: CGRect(x: -10000, y: -10000, width: 340, height: 40),
+                                  styleMask: .borderless, backing: .buffered, defer: false)
+            window.isReleasedWhenClosed = false
+            window.appearance = NSAppearance(named: appearance)
+            window.contentView = host
+            defer { window.close() }
+            host.layoutSubtreeIfNeeded()
+            let bitmap = try XCTUnwrap(host.bitmapImageRepForCachingDisplay(in: host.bounds))
+            host.cacheDisplay(in: host.bounds, to: bitmap)
+            let scale = CGFloat(bitmap.pixelsWide) / 340
+            func center(_ range: Range<Int>) throws -> CGFloat {
+                var rows: [Int] = []
+                for y in 0..<Int(38 * scale) {
+                    for x in Int(CGFloat(range.lowerBound) * scale)..<Int(CGFloat(range.upperBound) * scale) {
+                        let color = try XCTUnwrap(bitmap.colorAt(x: x, y: y)?.usingColorSpace(.sRGB))
+                        if appearance == .darkAqua ? color.redComponent > 0.55 : color.redComponent < 0.65 { rows.append(y) }
+                    }
+                }
+                return CGFloat(try XCTUnwrap(rows.min()) + XCTUnwrap(rows.max()) + 1) / (2 * scale)
+            }
+            let refresh = try center(280..<312)
+            XCTAssertEqual(refresh, 20, accuracy: 1)
+            XCTAssertEqual(try center(0..<80), refresh, accuracy: 2)
+            XCTAssertEqual(try center(130..<275), refresh, accuracy: 2)
+            XCTAssertEqual(try center(317..<337), refresh, accuracy: 2)
+        }
     }
 
     func testProfileRowsFollowTheirGates() throws {
