@@ -368,7 +368,11 @@
 
 Production correction, 2026-10-01: use direct rows for single controls and
 empty states. Put metadata on the trailing side and helper status behind an
-info glyph with help. Apply row hover to the full content surface; an opaque
+info glyph with help. Cloud Sync keeps the blue remote name and complete-name
+help, with provider, latest transfer state, and time on that same centered row.
+Leading control-row glyphs use the shared 13pt menu role; labels remain 10.5pt
+and rows remain 30pt. Action-button glyphs keep their matching label size.
+Apply row hover to the full content surface; an opaque
 card inside a button label hides the button's hover background. Switch has
 one header refresh icon for accounts and visible usage, one orange unloaded
 limit warning with help, and no per-account refresh hints. Keep progress and
