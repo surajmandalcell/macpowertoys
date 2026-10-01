@@ -109,7 +109,8 @@ private struct RcloneTransferHeader: View {
     }
 
     var body: some View {
-        OnePlusPageHeader(title: title, subtitle: subtitle) {
+        OnePlusPageHeader(title: title) {
+            Text(subtitle).onePlusText(.caption).lineLimit(1)
             if manager.jobs.contains(where: { $0.state.isTerminal }) {
                 Button("Clear finished") { manager.clearFinished() }
                     .buttonStyle(OnePlusButtonStyle(.ghost))

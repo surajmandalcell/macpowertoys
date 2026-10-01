@@ -4,6 +4,7 @@
 //
 
 import SwiftUI
+import OnePlusUI
 import CryptoKit
 
 struct TransferFileTreeView: View {
@@ -122,39 +123,39 @@ struct TransferFileTreeView: View {
                 Toggle("List uploaded", isOn: $splitByUploadStatus)
                     .toggleStyle(.checkbox)
                     .controlSize(.small)
-                    .font(.system(size: 11))
+                    .onePlusText(.caption)
 
                 Toggle("Hide ignored", isOn: $hideIgnored)
                     .toggleStyle(.checkbox)
                     .controlSize(.small)
-                    .font(.system(size: 11))
+                    .onePlusText(.caption)
 
                 Spacer()
                 Text("\(patterns.count) patterns active")
-                    .font(.system(size: 11))
-                    .foregroundStyle(.secondary)
+                    .onePlusText(.caption)
+                    .foregroundStyle(OnePlusColor.secondary)
                 Button {
-                    withAnimation(.easeInOut(duration: 0.15)) { showPatternEditor.toggle() }
+                    showPatternEditor.toggle()
                 } label: {
                     Image(systemName: "chevron.right")
-                        .font(.system(size: 9, weight: .semibold))
-                        .foregroundStyle(.secondary)
+                        .onePlusText(.caption)
+                        .foregroundStyle(OnePlusColor.secondary)
                         .rotationEffect(.degrees(showPatternEditor ? 90 : 0))
                         .contentShape(Rectangle())
                 }
                 .buttonStyle(.plain)
-                .focusEffectDisabled()
+                .focusEffectDisabled(!OnePlusFocusPolicy.shared.showsFocus)
                 .help("Edit ignore patterns")
             }
 
             if showPatternEditor {
                 TextEditor(text: $patternsText)
                     .thinScrollIndicators()
-                    .font(.system(size: 11, design: .monospaced))
+                    .onePlusText(.mono)
                     .scrollContentBackground(.hidden)
                     .frame(height: 70)
                     .padding(6)
-                    .background(Color.primary.opacity(0.06))
+                    .background(OnePlusColor.track)
                     .clipShape(RoundedRectangle(cornerRadius: 6))
             }
         }
@@ -176,8 +177,8 @@ struct TransferFileTreeView: View {
             centered {
                 VStack(spacing: 10) {
                     Text(rootError)
-                        .font(.system(size: 12))
-                        .foregroundStyle(.secondary)
+                        .onePlusText(.row)
+                        .foregroundStyle(OnePlusColor.secondary)
                         .multilineTextAlignment(.center)
                     Button("Retry") {
                         Task { await loadRoots() }
@@ -188,8 +189,8 @@ struct TransferFileTreeView: View {
         } else if roots.isEmpty {
             centered {
                 Text("No files found")
-                    .font(.system(size: 12))
-                    .foregroundStyle(.tertiary)
+                    .onePlusText(.row)
+                    .foregroundStyle(OnePlusColor.muted)
             }
         } else {
             treeList
@@ -226,8 +227,8 @@ struct TransferFileTreeView: View {
             centered {
                 VStack(spacing: 10) {
                     Text(indexError)
-                        .font(.system(size: 12))
-                        .foregroundStyle(.secondary)
+                        .onePlusText(.row)
+                        .foregroundStyle(OnePlusColor.secondary)
                         .multilineTextAlignment(.center)
                     Button("Retry") { ensureIndex() }
                 }
@@ -238,24 +239,24 @@ struct TransferFileTreeView: View {
                 HStack(spacing: 8) {
                     ProgressView().controlSize(.small)
                     Text("indexing…")
-                        .font(.system(size: 12))
-                        .foregroundStyle(.secondary)
+                        .onePlusText(.row)
+                        .foregroundStyle(OnePlusColor.secondary)
                 }
             }
         } else {
             if projection.searchRows.isEmpty {
                 centered {
                     Text("No matches")
-                        .font(.system(size: 12))
-                        .foregroundStyle(.tertiary)
+                        .onePlusText(.row)
+                        .foregroundStyle(OnePlusColor.muted)
                 }
             } else {
                 ScrollView {
                     LazyVStack(spacing: 1) {
                         if indexTruncated {
                             Text("showing first \(Self.indexLimit.formatted())")
-                                .font(.system(size: 11))
-                                .foregroundStyle(.tertiary)
+                                .onePlusText(.caption)
+                                .foregroundStyle(OnePlusColor.muted)
                                 .frame(maxWidth: .infinity, alignment: .leading)
                                 .padding(.horizontal, 8)
                                 .padding(.bottom, 4)
@@ -286,35 +287,35 @@ struct TransferFileTreeView: View {
     @ViewBuilder
     private var splitStatusView: some View {
         if let rootError {
-            centered { Text(rootError).font(.system(size: 12)).foregroundStyle(.secondary) }
+            centered { Text(rootError).onePlusText(.row).foregroundStyle(OnePlusColor.secondary) }
         } else if let indexError {
-            centered { Text(indexError).font(.system(size: 12)).foregroundStyle(.secondary) }
+            centered { Text(indexError).onePlusText(.row).foregroundStyle(OnePlusColor.secondary) }
         } else if let destinationError {
-            centered { Text(destinationError).font(.system(size: 12)).foregroundStyle(.secondary) }
+            centered { Text(destinationError).onePlusText(.row).foregroundStyle(OnePlusColor.secondary) }
         } else if allEntries == nil || isIndexing || isLoadingRoot || isLoadingDestination {
             centered {
                 HStack(spacing: 8) {
                     ProgressView().controlSize(.small)
                     Text("Comparing source and destination…")
-                        .font(.system(size: 12))
-                        .foregroundStyle(.secondary)
+                        .onePlusText(.row)
+                        .foregroundStyle(OnePlusColor.secondary)
                 }
             }
         } else {
             VStack(spacing: 0) {
                 if indexTruncated {
                     Text("Comparison is limited to the first \(Self.indexLimit.formatted()) source entries.")
-                        .font(.system(size: 11))
-                        .foregroundStyle(.orange)
+                        .onePlusText(.caption)
+                        .foregroundStyle(OnePlusColor.warn)
                         .frame(maxWidth: .infinity, alignment: .leading)
                         .padding(.horizontal, 12)
                         .padding(.vertical, 7)
                     QuietDivider()
                 }
                 HStack(spacing: 0) {
-                    statusColumn(title: "NOT UPLOADED", status: .pending, rows: projection.pendingRows, tint: .orange)
+                    statusColumn(title: "NOT UPLOADED", status: .pending, rows: projection.pendingRows, tint: OnePlusColor.warn)
                     QuietDivider()
-                    statusColumn(title: "UPLOADED", status: .uploaded, rows: projection.uploadedRows, tint: .green)
+                    statusColumn(title: "UPLOADED", status: .uploaded, rows: projection.uploadedRows, tint: OnePlusColor.ok)
                 }
             }
         }
@@ -329,8 +330,8 @@ struct TransferFileTreeView: View {
         VStack(spacing: 0) {
             HStack(spacing: 6) {
                 Circle().fill(tint).frame(width: 6, height: 6)
-                Text(title).font(.system(size: 10, weight: .medium)).foregroundStyle(.secondary)
-                Text("\(rows.count)").font(.system(size: 10)).foregroundStyle(.tertiary).monospacedDigit()
+                Text(title).onePlusText(.caption).foregroundStyle(OnePlusColor.secondary)
+                Text("\(rows.count)").onePlusText(.caption).foregroundStyle(OnePlusColor.muted).monospacedDigit()
                 Spacer()
             }
             .padding(.horizontal, 12)
@@ -339,8 +340,8 @@ struct TransferFileTreeView: View {
 
             if rows.isEmpty {
                 Text(status == .uploaded ? "Nothing uploaded yet" : "Everything is uploaded")
-                    .font(.system(size: 11))
-                    .foregroundStyle(.tertiary)
+                    .onePlusText(.caption)
+                    .foregroundStyle(OnePlusColor.muted)
                     .frame(maxWidth: .infinity, maxHeight: .infinity)
             } else {
                 ScrollView {
@@ -390,14 +391,13 @@ struct TransferFileTreeView: View {
     private var toastView: some View {
         if let toast {
             Text(toast)
-                .font(.system(size: 11))
+                .onePlusText(.caption)
                 .lineLimit(2)
                 .padding(.horizontal, 12)
                 .padding(.vertical, 8)
                 .background(.regularMaterial, in: RoundedRectangle(cornerRadius: 8))
                 .padding(.horizontal, 16)
                 .padding(.bottom, 12)
-                .transition(.move(edge: .bottom).combined(with: .opacity))
         }
     }
 
@@ -597,12 +597,12 @@ struct TransferFileTreeView: View {
     }
 
     private func showToast(_ message: String) {
-        withAnimation(.easeInOut(duration: 0.15)) { toast = message }
+        toast = message
         toastTask?.cancel()
         toastTask = Task {
             try? await Task.sleep(for: .seconds(3))
             guard !Task.isCancelled else { return }
-            withAnimation(.easeInOut(duration: 0.15)) { toast = nil }
+            toast = nil
         }
     }
 }
@@ -627,39 +627,32 @@ private struct FileTreeRowView: View {
     var body: some View {
         HStack(spacing: 6) {
             leading
-                .opacity(isIgnored ? 0.45 : 1)
 
             Spacer(minLength: 8)
 
             if isIgnored {
                 Text("ignored")
-                    .font(.system(size: 9))
-                    .foregroundStyle(.tertiary)
-                    .padding(.horizontal, 6)
-                    .padding(.vertical, 2)
-                    .background(Capsule().fill(Color.primary.opacity(0.06)))
+                    .onePlusText(.caption)
+                    .foregroundStyle(OnePlusColor.muted)
+
             } else if isHovering {
                 Button(action: onIgnore) {
                     Image(systemName: "eye.slash")
-                        .font(.system(size: 10))
-                        .foregroundStyle(.secondary)
+                        .onePlusText(.caption)
+                        .foregroundStyle(OnePlusColor.secondary)
                         .contentShape(Rectangle())
                 }
                 .buttonStyle(.plain)
-                .focusEffectDisabled()
+                .focusEffectDisabled(!OnePlusFocusPolicy.shared.showsFocus)
                 .accessibilityLabel("Add to ignore patterns")
             }
 
             trailingMeta
-                .opacity(isIgnored ? 0.45 : 1)
         }
         .padding(.vertical, 4)
         .padding(.trailing, 8)
         .padding(.leading, 8 + CGFloat(depth) * 16)
-        .background(
-            RoundedRectangle(cornerRadius: 8)
-                .fill(isHovering ? Color.primary.opacity(0.06) : Color.clear)
-        )
+        .onePlusRowHover()
         .onHover { isHovering = $0 }
     }
 
@@ -675,7 +668,7 @@ private struct FileTreeRowView: View {
                 .contentShape(Rectangle())
             }
             .buttonStyle(.plain)
-            .focusEffectDisabled()
+            .focusEffectDisabled(!OnePlusFocusPolicy.shared.showsFocus)
         } else {
             HStack(spacing: 6) {
                 if showsDisclosure {
@@ -695,24 +688,23 @@ private struct FileTreeRowView: View {
                 .frame(width: 12, height: 12)
         } else {
             Image(systemName: "chevron.right")
-                .font(.system(size: 9, weight: .semibold))
-                .foregroundStyle(.secondary)
+                .onePlusText(.caption)
+                .foregroundStyle(OnePlusColor.secondary)
                 .rotationEffect(.degrees(isExpanded ? 90 : 0))
-                .animation(.easeInOut(duration: 0.15), value: isExpanded)
                 .frame(width: 12, height: 12)
         }
     }
 
     private var entryIcon: some View {
         Image(systemName: entry.icon)
-            .font(.system(size: 11))
-            .foregroundStyle(entry.isDir ? AnyShapeStyle(Color.accentColor) : AnyShapeStyle(.secondary))
+            .onePlusText(.caption)
+            .foregroundStyle(entry.isDir ? AnyShapeStyle(OnePlusColor.accent) : AnyShapeStyle(OnePlusColor.secondary))
             .frame(width: 16)
     }
 
     private var nameText: some View {
         Text(label)
-            .font(.system(size: 12))
+            .onePlusText(.row)
             .lineLimit(1)
             .truncationMode(.middle)
     }
@@ -721,14 +713,14 @@ private struct FileTreeRowView: View {
     private var trailingMeta: some View {
         if !size.isEmpty {
             Text(size)
-                .font(.system(size: 11))
-                .foregroundStyle(.secondary)
+                .onePlusText(.caption)
+                .foregroundStyle(OnePlusColor.secondary)
                 .monospacedDigit()
         }
         if let modified {
             Text(modified)
-                .font(.system(size: 11))
-                .foregroundStyle(.tertiary)
+                .onePlusText(.caption)
+                .foregroundStyle(OnePlusColor.muted)
         }
     }
 }

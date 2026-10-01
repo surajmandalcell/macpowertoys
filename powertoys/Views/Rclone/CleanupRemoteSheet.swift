@@ -23,6 +23,7 @@ struct CleanupRemoteSheet: View {
     @State private var checked: Set<String> = []
     @State private var checkedBytes: Int64 = 0
     @State private var truncatedFrom: Int?
+    @State private var isConfirmingDeletion = false
     @State private var scanTask: Task<Void, Never>?
 
     private static let displayCap = 5000
@@ -59,7 +60,6 @@ struct CleanupRemoteSheet: View {
                 .truncationMode(.middle)
                 .help(scope)
             content
-                .utilityContentTransition(value: phase)
                 .frame(minHeight: OnePlusMetrics.spacing[8] * 15)
         } footer: {
             if phase == .review {
@@ -67,14 +67,19 @@ struct CleanupRemoteSheet: View {
                     .keyboardShortcut(.cancelAction)
                     .buttonStyle(OnePlusButtonStyle(.ghost))
                 Button(checked.count == 1 ? "Delete 1 Item" : "Delete \(checked.count) Items") {
-                    deleteSelected()
+                    isConfirmingDeletion = true
                 }
                 .buttonStyle(OnePlusButtonStyle(.destructive))
                 .keyboardShortcut(.defaultAction)
                 .disabled(checked.isEmpty)
             }
         }
-        .utilityAnimation(value: phase == .review)
+        .confirmationDialog("Delete \(checked.count) selected items?", isPresented: $isConfirmingDeletion) {
+            Button("Delete Selected Items", role: .destructive, action: deleteSelected)
+            Button("Cancel", role: .cancel) {}
+        } message: {
+            Text("This permanently deletes the selected items from \(scope). Selected folders include all their contents.")
+        }
         .onAppear(perform: startScan)
         .onDisappear { scanTask?.cancel() }
     }
@@ -89,17 +94,17 @@ struct CleanupRemoteSheet: View {
                 ProgressView()
                     .controlSize(.small)
                 Text("Scanning \(scope) for matches…")
-                    .font(.system(size: 11))
-                    .foregroundStyle(.secondary)
+                    .onePlusText(.caption)
+                    .foregroundStyle(OnePlusColor.secondary)
             }
         case .empty:
             stateContainer {
                 Image(systemName: "checkmark.circle.fill")
-                    .font(.system(size: 28))
-                    .foregroundStyle(.green)
+                    .onePlusText(.pageTitle)
+                    .foregroundStyle(OnePlusColor.ok)
                 Text("Nothing matches your ignore rules.")
-                    .font(.system(size: 13))
-                    .foregroundStyle(.secondary)
+                    .onePlusText(.row)
+                    .foregroundStyle(OnePlusColor.secondary)
             }
         case .review:
             reviewList
@@ -108,8 +113,8 @@ struct CleanupRemoteSheet: View {
                 ProgressView()
                     .controlSize(.small)
                 Text("Deleting \(count) items…")
-                    .font(.system(size: 11))
-                    .foregroundStyle(.secondary)
+                    .onePlusText(.caption)
+                    .foregroundStyle(OnePlusColor.secondary)
                     .monospacedDigit()
             }
         case .done(let deleted, let failed):
@@ -117,11 +122,11 @@ struct CleanupRemoteSheet: View {
         case .failure(let message):
             stateContainer {
                 Image(systemName: "exclamationmark.triangle")
-                    .font(.system(size: 28))
-                    .foregroundStyle(.secondary)
+                    .onePlusText(.pageTitle)
+                    .foregroundStyle(OnePlusColor.secondary)
                 Text(message)
-                    .font(.system(size: 13))
-                    .foregroundStyle(.secondary)
+                    .onePlusText(.row)
+                    .foregroundStyle(OnePlusColor.secondary)
                     .multilineTextAlignment(.center)
                     .padding(.horizontal, 40)
                 Button("Retry", action: startScan)
@@ -139,16 +144,16 @@ struct CleanupRemoteSheet: View {
     private func doneSummary(deleted: Int, failed: Int) -> some View {
         stateContainer {
             Image(systemName: failed > 0 ? "exclamationmark.triangle.fill" : "checkmark.circle.fill")
-                .font(.system(size: 28))
+                .onePlusText(.pageTitle)
                 .foregroundStyle(failed > 0 ? AnyShapeStyle(.orange) : AnyShapeStyle(.green))
             HStack(spacing: 4) {
                 Text(deleted == 1 ? "Deleted 1 item" : "Deleted \(deleted) items")
-                    .font(.system(size: 13))
+                    .onePlusText(.row)
                     .monospacedDigit()
                 if failed > 0 {
                     Text("· \(failed) failed")
-                        .font(.system(size: 13))
-                        .foregroundStyle(.red)
+                        .onePlusText(.row)
+                        .foregroundStyle(OnePlusColor.danger)
                         .monospacedDigit()
                 }
             }
@@ -182,13 +187,13 @@ struct CleanupRemoteSheet: View {
 
     private var selectionHeader: some View {
         HStack(spacing: 8) {
-            CheckboxButton(state: selectAllState, action: toggleAll)
+            CheckboxButton(state: selectAllState, action: toggleAll).accessibilityLabel("Select all matches")
             Text("Select all")
-                .font(.system(size: 12))
+                .onePlusText(.row)
             Spacer()
             Text("\(checked.count) selected · \(RcloneFormat.bytes(checkedBytes))")
-                .font(.system(size: 11))
-                .foregroundStyle(.secondary)
+                .onePlusText(.caption)
+                .foregroundStyle(OnePlusColor.secondary)
                 .monospacedDigit()
         }
         .padding(.horizontal, 20)
@@ -197,54 +202,56 @@ struct CleanupRemoteSheet: View {
 
     private func truncationNote(total: Int) -> some View {
         Text("Showing the first \(Self.displayCap) of \(total) matches. Run the cleanup again to catch the rest.")
-            .font(.system(size: 11))
-            .foregroundStyle(.secondary)
+            .onePlusText(.caption)
+            .foregroundStyle(OnePlusColor.secondary)
             .padding(.horizontal, 8)
             .padding(.bottom, 6)
     }
 
     private func groupRow(_ group: CleanupGroup) -> some View {
         HStack(spacing: 8) {
-            CheckboxButton(state: groupState(group)) { toggleGroup(group) }
+            CheckboxButton(state: groupState(group)) { toggleGroup(group) }.accessibilityLabel("Select \(group.title)")
             Image(systemName: "folder")
-                .font(.system(size: 11))
-                .foregroundStyle(.secondary)
+                .onePlusText(.caption)
+                .foregroundStyle(OnePlusColor.secondary)
                 .frame(width: 16)
             Text(group.title)
-                .font(.system(size: 12, weight: .medium))
+                .onePlusText(.cardTitle)
                 .lineLimit(1)
                 .truncationMode(.middle)
             Spacer(minLength: 8)
             Text("\(group.items.count)")
-                .font(.system(size: 11))
-                .foregroundStyle(.tertiary)
+                .onePlusText(.caption)
+                .foregroundStyle(OnePlusColor.muted)
                 .monospacedDigit()
         }
         .padding(.horizontal, 8)
         .padding(.top, 8)
         .padding(.bottom, 4)
+        .onePlusRowHover()
     }
 
     private func entryRow(_ entry: RemoteEntry) -> some View {
         HStack(spacing: 8) {
-            CheckboxButton(state: checked.contains(entry.path) ? .on : .off) { toggle(entry) }
+            CheckboxButton(state: checked.contains(entry.path) ? .on : .off) { toggle(entry) }.accessibilityLabel("Select \(entry.name)")
             Image(systemName: entry.icon)
-                .font(.system(size: 12))
-                .foregroundStyle(entry.isDir ? AnyShapeStyle(Color.accentColor) : AnyShapeStyle(.secondary))
+                .onePlusText(.row)
+                .foregroundStyle(entry.isDir ? AnyShapeStyle(OnePlusColor.accent) : AnyShapeStyle(OnePlusColor.secondary))
                 .frame(width: 16)
             Text(entry.name)
-                .font(.system(size: 12))
+                .onePlusText(.row)
                 .lineLimit(1)
                 .truncationMode(.middle)
             Spacer(minLength: 8)
             Text(entry.isDir ? "folder + contents" : RcloneFormat.bytes(entry.size))
-                .font(.system(size: 11))
-                .foregroundStyle(.secondary)
+                .onePlusText(.caption)
+                .foregroundStyle(OnePlusColor.secondary)
                 .monospacedDigit()
         }
         .padding(.leading, 24)
         .padding(.trailing, 8)
         .padding(.vertical, 3)
+        .onePlusRowHover()
     }
 
     private func close() {
@@ -403,12 +410,12 @@ private struct CheckboxButton: View {
     var body: some View {
         Button(action: action) {
             Image(systemName: state.icon)
-                .font(.system(size: 13))
-                .foregroundStyle(state == .off ? AnyShapeStyle(.secondary) : AnyShapeStyle(Color.accentColor))
+                .onePlusText(.row)
+                .foregroundStyle(state == .off ? AnyShapeStyle(OnePlusColor.secondary) : AnyShapeStyle(OnePlusColor.accent))
                 .frame(width: 20, height: 20)
                 .contentShape(Rectangle())
         }
-        .buttonStyle(.plain)
-        .focusEffectDisabled()
+        .buttonStyle(OnePlusButtonStyle(.icon, size: .small))
+        .accessibilityValue(state == .on ? "Selected" : state == .mixed ? "Partly selected" : "Not selected")
     }
 }

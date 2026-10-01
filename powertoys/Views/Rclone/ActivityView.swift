@@ -63,9 +63,10 @@ struct ActivityView: View {
     var body: some View {
         OnePlusPage(scrolls: false) {
             OnePlusPageHeader(
-                title: "Activity",
-                subtitle: "\(records.count) transfers · \(RcloneFormat.bytes(aggregateBytes)) moved"
+                title: "Activity"
             ) {
+                Text("\(records.count) transfers · \(RcloneFormat.bytes(aggregateBytes)) moved")
+                    .onePlusText(.caption)
                 OnePlusSearchField(
                     prompt: "Search activity",
                     text: $search,
@@ -76,11 +77,8 @@ struct ActivityView: View {
             }
         } content: {
             if records.isEmpty {
-                OnePlusCard {
-                    OnePlusEmptyState("No activity yet", systemImage: "clock.arrow.circlepath")
-                        .frame(maxHeight: .infinity)
-                }
-                .frame(maxHeight: .infinity)
+                OnePlusEmptyState("No activity yet", systemImage: "clock.arrow.circlepath")
+                    .frame(maxHeight: .infinity)
             } else {
                 OnePlusCard {
                     OnePlusNativeTable(
