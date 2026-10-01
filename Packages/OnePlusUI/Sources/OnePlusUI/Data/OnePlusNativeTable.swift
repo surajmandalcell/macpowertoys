@@ -6,8 +6,10 @@ public struct OnePlusTableItem: Equatable, Identifiable {
     public let cells: [String]
     public let symbol: String
     public let url: URL?
-    public init(id: String, cells: [String], symbol: String, url: URL? = nil) {
+    public let usage: [Int: Double]
+    public init(id: String, cells: [String], symbol: String, url: URL? = nil, usage: [Int: Double] = [:]) {
         self.id = id; self.cells = cells; self.symbol = symbol; self.url = url
+        self.usage = usage
     }
 }
 
@@ -145,7 +147,7 @@ public struct OnePlusNativeTable: NSViewRepresentable {
                 for column in owner.columns.indices where table.rect(ofColumn: column).intersects(table.visibleRect) {
                     let before = old.cells.indices.contains(column) ? old.cells[column] : nil
                     let after = item.cells.indices.contains(column) ? item.cells[column] : nil
-                    if before != after || (column == 0 && old.symbol != item.symbol) {
+                    if before != after || old.usage[column] != item.usage[column] || (column == 0 && old.symbol != item.symbol) {
                         changed[column, default: []].insert(row)
                     }
                 }
@@ -172,9 +174,12 @@ public struct OnePlusNativeTable: NSViewRepresentable {
             }
             guard let index = Int(column.identifier.rawValue), owner.columns.indices.contains(index),
                   item.cells.indices.contains(index) else { return nil }
-            let identifier = index == 0 ? Self.primaryCellID : NSUserInterfaceItemIdentifier("\(Self.textCellID.rawValue).\(index)")
+            let hasUsage = item.usage[index] != nil
+            let base = index == 0 ? Self.primaryCellID.rawValue : "\(Self.textCellID.rawValue).\(index)"
+            let identifier = NSUserInterfaceItemIdentifier(base + (hasUsage ? ".usage" : ""))
             let cell = tableView.makeView(withIdentifier: identifier, owner: self) as? NSTableCellView
-                ?? makeTextCell(identifier: identifier, includesIcon: index == 0, column: owner.columns[index])
+                ?? makeTextCell(identifier: identifier, includesIcon: index == 0, hasUsage: hasUsage, column: owner.columns[index])
+            cell.subviews.compactMap { $0 as? OnePlusTableUsageBar }.first?.value = item.usage[index] ?? 0
             guard let text = cell.textField else { return cell }
             text.stringValue = item.cells[index]
             let role = owner.columns[index].textRole ?? (owner.columns[index].trailing || index == 3 ? .mono : .row)
@@ -197,7 +202,7 @@ public struct OnePlusNativeTable: NSViewRepresentable {
             button.setAccessibilityLabel("File actions")
             return button
         }
-        private func makeTextCell(identifier: NSUserInterfaceItemIdentifier, includesIcon: Bool, column: OnePlusGridColumn) -> NSTableCellView {
+        private func makeTextCell(identifier: NSUserInterfaceItemIdentifier, includesIcon: Bool, hasUsage: Bool, column: OnePlusGridColumn) -> NSTableCellView {
             let cell = NSTableCellView()
             cell.identifier = identifier
             let text = NSTextField(labelWithString: "")
@@ -217,6 +222,19 @@ public struct OnePlusNativeTable: NSViewRepresentable {
                     icon.centerYAnchor.constraint(equalTo: cell.centerYAnchor), icon.widthAnchor.constraint(equalToConstant: 15),
                     icon.heightAnchor.constraint(equalToConstant: 15)])
                 inset = iconInset + 15 + 10
+            }
+            if hasUsage {
+                let bar = OnePlusTableUsageBar()
+                bar.translatesAutoresizingMaskIntoConstraints = false
+                bar.setAccessibilityElement(false)
+                cell.addSubview(bar)
+                NSLayoutConstraint.activate([
+                    bar.leadingAnchor.constraint(equalTo: cell.leadingAnchor, constant: inset),
+                    bar.centerYAnchor.constraint(equalTo: cell.centerYAnchor),
+                    bar.widthAnchor.constraint(equalToConstant: OnePlusDiskmanMetrics.sizeBarWidth),
+                    bar.heightAnchor.constraint(equalToConstant: OnePlusDiskmanMetrics.sizeBarHeight)
+                ])
+                inset += OnePlusDiskmanMetrics.sizeBarWidth + OnePlusMetrics.actionSpacing
             }
             NSLayoutConstraint.activate([text.leadingAnchor.constraint(equalTo: cell.leadingAnchor, constant: inset),
                 text.trailingAnchor.constraint(equalTo: cell.trailingAnchor, constant: -column.trailingInset),

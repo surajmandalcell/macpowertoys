@@ -64,6 +64,12 @@ final class DiskExplorerViewTests: XCTestCase {
         XCTAssertEqual(projection.rows.first?.cells.count, 5)
         XCTAssertNil(projection.rows.last?.url)
         XCTAssertTrue(projection.entriesByID[big.id] === big)
+        XCTAssertEqual(projection.rows.map(\.sizeShare), [1, 1, 0.09, 0])
+        let filtered = DiskEntryTable.project([small, big], request: .init(revision: .distantPast,
+            sourceID: request.sourceID, search: "small", column: 2, ascending: false,
+            apparent: false, showsFileCount: false))
+        XCTAssertEqual(filtered.rows.first?.tableItem.usage[2], 1)
+        XCTAssertEqual(DiskEntryTable.project([grouped], request: request).rows.first?.sizeShare, 0)
     }
 
     func testQuickLookKeepsAllRealSelectionsInOrder() {
