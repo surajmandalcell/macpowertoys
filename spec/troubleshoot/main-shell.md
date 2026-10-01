@@ -80,18 +80,23 @@
 
 ## Two-Row Launcher Card Density
 
-- **Symptom:** Four columns were correct, but 172pt cards left the last of 13
-  built-in tools clipped at the bottom of the standard 980×676 launcher.
-- **Cause:** The icon/name header and the enable/Open row took separate vertical
-  space above each description.
-- **Invariant:** The 2026-10-01 owner rule requires four flexible columns,
-  151pt cards, a 40pt icon beside the name and quiet category caption, a
-  two-line summary, and a bottom enable/Open row. Cards have no grain. Keep
-  the card, favorite, switch, and Open actions separate.
+- **Symptom:** Tall cards clipped the last tool row. The later 151pt cards
+  still left an empty band between each description and its controls in
+  the signed `198055e4` capture.
+- **Cause:** A fixed card height and an expanding spacer separated the
+  description from the enable/Open row.
+- **Invariant:** The 2026-10-01 owner correction requires four flexible
+  columns and content-sized cards with equal heights in each grid row.
+  Keep a 40pt icon beside the name and quiet category caption. Reserve two
+  summary lines and put the enable/Open row 12pt below them. Cards have no
+  grain. Keep the card, favorite, switch, and Open actions separate.
 - **Check:** Hosted [run 36124794622](https://github.com/surajmandalcell/macpowertoys/actions/runs/36124794622)
   passed and saved 980×676 dark and light native captures. All 13 cards are
   fully visible with complete descriptions and visible controls. Live action
-  checks await a focus-safe signed app session.
+  checks await a focus-safe signed app session. `8dda22b4` replaces the
+  fixed height with content sizing. `LauncherGridTests` measures real cards
+  and checks equal heights below the old 151pt height, plus a four-card row.
+  Both compile gates pass; hosted execution and signed recapture remain.
 
 ## Compact Tool Enablement
 

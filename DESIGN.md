@@ -557,9 +557,11 @@ Follows `macpowertoys-repaired.html` and its handoff comment.
 - All tools: the title `All tools`, the subtitle `Your Mac, a little more
   capable.`, tabs `All tools N`, `Enabled N`, and `Favorites N`, a trailing
   sort select (Default order, Name, Category), and a grid or list toggle.
-  Grid: four columns, 12 pt gaps, 151 pt cards with a 40 pt tool icon, name,
-  category caption, favorite star (visible on hover or when set), two-line
-  description, an unlabeled enable switch, and a ghost `Open` text button
+  Grid: four columns and 12 pt gaps. Card height follows content, with
+  equal heights in each grid row. Keep a 40 pt tool icon, name, category
+  caption, favorite star (visible on hover or when set), and a reserved
+  two-line description. Put the footer row 12 pt below the description,
+  with an unlabeled enable switch and a ghost `Open` text button
   without an arrow. Catalog cards have no grain texture (owner correction
   2026-10-01: the page looked too busy). List: 52 pt rows with the same
   parts.
