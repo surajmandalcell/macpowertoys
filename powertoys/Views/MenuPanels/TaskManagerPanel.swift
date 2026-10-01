@@ -259,10 +259,10 @@ private struct TaskManagerMenuHomeTile: View {
             case .battery:
                 OnePlusMenuTile(height: 34, textured: false, action: { selection = page }) {
                     HStack(spacing: OnePlusMenuMetrics.tileGap) {
-                        Image(systemName: page.symbol).onePlusText(.tableHeader)
+                        Image(systemName: page.symbol).font(.system(size: OnePlusMenuMetrics.glyphSize)).foregroundStyle(OnePlusColor.secondary)
                         Spacer(minLength: OnePlusMetrics.navRowGap)
                         Text(data.value.value + data.value.unit).onePlusText(.nav, color: OnePlusColor.ink).monospacedDigit()
-                        if data.charging { Image(systemName: "bolt.fill").onePlusText(.tableHeader) }
+                        if data.charging { Image(systemName: "bolt.fill").font(.system(size: OnePlusMenuMetrics.glyphSize)).foregroundStyle(OnePlusColor.muted) }
                     }.frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .leading)
                 }
             default: EmptyView()
@@ -273,11 +273,12 @@ private struct TaskManagerMenuHomeTile: View {
     }
 
     private var metricLabel: some View {
-        HStack(spacing: OnePlusMenuMetrics.tileGap) {
-            Image(systemName: page.symbol).accessibilityHidden(true)
+        HStack(spacing: OnePlusMetrics.navRowGap) {
+            Image(systemName: page.symbol).font(.system(size: OnePlusMenuMetrics.glyphSize)).accessibilityHidden(true)
             Text(page == .sensors ? "Thermal" : page.title)
                 .lineLimit(1).truncationMode(.tail).help(page == .sensors ? "Thermal" : page.title)
-        }.onePlusText(.row, color: OnePlusColor.secondary).layoutPriority(1)
+        }.onePlusText(page == .cpu || page == .gpu || page == .memory ? .cardTitle : .row,
+                      color: OnePlusColor.secondary).layoutPriority(1)
     }
 
     private func rate(_ arrow: String, _ parts: TaskManagerMenuValue, accent: Bool = false) -> some View {
