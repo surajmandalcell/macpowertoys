@@ -336,7 +336,7 @@ private struct TrayTabButton: View {
 
     var body: some View {
         Button(action: action) {
-            TrayTabIcon(tab: tab, selected: selected, size: 12)
+            TrayTabIcon(tab: tab, selected: selected, size: OnePlusMenuMetrics.glyphSize)
                 .foregroundStyle(selected ? OnePlusColor.ink : OnePlusColor.secondary)
                 .frame(width: TrayPopoverLayout.tabHeight, height: TrayPopoverLayout.tabHeight)
                 .contentShape(Rectangle())
