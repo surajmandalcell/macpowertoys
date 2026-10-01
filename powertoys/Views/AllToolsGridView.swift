@@ -76,7 +76,7 @@ struct AllToolsGridView: View {
             ForEach(visibleTools, id: \.id) { tool in
                 MainToolCard(tool: tool, favorite: favoriteBinding(tool.id), focusedToolID: $focusedToolID,
                              bodyFocus: $focusedCard, move: { moveFocus(from: tool.id, direction: $0) }, typeSelect: typeSelect) {
-                    selectedTool = tool.id
+                    selectSettings(tool.id)
                 }
             }
         }
@@ -88,7 +88,7 @@ struct AllToolsGridView: View {
                 ForEach(visibleTools, id: \.id) { tool in
                     MainToolListRow(tool: tool, favorite: favoriteBinding(tool.id), focusedToolID: $focusedToolID,
                                     bodyFocus: $focusedCard, move: { moveFocus(from: tool.id, direction: $0) }, typeSelect: typeSelect) {
-                        selectedTool = tool.id
+                        selectSettings(tool.id)
                     }
                 }
             }
@@ -112,6 +112,11 @@ struct AllToolsGridView: View {
             storedFavorites = MainCatalog.storing(favorites: updated)
             refreshCatalog()
         })
+    }
+
+    private func selectSettings(_ toolID: String) {
+        UserDefaults.standard.set(MainToolTab.settings.rawValue, forKey: MainToolTab.storageKey(for: toolID))
+        selectedTool = toolID
     }
 
     private func moveFocus(from id: String, direction: MoveCommandDirection) {
