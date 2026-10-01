@@ -4,6 +4,8 @@ import OnePlusUI
 struct HomeView: View {
     @AppStorage("main.page") private var selectedTool: String? = "all-tools"
     @State private var query = ""
+    @State private var searchFocusTrigger = 0
+    @State private var toolRouter = ToolActionRouter.shared
     @State private var filter = MainCatalogFilter.all
     @AppStorage("main.settingsTab") private var storedSettingsTab = MainSettingsTab.general.rawValue
     @State private var focusedToolID: String?
@@ -15,11 +17,25 @@ struct HomeView: View {
     var body: some View {
         OnePlusWindowRoot(canvas: .main) {
             ToolSidebarView(selectedTool: $selectedTool, searchText: $query,
-                            modifiedRevision: modifiedRevision)
+                            modifiedRevision: modifiedRevision, searchFocusTrigger: searchFocusTrigger)
         } content: {
             content
         }
         .background { keyboardActions }
+        .focusedSceneValue(\.appOpenSettings, { openPage("settings") })
+        .focusedSceneValue(\.appGlobalSearch, focusSearch)
+        .focusedSceneValue(\.appFind, AppCommandAction(title: "Find a Tool", perform: focusSearch))
+        .alert("Could not open tool", isPresented: Binding(
+            get: { toolRouter.launchFailure != nil },
+            set: { if !$0 { toolRouter.launchFailure = nil } }
+        ), presenting: toolRouter.launchFailure) { failure in
+            Button("Retry") { toolRouter.open(toolID: failure.toolID) }
+            Button("Open Logs") { toolRouter.open(toolID: "logs") }
+                .disabled(!SettingsManager.shared.isToolEnabled("logs"))
+            Button("Cancel", role: .cancel) {}
+        } message: { failure in
+            Text("\(ToolRegistry.tool(for: failure.toolID)?.name ?? failure.toolID): \(failure.message)")
+        }
         .onOpenToolPage("main", perform: openPage)
         .onReceive(NotificationCenter.default.publisher(for: .commandOpenSettings)) { _ in
             guard ToolActionRouter.windowIdentifier(NSApp.keyWindow?.identifier?.rawValue, matches: "main") else { return }
@@ -109,6 +125,10 @@ struct HomeView: View {
     private var settingsTab: Binding<MainSettingsTab> {
         Binding(get: { MainSettingsTab(rawValue: storedSettingsTab) ?? .general },
                 set: { storedSettingsTab = $0.rawValue })
+    }
+
+    private func focusSearch() {
+        searchFocusTrigger &+= 1
     }
 
     private func refreshShortcutTools() {
