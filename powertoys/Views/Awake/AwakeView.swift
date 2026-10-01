@@ -223,9 +223,6 @@ struct AwakeSettingsView: View {
             HStack(spacing: OnePlusMetrics.actionSpacing) {
                 Text("Process ID").onePlusText(.row)
                     .help(processHelp).accessibilityHint(processHelp)
-                Image(systemName: "questionmark.circle")
-                    .foregroundStyle(OnePlusColor.muted).help(processHelp)
-                    .accessibilityLabel(processHelp)
                 Spacer(minLength: OnePlusMetrics.actionSpacing)
                 OnePlusTextField("Process ID", text: $processID, onSubmit: attach)
                     .frame(width: OnePlusMetrics.controlColumn)
