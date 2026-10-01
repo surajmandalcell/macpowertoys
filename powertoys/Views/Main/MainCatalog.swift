@@ -19,7 +19,7 @@ enum MainSettingsTab: String, CaseIterable {
 }
 
 enum MainPageRoute: Equatable {
-    case catalog(MainCatalogFilter), settings(MainSettingsTab), modified, tool(String)
+    case catalog(MainCatalogFilter), settings(MainSettingsTab), modified, tool(String), manual(String)
 
     static func resolve(_ page: String, toolIDs: [String], savedSettingsTab: String = MainSettingsTab.general.rawValue) -> Self? {
         switch page {
@@ -30,6 +30,10 @@ enum MainPageRoute: Equatable {
         case "settings-about": return .settings(.about)
         case "modified": return .modified
         default:
+            if page.hasPrefix("manual/") {
+                let id = String(page.dropFirst(7))
+                return toolIDs.contains(id) ? .manual(id) : nil
+            }
             let id = page.hasPrefix("tool/") ? String(page.dropFirst(5)) : page
             return toolIDs.contains(id) ? .tool(id) : nil
         }

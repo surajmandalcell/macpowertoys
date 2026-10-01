@@ -4,6 +4,7 @@ import ServiceManagement
 
 struct MainSettingsView: View {
     @Binding var tab: MainSettingsTab
+    var showManual: (String) -> Void = { _ in }
     let changed: () -> Void
 
     var body: some View {
@@ -15,7 +16,7 @@ struct MainSettingsView: View {
             switch tab {
             case .general: MainGeneralSettings(changed: changed)
             case .marketplace: MarketplaceSettingsView()
-            case .about: MainAboutSettings()
+            case .about: MainAboutSettings(showManual: showManual)
             }
         }
         .accessibilityIdentifier("main.settings.\(tab.rawValue)")
@@ -69,8 +70,19 @@ private struct MainGeneralSettings: View {
                     Toggle("Close main window after opening a tool", isOn: $closeMainAfterOpen)
                         .labelsHidden().toggleStyle(OnePlusSwitchStyle())
                 }
-                OnePlusSettingRow("Show the menu-bar icon", separator: false) {
-                    Toggle("Show the menu-bar icon", isOn: $showTray).labelsHidden().toggleStyle(OnePlusSwitchStyle())
+                OnePlusSettingRow("Show the menu-bar icon",
+                                  help: "This switch controls MacPowerToys. macOS can hide the icon in System Settings > Menu Bar > Allow in the Menu Bar. If the menu bar is full, hide or move other items to make room.",
+                                  separator: false) {
+                    HStack(spacing: OnePlusMetrics.actionSpacing) {
+                        Button("System Settings") {
+                            if let url = NSWorkspace.shared.urlForApplication(withBundleIdentifier: "com.apple.systempreferences") {
+                                NSWorkspace.shared.open(url)
+                            }
+                        }
+                        .buttonStyle(OnePlusButtonStyle(.link, horizontalPadding: 0))
+                        .help("Open System Settings, then choose Menu Bar")
+                        Toggle("Show the menu-bar icon", isOn: $showTray).labelsHidden().toggleStyle(OnePlusSwitchStyle())
+                    }
                 }
             }
         }
@@ -118,6 +130,7 @@ private struct MainGeneralSettings: View {
 }
 
 private struct MainAboutSettings: View {
+    let showManual: (String) -> Void
     private let repository = "https://github.com/surajmandalcell/macpowertoys"
     private func metadata(_ key: String) -> String { Bundle.main.object(forInfoDictionaryKey: key) as? String ?? "Unavailable" }
 
@@ -158,6 +171,19 @@ private struct MainAboutSettings: View {
                     }
                 }.frame(maxWidth: .infinity)
             }.fixedSize(horizontal: false, vertical: true)
+            VStack(alignment: .leading, spacing: OnePlusMetrics.actionSpacing) {
+                HStack {
+                    OnePlusSectionTitle("Using MacPowerToys")
+                    Spacer()
+                    Menu("Tool manuals") {
+                        ForEach(ToolRegistry.allTools, id: \.id) { tool in
+                            Button(tool.name) { showManual(tool.id) }
+                        }
+                    }.menuStyle(.borderlessButton).fixedSize()
+                }
+                Text("Closing a window leaves enabled background tools running. Choose Quit MacPowerToys to stop them. Each tool's How to use page explains its actions and background work.")
+                    .onePlusText(.row, color: OnePlusColor.secondary)
+            }
         }
     }
 

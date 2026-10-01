@@ -16,7 +16,7 @@ final class MainCatalogTests: XCTestCase {
 
         let tool = try sourceFile("powertoys/Views/ToolAboutView.swift")
         XCTAssertFalse(tool.contains(".id(tool.id)"))
-        XCTAssertTrue(tool.contains(".onChange(of: toolId) { _, _ in tab = .settings }"))
+        XCTAssertTrue(tool.contains("tab = startsWithGuide ? .guide : .settings"))
 
         let sidebar = try sourceFile("powertoys/Views/ToolSidebarView.swift")
         XCTAssertTrue(sidebar.contains("@State private var hasChanges = false"))
@@ -129,8 +129,10 @@ final class MainCatalogTests: XCTestCase {
         for id in ids {
             XCTAssertEqual(MainPageRoute.resolve("tool/" + id, toolIDs: ids), .tool(id))
             XCTAssertEqual(MainPageRoute.resolve(id, toolIDs: ids), .tool(id))
+            XCTAssertEqual(MainPageRoute.resolve("manual/" + id, toolIDs: ids), .manual(id))
         }
         XCTAssertNil(MainPageRoute.resolve("tool/removed", toolIDs: ids))
+        XCTAssertNil(MainPageRoute.resolve("manual/removed", toolIDs: ids))
         XCTAssertNil(MainPageRoute.resolve("tool/logs/history", toolIDs: ids))
     }
 
