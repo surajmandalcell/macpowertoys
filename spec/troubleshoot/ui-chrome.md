@@ -1391,4 +1391,7 @@
   `swift test --filter OnePlusButtonAlignmentTests`. Offscreen bitmap checks cover both appearances
   at 1x and 2x and require each painted cap/glyph center within 0.5pt of the
   control frame center. They never order a window or take keyboard focus.
+  The round 11 sweep includes 25 caller symbols and 26pt headers. Its glyph
+  mask measures blue-minus-green coverage on neutral fills. An absolute blue
+  cutoff discards faint pin edges in dark mode and gives a false offset.
   Signed caller interaction remains an orchestrator check.
