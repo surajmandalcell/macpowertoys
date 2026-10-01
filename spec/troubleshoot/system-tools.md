@@ -515,6 +515,35 @@
 
 ## System Care And Mole
 
+- **Symptom:** Cleanup accepts a changed target, reports incomplete roots as a
+  complete scan, loses rows after sibling selection changes, or becomes idle
+  while its worker or CLI still runs. Name-based uninstall can select a second
+  bundle with the same name.
+- **Cause:** Candidate-supplied roots, mutable completion IDs, unowned detached
+  work, skipped read errors, and CLI calls without lifecycle or identity checks.
+- **Invariant:** Require one category's trusted root, an immediate child, and
+  unchanged file/root identities at restore and Trash. Walk original path
+  components with lstat; reject symlinks and dot traversal. Foundation can
+  rewrite an existing /private/var path to the /var symlink, so it cannot define
+  the path checked for ancestor links. Freeze Trash IDs and keep actual failures
+  selected. Lock selection and new work until the current worker exits. Trash
+  and Homebrew install are noncancelable. Read cancellation reaches the detached
+  worker; idle is published only after exit. Expose missing, denied, unsafe, and
+  I/O failures separately, plus the 500-child bound per root. An access error
+  alone does not prove TCC. Retry only affected roots and retain prior readable
+  results. Include package descendants in allocated sizes and throw read errors.
+- **Invariant:** Limit CLI output to 8 MiB and read time to 30 seconds. On cancel,
+  timeout, or overflow, TERM, wait at most 250 ms, then KILL and reap. Installed
+  help must advertise each preview flag. Before name-based uninstall, require
+  one exact selected path in fresh native and Mole inventories and recheck its
+  identity. Interactive commands run in Terminal; do not infer completion.
+- **Check:** Both shared compile gates pass. Disposable fixture probes pass for
+  identity replacement, links, partial Trash failure, competing starts, worker
+  exit, package size, coverage, retry, output cap, deadline, reap, and duplicate
+  bundle refusal. Removing the saved-file identity guard makes the probe fail.
+  Mole 1.54.0 help confirms clean, optimize, purge, installer, and uninstall
+  previews. Run SystemCareTests on hosted CI and verify the final signed app.
+
 - **Symptom:** Recent activity rows lack rules while adjacent setting cards
   retain them.
 - **Cause:** The card disabled the shared separator on every record.
