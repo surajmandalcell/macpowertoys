@@ -606,14 +606,19 @@ struct NetToysHistoryView: View {
         .frame(maxHeight: .infinity, alignment: .top)
     }
 
-    private var recentScans: some View {
+    @ViewBuilder private var recentScans: some View {
         let rows = model.recentScanRows
         let visibleRowCount = min(ssidAccessMessage == nil ? 2 : 1, rows.count)
-        return OnePlusCard {
-            OnePlusCardHeader("Recent IP scans")
-            if rows.isEmpty {
-                OnePlusSettingRow(model.recentScansEmptyTitle, help: "Completed IP Scanner runs appear here.", separator: false) {}
-            } else {
+        if rows.isEmpty {
+            HStack(spacing: OnePlusMetrics.actionSpacing) {
+                Text("Recent IP scans").onePlusText(.cardTitle).accessibilityAddTraits(.isHeader)
+                Spacer()
+                Text(model.recentScansEmptyTitle).onePlusText(.row, color: OnePlusColor.secondary)
+            }
+            .frame(height: OnePlusMetrics.settingRow)
+        } else {
+            OnePlusCard {
+                OnePlusCardHeader("Recent IP scans")
                 ScrollView {
                     LazyVStack(spacing: 0) {
                         ForEach(rows) { row in
