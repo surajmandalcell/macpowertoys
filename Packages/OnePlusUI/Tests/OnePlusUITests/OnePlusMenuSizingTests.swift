@@ -27,6 +27,12 @@ final class OnePlusMenuSizingTests: XCTestCase {
         layout()
         XCTAssertEqual(probe.markers[0]?.count.wrappedValue, 7)
         XCTAssertEqual(probe.liveTabs, [0])
+        selection.visible = false
+        layout()
+        XCTAssertTrue(probe.liveTabs.isEmpty)
+        selection.visible = true
+        layout()
+        XCTAssertEqual(probe.liveTabs, [0])
         XCTAssertEqual(host.fittingSize.height, 48 + 11 + 120, accuracy: 0.5)
     }
 
@@ -244,6 +250,7 @@ private struct MenuSizingContent: View {
 
 @MainActor private final class MenuTabSelection: ObservableObject {
     @Published var tab = 0
+    @Published var visible = true
 }
 @MainActor private final class MenuTabProbe {
     var markers: [Int: MenuTabMarker.View] = [:]
@@ -260,7 +267,7 @@ private struct MenuTabContent: View {
             } else {
                 MenuStatefulTab(tab: 1, probe: probe).frame(height: 900)
             }
-        }.environment(\.onePlusIsVisible, true)
+        }.environment(\.onePlusIsVisible, selection.visible)
     }
 }
 private struct MenuStatefulTab: View {

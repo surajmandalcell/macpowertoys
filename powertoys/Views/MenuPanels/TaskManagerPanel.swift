@@ -51,6 +51,7 @@ nonisolated enum SystemMonitorTrayPage: String, CaseIterable, Identifiable {
 }
 
 struct SystemMonitorMenuPopoverView: View {
+    private let diagnostic: Bool
     private let defaults: UserDefaults
     private let loadsRemoteProfiles: Bool
     private let onPreferredHeight: (CGFloat) -> Void
@@ -58,10 +59,12 @@ struct SystemMonitorMenuPopoverView: View {
 
     init(
         remoteProfiles: [SystemMonitorRemoteProfile]? = nil,
+        diagnostic: Bool = false,
         defaults: UserDefaults = .standard,
         onPreferredHeight: @escaping (CGFloat) -> Void = { _ in }
     ) {
         self.defaults = defaults
+        self.diagnostic = diagnostic
         let profiles = remoteProfiles ?? []
         loadsRemoteProfiles = remoteProfiles == nil
         self.onPreferredHeight = onPreferredHeight
@@ -69,7 +72,7 @@ struct SystemMonitorMenuPopoverView: View {
     }
 
     var body: some View {
-        SystemMonitorTrayView(remoteProfiles: remoteProfiles, onPreferredHeight: onPreferredHeight)
+        SystemMonitorTrayView(remoteProfiles: remoteProfiles, diagnostic: diagnostic, onPreferredHeight: onPreferredHeight)
         .frame(width: OnePlusMenuMetrics.width)
         .defaultAppStorage(defaults)
         .utilityMotionPolicy()
@@ -86,6 +89,7 @@ struct SystemMonitorMenuPopoverView: View {
 }
 
 struct SystemMonitorTrayView: View {
+    private let diagnostic: Bool
     @AppStorage("systemMonitor.trayPage") private var pageID = SystemMonitorTrayPage.home.rawValue
     private let remoteProfiles: [SystemMonitorRemoteProfile]
     private let onPreferredHeight: (CGFloat) -> Void
@@ -95,9 +99,11 @@ struct SystemMonitorTrayView: View {
 
     init(
         remoteProfiles: [SystemMonitorRemoteProfile] = [],
+        diagnostic: Bool = false,
         onPreferredHeight: @escaping (CGFloat) -> Void = { _ in }
     ) {
         self.remoteProfiles = remoteProfiles
+        self.diagnostic = diagnostic
         self.onPreferredHeight = onPreferredHeight
     }
 
@@ -110,7 +116,9 @@ struct SystemMonitorTrayView: View {
         selectionTask?.cancel()
         selectionTask = nil
         guard destination != page else { return }
-        OnePlusPanelTimings.shared.begin(panel: "system-monitor", operation: .tabSwitch, tab: destination.rawValue)
+        if !OnePlusPanelTimings.shared.hasPending("system-monitor") {
+            OnePlusPanelTimings.shared.begin(panel: "system-monitor", operation: .tabSwitch, tab: destination.rawValue)
+        }
         if destination == .processes {
             selectionTask = Task {
                 await processModel.prepareForPresentation()
@@ -152,6 +160,9 @@ struct SystemMonitorTrayView: View {
         }
         .onOnePlusMenuHeightChange(onPreferredHeight)
         .onePlusPanelTimings(panel: "system-monitor", tab: pageID)
+        .onOpenToolPage(diagnostic ? "menu.system-monitor" : nil) { id in
+            if let destination = SystemMonitorTrayPage(rawValue: id) { select(destination) }
+        }
         .onDisappear { selectionTask?.cancel() }
     }
 

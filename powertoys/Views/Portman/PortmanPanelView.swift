@@ -1719,6 +1719,7 @@ final class PortmanMenuController: NSObject, NSPopoverDelegate {
 
     private var item: NSStatusItem?
     private let popover = NSPopover()
+    private var cachedHosting: NSHostingController<AnyView>?
     private var observers: [NSObjectProtocol] = []
     private var showTask: Task<Void, Never>?
     private var refreshTask: Task<Void, Never>?
@@ -1751,6 +1752,7 @@ final class PortmanMenuController: NSObject, NSPopoverDelegate {
         observers.forEach(NotificationCenter.default.removeObserver)
         observers.removeAll()
         popover.close()
+        cachedHosting = nil
         if let item { NSStatusBar.system.removeStatusItem(item) }
         item = nil
         PortmanService.shared.endMonitoring()
@@ -1786,7 +1788,16 @@ final class PortmanMenuController: NSObject, NSPopoverDelegate {
               !button.visibleRect.isEmpty, button.bounds.width > 0 else { return false }
         if activateApp { NSApp.activate(ignoringOtherApps: true) }
         popover.appearance = NSApp.appearance
-        let hosting = NSHostingController(rootView: PortmanPanelView(initialPage: initialPage).utilityMotionPolicy())
+        let hosting: NSHostingController<AnyView>
+        if let existing = cachedHosting {
+            hosting = existing
+            if let initialPage {
+                ToolPageRouter.shared.post(tool: "portman", page: initialPage.panelID, recordTiming: false)
+            }
+        } else {
+            hosting = NSHostingController(rootView: AnyView(PortmanPanelView(initialPage: initialPage).utilityMotionPolicy()))
+            cachedHosting = hosting
+        }
         hosting.view.appearance = NSApp.appearance
         let ceiling = (button.window?.screen?.visibleFrame.height ?? 800) * OnePlusMenuMetrics.heightFraction
         let size = hosting.sizeThatFits(in: NSSize(width: OnePlusMenuMetrics.width, height: ceiling))

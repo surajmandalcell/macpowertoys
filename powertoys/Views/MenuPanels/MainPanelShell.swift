@@ -40,6 +40,7 @@ enum TrayTab: String, CaseIterable, Identifiable {
 }
 
 struct TrayPopoverView: View {
+    private let diagnostic: Bool
     @AppStorage("tray.selectedTab.v2") private var selectedTabID = TrayTab.home.rawValue
     @AppStorage("tray.tabOrder.v2") private var storedTabOrder = ""
     @Environment(\.openWindow) private var openWindow
@@ -52,7 +53,8 @@ struct TrayPopoverView: View {
     @State private var preparedHomeTools: [String] = []
     @State private var preparedTabs: [TrayTab] = [.home]
 
-    init() {
+    init(diagnostic: Bool = false) {
+        self.diagnostic = diagnostic
         let order = UserDefaults.standard.string(forKey: "tray.tabOrder.v2") ?? ""
         _preparedHomeTools = State(initialValue: Self.homeToolIDs())
         _preparedTabs = State(initialValue: [.home] + Self.complexTabs(order: order))
@@ -136,6 +138,9 @@ struct TrayPopoverView: View {
             tabContent
         }
         .onePlusPanelTimings(panel: "main", tab: selectedTab.panelID)
+        .onOpenToolPage(diagnostic ? "menu.main" : nil) { id in
+            if let tab = TrayTab(panelID: id), tabs.contains(tab) { select(tab) }
+        }
         .onAppear(perform: prepareTabs)
         .onChange(of: storedTabOrder) { prepareTabs() }
         .onReceive(NotificationCenter.default.publisher(for: UserDefaults.didChangeNotification)) { _ in
@@ -181,7 +186,9 @@ struct TrayPopoverView: View {
 
     private func select(_ tab: TrayTab) {
         guard tab != selectedTab else { return }
-        OnePlusPanelTimings.shared.begin(panel: "main", operation: .tabSwitch, tab: tab.panelID)
+        if !OnePlusPanelTimings.shared.hasPending("main") {
+            OnePlusPanelTimings.shared.begin(panel: "main", operation: .tabSwitch, tab: tab.panelID)
+        }
         var transaction = Transaction(animation: nil)
         transaction.disablesAnimations = true
         withTransaction(transaction) {
