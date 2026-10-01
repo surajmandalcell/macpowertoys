@@ -114,6 +114,9 @@ struct DiskExplorerWindowView: View {
             .onChange(of: page) { _, next in
                 if scansOnAppear { savedPage = next.rawValue }
                 if next != .explore { model.cancel() }
+                else if scansOnAppear, model.result == nil, !model.isScanning, let source = model.sourceURL {
+                    model.start(source, includeHidden: includeHidden)
+                }
                 model.setPresentationActive(presentsLiveUpdates && next == .explore)
             }
             .onChange(of: presentsLiveUpdates, initial: true) { _, active in
