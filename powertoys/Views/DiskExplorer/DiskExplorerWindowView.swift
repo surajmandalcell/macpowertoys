@@ -159,13 +159,13 @@ struct DiskExplorerWindowView: View {
             Button { eject(disk) } label: { Image(systemName: "eject") }
                 .buttonStyle(OnePlusButtonStyle(.icon, size: .small))
                 .disabled(locked || !disk.manageable || diskManagement.isBusy)
-                .help(locked ? "Unlock this disk before ejecting" : "Eject \(disk.name)")
+                .help(disk.protectionReason ?? (locked ? "Unlock this disk before ejecting" : "Eject \(disk.name)"))
                 .accessibilityLabel("Eject \(disk.name)").accessibilityIdentifier("diskman.eject.\(disk.id)")
         }
         .contextMenu {
             Button(locked ? "Unlock Disk" : "Lock Disk", systemImage: locked ? "lock.open" : "lock.fill") {
                 diskManagement.setLocked(!locked, for: disk)
-            }.disabled(diskManagement.isBusy || diskManagement.isPreview)
+            }.disabled(diskManagement.isBusy || diskManagement.isPreview || !disk.manageable)
             Button("Eject", systemImage: "eject") { eject(disk) }
                 .disabled(locked || !disk.manageable || diskManagement.isBusy)
         }
