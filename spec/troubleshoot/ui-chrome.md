@@ -1408,3 +1408,32 @@
   mask measures blue-minus-green coverage on neutral fills. An absolute blue
   cutoff discards faint pin edges in dark mode and gives a false offset.
   Signed caller interaction remains an orchestrator check.
+
+## Shared native control state and paint, 2026-10-01
+
+- **Symptom:** Selected table metadata loses readable ink. Popup key monitors
+  consume modified input. External text changes interrupt marked text or undo.
+  Field errors move controls inside fixed rows. Grain changes content pixels.
+- **Cause:** AppKit propagates cell backgroundStyle, monitors do not check the
+  owning window, text assignment bypasses editing, and captions share the
+  fixed control column. Grain was a content overlay.
+- **Invariant:** Selected ordinary metadata uses ink and restores its role
+  on deselection. Warning and error ink stays semantic. Draw active/inactive
+  row fills from isEmphasized. Use the native contrast preference because this
+  macOS normalizes requested high-contrast appearance names while it is off.
+  Filter action modifiers and popup windows before dispatch. Keep popup AX
+  objects by ID and convert clipped row geometry to screen coordinates.
+  Defer replacement during marked text. Use native same-resource edits and
+  clear undo on resource changes. Keep fields centered in 44/56pt rows and
+  send recovery messages to the existing group banner. Draw 200x125 grain
+  above fill and below content. Keep reset beside the label and help available
+  to keyboard and VoiceOver users.
+- **Check:** OnePlusNativeInputTests, OnePlusSearchTests, OnePlusPopupTests,
+  OnePlusContrastTests, OnePlusTableTests, OnePlusSettingRowTests,
+  OnePlusNativeFormTests, and OnePlusTextureTests run in offscreen package
+  hosts. Selected ordinary/warning/error paint reaches 4.5:1. The palette
+  reaches at least 4.59:1 through permitted grain extremes. Native small
+  steppers measure 17x20 in both 24/28pt hosts. Value-ink tests keep the blank
+  glyph line box and compare native coverage; nearest-token classification
+  gives a false failure after the palette change. Signed interaction remains
+  an orchestrator check. Report: `tmp/redesign/logs/w3-components.md`.
