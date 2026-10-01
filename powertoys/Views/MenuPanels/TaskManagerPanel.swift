@@ -415,6 +415,7 @@ private struct TaskManagerMenuDetailRow: View, Equatable {
 private struct TaskManagerMenuProcessRequest: Hashable {
     let generation: Int
     let search: String
+    let visible: Bool
 }
 
 private struct TaskManagerMenuSampling: ViewModifier {
@@ -482,7 +483,7 @@ private struct TaskManagerMenuProcessesView: View {
     @Environment(\.onePlusIsVisible) private var isVisible
 
     private var request: TaskManagerMenuProcessRequest {
-        TaskManagerMenuProcessRequest(generation: model.generation, search: model.search)
+        TaskManagerMenuProcessRequest(generation: model.generation, search: model.search, visible: isVisible)
     }
 
     var body: some View {
