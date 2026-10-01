@@ -1,4 +1,5 @@
 import XCTest
+import Observation
 @testable import powertoys
 
 @MainActor
@@ -199,6 +200,30 @@ final class MarketplaceManagerTests: XCTestCase {
             restored.entries.first(where: { $0.id == "window-snapper" })?.status,
             .installed
         )
+    }
+
+    func testConcurrentRestoresPublishReceiptsOnceBeforeReturning() async throws {
+        let manager = try makeAcmeManager()
+        try await manager.addSource(Self.acmeURL)
+        let receipt = try await installFirstTool(manager)
+        let restored = makeManager(responses: [:])
+        var publications = 0
+        @MainActor func observeReceipts() {
+            withObservationTracking { _ = restored.receipts } onChange: {
+                MainActor.assumeIsolated { publications += 1; observeReceipts() }
+            }
+        }
+        observeReceipts()
+        let callers = (0..<8).map { _ in
+            Task { @MainActor in
+                await restored.restore()
+                XCTAssertTrue(restored.isRestored)
+                XCTAssertEqual(restored.receipts, [receipt])
+                XCTAssertEqual(restored.catalogs.count, 1)
+            }
+        }
+        for caller in callers { await caller.value }
+        XCTAssertEqual(publications, 1)
     }
 
     func testRefreshNotModifiedKeepsCatalog() async throws {

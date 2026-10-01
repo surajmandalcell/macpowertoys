@@ -169,6 +169,7 @@ final class MarketplaceManager {
     private(set) var catalogs: [String: MarketplaceCatalog] = [:]
     private(set) var receipts: [MarketplaceReceipt] = []
     private(set) var isRestored = false
+    @ObservationIgnored private var restoration: Task<Void, Never>?
     private var installedIconURLs: [String: URL] = [:]
 
     let store: MarketplaceStore
@@ -233,6 +234,14 @@ final class MarketplaceManager {
 
     func restore() async {
         guard !isRestored else { return }
+        if let restoration { await restoration.value; return }
+        let task = Task { await restoreSnapshot() }
+        restoration = task
+        await task.value
+        restoration = nil
+    }
+
+    private func restoreSnapshot() async {
         let loadedSources = await store.loadSources()
         let loadedReceipts = await store.loadReceipts()
         var loadedIconURLs: [String: URL] = [:]
