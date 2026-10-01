@@ -2,6 +2,13 @@
 
 Reviewed against current source on 2026-10-01.
 
+Round 18 Activity heading, run 72, 2026-10-02: `65d92c87` gives Operation
+100pt and Result 96pt. The seven data columns keep their 936pt total width.
+The actual native header fits OPERATION with the sort reserve. Header and
+row heights stay 33pt and 34pt. The single tests-mode gate passes. Signed
+sorting and both-appearance review remain with the orchestrator.
+Report: `tmp/redesign/logs/w13-fix18-app.md`.
+
 | Status | Request | Evidence | Remaining work |
 |---|---|---|---|
 | Verify | Audit all Cloud Sync features and apply the 2026-10-01 density and motion rules. | `70fbe4f8`, `14af8be6`, `899359a7`, `d2bfd0d6`, `0b749887`, and `19a2077d` fix authenticated drag-out, file-kind selection and file Move, stale Quick Look caches, average speed after resume, and Dev Sync preview/error handling. Cleanup has a native delete confirmation. The file-tree Ignore action keeps its width and is visible for keyboard navigation and VoiceOver. Shared controls and text roles replace local chrome; metadata is trailing; single project/safety rows, settings controls and breadcrumbs use less chrome; local content motion and pill badges are removed. Actual RC and snapshot checks pass on files created in `tmp/redesign/audit-cloudsync/`. Both gated builds pass, including focused test compilation. Eight `36c585b4` background captures are baseline evidence. Report: `tmp/redesign/logs/w1-audit-cloudsync.md`. | Run the hosted regressions. The orchestrator must install clean HEAD, verify source stamp/path, capture both appearances, and exercise every changed control. OAuth, provider keys, saved remotes, live Dev Sync, and physical A4-A7 checks remain open. |

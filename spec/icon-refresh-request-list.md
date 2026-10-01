@@ -1,5 +1,13 @@
 # Tool icon refresh request list
 
+Round 18 Logs appearance, run 72, 2026-10-02: `583fa6ef` adds the Porcelain
+dark luminosity asset beside the existing Midnight light asset. The SVG
+geometry, 18px/22px echo offset, vector setting, and shared tile mask stay.
+The compiled named asset resolves the exact ground colors at 16, 40, 64,
+and 512px in both appearances. The single tests-mode gate passes. Signed
+catalog, tool header, and Dock review remain with the orchestrator.
+Report: `tmp/redesign/logs/w13-fix18-app.md`.
+
 ## Tool glyphs, 2026-10-01
 
 Round 11 T052 source checks pass for 19 window mappings, native base-icon

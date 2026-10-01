@@ -1,5 +1,11 @@
 # Main Task Request List
 
+Round 18 Logs appearance, run 72, 2026-10-02: `583fa6ef` adds the approved
+Porcelain dark asset. Both compiled appearance variants pass at 16, 40, 64,
+and 512px. The catalog and tool header keep the named asset and shared mask.
+Signed visual acceptance remains with the orchestrator.
+Report: `tmp/redesign/logs/w13-fix18-app.md`.
+
 Background page reuse, run 70, 2026-10-01: mounted window content no longer
 registers a SwiftUI URL receiver. AppDelegate keeps the single external URL
 entry, which passes background intent to the existing router. Source checks
