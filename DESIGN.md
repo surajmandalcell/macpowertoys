@@ -27,7 +27,7 @@ colors:
   control-ink: { dark: "#DEDEDE", light: "#343434" }
   accent: { dark: "#EE5B50", light: "#D94F45" }
   data-blue: { dark: "#8AAEEA", light: "#3564A4" } # Cloud Sync progress and network data
-  accent-primary-ink: { dark: "#161616", light: "#000000" }
+  accent-primary-ink: { dark: "#FFFFFF", light: "#FFFFFF" }
   accent-primary-hover: { dark: "#E65A4F", light: "#D34E44" }
   accent-primary-pressed: { dark: "#DE584E", light: "#CD4D43" }
   primary-fill: { dark: "#DDDDDD", light: "#383838" }
@@ -158,9 +158,17 @@ Color rules:
   gray line `#BEBEBE`; accent line uses `accent`; grid `#343434`. Diskman keeps
   its storage series (see the Diskman recipe).
 - Text selection uses accent at 28% with primary text.
-- Every text token reaches at least 4.5:1 contrast on `window`, `sidebar`,
-  and `panel` in its appearance. Metric captions use `metricCaption`; other
-  small captions never go below `muted`.
+- Measure text contrast with APCA (the WCAG 3 candidate method), not the
+  WCAG 2 ratio. The WCAG 2 ratio misjudges text on saturated fills and in
+  dark mode: it scores dark ink on the coral accent above white, although
+  white reads far better (APCA Lc 66 against Lc 43 on dark `#EE5B50`).
+  Minimums: Lc 60 for row, body, and control labels, including buttons;
+  Lc 45 for captions, metadata, and short metric captions. Disabled text
+  and placeholders are exempt. Neutral gray text tokens also keep their
+  existing 4.5:1 WCAG 2 floor on `window`, `sidebar`, and `panel`.
+- Metric captions use `metricCaption`; other small captions never go below
+  `muted`.
+- Text on an accent fill is white in both appearances.
 - Check text contrast on its actual hover, selected, and textured fill too.
   Ordinary selected metadata uses a readable selected-text role.
 - Menus, menu buttons, icon buttons, drag handles, and shortcut hints use
@@ -223,6 +231,12 @@ Header top line (owner pick 2026-10-01, "Top B"): one line at y = 20,
 the top of the traffic lights. Align the title's painted cap top, the 40 pt
 tool icon, and every header button, select, and switch top to this line.
 Keep the title line box and the following gaps. The body moves down 4 pt.
+In a header action row, only the tallest control puts its top on y = 20.
+Every other item in that row (status text and dots, captions, smaller
+buttons) centers on that control's center line, and all text in the row
+shares one baseline (owner correction 2026-10-01: "MAC access: Allowed"
+and "2 pointing devices found" sat higher than the button beside them).
+Items in the row are 12 pt apart.
 Use the text baseline and glyph bounds for system titles. Task Manager's
 20 pt dot canvas starts at its painted path top inside the regular 28.8 pt
 line box. Measure cap strokes in linear light at 1x and 2x to exclude the
@@ -306,7 +320,7 @@ x=0                                  x=200 (216)
 | [#] Nav row (selected)             |
 |                                    |
 |------------------------------------|  1 pt lineSoft, only when needed
-| [#] Modified / Settings / About    |  bottom nav, 10 top, 12 bottom
+| [#] Settings / Exit                |  bottom nav, 10 top, 12 bottom
 +------------------------------------+
 ```
 
@@ -653,8 +667,9 @@ Follows `macpowertoys-repaired.html` and its handoff comment.
 
 - Sidebar: the `MacPowerToys` title, search (`Search`, hint `cmd K`), `All
   tools`, the caption `YOUR TOOLS`, one row per registered tool in registry
-  order, and bottom nav `Modified` (disabled when nothing differs from
-  defaults), `Settings`, and `Exit`.
+  order, and bottom nav `Settings` and `Exit`. There is no main-level
+  Modified page (owner correction 2026-10-01); resetting changed settings
+  belongs to each tool, such as the Mac Tweaks Modified destination.
 - All tools: the title `All tools`, the subtitle `Your Mac, a little more
   capable.`, tabs `All tools N`, `Enabled N`, and `Favorites N`, a trailing
   sort select (Default order, Name, Category), and a grid or list toggle.
@@ -671,15 +686,15 @@ Follows `macpowertoys-repaired.html` and its handoff comment.
   parts, with a 29 pt icon. Grid and page-header icons stay 40 pt.
 - Tool page: a header with the 40 pt icon, tool name, description, and a
   trailing enable switch. `Open <Tool>` is the primary action: a primary
-  button in a fixed action bar at the bottom of the page, right-aligned on
-  the 24 pt gutter, above a 1 pt `lineSoft` line. Tabs `Settings`
+  button with white text in a fixed action bar at the bottom of the page,
+  right-aligned on the 24 pt gutter, with no divider line above it (owner
+  correction 2026-10-01). Tabs `Settings`
   and `How to use`, with a trailing `Menu bar` segmented control (None,
   Combined, Separate) for tools that support placement. Settings renders the
   tool's shared settings view built from OnePlusUI cards. How to use renders
   the manual as cards.
 - Settings: tabs General, Marketplace, and About. General holds Appearance,
-  Windows, Launch, and iCloud. Modified lists every changed setting with its
-  tool, value, and default and a reset action. Reset all asks first.
+  Windows, Launch, and iCloud.
 - Enablement, menu-bar placement, runtime state, and window visibility stay
   separate states.
 - Settings embedding contract: each tool exposes one settings content view
