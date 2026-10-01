@@ -228,10 +228,6 @@ struct TaskManagerRemoteCard: View {
         TaskManagerPanel(textured: true) {
             VStack(spacing: 0) {
                 header
-                if let reason = sessions.state(for: profile.id).reason {
-                    Text(reason).onePlusText(.caption).textSelection(.enabled)
-                        .padding(OnePlusMetrics.cardGap).frame(maxWidth: .infinity, alignment: .leading)
-                }
                 HStack(spacing: 0) {
                     stat("CPU", symbol: "cpu", value: reading?.cpuPercent.map { "\(Int($0.rounded()))%" } ?? "—")
                     divider
@@ -262,6 +258,10 @@ struct TaskManagerRemoteCard: View {
             HStack(spacing: OnePlusMetrics.actionSpacing) {
                 Text("\(profile.destination) · \(profile.platform.rawValue)")
                     .onePlusText(.mono).lineLimit(1).help("\(profile.destination) · \(profile.platform.rawValue)")
+                if let reason = sessions.state(for: profile.id).reason {
+                    Image(systemName: "info.circle").onePlusText(.caption)
+                        .help(reason).accessibilityLabel(reason)
+                }
                 OnePlusStatus(state, state: reading == nil ? .offline : .online)
             }
         }
