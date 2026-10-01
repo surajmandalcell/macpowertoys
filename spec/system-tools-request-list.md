@@ -5,7 +5,8 @@ Care, Diskman, and Task Manager distinct shared tool glyphs. Status images
 use a 14pt template canvas with 11.2pt maximum ink. A sole enabled Task
 Manager metric uses the tool glyph; multiple metrics keep saved symbols.
 Headless checks pass for 36 images at 1x, 2x, and 4x and all seven metric
-selectors. Hosted tests and signed installation remain with the orchestrator.
+selectors. Both shared compile gates pass. Hosted tests and signed
+installation remain with the orchestrator.
 Report: `tmp/redesign/logs/w1-glyphs-status.md`.
 
 Reviewed against current source on 2026-09-24. Update this list when a direct

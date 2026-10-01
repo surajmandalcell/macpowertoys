@@ -3,8 +3,8 @@
 Glyph pass, 2026-10-01: `91d9a538` defines Ruler at -45 degrees in
 `ToolGlyph`. Sidebar, fallback tile, Home action, and launcher Settings use
 that definition. The 14-tool contact sheet was reviewed at 16pt and 32pt in
-both appearances. Signed review of those surfaces remains with the
-orchestrator.
+both appearances. Both shared compile gates pass. Signed review remains
+with the orchestrator.
 
 Production window performance, 2026-10-01: the tool router now records Ruler
 open through native layout and display submission in the shared timing ledger.
