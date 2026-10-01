@@ -18,6 +18,17 @@ preference changes. Both compile gates pass. Signed after timings, Modified
 updates, and complete first/late frames remain. Targets and exact replay:
 `tmp/redesign/perf/w1-windows.md`.
 
+Round 11 routing: `7b54d7d9` makes early plugin opens wait for Marketplace
+receipts and rechecks enablement before launch. Built-in opens stay immediate.
+The observed `ToolActionRouter.launchFailure` publishes the tool and actual
+error. Failure keeps main visible; only confirmed success applies close-main.
+The actual router fixture passes queued Ruler intent, early plugin readiness,
+post-await guards, failure and retry. Main's `a4e5f2fa` coalesces restoration;
+followers wait for full receipt/catalog publication. Main also provides a
+native alert with tool/error details, Retry, enabled Open Logs and Cancel.
+Compile and signed checks remain.
+API/status: `tmp/redesign/logs/app-lifecycle-routes.txt`.
+
 | Status | Request | Current evidence | Remaining work |
 |---|---|---|---|
 | Source committed; compile and signed checks pending | T095: keep the main-panel Settings request until the launcher can receive it. | `f1a191dc` calls the existing durable `ToolActionRouter` page route. It stores the `main/settings` request before opening or reusing the window. The matching main view consumes it on appearance or notification. System Care keeps `settings/general`; Ruler Settings and Defaults keep their distinct handlers. | Complete both shared compile gates, run hosted router tests, and verify cold and existing launcher Settings with sibling tool windows open. Report: `tmp/redesign/logs/w3-panel-main.md`. |

@@ -533,6 +533,41 @@ appearances in the signed build. Report: `tmp/redesign/logs/w1-panel-main.md`.
   app open, a second press within two seconds quits, and an expired press starts
   a new confirmation. Confirm Command-W behavior does not change.
 
+## Missing Display Leaves The Titlebar Outside The Screen
+
+- **Symptom:** A restored window has visible body content but an unreachable
+  titlebar after its saved display is removed.
+- **Cause:** The fallback accepted any 200 by 100 point overlap. It did not
+  clamp the frame to a surviving screen. Zero overlap skipped restoration.
+- **Invariant:** Select the surviving visible frame with greatest overlap,
+  then use the existing clamp. With zero overlap, use the current window's
+  screen. Keep the current fixed canvas unless it cannot physically fit.
+  Restore before display. Add screen-change owners only for a reproduced
+  stranded custom surface.
+- **Check:** The actual restore path fails the old offscreen-titlebar case
+  and passes negative coordinates, greatest overlap, zero overlap and a small
+  display. Run `tmp/redesign/perf/w3-windows/check-restoration.py`. Signed
+  unplug/replug, resolution and menu-bar-display checks remain.
+
+## Early Plugin Requests And Launch Failures
+
+- **Symptom:** A CLI plugin is unknown during startup, or an Open failure
+  reaches only the log and leaves no visible recovery action.
+- **Cause:** Receipt lookup ran before Marketplace restoration. The launch
+  catch logged the error without publishing it to the launcher.
+- **Invariant:** Keep built-in routes immediate. Plugin routes await the
+  coalesced Marketplace restore, then check current enablement and receipt
+  presence. Publish the actual launch error and tool ID to the existing
+  router state. Keep main open on failure; close only on confirmed success
+  and the close-main preference. Retry must repeat the execution guards.
+- **Check:** `tmp/redesign/perf/w3-windows/check-routes.py` runs the actual
+  router with non-GUI doubles. It covers early receipt readiness, disable
+  during restore, a removed receipt, published failure and successful retry.
+  Main provides a native alert with full tool/error details, Retry through
+  open(toolID:), enabled Open Logs and Cancel. Its `a4e5f2fa` coalesces
+  restoration and checks concurrent receipt publication. Signed recovery
+  remains.
+
 ## Window Space Restoration
 
 - **Symptom:** A reopened utility returns to its saved frame and display but not
