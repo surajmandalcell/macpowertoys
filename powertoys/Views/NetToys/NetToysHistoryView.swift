@@ -763,9 +763,9 @@ struct NetToysSettingsView: View {
                 OnePlusSettingRow("MAC addresses", help: macAccessStatusMessage,
                                   controlWidth: OnePlusMetrics.wideControlColumn, separator: false) {
                     HStack(spacing: OnePlusMetrics.actionSpacing) {
-                        OnePlusStatus(macAccessStatusTitle, state: neighborService.isEnabled ? .online : .offline)
+                        OnePlusStatus(macAccessStatusTitle, state: neighborService.status == nil ? .neutral : neighborService.isEnabled ? .online : .offline)
                             .fixedSize()
-                        if !neighborService.isEnabled {
+                        if neighborService.status != nil, !neighborService.isEnabled {
                             Button(neighborService.status == .requiresApproval ? "Settings" : "Enable") {
                                 neighborService.enable()
                             }
@@ -817,6 +817,7 @@ struct NetToysSettingsView: View {
     private var macAccessStatusTitle: String {
         _ = neighborService.revision
         return switch neighborService.status {
+        case nil: "Checking"
         case .enabled: "Allowed"
         case .requiresApproval: "Needs Approval"
         case .notRegistered: "Not Enabled"
@@ -827,6 +828,8 @@ struct NetToysSettingsView: View {
 
     private var macAccessStatusMessage: String {
         switch neighborService.status {
+        case nil:
+            "Checking MAC address access."
         case .enabled:
             "The approved helper supplies neighboring MAC addresses automatically during scans."
         case .requiresApproval:
