@@ -549,6 +549,20 @@
 
 ## System Care And Mole
 
+- **Symptom:** Safety and Maintenance use 56pt helper rows. Terminal labels
+  truncate while unused width remains. The initial panel adds an instruction row.
+- **Cause:** Inline captions select the taller row pitch. A fixed 180pt value
+  column compresses two maintenance actions.
+- **Invariant:** Keep help beside labels and use 44pt rows. Paired actions use
+  intrinsic widths, an 8pt gap, 28pt height, and the 16pt content inset. Put initial
+  Scan instructions in help. Keep progress, failures, coverage and empty results.
+- **Check:** `ca9a17bb` and `fb6619b8` implement these changes and shared history
+  columns. `tmp/redesign/syscare/check-r11-ui.py` measures actual source in hidden
+  hosts in both appearances. Safety is 36pt shorter, Maintenance is 48pt shorter,
+  and Open Terminal is 112 x 28pt. History uses matching 34pt rows and 12pt insets.
+  The current shared Tasks underline draws at y96-97. No paint failure is
+  reproduced. Check that capture discrepancy in the exact installed build.
+
 - **Symptom:** Populated Mole history rows show the same truncated actions
   dictionary instead of distinct activity.
 - **Cause:** Foundation dictionary descriptions put line breaks into the
