@@ -272,8 +272,29 @@ actor DevSyncPairEngine {
     }
 
     func previewPending() async -> DevSyncPlan? {
-        guard let generation = nextGeneration(await scheduler.due()) else { return nil }
-        return await plan(for: generation.projectID, paths: generation.paths, fullScan: generation.requiresFullScan)?.plan
+        guard internalRoot != nil, externalRoot != nil else { return nil }
+        let pendingIDs = Set(await scheduler.exportEntries().compactMap(\.projectID))
+        var combined = DevSyncPlan(pairID: pair.id)
+        for project in projectValues where pendingIDs.contains(project.id) && !project.explicitlyExcluded
+            && project.residency != .externalResident && project.residency != .externalOnlyPendingLink {
+            guard let output = await plan(for: project.id, paths: nil, fullScan: true) else {
+                combined.scanComplete = false
+                combined.deletionsAllowed = false
+                continue
+            }
+            let prefix = project.relativePath.isEmpty ? "" : project.relativePath + "/"
+            combined.actions.append(contentsOf: output.plan.actions.map { action in
+                var action = action
+                action.relativePath = prefix + action.relativePath
+                return action
+            })
+            combined.manifestToExternal.append(contentsOf: output.plan.manifestToExternal.map { prefix + $0 })
+            combined.manifestToInternal.append(contentsOf: output.plan.manifestToInternal.map { prefix + $0 })
+            combined.summary.add(output.plan.summary)
+            combined.scanComplete = combined.scanComplete && output.plan.scanComplete
+            combined.deletionsAllowed = combined.deletionsAllowed && output.plan.deletionsAllowed
+        }
+        return combined
     }
 
     func previewProject(_ projectID: UUID) async -> DevSyncPlan? {
@@ -281,7 +302,7 @@ actor DevSyncPairEngine {
     }
 
     func moveToExternal(_ projectID: UUID) async throws {
-        guard let project = projectValues.first(where: { $0.id == projectID }) else { return }
+        guard let project = projectValues.first(where: { $0.id == projectID }) else { throw DevOperationRunnerError.rootUnavailable }
         let result = try await withResidencyMutation(project: project) { context in
             try await DevResidencyConversion.moveToExternal(context, progress: { _ in })
         }
@@ -289,7 +310,7 @@ actor DevSyncPairEngine {
     }
 
     func bringInternal(_ projectID: UUID) async throws {
-        guard let project = projectValues.first(where: { $0.id == projectID }) else { return }
+        guard let project = projectValues.first(where: { $0.id == projectID }) else { throw DevOperationRunnerError.rootUnavailable }
         let result = try await withResidencyMutation(project: project) { context in
             try await DevResidencyConversion.bringInternal(context, progress: { _ in })
         }
@@ -316,7 +337,7 @@ actor DevSyncPairEngine {
 
     func repairLink(_ projectID: UUID) async throws {
         guard let internalRoot, let externalRoot,
-              let link = linkValues.first(where: { $0.projectID == projectID }) else { return }
+              let link = linkValues.first(where: { $0.projectID == projectID }) else { throw DevOperationRunnerError.rootUnavailable }
         _ = try await linkManager.repair(
             link,
             internalRoot: internalRoot,
@@ -329,7 +350,7 @@ actor DevSyncPairEngine {
 
     func adoptLink(relativePath: String) async throws {
         guard let internalRoot, let externalRoot,
-              let project = projectValues.first(where: { $0.relativePath == relativePath }) else { return }
+              let project = projectValues.first(where: { $0.relativePath == relativePath }) else { throw DevOperationRunnerError.rootUnavailable }
         _ = try await linkManager.adopt(
             userLinkRelativePath: relativePath,
             project: project,
@@ -341,7 +362,7 @@ actor DevSyncPairEngine {
     }
 
     func decideMissingProject(_ projectID: UUID, decision: DevMissingProjectDecision) async throws {
-        guard let project = projectValues.first(where: { $0.id == projectID }), let externalRoot else { return }
+        guard let project = projectValues.first(where: { $0.id == projectID }), let externalRoot else { throw DevOperationRunnerError.rootUnavailable }
         switch decision {
         case .keepExternalOnly:
             let result = try await withResidencyMutation(project: project) { context in
@@ -371,11 +392,12 @@ actor DevSyncPairEngine {
     }
 
     func resolveDrift(projectID: UUID, relativePath: String, resolution: DevDriftResolution) async throws {
-        guard DevRelativePath.isSafe(relativePath),
-              let project = projectValues.first(where: { $0.id == projectID }),
-              let internalRoot, let externalRoot else { return }
+        guard DevRelativePath.isSafe(relativePath) else { throw DevOperationRunnerError.invalidAction(relativePath) }
+        guard let project = projectValues.first(where: { $0.id == projectID }),
+              let internalRoot, let externalRoot else { throw DevOperationRunnerError.rootUnavailable }
         let internalURL = internalRoot.devProjectURL(project.relativePath, isDirectory: false).appendingPathComponent(relativePath)
         let externalURL = externalRoot.devProjectURL(project.relativePath, isDirectory: false).appendingPathComponent(relativePath)
+        let outcome: DevOperationOutcome
         switch resolution {
         case .adoptExternal:
             let signature = try DevSnapshotScanner.signature(of: externalURL, includeHash: true)
@@ -396,7 +418,7 @@ actor DevSyncPairEngine {
             }
             actions.append(DevSyncAction(kind: .copyPath, destinationSide: .internal, relativePath: relativePath, bytes: Int64(signature.size ?? 0), preconditions: preconditions, reason: "Adopt external version"))
             let syncPlan = DevSyncPlan(pairID: pair.id, projectID: project.id, actions: actions, manifestToInternal: [relativePath])
-            _ = await run(plan: syncPlan, output: emptyOutput(plan: syncPlan), project: project, kind: .reconcile)
+            outcome = await run(plan: syncPlan, output: emptyOutput(plan: syncPlan), project: project, kind: .reconcile)
         case .overwriteExternal, .restoreToExternal:
             let signature = try DevSnapshotScanner.signature(of: internalURL, includeHash: true)
             let current = try? DevSnapshotScanner.signature(of: externalURL, includeHash: true)
@@ -423,13 +445,16 @@ actor DevSyncPairEngine {
                 reason: "Resolve external drift"
             ))
             let syncPlan = DevSyncPlan(pairID: pair.id, projectID: project.id, actions: actions, manifestToExternal: [relativePath])
-            _ = await run(plan: syncPlan, output: emptyOutput(plan: syncPlan), project: project, kind: .reconcile)
+            outcome = await run(plan: syncPlan, output: emptyOutput(plan: syncPlan), project: project, kind: .reconcile)
+        }
+        guard outcome.operation.state == .committed, outcome.requeuedPaths.isEmpty else {
+            throw NSError(domain: "DevSync", code: 1, userInfo: [NSLocalizedDescriptionKey: outcome.error ?? "The drift resolution did not complete. Try again after the path is stable."])
         }
         await syncProject(projectID)
     }
 
     func resolveConflict(_ conflictID: UUID, resolution: DevConflictResolution) async throws {
-        guard let index = conflictValues.firstIndex(where: { $0.id == conflictID }) else { return }
+        guard let index = conflictValues.firstIndex(where: { $0.id == conflictID }) else { throw DevOperationRunnerError.rootUnavailable }
         conflictValues[index].resolution = resolution
         conflictValues[index].resolvedAt = resolution == .deferred ? nil : now()
         try await stateStore.saveConflicts(conflictValues, pairID: pair.id)
@@ -447,15 +472,17 @@ actor DevSyncPairEngine {
         return policy.decide(relativePath: relativePath, kind: signature.kind, size: Int64(signature.size ?? 0), isInsideGitDirectory: relativePath == ".git" || relativePath.hasPrefix(".git/"))
     }
 
-    func updateConfiguration(_ configuration: DevSyncConfiguration) async {
+    func updateConfiguration(_ configuration: DevSyncConfiguration) async throws {
+        let previous = pair
         pair.configuration = configuration
         pair.updatedAt = now()
+        do { try await savePair() }
+        catch { pair = previous; throw error }
         let entries = await scheduler.exportEntries()
         scheduler = DevDirtyScheduler(timing: configuration.timing, performance: configuration.performance, now: now)
         await scheduler.importEntries(entries)
         safetyStore = DevSafetyStore(pair: pair, stateStore: stateStore)
         linkManager = DevManagedLinkManager(pair: pair, stateStore: stateStore)
-        try? await savePair()
         for project in projectValues { await scheduler.requestNow(projectID: project.id, reason: .policyChanged) }
         Task {
             await self.processNextDue()

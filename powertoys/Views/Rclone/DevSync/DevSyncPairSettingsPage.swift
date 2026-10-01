@@ -29,7 +29,7 @@ struct DevSyncRulesSection: View {
             metadataRow(title: "Preserve hard links", selection: $configuration.metadata.hardLinks)
             switchRow("Keep previous versions", isOn: keepsVersions)
         }
-        .toggleStyle(.switch)
+        .toggleStyle(OnePlusSwitchStyle())
         .controlSize(.small)
         .frame(maxWidth: .infinity, alignment: .leading)
     }
@@ -37,12 +37,13 @@ struct DevSyncRulesSection: View {
     private func switchRow(_ title: String, isOn: Binding<Bool>, disabled: Bool = false, help: String = "") -> some View {
         HStack(spacing: 8) {
             Text(title)
-                .font(.system(size: 12))
+                .onePlusText(.row)
             Spacer(minLength: 8)
             Toggle(title, isOn: isOn)
                 .labelsHidden()
                 .disabled(disabled)
         }
+        .onePlusRowHover()
         .help(help)
     }
 
@@ -51,7 +52,7 @@ struct DevSyncRulesSection: View {
     private var skipRow: some View {
         HStack(spacing: 8) {
             Text("Skip caches, dependencies, build outputs, and tmp")
-                .font(.system(size: 12))
+                .onePlusText(.row)
             Spacer(minLength: 8)
             Button("Extra patterns…") { isEditingSkipPatterns = true }
                 .controlSize(.small)
@@ -61,6 +62,7 @@ struct DevSyncRulesSection: View {
             Toggle("Skip caches, dependencies, build outputs, and tmp", isOn: $configuration.policy.skipCommonCaches)
                 .labelsHidden()
         }
+        .onePlusRowHover()
         .help("Git-tracked content inside a skipped folder still syncs.")
     }
 
@@ -77,16 +79,12 @@ struct DevSyncRulesSection: View {
                 }
             ))
             .thinScrollIndicators()
-            .font(.system(size: 12, design: .monospaced))
+            .onePlusText(.mono)
             .scrollContentBackground(.hidden)
             .padding(6)
             .frame(width: 320, height: 220)
-            .background(RoundedRectangle(cornerRadius: 6).fill(Color.primary.opacity(0.06)))
-
-            Text("One glob per line. A trailing slash matches a folder anywhere. The built-in list already covers node_modules, caches, build outputs, and tmp.")
-                .font(.system(size: 11))
-                .foregroundStyle(.secondary)
-                .fixedSize(horizontal: false, vertical: true)
+            .background(RoundedRectangle(cornerRadius: 6).fill(OnePlusColor.track))
+            .help("One glob per line. A trailing slash matches a folder anywhere. The built-in list already covers node_modules, caches, build outputs, and tmp.")
         }
         .padding(14)
     }
@@ -94,7 +92,7 @@ struct DevSyncRulesSection: View {
     private var sensitiveRow: some View {
         HStack(spacing: 8) {
             Text("Back up ignored sensitive and local files")
-                .font(.system(size: 12))
+                .onePlusText(.row)
             Spacer(minLength: 8)
             Button("Edit patterns…") { isEditingPatterns = true }
                 .controlSize(.small)
@@ -104,6 +102,7 @@ struct DevSyncRulesSection: View {
             Toggle("Back up ignored sensitive and local files", isOn: $configuration.policy.includeIgnoredSensitiveFiles)
                 .labelsHidden()
         }
+        .onePlusRowHover()
     }
 
     private var patternEditor: some View {
@@ -119,15 +118,12 @@ struct DevSyncRulesSection: View {
                 }
             ))
             .thinScrollIndicators()
-            .font(.system(size: 12, design: .monospaced))
+            .onePlusText(.mono)
             .scrollContentBackground(.hidden)
             .padding(6)
             .frame(width: 320, height: 220)
-            .background(RoundedRectangle(cornerRadius: 6).fill(Color.primary.opacity(0.06)))
-
-            Text("One glob per line.")
-                .font(.system(size: 11))
-                .foregroundStyle(.secondary)
+            .background(RoundedRectangle(cornerRadius: 6).fill(OnePlusColor.track))
+            .help("One glob per line.")
         }
         .padding(14)
     }
@@ -135,17 +131,12 @@ struct DevSyncRulesSection: View {
     private func metadataRow(title: String, selection: Binding<DevMetadataOption>) -> some View {
         HStack(spacing: 8) {
             Text(title)
-                .font(.system(size: 12))
+                .onePlusText(.row)
             Spacer(minLength: 8)
-            Picker(title, selection: selection) {
-                Text("Auto").tag(DevMetadataOption.auto)
-                Text("On").tag(DevMetadataOption.on)
-                Text("Off").tag(DevMetadataOption.off)
-            }
-            .labelsHidden()
-            .pickerStyle(.segmented)
-            .frame(width: 180)
+            OnePlusSegmented(choices: [(DevMetadataOption.auto, "Auto"), (.on, "On"), (.off, "Off")],
+                             selection: selection, accessibilityLabel: title, width: OnePlusMetrics.wideControlColumn)
         }
+        .onePlusRowHover()
     }
 }
 
@@ -156,19 +147,13 @@ struct DevSyncActivitySection: View {
 
     var body: some View {
         VStack(alignment: .leading, spacing: 10) {
-            Picker("Activity", selection: Binding(
+            OnePlusSegmented(choices: DevActivityPreset.allCases.map { ($0, $0.displayName) }, selection: Binding(
                 get: { configuration.activityPreset },
                 set: { preset in
                     configuration.activityPreset = preset
                     configuration.timing = preset.timing
                 }
-            )) {
-                ForEach(DevActivityPreset.allCases) { preset in
-                    Text(preset.displayName).tag(preset)
-                }
-            }
-            .labelsHidden()
-            .pickerStyle(.segmented)
+            ), accessibilityLabel: "Activity preset")
 
             DisclosureGroup("Advanced", isExpanded: $isShowingAdvanced) {
                 VStack(alignment: .leading, spacing: 8) {
@@ -179,12 +164,12 @@ struct DevSyncActivitySection: View {
                     StepperField(label: "Large file warning", value: largeFileWarningGigabytes, range: 1...512, format: .number, suffix: "GB")
                     Toggle("Large transfers require power", isOn: $configuration.power.largeTransfersRequirePower)
                 .frame(maxWidth: .infinity)
-                        .toggleStyle(.switch)
+                        .toggleStyle(OnePlusSwitchStyle())
                         .controlSize(.small)
                 }
                 .padding(.top, 8)
             }
-            .font(.system(size: 12))
+            .onePlusText(.row)
         }
         .frame(maxWidth: .infinity, alignment: .leading)
     }
@@ -213,12 +198,22 @@ struct DevSyncPairSettingsPage: View {
                     .buttonStyle(OnePlusButtonStyle(.primary))
             }
         } content: {
+            if let message = manager.errorBanner {
+                OnePlusBanner(message, tone: .error) {
+                    Button("Dismiss") { manager.errorBanner = nil }
+                }
+            }
             if let configuration {
                 let binding = Binding(
                     get: { configuration },
                     set: { newValue in
                         self.configuration = newValue
-                        Task { await manager.updateConfiguration(pairID: pair.id, configuration: newValue) }
+                        Task {
+                            let saved = await manager.updateConfiguration(pairID: pair.id, configuration: newValue)
+                            if !saved, self.configuration == newValue {
+                                self.configuration = manager.pairs.first { $0.id == pair.id }?.configuration ?? pair.configuration
+                            }
+                        }
                     }
                 )
                 modeCard
@@ -226,7 +221,8 @@ struct DevSyncPairSettingsPage: View {
                 section("Activity") { DevSyncActivitySection(configuration: binding) }
                 section("Safety") { DevSyncSafetySection(configuration: binding) }
                 section("Power") { DevSyncPowerSection(configuration: binding) }
-                section("Danger") { dangerRow }
+                OnePlusSectionTitle("Danger")
+                dangerRow
             }
         }
         .onAppear { configuration = pair.configuration }
@@ -247,8 +243,8 @@ struct DevSyncPairSettingsPage: View {
             VStack(alignment: .leading, spacing: 6) {
                 DevSyncValueRow(label: "Mode", value: pair.mode.displayName)
                 Text(pair.mode.summary)
-                    .font(.system(size: 11))
-                    .foregroundStyle(.secondary)
+                    .onePlusText(.caption)
+                    .foregroundStyle(OnePlusColor.secondary)
                     .fixedSize(horizontal: false, vertical: true)
                 DevSyncValueRow(label: "Internal root", value: pair.internalRoot.path)
                 DevSyncValueRow(label: "External root", value: pair.externalRoot.path)
@@ -262,10 +258,8 @@ struct DevSyncPairSettingsPage: View {
         HStack(spacing: 8) {
             VStack(alignment: .leading, spacing: 2) {
                 Text("Remove this pair")
-                    .font(.system(size: 12))
-                Text("Files stay on both drives. The safety store is kept.")
-                    .font(.system(size: 11))
-                    .foregroundStyle(.secondary)
+                    .onePlusText(.row)
+                    .help("Files stay on both drives. The safety store is kept.")
             }
             Spacer(minLength: 8)
             Button("Remove Pair…", role: .destructive) { isConfirmingRemoval = true }
@@ -302,7 +296,7 @@ private struct DevSyncSafetySection: View {
             Toggle("Repair missing links automatically", isOn: $configuration.safety.autoRepairMissingLinks)
                 .frame(maxWidth: .infinity)
         }
-        .toggleStyle(.switch)
+        .toggleStyle(OnePlusSwitchStyle())
         .controlSize(.small)
         .frame(maxWidth: .infinity, alignment: .leading)
     }
@@ -318,7 +312,7 @@ private struct DevSyncPowerSection: View {
             Toggle("Large transfers require power", isOn: $configuration.power.largeTransfersRequirePower)
                 .frame(maxWidth: .infinity)
         }
-        .toggleStyle(.switch)
+        .toggleStyle(OnePlusSwitchStyle())
         .controlSize(.small)
         .frame(maxWidth: .infinity, alignment: .leading)
     }

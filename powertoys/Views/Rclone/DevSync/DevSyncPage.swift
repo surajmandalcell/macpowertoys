@@ -45,14 +45,12 @@ struct DevSyncStateBadge: View {
     var body: some View {
         HStack(spacing: 4) {
             Image(systemName: icon)
-                .font(.system(size: 10, weight: .semibold))
+                .onePlusText(.caption)
             Text(title)
-                .font(.system(size: 11, weight: .medium))
+                .onePlusText(.caption)
         }
         .foregroundStyle(tint)
-        .padding(.horizontal, 8)
-        .padding(.vertical, 4)
-        .background(Capsule().fill(tint.opacity(0.12)))
+
         .fixedSize()
         .accessibilityElement(children: .combine)
     }
@@ -64,25 +62,11 @@ struct DevSyncIconButton: View {
     var tint: Color = .secondary
     let action: () -> Void
 
-    @State private var isHovering = false
-
     var body: some View {
-        Button(action: action) {
-            Image(systemName: icon)
-                .font(.system(size: 12, weight: .medium))
-                .foregroundStyle(tint)
-                .frame(width: 24, height: 24)
-                .background(
-                    RoundedRectangle(cornerRadius: 6)
-                        .fill(Color.primary.opacity(isHovering ? 0.06 : 0))
-                )
-                .contentShape(Rectangle())
-        }
-        .buttonStyle(.plain)
-        .focusEffectDisabled()
-        .utilityAnimation(value: isHovering)
-        .onHover { isHovering = $0 }
-        .accessibilityLabel(label)
+        Button(action: action) { Image(systemName: icon).foregroundStyle(tint) }
+            .buttonStyle(OnePlusButtonStyle(.icon, size: .small))
+            .accessibilityLabel(label)
+            .help(label)
     }
 }
 
@@ -95,16 +79,16 @@ struct DevSyncValueRow: View {
     var body: some View {
         HStack(alignment: .firstTextBaseline, spacing: 8) {
             Text(label)
-                .font(.system(size: 11))
-                .foregroundStyle(.secondary)
+                .onePlusText(.caption)
+                .foregroundStyle(OnePlusColor.secondary)
             Spacer(minLength: 8)
             HStack(spacing: 4) {
                 if let icon {
                     Image(systemName: icon)
-                        .font(.system(size: 10, weight: .medium))
+                        .onePlusText(.caption)
                 }
                 Text(value)
-                    .font(.system(size: 11))
+                    .onePlusText(.caption)
                     .monospacedDigit()
                     .lineLimit(1)
                     .truncationMode(.middle)
@@ -137,6 +121,34 @@ struct DevSyncPage: View {
         }
         .sheet(isPresented: $manager.isPresentingSetup) {
             DevSyncSetupSheet()
+        }
+        .sheet(item: $manager.previewPlan) { plan in
+            OnePlusSheet("Pending Changes", width: .medium, close: { manager.previewPlan = nil }) {
+                Text(plan.summary.primaryActionTitle).onePlusText(.cardTitle)
+                if !plan.scanComplete {
+                    Text("The scan is incomplete. Deletions are blocked.").onePlusText(.caption, color: OnePlusColor.warn)
+                }
+                ScrollView {
+                    LazyVStack(alignment: .leading, spacing: 0) {
+                        if plan.actions.isEmpty {
+                            Text("No pending changes.").onePlusText(.row)
+                        }
+                        ForEach(plan.actions) { action in
+                            VStack(alignment: .leading, spacing: OnePlusMetrics.spacing[0]) {
+                                Text(action.relativePath).onePlusText(.mono).lineLimit(1).truncationMode(.middle)
+                                Text(action.reason).onePlusText(.caption).fixedSize(horizontal: false, vertical: true)
+                            }
+                            .onePlusTableRow()
+                        }
+                    }
+                }
+                .onePlusScrollIndicators()
+                .frame(height: OnePlusMetrics.spacing[8] * 12)
+            } footer: {
+                Button("Done") { manager.previewPlan = nil }
+                    .buttonStyle(OnePlusButtonStyle(.primary))
+                    .keyboardShortcut(.defaultAction)
+            }
         }
         .task { await manager.loadIfNeeded() }
     }
@@ -177,7 +189,8 @@ private struct DevSyncPairPage: View {
 
     var body: some View {
         OnePlusPage(scrolls: false) {
-            OnePlusPageHeader(title: pair.displayName, subtitle: subtitle) {
+            OnePlusPageHeader(title: pair.displayName) {
+                Text(subtitle).onePlusText(.caption).lineLimit(1).help(subtitle)
                 DevSyncPairActions(pair: pair, manager: manager, isConfirmingRemoval: $isConfirmingRemoval)
             }
         } content: {
@@ -207,24 +220,16 @@ private struct DevSyncPairPage: View {
     }
 
     private var safetyCard: some View {
-        OnePlusCard {
-            VStack(alignment: .leading, spacing: OnePlusMetrics.spacing[2]) {
-                DevSyncValueRow(label: "Safety store", value: RcloneFormat.bytes(status.safetyStoreBytes))
-                HStack {
-                    Text(manager.safetyStoreURL(for: pair).path)
-                        .font(.system(size: 11, design: .monospaced))
-                        .foregroundStyle(.secondary)
-                        .lineLimit(1)
-                        .truncationMode(.middle)
-                    Spacer(minLength: 8)
-                    Button("Open Safety Store") {
-                        manager.reveal(manager.safetyStoreURL(for: pair))
-                    }
-                    .buttonStyle(OnePlusButtonStyle(.neutral, size: .small))
-                }
-            }
-            .padding(OnePlusMetrics.cardPadding)
+        HStack(spacing: OnePlusMetrics.spacing[3]) {
+            Text(manager.safetyStoreURL(for: pair).path)
+                .onePlusText(.mono).lineLimit(1).truncationMode(.middle)
+                .help(manager.safetyStoreURL(for: pair).path)
+            Spacer(minLength: OnePlusMetrics.spacing[3])
+            Text(RcloneFormat.bytes(status.safetyStoreBytes)).onePlusText(.mono)
+            Button("Open Safety Store") { manager.reveal(manager.safetyStoreURL(for: pair)) }
+                .buttonStyle(OnePlusButtonStyle(.neutral, size: .small))
         }
+        .frame(height: OnePlusMetrics.settingRow)
     }
 }
 
@@ -237,7 +242,7 @@ private struct DevSyncProjectsList: View {
 
     var body: some View {
         ScrollView {
-            LazyVStack(alignment: .leading, spacing: OnePlusMetrics.cardGap) {
+            LazyVStack(alignment: .leading, spacing: 0) {
                 DevSyncSectionHeader(title: "Projects")
                 if projection.groups.isEmpty {
                     Text("No projects discovered yet.")
@@ -331,23 +336,17 @@ private struct DevSyncPairActions: View {
             }
         }
 
-        Menu {
-            Button("Preview Pending") { Task { await manager.previewPending(pairID: pair.id) } }
-            Button("Verify Now") { Task { await manager.verifyNow(pairID: pair.id) } }
-            Divider()
-            Button("Open External Root") { manager.open(manager.externalRootURL(for: pair)) }
-            Button("Open Safety Store") { manager.reveal(manager.safetyStoreURL(for: pair)) }
-            Button("Repair Links") { Task { await manager.repairLinks(pairID: pair.id) } }
-            Divider()
-            Button("Pair Settings") { manager.isShowingPairSettings = true }
-            Button("Remove Pair…", role: .destructive) { isConfirmingRemoval = true }
-        } label: {
-            Image(systemName: "ellipsis.circle")
-        }
-        .menuIndicator(.hidden)
-        .fixedSize()
-        .help("More Dev Sync actions")
-        .accessibilityLabel("More Dev Sync actions")
+        OnePlusMenuButton("More Dev Sync actions", variant: .borderedIcon, items: [
+            .item(.init("Preview Pending") { Task { await manager.previewPending(pairID: pair.id) } }),
+            .item(.init("Verify Now") { Task { await manager.verifyNow(pairID: pair.id) } }),
+            .separator(),
+            .item(.init("Open External Root") { manager.open(manager.externalRootURL(for: pair)) }),
+            .item(.init("Open Safety Store") { manager.reveal(manager.safetyStoreURL(for: pair)) }),
+            .item(.init("Repair Links") { Task { await manager.repairLinks(pairID: pair.id) } }),
+            .separator(),
+            .item(.init("Pair Settings") { manager.isShowingPairSettings = true }),
+            .item(.init("Remove Pair…", role: .destructive) { isConfirmingRemoval = true })
+        ])
     }
 }
 
@@ -410,14 +409,13 @@ private struct DevSyncStatusCard: View {
 
             if let error = status.lastError {
                 Label(error, systemImage: "exclamationmark.triangle.fill")
-                    .font(.system(size: 11))
-                    .foregroundStyle(.orange)
+                    .onePlusText(.caption)
+                    .foregroundStyle(OnePlusColor.warn)
                     .textSelection(.enabled)
             }
             }
             .padding(OnePlusMetrics.cardPadding)
         }
-        .utilityAnimation(value: status)
     }
 }
 
@@ -428,7 +426,7 @@ struct DevSyncProgressCapsule: View {
     var body: some View {
         GeometryReader { geo in
             ZStack(alignment: .leading) {
-                Capsule().fill(Color.primary.opacity(0.08))
+                Capsule().fill(OnePlusColor.track)
                 Capsule()
                     .fill(tint)
                     .frame(width: max(0, min(1, fraction)) * geo.size.width)
@@ -444,9 +442,9 @@ struct DevSyncErrorBanner: View {
     var body: some View {
         HStack(spacing: 8) {
             Image(systemName: "exclamationmark.triangle.fill")
-                .foregroundStyle(.red)
+                .foregroundStyle(OnePlusColor.danger)
             Text(message)
-                .font(.system(size: 12))
+                .onePlusText(.row)
                 .foregroundStyle(.red.opacity(0.9))
                 .textSelection(.enabled)
             Spacer()
@@ -455,7 +453,7 @@ struct DevSyncErrorBanner: View {
         .padding(.horizontal, 12)
         .padding(.vertical, 8)
         .frame(maxWidth: .infinity, alignment: .leading)
-        .background(RoundedRectangle(cornerRadius: 8).fill(Color.red.opacity(0.08)))
+        .background(RoundedRectangle(cornerRadius: 8).fill(OnePlusColor.dangerFill))
     }
 }
 

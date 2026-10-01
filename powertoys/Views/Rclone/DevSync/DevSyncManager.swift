@@ -24,6 +24,7 @@ final class DevSyncManager {
     private(set) var conflicts: [UUID: [DevConflict]] = [:]
     private(set) var links: [UUID: [DevManagedLink]] = [:]
     private(set) var capabilities: [UUID: DevPairCapabilities] = [:]
+    var previewPlan: DevSyncPlan?
     var driftPaths: [UUID: [String]] = [:]
 
     var selectedPairID: UUID?
@@ -148,7 +149,9 @@ final class DevSyncManager {
 
     @discardableResult
     func previewPending(pairID: UUID) async -> DevSyncPlan? {
-        await engine.previewPending(pairID: pairID)
+        previewPlan = await engine.previewPending(pairID: pairID)
+        if previewPlan == nil { errorBanner = "No preview is available. Check the pair and drive status." }
+        return previewPlan
     }
 
     func removePair(pairID: UUID, deleteSafetyStore: Bool) async {
@@ -160,11 +163,13 @@ final class DevSyncManager {
         isShowingPairSettings = false
     }
 
-    func updateConfiguration(pairID: UUID, configuration: DevSyncConfiguration) async {
-        await capture { try await self.engine.updateConfiguration(pairID: pairID, configuration: configuration) }
+    @discardableResult
+    func updateConfiguration(pairID: UUID, configuration: DevSyncConfiguration) async -> Bool {
+        guard await capture({ try await self.engine.updateConfiguration(pairID: pairID, configuration: configuration) }) else { return false }
         if let index = pairs.firstIndex(where: { $0.id == pairID }) {
             pairs[index].configuration = configuration
         }
+        return true
     }
 
     func createPair(draft: DevSetupDraft, approvedPreview: DevSetupPreview) async {
@@ -184,7 +189,11 @@ final class DevSyncManager {
 
     func previewProject(pairID: UUID, projectID: UUID) async {
         let plan = await engine.previewProject(pairID: pairID, projectID: projectID)
-        guard let plan else { return }
+        guard let plan else {
+            errorBanner = "No preview is available. Check the project and drive status."
+            return
+        }
+        previewPlan = plan
         driftPaths[projectID] = plan.actions
             .filter { $0.conflictType == .destinationDrift }
             .map(\.relativePath)
@@ -215,7 +224,7 @@ final class DevSyncManager {
     }
 
     func resolveDrift(pairID: UUID, projectID: UUID, relativePath: String, resolution: DevDriftResolution) async {
-        await capture { try await self.engine.resolveDrift(pairID: pairID, projectID: projectID, relativePath: relativePath, resolution: resolution) }
+        guard await capture({ try await self.engine.resolveDrift(pairID: pairID, projectID: projectID, relativePath: relativePath, resolution: resolution) }) else { return }
         driftPaths[projectID]?.removeAll { $0 == relativePath }
     }
 
@@ -244,12 +253,15 @@ final class DevSyncManager {
 
     // MARK: Errors
 
-    private func capture(_ work: () async throws -> Void) async {
+    @discardableResult
+    private func capture(_ work: () async throws -> Void) async -> Bool {
         do {
             try await work()
+            return true
         } catch {
             errorBanner = error.localizedDescription
             LogManager.shared.error("Dev Sync action failed: \(error)", source: "DevSync")
+            return false
         }
     }
 }
