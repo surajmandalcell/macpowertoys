@@ -58,6 +58,7 @@ final class ToolActionRouter {
     private var openWindowAction: OpenWindowAction?
     private var pending: [ToolActionRequest] = []
     private var pendingToolOpens: [(id: String, activateApp: Bool)] = []
+    @ObservationIgnored private var backgroundWindows: [String: NSWindow] = [:]
     var launchFailure: ToolLaunchFailure?
 
     private init() {}
@@ -118,9 +119,13 @@ final class ToolActionRouter {
                 }
                 return
             }
-            Self.presentSingleWindow(id: resolved, windows: NSApp.windows, activateApp: activateApp) { openWindowAction(id: $0) }
+            Self.presentSingleWindow(id: resolved, windows: NSApp.windows, activateApp: activateApp,
+                createWindow: { id in
+                    let window = MacPowerToysApp.makeBackgroundWindow(id: id)
+                    self.backgroundWindows[id] = window
+                    return window
+                }, activate: { NSApp.activate(ignoringOtherApps: true) }) { openWindowAction(id: $0) }
             if resolved != "main" { dismissMainWindowAfterToolOpen() }
-            if activateApp { NSApp.activate(ignoringOtherApps: true) }
         } else {
             Task {
                 await MarketplaceManager.shared.restore()
@@ -169,6 +174,13 @@ final class ToolActionRouter {
             return
         }
 
+        // Screen selectors take input. Background URLs can only open their applet.
+        if !request.activateApp,
+           request.action == .colorPickerPick || request.action == .textExtractorCapture {
+            open(toolID: request.action.toolID, activateApp: false)
+            return
+        }
+
         if request.action.opensWindow {
             open(toolID: request.action.toolID, activateApp: request.activateApp)
         }
@@ -199,17 +211,26 @@ final class ToolActionRouter {
     }
 
     static func presentSingleWindow(id: String, windows: [NSWindow],
-                                    activateApp: Bool, openWindow: (String) -> Void) {
-        if let window = windows.first(where: {
+                                    activateApp: Bool, createWindow: (String) -> NSWindow?,
+                                    activate: () -> Void, openWindow: (String) -> Void) {
+        let existing = windows.first(where: {
             Self.windowIdentifier($0.identifier?.rawValue, matches: id)
-        }) {
-            window.onePlusPrepareForOpening()
-            if window.isMiniaturized { window.deminiaturize(nil) }
-            if activateApp { window.makeKeyAndOrderFront(nil) }
-            else { window.orderFrontRegardless() }
+        })
+        if existing == nil, activateApp {
+            openWindow(id)
+            activate()
             return
         }
-        openWindow(id)
+        guard let window = existing ?? createWindow(id) else { return }
+        window.onePlusPrepareForOpening()
+        if activateApp {
+            if window.isMiniaturized { window.deminiaturize(nil) }
+            window.makeKeyAndOrderFront(nil)
+            activate()
+        } else {
+            // Deminiaturizing also makes a window key; leave it to an explicit open.
+            window.orderFrontRegardless()
+        }
     }
 
     private func dismissMainWindowAfterToolOpen() {
