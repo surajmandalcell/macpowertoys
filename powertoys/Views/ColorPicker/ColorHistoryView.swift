@@ -411,7 +411,6 @@ private struct ColorSampleRow: View {
                 Text(row.timestamp).onePlusText(.caption).fixedSize()
             }.frame(maxWidth: .infinity, alignment: .leading)
             actions
-                .opacity(hovering || focused || OnePlusFocusPolicy.shared.showsFocus ? 1 : 0)
         }
         .padding(.horizontal, OnePlusMetrics.actionSpacing)
         .frame(height: ColorPickerLayout.historyRowHeight)
