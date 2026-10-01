@@ -33,6 +33,22 @@ public struct OnePlusWindowTexture: View {
     }
 }
 
+public struct OnePlusMetricTexture: View {
+    public static let size = CGSize(width: 180, height: 110)
+    public static let opacity = 0.07
+    public init() {}
+    public var body: some View {
+        GeometryReader { _ in
+            if let image = OnePlusTextureAsset.ribbon.image {
+                Image(nsImage: image).resizable().interpolation(.none).saturation(0)
+                    .frame(width: Self.size.width, height: Self.size.height).opacity(Self.opacity)
+                    .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topTrailing)
+            }
+        }
+        .clipped().allowsHitTesting(false).accessibilityHidden(true)
+    }
+}
+
 public struct OnePlusDitherTexture: View {
     static var resourceImage: NSImage? { OnePlusTextureAsset.grain.image }
     private let strength: Double

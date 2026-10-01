@@ -1,4 +1,12 @@
+import AppKit
 import SwiftUI
+
+public enum OnePlusMetricTypography {
+    public static let lineHeight: CGFloat = 30.24
+    @MainActor static let nativeFont = NSFont(descriptor: NSFont.systemFont(ofSize: 27).fontDescriptor
+        .addingAttributes([.variation: [0x77676874: 550]]), size: 27)! // OpenType wght axis
+    @MainActor public static let font = Font(nativeFont)
+}
 
 public enum OnePlusDensity: String, CaseIterable, Sendable {
     case regular, compact
@@ -20,7 +28,7 @@ public extension EnvironmentValues {
 
 public enum OnePlusTextRole: String, CaseIterable, Sendable {
     case sidebarTitle, nav, captionUpper, pageTitle, subtitle, tab, sectionTitle
-    case cardTitle, row, control, caption, tableHeader, mono, metric, unit
+    case cardTitle, row, control, caption, metricCaption, tableHeader, mono, metric, unit
 
     public func size(for density: OnePlusDensity) -> CGFloat {
         let compact = density == .compact
@@ -34,10 +42,10 @@ public enum OnePlusTextRole: String, CaseIterable, Sendable {
         case .sectionTitle: return compact ? 12 : 13
         case .cardTitle: return compact ? 11 : 12
         case .row, .control: return compact ? 10.5 : 12
-        case .caption: return compact ? 9.5 : 10.5
+        case .caption, .metricCaption: return compact ? 9.5 : 10.5
         case .tableHeader: return 9
         case .mono: return compact ? 9.5 : 11
-        case .metric: return compact ? 21 : 27
+        case .metric: return 27
         case .unit: return compact ? 10 : 12
         }
     }
@@ -67,6 +75,7 @@ public enum OnePlusTextRole: String, CaseIterable, Sendable {
         case .nav, .subtitle, .mono, .unit: OnePlusColor.secondary
         case .captionUpper, .tab, .caption, .tableHeader: OnePlusColor.muted
         case .control: OnePlusColor.controlInk
+        case .metricCaption: OnePlusColor.metricCaption
         default: OnePlusColor.ink
         }
     }
@@ -80,12 +89,14 @@ private struct OnePlusTextModifier: ViewModifier {
 
     func body(content: Content) -> some View {
         content
-            .font(.system(size: role.size(for: density), weight: role.weight,
-                          design: role == .mono ? .monospaced : .default))
+            .font(role == .metric ? OnePlusMetricTypography.font : .system(
+                size: role.size(for: density), weight: role.weight,
+                design: role == .mono ? .monospaced : .default))
             .tracking(role.tracking)
             .foregroundStyle(color ?? (selected ? OnePlusColor.ink : role.color))
             .textCase(role == .captionUpper || role == .tableHeader ? .uppercase : nil)
             .monospacedDigit()
+            .frame(height: role == .metric ? OnePlusMetricTypography.lineHeight : nil)
     }
 }
 

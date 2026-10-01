@@ -26,7 +26,7 @@ public struct OnePlusCard<Content: View>: View {
         }
             .onPreferenceChange(OnePlusFieldErrorPreference.self) { errors = $0 }
             .frame(maxWidth: .infinity, alignment: .leading)
-            .background { OnePlusColor.panel.overlay { if textured { OnePlusDitherTexture() } } }
+            .background { OnePlusColor.panel.overlay { if textured { OnePlusMetricTexture() } } }
             .clipShape(RoundedRectangle(cornerRadius: 8))
             .overlay { RoundedRectangle(cornerRadius: 8).strokeBorder(OnePlusColor.line, lineWidth: 1) }
     }
@@ -42,7 +42,7 @@ public struct OnePlusMenuCard<Content: View>: View {
     public var body: some View {
         content.padding(padded ? OnePlusMenuMetrics.bodyInset : 0)
             .frame(maxWidth: .infinity, alignment: .leading)
-            .background { OnePlusColor.panelHover.overlay { if textured { OnePlusDitherTexture(strength: 0.11) } } }
+            .background { OnePlusColor.panelHover.overlay { if textured { OnePlusMetricTexture() } } }
             .clipShape(RoundedRectangle(cornerRadius: OnePlusMetrics.menuTileRadius))
             .overlay {
                 RoundedRectangle(cornerRadius: OnePlusMetrics.menuTileRadius)
