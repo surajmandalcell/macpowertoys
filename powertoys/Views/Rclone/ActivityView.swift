@@ -98,7 +98,6 @@ struct ActivityView: View {
                         sort: { sortColumn = $0; ascending = $1 },
                         open: showDetails,
                         preview: showDetails,
-                        remove: { _ in },
                         actions: actions
                     )
                 }
@@ -117,7 +116,7 @@ struct ActivityView: View {
             projectionTask?.cancel()
             projectionTask = nil
         }
-        .background { Button("") { searchFocus &+= 1 }.keyboardShortcut("f").hidden() }
+        .focusedSceneValue(\.appFind, showDetails ? nil : AppCommandAction(title: "Find in Activity", perform: { searchFocus &+= 1 }))
         .accessibilityIdentifier("rclone.activity")
     }
 
