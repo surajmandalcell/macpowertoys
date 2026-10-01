@@ -9,6 +9,18 @@ final class PortmanTests: XCTestCase {
     private static let rclonePath = ["/opt/homebrew/bin/rclone", "/usr/local/bin/rclone"]
         .first { FileManager.default.isExecutableFile(atPath: $0) }
 
+    func testPortScanCommandOutputIsBounded() async throws {
+        do {
+            _ = try await Task.detached {
+                try PortmanScanner.run("/bin/dd", ["if=/dev/zero", "bs=65536", "count=129"])
+            }.value
+            XCTFail("Port scan accepted more than 8 MiB")
+        } catch let error as NSError {
+            XCTAssertEqual(error.domain, "Portman")
+            XCTAssertEqual(error.localizedDescription, "The port scan returned too much output.")
+        }
+    }
+
     func testClaudeSessionIDReadsOnlyEnvironmentAfterArguments() {
         let id = UUID(uuidString: "12345678-1234-1234-1234-123456789abc")!
         let bytes: [UInt8] = [2, 0, 0, 0] + Array(
