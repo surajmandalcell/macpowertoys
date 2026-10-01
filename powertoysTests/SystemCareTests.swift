@@ -105,6 +105,53 @@ final class SystemCareTests: XCTestCase {
         XCTAssertNil(fixture.defaults.data(forKey: SystemCareManager.cleanupScanKey))
     }
 
+    func testTrashFreezesSelectionAndRetainsPartialFailure() async throws {
+        let fixture = try Fixture()
+        defer { fixture.remove() }
+        let moved = try fixture.candidate("moved")
+        let failed = try fixture.candidate("failed")
+        let untouched = try fixture.candidate("untouched")
+        let snapshot = CleanupScanSnapshot(scannedAt: Date(), candidates: [moved, failed, untouched],
+                                           selectedCandidateIDs: [moved.id, failed.id])
+        fixture.defaults.set(try JSONEncoder().encode(snapshot), forKey: SystemCareManager.cleanupScanKey)
+        let started = expectation(description: "Trash worker started")
+        let release = DispatchSemaphore(value: 0)
+        let manager = SystemCareManager(defaults: fixture.defaults, homeDirectory: fixture.home) { url in
+            if url == moved.url {
+                started.fulfill()
+                guard release.wait(timeout: .now() + 3) == .success else { throw CancellationError() }
+                try FileManager.default.removeItem(at: url)
+            } else {
+                throw NSError(domain: "SystemCareTests", code: 1)
+            }
+        }
+        manager.moveSelectedToTrash()
+        await fulfillment(of: [started], timeout: 2)
+        manager.setCandidate(moved.id, selected: false)
+        manager.setCandidate(untouched.id, selected: true)
+        manager.setCandidates([moved.id, failed.id], selected: false)
+        manager.clearCleanupScan()
+        manager.moveSelectedToTrash()
+        XCTAssertEqual(manager.selectedCandidateIDs, [moved.id, failed.id])
+        release.signal()
+        try await waitUntilIdle(manager)
+
+        XCTAssertEqual(manager.cleanupCandidates.map(\.id), [failed.id, untouched.id])
+        XCTAssertEqual(manager.selectedCandidateIDs, [failed.id])
+        XCTAssertEqual(manager.lastTrashResult?.movedCount, 1)
+        XCTAssertEqual(manager.lastTrashResult?.movedBytes, moved.size)
+        XCTAssertEqual(manager.lastTrashResult?.failures.map(\.id), [failed.id])
+        XCTAssertTrue(FileManager.default.fileExists(atPath: untouched.url.path))
+        XCTAssertEqual(SystemCareManager(defaults: fixture.defaults, homeDirectory: fixture.home).cleanupCandidates.map(\.id),
+                       [failed.id, untouched.id])
+    }
+
+    private func waitUntilIdle(_ manager: SystemCareManager) async throws {
+        let deadline = Date().addingTimeInterval(4)
+        while manager.isWorking, Date() < deadline { try await Task.sleep(for: .milliseconds(10)) }
+        XCTAssertFalse(manager.isWorking)
+    }
+
     private struct Fixture {
         let home: URL
         let suite = "SystemCareTests.\(UUID().uuidString)"
