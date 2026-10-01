@@ -121,7 +121,7 @@ private struct OnePlusButtonBody<Label: View>: View {
     }
 
     private var border: Color {
-        if isFocused { return OnePlusColor.focus }
+        if isFocused { return style.variant == .accentPrimary ? OnePlusColor.accentPrimaryInk : OnePlusColor.focus }
         switch style.variant {
         case .neutral, .borderedIcon: return OnePlusColor.line
         case .destructive: return isHovering ? OnePlusColor.danger : OnePlusColor.dangerLine
