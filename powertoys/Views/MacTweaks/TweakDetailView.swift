@@ -132,6 +132,7 @@ private struct MacTweaksChoiceControl: View {
             } else if field.choices.count > 20 {
                 MacTweaksTimingField(field: field, selection: selection, onSelection: onSelection)
                     .frame(width: controlWidth)
+                    .opacity(isEnabled ? 1 : OnePlusMetrics.disabledOpacity)
             } else if field.choices.count == 2 && selection != -2 {
                 MacTweaksSegmentedControl(field: field, selection: selection, controlWidth: controlWidth, onSelection: onSelection)
             } else {
@@ -139,7 +140,6 @@ private struct MacTweaksChoiceControl: View {
             }
         }
         .disabled(!isEnabled)
-        .opacity(isEnabled ? 1 : OnePlusMetrics.disabledOpacity)
     }
 }
 
@@ -214,7 +214,7 @@ private struct MacTweaksTimingField: View {
         HStack(spacing: 0) {
             Text(selection == -2 ? "Custom value" : selectedValue.map { String(format: "%.2f", $0) }
                  ?? "Default (\(field.defaultLabel ?? String(format: "%.2f", defaultValue)))")
-                .onePlusText(.control)
+                .onePlusText(.mono, color: OnePlusColor.controlInk)
                 .padding(.horizontal, OnePlusMetrics.spacing[3])
                 .frame(maxWidth: .infinity, alignment: .leading)
             Text("s").onePlusText(.caption).padding(.trailing, OnePlusMetrics.spacing[3])
