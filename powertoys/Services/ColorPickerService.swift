@@ -39,7 +39,7 @@ final class ColorPickerService {
     private let selectedProjectKey = "color-picker.selected-project.v1"
     private let formatKey = "color-picker.format.v1"
     private let maximumHistory = 100
-    @ObservationIgnored private var persistenceTask: Task<Void, Never>?
+    @ObservationIgnored private var persistenceTask: Task<Void, Error>?
 
     init(defaults: UserDefaults = .standard, sampler: any ColorSampling = NSColorSampler(),
          pasteboard: NSPasteboard = .general) {
@@ -269,8 +269,10 @@ final class ColorPickerService {
         save()
     }
 
-    func flushPersistence() async {
-        await persistenceTask?.value
+    func flushPersistence() async throws {
+        // A fresh snapshot makes Retry use the retained current state.
+        save()
+        try await persistenceTask?.value
     }
 
     private func save() {
@@ -282,13 +284,12 @@ final class ColorPickerService {
         let projectsKey = projectsKey
         let previous = persistenceTask
         persistenceTask = Task.detached(priority: .utility) {
-            await previous?.value
-            if let data = try? JSONEncoder().encode(history) {
-                defaults.set(data, forKey: historyKey)
-            }
-            if let data = try? JSONEncoder().encode(projects) {
-                defaults.set(data, forKey: projectsKey)
-            }
+            // A failed older snapshot must not prevent a newer save or retry.
+            _ = await previous?.result
+            let historyData = try JSONEncoder().encode(history)
+            let projectsData = try JSONEncoder().encode(projects)
+            defaults.set(historyData, forKey: historyKey)
+            defaults.set(projectsData, forKey: projectsKey)
         }
     }
 
