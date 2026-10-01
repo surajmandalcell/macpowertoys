@@ -1,5 +1,25 @@
 # Verification Troubleshooting
 
+## Inactive Unit Host And Offscreen Fixtures, Run 64, 2026-10-01
+
+- **Symptom:** The local guard stops when a unit test activates MacPowerToys.
+- **Cause:** Tests activate and raise windows. Launch also opens Main whenever
+  XCTest is running, and a reopen request can open it again.
+- **Invariant:** When XCTestConfigurationFilePath is set, use the prohibited
+  activation policy during App init and will-finish-launch. Skip Main launch
+  and reopen. UI-test launches retain their separate behavior. Native unit
+  fixtures stay offscreen and use orderBack or no ordering. Keep real editor,
+  native panel height, render, and lifecycle assertions. Routing spies record
+  activation intent without executing it. Keep the runner's foreground guard.
+- **Check:** The app and both desktop test bundles compile. The native field
+  editor probe passes without ordering a window or changing foreground.
+  The first guarded attempt refuses the game with exit 3. The next attempt
+  stops with exit 4 during build when Chrome changes to the League client.
+  Zero unit tests execute; zero assertion failures are recorded. No local
+  full pass is claimed. Wait for the orchestrator before another run.
+  Makefile TEST_ARGS and the local runner now forward -only-testing selections.
+  Report: `tmp/redesign/logs/w8-tests-quiet.md`.
+
 ## Test Actions Must Leave The Owner's Desktop Alone
 
 - **Symptom:** During Xcode test execution on the shared Mac, the owner saw a

@@ -1,5 +1,14 @@
 # System Tools Request List
 
+Local verification, run 64, 2026-10-01: unit-test activation calls now use
+offscreen fixtures, and the XCTest host skips activation, Main launch, and
+reopen. Native panel height, render, and Fan lifecycle assertions remain.
+The app and both desktop bundles compile. The guarded attempts refuse the
+game, then stop during build when Chrome changes to the League client.
+Zero unit tests execute; zero assertion failures are recorded. Task Manager,
+Input Devices, and System Care execution waits for the orchestrator.
+Report: `tmp/redesign/logs/w8-tests-quiet.md`.
+
 Local verification, run 63, 2026-10-01: `a57d0c4d` commits shared switch
 alignment and flexible selects. `e738cbed` commits Task Manager adoption.
 All 145 package tests pass, including retained-page and flexible-width checks.

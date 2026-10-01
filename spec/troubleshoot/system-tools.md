@@ -14,6 +14,15 @@
   those cases before completing local execution. Log:
   `tmp/redesign/logs/local-tests-app.log`.
 
+Run 64 replaces explicit activation in FocusEffectTests, SystemMonitorTests,
+and TrayPopoverLayoutTests with offscreen native fixtures. FanControlTests
+uses offscreen orderBack; the Ruler presentation spy also stops key ordering.
+The unit host prohibits activation and skips Main launch and reopen. Both
+desktop bundles compile. The guarded run stops before execution when Chrome
+changes to the League client. Zero unit tests execute, with zero recorded
+assertion failures. Completion waits for the orchestrator's stable desktop.
+Report: `tmp/redesign/logs/w8-tests-quiet.md`.
+
 ## System Monitor Fan Control Packaging
 
 - **Symptom:** Quit blocks on a synchronous Fan queue or clears manual

@@ -1,5 +1,12 @@
 # Ruler Request List
 
+Local verification, run 64, 2026-10-01: the Settings presentation spy orders
+its fixture offscreen without making it key. Its suspension and visibility
+assertions remain. The XCTest host prohibits activation. Both desktop test
+bundles compile; no unit test executes before the foreground guard stops.
+Ruler execution waits for the orchestrator. The installed app is unchanged.
+Report: `tmp/redesign/logs/w8-tests-quiet.md`.
+
 Local verification, run 63, 2026-10-01: the guarded app run stops before
 RulerCoreTests when FocusEffectTests activates MacPowerToys. Ruler's current
 local execution remains open. No Ruler window or installed app was changed.
