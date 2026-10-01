@@ -4,21 +4,21 @@ import OnePlusUI
 import SwiftUI
 import UniformTypeIdentifiers
 
-nonisolated struct TaskManagerReportRow: Sendable {
+nonisolated struct TaskManagerReportRow: Equatable, Sendable {
     let field: String
     let value: String
     var rawField: String? = nil
     var rawValue: String? = nil
 }
 
-nonisolated struct TaskManagerReportSection: Identifiable, Sendable {
+nonisolated struct TaskManagerReportSection: Equatable, Identifiable, Sendable {
     let title: String
     let rows: [TaskManagerReportRow]
     var rawTitle: String? = nil
     var id: String { title }
 }
 
-nonisolated struct TaskManagerReportCategory: Identifiable, Sendable {
+nonisolated struct TaskManagerReportCategory: Equatable, Identifiable, Sendable {
     let id: String
     let title: String
     let symbol: String
@@ -224,6 +224,44 @@ enum TaskManagerSystemReportAction: Equatable {
     case exportJSON
 }
 
+nonisolated enum TaskManagerReportExport {
+    enum Format: Sendable { case text, json }
+
+    static func text(categories: [TaskManagerReportCategory]) -> String {
+        categories.map { category in
+            ([category.title] + category.sections.flatMap { section in
+                ["\n\(section.title)"] + section.rows.map { "\($0.field): \($0.value)" }
+            }).joined(separator: "\n")
+        }.joined(separator: "\n\n")
+    }
+
+    static func data(categories: [TaskManagerReportCategory], format: Format) throws -> Data {
+        if format == .text { return Data(text(categories: categories).utf8) }
+        let report = categories.map { category in
+            [
+                "category": category.title,
+                "sections": category.sections.map { section in
+                    ["title": section.title, "rawTitle": section.rawTitle ?? section.title,
+                     "rows": section.rows.map {
+                         ["field": $0.field, "value": $0.value,
+                          "rawField": $0.rawField ?? $0.field, "rawValue": $0.rawValue ?? $0.value]
+                     }]
+                },
+            ]
+        }
+        return try JSONSerialization.data(withJSONObject: report, options: [.prettyPrinted, .sortedKeys])
+    }
+
+    static func write(categories: [TaskManagerReportCategory], format: Format, to url: URL) throws {
+        try data(categories: categories, format: format).write(to: url, options: .atomic)
+    }
+}
+
+private struct TaskManagerReportSearchRequest: Equatable {
+    let categories: [TaskManagerReportCategory]
+    let query: String
+}
+
 nonisolated struct TaskManagerReportMatch: Identifiable, Sendable {
     let category: TaskManagerReportCategory
     let section: TaskManagerReportSection
@@ -268,6 +306,8 @@ struct TaskManagerSystemReportView: View {
     @State private var isLoading = true
     @State private var isCollectingDetails = false
     @State private var errorMessage: String?
+    @State private var exportError: String?
+    @State private var isExporting = false
     @State private var matches: [TaskManagerReportMatch] = []
 
     init(
@@ -285,7 +325,9 @@ struct TaskManagerSystemReportView: View {
     private var selected: TaskManagerReportCategory? {
         categories.first { $0.id == selectedID } ?? categories.first
     }
-    private var searchRequest: String { "\(categories.count):\(search)" }
+    private var searchRequest: TaskManagerReportSearchRequest {
+        TaskManagerReportSearchRequest(categories: categories, query: search)
+    }
 
     var body: some View {
         TaskManagerPanel {
@@ -321,6 +363,13 @@ struct TaskManagerSystemReportView: View {
             case .exportJSON: export(format: .json)
             }
             requestedAction = nil
+        }
+        .alert("Report could not be saved", isPresented: Binding(
+            get: { exportError != nil }, set: { if !$0 { exportError = nil } }
+        )) {
+            Button("OK") { exportError = nil }
+        } message: {
+            Text(exportError ?? "")
         }
     }
 
@@ -426,7 +475,8 @@ struct TaskManagerSystemReportView: View {
             }
             ScrollView {
                 LazyVStack(alignment: .leading, spacing: 0) {
-                    ForEach(category.sections) { section in
+                    ForEach(category.sections.indices, id: \.self) { index in
+                        let section = category.sections[index]
                         reportSection(section, showsHeading: category.sections.count != 1 || section.title != category.title)
                     }
                 }
@@ -459,6 +509,7 @@ struct TaskManagerSystemReportView: View {
                 }
                 .padding(.horizontal, 12)
                 .padding(.vertical, 7)
+                .onePlusRowHover()
                 .overlay(alignment: .bottom) { Rectangle().fill(TaskManagerTheme.lineSoft).frame(height: 1) }
             }
         }
@@ -480,7 +531,7 @@ struct TaskManagerSystemReportView: View {
                                 selectedID = match.category.id
                                 search = ""
                             } label: {
-                                VStack(alignment: .leading, spacing: 5) {
+                                VStack(alignment: .leading, spacing: OnePlusMetrics.spacing[0]) {
                                     Text("\(match.category.title) · \(match.section.title)")
                                         .font(.system(size: 9)).foregroundStyle(TaskManagerTheme.muted)
                                     HStack(alignment: .firstTextBaseline, spacing: 14) {
@@ -520,13 +571,15 @@ struct TaskManagerSystemReportView: View {
         guard categories.isEmpty else { return }
         isLoading = true
         do {
-            categories = try await TaskManagerSystemReportLoader.shared.loadOverview()
+            let overview = try await TaskManagerSystemReportLoader.shared.loadOverview()
             guard !Task.isCancelled else { return }
+            categories = overview
             selectedID = categories.first?.id ?? selectedID
             isLoading = false
             isCollectingDetails = true
-            categories = try await TaskManagerSystemReportLoader.shared.load()
+            let report = try await TaskManagerSystemReportLoader.shared.load()
             guard !Task.isCancelled else { return }
+            categories = report
             errorMessage = nil
         } catch {
             guard !Task.isCancelled else { return }
@@ -539,47 +592,39 @@ struct TaskManagerSystemReportView: View {
 
     private func copyCurrent() {
         guard let selected else { return }
-        NSPasteboard.general.clearContents()
-        NSPasteboard.general.setString(textReport(categories: [selected]), forType: .string)
-    }
-
-    private enum ExportFormat { case text, json }
-
-    private func export(format: ExportFormat) {
-        let panel = NSSavePanel()
-        panel.nameFieldStringValue = format == .text ? "Task Manager System Report.txt" : "Task Manager System Report.json"
-        panel.allowedContentTypes = format == .text ? [.plainText] : [.json]
-        panel.begin { response in
-            guard response == .OK, let url = panel.url else { return }
-            let data: Data?
-            switch format {
-            case .text: data = Data(textReport(categories: categories).utf8)
-            case .json: data = try? JSONSerialization.data(withJSONObject: jsonReport, options: [.prettyPrinted, .sortedKeys])
-            }
-            try? data?.write(to: url, options: .atomic)
+        Task {
+            let text = await Task.detached(priority: .utility) {
+                TaskManagerReportExport.text(categories: [selected])
+            }.value
+            NSPasteboard.general.clearContents()
+            NSPasteboard.general.setString(text, forType: .string)
         }
     }
 
-    private func textReport(categories: [TaskManagerReportCategory]) -> String {
-        categories.map { category in
-            ([category.title] + category.sections.flatMap { section in
-                ["\n\(section.title)"] + section.rows.map { "\($0.field): \($0.value)" }
-            }).joined(separator: "\n")
-        }.joined(separator: "\n\n")
-    }
-
-    private var jsonReport: [[String: Any]] {
-        categories.map { category in
-            [
-                "category": category.title,
-                "sections": category.sections.map { section in
-                    ["title": section.title, "rawTitle": section.rawTitle ?? section.title,
-                     "rows": section.rows.map {
-                         ["field": $0.field, "value": $0.value,
-                          "rawField": $0.rawField ?? $0.field, "rawValue": $0.rawValue ?? $0.value]
-                     }]
-                },
-            ]
+    private func export(format: TaskManagerReportExport.Format) {
+        guard !categories.isEmpty, !isExporting else { return }
+        let categories = categories
+        isExporting = true
+        let panel = NSSavePanel()
+        panel.nameFieldStringValue = format == .text ? "Task Manager System Report.txt" : "Task Manager System Report.json"
+        panel.allowedContentTypes = format == .text ? [.plainText] : [.json]
+        let completion: (NSApplication.ModalResponse) -> Void = { response in
+            guard response == .OK, let url = panel.url else { isExporting = false; return }
+            Task {
+                do {
+                    try await Task.detached(priority: .utility) {
+                        try TaskManagerReportExport.write(categories: categories, format: format, to: url)
+                    }.value
+                } catch {
+                    exportError = error.localizedDescription
+                }
+                isExporting = false
+            }
+        }
+        if let window = NSApp.windows.first(where: { $0.identifier?.rawValue == "system-monitor" }) {
+            panel.beginSheetModal(for: window, completionHandler: completion)
+        } else {
+            panel.begin(completionHandler: completion)
         }
     }
 }
