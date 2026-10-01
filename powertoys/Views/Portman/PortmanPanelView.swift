@@ -600,6 +600,7 @@ struct PortmanPanelView: View {
     private func localRow(_ row: PortmanOverviewRow) -> some View {
         let port = row.port
         let isHovered = hoveredRowID == port.id
+        let showsActions = !cleanupMode && (isHovered || OnePlusFocusPolicy.shared.showsFocus)
         return HStack(spacing: OnePlusMetrics.actionSpacing) {
             if cleanupMode {
                 Toggle(isOn: Binding(
@@ -611,7 +612,7 @@ struct PortmanPanelView: View {
                 .disabled(!row.canStop)
                 .accessibilityLabel("Select process \(String(port.pid)) for cleanup")
             }
-            HStack(spacing: OnePlusMetrics.spacing[1]) {
+            ZStack(alignment: .trailing) {
                 Button {
                     if cleanupMode {
                         guard row.canStop else { return }
@@ -633,12 +634,14 @@ struct PortmanPanelView: View {
                         }
                         .foregroundStyle(portColor(port))
                         .frame(width: 44, alignment: .leading)
-                        VStack(alignment: .leading, spacing: OnePlusMetrics.spacing[0]) {
-                            Text(row.title)
-                                .onePlusText(.cardTitle).lineLimit(1)
-                            if !row.subtitle.isEmpty {
-                                Text(row.subtitle).onePlusText(.caption).lineLimit(1)
+                        ViewThatFits(in: .horizontal) {
+                            HStack(alignment: .firstTextBaseline, spacing: OnePlusMetrics.spacing[2]) {
+                                Text(row.title).onePlusText(.cardTitle).fixedSize()
+                                if !row.subtitle.isEmpty {
+                                    Text(row.subtitle).onePlusText(.caption).fixedSize()
+                                }
                             }
+                            Text(row.title).onePlusText(.cardTitle).lineLimit(1)
                         }
                         Spacer(minLength: OnePlusMetrics.spacing[1])
                         HStack(spacing: OnePlusMetrics.spacing[2]) {
@@ -653,6 +656,8 @@ struct PortmanPanelView: View {
                                 .help("Running for \(port.uptime)")
                         }
                         .frame(width: 134, height: 28)
+                        .opacity(showsActions ? 0 : 1)
+                        .accessibilityHidden(showsActions)
                     }
                     .padding(.horizontal, OnePlusMetrics.actionSpacing)
                     .frame(minHeight: 52)
@@ -693,7 +698,11 @@ struct PortmanPanelView: View {
                         }
                     }
                     .buttonStyle(OnePlusButtonStyle(.icon, size: .small))
+                    .frame(width: 134, height: 28, alignment: .trailing)
                     .padding(.trailing, OnePlusMetrics.actionSpacing)
+                    .opacity(showsActions ? 1 : 0)
+                    .allowsHitTesting(showsActions)
+                    .accessibilityHidden(!showsActions)
                 }
             }
         }
