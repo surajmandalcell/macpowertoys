@@ -1785,9 +1785,9 @@ final class SystemMonitorMenuController: NSObject {
         let output = NSMutableAttributedString()
         let paragraph = NSMutableParagraphStyle()
         var offset: CGFloat = 0
-        paragraph.tabStops = state.dropLast().map { item in
+        paragraph.tabStops = state.enumerated().map { index, item in
             offset += SystemMonitorStatusText.contentWidth(for: item.style, valueWidth: reservedWidths[item.metric] ?? 0)
-                + SystemMonitorStatusText.groupGap
+                + (index < state.count - 1 ? SystemMonitorStatusText.groupGap : 0)
             return NSTextTab(textAlignment: .left, location: offset)
         }
         for (index, item) in state.enumerated() {
@@ -1802,6 +1802,8 @@ final class SystemMonitorMenuController: NSObject {
             }
             if item.style != .iconOnly { output.append(SystemMonitorStatusText.value(item.value)) }
         }
+        // Native status buttons center the full title. Fill the last reserved slot too.
+        output.append(NSAttributedString(string: "\t\u{200b}"))
         output.addAttribute(.font, value: SystemMonitorStatusText.font, range: NSRange(location: 0, length: output.length))
         output.addAttribute(.paragraphStyle, value: paragraph, range: NSRange(location: 0, length: output.length))
         return output
