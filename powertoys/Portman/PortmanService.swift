@@ -250,7 +250,21 @@ nonisolated enum PortmanScanner {
         process.standardOutput = output
         process.standardError = output
         try process.run()
-        let data = output.fileHandleForReading.readDataToEndOfFile()
+        defer {
+            if process.isRunning { Darwin.kill(process.processIdentifier, SIGKILL) }
+            process.waitUntilExit()
+            try? output.fileHandleForReading.close()
+        }
+        var data = Data()
+        while true {
+            let chunk = autoreleasepool { output.fileHandleForReading.readData(ofLength: 65_536) }
+            guard !chunk.isEmpty else { break }
+            guard chunk.count <= 8 * 1_024 * 1_024 - data.count else {
+                throw NSError(domain: "Portman", code: 1,
+                              userInfo: [NSLocalizedDescriptionKey: "The port scan returned too much output."])
+            }
+            data.append(chunk)
+        }
         process.waitUntilExit()
         if emptyExitIsSuccess && process.terminationStatus == 1 && data.isEmpty { return "" }
         guard process.terminationStatus == 0 else {
