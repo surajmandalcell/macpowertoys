@@ -8,6 +8,12 @@ The signed status image and both appearances remain with the orchestrator.
 Reviewed against the current app source on 2026-08-31. Update this list when a
 direct user correction or verified result changes a status.
 
+Window performance: the shared ledger records applet open, tab selection,
+and Settings selection. It ends after native display submission. Two package
+checks pass. The installed baseline is `36c585b4`; current source still needs
+signed measurements and first-frame captures. The 250ms open and 100ms page
+limits remain open. Commands: `tmp/redesign/perf/w1-windows.md`.
+
 ## OnePlusUI redesign, 2026-09-29
 
 The 2026-10-01 shared chrome fix preserves native button frames and moves

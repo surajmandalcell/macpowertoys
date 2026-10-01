@@ -467,13 +467,16 @@
 - **Cause:** `WindowStateManager.restoreState` applied the complete saved
   frame, including a stale height, to windows whose height is content-driven.
   SwiftUI centers the fixed-size content in the taller window.
-- **Invariant:** Fixed-size applet windows (`awake`, `color-picker`, and
-  `text-extractor`) restore position only: keep the saved top-left
-  edge and the window's current content-driven size. Never restore a saved
-  width or height onto a content-sized applet.
-- **Check:** Save an applet frame, change its expected content height, reopen,
-  and confirm the body fills the window with the settings button 8pt from the
-  bottom-right corner.
+- **Invariant:** Every registered fixed workspace and content-sized applet
+  restores position only. Keep the saved top-left edge and the current size.
+  Restore once on native attachment, before display. Do not queue a later
+  restoration pass or apply an old saved width and height.
+- **Check:** The 2026-10-01 source check fails on the old policy for Cloud Sync,
+  Logs, Input Devices, System Care, Diskman, NetToys, and Switch. The new policy
+  passes all 14 saved identifiers and keeps the top-left edge and current size.
+  `WindowAccessorTests` checks immediate attachment and the canvas registry.
+  Signed reopen and late-frame checks remain with the orchestrator. Commands
+  and timing limits are in `tmp/redesign/perf/w1-windows.md`.
 
 ## Dock Icon Optical Sizing
 

@@ -6,6 +6,12 @@ that definition. The 14-tool contact sheet was reviewed at 16pt and 32pt in
 both appearances. Signed review of those surfaces remains with the
 orchestrator.
 
+Production window performance, 2026-10-01: the tool router now records Ruler
+open through native layout and display submission in the shared timing ledger.
+No Ruler window was opened in the background pass because its current opener
+activates the app. Live latency and foreground preservation remain open.
+See `tmp/redesign/perf/w1-windows.md`.
+
 Reviewed against the pinned [FreeRuler](https://github.com/pascalpp/FreeRuler)
 source at commit `d38ca4f673f16c51485940e63eeee68babfbfeed` on 2026-08-31.
 Update this list whenever Ruler requirements or verification results change.

@@ -18,6 +18,14 @@ native-table regressions. Tray Fan and Portman UI passed in `36741797887`
 at `b3d55c3c`, including saved CPU reopen, empty servers, and SSH validation.
 The orchestrator owns signed installation and final interaction review.
 
+Production window performance, 2026-10-01: Input Devices, System Care, and
+Task Manager use the shared window and page timing ledger. All saved fixed
+workspaces now restore position once, on attachment, and keep their current
+size. The source restoration check passes; two timing package checks pass.
+P2, P3, and P5 remain open. Task Manager still gates its page body on delayed
+visibility, and signed sampling, idle CPU, and complete-frame checks remain.
+See `tmp/redesign/perf/w1-windows.md` for the baseline and exact commands.
+
 Production pass, 2026-10-01: menu-panel types now live in
 `powertoys/Views/MenuPanels/`, one cohesive file per panel part. This is a pure
 move with only the required cross-file access changes. Debug compilation and
