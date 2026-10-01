@@ -247,8 +247,7 @@ struct ColorHistoryView: View {
     private var projects: some View {
         VStack(alignment: .leading, spacing: OnePlusMetrics.actionSpacing) {
             HStack(spacing: OnePlusMetrics.actionSpacing) {
-                Text("Color projects").onePlusText(.sectionTitle)
-                Spacer(minLength: 0)
+                OnePlusSectionTitle("Color projects")
                 Button("New Project", systemImage: "plus") { isCreatingProject.toggle() }
                     .buttonStyle(OnePlusButtonStyle(.ghost, size: .small))
             }
@@ -299,6 +298,7 @@ struct ColorHistoryView: View {
                     Text(name).lineLimit(1)
                     Spacer(minLength: 0)
                     Text(count, format: .number).onePlusText(.caption).monospacedDigit().fixedSize()
+                        .accessibilityLabel("\(count) saved colors")
                     if selected { Image(systemName: "checkmark") }
                 }
                 .onePlusText(.row)

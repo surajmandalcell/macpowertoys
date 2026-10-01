@@ -218,8 +218,7 @@ struct AwakeSettingsView: View {
     private var process: some View {
         VStack(alignment: .leading, spacing: OnePlusMetrics.actionSpacing) {
             HStack(spacing: OnePlusMetrics.actionSpacing) {
-                Text("Attach to a process").onePlusText(.sectionTitle)
-                Spacer(minLength: 0)
+                OnePlusSectionTitle("Attach to a process")
                 HStack(spacing: OnePlusMetrics.actionSpacing) {
                     Button("Attach", action: attach)
                     if service.configuration.attachedProcessID != nil {
