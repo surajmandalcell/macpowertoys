@@ -43,7 +43,7 @@ struct TrayPopoverView: View {
     @AppStorage("tray.selectedTab.v2") private var selectedTabID = TrayTab.home.rawValue
     @AppStorage("tray.tabOrder.v2") private var storedTabOrder = ""
     @Environment(\.openWindow) private var openWindow
-    @State private var switchModel = SwitchWorkspaceModel()
+    @State private var switchModel = SwitchWorkspaceModel.shared
     @State private var netToysSnapshot = NetToysTraySnapshot()
     @State private var careSnapshot = SystemCareTraySnapshot()
     @State private var startupDisk: SystemCareStartupDiskSnapshot?
