@@ -28,6 +28,11 @@ struct MacPowerToysApp: App {
     }
 
     init() {
+        if !AppRuntime.isRunningTests {
+            let started = ContinuousClock.now
+            AppIdentity.migrateLegacyPreferences()
+            NSLog("Startup preferences migrated in %@", String(describing: started.duration(to: .now)))
+        }
         PortmanShortcuts.updateAppShortcutParameters()
     }
 
