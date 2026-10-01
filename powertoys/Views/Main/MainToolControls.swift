@@ -47,7 +47,7 @@ struct MainOpenToolButton: View {
             guard let toolID else { return }
             ToolActionRouter.shared.open(toolID: toolID)
         } label: { Text(title) }
-        .buttonStyle(OnePlusButtonStyle(primary ? .primary : .ghost, size: primary ? .regular : .small,
+        .buttonStyle(OnePlusButtonStyle(primary ? .accentPrimary : .ghost, size: primary ? .regular : .small,
                                       minWidth: OnePlusCatalogMetrics.openWidth,
                                       height: primary ? OnePlusMetrics.controlHeight : OnePlusCatalogMetrics.openHeight))
         .disabled(toolID == nil || !settings.isToolEnabled(toolID ?? "") || settings.isToolTransitioning(toolID ?? ""))
