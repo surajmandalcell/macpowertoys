@@ -77,15 +77,20 @@ nonisolated enum SystemMonitorProcessHierarchy {
             pidText = String(process.pid)
             let parts = process.name.split(separator: ".")
             let isVersion = parts.count > 1 && parts.allSatisfy { Int($0) != nil }
-            let components = URL(fileURLWithPath: process.executablePath).pathComponents
-            appBundlePath = components.firstIndex(where: { $0.hasSuffix(".app") }).map {
-                NSString.path(withComponents: Array(components[...$0]))
-            }
+            appBundlePath = SystemMonitorProcessHierarchy.appBundlePath(for: process.executablePath)
             let bundleName = appBundlePath.map { URL(fileURLWithPath: $0).deletingPathExtension().lastPathComponent }
             let owner = bundleName ?? parentName
             displayName = isVersion ? owner.map { "\($0) (\(process.name))" } ?? process.name : process.name
             tableName = String(repeating: "    ", count: depth) + displayName
             symbol = appBundlePath == nil && process.executablePath.hasPrefix("/") ? "terminal" : ""
+        }
+    }
+
+    static func appBundlePath(for executablePath: String) -> String? {
+        guard executablePath.hasPrefix("/") else { return nil }
+        let components = URL(fileURLWithPath: executablePath).pathComponents
+        return components.firstIndex(where: { $0.hasSuffix(".app") }).map {
+            NSString.path(withComponents: Array(components[...$0]))
         }
     }
 
@@ -202,7 +207,10 @@ final class SystemMonitorProcessIcons {
     private var loaded = Set<String>()
 
     func load(for rows: [SystemMonitorProcessHierarchy.Row]) async {
-        let paths = Set(rows.compactMap(\.appBundlePath))
+        await load(bundlePaths: Set(rows.compactMap(\.appBundlePath)))
+    }
+
+    func load(bundlePaths paths: Set<String>) async {
         for path in images.keys where !paths.contains(path) { images[path] = nil }
         loaded.formIntersection(paths)
         let missing = paths.subtracting(loaded)
