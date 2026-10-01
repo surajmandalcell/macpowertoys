@@ -29,6 +29,15 @@ Supplied dark and light captures are baseline evidence. Background panel
 routes were attempted; installed capture and build results are in the report.
 Local app-hosted tests and installation belong to the orchestrator.
 
+The fixes are committed as `1750f97c`, `1ac2e939`, and `5c96af10`.
+Five gated build attempts reached unowned compile errors. The final Debug
+and desktop test-build retries both stopped on the NetToys scanner table's
+type-check timeout. Full app and test compilation is not verified. Current
+standalone scanner, projection, TCP metadata, cleanup policy, missing-tool,
+and disposable SSH checks pass. The prior projection fails the selected-child
+memory regression. Installed Servers, Forward, and Settings were captured in
+the background at source `36c585b4`; these are baseline captures only.
+
 ## Status glyph, 2026-10-01
 
 The owner now requires one SF Symbol identity on every glyph surface.
