@@ -504,7 +504,7 @@ final class SystemCareManager {
             defer { finishWork() }
             do {
                 let installation = try await Self.runWorker {
-                    _ = try Self.run(executable: brew, arguments: arguments)
+                    _ = try Self.run(executable: brew, arguments: arguments, timeout: 300)
                     return Self.detectMole()
                 }
                 self.molePath = installation.path
@@ -788,39 +788,93 @@ final class SystemCareManager {
         paths.first(where: { FileManager.default.isExecutableFile(atPath: $0) }).map(URL.init(fileURLWithPath:))
     }
 
-    nonisolated private static func run(executable: URL, arguments: [String]) throws -> Data {
+    nonisolated static func run(
+        executable: URL, arguments: [String], timeout: TimeInterval = 30,
+        maximumOutputBytes: Int = 8 * 1_024 * 1_024
+    ) throws -> Data {
+        guard timeout.isFinite, timeout > 0 else { throw SystemCareCommandError.timeout }
+        guard maximumOutputBytes > 0 else { throw SystemCareCommandError.outputLimit }
         let process = Process()
-        let outputURL = FileManager.default.temporaryDirectory
-            .appendingPathComponent("MacPowerToys-SystemCare-\(UUID().uuidString).output")
-        FileManager.default.createFile(atPath: outputURL.path, contents: nil)
-        let output = try FileHandle(forWritingTo: outputURL)
-        defer {
-            try? output.close()
-            try? FileManager.default.removeItem(at: outputURL)
-        }
+        let output = Pipe()
+        let errors = Pipe()
         process.executableURL = executable
         process.arguments = arguments
         process.standardOutput = output
-        process.standardError = output
-        try process.run()
-        while process.isRunning {
-            if Task.isCancelled {
-                process.terminate()
-                throw CancellationError()
+        process.standardError = errors
+        process.standardInput = FileHandle.nullDevice
+        for handle in [output.fileHandleForReading, errors.fileHandleForReading] {
+            guard fcntl(handle.fileDescriptor, F_SETFL, O_NONBLOCK) != -1 else {
+                throw NSError(domain: NSPOSIXErrorDomain, code: Int(errno))
             }
-            Thread.sleep(forTimeInterval: 0.05)
         }
-        try output.synchronize()
-        let data = try Data(contentsOf: outputURL)
+        var data = Data()
+        var errorData = Data()
+        var didLaunch = false
+        let deadline = ProcessInfo.processInfo.systemUptime + timeout
+        defer {
+            if didLaunch, process.isRunning {
+                process.terminate()
+                let killDeadline = ProcessInfo.processInfo.systemUptime + 0.25
+                while process.isRunning, ProcessInfo.processInfo.systemUptime < killDeadline { usleep(10_000) }
+                if process.isRunning { Darwin.kill(process.processIdentifier, SIGKILL) }
+            }
+            if didLaunch { process.waitUntilExit() }
+            try? output.fileHandleForReading.close()
+            try? output.fileHandleForWriting.close()
+            try? errors.fileHandleForReading.close()
+            try? errors.fileHandleForWriting.close()
+        }
+        func drain(_ handle: FileHandle, into target: inout Data, otherCount: Int) throws {
+            var buffer = [UInt8](repeating: 0, count: 8_192)
+            while true {
+                try Task.checkCancellation()
+                guard ProcessInfo.processInfo.systemUptime < deadline else { throw SystemCareCommandError.timeout }
+                let count = buffer.withUnsafeMutableBytes {
+                    Darwin.read(handle.fileDescriptor, $0.baseAddress, $0.count)
+                }
+                if count == 0 { return }
+                if count < 0 {
+                    if errno == EINTR { continue }
+                    if errno == EAGAIN || errno == EWOULDBLOCK { return }
+                    throw NSError(domain: NSPOSIXErrorDomain, code: Int(errno))
+                }
+                guard count <= maximumOutputBytes - target.count - otherCount else { throw SystemCareCommandError.outputLimit }
+                target.append(contentsOf: buffer.prefix(count))
+            }
+        }
+        try Task.checkCancellation()
+        try process.run()
+        didLaunch = true
+        repeat {
+            try drain(output.fileHandleForReading, into: &data, otherCount: errorData.count)
+            try drain(errors.fileHandleForReading, into: &errorData, otherCount: data.count)
+            if !process.isRunning { break }
+            usleep(10_000)
+        } while true
+        process.waitUntilExit()
+        // Drain bytes written between the last read and the child's exit.
+        try drain(output.fileHandleForReading, into: &data, otherCount: errorData.count)
+        try drain(errors.fileHandleForReading, into: &errorData, otherCount: data.count)
         guard process.terminationStatus == 0 else {
-            let message = String(data: data, encoding: .utf8) ?? "The command failed."
-            throw NSError(domain: "SystemCare", code: Int(process.terminationStatus), userInfo: [NSLocalizedDescriptionKey: message])
+            let message = String(decoding: (errorData.isEmpty ? data : errorData).prefix(8_192), as: UTF8.self)
+            throw SystemCareCommandError.failed(message.isEmpty ? "The command failed." : message)
         }
         return data
     }
 
     nonisolated private static func shellQuoted(_ value: String) -> String {
         "'" + value.replacingOccurrences(of: "'", with: "'\\''") + "'"
+    }
+}
+
+nonisolated enum SystemCareCommandError: LocalizedError, Equatable {
+    case timeout, outputLimit, failed(String)
+    var errorDescription: String? {
+        switch self {
+        case .timeout: "The command timed out. Try again."
+        case .outputLimit: "The command returned more data than System Care can read."
+        case .failed(let reason): reason
+        }
     }
 }
 
