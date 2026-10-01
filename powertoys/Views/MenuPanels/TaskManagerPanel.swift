@@ -219,10 +219,7 @@ private struct TaskManagerMenuHomeTile: View {
                             TaskManagerMenuValueView(parts: data.value)
                             Spacer(minLength: 0)
                             if page != .gpu {
-                                Text(data.caption).onePlusText(.metricCaption).lineLimit(1).minimumScaleFactor(page == .memory ? 1 : 0.7)
-                                    .fixedSize(horizontal: page == .memory, vertical: false)
-                                    .layoutPriority(page == .memory ? 1 : 0)
-                                    .accessibilityLabel(data.captionHelp)
+                                homeCaption
                             }
                         }
                     }
@@ -270,6 +267,18 @@ private struct TaskManagerMenuHomeTile: View {
         }
         .accessibilityHint("Show " + page.title + " details")
         .accessibilityIdentifier("system-monitor.tray.summary." + page.rawValue)
+    }
+
+    private var homeCaption: some View {
+        let data = state.home
+        let memory = page == .memory
+        return Text(data.caption)
+            .onePlusText(.metricCaption)
+            .lineLimit(1)
+            .minimumScaleFactor(memory ? 1 : 0.7)
+            .fixedSize(horizontal: memory, vertical: false)
+            .layoutPriority(memory ? 1 : 0)
+            .accessibilityLabel(data.captionHelp)
     }
 
     private var metricLabel: some View {
