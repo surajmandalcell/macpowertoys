@@ -34,6 +34,20 @@ final class ToolActionRouterTests: XCTestCase {
                 XCTAssertEqual(activations, 0, tool)
                 XCTAssertEqual(created, existing ? [] : [tool])
                 XCTAssertTrue(opened.isEmpty, "Background creation must not call SwiftUI openWindow.")
+                let pages = ToolPageRouter()
+                for page in tool == "main" ? ["all-tools", "favorites"] : ["settings", "settings"] {
+                    pages.post(tool: tool, page: page, recordTiming: false)
+                    XCTAssertEqual(pages.take(tool: tool)?.page, page)
+                    ToolActionRouter.presentSingleWindow(id: tool, windows: [window], activateApp: false,
+                        createWindow: { _ in XCTFail("Page reuse must keep the existing window"); return nil },
+                        activate: { activations += 1 }) { opened.append($0) }
+                    XCTAssertEqual(window.keyOrders, 0, "Background page reuse: \(tool)/\(page)")
+                    XCTAssertEqual(window.deminiaturizations, 0)
+                    XCTAssertEqual(window.minimized, existing)
+                    XCTAssertEqual(activations, 0)
+                    XCTAssertTrue(opened.isEmpty)
+                }
+                XCTAssertEqual(window.backgroundOrders, 3)
                 ToolActionRouter.presentSingleWindow(id: tool, windows: [window], activateApp: true,
                     createWindow: { _ in XCTFail("Reuse must not create a window"); return nil },
                     activate: { activations += 1 }) { opened.append($0) }
