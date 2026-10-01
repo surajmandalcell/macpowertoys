@@ -125,7 +125,9 @@ Resolve conflicts in this order:
 
 1. The owner's newest direct instruction.
 2. This file.
-3. The `OnePlusUI` package (`Packages/OnePlusUI`), which implements this file.
+3. The `OnePlusUI` package (`surajmandalcell/oneplus-ui`, checked out next to
+   this repository as `../oneplus-ui`, consumed by version tag), which
+   implements this file.
    A view never restyles a OnePlusUI component locally. Add a named variant to
    the package instead.
 4. The HTML references (kept outside the repository): `task-manager.html`

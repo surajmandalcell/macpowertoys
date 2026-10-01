@@ -8,8 +8,12 @@
 # Code Principles (MANDATORY)
 
 ## Atomicity & Composition
-- Shared UI components live in the `OnePlusUI` package (`Packages/OnePlusUI`)
-  and are imported with `import OnePlusUI`
+- Shared UI components live in the `OnePlusUI` package
+  (`surajmandalcell/oneplus-ui`, local checkout `../oneplus-ui`) and are
+  imported with `import OnePlusUI`. Change components there, tag a new
+  version, then bump the exact version in this project.
+- NetToys lives in `surajmandalcell/nettoys` (`../nettoys`) as its own app
+  and package; MacPowerToys consumes it by version tag, like Switch.
 - Each component should do ONE thing well
 - Prefer composition over duplication - if pattern appears twice, extract it
 - A surface needs a different look: add a named variant to OnePlusUI, never a
