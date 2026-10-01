@@ -1,5 +1,14 @@
 # Ruler Request List
 
+Test audit, run 65, 2026-10-01: RulerCoreTests still calls controller show,
+manager showAll and cycleActiveRuler, and Settings presentation paths that
+can make real windows key. The orchestrator owns replacement of these calls
+with presentation spies and isolated checks of real native presentation.
+The inactive host policy does not replace these native calls. No direct
+Finder opener is found, and the Finder foreground change has no proved cause.
+Ruler fixtures were not changed or rerun in this task.
+Report: `tmp/redesign/logs/w8-tests-finish.md`.
+
 Local verification, run 64, 2026-10-01: the Settings presentation spy orders
 its fixture offscreen without making it key. Its suspension and visibility
 assertions remain. The XCTest host prohibits activation. Both desktop test

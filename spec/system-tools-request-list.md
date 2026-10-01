@@ -1,5 +1,14 @@
 # System Tools Request List
 
+Local verification, run 65, 2026-10-01: `8c0cc71b` fixes the System Care
+cancellation test's illegal expectation change and the inactive focus probe.
+All 13 System Care tests pass. The guarded selected run passes 43 tests with
+zero failures. Two earlier attempts stop before tests start. The original
+full run has one focus failure and a System Care host crash, then stops when
+Chrome changes to Finder. No uninterrupted full-suite pass is claimed.
+Installation and live acceptance stay with the orchestrator.
+Report: `tmp/redesign/logs/w8-tests-finish.md`.
+
 Local verification, run 64, 2026-10-01: unit-test activation calls now use
 offscreen fixtures, and the XCTest host skips activation, Main launch, and
 reopen. Native panel height, render, and Fan lifecycle assertions remain.

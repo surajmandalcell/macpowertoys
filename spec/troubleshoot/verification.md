@@ -1,5 +1,29 @@
 # Verification Troubleshooting
 
+## Inactive Focus Probe And Cancellation Assertion, Run 65, 2026-10-01
+
+- **Symptom:** The full guarded run fails the focus policy check and crashes
+  in System Care. The foreground guard later stops on Chrome changing to Finder.
+- **Cause:** An inactive hosting view does not reliably run onAppear.
+  The focus check also assumes accessibility focus effects are always off.
+  System Care changes isInverted after XCTest has used the expectation;
+  XCTest rejects this change and crashes the host.
+- **Invariant:** Read the focus environment through an NSViewRepresentable
+  update. Compare against Full Keyboard Access or VoiceOver, as DESIGN requires.
+  Observe cancellation completion without changing an expectation after use.
+  Keep the host inactive and keep the foreground guard enabled.
+- **Check:** Commit `8c0cc71b` fixes both tests. Two guarded attempts stop
+  before tests start. The next run passes 43 tests with zero failures:
+  Focus 2, System Care 13, Window State 5, NetToys Key Access 8, Tool Page Router 15.
+  No test class sorts after WindowStateManagerTests. The original log has
+  1,106 completed tests, including five skips, one assertion failure, and one
+  additional test interrupted by the host crash. Its 176-test summary covers
+  only the restarted host. No uninterrupted full-suite pass is claimed.
+  No direct Finder opener is found. Ruler fixtures still call real key-window
+  presentation paths; the orchestrator must assign their replacement with spies.
+  The Finder switch has no proved cause; the owner may have switched apps.
+  Report: `tmp/redesign/logs/w8-tests-finish.md`.
+
 ## Inactive Unit Host And Offscreen Fixtures, Run 64, 2026-10-01
 
 - **Symptom:** The local guard stops when a unit test activates MacPowerToys.
