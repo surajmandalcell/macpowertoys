@@ -393,6 +393,7 @@ nonisolated final class TweakPreferenceStore {
     }
 
     private func reconcilePendingWrite(for field: TweakPreferenceField) throws {
+        guard !backupIsUnreadable else { throw TweakPreferenceError.unreadableBackup }
         guard var record = records[field.identity] else { return }
         let currentData = value(for: field).flatMap(archive)
         var next = records
