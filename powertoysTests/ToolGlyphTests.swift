@@ -62,6 +62,20 @@ final class ToolGlyphTests: XCTestCase {
         }
     }
 
+    func testAssetGlyphsReuseOneRasterInsteadOfSVGDrawings() throws {
+        for glyph in ToolGlyph.allCases where glyph.isAsset {
+            let first = try XCTUnwrap(glyph.assetNSImage)
+            XCTAssertTrue(first.isTemplate)
+            XCTAssertEqual(first.size, NSSize(width: 32, height: 32))
+            XCTAssertTrue(first.representations.allSatisfy { $0.pixelsWide >= 128 && $0.pixelsHigh >= 128 })
+            for _ in 0..<100 { XCTAssertTrue(glyph.assetNSImage === first) }
+            let bitmap = try XCTUnwrap(first.cgImage(forProposedRect: nil, context: nil, hints: nil))
+            XCTAssertGreaterThanOrEqual(bitmap.width, 128)
+            XCTAssertGreaterThanOrEqual(bitmap.height, 128)
+        }
+        XCTAssertNil(ToolGlyph.awake.assetNSImage)
+    }
+
     private func raster(_ image: NSImage, scale: CGFloat) throws -> NSBitmapImageRep {
         let side = Int(14 * scale)
         let bitmap = try XCTUnwrap(NSBitmapImageRep(bitmapDataPlanes: nil, pixelsWide: side, pixelsHigh: side,

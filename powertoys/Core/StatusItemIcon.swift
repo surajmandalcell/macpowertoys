@@ -58,7 +58,7 @@ enum StatusItemIcon {
         return image
     }
 
-    private static func rasterized(_ image: NSImage) -> (NSImage, NSRect) {
+    static func rasterized(_ image: NSImage) -> (NSImage, NSRect) {
         let scale: CGFloat = 4
         guard image.size.width > 0, image.size.height > 0,
               let bitmap = NSBitmapImageRep(bitmapDataPlanes: nil,
