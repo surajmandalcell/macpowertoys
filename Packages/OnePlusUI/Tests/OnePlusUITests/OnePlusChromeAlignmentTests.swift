@@ -140,11 +140,13 @@ final class OnePlusChromeAlignmentTests: XCTestCase {
                                   backing: .buffered, defer: false)
             let chrome = OnePlusChromeView(size: window.frame.size, centerline: centerline,
                                            sizing: .swiftUI, report: { _ in })
+            let originalClose = try XCTUnwrap(window.standardWindowButton(.closeButton))
+            let nativeCloseX = originalClose.convert(originalClose.bounds, to: nil).minX
             window.contentView?.addSubview(chrome)
             defer { chrome.stopObserving() }
+            settleChrome(window, centerline: centerline)
             let close = try XCTUnwrap(window.standardWindowButton(.closeButton))
             let parent = try XCTUnwrap(close.superview)
-            let nativeCloseX = close.convert(close.bounds, to: nil).minX
             let nativeFrames = [NSWindow.ButtonType.closeButton, .miniaturizeButton, .zoomButton]
                 .map { window.standardWindowButton($0)!.frame }
             for appearance in [NSAppearance.Name.darkAqua, .aqua] {
@@ -157,7 +159,7 @@ final class OnePlusChromeAlignmentTests: XCTestCase {
                     let container = try XCTUnwrap(parent.superview)
                     container.setFrameOrigin(CGPoint(x: container.frame.minX + nativeCloseX - close.convert(close.bounds, to: nil).minX, y: container.frame.minY + delta))
                     NotificationCenter.default.post(name: event, object: window)
-                    RunLoop.main.run(until: Date(timeIntervalSinceNow: 0.03))
+                    settleChrome(window, centerline: centerline)
                     for (index, type) in [NSWindow.ButtonType.closeButton, .miniaturizeButton, .zoomButton].enumerated() {
                         let button = try XCTUnwrap(window.standardWindowButton(type))
                         XCTAssertEqual(button.frame, nativeFrames[index], "Keep AppKit's button frames inside its container.")
@@ -193,10 +195,7 @@ final class OnePlusChromeAlignmentTests: XCTestCase {
             window.contentView?.addSubview(chrome)
             for appearance in [NSAppearance.Name.aqua, .darkAqua] {
                 window.appearance = NSAppearance(named: appearance)
-                let deadline = Date(timeIntervalSinceNow: 1)
-                repeat {
-                    RunLoop.main.run(until: Date(timeIntervalSinceNow: 0.01))
-                } while (chrome.appliedPassCount == 0 || titleX == 0) && Date() < deadline
+                settleChrome(window, centerline: canvas.centerline)
                 let close = try XCTUnwrap(window.standardWindowButton(.closeButton))
                 let zoom = try XCTUnwrap(window.standardWindowButton(.zoomButton))
                 let rect = close.convert(close.bounds, to: nil)
@@ -239,6 +238,20 @@ final class OnePlusChromeAlignmentTests: XCTestCase {
             XCTAssertEqual(content.convert(content.bounds, to: host).minY, 79.8, accuracy: 0.5)
             XCTAssertEqual(host.fittingSize.height, 660, accuracy: 0.5)
         }
+    }
+
+    private func settleChrome(_ window: NSWindow, centerline: CGFloat) {
+        let deadline = Date(timeIntervalSinceNow: 1)
+        repeat {
+            RunLoop.main.run(until: Date(timeIntervalSinceNow: 0.01))
+            let aligned = [NSWindow.ButtonType.closeButton, .miniaturizeButton, .zoomButton].allSatisfy { type in
+                guard let button = window.standardWindowButton(type) else { return false }
+                let rect = button.convert(button.bounds, to: nil)
+                return abs(window.frame.height - rect.midY - centerline) < 0.01
+                    && (type != .closeButton || abs(rect.minX - 13) < 0.01)
+            }
+            if aligned { return }
+        } while Date() < deadline
     }
 
     private func paintedTitleTop(style: OnePlusTitleStyle, density: OnePlusDensity,
