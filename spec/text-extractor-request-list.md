@@ -1,5 +1,16 @@
 # Text Extractor Request List
 
+Round 48 header picks, 2026-10-01: `bd2e0963` implements Inset B
+(close x13, title 14pt after zoom) and Top B (title caps, icons, and action
+tops at y20). Applet and sheet header rows are 44pt; applet lights use C=27.
+Header switches retain their 24pt hit frame with the capsule at the top.
+The body moves down 4pt with its existing gaps. Offscreen render and native
+geometry checks pass (42 checks) in both appearances at 1x/2x. One
+app/test compile gate passes. Cap strokes allow one physical pixel for
+antialiasing; action frames are exact. Signed pixel captures
+and real light hover remain with the orchestrator after installation.
+Report: `tmp/redesign/logs/w4-chrome.md`.
+
 Reviewed against the current app source on 2026-08-31. Update this list when a
 direct user correction or verified result changes a status.
 

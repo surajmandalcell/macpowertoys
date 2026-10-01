@@ -1,5 +1,16 @@
 # Awake Request List
 
+Round 48 header picks, 2026-10-01: `bd2e0963` implements Inset B
+(close x13, title 14pt after zoom) and Top B (title caps, icons, and action
+tops at y20). Applet and sheet header rows are 44pt; applet lights use C=27.
+Header switches retain their 24pt hit frame with the capsule at the top.
+The body moves down 4pt with its existing gaps. Offscreen render and native
+geometry checks pass (42 checks) in both appearances at 1x/2x. One
+app/test compile gate passes. Cap strokes allow one physical pixel for
+antialiasing; action frames are exact. Signed pixel captures
+and real light hover remain with the orchestrator after installation.
+Report: `tmp/redesign/logs/w4-chrome.md`.
+
 Reviewed against current source and Git history on 2026-08-31.
 
 ## Round 12 audit, 2026-10-01
@@ -62,7 +73,7 @@ remain with the orchestrator.
 
 | Status | Request | Evidence | Remaining work |
 |---|---|---|---|
-| Verify | Keep native applet lights on the 22pt centerline after appearance changes. | Signed `8cf8c02` round 4 captures confirm the labeled mode row, 160pt PID field, spaced hour chips, and 16pt body gutters. Dark Awake lights regress to a 16pt centerline while light lights remain at 22pt. No surface chrome override exists. | Foundation must repair OnePlusFixedWindowChrome after native layout and appearance changes; then recapture both pages and test focus changes. |
+| Package verified; signed review pending | Keep applet lights at C=27 and close at x13, with title caps and the display switch at y20. | `bd2e0963` applies the shared Top B and Inset B picks. Native geometry, hover tracking, cap pixels, and the switch capsule pass in both appearances at 1x/2x. | The orchestrator must install clean source, recapture both pages, and verify real hover and focus changes. |
 | Verify | Pair embedded session controls with Quick times and process attachment; use a labeled mode select. | Round 3 review uses one adaptive cards-only settings implementation. Keep awake is a 44pt row with a 160pt select, the PID field is 160pt, and hour chips read `1 h` and `2 h`. Narrow applets keep a vertical stack. | Verify all modes, preset editing, attachment, and both host widths in the signed build. |
 | Verify | Remove the duplicate applet display control and align the quick-time row. | The applet passes `showsDisplayToggle: false`; quick times use one leading 8pt-spaced row with the add icon after the presets. Minute labels render as `15 min` and `30 min`. | Verify Home and Settings in both appearances. |
 | Verify | Keep Awake's status visible while its controls scroll, without adding a workspace header inset. | Home now places `AwakeStatusCard` above the only `ScrollView`; Settings still uses the shared cards-only implementation inside `OnePlusPage`. | Verify scroll limits and page switching in the signed build. |
