@@ -2,6 +2,19 @@
 
 ## System Monitor Fan Control Packaging
 
+- **Symptom:** Quit blocks on a synchronous Fan queue or clears manual
+  ownership before Auto is confirmed. A pending manual callback may also
+  replace the exit result.
+- **Cause:** The restore path waits with controlQueue.sync and reports no
+  asynchronous failure to the quit coordinator.
+- **Invariant:** Await restoreAutomaticOnExit() async throws. Queue Auto
+  after all already selected presets through the existing bounded writer.
+  Block selections during restore, keep ownership until success, invalidate
+  old reads and callbacks, and propagate failure so termination can cancel.
+- **Check:** FanControlTests covers ordering, awaited completion, failure,
+  and retry. The actual-service fake-writer CLI check passes. No Fan helper
+  or app was executed on this desktop; real hardware remains open.
+
 - **Symptom:** Fan controls direct users to install `smctl` and a second helper
   even though MacPowerToys already bundles a signed background service.
 - **Cause:** Fan writes used an external CLI while the built-in SMC reader was
@@ -648,6 +661,25 @@
   from each page and confirm the status stays at the bottom of the pane.
 
 ## System Monitor
+
+- **Symptom:** Battery details collapse while pending, process clicks open
+  sheets, or network and disk rates average time spent asleep.
+- **Cause:** Pending rows are omitted, selection also requests inspection,
+  and available rate baselines survive wake with wall-clock elapsed time.
+- **Invariant:** Reserve the four Battery detail rows with muted dashes.
+  Keep valid rows during refresh and show absence only after a completed
+  unavailable sample. Native process clicks select; Return, double-click,
+  or Inspect opens details. Omit Quit actions for protected rows. Reset
+  rate baselines on every wake, use monotonic intervals, and retain rates
+  until a fresh valid pair exists. Label network rates "All interfaces";
+  use the existing NetToys default route for separate connection identity
+  and report an address only when its interface matches that route.
+- **Check:** Run SystemMonitorWindowAuditTests and the native process UI
+  check on hosted CI. Actual-source CLI checks pass for pending rows,
+  protected menus, reset pairs, monotonic clock and counter rollback, and
+  route/address matching. The round 11 batch gate fails in an unowned
+  RemoteBrowserView expression. Signed load, wake, network changes, native
+  selection, and command behavior remain open.
 
 - **Symptom:** The signed window keeps CPU, GPU, Network, Disk, Thermal, Load,
   and Top processes pending. Battery claims absence before it is sampled.

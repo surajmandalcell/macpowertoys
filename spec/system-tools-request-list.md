@@ -186,6 +186,21 @@ compilation pass. Hosted tests and signed interaction remain. Report: `tmp/redes
 
 ## Task Manager (formerly System Monitor)
 
+Round 11 window source fixes are committed. T056, T057, and T061 are fixed
+in `af2303d8`; T058, T059, and the process-menu part of T060 are fixed in
+`602733ff`. The shared resource menu part of T060 belongs to components.
+`cdaee324` fixes T062 wake rate pairs and T063 aggregate network labels
+with separate default-route identity. T106 Find, Inspect, and Settings use
+the native focused command APIs. T105 Fan exit uses awaited, bounded Auto
+in `45faea7d`, `a9673394`, and `fb19e9eb`; failure preserves ownership and
+can cancel quit. Actual-source CLI checks pass for Battery rows, protected
+process menus, Fan exit ordering/failure, and rate reset/identity. All 26
+round 10 window captures were reviewed. The queued batch gate failed only
+in unowned RemoteBrowserView.swift:93 and :241. No second gate is queued.
+Hosted tests, physical Fan writes, sleep/wake, route changes, and the clean
+signed installed-app handoff remain with the orchestrator. Report:
+`tmp/redesign/logs/w3-tm-window.md`.
+
 | Status | Request | Evidence | Remaining work |
 |---|---|---|---|
 | Signed timing failed; source retry compiled | P1, P4, P5 panel presenter, P6 panel: open complete panels within 100ms warm or 250ms cold and switch tabs within 100ms. | Signed `198055e4` warm opens are 232.7/280.0/264.7ms for Main/Task Manager/Portman; tab medians are 241.2/237.5/445.0ms. Two targeted Time Profiler recordings isolate 106/105ms main CPU and 62/90ms native layout. `720eba0a` retains visited tab hosts and stops hidden tasks before detaching. `0957691b` retains Portman and diagnostic roots, prepares saved remote hosts before sizing, and routes diagnostics through native selection actions. `7a0b9730` preserves the final destination timing. Ten focused package checks and the final gated app/test-bundle compilation pass. Unsafe height memoization was removed after shrink failures. | The orchestrator must install signed source containing all three fixes and provide its full stamp. Rerun the unchanged `tmp/redesign/perf/w1-panels-rerun.py`, populate the comparison table, and require warm opens and tabs <=100ms. Verify cold complete frames, saved-host edits, all enabled separate items, and closed-panel CPU. Run hosted routing and rendering checks. P1, P4, and P5 acceptance stay open. View publishing belongs to panel-tm. Report: `tmp/redesign/logs/w1-perf-panels.md`. |
