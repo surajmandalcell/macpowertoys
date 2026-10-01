@@ -175,7 +175,8 @@ final class TrayPopoverLayoutTests: XCTestCase {
         XCTAssertTrue(source.contains("OnePlusMenuOpenApp"))
         XCTAssertTrue(source.contains("TrayTabStrip"))
         XCTAssertTrue(source.contains("TrayTabIcon"))
-        XCTAssertTrue(source.contains("Image(systemName: \"cloud.fill\")"))
+        XCTAssertTrue(source.contains("ToolGlyph(rawValue: rawValue)?.symbol"))
+        XCTAssertEqual(TrayTab.cloudSync.symbol, ToolGlyph.cloudSync.symbol)
         XCTAssertTrue(source.contains("ViewThatFits(in: .horizontal)"))
         XCTAssertTrue(source.contains("TrayHomeActionButton"))
         XCTAssertTrue(source.contains("TrayToolHeader"))
@@ -197,7 +198,7 @@ final class TrayPopoverLayoutTests: XCTestCase {
         XCTAssertTrue(source.contains("Spacer(minLength: OnePlusMetrics.actionSpacing)"))
         XCTAssertTrue(source.contains("@State private var showsError = false"))
         XCTAssertTrue(source.contains("if showsError, let error = job.errorMessage"))
-        XCTAssertTrue(source.contains("symbol: \"text.viewfinder\""))
+        XCTAssertTrue(source.contains("symbol: ToolGlyph.textExtractor.symbol"))
     }
 
     func testNetToysTrayKeepsBoundedPersistentDisclosuresAndRoutesToFullPages() throws {

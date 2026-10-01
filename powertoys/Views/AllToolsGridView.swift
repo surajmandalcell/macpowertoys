@@ -14,7 +14,7 @@ struct AllToolsGridView: View {
     @State private var typedPrefix = ""
     @State private var lastTypedAt = Date.distantPast
     @State private var favoriteIDs: Set<String> = []
-    @State private var visibleTools: [any Tool] = []
+    @State private(set) var visibleTools: [any Tool] = []
     @State private var toolCount = 0
     @State private var enabledCount = 0
     @State private var favoriteCount = 0
@@ -25,7 +25,7 @@ struct AllToolsGridView: View {
         _selectedTool = selectedTool; self.query = query; _filter = filter; _focusedToolID = focusedToolID
         let favorites = MainCatalog.favorites(from: storedFavorites)
         let rows = MainCatalog.preparedRows(ToolRegistry.allTools, query: query, filter: filter.wrappedValue,
-                                            sort: sort, favorites: favorites, disabled: settings.disabledToolIDs)
+                                            sort: sort, favorites: favorites, disabled: SettingsManager.shared.disabledToolIDs)
         _favoriteIDs = State(initialValue: favorites)
         _visibleTools = State(initialValue: rows.visible)
         _toolCount = State(initialValue: rows.total)

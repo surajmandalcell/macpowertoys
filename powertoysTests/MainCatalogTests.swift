@@ -21,7 +21,7 @@ final class MainCatalogTests: XCTestCase {
         let body = catalog[catalogBody.lowerBound..<catalogHelpers.lowerBound]
         XCTAssertFalse(body.contains(".filter"))
         XCTAssertFalse(body.contains("MainCatalog.sorted"))
-        XCTAssertTrue(catalog.contains("@State private var visibleTools"))
+        XCTAssertTrue(catalog.contains("@State private(set) var visibleTools"))
         XCTAssertTrue(catalog.contains("private func refreshCatalog()"))
 
         let sidebar = try sourceFile("powertoys/Views/ToolSidebarView.swift")

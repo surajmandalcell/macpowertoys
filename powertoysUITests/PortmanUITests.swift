@@ -231,8 +231,9 @@ final class PortmanUITests: XCTestCase {
             XCTFail("The saved idle-hours field is missing after returning to Settings")
             return
         }
-        XCTAssertEqual(Double((idle.value as? String) ?? ""), 6,
-                       "Out-of-range cleanup input replaced the saved value")
+        XCTAssertEqual(Double((idle.value as? String) ?? ""), 99,
+                       "Invalid input must stay visible until the user corrects it")
+        XCTAssertTrue(app.staticTexts["Enter a whole number from 1 to 72."].exists)
         idle.click()
         app.typeKey("a", modifierFlags: .command)
         app.typeText("4\n")
