@@ -271,9 +271,9 @@ struct TaskManagerRemoteCard: View {
 
     private func stat(_ title: String, symbol: String, value: String) -> some View {
         VStack(alignment: .leading, spacing: 5) {
-            Label(title, systemImage: symbol).onePlusText(.caption).foregroundStyle(TaskManagerTheme.secondary)
-            Text(value).font(.system(size: 18)).monospacedDigit().lineLimit(1).minimumScaleFactor(0.65).help(value)
-                .foregroundStyle(reading == nil ? TaskManagerTheme.muted : TaskManagerTheme.ink)
+            Label(title, systemImage: symbol).onePlusText(.metricCaption)
+            Text(value).onePlusText(.metric, color: reading == nil ? OnePlusColor.metricCaption : TaskManagerTheme.ink)
+                .monospacedDigit().lineLimit(1).minimumScaleFactor(0.65).help(value)
         }
         .padding(.horizontal, 12)
         .frame(maxWidth: .infinity, minHeight: 66, alignment: .leading)

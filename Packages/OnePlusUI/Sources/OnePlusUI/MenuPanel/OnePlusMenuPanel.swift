@@ -449,7 +449,7 @@ public struct OnePlusMenuTile<Content: View>: View {
             .background {
                 ZStack {
                     (enabled && (hover || sample == .hover) && action != nil ? OnePlusColor.raisedHover : OnePlusColor.panelHover)
-                    if textured { OnePlusDitherTexture(strength: 0.11) }
+                    if textured { OnePlusMetricTexture() }
                     if !historyValues.isEmpty {
                         OnePlusAreaChart(values: historyValues, range: historyRange, color: historyColor, quietBackground: true)
                             .frame(height: height * 0.6).frame(maxHeight: .infinity, alignment: .bottom)
