@@ -23,6 +23,14 @@ struct AllToolsGridView: View {
          filter: Binding<MainCatalogFilter> = .constant(.all),
          focusedToolID: Binding<String?> = .constant(nil)) {
         _selectedTool = selectedTool; self.query = query; _filter = filter; _focusedToolID = focusedToolID
+        let favorites = MainCatalog.favorites(from: storedFavorites)
+        let rows = MainCatalog.preparedRows(ToolRegistry.allTools, query: query, filter: filter.wrappedValue,
+                                            sort: sort, favorites: favorites, disabled: settings.disabledToolIDs)
+        _favoriteIDs = State(initialValue: favorites)
+        _visibleTools = State(initialValue: rows.visible)
+        _toolCount = State(initialValue: rows.total)
+        _enabledCount = State(initialValue: rows.enabled)
+        _favoriteCount = State(initialValue: rows.favorites)
     }
 
     var body: some View {
@@ -50,10 +58,6 @@ struct AllToolsGridView: View {
         }
         .onChange(of: sort) { refreshCatalog() }
         .onReceive(NotificationCenter.default.publisher(for: .marketplaceReceiptsChanged)) { _ in refreshCatalog() }
-        .onAppear {
-            favoriteIDs = MainCatalog.favorites(from: storedFavorites)
-            refreshCatalog()
-        }
     }
 
     private var tabTools: some View {
@@ -140,14 +144,11 @@ struct AllToolsGridView: View {
     }
 
     private func refreshCatalog() {
-        let tools = ToolRegistry.allTools
-        toolCount = tools.count
-        enabledCount = tools.lazy.filter { settings.isToolEnabled($0.id) }.count
-        favoriteCount = tools.lazy.filter { favoriteIDs.contains($0.id) }.count
-        visibleTools = MainCatalog.sorted(tools.filter {
-            MainCatalog.matches($0, query: query) && (filter == .all
-                || filter == .enabled && settings.isToolEnabled($0.id)
-                || filter == .favorites && favoriteIDs.contains($0.id))
-        }, by: sort)
+        let rows = MainCatalog.preparedRows(ToolRegistry.allTools, query: query, filter: filter,
+                                            sort: sort, favorites: favoriteIDs, disabled: settings.disabledToolIDs)
+        toolCount = rows.total
+        enabledCount = rows.enabled
+        favoriteCount = rows.favorites
+        visibleTools = rows.visible
     }
 }
