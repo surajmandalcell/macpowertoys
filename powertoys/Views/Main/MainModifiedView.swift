@@ -78,13 +78,13 @@ struct MainModifiedView: View {
         let lastID = groupedDifferences[toolID]?.last?.id
         return VStack(alignment: .leading, spacing: OnePlusMetrics.actionSpacing) {
             OnePlusSectionTitle(groupTitles[toolID] ?? toolID)
-                .padding(.horizontal, OnePlusMetrics.cardPadding)
             LazyVStack(spacing: 0) {
                 ForEach(groupedDifferences[toolID] ?? []) { difference in
                     row(difference, separator: difference.id != lastID)
                 }
             }
         }
+        .environment(\.onePlusCardPadding, 0)
     }
 
     private func row(_ difference: SettingsRegistry.Difference, separator: Bool) -> some View {
