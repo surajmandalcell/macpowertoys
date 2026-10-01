@@ -92,19 +92,29 @@ final class OnePlusRowAndTabGeometryTests: XCTestCase {
         }
     }
 
-    func testRelatedMenuItemActionsShareOneRow() {
-        let markers = [NSView(), NSView()]
-        let host = NSHostingView(rootView: OnePlusMenuItemCard("Host", status: "Connected", metrics: []) {
-            EmptyView()
-        } actions: {
-            GeometryProbe(view: markers[0]).frame(width: 48, height: 24)
-            GeometryProbe(view: markers[1]).frame(width: 48, height: 24)
-        })
-        let window = attach(host, width: 300, height: 110)
-        defer { window.close() }
-        let frames = markers.map { $0.convert($0.bounds, to: host) }
-        XCTAssertEqual(frames[0].midY, frames[1].midY, accuracy: 0.01)
-        XCTAssertLessThan(frames[0].maxX, frames[1].minX)
+    func testMenuItemActionsUseTrailingColumnAtNaturalHeight() {
+        for detailHeight: CGFloat in [24, 80] {
+            let markers = [NSView(), NSView()]
+            let host = NSHostingView(rootView: OnePlusMenuItemCard("Host", status: "Connected", metrics: []) {
+                Color.clear.frame(height: detailHeight)
+            } actions: {
+                GeometryProbe(view: markers[0]).frame(maxWidth: .infinity, maxHeight: .infinity)
+                OnePlusColor.line.frame(height: 1)
+                GeometryProbe(view: markers[1]).frame(maxWidth: .infinity, maxHeight: .infinity)
+            })
+            let height = 58 + max(51, detailHeight + 8)
+            let window = attach(host, width: 338, height: height)
+            defer { window.close() }
+            XCTAssertEqual(host.fittingSize.height, height, accuracy: 0.01)
+            let frames = markers.map { $0.convert($0.bounds, to: host) }
+            for frame in frames {
+                XCTAssertEqual(frame.width, OnePlusMenuMetrics.actionColumn, accuracy: 0.01)
+                XCTAssertEqual(frame.maxX, 338, accuracy: 0.01)
+                XCTAssertGreaterThanOrEqual(frame.minY, 58)
+                XCTAssertLessThanOrEqual(frame.maxY, height)
+            }
+            XCTAssertLessThan(frames[0].maxY, frames[1].minY)
+        }
     }
 
     func testStatMetadataUsesOneLineAndDensityPadding() {
@@ -135,7 +145,7 @@ final class OnePlusRowAndTabGeometryTests: XCTestCase {
                     let history = try XCTUnwrap(renders[1].colorAt(x: x, y: Int(CGFloat(y) * scale)))
                     return abs(rest.redComponent - history.redComponent) + abs(rest.blueComponent - history.blueComponent)
                 }
-                XCTAssertGreaterThan(differences.max() ?? 0, 0.01)
+                XCTAssertGreaterThan(differences.max() ?? 0, 0.08)
                 XCTAssertLessThan(differences.max() ?? 0, 0.4)
             }
         }
