@@ -16,11 +16,14 @@ limits remain open. Commands: `tmp/redesign/perf/w1-windows.md`.
 
 ## Production audit, 2026-10-01
 
+Both shared build modes pass for the Debug app and both desktop test bundles.
+The new regression tests compile. Hosted tests and signed checks remain open.
+
 | Status | Request | Evidence | Remaining work |
 |---|---|---|---|
 | Verify | Highlight the full project row, including its export action and gutters. | `8252798d` applies the shared `onePlusRowHover(selected:)` to the complete row. The primary button no longer paints a separate partial surface. | Verify Unfiled, selected and unselected projects, export hover, and keyboard focus in both appearances. |
 | Verify | Use the shared compact popup for all nine row copy formats. | `8252798d` uses `OnePlusMenuButton` and keeps the format actions and labels. Source-derived checks passed all nine exact output strings, project-scoped search, and counts. | Verify popup placement, copying, Return, keys 1-9, and Escape in the signed app. |
-| Verify | Audit native pick, cancel and overlap guard, project-owned history, pinning, deletion, clear confirmation, project creation, persistence, CSS export, shortcuts, and settings routes. | All service and view paths were traced. The existing installed History was captured without activation. The sampler was not started and user history was not changed. Existing ColorPickerTests cover service seams. | Compile through the shared gate and run tests on CI. The orchestrator must install current source and check all three pages, shortcut recording, native sampler, and export. S5 and A4-A7 remain open. |
+| Verify | Audit native pick, cancel and overlap guard, project-owned history, pinning, deletion, clear confirmation, project creation, persistence, CSS export, shortcuts, and settings routes. | All service and view paths were traced. The existing installed History was captured without activation. The sampler was not started and user history was not changed. Existing ColorPickerTests cover service seams. | Run tests on CI. The orchestrator must install current source and check all three pages, shortcut recording, native sampler, and export. S5 and A4-A7 remain open. |
 | Verify | Apply the horizontal density and instant-motion correction. | `c03f046d` moves project creation controls outside the content card, replaces count pills with trailing plain numbers, uses 44pt history rows, moves settings help to tooltips, and disables implicit content animation. `edcd9037` keeps row actions visible at rest; `e5474093` preserves accessible headings and count labels. The source-derived compact height check passes. | Review all three pages, long project names, count alignment, and row hover after installation. |
 
 

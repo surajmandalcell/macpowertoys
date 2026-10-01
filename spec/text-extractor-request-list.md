@@ -5,11 +5,14 @@ direct user correction or verified result changes a status.
 
 ## Production audit, 2026-10-01
 
+Both shared build modes pass for the Debug app and both desktop test bundles.
+The new regression tests compile. Hosted tests and signed checks remain open.
+
 | Status | Request | Evidence | Remaining work |
 |---|---|---|---|
 | Verify | Highlight each full extraction row, including actions and gutters. | `8252798d` uses the shared row hover helper on the outer HStack. The full-row surface remains in the compact 44pt layout from `c03f046d`. | Verify row hover, preview truncation, Copy, Open link, Delete, and keyboard focus in both appearances. |
 | Verify | Keep the persistent shortcut menu in the titlebar using the shared compact popup. | `8252798d` retains enable and Change shortcut actions in `OnePlusMenuButton`. Extract Text remains a separate 24pt primary action. | Verify shortcut menu, toggle, settings navigation, recording, and disabled extraction states in the signed app. |
-| Verify | Audit permission recovery, region selection, Escape, multi-display coordinates, OCR quality and fallback, languages, codes, clipboard-before-cue ordering, history, detail, links, persistence, and settings. | All service and view paths were traced. Source-derived URL, timestamp, detail-threshold, and legacy-settings checks passed. Existing History was captured without activation. No capture or user-data mutation was performed. Existing CoreModelTests cover injected permission, private pasteboard, generated OCR, QR, and language seams. | Compile through the shared gate and run tests on CI. Current-source installation, real selection, cue, permission recovery, and history interactions belong to the orchestrator. S5 and A4-A7 remain open. |
+| Verify | Audit permission recovery, region selection, Escape, multi-display coordinates, OCR quality and fallback, languages, codes, clipboard-before-cue ordering, history, detail, links, persistence, and settings. | All service and view paths were traced. Source-derived URL, timestamp, detail-threshold, and legacy-settings checks passed. Existing History was captured without activation. No capture or user-data mutation was performed. Existing CoreModelTests cover injected permission, private pasteboard, generated OCR, QR, and language seams. | Run tests on CI. Current-source installation, real selection, cue, permission recovery, and history interactions belong to the orchestrator. S5 and A4-A7 remain open. |
 | Verify | Apply the horizontal density and instant-motion correction. | `c03f046d` removes repeated Screen selection provenance and the Languages and History control cards. History rows are 44pt with trailing timestamps. Help uses tooltips and content animation is disabled. The source-derived compact height check passes. | Review both pages, short and long previews, help, settings controls, and instant hover after installation. |
 
 
