@@ -40,7 +40,7 @@ nonisolated struct SystemCareApplicationMetadata: Sendable {
     let size: String
     let sizeError: String?
     let lastUsed: String
-    let iconData: Data?
+    let icon: CGImage?
 }
 
 private enum SystemCareApplicationLayout {
@@ -103,8 +103,25 @@ nonisolated enum SystemCarePresentationRows {
             size: size,
             sizeError: sizeError,
             lastUsed: values?.contentAccessDate.map { dateStyle.format($0) } ?? "Not available",
-            iconData: NSWorkspace.shared.icon(forFile: application.url.path).tiffRepresentation
+            icon: applicationIcon(at: application.url)
         )
+    }
+
+    static func applicationIcon(at url: URL) -> CGImage? {
+        autoreleasepool {
+            let pixels = Int(OnePlusMetrics.cardHeader * 2)
+            guard let bitmap = NSBitmapImageRep(bitmapDataPlanes: nil,
+                pixelsWide: pixels, pixelsHigh: pixels, bitsPerSample: 8,
+                samplesPerPixel: 4, hasAlpha: true, isPlanar: false,
+                colorSpaceName: .deviceRGB, bytesPerRow: pixels * 4, bitsPerPixel: 32
+            ) else { return nil }
+            NSGraphicsContext.saveGraphicsState()
+            defer { NSGraphicsContext.restoreGraphicsState() }
+            NSGraphicsContext.current = NSGraphicsContext(bitmapImageRep: bitmap)
+            NSWorkspace.shared.icon(forFile: url.path)
+                .draw(in: NSRect(x: 0, y: 0, width: pixels, height: pixels))
+            return bitmap.cgImage
+        }
     }
 
     private static func byteFormatter() -> ByteCountFormatter {
@@ -278,6 +295,10 @@ struct SystemCareWindowView: View {
         }
         .task(id: applicationRetryRevision) {
             await loadApplications(manager.applications)
+        }
+        .onDisappear {
+            applicationIcons.removeAll()
+            applicationRows.removeAll()
         }
         .onChange(of: manager.applications) { applicationRetryRevision &+= 1 }
         .onOpenToolPage("system-care") { pageID in
@@ -1034,6 +1055,8 @@ struct SystemCareWindowView: View {
     }
 
     private func loadApplications(_ applications: [InstalledApplication]) async {
+        let ids = Set(applications.map(\.id))
+        applicationIcons = applicationIcons.filter { ids.contains($0.key) }
         let cachedRows = Dictionary(uniqueKeysWithValues: applicationRows.map { ($0.id, $0) })
         applicationRows = applications.map { application in
             let cached = cachedRows[application.id]
@@ -1065,8 +1088,9 @@ struct SystemCareWindowView: View {
                     applicationRows[index].sizeError = metadata.sizeError
                     applicationRows[index].lastUsed = metadata.lastUsed
                 }
-                if let data = metadata.iconData, let icon = NSImage(data: data) {
-                    applicationIcons[metadata.id] = icon
+                if let icon = metadata.icon {
+                    applicationIcons[metadata.id] = NSImage(cgImage: icon,
+                        size: NSSize(width: OnePlusMetrics.cardHeader, height: OnePlusMetrics.cardHeader))
                 }
                 if let application = next.next() {
                     group.addTask(priority: .utility) {

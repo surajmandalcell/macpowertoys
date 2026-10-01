@@ -1,4 +1,5 @@
 import Darwin
+import AppKit
 import XCTest
 @testable import powertoys
 
@@ -26,6 +27,17 @@ final class SystemCareTests: XCTestCase {
         XCTAssertEqual(metadata.size, "Unavailable")
         XCTAssertNotNil(metadata.sizeError)
         XCTAssertEqual(metadata.lastUsed, "Not available")
+    }
+
+    func testApplicationIconsKeepOnlyDisplaySizedPixels() throws {
+        let icon = try XCTUnwrap(SystemCarePresentationRows.applicationIcon(
+            at: URL(fileURLWithPath: "/System/Library/CoreServices/Finder.app")
+        ))
+        XCTAssertEqual(icon.width, 80)
+        XCTAssertEqual(icon.height, 80)
+        XCTAssertLessThanOrEqual(icon.bytesPerRow * icon.height, 80 * 80 * 4)
+        let bytes = try XCTUnwrap(icon.dataProvider?.data) as Data
+        XCTAssertTrue(bytes.contains { $0 != 0 })
     }
 
     func testApplicationMetadataRecursivelyCountsAllocatedBundleFiles() throws {
