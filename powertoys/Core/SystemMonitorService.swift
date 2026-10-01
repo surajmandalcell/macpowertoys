@@ -5,6 +5,7 @@ import IOKit
 import IOKit.ps
 import OnePlusUI
 import SwiftUI
+import os.signpost
 
 nonisolated enum SystemMonitorMenuMode: String, Codable, CaseIterable, Identifiable {
     case grouped, direct
@@ -1624,6 +1625,7 @@ final class SystemMonitorMenuController: NSObject {
     private var renderedStateCache = SystemMonitorRenderedStateCache()
     private var settings = SystemMonitorMenuSettings()
     private let popover = NSPopover()
+    private static let presentationLog = OSLog(subsystem: "com.surajmandal.macpowertoys", category: .pointsOfInterest)
     private var presentationTask: Task<Void, Never>?
     private var presentedProfiles: [SystemMonitorRemoteProfile]?
     private var lastDirectOrder: [SystemMonitorMenuMetric]?
@@ -1811,12 +1813,19 @@ final class SystemMonitorMenuController: NSObject {
         OnePlusPanelTimings.shared.beginOpenIfNeeded(panel: "system-monitor")
         let preparesProcesses = defaults.string(forKey: "systemMonitor.trayPage") == SystemMonitorTrayPage.processes.rawValue
         let defaults = defaults
+        let log = Self.presentationLog
         presentationTask = Task { [weak self, weak sender] in
             if preparesProcesses {
+                let interval = OSSignpostID(log: log)
+                os_signpost(.begin, log: log, name: "PanelProcessesPreparation", signpostID: interval)
+                defer { os_signpost(.end, log: log, name: "PanelProcessesPreparation", signpostID: interval) }
                 await TaskManagerMenuProcessModel.shared.prepareForPresentation()
             }
             let profiles = await Task.detached(priority: .userInitiated) {
-                SystemMonitorRemoteProfiles.load(defaults: defaults)
+                let interval = OSSignpostID(log: log)
+                os_signpost(.begin, log: log, name: "PanelRemoteProfilesDecode", signpostID: interval)
+                defer { os_signpost(.end, log: log, name: "PanelRemoteProfilesDecode", signpostID: interval) }
+                return SystemMonitorRemoteProfiles.load(defaults: defaults)
             }.value
             guard !Task.isCancelled, let self, let sender else { return }
             self.presentationTask = nil
@@ -1827,6 +1836,9 @@ final class SystemMonitorMenuController: NSObject {
     private func present(_ sender: NSStatusBarButton, profiles: [SystemMonitorRemoteProfile]) {
         guard sender.window?.isVisible == true else { return }
         let ceiling = (sender.window?.screen?.visibleFrame.height ?? 800) * OnePlusMenuMetrics.heightFraction
+        let log = Self.presentationLog
+        let hostInterval = OSSignpostID(log: log)
+        os_signpost(.begin, log: log, name: "PanelHostConstruction", signpostID: hostInterval)
         let hosting: NSHostingController<SystemMonitorMenuPopoverView>
         if let existing = popover.contentViewController as? NSHostingController<SystemMonitorMenuPopoverView>,
            presentedProfiles == profiles {
@@ -1840,11 +1852,16 @@ final class SystemMonitorMenuController: NSObject {
             presentedProfiles = profiles
         }
         if hosting.rootView.maximumHeight != ceiling { hosting.rootView.maximumHeight = ceiling }
-        hosting.view.appearance = NSApp.appearance
-        hosting.view.setFrameSize(hosting.sizeThatFits(in: NSSize(width: OnePlusMenuMetrics.width, height: ceiling)))
-        hosting.view.layoutSubtreeIfNeeded()
+        let view = hosting.view
+        os_signpost(.end, log: log, name: "PanelHostConstruction", signpostID: hostInterval)
+        let layoutInterval = OSSignpostID(log: log)
+        os_signpost(.begin, log: log, name: "PanelNativeLayout", signpostID: layoutInterval)
+        view.appearance = NSApp.appearance
+        view.setFrameSize(hosting.sizeThatFits(in: NSSize(width: OnePlusMenuMetrics.width, height: ceiling)))
+        view.layoutSubtreeIfNeeded()
         popover.contentViewController = hosting
-        popover.contentSize = hosting.view.frame.size
+        popover.contentSize = view.frame.size
+        os_signpost(.end, log: log, name: "PanelNativeLayout", signpostID: layoutInterval)
         popover.show(relativeTo: sender.bounds, of: sender, preferredEdge: .minY)
     }
 }
