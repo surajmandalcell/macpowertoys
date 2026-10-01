@@ -64,7 +64,10 @@ struct MainToolContextMenu: View {
     @State private var settings = SettingsManager.shared
 
     var body: some View {
-        Button("Settings", action: select)
+        Button("Settings") {
+            UserDefaults.standard.set(MainToolTab.settings.rawValue, forKey: MainToolTab.storageKey(for: tool.id))
+            select()
+        }
         MainOpenToolButton(toolID: tool.id, toolName: tool.name)
         Button(settings.isToolEnabled(tool.id) ? "Disable" : "Enable") {
             settings.setToolEnabled(!settings.isToolEnabled(tool.id), for: tool.id)

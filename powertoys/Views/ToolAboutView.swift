@@ -1,7 +1,10 @@
 import SwiftUI
 import OnePlusUI
 
-private enum MainToolTab: String { case settings, guide }
+enum MainToolTab: String {
+    case settings, guide
+    static func storageKey(for toolID: String) -> String { "main.tool.\(toolID).tab" }
+}
 
 struct ToolAboutView: View {
     let toolId: String
@@ -10,7 +13,21 @@ struct ToolAboutView: View {
     var startsWithGuide = false
     var changed: () -> Void = {}
     @Environment(\.dismiss) private var dismiss
-    @State private var tab = MainToolTab.settings
+    @AppStorage private var storedTab: String
+
+    init(toolId: String, showsModalCloseButton: Bool = false, showsSettings: Bool = true,
+         startsWithGuide: Bool = false, changed: @escaping () -> Void = {}) {
+        self.toolId = toolId
+        self.showsModalCloseButton = showsModalCloseButton
+        self.showsSettings = showsSettings
+        self.startsWithGuide = startsWithGuide
+        self.changed = changed
+        _storedTab = AppStorage(wrappedValue: MainToolTab.settings.rawValue, MainToolTab.storageKey(for: toolId))
+    }
+
+    private var tab: Binding<MainToolTab> {
+        Binding(get: { MainToolTab(rawValue: storedTab) ?? .settings }, set: { storedTab = $0.rawValue })
+    }
 
     var body: some View {
         if let tool = ToolRegistry.tool(for: toolId) {
@@ -30,7 +47,7 @@ struct ToolAboutView: View {
                     }
                 }
             } content: {
-                if !showsSettings || tab == .guide {
+                if !showsSettings || tab.wrappedValue == .guide {
                     ForEach(tool.manual) { section in manualCard(section) }
                 } else {
                     ToolSettingsContent(toolID: tool.id, changed: changed)
@@ -39,7 +56,8 @@ struct ToolAboutView: View {
             }
             .clipped()
             .onChange(of: startsWithGuide ? "manual/" + toolId : toolId, initial: true) { _, _ in
-                tab = startsWithGuide ? .guide : .settings
+                if startsWithGuide { storedTab = MainToolTab.guide.rawValue }
+                else if MainToolTab(rawValue: storedTab) == nil { storedTab = MainToolTab.settings.rawValue }
             }
         } else {
             OnePlusEmptyState("Unknown tool", systemImage: "questionmark.circle",
@@ -61,7 +79,7 @@ struct ToolAboutView: View {
     }
 
     private func tabs(_ tool: any Tool) -> some View {
-        OnePlusTabStrip(tabs: [OnePlusTab(.settings, "Settings"), OnePlusTab(.guide, "How to use")], selection: $tab) {
+        OnePlusTabStrip(tabs: [OnePlusTab(.settings, "Settings"), OnePlusTab(.guide, "How to use")], selection: tab) {
             if let menuTool = IndividualMenuBarTool(rawValue: tool.id) { MainMenuBarPlacement(tool: menuTool, changed: changed) }
         }
         .accessibilityIdentifier("tool.\(tool.id).page")
