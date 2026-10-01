@@ -22,23 +22,33 @@ final class LauncherGridTests: XCTestCase {
         }
     }
 
-    func testFourCatalogCardsFitTheMainCanvas() {
+    func testCatalogCardsUseEqualContentHeightsWithinEachRow() throws {
         let contentWidth = OnePlusWindowCanvas.main.size.width
             - OnePlusWindowCanvas.main.sidebarWidth
             - 2 * OnePlusMetrics.gutter
+        let cardWidth = (contentWidth - CGFloat(OnePlusCatalogMetrics.columns - 1)
+            * OnePlusCatalogMetrics.gap) / CGFloat(OnePlusCatalogMetrics.columns)
+        let heights = ToolRegistry.builtInTools.map { tool in
+            NSHostingView(rootView: LauncherCardSample(tool: tool).frame(width: cardWidth)).fittingSize.height
+        }
+        let height = try XCTUnwrap(heights.first)
+        XCTAssertLessThan(height, 151, "Cards must not retain the reviewed fixed-height empty band")
+        for cardHeight in heights {
+            XCTAssertEqual(cardHeight, height, accuracy: 0.5)
+        }
         let grid = LazyVGrid(
             columns: Array(repeating: GridItem(.flexible(), spacing: OnePlusCatalogMetrics.gap),
                            count: OnePlusCatalogMetrics.columns),
             spacing: OnePlusCatalogMetrics.gap
         ) {
-            ForEach(0..<4, id: \.self) { _ in
-                Color.gray.frame(height: OnePlusCatalogMetrics.cardHeight)
+            ForEach(Array(ToolRegistry.builtInTools.prefix(OnePlusCatalogMetrics.columns)), id: \.id) { tool in
+                LauncherCardSample(tool: tool)
             }
         }
         .frame(width: contentWidth)
 
         let host = NSHostingView(rootView: grid)
-        XCTAssertEqual(host.fittingSize.height, 151)
+        XCTAssertEqual(host.fittingSize.height, height, accuracy: 0.5)
     }
 
     func testLauncherFourColumnRender() throws {
@@ -66,5 +76,15 @@ final class LauncherGridTests: XCTestCase {
             attachment.lifetime = .keepAlways
             add(attachment)
         }
+    }
+}
+
+private struct LauncherCardSample: View {
+    let tool: any Tool
+    @FocusState private var focusedCard: String?
+
+    var body: some View {
+        MainToolCard(tool: tool, favorite: .constant(false), focusedToolID: .constant(nil),
+                     bodyFocus: $focusedCard, move: { _ in }, typeSelect: { _ in }, select: {})
     }
 }

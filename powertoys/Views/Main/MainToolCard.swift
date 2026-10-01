@@ -15,20 +15,20 @@ struct MainToolCard: View {
     var body: some View {
         OnePlusCard {
             Button(action: select) {
-                VStack(alignment: .leading, spacing: OnePlusMetrics.actionSpacing) {
+                VStack(alignment: .leading, spacing: 0) {
                     HStack(spacing: OnePlusCatalogMetrics.gap) {
                         ToolIconView(tool: tool, size: OnePlusCatalogMetrics.iconSize)
                         MainToolIdentity(tool: tool)
                         Spacer(minLength: OnePlusMetrics.compactControlHeight)
                     }
+                    .padding(.bottom, OnePlusMetrics.actionSpacing)
                     Text(tool.summary).onePlusText(.row, color: OnePlusColor.secondary)
-                        .lineLimit(2).help(tool.description)
+                        .lineLimit(2, reservesSpace: true).help(tool.description)
                         .frame(maxWidth: .infinity, alignment: .leading)
-                    Spacer(minLength: 0)
+                        .padding(.bottom, OnePlusCatalogMetrics.gap)
                     Color.clear.frame(height: OnePlusCatalogMetrics.openHeight)
                 }
                 .padding(OnePlusCatalogMetrics.cardInset)
-                .frame(height: OnePlusCatalogMetrics.cardHeight, alignment: .top)
                 .contentShape(Rectangle())
             }
             .buttonStyle(OnePlusInteractionStyle(radius: OnePlusMetrics.panelRadius))
