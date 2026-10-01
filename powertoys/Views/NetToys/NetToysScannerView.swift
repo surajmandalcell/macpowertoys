@@ -1011,7 +1011,7 @@ struct NetToysScannerView: View {
         ) {
             TableColumn("IP Address", value: \.sortAddress) { result in
                 Text(result.address.description)
-                    .onePlusText(.mono)
+                    .onePlusTableCell(.init("IP Address", width: 128, textRole: .mono, leadingInset: OnePlusTable.primaryIconInset), position: .first)
                     .lineLimit(1)
                     .foregroundStyle(result.isReachable ? OnePlusColor.ink : OnePlusColor.muted)
             }
@@ -1022,13 +1022,14 @@ struct NetToysScannerView: View {
             Group {
                 TableColumn("Status", value: \NetToysScanResult.statusTitle) { result in
                     OnePlusStatus(result.statusTitle, state: result.isReachable ? .online : .offline)
+                        .onePlusTableCell(.init("Status", width: 80))
                 }
                 .width(80)
                 .customizationID("nettoys.status")
 
                 TableColumn("Response", sortUsing: KeyPathComparator(\NetToysScanResult.responseMilliseconds)) { result in
                     Text(result.responseTitle.isEmpty ? "—" : "\(result.responseTitle) ms")
-                        .onePlusText(.mono)
+                        .onePlusTableCell(.init("Response", width: 96, textRole: .mono))
                         .lineLimit(1)
                         .foregroundStyle(result.isReachable ? OnePlusColor.ink : OnePlusColor.muted)
                 }
@@ -1037,6 +1038,7 @@ struct NetToysScannerView: View {
 
                 TableColumn("TTL", sortUsing: KeyPathComparator(\NetToysScanResult.ttl)) { result in
                     Text(result.ttlTitle.isEmpty ? "—" : result.ttlTitle)
+                        .onePlusTableCell(.init("TTL", width: 48))
                         .lineLimit(1)
                         .foregroundStyle(result.isReachable ? OnePlusColor.ink : OnePlusColor.muted)
                 }
@@ -1047,6 +1049,7 @@ struct NetToysScannerView: View {
                 TableColumn("Loss", sortUsing: KeyPathComparator(\NetToysScanResult.packetLossPercent)) { result in
                     Text(result.packetLossTitle.isEmpty ? "—" : "\(result.packetLossTitle)%")
                         .monospacedDigit()
+                        .onePlusTableCell(.init("Loss", width: 66))
                         .lineLimit(1)
                         .foregroundStyle(result.isReachable ? OnePlusColor.ink : OnePlusColor.muted)
                 }
@@ -1058,6 +1061,7 @@ struct NetToysScannerView: View {
             Group {
                 TableColumn("Hostname", value: \NetToysScanResult.hostnameTitle) { result in
                     Text(result.hostnameTitle.isEmpty ? "—" : result.hostnameTitle)
+                        .onePlusTableCell(.init("Hostname", width: 216))
                         .lineLimit(1)
                         .foregroundStyle(result.isReachable ? OnePlusColor.ink : OnePlusColor.muted)
                 }
@@ -1066,7 +1070,7 @@ struct NetToysScannerView: View {
 
                 TableColumn("MAC Address", value: \NetToysScanResult.macTitle) { result in
                     Text(result.macTitle.isEmpty ? "—" : result.macTitle)
-                        .onePlusText(.mono)
+                        .onePlusTableCell(.init("MAC Address", width: 160, textRole: .mono))
                         .lineLimit(1)
                         .foregroundStyle(result.isReachable ? OnePlusColor.ink : OnePlusColor.muted)
                 }
@@ -1075,6 +1079,7 @@ struct NetToysScannerView: View {
 
                 TableColumn("MAC Vendor", value: \NetToysScanResult.vendorTitle) { result in
                     Text(result.vendorTitle.isEmpty ? "—" : result.vendorTitle)
+                        .onePlusTableCell(.init("MAC Vendor", width: 208))
                         .lineLimit(1)
                         .foregroundStyle(result.isReachable ? OnePlusColor.ink : OnePlusColor.muted)
                 }
@@ -1083,6 +1088,7 @@ struct NetToysScannerView: View {
 
                 TableColumn("NetBIOS Info", value: \NetToysScanResult.netBIOSTitle) { result in
                     Text(result.netBIOSTitle.isEmpty ? "—" : result.netBIOSTitle)
+                        .onePlusTableCell(.init("NetBIOS Info", width: 120))
                         .lineLimit(1)
                         .foregroundStyle(result.isReachable ? OnePlusColor.ink : OnePlusColor.muted)
                 }
@@ -1094,6 +1100,7 @@ struct NetToysScannerView: View {
             Group {
                 TableColumn("Open Ports", value: \NetToysScanResult.portsTitle) { result in
                     Text(result.portsTitle.isEmpty ? "—" : result.portsTitle)
+                        .onePlusTableCell(.init("Open Ports", width: 160))
                         .lineLimit(1)
                         .foregroundStyle(result.isReachable ? OnePlusColor.ink : OnePlusColor.muted)
                 }
@@ -1102,6 +1109,7 @@ struct NetToysScannerView: View {
 
                 TableColumn("Filtered", value: \NetToysScanResult.filteredPortsTitle) { result in
                     Text(result.filteredPortsTitle.isEmpty ? "—" : result.filteredPortsTitle)
+                        .onePlusTableCell(.init("Filtered", width: 100))
                         .lineLimit(1)
                         .foregroundStyle(result.isReachable ? OnePlusColor.ink : OnePlusColor.muted)
                 }
@@ -1111,6 +1119,7 @@ struct NetToysScannerView: View {
 
                 TableColumn("HTTP Server", value: \NetToysScanResult.httpServerTitle) { result in
                     Text(result.httpServerTitle.isEmpty ? "—" : result.httpServerTitle)
+                        .onePlusTableCell(.init("HTTP Server", width: 150))
                         .lineLimit(1)
                         .foregroundStyle(result.isReachable ? OnePlusColor.ink : OnePlusColor.muted)
                 }
@@ -1120,6 +1129,7 @@ struct NetToysScannerView: View {
 
                 TableColumn("HTTP Proxy", value: \NetToysScanResult.httpProxyTitle) { result in
                     Text(result.httpProxyTitle.isEmpty ? "—" : result.httpProxyTitle)
+                        .onePlusTableCell(.init("HTTP Proxy", width: 140))
                         .lineLimit(1)
                         .foregroundStyle(result.isReachable ? OnePlusColor.ink : OnePlusColor.muted)
                 }
@@ -1129,6 +1139,7 @@ struct NetToysScannerView: View {
 
                 TableColumn("Custom Text", value: \NetToysScanResult.customTextTitle) { result in
                     Text(result.customTextTitle.isEmpty ? "—" : result.customTextTitle)
+                        .onePlusTableCell(.init("Custom Text", width: 160))
                         .lineLimit(1)
                         .foregroundStyle(result.isReachable ? OnePlusColor.ink : OnePlusColor.muted)
                 }
@@ -1138,6 +1149,7 @@ struct NetToysScannerView: View {
 
                 TableColumn("Comments", value: \NetToysScanResult.commentTitle) { result in
                     Text(result.commentTitle.isEmpty ? "—" : result.commentTitle)
+                        .onePlusTableCell(.init("Comments", width: 150))
                         .lineLimit(1)
                         .foregroundStyle(result.isReachable ? OnePlusColor.ink : OnePlusColor.muted)
                 }
