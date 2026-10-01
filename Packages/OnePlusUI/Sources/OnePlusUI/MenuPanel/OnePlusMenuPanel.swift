@@ -146,21 +146,31 @@ private struct OnePlusMenuHeightReporter: NSViewRepresentable {
 
 private struct OnePlusMenuPanelLayout: Layout {
     let maximumHeight: CGFloat
-    private func heights(_ subviews: Subviews, width: CGFloat) -> [CGFloat] {
+    struct Cache {
+        var width: CGFloat?
+        var cap: CGFloat?
+        var heights: [CGFloat] = []
+    }
+    func makeCache(subviews: Subviews) -> Cache { Cache() }
+    func updateCache(_ cache: inout Cache, subviews: Subviews) { cache = Cache() }
+    private func heights(_ subviews: Subviews, width: CGFloat, cache: inout Cache) -> [CGFloat] {
+        if cache.width == width, cache.cap == maximumHeight { return cache.heights }
         let natural = subviews.map { $0.sizeThatFits(.init(width: width, height: nil)).height }
         let topGap: CGFloat = natural[1] > 0 ? 0 : 3
         let bottomGap: CGFloat = natural[3] > 0 ? 0 : 8
         let bodyCap = max(0, maximumHeight - natural[0] - natural[1] - natural[3] - topGap - bottomGap)
-        return [natural[0], natural[1], topGap, min(natural[2], bodyCap), bottomGap, natural[3]]
+        let heights = [natural[0], natural[1], topGap, min(natural[2], bodyCap), bottomGap, natural[3]]
+        cache = Cache(width: width, cap: maximumHeight, heights: heights)
+        return heights
     }
 
-    func sizeThatFits(proposal: ProposedViewSize, subviews: Subviews, cache: inout ()) -> CGSize {
+    func sizeThatFits(proposal: ProposedViewSize, subviews: Subviews, cache: inout Cache) -> CGSize {
         let width = OnePlusMenuMetrics.width - 2
-        return CGSize(width: width, height: heights(subviews, width: width).reduce(0, +))
+        return CGSize(width: width, height: heights(subviews, width: width, cache: &cache).reduce(0, +))
     }
 
-    func placeSubviews(in bounds: CGRect, proposal: ProposedViewSize, subviews: Subviews, cache: inout ()) {
-        let sizes = heights(subviews, width: bounds.width)
+    func placeSubviews(in bounds: CGRect, proposal: ProposedViewSize, subviews: Subviews, cache: inout Cache) {
+        let sizes = heights(subviews, width: bounds.width, cache: &cache)
         var y = bounds.minY
         let indices: [Int?] = [0, 1, nil, 2, nil, 3]
         for (index, height) in sizes.enumerated() {
