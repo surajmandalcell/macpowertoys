@@ -23,7 +23,7 @@ struct SystemMonitorRemoteView: View {
 
     var body: some View {
         VStack(alignment: .leading, spacing: OnePlusMetrics.cardGap) {
-            Text("\(profiles.filter { sessions.state(for: $0.id).phase == .connected }.count) connected · \(profiles.count) hosts")
+            Text("\(profiles.filter { sessions.state(for: $0.id).phase == .connected }.count) connected · \(profiles.count) \(profiles.count == 1 ? "host" : "hosts")")
                 .onePlusText(.caption)
             if let errorMessage { OnePlusBanner(errorMessage, tone: .error) }
             ScrollViewReader { proxy in
