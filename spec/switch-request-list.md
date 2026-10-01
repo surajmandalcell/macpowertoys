@@ -10,6 +10,7 @@ MacPowerToys when its package version is updated and MacPowerToys is rebuilt.
 | Status | Requirement | Acceptance |
 |---|---|---|
 | Build verified; signed review pending | B5: show one refresh icon and one unloaded-limit warning in the combined panel header. | `42cf6c02` removes both text refresh actions and per-account hints. The header icon refreshes accounts and visible usage through the existing model. One orange warning with help remains until a usage window has limits. Account rows keep full hover, default state, and switching. `4698423d` shares the window model and durable token ledger and surfaces cache errors in the header warning. Tokens appear on the trailing side. One synthetic regression checks absent, empty, zero-percent, and secondary limits. Gated app and desktop-test compilation pass. Hosted execution and signed interactions remain. Report: `tmp/redesign/logs/w1-panel-main.md`. |
+| Synthetic and compile checks passed; integration pending | Complete the 2026-10-01 account feature audit against standalone Switch. | `22c1487e` reuses Core v3.3.0 for Claude profiles, account actions, quotas, durable daily activity, API rate comparisons, import review, and recovery. Restore cached usage at startup; keep quotas after transient failures; clear quotas when sign-in is required; keep activity history. Reconcile Core status after failed operations. Keep pending sign-in sessions when a sheet closes. Allow credential JSON or folder imports with an explicit access-only or full-data choice. Show operation messages and backup paths. `33b122f0` adds the unavailable-store Retry state and disables Verify during usage checks. Add Claude, activity, and recovery locations to Settings. Panel-main uses the shared model and durable totals in `4698423d`; API rate comparisons stay in the full window. Signed interaction, hosted view checks, and live service refresh remain open. |
 | Pending, failed, and loaded states captured; hosted checks pending | Keep Daily activity stable before preparation completes and during refresh. | `f2f5436` reserves the 82pt grid with 16pt inner padding, shows pending totals as dashes, and replaces grid and totals together. All eight signed `3e33de2` Switch captures were reviewed. Loaded activity shows seven neutral grid rows in both appearances; pending and unavailable states were captured in round 5. The activity card retains its 220pt bounds and Usage its 264pt bounds. Debug and the desktop-test scheme build-for-testing pass. Hosted bounds tests, refresh retention, account and period changes, and the active Usage scroller remain unverified. `eb01001e` changes the About copy in `Models/Tool.swift` to "Choose Use as default" and "Backup shows interrupted operations". See `tmp/redesign/logs/25r9-nettoys.md`. |
 | Build verified; signed review pending | Keep Switch Usage compact with the same bounds for loading, error, and loaded data. | `64d09cb` replaces the 392pt minimum body with a fixed 224pt body, giving a 264pt card. Usage facts stay fixed and all quota buckets remain available in the card's row scroller. Debug and desktop build-for-testing pass. Signed loading, error, single-bucket, and multiple-bucket checks remain. The main/catalog owner must change the manual point in `Models/Tool.swift` from "Make Default" to "Use as default". |
 | Usage geometry superseded; other fixes retained | Keep the Switch usage card height stable and correct the round 2 page actions and copy. | The 392pt body in `b0fa4497` is replaced by the compact geometry above. `70c9b132` removes the default-state check glyph and Settings refresh action, standardizes Backup headers, and uses `Version` in About. A clean current-commit copy passes Debug and desktop build-for-testing. Inspect every state in the signed build. |
@@ -28,6 +29,35 @@ MacPowerToys when its package version is updated and MacPowerToys is rebuilt.
 | Hosted verified; installed interaction pending | Match the original Switch account controls and provider artwork. | Center the custom close control in the 48-point rail cell; remove the redundant rail plus; use the original Add Account provider flow, provider icons, double-check state, and “Use as default” copy. Compact About modals must not show an oversized self-Open action. |
 | Hosted verified; installed interaction pending | Make Backup and usage layouts clear at the minimum window width. | Backup explains when recovery actions become available and provides a useful destination action; disabled controls remain legible. Activity period and duration values stay inside their panels without wrapping into extra rows. |
 | Core, standalone, and hosted applet verified; installed interaction pending | Support Claude Code accounts through shared Switch Core. | Both standalone Switch and MacPowerToys list, sign in to, and switch managed Claude Code profiles through the same Core package without requiring the standalone app. |
+
+## 2026-10-01 production audit
+
+Standalone source and history confirm that tag `v3.3.0` contains Claude Code
+profile support. MacPowerToys already pins that tag from `switch.git`; no
+package or tag change is needed. The standalone README still lists Claude as
+work in progress, but its product spec and enabled Core provider are current.
+The host keeps account features. Chat history, transcript project scans, and
+cleanup remain in standalone Switch under the existing lightweight contract.
+Its Backup page manages interrupted operations; it has no general manual
+backup creation API to port. Host appearance and launch-at-login remain global.
+
+The owner store was inspected through non-secret account metadata and read-only
+SQLite queries. It has two Codex accounts, one Grok account, and one Claude
+profile. Both Codex accounts have cached quota snapshots. The durable activity
+ledger has 210 rows for two accounts. Metadata hashes stayed unchanged.
+No saved credential, Keychain item, provider CLI, account change, or recovery
+action was accessed. Cached usage is verification of saved data, not a live
+service refresh. Core's live check reads credentials and writes verification
+metadata, so it was outside this worker's read-only verification limit.
+
+Focused isolated checks cover retained usage, authentication failure, durable
+activity, cached API pricing, failed switch reconciliation, and Claude profile
+resume and launch. Calendar checks cover Yesterday, invalid dates, negative
+counts, saturation, and retained totals outside the selected period. The shared
+gate passes build-for-testing for the Debug app and both test bundles.
+App-hosted tests were not run on this desktop. Hosted SwiftUI and signed app
+checks remain the orchestrator's integration gate.
+See `tmp/redesign/logs/w1-switch.md` for the gap table and build evidence.
 
 The owner's active desktop is not an acceptable test environment for app-hosted
 or UI test runners. Executable checks and synthetic renders run on hosted macOS;
