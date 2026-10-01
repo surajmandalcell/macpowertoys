@@ -23,6 +23,19 @@ enum TrayPopoverLayout {
         ByteCountFormatter.string(fromByteCount: value, countStyle: .file)
     }
 
+    nonisolated static func compactDiskBytes(_ bytes: Int64, fractionLength: Int = 1) -> String {
+        guard bytes > 0 else { return "0 KB" }
+        let units = ["B", "KB", "MB", "GB", "TB", "PB", "EB"]
+        let precision = pow(10.0, Double(fractionLength))
+        var value = Double(bytes)
+        var index = 0
+        while (value * precision).rounded() >= 1_000 * precision && index < units.count - 1 {
+            value /= 1_000
+            index += 1
+        }
+        return "\(value.formatted(.number.grouping(.never).precision(.fractionLength(0...fractionLength)))) \(units[index])"
+    }
+
     static func orderedComplexTabs(available: [TrayTab], savedIDs: [String]) -> [TrayTab] {
         let availableSet = Set(available)
         var seen = Set<TrayTab>()

@@ -174,7 +174,7 @@ struct DiskExplorerWindowView: View {
 
     private func deviceRow(_ disk: ManagedDisk) -> some View {
         let locked = diskManagement.isLocked(disk)
-        return OnePlusDeviceNavRow(disk.name, subtitle: "\(disk.id) · \(disk.size.diskSize)",
+        return OnePlusDeviceNavRow(disk.name, subtitle: "\(disk.id) · \(TrayPopoverLayout.compactDiskBytes(disk.size, fractionLength: 0))",
                                   systemImage: disk.bus == "Secure Digital" ? "sdcard" : "externaldrive",
                                   selected: page == .modify && diskManagement.selectedDiskID == disk.id,
                                   locked: locked, accessibilityIdentifier: "diskman.disk.\(disk.id)",
@@ -185,6 +185,8 @@ struct DiskExplorerWindowView: View {
                 .help(disk.protectionReason ?? (locked ? "Unlock this disk before ejecting" : "Eject \(disk.name)"))
                 .accessibilityLabel("Eject \(disk.name)").accessibilityIdentifier("diskman.eject.\(disk.id)")
         }
+        .help("\(disk.name), \(disk.id), \(disk.size.diskSize), \(disk.size.formatted()) bytes")
+        .accessibilityHint("\(disk.id), \(disk.size.diskSize), \(disk.size.formatted()) bytes")
         .contextMenu {
             Button(locked ? "Unlock Disk" : "Lock Disk", systemImage: locked ? "lock.open" : "lock.fill") {
                 diskManagement.setLocked(!locked, for: disk)

@@ -42,11 +42,14 @@ struct SystemCareDiskSummary: View {
         return VStack(alignment: .leading, spacing: OnePlusMetrics.navRowGap) {
             Text(title).onePlusText(.metricCaption)
             HStack(alignment: .firstTextBaseline, spacing: OnePlusMetrics.navRowGap) {
-                Text(metric?.value ?? "—").onePlusText(.metric).monospacedDigit()
-                Text(metric?.unit ?? "").onePlusText(.unit)
+                Text(metric?.value ?? "—").onePlusText(.metric).monospacedDigit().fixedSize()
+                Text(metric?.unit ?? "").onePlusText(.unit).fixedSize()
             }
         }
         .frame(maxWidth: density == .compact ? .infinity : nil, alignment: .leading)
+        .help(bytes.map { "\(title): \($0.formatted()) bytes" } ?? "\(title): Unavailable")
+        .accessibilityElement(children: .ignore)
+        .accessibilityLabel(bytes.map { "\(title): \($0.formatted()) bytes" } ?? "\(title): Unavailable")
     }
 }
 

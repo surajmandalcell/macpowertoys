@@ -6,6 +6,17 @@ import XCTest
 
 @MainActor
 final class DiskExplorerViewTests: XCTestCase {
+    func testDeviceCaptionKeepsItsCapacityUnitInTheSidebarLane() {
+        for (bytes, expected) in [(Int64(500_280_000_000), "500 GB"), (15_634_268_160, "16 GB"),
+                                   (1_000_000_000_000, "1 TB"), (999_600_000_000, "1 TB"), (0, "0 KB")] {
+            let caption = "disk0 · \(TrayPopoverLayout.compactDiskBytes(bytes, fractionLength: 0))"
+            XCTAssertEqual(caption, "disk0 · \(expected)")
+            let host = NSHostingView(rootView: Text(caption).onePlusText(.mono))
+            XCTAssertLessThanOrEqual(host.fittingSize.width, 106)
+        }
+        XCTAssertEqual(Int64(500_280_000_000).diskSize.replacingOccurrences(of: " ", with: ""), "500.28GB")
+    }
+
     func testVolumeSidebarLoadsOffMainAndDiscardsCancelledRefresh() async {
         let model = DiskExplorerModel()
         let volume = DiskVolume(url: URL(fileURLWithPath: "/"), name: "Startup Disk", capacity: 100, available: 50)
