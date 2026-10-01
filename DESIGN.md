@@ -495,6 +495,15 @@ apps felt like a Tailwind web app, not a Mac app.
   hover and selection surfaces, popups, glows, chart strokes, and text keep
   their full shape. A scroll view clips only at its own edges and leaves
   room for row hover and shadows; a container never cuts a child's effect.
+- Scrolling content runs to the edge (owner correction 2026-10-01): a
+  page or card that scrolls clips only at the window's or the card's real
+  bottom edge, never at an inner inset above it. Bottom gutters and footer
+  clearance are padding inside the scroll content, so the last row still
+  ends 24 pt above the edge when scrolled to the end, while rows above it
+  scroll under the edge.
+- Floating controls (the applet settings gear) overlay the content and
+  never take a row of their own. Content scrolls under them and reserves
+  only end padding so the last item clears the control.
 
 ## Native behavior contract
 
