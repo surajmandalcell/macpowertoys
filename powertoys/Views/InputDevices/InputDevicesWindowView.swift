@@ -150,6 +150,7 @@ struct InputDevicesWindowView: View {
                 OnePlusSettingRow("Profiles", help: "Mouse and trackpad settings stay independent.") {
                     OnePlusStatus("Saved locally")
                 }
+                .onePlusRowHover()
                 OnePlusSettingRow(
                     "System control",
                     help: "Accessibility permission is required only for system-wide scrolling.",
@@ -158,6 +159,7 @@ struct InputDevicesWindowView: View {
                     OnePlusStatus(manager.permissionGranted ? "Allowed" : "Permission needed",
                                   state: manager.permissionGranted ? .online : .warning)
                 }
+                .onePlusRowHover()
             }
         }
     }

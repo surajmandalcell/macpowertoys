@@ -26,6 +26,7 @@ struct InputScrollDeviceBar: View {
                         accessibilityLabel: "Scroll device"
                     )
                 }
+                .onePlusRowHover()
             }
         }
     }
@@ -74,6 +75,7 @@ struct InputDevicesSettingsContent: View {
                 .labelsHidden()
                 .toggleStyle(OnePlusSwitchStyle())
             }
+            .onePlusRowHover()
             if !manager.permissionGranted {
                 OnePlusSettingRow(
                     "Accessibility",
@@ -87,6 +89,7 @@ struct InputDevicesSettingsContent: View {
                             .buttonStyle(OnePlusButtonStyle(.ghost))
                     }
                 }
+                .onePlusRowHover()
             }
             if let errorMessage = manager.errorMessage {
                 OnePlusBanner(errorMessage, tone: .error)

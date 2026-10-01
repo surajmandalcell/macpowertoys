@@ -91,8 +91,10 @@ struct InputDeviceCard: View {
                         value: row.value,
                         monospaced: row.monospaced
                     )
+                    .onePlusRowHover()
                 }
                 OnePlusKeyValueRow("Scroll profile", value: profile.enabled ? "Enabled" : "Off")
+                    .onePlusRowHover()
             }
             .padding(OnePlusMetrics.cardPadding)
         }
@@ -171,8 +173,11 @@ struct InputKeyboardCard: View {
             }
             VStack(spacing: 0) {
                 OnePlusKeyValueRow("Connection", value: "Managed by macOS")
+                    .onePlusRowHover()
                 OnePlusKeyValueRow("Key repeat", value: details.keyRepeat)
+                    .onePlusRowHover()
                 OnePlusKeyValueRow("Function keys", value: details.functionKeys)
+                    .onePlusRowHover()
             }
             .padding(OnePlusMetrics.cardPadding)
         }
@@ -221,6 +226,7 @@ struct InputScrollProfileCard: View {
                         .labelsHidden()
                         .toggleStyle(OnePlusSwitchStyle())
                 }
+                .onePlusRowHover()
                 settingRows
             }
         }
@@ -239,6 +245,7 @@ struct InputScrollProfileCard: View {
                     accessibilityLabel: "\(title) scroll direction"
                 )
             }
+            .onePlusRowHover()
             OnePlusSettingRow(
                 "Scroll speed",
                 help: "Multiply every scroll delta from this device type."
@@ -250,6 +257,7 @@ struct InputScrollProfileCard: View {
                         .onePlusText(.mono)
                 }
             }
+            .onePlusRowHover()
             OnePlusSettingRow(
                 "Horizontal scrolling",
                 help: "Pass horizontal scroll events through.",
@@ -259,6 +267,7 @@ struct InputScrollProfileCard: View {
                     .labelsHidden()
                     .toggleStyle(OnePlusSwitchStyle())
             }
+            .onePlusRowHover()
             OnePlusSettingRow(
                 "Reverse horizontal",
                 help: "Invert left and right scrolling.",
@@ -268,6 +277,7 @@ struct InputScrollProfileCard: View {
                     .labelsHidden()
                     .toggleStyle(OnePlusSwitchStyle())
             }
+            .onePlusRowHover()
             .disabled(!profile.horizontalEnabled)
             OnePlusSettingRow(
                 "Shift scrolls sideways",
@@ -278,6 +288,7 @@ struct InputScrollProfileCard: View {
                     .labelsHidden()
                     .toggleStyle(OnePlusSwitchStyle())
             }
+            .onePlusRowHover()
             .disabled(!profile.horizontalEnabled)
             OnePlusSettingRow(
                 "Smoothing",
@@ -289,6 +300,7 @@ struct InputScrollProfileCard: View {
                     .labelsHidden()
                     .toggleStyle(OnePlusSwitchStyle())
             }
+            .onePlusRowHover()
         }
         .disabled(!profile.enabled)
     }
