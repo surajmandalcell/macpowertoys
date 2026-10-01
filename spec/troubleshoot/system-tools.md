@@ -1056,6 +1056,27 @@
   inspect the virtual-memory help, and compare grouped and flat lists. Confirm
   no port subprocess runs with no selection.
 
+## Remote Window Density And Prepared Profiles, 2026-10-01
+
+- **Symptom:** Window host actions stack in a narrow lane, configuration repeats
+  the host, and a warm window first shows No remote hosts. A connection reason
+  grows an offline card from 146pt to 190pt. Zero RAM says ZeroKB.
+- **Cause:** Window cards retain the old divided action lane and settings card.
+  Initial state ignores the existing profile snapshot. An inline error row adds
+  height. The default byte formatter uses words for zero.
+- **Invariant:** Window host actions share one horizontal 24pt row. Put host
+  metadata beside its identity and counts beside Add host. Use regular 18pt
+  values. Seed window and page state from the existing shared profile snapshot;
+  explicit supplied profiles win. Off-main loading and edits update that snapshot.
+  Put reasons in header info help and accessibility labels so error bounds stay
+  fixed. Show numeric zero RAM and full panel metric help. The panel retains its
+  20pt header, 36pt metrics, and 84pt trailing actions.
+- **Check:** Run `python3 tmp/redesign/logs/remote-r11-check.py`. The same check
+  with `--before` fails horizontal actions, numeric zero, warm first/later frames,
+  and error bounds. Current Light/Dark fixtures pass at 840pt and 402pt window
+  widths and 338pt panel width. Cold first frames, native help and context menus,
+  SSH launch, host selection, and keyboard actions require signed acceptance.
+
 - **Symptom:** Return does nothing in the remote host field, changing refresh
   requires a disconnect, or Open Terminal opens an idle shell.
 - **Cause:** The field had no submit action, Refresh was disabled while
