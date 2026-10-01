@@ -21,16 +21,13 @@ struct RemoteSettingsSheet: View {
     var body: some View {
         OnePlusSheet("\(remote.displayName) Settings", width: .small, close: { dismiss() }) {
             OnePlusCard {
-                OnePlusSettingRow("Parallel transfers", caption: caption(transfers, global: globalTransfers)) {
+                OnePlusSettingRow("Parallel transfers", help: helpText(transfers, global: globalTransfers)) {
                     OnePlusStepperField("Parallel transfers", value: $transfers, in: 0...64)
                 }
-                OnePlusSettingRow("Checkers", caption: caption(checkers, global: globalCheckers), separator: false) {
+                OnePlusSettingRow("Checkers", help: helpText(checkers, global: globalCheckers), separator: false) {
                     OnePlusStepperField("Checkers", value: $checkers, in: 0...128)
                 }
             }
-            Text("0 uses the app-wide value. Overrides apply when the next transfer starts.")
-                .onePlusText(.caption)
-                .padding(.top, OnePlusMetrics.spacing[2])
         } footer: {
             Button("Done") { dismiss() }
                 .keyboardShortcut(.defaultAction)
@@ -48,7 +45,8 @@ struct RemoteSettingsSheet: View {
         }
     }
 
-    private func caption(_ value: Int, global: Int) -> String {
-        value == 0 ? "Using global (\(global))" : "0 uses global (\(global))"
+    private func helpText(_ value: Int, global: Int) -> String {
+        (value == 0 ? "Using global (\(global))." : "0 uses global (\(global)).")
+            + " Overrides apply when the next transfer starts."
     }
 }

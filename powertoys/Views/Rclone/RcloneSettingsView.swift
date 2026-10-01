@@ -37,9 +37,9 @@ struct RcloneSettingsView: View {
                     .frame(maxWidth: .infinity)
             }
             .fixedSize(horizontal: false, vertical: true)
-            ignorePatternsCard
+            ignorePatternsSection
             retriesCard
-            rcloneCard
+            binaryRow
         }
         .onChange(of: startAtLaunch) { _, enabled in
             Task { await RcloneJobManager.shared.backgroundPreferenceDidChange(enabled: enabled) }
@@ -88,15 +88,12 @@ struct RcloneSettingsView: View {
         }
     }
 
-    private var ignorePatternsCard: some View {
-        OnePlusCard {
-            OnePlusCardHeader("Ignore patterns")
-            VStack(alignment: .leading, spacing: OnePlusMetrics.spacing[2]) {
-                OnePlusTextEditor("Ignore patterns", text: $ignorePatterns)
-                    .frame(height: OnePlusMetrics.spacing[6] * 8)
-                    .help("One glob per line. Used as an exclude rule.")
-            }
-            .padding(OnePlusMetrics.cardPadding)
+    private var ignorePatternsSection: some View {
+        VStack(alignment: .leading, spacing: OnePlusMetrics.spacing[2]) {
+            OnePlusSectionTitle("Ignore patterns")
+            OnePlusTextEditor("Ignore patterns", text: $ignorePatterns)
+                .frame(height: OnePlusMetrics.spacing[6] * 8)
+                .help("One glob per line. Used as an exclude rule.")
         }
     }
 
@@ -123,13 +120,20 @@ struct RcloneSettingsView: View {
         }
     }
 
-    private var rcloneCard: some View {
-        OnePlusCard {
-            OnePlusCardHeader("rclone")
-            OnePlusSettingRow("Binary path", help: "Leave blank to use the detected binary.", controlWidth: OnePlusMetrics.wideControlColumn, separator: false) {
-                OnePlusTextField("Auto-detected", text: $binaryPath)
-            }
+    private var binaryRow: some View {
+        HStack(spacing: OnePlusMetrics.spacing[3]) {
+            Text("rclone binary path").onePlusText(.row)
+            Image(systemName: "info.circle")
+                .foregroundStyle(OnePlusColor.secondary)
+                .help("Leave blank to use the detected binary.")
+                .accessibilityLabel("Leave blank to use the detected binary")
+            Spacer(minLength: OnePlusMetrics.spacing[3])
+            OnePlusTextField("Auto-detected", text: $binaryPath)
+                .frame(width: OnePlusMetrics.wideControlColumn)
+                .accessibilityLabel("rclone binary path")
         }
+        .frame(height: OnePlusMetrics.settingRow)
+        .onePlusRowHover()
     }
 }
 
