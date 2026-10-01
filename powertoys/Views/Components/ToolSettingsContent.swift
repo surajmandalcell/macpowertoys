@@ -33,7 +33,7 @@ struct ToolSettingsContent: View {
         case "color-picker": ColorPickerSettingsView()
         case "text-extractor": TextExtractorSettingsView()
         case "nettoys": NetToysSettingsView()
-        case "switch": SwitchSettingsContent()
+        case "switch": SwitchSettingsContent(showsEnableControl: false)
         case "mac-tweaks": MacTweaksSettingsContent()
         case "input-devices": InputDevicesSettingsContent()
         case "system-monitor": SystemMonitorSettingsContent()
@@ -43,7 +43,7 @@ struct ToolSettingsContent: View {
                 set: { systemCareMode = $0.rawValue }
             ))
         case "portman": PortmanSettingsView()
-        case "disk-explorer": DiskExplorerSettingsView()
+        case "disk-explorer": DiskExplorerSettingsView(showsEnableControl: false)
         case "logs": LogsSettingsView()
         default: OnePlusEmptyState("No settings available", systemImage: "slider.horizontal.3")
         }

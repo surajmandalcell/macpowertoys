@@ -399,24 +399,28 @@ struct DiskChooseFolderSheet: View {
 /// Settings content only. The host supplies page chrome, scrolling and density.
 struct DiskExplorerSettingsView: View {
     let unreadableCount: Int?
+    let showsEnableControl: Bool
     @AppStorage("diskExplorer.chartStyle") private var chartStyle = DiskChartStyle.treemap.rawValue
     @AppStorage("diskExplorer.chartMeasure") private var chartMeasure = DiskChartMeasure.space.rawValue
     @AppStorage("diskExplorer.apparentSize") private var apparentSize = false
     @AppStorage("diskExplorer.includeHidden") private var includeHidden = true
     @State private var settings = SettingsManager.shared
 
-    init(unreadableCount: Int? = nil) {
+    init(unreadableCount: Int? = nil, showsEnableControl: Bool = true) {
         self.unreadableCount = unreadableCount
+        self.showsEnableControl = showsEnableControl
     }
 
     var body: some View {
         VStack(spacing: OnePlusMetrics.cardGap) {
-            OnePlusSettingRow("Enable Diskman", separator: false) {
-                Toggle("Enable Diskman", isOn: Binding(get: { settings.isToolEnabled("disk-explorer") },
-                    set: { settings.setToolEnabled($0, for: "disk-explorer") }))
-                    .labelsHidden().toggleStyle(OnePlusSwitchStyle())
-                    .disabled(settings.isToolTransitioning("disk-explorer"))
-            }.environment(\.onePlusCardPadding, 0).help("Show Diskman in the launcher")
+            if showsEnableControl {
+                OnePlusSettingRow("Enable Diskman", separator: false) {
+                    Toggle("Enable Diskman", isOn: Binding(get: { settings.isToolEnabled("disk-explorer") },
+                        set: { settings.setToolEnabled($0, for: "disk-explorer") }))
+                        .labelsHidden().toggleStyle(OnePlusSwitchStyle())
+                        .disabled(settings.isToolTransitioning("disk-explorer"))
+                }.environment(\.onePlusCardPadding, 0).help("Show Diskman in the launcher")
+            }
             HStack(alignment: .top, spacing: OnePlusMetrics.cardGap) {
                 OnePlusCard {
                     OnePlusCardHeader("Display", systemImage: "square.grid.2x2")

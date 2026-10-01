@@ -9,36 +9,23 @@ struct SwitchSettingsContent: View {
     @AppStorage(SwitchTrayUsagePreferences.periodKey) private var trayTokenPeriod = SwitchTrayTokenPeriod.sinceReset.rawValue
     @State private var settings = SettingsManager.shared
     private let paths: ManagerPaths
+    private let showsEnableControl: Bool
 
-    init(paths: ManagerPaths = .environment()) {
+    init(paths: ManagerPaths = .environment(), showsEnableControl: Bool = true) {
         self.paths = paths
+        self.showsEnableControl = showsEnableControl
     }
 
     var body: some View {
         VStack(alignment: .leading, spacing: OnePlusMetrics.cardGap) {
-            HStack(alignment: .top, spacing: OnePlusMetrics.cardGap) {
-                OnePlusCard {
-                    OnePlusCardHeader("App behavior")
-                    OnePlusSettingRow("Enable Switch", help: "Show Switch in MacPowerToys.") {
-                        Toggle("Enable Switch", isOn: Binding(get: { settings.isToolEnabled("switch") },
-                               set: { settings.setToolEnabled($0, for: "switch") }))
-                            .labelsHidden().toggleStyle(OnePlusSwitchStyle())
-                            .disabled(settings.isToolTransitioning("switch"))
-                    }
-                    OnePlusSettingRow("Show percentage used", help: "Turn off to show the percentage left.", separator: false) {
-                        Toggle("Show percentage used", isOn: $showUsageAsUsed).labelsHidden().toggleStyle(OnePlusSwitchStyle())
-                    }
+            if showsEnableControl {
+                HStack(alignment: .top, spacing: OnePlusMetrics.cardGap) {
+                    appBehaviorCard
+                    menuBarDefaultsCard
                 }
-                OnePlusCard {
-                    OnePlusCardHeader("Menu bar defaults")
-                    OnePlusSettingRow("Show account usage", help: "Used for accounts without their own choice.") {
-                        Toggle("Show account usage", isOn: $defaultShowTrayUsage).labelsHidden().toggleStyle(OnePlusSwitchStyle())
-                    }
-                    OnePlusSettingRow("Token summary", help: "The period shown beside each account's usage.", separator: false) {
-                        OnePlusSelect(choices: SwitchTrayTokenPeriod.allCases.map { ($0.rawValue, $0.label) },
-                                      selection: $trayTokenPeriod, accessibilityLabel: "Token summary")
-                    }
-                }
+            } else {
+                usageDisplayRow.environment(\.onePlusCardPadding, 0)
+                menuBarDefaultsCard
             }
             OnePlusCard {
                 OnePlusCardHeader("Data locations")
@@ -52,6 +39,38 @@ struct SwitchSettingsContent: View {
             }
         }
         .buttonStyle(OnePlusButtonStyle())
+    }
+
+    private var appBehaviorCard: some View {
+        OnePlusCard {
+            OnePlusCardHeader("App behavior")
+            OnePlusSettingRow("Enable Switch", help: "Show Switch in MacPowerToys.") {
+                Toggle("Enable Switch", isOn: Binding(get: { settings.isToolEnabled("switch") },
+                       set: { settings.setToolEnabled($0, for: "switch") }))
+                    .labelsHidden().toggleStyle(OnePlusSwitchStyle())
+                    .disabled(settings.isToolTransitioning("switch"))
+            }
+            usageDisplayRow
+        }
+    }
+
+    private var menuBarDefaultsCard: some View {
+        OnePlusCard {
+            OnePlusCardHeader("Menu bar defaults")
+            OnePlusSettingRow("Show account usage", help: "Used for accounts without their own choice.") {
+                Toggle("Show account usage", isOn: $defaultShowTrayUsage).labelsHidden().toggleStyle(OnePlusSwitchStyle())
+            }
+            OnePlusSettingRow("Token summary", help: "The period shown beside each account's usage.", separator: false) {
+                OnePlusSelect(choices: SwitchTrayTokenPeriod.allCases.map { ($0.rawValue, $0.label) },
+                              selection: $trayTokenPeriod, accessibilityLabel: "Token summary")
+            }
+        }
+    }
+
+    private var usageDisplayRow: some View {
+        OnePlusSettingRow("Show percentage used", help: "Turn off to show the percentage left.", separator: false) {
+            Toggle("Show percentage used", isOn: $showUsageAsUsed).labelsHidden().toggleStyle(OnePlusSwitchStyle())
+        }
     }
 
     private func dataLocationRow(_ title: String, url: URL) -> some View {
