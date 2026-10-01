@@ -29,6 +29,9 @@ struct TrayHomeView: View {
             if toolIDs.contains("awake") {
                 AwakeTrayRow()
             }
+            if SettingsManager.shared.isToolEnabled("system-monitor") {
+                FanControlView(owner: "main-tray-home", compact: true)
+            }
         }
     }
 }
@@ -41,24 +44,16 @@ private struct TrayHomeActionButton: View {
     let action: () -> Void
 
     var body: some View {
-        Button(action: action) {
-            HStack(spacing: 6) {
+        OnePlusMenuTile(span: 1, height: 32, textured: false, action: action) {
+            Label {
+                Text(title).lineLimit(1)
+            } icon: {
                 Image(systemName: symbol)
                     .rotationEffect(.degrees(iconRotation))
                     .symbolRenderingMode(.monochrome)
-                    .font(.system(size: 13, weight: .medium))
-                    .frame(width: 16, height: 16)
-                Text(title).onePlusText(.row).lineLimit(1)
             }
-            .frame(maxWidth: .infinity)
-            .frame(height: 32)
-            .background(OnePlusColor.panelHover, in: RoundedRectangle(cornerRadius: 6))
-            .overlay { RoundedRectangle(cornerRadius: 6).strokeBorder(OnePlusColor.line, lineWidth: 1) }
-            .contentShape(RoundedRectangle(cornerRadius: 6))
         }
-        .buttonStyle(OnePlusInteractionStyle(radius: 6))
         .disabled(!enabled)
-        .opacity(enabled ? 1 : OnePlusMetrics.disabledOpacity)
         .accessibilityLabel(title)
     }
 }
