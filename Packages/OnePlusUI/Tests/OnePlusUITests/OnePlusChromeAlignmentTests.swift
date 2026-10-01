@@ -46,6 +46,10 @@ final class OnePlusChromeAlignmentTests: XCTestCase {
 
     private func checkHeader(_ view: some View, name: String, titleX: CGFloat,
                              appearance: NSAppearance.Name, scale: CGFloat, probes: [String]) throws {
+        let app = NSApplication.shared
+        let saved = app.appearance
+        app.appearance = NSAppearance(named: appearance)
+        defer { app.appearance = saved }
         let host = NSHostingView(rootView: view.environment(\.displayScale, scale)
             .frame(width: 600, height: 150, alignment: .topLeading)
             .background(OnePlusColor.window))
