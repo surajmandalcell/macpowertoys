@@ -1,6 +1,8 @@
 import ApplicationServices
 import Carbon.HIToolbox
 import SwiftUI
+import NetToysCore
+import NetToysKit
 import XCTest
 @testable import powertoys
 
@@ -327,7 +329,7 @@ final class UtilityToolsTests: XCTestCase {
         for content in ["RcloneSettingsView()", "AwakeSettingsView()", "SwitchSettingsContent(showsEnableControl: false)",
                         "MacTweaksSettingsContent()", "InputDevicesSettingsContent()",
                         "SystemMonitorSettingsContent()", "SystemCareSettingsCards(mode:",
-                        "NetToysSettingsView()", "PortmanSettingsView()", "DiskExplorerSettingsView(showsEnableControl: false)",
+                        "MacPowerToysNetToysSettingsView()", "PortmanSettingsView()", "DiskExplorerSettingsView(showsEnableControl: false)",
                         "ColorPickerSettingsView()", "TextExtractorSettingsView()", "LogsSettingsView()"] {
             XCTAssertTrue(source.contains(content), content)
         }
@@ -341,26 +343,21 @@ final class UtilityToolsTests: XCTestCase {
         XCTAssertFalse(source.contains(".id(tool.id)"))
     }
 
-    func testNetToysHistoryLoadsSavedDataOffTheMainActor() throws {
-        let sourceURL = URL(fileURLWithPath: #filePath)
-            .deletingLastPathComponent()
-            .deletingLastPathComponent()
-            .appendingPathComponent("powertoys/Views/NetToys/NetToysHistoryView.swift")
-        let source = try String(contentsOf: sourceURL, encoding: .utf8)
-
-        XCTAssertTrue(source.contains("Task.detached(priority: .utility)"))
-        XCTAssertFalse(source.contains("var history = NetToysConfigurationStore.history()"))
-        XCTAssertFalse(source.contains("var scanArchive = NetToysScannerStore.archive()"))
+    func testNetToysHistoryRetainsSSIDAcrossThePackageBoundary() throws {
+        let event = NetworkTransitionEvent(networkID: "en0|192.0.2.1", ssid: "Test network",
+                                           date: Date(), changes: [.internet(from: .reachable, to: .unreachable)])
+        let history = NetworkHistory(events: [event])
+        XCTAssertEqual(try JSONDecoder().decode(NetworkHistory.self, from: JSONEncoder().encode(history)), history)
+        XCTAssertEqual(history.events.first?.ssid, "Test network")
+        XCTAssertTrue(NetToysManual.sections.contains { $0.title == "Network History" })
     }
 
     func testNetToysMACAccessSurvivesAppUpdates() throws {
-        let sourceURL = URL(fileURLWithPath: #filePath)
-            .deletingLastPathComponent()
-            .deletingLastPathComponent()
-            .appendingPathComponent("powertoys/NetToys/NetToysScanner.swift")
-        let source = try String(contentsOf: sourceURL, encoding: .utf8)
-
-        XCTAssertFalse(source.contains("sourceCommit == expectedCommit"))
+        let contract = NetToysNeighborServiceContract(host: .macPowerToys)
+        XCTAssertTrue(contract.helperRequirement.contains("GF57JXJF5A"))
+        XCTAssertTrue(contract.helperRequirement.contains(NetToysHostID.macPowerToys.helperIdentifier))
+        XCTAssertFalse(contract.helperRequirement.contains("sourceCommit"))
+        XCTAssertNotEqual(contract.machServiceName, NetToysNeighborServiceContract(host: .standalone).machServiceName)
     }
 
     private func toolAboutViewSource() throws -> String {

@@ -14,7 +14,7 @@ struct ToolSettingsContent: View {
         case "awake": AwakeSettingsView()
         case "color-picker": ColorPickerSettingsView()
         case "text-extractor": TextExtractorSettingsView()
-        case "nettoys": NetToysSettingsView()
+        case "nettoys": MacPowerToysNetToysSettingsView()
         case "switch": SwitchSettingsContent(showsEnableControl: false)
         case "mac-tweaks": MacTweaksSettingsContent()
         case "input-devices": InputDevicesSettingsContent()

@@ -1,4 +1,5 @@
 import OnePlusUI
+import NetToysKit
 import SwiftUI
 
 enum TrayTab: String, CaseIterable, Identifiable {

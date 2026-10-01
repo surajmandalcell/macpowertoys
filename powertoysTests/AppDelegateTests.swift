@@ -1,4 +1,5 @@
 import XCTest
+import NetToysCore
 import Carbon.HIToolbox
 import Combine
 import SwiftUI

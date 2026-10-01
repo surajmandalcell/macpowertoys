@@ -9,10 +9,10 @@
 /* Begin PBXBuildFile section */
 		A20000000000000000000001 /* AIManagerCore in Frameworks */ = {isa = PBXBuildFile; productRef = A20000000000000000000003 /* AIManagerCore */; };
 		B30000000000000000000001 /* OnePlusUI in Frameworks */ = {isa = PBXBuildFile; productRef = B30000000000000000000003 /* OnePlusUI */; };
-		A10000000000000000000001 /* NetToysCore.swift in Sources */ = {isa = PBXBuildFile; fileRef = A10000000000000000000007 /* NetToysCore.swift */; };
-		A10000000000000000000002 /* NetToysRuntime.swift in Sources */ = {isa = PBXBuildFile; fileRef = A10000000000000000000008 /* NetToysRuntime.swift */; };
-		A10000000000000000000003 /* NetToysScanner.swift in Sources */ = {isa = PBXBuildFile; fileRef = A10000000000000000000009 /* NetToysScanner.swift */; };
-		A10000000000000000000004 /* NetToysHelperRuntime.swift in Sources */ = {isa = PBXBuildFile; fileRef = A1000000000000000000000A /* NetToysHelperRuntime.swift */; };
+		C40000000000000000000001 /* NetToysCore in Frameworks */ = {isa = PBXBuildFile; productRef = C40000000000000000000011 /* NetToysCore */; };
+		C40000000000000000000002 /* NetToysKit in Frameworks */ = {isa = PBXBuildFile; productRef = C40000000000000000000012 /* NetToysKit */; };
+		C40000000000000000000003 /* NetToysCore in Helper Frameworks */ = {isa = PBXBuildFile; productRef = C40000000000000000000013 /* NetToysCore */; };
+		C40000000000000000000004 /* MacPowerToysHelperXPC.swift in Sources */ = {isa = PBXBuildFile; fileRef = C40000000000000000000014 /* MacPowerToysHelperXPC.swift */; };
 		A10000000000000000000005 /* MacPowerToysNetHelper.app in Embed Login Items */ = {isa = PBXBuildFile; fileRef = A10000000000000000000006 /* MacPowerToysNetHelper.app */; settings = {ATTRIBUTES = (CodeSignOnCopy, ); }; };
 		A10000000000000000000021 /* com.surajmandal.macpowertoys.nettoys-neighbor.plist in Copy LaunchDaemons */ = {isa = PBXBuildFile; fileRef = A10000000000000000000022 /* com.surajmandal.macpowertoys.nettoys-neighbor.plist */; };
 		A10000000000000000000024 /* NativeFanReader.swift in Sources */ = {isa = PBXBuildFile; fileRef = A10000000000000000000025 /* NativeFanReader.swift */; };
@@ -44,10 +44,7 @@
 
 /* Begin PBXFileReference section */
 		A10000000000000000000006 /* MacPowerToysNetHelper.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = MacPowerToysNetHelper.app; sourceTree = BUILT_PRODUCTS_DIR; };
-		A10000000000000000000007 /* NetToysCore.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = powertoys/NetToys/NetToysCore.swift; sourceTree = SOURCE_ROOT; };
-		A10000000000000000000008 /* NetToysRuntime.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = powertoys/NetToys/NetToysRuntime.swift; sourceTree = SOURCE_ROOT; };
-		A10000000000000000000009 /* NetToysScanner.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = powertoys/NetToys/NetToysScanner.swift; sourceTree = SOURCE_ROOT; };
-		A1000000000000000000000A /* NetToysHelperRuntime.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = powertoys/NetToys/NetToysHelperRuntime.swift; sourceTree = SOURCE_ROOT; };
+		C40000000000000000000014 /* MacPowerToysHelperXPC.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = powertoys/Core/MacPowerToysHelperXPC.swift; sourceTree = SOURCE_ROOT; };
 		A10000000000000000000022 /* com.surajmandal.macpowertoys.nettoys-neighbor.plist */ = {isa = PBXFileReference; lastKnownFileType = text.plist.xml; path = "com.surajmandal.macpowertoys.nettoys-neighbor.plist"; sourceTree = SOURCE_ROOT; };
 		A10000000000000000000025 /* NativeFanReader.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = powertoys/Core/NativeFanReader.swift; sourceTree = SOURCE_ROOT; };
 		1BDFA94E2F08A44C009A9009 /* powertoys.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = powertoys.app; sourceTree = BUILT_PRODUCTS_DIR; };
@@ -106,6 +103,7 @@
 			isa = PBXFrameworksBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
+				C40000000000000000000003 /* NetToysCore in Helper Frameworks */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -115,6 +113,8 @@
 			files = (
 				A20000000000000000000001 /* AIManagerCore in Frameworks */,
 				B30000000000000000000001 /* OnePlusUI in Frameworks */,
+				C40000000000000000000001 /* NetToysCore in Frameworks */,
+				C40000000000000000000002 /* NetToysKit in Frameworks */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -186,6 +186,7 @@
 			);
 			name = MacPowerToysNetHelper;
 			packageProductDependencies = (
+				C40000000000000000000013 /* NetToysCore */,
 			);
 			productName = MacPowerToysNetHelper;
 			productReference = A10000000000000000000006 /* MacPowerToysNetHelper.app */;
@@ -213,6 +214,8 @@
 			packageProductDependencies = (
 				A20000000000000000000003 /* AIManagerCore */,
 				B30000000000000000000003 /* OnePlusUI */,
+				C40000000000000000000011 /* NetToysCore */,
+				C40000000000000000000012 /* NetToysKit */,
 			);
 			productName = powertoys;
 			productReference = 1BDFA94E2F08A44C009A9009 /* powertoys.app */;
@@ -301,7 +304,8 @@
 			minimizedProjectReferenceProxies = 1;
 			packageReferences = (
 				A20000000000000000000002 /* XCRemoteSwiftPackageReference "ai-manager" */,
-				B30000000000000000000002 /* XCLocalSwiftPackageReference "OnePlusUI" */,
+				B30000000000000000000002 /* XCRemoteSwiftPackageReference "OnePlusUI" */,
+				C40000000000000000000010 /* XCRemoteSwiftPackageReference "NetToys" */,
 			);
 			preferredProjectObjectVersion = 77;
 			productRefGroup = 1BDFA94F2F08A44C009A9009 /* Products */;
@@ -377,10 +381,7 @@
 			isa = PBXSourcesBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
-				A10000000000000000000001 /* NetToysCore.swift in Sources */,
-				A10000000000000000000002 /* NetToysRuntime.swift in Sources */,
-				A10000000000000000000003 /* NetToysScanner.swift in Sources */,
-				A10000000000000000000004 /* NetToysHelperRuntime.swift in Sources */,
+				C40000000000000000000004 /* MacPowerToysHelperXPC.swift in Sources */,
 				A10000000000000000000024 /* NativeFanReader.swift in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
@@ -800,16 +801,40 @@
 				version = 3.3.0;
 			};
 		};
+		B30000000000000000000002 /* XCRemoteSwiftPackageReference "OnePlusUI" */ = {
+			isa = XCRemoteSwiftPackageReference;
+			repositoryURL = "https://github.com/surajmandalcell/oneplus-ui.git";
+			requirement = {
+				kind = exactVersion;
+				version = 1.0.0;
+			};
+		};
+		C40000000000000000000010 /* XCRemoteSwiftPackageReference "NetToys" */ = {
+			isa = XCRemoteSwiftPackageReference;
+			repositoryURL = "https://github.com/surajmandalcell/nettoys.git";
+			requirement = {
+				kind = exactVersion;
+				version = 1.0.0;
+			};
+		};
 /* End XCRemoteSwiftPackageReference section */
 
-/* Begin XCLocalSwiftPackageReference section */
-		B30000000000000000000002 /* XCLocalSwiftPackageReference "OnePlusUI" */ = {
-			isa = XCLocalSwiftPackageReference;
-			relativePath = Packages/OnePlusUI;
-		};
-/* End XCLocalSwiftPackageReference section */
-
 /* Begin XCSwiftPackageProductDependency section */
+		C40000000000000000000011 /* NetToysCore */ = {
+			isa = XCSwiftPackageProductDependency;
+			package = C40000000000000000000010 /* XCRemoteSwiftPackageReference "NetToys" */;
+			productName = NetToysCore;
+		};
+		C40000000000000000000012 /* NetToysKit */ = {
+			isa = XCSwiftPackageProductDependency;
+			package = C40000000000000000000010 /* XCRemoteSwiftPackageReference "NetToys" */;
+			productName = NetToysKit;
+		};
+		C40000000000000000000013 /* NetToysCore */ = {
+			isa = XCSwiftPackageProductDependency;
+			package = C40000000000000000000010 /* XCRemoteSwiftPackageReference "NetToys" */;
+			productName = NetToysCore;
+		};
 		A20000000000000000000003 /* AIManagerCore */ = {
 			isa = XCSwiftPackageProductDependency;
 			package = A20000000000000000000002 /* XCRemoteSwiftPackageReference "ai-manager" */;
@@ -817,7 +842,7 @@
 		};
 		B30000000000000000000003 /* OnePlusUI */ = {
 			isa = XCSwiftPackageProductDependency;
-			package = B30000000000000000000002 /* XCLocalSwiftPackageReference "OnePlusUI" */;
+			package = B30000000000000000000002 /* XCRemoteSwiftPackageReference "OnePlusUI" */;
 			productName = OnePlusUI;
 		};
 /* End XCSwiftPackageProductDependency section */

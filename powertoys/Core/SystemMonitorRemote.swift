@@ -1,4 +1,5 @@
 import Foundation
+import NetToysCore
 
 nonisolated enum SystemMonitorRemotePlatform: String, Codable, CaseIterable, Identifiable, Sendable {
     case linux = "Linux"

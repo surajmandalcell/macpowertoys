@@ -62,13 +62,17 @@ jobs:
     timeout-minutes: 10
     steps:
       - uses: actions/checkout@v4
+        with:
+          repository: surajmandalcell/oneplus-ui
+          ref: 1.0.0
+          path: tmp/oneplus-ui
       - name: Test the component package and build its showcase
         run: |
-          swift test --package-path Packages/OnePlusUI
-          swift build --package-path Packages/OnePlusUI --product OnePlusUIShowcase
+          swift test --package-path tmp/oneplus-ui --jobs 2
+          swift build --package-path tmp/oneplus-ui --product OnePlusUIShowcase --jobs 2
       - name: Capture the component showcase in the hosted Mac
         run: |
-          showcase="$(swift build --package-path Packages/OnePlusUI --show-bin-path)/OnePlusUIShowcase"
+          showcase="$(swift build --package-path tmp/oneplus-ui --show-bin-path)/OnePlusUIShowcase"
           "$showcase" &
           showcase_pid=$!
           trap 'kill "$showcase_pid" 2>/dev/null || true' EXIT

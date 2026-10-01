@@ -1,4 +1,5 @@
 import AppKit
+import NetToysCore
 import OnePlusUI
 import SwiftUI
 import XCTest

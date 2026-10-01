@@ -1,4 +1,6 @@
 import OnePlusUI
+import NetToysCore
+import NetToysKit
 import SwiftUI
 import XCTest
 @testable import powertoys
@@ -160,10 +162,10 @@ final class TrayPopoverLayoutTests: XCTestCase {
             changes: [.internet(from: .unreachable, to: .reachable)]
         )]
 
-        XCTAssertEqual(TrayPopoverLayout.recentAnchors(anchors, statuses: statuses).count, 5)
-        XCTAssertEqual(TrayPopoverLayout.recentAnchors(anchors, statuses: statuses).first?.id, anchors.last?.id)
-        XCTAssertEqual(TrayPopoverLayout.recentNetworkIssues(events).count, 5)
-        XCTAssertEqual(TrayPopoverLayout.recentNetworkIssues(events).first?.date, Date(timeIntervalSince1970: 6))
+        XCTAssertEqual(NetToysMenuLayout.recentAnchors(anchors, statuses: statuses).count, 5)
+        XCTAssertEqual(NetToysMenuLayout.recentAnchors(anchors, statuses: statuses).first?.id, anchors.last?.id)
+        XCTAssertEqual(NetToysMenuLayout.recentNetworkIssues(events).count, 5)
+        XCTAssertEqual(NetToysMenuLayout.recentNetworkIssues(events).first?.date, Date(timeIntervalSince1970: 6))
     }
 
     func testTrayUsesSharedMenuPanelWithReorderableTabs() throws {
@@ -203,25 +205,17 @@ final class TrayPopoverLayoutTests: XCTestCase {
 
     func testNetToysTrayKeepsBoundedPersistentDisclosuresAndRoutesToFullPages() throws {
         let tray = try sourceFile("Views/MenuPanels")
-        let window = try sourceFile("Views/NetToys/NetToysWindowView.swift")
+        let window = try sourceFile("Views/NetToys/MacPowerToysNetToysView.swift")
 
-        XCTAssertTrue(tray.contains("@AppStorage(\"tray.nettoys.anchor.expanded\")"))
-        XCTAssertTrue(tray.contains("@AppStorage(\"tray.nettoys.wifi.expanded\")"))
-        XCTAssertTrue(tray.contains("@AppStorage(\"tray.nettoys.history.expanded\")"))
-        XCTAssertTrue(tray.contains("prefix(5)"))
+        XCTAssertTrue(tray.contains("NetToysMenuContent(snapshot: $snapshot, host: MacPowerToysNetToys.host)"))
         XCTAssertTrue(tray.contains("ToolActionRouter.shared.open(toolID: \"nettoys\", page: page.pageID)"))
         XCTAssertTrue(window.contains(".onOpenToolPage(\"nettoys\")"))
-        XCTAssertTrue(window.contains("publisher(for: .netToysOpenPage)"))
+        XCTAssertTrue(window.contains("NetToysWindowView(host: MacPowerToysNetToys.host"))
     }
 
     func testNetToysDisclosureHoverOwnsTheFullPaddedRow() throws {
-        let tray = try sourceFile("Views/MenuPanels")
-
-        XCTAssertEqual(TrayPopoverLayout.netToysDisclosureHorizontalPadding, 6)
-        XCTAssertEqual(TrayPopoverLayout.netToysDisclosureVerticalPadding, 6)
-        XCTAssertTrue(tray.contains(".padding(.horizontal, TrayPopoverLayout.netToysDisclosureHorizontalPadding)"))
-        XCTAssertTrue(tray.contains(".padding(.vertical, TrayPopoverLayout.netToysDisclosureVerticalPadding)"))
-        XCTAssertTrue(tray.contains(".buttonStyle(OnePlusInteractionStyle(radius: OnePlusMetrics.controlRadius))"))
+        XCTAssertEqual(NetToysMenuLayout.disclosureHorizontalPadding, 6)
+        XCTAssertEqual(NetToysMenuLayout.disclosureVerticalPadding, 6)
     }
 
     func testCorrectedSharedSurfacesHaveOneTrailingAndHoverGeometry() throws {

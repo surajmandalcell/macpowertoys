@@ -1,5 +1,7 @@
 import Darwin
 import Foundation
+import NetToysCore
+import NetToysKit
 import Observation
 import ServiceManagement
 
@@ -140,19 +142,19 @@ nonisolated enum FanCommand {
         return commit.count == 40 && commit.allSatisfy(\.isHexDigit) ? commit : nil
     }
 
-    private static func helperConnection(reply: HelperReply) -> (NSXPCConnection, NetToysNeighborXPCProtocol?) {
+    private static func helperConnection(reply: HelperReply) -> (NSXPCConnection, MacPowerToysHelperXPCProtocol?) {
         let connection = NSXPCConnection(
-            machServiceName: NetToysNeighborServiceContract.machServiceName,
+            machServiceName: MacPowerToysHelperContract.neighbor.machServiceName,
             options: .privileged
         )
-        connection.remoteObjectInterface = NSXPCInterface(with: NetToysNeighborXPCProtocol.self)
-        connection.setCodeSigningRequirement(NetToysNeighborServiceContract.helperRequirement)
+        connection.remoteObjectInterface = NSXPCInterface(with: MacPowerToysHelperXPCProtocol.self)
+        connection.setCodeSigningRequirement(MacPowerToysHelperContract.neighbor.helperRequirement)
         connection.interruptionHandler = { reply.finish("The built-in fan helper stopped.") }
         connection.invalidationHandler = { reply.finish("The built-in fan helper is unavailable.") }
         connection.resume()
         let proxy = connection.remoteObjectProxyWithErrorHandler {
             reply.finish($0.localizedDescription)
-        } as? NetToysNeighborXPCProtocol
+        } as? MacPowerToysHelperXPCProtocol
         return (connection, proxy)
     }
 
@@ -331,16 +333,16 @@ final class FanControlService {
     var canControl: Bool { snapshot?.canControl == true }
     var canRestoreAutomatic: Bool {
         (ownsManualControl || hasPendingManualCommand || snapshot?.hasExternalManualControl == true)
-            && (FanCommand.smctlPath != nil || NetToysNeighborServiceManager.shared.isEnabled)
+            && (FanCommand.smctlPath != nil || MacPowerToysNetToys.host.neighborService.isEnabled)
     }
-    var needsApproval: Bool { NetToysNeighborServiceManager.shared.status == .requiresApproval }
+    var needsApproval: Bool { MacPowerToysNetToys.host.neighborService.status == .requiresApproval }
     var needsHelperUpdate: Bool {
         guard let helperCommit else { return false }
         return helperCommit != Bundle.main.object(forInfoDictionaryKey: "MPTSourceCommit") as? String
     }
 
     func enableControl() async {
-        let manager = NetToysNeighborServiceManager.shared
+        let manager = MacPowerToysNetToys.host.neighborService
         if needsHelperUpdate {
             do { try await manager.restart() }
             catch { errorMessage = error.localizedDescription; return }
@@ -381,13 +383,13 @@ final class FanControlService {
         let readSnapshot = readSnapshot
         let result = await Task.detached(priority: .utility) { readSnapshot() }.value
         guard currentRevision == revision, !owners.isEmpty, !isRestoringOnExit else { return }
-        if result?.canControl != true, NetToysNeighborServiceManager.shared.isEnabled, helperCommit == nil {
+        if result?.canControl != true, MacPowerToysNetToys.host.neighborService.isEnabled, helperCommit == nil {
             helperCommit = await Task.detached(priority: .utility) { FanCommand.helperSourceCommit() }.value
         }
         guard currentRevision == revision, !owners.isEmpty, !isRestoringOnExit else { return }
         hasCompletedRead = true
         if let result {
-            let nativeControl = NetToysNeighborServiceManager.shared.isEnabled
+            let nativeControl = MacPowerToysNetToys.host.neighborService.isEnabled
                 && !needsHelperUpdate && helperCommit != nil
                 && !result.fans.isEmpty
                 && (!result.hasExternalManualControl || ownsManualControl)

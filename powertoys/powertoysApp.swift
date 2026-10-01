@@ -168,7 +168,7 @@ struct MacPowerToysApp: App {
             }
         case "nettoys":
             OnePlusWindowContent {
-                NetToysWindowView()
+                MacPowerToysNetToysView()
                     .utilityMotionPolicy()
                     .onePlusFixedCanvas(.netToys)
                     .onToolWindowURL("nettoys")
