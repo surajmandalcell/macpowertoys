@@ -38,13 +38,10 @@ struct ToolAboutView: View {
                 if showsSettings { tabs(tool) }
             } footer: {
                 if showsSettings && !showsModalCloseButton {
-                    VStack(spacing: OnePlusMetrics.contentGap) {
-                        OnePlusColor.lineSoft.frame(height: 1)
-                        HStack {
-                            Spacer(minLength: 0)
-                            MainOpenToolButton(toolID: tool.id, toolName: tool.name,
-                                               title: "Open \(tool.name)", primary: true)
-                        }
+                    HStack {
+                        Spacer(minLength: 0)
+                        MainOpenToolButton(toolID: tool.id, toolName: tool.name,
+                                           title: "Open \(tool.name)", primary: true)
                     }
                 }
             } content: {
