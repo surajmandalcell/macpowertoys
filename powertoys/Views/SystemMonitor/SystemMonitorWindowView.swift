@@ -625,7 +625,8 @@ struct SystemMonitorWindowView: View {
                         Rectangle().fill(TaskManagerTheme.lineSoft).frame(height: 1)
                         allocationRow("Available", value: Self.bytes(allocation.available))
                     }
-                    .padding(12)
+                    .padding(.horizontal, OnePlusMetrics.cardPadding)
+                    .padding(.vertical, OnePlusMetrics.compactCardPadding)
                 } else {
                     OnePlusEmptyState("Memory data unavailable", systemImage: "memorychip")
                 }
@@ -928,8 +929,10 @@ struct SystemMonitorWindowView: View {
                                 .onePlusText(.metricCaption)
                         }
                         Spacer()
-                        detailStat("Available", diskAvailable)
-                        detailStat("Used", service.snapshot?.diskUsage.percent ?? "—")
+                        HStack(spacing: OnePlusMetrics.spacing[7]) {
+                            detailStat("Available", diskAvailable)
+                            detailStat("Used", service.snapshot?.diskUsage.percent ?? "—")
+                        }
                     }
                     OnePlusUsageBar(value: (service.snapshot?.diskUsage ?? 0) / 100)
                 }
@@ -1062,7 +1065,7 @@ struct SystemMonitorWindowView: View {
                             .textSelection(.enabled)
                     }
                     .font(.system(size: 10))
-                    .padding(.horizontal, 12)
+                    .padding(.horizontal, OnePlusMetrics.cardPadding)
                     .frame(height: 30)
                     .onePlusRowHover()
                     .overlay(alignment: .bottom) {
@@ -1117,11 +1120,10 @@ struct SystemMonitorWindowView: View {
     }
 
     private func detailStat(_ title: String, _ value: String) -> some View {
-        VStack(alignment: .trailing, spacing: 5) {
+        HStack(alignment: .firstTextBaseline, spacing: OnePlusMetrics.spacing[2]) {
             Text(title).onePlusText(.caption).foregroundStyle(TaskManagerTheme.muted)
             Text(value).font(.system(size: 12)).monospacedDigit()
         }
-        .padding(.leading, 24)
     }
 
     private func metricValue(_ text: String, overview: Bool = false) -> some View {
@@ -1329,10 +1331,7 @@ struct SystemMonitorSettingsContent: View {
 
     private var itemsSection: some View {
         OnePlusCard {
-            OnePlusCardHeader("Menu bar items") {
-                Text("Drag to reorder")
-                    .onePlusText(.caption)
-            }
+            OnePlusCardHeader("Menu bar items")
             LazyVStack(spacing: 0) {
                 itemsHeader
                 ForEach(Array(zip(service.menuSettings.items.indices, service.menuSettings.items)), id: \.1.id) { index, item in
@@ -1538,6 +1537,7 @@ struct SystemMonitorSettingsContent: View {
         .menuStyle(.borderlessButton)
         .menuIndicator(.hidden)
         .fixedSize()
+        .help("Drag to reorder")
         .accessibilityLabel("Reorder \(metric.title)")
         .accessibilityIdentifier("system-monitor.menu.item.\(metric.rawValue).reorder")
     }
