@@ -203,6 +203,7 @@ final class ToolActionRouter {
         if let window = windows.first(where: {
             Self.windowIdentifier($0.identifier?.rawValue, matches: id)
         }) {
+            window.onePlusPrepareForOpening()
             if window.isMiniaturized { window.deminiaturize(nil) }
             if activateApp { window.makeKeyAndOrderFront(nil) }
             else { window.orderFrontRegardless() }
