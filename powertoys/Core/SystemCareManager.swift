@@ -748,13 +748,18 @@ final class SystemCareManager {
         case .installers: path = "Downloads"
         case .developer: path = "Library/Developer/Xcode/DerivedData"
         }
-        return homeDirectory.appendingPathComponent(path, isDirectory: true).standardizedFileURL
+        return homeDirectory.appendingPathComponent(path, isDirectory: true)
     }
 
     nonisolated static func fileIdentity(at url: URL) throws -> CleanupFileIdentity {
+        guard url.isFileURL, !url.pathComponents.contains("."), !url.pathComponents.contains("..") else {
+            throw NSError(domain: "SystemCare", code: 1, userInfo: [
+                NSLocalizedDescriptionKey: "The file path is not an absolute, normalized file URL."
+            ])
+        }
         var current = URL(fileURLWithPath: "/", isDirectory: true)
         var info = stat()
-        for component in url.standardizedFileURL.pathComponents.dropFirst() {
+        for component in url.pathComponents.dropFirst() {
             current.appendPathComponent(component)
             guard lstat(current.path, &info) == 0 else {
                 throw NSError(domain: NSPOSIXErrorDomain, code: Int(errno))
@@ -775,11 +780,10 @@ final class SystemCareManager {
         homeDirectory: URL = FileManager.default.homeDirectoryForCurrentUser
     ) -> Bool {
         let root = cleanupRoot(for: candidate.category, homeDirectory: homeDirectory)
-        let url = candidate.url.standardizedFileURL
-        guard candidate.url.isFileURL, candidate.allowedRoot.isFileURL,
-              candidate.allowedRoot.standardizedFileURL == root,
-              candidate.url.path == url.path,
-              url != root, url.deletingLastPathComponent() == root,
+        let url = candidate.url
+        guard url.isFileURL, candidate.allowedRoot.isFileURL,
+              candidate.allowedRoot.path == root.path,
+              url.path != root.path, url.deletingLastPathComponent().path == root.path,
               candidate.size >= 0,
               let identity = candidate.fileIdentity, let rootIdentity = candidate.rootIdentity,
               (try? fileIdentity(at: root)) == rootIdentity,
