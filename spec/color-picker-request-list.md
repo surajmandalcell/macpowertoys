@@ -1,5 +1,13 @@
 # Color Picker Request List
 
+Background reopen, run 76, 2026-10-02: the shared presenter preserves the
+SwiftUI scene controller and host. WindowAccessor supplies the mounted body
+height before ordering, without the host's stale titlebar inset. The native
+fixture covers 250, 355, and 460pt bodies across cold first routes and native
+close/reopen cycles. `a46233f2` fails the controller-ownership check. Signed
+History, Projects, Settings, native close, and focus checks remain with the
+orchestrator. Report: `tmp/redesign/logs/w14-blank-focus.md`.
+
 Native reopen, run 75, 2026-10-02: the shared presenter remounts closed
 scene hosts before ordering. Background hosts preserve their closed frame
 and restore content first. The hidden source fixture passes Color Picker

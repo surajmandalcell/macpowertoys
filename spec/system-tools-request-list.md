@@ -1,5 +1,13 @@
 # System Tools Request List
 
+Background reopen, run 76, 2026-10-02: Input Devices, System Care, Task
+Manager, and NetToys keep their SwiftUI scene controllers and hosts. Their
+own close roots rebuild, and registered geometry is ready before ordering.
+The native fixture checks cold first routes and native close/reopen across
+all 13 shared roots. Both probes reject `a46233f2`. Signed native interaction,
+unchanged foreground focus, complete frames, and timing remain with the
+orchestrator. Report: `tmp/redesign/logs/w14-blank-focus.md`.
+
 Native reopen, run 75, 2026-10-02: the shared presenter remounts hidden
 scene controllers before ordering. Background hosts restore mounted content
 and their fixed canvas first. The source-derived native fixture passes all

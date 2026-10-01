@@ -1,5 +1,27 @@
 # Main Shell Troubleshooting
 
+## Cold Background Scene Takes Focus, Run 76, 2026-10-02
+
+- **Symptom:** The owner reports that signed `a46233f2` takes focus on the
+  first background Main route. Earlier signed builds keep focus.
+- **Cause:** Run 75 replaces the controller of every hidden SwiftUI scene,
+  including scenes that have never closed. This changes scene ownership
+  outside SwiftUI. Its fixture checks size but accepts that replacement.
+- **Invariant:** Remount only BackgroundToolWindow controllers. SwiftUI scenes
+  keep their controller, host, and native style. Notify their own close root,
+  force its layout, then fix hidden geometry before ordering. Fixed roots use
+  their registered canvas. Applets use the mounted WindowAccessor's body size;
+  hosting-controller fitting sizes can include a stale 32pt titlebar inset.
+  Keep the top-left point and skip unchanged frames. Background routes never
+  deminiaturize, make key, activate, or call SwiftUI openWindow.
+- **Check:** Both maintained probes reject `a46233f2`. The native probe uses
+  the real shared shell and WindowAccessor. It checks cold first routes before
+  any run-loop wait, controller and host identity at ordering, and native
+  performClose/close cycles across all 13 roots and both applet height ranges.
+  These hidden fixtures and routing spies do not prove signed scene activation.
+  The orchestrator owns installation and the guarded installed replay.
+  Report: `tmp/redesign/logs/w14-blank-focus.md`.
+
 ## Closed Windows Reopen With Empty Content, Run 75, 2026-10-02
 
 - **Symptom:** Native close followed by a background Main route shows an
@@ -8,7 +30,8 @@
   Reuse only sends a notification to that root. Replacement background
   controllers also export temporary intrinsic sizes before deferred chrome.
   Prior tests settle the run loop after reopening and miss the first frame.
-- **Invariant:** Remount hidden scene controllers before native ordering.
+- **Invariant:** Run 76 supersedes generic scene-controller remounting.
+  Remount only controllers owned by BackgroundToolWindow before ordering.
   Prepare background controllers before sending the shared open notification.
   Fixed native hosts do not drive window size through intrinsic constraints.
   Preserve the top-left point and apply the registered canvas and native style

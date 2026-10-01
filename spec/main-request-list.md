@@ -1,5 +1,15 @@
 # Main Task Request List
 
+Background focus and reopen, run 76, 2026-10-02: hidden SwiftUI scenes keep
+their own controller and host. Their close root rebuilds before ordering.
+Fixed canvases and measured applet bodies restore their size and top-left
+point first. Both maintained probes reject `a46233f2`. Source checks cover
+all 13 shared roots, cold first routes without a run-loop wait, native close,
+warm pages, explicit opens, capture guards, and deferred sheets. Ruler's
+existing presentation probe passes. Signed focus, native Command-W, complete
+frames, and latency remain with the orchestrator. No installed route ran.
+Report: `tmp/redesign/logs/w14-blank-focus.md`.
+
 Round 18 Logs appearance, run 72, 2026-10-02: `583fa6ef` adds the approved
 Porcelain dark asset. Both compiled appearance variants pass at 16, 40, 64,
 and 512px. The catalog and tool header keep the named asset and shared mask.
