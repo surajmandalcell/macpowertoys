@@ -1,4 +1,5 @@
 import AppKit
+import Darwin
 import Foundation
 
 nonisolated enum SystemCareMode: String, CaseIterable, Identifiable {
@@ -27,7 +28,7 @@ nonisolated enum SystemCareCategoryID: String, CaseIterable, Identifiable, Codab
     var detail: String {
         switch self {
         case .caches: "Rebuildable files in ~/Library/Caches"
-        case .logs: "Old diagnostic files in ~/Library/Logs"
+        case .logs: "Diagnostic files in ~/Library/Logs"
         case .installers: "DMG, PKG, MPKG, ISO, and XIP files in Downloads"
         case .developer: "Rebuildable Xcode output in DerivedData"
         }
@@ -47,9 +48,18 @@ nonisolated struct CleanupCandidate: Identifiable, Hashable, Codable, Sendable {
     let allowedRoot: URL
     let category: SystemCareCategoryID
     let size: Int64
+    var fileIdentity: CleanupFileIdentity? = nil
+    var rootIdentity: CleanupFileIdentity? = nil
 
     var id: String { url.path }
     var name: String { url.lastPathComponent }
+}
+
+nonisolated struct CleanupFileIdentity: Hashable, Codable, Sendable {
+    let device: Int32
+    let inode: UInt64
+    let birthSeconds: Int64
+    let birthNanoseconds: Int64
 }
 
 nonisolated struct CleanupScanSnapshot: Codable, Equatable, Sendable {
@@ -136,14 +146,16 @@ final class SystemCareManager {
     private(set) var cleanupScanDate: Date?
 
     private let defaults: UserDefaults
+    private let homeDirectory: URL
     private var task: Task<Void, Never>?
 
-    init(defaults: UserDefaults = .standard) {
+    init(defaults: UserDefaults = .standard, homeDirectory: URL = FileManager.default.homeDirectoryForCurrentUser) {
         self.defaults = defaults
+        self.homeDirectory = homeDirectory
         guard let data = defaults.data(forKey: Self.cleanupScanKey),
               let snapshot = try? JSONDecoder().decode(CleanupScanSnapshot.self, from: data)
         else { return }
-        let candidates = snapshot.candidates.filter(Self.isSafe)
+        let candidates = snapshot.candidates.filter { Self.isSafe($0, homeDirectory: homeDirectory) }
         let validIDs = Set(candidates.map(\.id))
         cleanupCandidates = candidates
         selectedCandidateIDs = snapshot.selectedCandidateIDs?.intersection(validIDs) ?? validIDs
@@ -179,10 +191,11 @@ final class SystemCareManager {
         isWorking = true
         errorMessage = nil
         progressMessage = "Scanning selected locations…"
+        let homeDirectory = homeDirectory
         task = Task { [weak self] in
             do {
                 let candidates = try await Task.detached(priority: .utility) {
-                    try Self.cleanupCandidates(for: categories)
+                    try Self.cleanupCandidates(for: categories, homeDirectory: homeDirectory)
                 }.value
                 try Task.checkCancellation()
                 self?.cleanupCandidates = candidates
@@ -225,12 +238,13 @@ final class SystemCareManager {
         isWorking = true
         errorMessage = nil
         progressMessage = "Moving selected items to Trash…"
+        let homeDirectory = homeDirectory
         task = Task { [weak self] in
             let outcome = await Task.detached(priority: .utility) {
                 var recovered: Int64 = 0
                 var failures: [(id: String, name: String)] = []
                 for candidate in candidates {
-                    guard Self.isSafe(candidate) else {
+                    guard Self.isSafe(candidate, homeDirectory: homeDirectory) else {
                         failures.append((candidate.id, candidate.name))
                         continue
                     }
@@ -402,19 +416,13 @@ final class SystemCareManager {
     }
 
     nonisolated private static func cleanupCandidates(
-        for categories: Set<SystemCareCategoryID>
+        for categories: Set<SystemCareCategoryID>, homeDirectory: URL
     ) throws -> [CleanupCandidate] {
-        let home = FileManager.default.homeDirectoryForCurrentUser
         var result: [CleanupCandidate] = []
         for category in categories {
             try Task.checkCancellation()
-            let root: URL
-            switch category {
-            case .caches: root = home.appendingPathComponent("Library/Caches", isDirectory: true)
-            case .logs: root = home.appendingPathComponent("Library/Logs", isDirectory: true)
-            case .installers: root = home.appendingPathComponent("Downloads", isDirectory: true)
-            case .developer: root = home.appendingPathComponent("Library/Developer/Xcode/DerivedData", isDirectory: true)
-            }
+            let root = cleanupRoot(for: category, homeDirectory: homeDirectory)
+            let rootIdentity = try fileIdentity(at: root)
             guard let children = try? FileManager.default.contentsOfDirectory(
                 at: root,
                 includingPropertiesForKeys: nil,
@@ -427,11 +435,16 @@ final class SystemCareManager {
                     let extensions = Set(["dmg", "pkg", "mpkg", "iso", "xip"])
                     guard extensions.contains(url.pathExtension.lowercased()) else { continue }
                 }
+                let identity = try fileIdentity(at: url)
+                let size = try allocatedSize(of: url)
+                guard try fileIdentity(at: url) == identity else { continue }
                 result.append(CleanupCandidate(
                     url: url,
                     allowedRoot: root,
                     category: category,
-                    size: try allocatedSize(of: url)
+                    size: size,
+                    fileIdentity: identity,
+                    rootIdentity: rootIdentity
                 ))
             }
         }
@@ -464,10 +477,50 @@ final class SystemCareManager {
         return total
     }
 
-    nonisolated static func isSafe(_ candidate: CleanupCandidate) -> Bool {
-        let root = candidate.allowedRoot.standardizedFileURL.path
-        let path = candidate.url.standardizedFileURL.path
-        return path != root && path.hasPrefix(root + "/")
+    nonisolated static func cleanupRoot(for category: SystemCareCategoryID, homeDirectory: URL) -> URL {
+        let path: String
+        switch category {
+        case .caches: path = "Library/Caches"
+        case .logs: path = "Library/Logs"
+        case .installers: path = "Downloads"
+        case .developer: path = "Library/Developer/Xcode/DerivedData"
+        }
+        return homeDirectory.appendingPathComponent(path, isDirectory: true).standardizedFileURL
+    }
+
+    nonisolated static func fileIdentity(at url: URL) throws -> CleanupFileIdentity {
+        var current = URL(fileURLWithPath: "/", isDirectory: true)
+        var info = stat()
+        for component in url.standardizedFileURL.pathComponents.dropFirst() {
+            current.appendPathComponent(component)
+            guard lstat(current.path, &info) == 0 else {
+                throw NSError(domain: NSPOSIXErrorDomain, code: Int(errno))
+            }
+            guard info.st_mode & S_IFMT != S_IFLNK else {
+                throw NSError(domain: "SystemCare", code: 1, userInfo: [
+                    NSLocalizedDescriptionKey: "Symbolic links are not allowed: \(current.path)"
+                ])
+            }
+        }
+        return CleanupFileIdentity(device: info.st_dev, inode: UInt64(info.st_ino),
+                                   birthSeconds: Int64(info.st_birthtimespec.tv_sec),
+                                   birthNanoseconds: Int64(info.st_birthtimespec.tv_nsec))
+    }
+
+    nonisolated static func isSafe(
+        _ candidate: CleanupCandidate,
+        homeDirectory: URL = FileManager.default.homeDirectoryForCurrentUser
+    ) -> Bool {
+        let root = cleanupRoot(for: candidate.category, homeDirectory: homeDirectory)
+        let url = candidate.url.standardizedFileURL
+        guard candidate.allowedRoot.standardizedFileURL == root,
+              candidate.url.path == url.path,
+              url != root, url.deletingLastPathComponent() == root,
+              candidate.size >= 0,
+              let identity = candidate.fileIdentity, let rootIdentity = candidate.rootIdentity,
+              (try? fileIdentity(at: root)) == rootIdentity,
+              (try? fileIdentity(at: url)) == identity else { return false }
+        return candidate.category != .installers || ["dmg", "pkg", "mpkg", "iso", "xip"].contains(url.pathExtension.lowercased())
     }
 
     nonisolated private static func nativeAnalyze(url: URL) throws -> StorageReport {
