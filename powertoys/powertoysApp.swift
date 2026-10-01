@@ -103,15 +103,6 @@ struct MacPowerToysApp: App {
         .commands {
             AppCommands()
             FreeRulerCommands()
-            CommandMenu("Navigation") {
-                Button("All Tools") { NotificationCenter.default.post(name: .navigateToCategory, object: ToolCategory.all) }
-                    .keyboardShortcut("1", modifiers: .command)
-                Button("Dev Tools") { NotificationCenter.default.post(name: .navigateToCategory, object: ToolCategory.dev) }
-                    .keyboardShortcut("2", modifiers: .command)
-                Divider()
-                Button("Global Search") { NotificationCenter.default.post(name: .globalSearch, object: nil) }
-                    .keyboardShortcut("f", modifiers: [.command, .shift])
-            }
         }
 
         Window("Cloud Sync", id: "rclone") {
