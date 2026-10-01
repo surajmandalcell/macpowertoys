@@ -19,6 +19,7 @@ final class RcloneDaemon {
     private(set) var state: State = .stopped
     private var process: Process?
     private var client: RcloneRCClient?
+    private var generation = UUID()
 
     private nonisolated static let candidatePaths = [
         "/opt/homebrew/bin/rclone",
@@ -113,6 +114,7 @@ final class RcloneDaemon {
     // MARK: Lifecycle
 
     func ensureRunning(binaryPath: String) async throws -> RcloneRCClient {
+        try Task.checkCancellation()
         if isRunning, let client { return client }
         stop()
         return try await startDaemon(binaryPath: binaryPath)
@@ -120,10 +122,16 @@ final class RcloneDaemon {
 
     private func startDaemon(binaryPath: String) async throws -> RcloneRCClient {
         state = .starting
+        let generation = generation
+        defer {
+            if generation == self.generation, state == .starting { state = .stopped }
+        }
 
         let startup = await Task.detached(priority: .userInitiated) {
             (Self.resolveBinaryPath(preferred: binaryPath), Self.reapStrayDaemons())
         }.value
+        try Task.checkCancellation()
+        guard generation == self.generation else { throw CancellationError() }
         for daemonPid in startup.1 {
             LogManager.shared.info("Reaped stray rclone daemon (pid \(daemonPid))", source: "RcloneDaemon")
         }
@@ -135,6 +143,8 @@ final class RcloneDaemon {
 
         var lastError: Error?
         for _ in 0..<3 {
+            try Task.checkCancellation()
+            guard generation == self.generation else { throw CancellationError() }
             guard let port = Self.findFreePort() else { continue }
             guard let credentials = Self.makeCredentials() else {
                 state = .failed("Could not secure the local rclone connection.")
@@ -178,9 +188,18 @@ final class RcloneDaemon {
                 continue
             }
             Self.register(daemonPid: proc.processIdentifier)
+            self.process = proc
 
             let candidate = RcloneRCClient(port: port, credentials: credentials)
-            if let version = await healthCheck(client: candidate, process: proc) {
+            let version = await healthCheck(client: candidate, process: proc, generation: generation)
+            guard !Task.isCancelled, generation == self.generation else {
+                errPipe.fileHandleForReading.readabilityHandler = nil
+                if proc.isRunning { proc.terminate() }
+                Self.unregister(daemonPid: proc.processIdentifier)
+                if self.process === proc { stop() }
+                throw CancellationError()
+            }
+            if let version {
                 self.process = proc
                 self.client = candidate
                 state = .running(port: port, version: version)
@@ -189,8 +208,9 @@ final class RcloneDaemon {
             }
 
             errPipe.fileHandleForReading.readabilityHandler = nil
-            proc.terminate()
+            if proc.isRunning { proc.terminate() }
             Self.unregister(daemonPid: proc.processIdentifier)
+            if self.process === proc { self.process = nil }
             lastError = RcloneRCError.notReachable
         }
 
@@ -206,10 +226,11 @@ final class RcloneDaemon {
         return RcloneRCCredentials(username: "macpowertoys", password: password)
     }
 
-    private func healthCheck(client: RcloneRCClient, process: Process) async -> String? {
+    private func healthCheck(client: RcloneRCClient, process: Process, generation: UUID) async -> String? {
         for _ in 0..<60 {
-            guard process.isRunning else { return nil }
+            guard process.isRunning, !Task.isCancelled, generation == self.generation else { return nil }
             if let version = try? await client.version() {
+                guard !Task.isCancelled, generation == self.generation else { return nil }
                 return version
             }
             try? await Task.sleep(for: .milliseconds(200))
@@ -218,6 +239,7 @@ final class RcloneDaemon {
     }
 
     func stop() {
+        generation = UUID()
         if let process {
             if process.isRunning {
                 process.terminate()
