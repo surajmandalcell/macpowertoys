@@ -131,11 +131,13 @@ private struct MainGeneralSettings: View {
 
 private struct MainAboutSettings: View {
     let showManual: (String) -> Void
-    private let repository = "https://github.com/surajmandalcell/macpowertoys"
-    private func metadata(_ key: String) -> String { Bundle.main.object(forInfoDictionaryKey: key) as? String ?? "Unavailable" }
+    @State private var updates = HostUpdateChecker.shared
+    private let metadata = HostAppMetadata.current
+    private var repository: String { HostAppMetadata.repository.absoluteString }
 
     var body: some View {
         VStack(alignment: .leading, spacing: OnePlusMetrics.cardGap) {
+            updateCheck
             OnePlusCard {
                 OnePlusCardHeader("MacPowerToys")
                 HStack(spacing: OnePlusMetrics.cardGap) {
@@ -147,11 +149,11 @@ private struct MainAboutSettings: View {
                 }
                 .padding(OnePlusMetrics.cardPadding)
                 .overlay(alignment: .bottom) { OnePlusColor.lineSoft.frame(height: 1) }
-                metadataRow("Version", value: metadata("CFBundleShortVersionString"))
-                metadataRow("Build", value: metadata("CFBundleVersion"))
-                metadataRow("Source commit", value: metadata("MPTSourceCommit"))
-                metadataRow("Developer", value: "Suraj Mandal", monospaced: false)
-                linkRow("Contact", title: "surajmandalcell@gmail.com", url: "mailto:surajmandalcell@gmail.com")
+                metadataRow("Version", value: metadata.version)
+                metadataRow("Build", value: metadata.build)
+                metadataRow("Source commit", value: metadata.sourceCommit)
+                metadataRow("Developer", value: HostAppMetadata.developer, monospaced: false)
+                linkRow("Contact", title: HostAppMetadata.contact, url: "mailto:" + HostAppMetadata.contact)
             }
             HStack(alignment: .top, spacing: OnePlusMetrics.cardGap) {
                 OnePlusCard {
@@ -183,6 +185,29 @@ private struct MainAboutSettings: View {
                 }
                 Text("Closing a window leaves enabled background tools running. Choose Quit MacPowerToys to stop them. Each tool's How to use page explains its actions and background work.")
                     .onePlusText(.row, color: OnePlusColor.secondary)
+            }
+        }
+    }
+
+    private var updateCheck: some View {
+        VStack(alignment: .leading, spacing: OnePlusMetrics.actionSpacing) {
+            HStack(spacing: OnePlusMetrics.actionSpacing) {
+                Button(updates.isChecking ? "Checking..." : "Check for Updates", action: updates.check)
+                    .buttonStyle(OnePlusButtonStyle()).disabled(updates.isChecking)
+                switch updates.state {
+                case .checking: ProgressView().controlSize(.small).accessibilityLabel("Checking for updates")
+                case .current: Text("MacPowerToys is up to date.").onePlusText(.row, color: OnePlusColor.secondary)
+                case .available(let version, let url):
+                    Text("Version \(version) is available.").onePlusText(.row, color: OnePlusColor.secondary)
+                    Spacer()
+                    Link("Release notes and download", destination: url).buttonStyle(OnePlusButtonStyle(.link))
+                default: EmptyView()
+                }
+            }
+            if case .failed(let message) = updates.state {
+                OnePlusBanner(message, tone: .error) {
+                    Button("Retry", action: updates.check).buttonStyle(OnePlusButtonStyle())
+                }
             }
         }
     }
