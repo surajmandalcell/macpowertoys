@@ -131,7 +131,8 @@ struct SystemMonitorWindowView: View {
     private let reportSnapshot: [TaskManagerReportCategory]
     private let loadsRemoteProfiles: Bool
     @State private var remoteProfiles: [SystemMonitorRemoteProfile]
-    @AppStorage("systemMonitor.windowPage") private var pageID = SystemMonitorPage.overview.rawValue
+    @AppStorage("systemMonitor.windowPage") private var savedPageID = SystemMonitorPage.overview.rawValue
+    @State private var selectedPageID: String?
     @AppStorage("systemMonitor.processHierarchy") private var processHierarchy = false
     @AppStorage("systemMonitor.historyMinutes") private var historyMinutes = 2
     @State private var processSearch = ""
@@ -154,6 +155,10 @@ struct SystemMonitorWindowView: View {
         _remoteProfiles = State(initialValue: preparedProfiles ?? [])
     }
 
+    private var pageID: String {
+        get { selectedPageID ?? savedPageID }
+        nonmutating set { selectedPageID = newValue }
+    }
     private var page: SystemMonitorPage { SystemMonitorPage.resolve(pageID) ?? .overview }
     private var service: SystemMonitorService { .shared }
     private func chartHistory(_ metric: SystemMonitorMenuMetric) -> SystemMonitorWindowHistory {
@@ -168,8 +173,20 @@ struct SystemMonitorWindowView: View {
             OnePlusPage(scrolls: false) {
                 header
             } content: {
-                pageContent
-                    .frame(maxWidth: .infinity, maxHeight: .infinity)
+                ZStack {
+                    pageContent
+                    OnePlusRetainedPage(isSelected: page == .overview, revision: overviewRevision) {
+                        scrollPage { overviewPage }
+                    }
+                    .allowsHitTesting(page == .overview)
+                    .accessibilityHidden(page != .overview)
+                    OnePlusRetainedPage(isSelected: page == .settings, revision: 0) {
+                        scrollPage { SystemMonitorSettingsContent() }
+                    }
+                    .allowsHitTesting(page == .settings)
+                    .accessibilityHidden(page != .settings)
+                }
+                .frame(maxWidth: .infinity, maxHeight: .infinity)
             }
             .background(TaskManagerVisibilityBinding(isVisible: $isWindowActive))
             .onePlusLiveUpdates(includeOccluded: true)
@@ -183,7 +200,11 @@ struct SystemMonitorWindowView: View {
         .onChange(of: isWindowActive) { _, _ in
             updateSamplingForWindowVisibility()
         }
-        .onDisappear { service.stopDetailed() }
+        .onDisappear {
+            service.stopDetailed()
+            saveSelectedPage()
+        }
+        .onChange(of: savedPageID) { _, id in selectedPageID = id }
         .onOpenToolPage("system-monitor") { requestedPage in
             guard let destination = SystemMonitorPage.resolve(requestedPage) else { return }
             pageID = destination.rawValue
@@ -215,7 +236,13 @@ struct SystemMonitorWindowView: View {
             service.startDetailed()
         } else {
             service.stopDetailed()
+            saveSelectedPage()
         }
+    }
+
+    private func saveSelectedPage() {
+        // Save on hide, so navigation does not invalidate unrelated preference-backed hosts.
+        if let selectedPageID, savedPageID != selectedPageID { savedPageID = selectedPageID }
     }
 
     private var sidebar: some View {
@@ -259,11 +286,10 @@ struct SystemMonitorWindowView: View {
         switch page {
         case .processes:
             TaskManagerHeader(title: page.title, subtitle: page.subtitle) {
-                HStack(spacing: 14) {
-                    HStack(spacing: 7) {
+                OnePlusHeaderActions {
+                    OnePlusHeaderActions {
                         Text("Hierarchy")
-                            .font(.system(size: 9))
-                            .foregroundStyle(TaskManagerTheme.secondary)
+                            .onePlusText(.caption)
                         Toggle("Hierarchy", isOn: $processHierarchy)
                             .labelsHidden()
                             .toggleStyle(OnePlusSwitchStyle())
@@ -278,7 +304,7 @@ struct SystemMonitorWindowView: View {
             }
         case .report:
             TaskManagerHeader(title: page.title, subtitle: page.subtitle) {
-                HStack(spacing: 8) {
+                OnePlusHeaderActions {
                     TaskManagerSearchField(prompt: "Search all system information", text: $reportSearch, width: 320, focusTrigger: reportSearchFocusTrigger)
                     reportButton("doc.on.doc", label: "Copy current report") { reportAction = .copy }
                     OnePlusMenuButton(
@@ -306,8 +332,8 @@ struct SystemMonitorWindowView: View {
     @ViewBuilder
     private var pageContent: some View {
         switch page {
-        case .overview:
-            SystemMonitorObservationScope { scrollPage { overviewPage } }
+        case .overview, .settings:
+            EmptyView()
         case .processes:
             SystemMonitorProcessesView(
                 search: $processSearch,
@@ -341,9 +367,19 @@ struct SystemMonitorWindowView: View {
             )
         case .about:
             scrollPage { aboutPage }
-        case .settings:
-            scrollPage { SystemMonitorSettingsContent() }
         }
+    }
+
+    private struct OverviewRevision: Equatable {
+        let historyMinutes: Int
+        let profiles: [SystemMonitorRemoteProfile]
+        let hoveredMetric: String?
+        let focusedMetric: String?
+    }
+
+    private var overviewRevision: OverviewRevision {
+        OverviewRevision(historyMinutes: historyMinutes, profiles: remoteProfiles,
+                         hoveredMetric: hoveredMetric, focusedMetric: focusedMetric)
     }
 
     private func scrollPage<Content: View>(@ViewBuilder content: () -> Content) -> some View {
@@ -1046,7 +1082,7 @@ struct SystemMonitorWindowView: View {
     }
 
     private func sectionHeader(_ title: String, action: String, perform: @escaping () -> Void) -> some View {
-        return HStack {
+        return OnePlusHeaderActions {
             Text(title).font(.system(size: 11, weight: .medium))
             Spacer()
             Button(action, action: perform)
@@ -1332,9 +1368,7 @@ struct SystemMonitorSettingsContent: View {
                 placementControl(item).frame(width: Column.placement)
                 styleControl(item).frame(width: Column.style)
                 intervalControl(item).frame(width: Column.update)
-                GeometryReader { proxy in
-                    formatControl(item, width: proxy.size.width)
-                }
+                formatControl(item)
                 .frame(height: density.controlHeight)
                 .frame(maxWidth: .infinity)
                 Button {
@@ -1412,48 +1446,48 @@ struct SystemMonitorSettingsContent: View {
     }
 
     @ViewBuilder
-    private func formatControl(_ item: SystemMonitorMenuItemConfiguration, width: CGFloat) -> some View {
+    private func formatControl(_ item: SystemMonitorMenuItemConfiguration) -> some View {
         switch item.metric {
         case .memory:
             TaskManagerSelect(
                 choices: SystemMonitorMemoryUnit.allCases.map { ($0, $0.title) },
                 selection: itemSetting(item, get: { $0.memoryUnit }, set: { $0.memoryUnit = $1 }),
-                width: width,
+                width: nil,
                 accessibilityLabel: "Memory format"
             )
         case .disk:
             TaskManagerSelect(
                 choices: SystemMonitorDiskUnit.allCases.map { ($0, $0.title) },
                 selection: itemSetting(item, get: { $0.diskUnit }, set: { $0.diskUnit = $1 }),
-                width: width,
+                width: nil,
                 accessibilityLabel: "Disk format"
             )
         case .network:
             TaskManagerSelect(
                 choices: SystemMonitorNetworkUnit.allCases.map { ($0, $0.title) },
                 selection: itemSetting(item, get: { $0.networkUnit }, set: { $0.networkUnit = $1 }),
-                width: width,
+                width: nil,
                 accessibilityLabel: "Network format"
             )
         case .battery:
             TaskManagerSelect(
                 choices: SystemMonitorBatteryDisplay.allCases.map { ($0, $0.title) },
                 selection: itemSetting(item, get: { $0.batteryDisplay }, set: { $0.batteryDisplay = $1 }),
-                width: width,
+                width: nil,
                 accessibilityLabel: "Battery format"
             )
         case .thermal:
             TaskManagerSelect(
                 choices: SystemMonitorThermalDisplay.allCases.map { ($0, $0.title) },
                 selection: itemSetting(item, get: { $0.thermalDisplay }, set: { $0.thermalDisplay = $1 }),
-                width: width,
+                width: nil,
                 accessibilityLabel: "Thermal format"
             )
         case .cpu, .gpu:
             TaskManagerSelect(
                 choices: [("default", "Default")],
                 selection: .constant("default"),
-                width: width,
+                width: nil,
                 accessibilityLabel: "\(item.metric.title) format"
             )
             .disabled(true)
