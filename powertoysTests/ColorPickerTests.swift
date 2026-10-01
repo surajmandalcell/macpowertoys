@@ -25,7 +25,7 @@ final class ColorPickerTests: XCTestCase {
         XCTAssertEqual(sampler.showCount, 2)
     }
 
-    func testProjectsOwnNewPicksAndDeduplicateIndependently() throws {
+    func testProjectsOwnNewPicksAndDeduplicateIndependently() async throws {
         let (service, defaults, suite) = makeService()
         defer { defaults.removePersistentDomain(forName: suite) }
         let sample = ColorSample(red: 1, green: 0.5, blue: 0, alpha: 1)
@@ -41,14 +41,16 @@ final class ColorPickerTests: XCTestCase {
         XCTAssertEqual(service.samples(in: website.id).count, 1)
         XCTAssertEqual(service.samples(in: app.id).count, 1)
         XCTAssertEqual(service.selectedProjectID, app.id)
+        await service.flushPersistence()
     }
 
-    func testProjectsAndSelectionPersist() throws {
+    func testProjectsAndSelectionPersist() async throws {
         let (service, defaults, suite) = makeService()
         defer { defaults.removePersistentDomain(forName: suite) }
         let project = try XCTUnwrap(service.createProject(named: "Brand"))
         service.add(ColorSample(red: 0.1, green: 0.2, blue: 0.3, alpha: 1))
 
+        await service.flushPersistence()
         let restored = ColorPickerService(defaults: defaults)
 
         XCTAssertEqual(restored.projects, [project])
@@ -56,7 +58,7 @@ final class ColorPickerTests: XCTestCase {
         XCTAssertEqual(restored.samples(in: project.id).count, 1)
     }
 
-    func testClearAllRemovesEveryColorAndKeepsProjects() throws {
+    func testClearAllRemovesEveryColorAndKeepsProjects() async throws {
         let (service, defaults, suite) = makeService()
         defer { defaults.removePersistentDomain(forName: suite) }
         service.add(ColorSample(red: 1, green: 0, blue: 0, alpha: 1))
@@ -66,11 +68,29 @@ final class ColorPickerTests: XCTestCase {
         service.togglePin(service.history[0].id)
 
         service.clearAll()
+        await service.flushPersistence()
         let restored = ColorPickerService(defaults: defaults)
 
         XCTAssertTrue(service.history.isEmpty)
         XCTAssertTrue(restored.history.isEmpty)
         XCTAssertEqual(restored.projects, [project])
+    }
+
+    func testQueuedSavesKeepTheLatestLargePinnedSnapshot() async throws {
+        let suite = "ColorPersistence.\(UUID().uuidString)"
+        let serviceDefaults = UserDefaults(suiteName: suite)!
+        defer { serviceDefaults.removePersistentDomain(forName: suite) }
+        let history = (0..<10_000).map { _ in ColorSample(red: 1, green: 0, blue: 0, alpha: 1, isPinned: true) }
+        serviceDefaults.set(try JSONEncoder().encode(history), forKey: "color-picker.history.v1")
+        let service = ColorPickerService(defaults: serviceDefaults, sampler: ColorSamplerStub())
+        service.togglePin(history[0].id)
+        service.togglePin(history[1].id)
+        service.togglePin(history[0].id)
+        await service.flushPersistence()
+        let restored = ColorPickerService(defaults: serviceDefaults, sampler: ColorSamplerStub())
+        XCTAssertEqual(restored.history, service.history)
+        XCTAssertEqual(restored.history.count, 10_000)
+        XCTAssertEqual(restored.history.filter(\.isPinned).count, 9_999)
     }
 
     func testProjectCSSUsesHexAndAlphaOnlyWhenNeeded() {
