@@ -872,6 +872,7 @@ struct PortmanPanelView: View {
                     .accessibilityLabel("Copy \(session.label) resume command")
                 }
                 .onePlusText(.row)
+                .onePlusRowHover()
             }
             if let links = service.githubLinks[port.id],
                let url = links.pullRequestURL, let number = links.pullRequestNumber {
@@ -883,6 +884,7 @@ struct PortmanPanelView: View {
                         .help(url.absoluteString)
                 }
                 .onePlusText(.row)
+                .onePlusRowHover()
             }
             Button(showingMore ? "Less" : "More details") { showingMore.toggle() }
                 .buttonStyle(OnePlusButtonStyle(.ghost, size: .small))
@@ -1232,6 +1234,7 @@ struct PortmanPanelView: View {
                 .onePlusText(.mono)
                 .frame(maxWidth: .infinity, alignment: .leading)
                 .padding(OnePlusMetrics.actionSpacing)
+                .onePlusRowHover()
                 if let container = detail?.container { detailRow("Container", container) }
             }
         }
@@ -1529,6 +1532,7 @@ struct PortmanSettingsView: View {
                     OnePlusSectionTitle("General")
                     if shows("Keyboard shortcut") {
                         OnePlusSettingRow("Shortcut") { ShortcutRecorderField(action: .portman) }
+                            .onePlusRowHover()
                     }
                     if shows("Open folders in", "editor") {
                         OnePlusSettingRow("Open folders in", separator: false) {
@@ -1536,6 +1540,7 @@ struct PortmanSettingsView: View {
                                           selection: $editor, accessibilityLabel: "Open folders in")
                                 .accessibilityIdentifier("portman.settings.editor")
                         }
+                        .onePlusRowHover()
                     }
                 }
             }
@@ -1561,18 +1566,21 @@ struct PortmanSettingsView: View {
                     Toggle("Include other listening processes", isOn: $showAllListeners)
                         .labelsHidden().toggleStyle(OnePlusSwitchStyle())
                 }
+                .onePlusRowHover()
             }
             if shows("Ports & processes", "First port", "Scan ports") {
                 OnePlusSettingRow("First port", controlWidth: portControlWidth) {
                     OnePlusStepperField("First scan port", value: $lowerPort, in: 1...max(1, min(upperPort, 65535)))
                         .frame(width: portControlWidth)
                 }
+                .onePlusRowHover()
             }
             if shows("Ports & processes", "Last port", "Scan ports") {
                 OnePlusSettingRow("Last port", controlWidth: portControlWidth) {
                     OnePlusStepperField("Last scan port", value: $upperPort, in: max(1, min(lowerPort, 65535))...65535)
                         .frame(width: portControlWidth)
                 }
+                .onePlusRowHover()
             }
             if shows("Ports & processes", "Scan every") {
                 OnePlusSettingRow("Scan every", controlWidth: portControlWidth) {
@@ -1580,6 +1588,7 @@ struct PortmanSettingsView: View {
                                   selection: $scanInterval, width: portControlWidth, accessibilityLabel: "Scan every")
                         .accessibilityIdentifier("portman.settings.interval")
                 }
+                .onePlusRowHover()
             }
             if shows("Ports & processes", "Protected apps", "Extra protected process names") {
                 OnePlusSettingRow(
@@ -1591,6 +1600,7 @@ struct PortmanSettingsView: View {
                     OnePlusTextField("Process names", text: $protectedCommands)
                         .frame(width: portControlWidth)
                 }
+                .onePlusRowHover()
             }
         }
     }
@@ -1608,27 +1618,32 @@ struct PortmanSettingsView: View {
                     }), accessibilityLabel: "Cleanup mode", width: OnePlusMetrics.controlColumn)
                     .accessibilityIdentifier("portman.settings.cleanupMode")
                 }
+                .onePlusRowHover()
             }
             if shows("Clean up", "Include deleted folders") {
                 OnePlusSettingRow("Deleted folders", controlWidth: 29) {
                     Toggle("Include deleted folders", isOn: $includeDeletedFolders)
                         .labelsHidden().toggleStyle(OnePlusSwitchStyle())
                 }
+                .onePlusRowHover()
             }
             if shows("Clean up", "Idle for", "Suggest after idle hours") {
                 OnePlusSettingRow("Idle for") {
                     OnePlusStepperField("Idle hours", value: integer($idleHours), in: 1...72, unit: "hours")
                 }
+                .onePlusRowHover()
             }
             if shows("Clean up", "Running for", "Suggest after running days") {
                 OnePlusSettingRow("Running for") {
                     OnePlusStepperField("Running days", value: integer($runningDays), in: 1...30, unit: "days")
                 }
+                .onePlusRowHover()
             }
             if shows("Clean up", "Force quit after seconds") {
                 OnePlusSettingRow("Force quit after", separator: false) {
                     OnePlusStepperField("Force quit seconds", value: integer($forceQuitSeconds), in: 1...30, unit: "sec")
                 }
+                .onePlusRowHover()
             }
         }
     }
@@ -1645,6 +1660,7 @@ struct PortmanSettingsView: View {
                     Toggle("Link coding sessions", isOn: $sessionLinksEnabled)
                         .labelsHidden().toggleStyle(OnePlusSwitchStyle())
                 }
+                .onePlusRowHover()
             }
             if shows("Integrations", "Find public GitHub links") {
                 OnePlusSettingRow(
@@ -1656,6 +1672,7 @@ struct PortmanSettingsView: View {
                     Toggle("Find public GitHub links", isOn: $publicGitHubLinksEnabled)
                         .labelsHidden().toggleStyle(OnePlusSwitchStyle())
                 }
+                .onePlusRowHover()
             }
         }
     }
