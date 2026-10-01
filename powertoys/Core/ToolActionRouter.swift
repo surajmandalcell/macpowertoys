@@ -222,12 +222,25 @@ final class ToolActionRouter {
             return
         }
         guard let window = existing ?? createWindow(id) else { return }
+        let topLeft = NSPoint(x: window.frame.minX, y: window.frame.maxY)
         if let background = window as? BackgroundToolWindow {
             background.prepareContent()
-        } else if !window.isVisible {
-            BackgroundToolWindow.mountContent(id: id, in: window)
         }
         window.onePlusPrepareForOpening()
+        window.contentView?.needsLayout = true
+        window.contentView?.layoutSubtreeIfNeeded()
+        if !window.isVisible, !(window is BackgroundToolWindow), let canvas = OnePlusWindowCanvas.tool(id),
+           let content = window.contentView {
+            var size = canvas.size
+            if let range = canvas.heightRange {
+                let height = WindowAccessor.contentSize(in: content)?.height ?? canvas.size.height
+                size.height = min(max(height, range.lowerBound), range.upperBound)
+            }
+            let frame = NSRect(x: topLeft.x, y: topLeft.y - size.height,
+                               width: size.width, height: size.height)
+            if window.frame != frame { window.setFrame(frame, display: false) }
+            content.layoutSubtreeIfNeeded()
+        }
         if activateApp {
             if window.isMiniaturized { window.deminiaturize(nil) }
             window.makeKeyAndOrderFront(nil)

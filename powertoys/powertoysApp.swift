@@ -331,7 +331,7 @@ final class BackgroundToolWindow: NSWindow {
         Self.mountContent(id: id, in: self)
     }
 
-    static func mountContent(id: String, in window: NSWindow) {
+    private static func mountContent(id: String, in window: BackgroundToolWindow) {
         guard let canvas = OnePlusWindowCanvas.tool(id) else { return }
         let topLeft = NSPoint(x: window.frame.minX, y: window.frame.maxY)
         window.styleMask = window.styleMask.union(.fullSizeContentView).subtracting(.resizable)

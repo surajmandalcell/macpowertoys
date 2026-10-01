@@ -7,6 +7,12 @@ struct WindowAccessor: NSViewRepresentable {
     init(identifier: String) { windowIdentifier = identifier }
     func makeNSView(context: Context) -> NSView { WindowAccessorView(identifier: windowIdentifier) }
     func updateNSView(_ nsView: NSView, context: Context) {}
+
+    static func contentSize(in view: NSView?) -> NSSize? {
+        guard let view else { return nil }
+        if view is WindowAccessorView { return view.frame.size }
+        return view.subviews.lazy.compactMap { contentSize(in: $0) }.first
+    }
 }
 
 private final class WindowAccessorView: NSView {
