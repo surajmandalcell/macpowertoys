@@ -222,6 +222,18 @@ above it (owner correction 2026-10-01: its header sat above the sidebar
 title row). Center the 20 pt dot canvas in the regular 28.8 pt title line
 box with the 1 pt optical cap offset. Measure the painted pixels, not the
 frames.
+Header top line (owner pick 2026-10-01, "Top B"): one line at y = 20, the
+top of the traffic lights. Nothing in a page header starts above it. The
+title's cap top, a tool icon beside the title (for example the 40 pt
+icon on main window tool pages), and every header button, select, and
+switch put their top edge on y = 20. Content below moves down by the same
+amount in every window so the stack keeps its spacing.
+
+Traffic-light inset (owner pick 2026-10-01, "Inset B"): the close button's
+left edge sits 13 pt from the window's left edge (was 9 pt), in every
+window and applet. The sidebar or applet title still starts 14 pt after
+the zoom button, so it moves right with the lights.
+
 The subtitle follows 2 pt below the title line, tabs follow, and the
 first content element starts 16 pt below them (about y = 80 on a page with a
 subtitle and tabs). Header actions center on the page title's first line.
