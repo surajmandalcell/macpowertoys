@@ -75,7 +75,8 @@ The extracted production condition passes 200 state combinations. The prior
 condition fails 10. Evidence: `tmp/redesign/logs/w3-audit-portman-r12-focus.log`
 and `w3-audit-portman-r12-focus-before.log` in the same directory.
 The existing hosted hover regression checks absent rest actions and metric
-values in both states. One tests-mode gate is pending after the source commit.
+values in both states. The single tests-mode gate passes for the Debug app
+and both test bundles. Evidence: `tmp/redesign/logs/w3-audit-portman-r12-tests.log`.
 Hosted execution and signed rest/one-focused-row captures in both appearances
 remain with the orchestrator. The shared UI chrome topic is updated in place;
 its isolated patch is `tmp/redesign/logs/audit-portman-r12-ui-chrome.patch`.
