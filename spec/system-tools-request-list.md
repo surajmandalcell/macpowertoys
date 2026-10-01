@@ -1,5 +1,19 @@
 # System Tools Request List
 
+Round 11 status readings, 2026-10-01: T050 checkpoints `4612187d`,
+`4f12d6e7`, `8e5ff726`, `c707a43f`, and `d761b625` reserve metric widths
+with native monospaced digits. Native title padding keeps grouped glyphs
+in place.
+Text attachment glyphs use native appearance colors on each draw.
+Each retained reading keeps its last successful timestamp. After three
+effective sampling intervals, help, accessibility, and panel detail show
+stale status. A source-derived check covers 6,804 configurations and unit
+boundaries. The widest seven-metric group is 803pt in the 1280pt display
+model. The real service deadline marks a stalled sample stale and cancels
+when the last owner closes. Build gates are queued. Hosted tests, native
+menu crowding, and signed installation remain with the orchestrator.
+Report: `tmp/redesign/logs/w3-glyphs-status.md`.
+
 Production glyph pass, 2026-10-01: `91d9a538` gives Input Devices, System
 Care, Diskman, and Task Manager distinct shared tool glyphs. Status images
 use a 14pt template canvas with 11.2pt maximum ink. A sole enabled Task

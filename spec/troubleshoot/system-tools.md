@@ -681,6 +681,25 @@
   RemoteBrowserView expression. Signed load, wake, network changes, native
   selection, and command behavior remain open.
 
+- **Symptom:** Status values move adjacent items or retained readings look
+  current after the sampler fails. Attachment glyphs stay black in dark mode.
+- **Cause:** Native items use content width and proportional digits. Buttons
+  center the title's actual width. Text attachments do not apply template
+  tint. The overall snapshot time replaces a retained metric's read time.
+- **Invariant:** Reserve bounded widths on configuration edits and use native
+  monospaced digits. Fill the final title slot to stop native centering shifts.
+  Resolve attachment tint with the native label color on each draw. Retain
+  successful metric timestamps through partial or failed reads. One
+  cancellable deadline marks readings stale after three sampling intervals,
+  with a three-second minimum. Status help and AX expose staleness; panel
+  detail puts "Stale" on the trailing side of a reading row. Closing the last
+  sampling owner cancels the deadline. Never hide configured metrics to fit.
+  Keep pending or absent readings as concise dashes.
+- **Check:** `SystemMonitorStatusTests` covers retention, recovery, width,
+  appearance tint, and native item updates. The source-derived stall and
+  native title checks pass. Repeat crowded menu-bar and expiry/recovery
+  checks on the signed integrated build.
+
 - **Symptom:** The signed window keeps CPU, GPU, Network, Disk, Thermal, Load,
   and Top processes pending. Battery claims absence before it is sampled.
 - **Cause:** The native visibility gate rejects a presented but covered window.

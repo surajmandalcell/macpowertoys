@@ -2,6 +2,13 @@
 
 ## Tool glyphs, 2026-10-01
 
+Round 11 T052 source checks pass for 19 window mappings, native base-icon
+reset, and appearance-specific cache reuse. All 13 active tool assets load
+from the signed `198055e4` bundle. No wrong mapping or stale cache was shown,
+so this lane changes no Dock asset or rendering policy. Live focus, close,
+and appearance acceptance remains with the orchestrator on the integrated
+signed build. Evidence: `tmp/redesign/logs/w3-glyphs-status.md`.
+
 `91d9a538` keeps the approved bitmap and SVG tool icons and defines 14 unique
 SF Symbols in `ToolGlyph`. Ruler is slanted, Switch uses `power.circle.fill`,
 System Care uses `tray.and.arrow.up`, and Diskman uses `opticaldisc`.
