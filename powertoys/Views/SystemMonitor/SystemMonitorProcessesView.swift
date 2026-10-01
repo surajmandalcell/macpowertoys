@@ -56,6 +56,7 @@ nonisolated enum SystemMonitorProcessHierarchy {
         let memoryText: String
         let pidText: String
         let displayName: String
+        let tableName: String
         let symbol: String
         var id: String { process.id }
 
@@ -78,6 +79,7 @@ nonisolated enum SystemMonitorProcessHierarchy {
                 .first { $0.hasSuffix(".app") }.map { String($0.dropLast(4)) }
             let owner = bundleName ?? parentName
             displayName = isVersion ? owner.map { "\($0) (\(process.name))" } ?? process.name : process.name
+            tableName = String(repeating: "    ", count: depth) + displayName
             symbol = bundleName != nil ? "app" : process.started == 0 ? "lock"
                 : process.executablePath.hasPrefix("/System/Library/") ? "gearshape" : "terminal"
         }
@@ -172,6 +174,22 @@ nonisolated enum SystemMonitorProcessActions {
     static func canCopyPath(_ process: SystemMonitorProcess) -> Bool {
         process.executablePath.hasPrefix("/")
     }
+
+    @MainActor
+    static func tableActions(_ process: SystemMonitorProcess, inspect: @escaping () -> Void,
+                             copyPath: @escaping (String) -> Void,
+                             confirm: @escaping (SystemMonitorProcess, Bool) -> Void) -> [OnePlusTableAction] {
+        var actions = [OnePlusTableAction("Inspect", action: inspect)]
+        if canCopyPath(process) {
+            actions.append(OnePlusTableAction("Copy executable path") { copyPath(process.executablePath) })
+        }
+        if canTerminate(process) {
+            actions.append(OnePlusTableAction("Quit") { confirm(process, false) })
+            actions.append(OnePlusTableAction("Force Quit") { confirm(process, true) })
+        }
+        return actions
+    }
+
 }
 
 private struct SystemMonitorProcessRowsRequest: Hashable {
@@ -272,12 +290,12 @@ struct SystemMonitorProcessesView: View {
     @AppStorage("systemMonitor.processHierarchy") private var storedHierarchy = false
     @State private var sampler = SystemMonitorProcessSampler()
     @State private var processes: [SystemMonitorProcess] = []
-    @State private var visibleRows: [SystemMonitorProcessHierarchy.Row] = []
-    @State private var matchingCount = 0
     @State private var processGeneration = 0
     @State private var internalSearch = ""
     @State private var didLoad = false
-    @State private var selectedID: String?
+    @State private var selectedProcessIDs = Set<String>()
+    @State private var inspectedProcessID: String?
+    @State private var tableRows: [OnePlusTableItem] = []
     @State private var pendingProcess: SystemMonitorProcess?
     @State private var pendingForce = false
     @State private var showingConfirmation = false
@@ -302,7 +320,15 @@ struct SystemMonitorProcessesView: View {
 
     private var search: String { externalSearch?.wrappedValue ?? internalSearch }
     private var hierarchy: Bool { externalHierarchy?.wrappedValue ?? storedHierarchy }
-    private var selected: SystemMonitorProcess? { processes.first { $0.id == selectedID } }
+    private var inspected: SystemMonitorProcess? { processes.first { $0.id == inspectedProcessID } }
+    private var selected: SystemMonitorProcess? {
+        guard selectedProcessIDs.count == 1 else { return nil }
+        return processes.first { selectedProcessIDs.contains($0.id) }
+    }
+    private var inspectAction: (() -> Void)? {
+        guard isVisible, let selected else { return nil }
+        return { inspectedProcessID = selected.id }
+    }
     private var activeColumn: ProcessSortColumn { ProcessSortColumn(rawValue: sortColumn) ?? .cpu }
     private var rowsRequest: SystemMonitorProcessRowsRequest {
         SystemMonitorProcessRowsRequest(
@@ -326,6 +352,7 @@ struct SystemMonitorProcessesView: View {
             processTable
         }
         .foregroundStyle(TaskManagerTheme.ink)
+        .focusedSceneValue(\.appInspect, inspectAction)
         .task(id: isVisible) {
             guard isVisible else { return }
             await sampleProcesses()
@@ -334,15 +361,15 @@ struct SystemMonitorProcessesView: View {
             guard isVisible else { return }
             await prepareVisibleRows(rowsRequest)
         }
-        .task(id: isVisible ? selectedID : nil) {
+        .task(id: isVisible ? inspectedProcessID : nil) {
             guard isVisible else { return }
             await sampleEndpoints()
         }
         .sheet(isPresented: Binding(
-            get: { selectedID != nil },
-            set: { if !$0 { selectedID = nil } }
+            get: { inspectedProcessID != nil },
+            set: { if !$0 { inspectedProcessID = nil } }
         )) {
-            if let selected {
+            if let selected = inspected {
                 ProcessDetailSheet(
                     process: selected,
                     parentName: parentName(for: selected),
@@ -353,7 +380,7 @@ struct SystemMonitorProcessesView: View {
                     errorMessage: errorMessage,
                     onQuit: { confirm(selected, force: false) },
                     onForceQuit: { confirm(selected, force: true) },
-                    onDone: { selectedID = nil }
+                    onDone: { inspectedProcessID = nil }
                 )
             }
         }
@@ -391,76 +418,57 @@ struct SystemMonitorProcessesView: View {
     }
 
     private var processTable: some View {
-        return TaskManagerPanel {
-            VStack(spacing: 0) {
-                tableHeader
-                ScrollView {
-                    LazyVStack(spacing: 0) {
-                        ForEach(visibleRows) { row in
-                            SystemMonitorProcessRow(
-                                row: row,
-                                selected: selectedID == row.id,
-                                inspect: { selectedID = $0.id },
-                                copyPath: copy,
-                                confirm: confirm
-                            )
-                            .equatable()
-                        }
-                        if !didLoad {
-                            ProgressView().controlSize(.small)
-                                .frame(maxWidth: .infinity, minHeight: 180)
-                        } else if matchingCount == 0 {
-                            VStack(spacing: 8) {
-                                Text("No matching processes").font(.system(size: 12, weight: .medium))
-                                Text("Search for a process name, path, or PID.")
-                                    .font(.system(size: 10)).foregroundStyle(TaskManagerTheme.secondary)
-                                if !search.isEmpty {
-                                    Button("Clear search") { searchBinding.wrappedValue = "" }
-                                        .taskManagerControl()
+        TaskManagerPanel {
+            OnePlusNativeTable(
+                columns: [
+                    OnePlusGridColumn("Process", width: 400),
+                    OnePlusGridColumn("CPU", width: 84, trailing: true),
+                    OnePlusGridColumn("Memory", width: 102, trailing: true),
+                    OnePlusGridColumn("PID", width: 76, trailing: true),
+                ],
+                rows: tableRows,
+                selection: $selectedProcessIDs,
+                sortColumn: ProcessSortColumn.allCases.firstIndex(of: activeColumn) ?? 1,
+                ascending: !descending,
+                sort: { index, ascending in
+                    guard ProcessSortColumn.allCases.indices.contains(index) else { return }
+                    sortColumn = ProcessSortColumn.allCases[index].rawValue
+                    descending = !ascending
+                },
+                open: { ids in
+                    guard ids.count == 1, let process = processes.first(where: { ids.contains($0.id) }) else { return }
+                    inspectedProcessID = process.id
+                },
+                actions: { ids in
+                    guard ids.count == 1, let process = processes.first(where: { ids.contains($0.id) }) else { return [] }
+                    return SystemMonitorProcessActions.tableActions(
+                        process, inspect: { inspectedProcessID = process.id }, copyPath: copy, confirm: confirm
+                    )
+                }
+            )
+            .accessibilityIdentifier("task-manager.process.table")
+            .overlay {
+                if tableRows.isEmpty {
+                    VStack(spacing: 0) {
+                        Color.clear.frame(height: 28) // Native table header stays fixed.
+                        ZStack {
+                            if !didLoad { ProgressView().controlSize(.small) }
+                            else {
+                                OnePlusEmptyState("No matching processes", systemImage: "list.bullet.rectangle") {
+                                    if !search.isEmpty {
+                                        Button("Clear search") { searchBinding.wrappedValue = "" }
+                                            .buttonStyle(OnePlusButtonStyle(.neutral, size: .small))
+                                    }
                                 }
                             }
-                            .frame(maxWidth: .infinity, minHeight: 180)
                         }
+                        .frame(maxWidth: .infinity, maxHeight: .infinity)
                     }
-                }
-                .thinScrollIndicators()
-            }
-        }
-    }
-
-    private var tableHeader: some View {
-        HStack(spacing: 8) {
-            header(.name).padding(.leading, 26).frame(maxWidth: .infinity, alignment: .leading)
-            header(.cpu).frame(width: 72, alignment: .trailing)
-            header(.memory).frame(width: 90, alignment: .trailing)
-            header(.pid).frame(width: 64, alignment: .trailing)
-            Color.clear.frame(width: 24)
-        }
-        .onePlusTableHeader()
-    }
-
-    private func header(_ column: ProcessSortColumn) -> some View {
-        Button {
-            if activeColumn == column {
-                descending.toggle()
-            } else {
-                sortColumn = column.rawValue
-                descending = column != .name
-            }
-        } label: {
-            HStack(spacing: 5) {
-                Text(column.title.uppercased())
-                if activeColumn == column {
-                    Image(systemName: descending ? "chevron.down" : "chevron.up")
-                        .font(.system(size: 7, weight: .semibold))
+                    .allowsHitTesting(didLoad)
                 }
             }
-            .font(.system(size: 8))
-            .tracking(0.5)
-            .foregroundStyle(activeColumn == column ? TaskManagerTheme.secondary : TaskManagerTheme.muted)
+            .frame(maxWidth: .infinity, maxHeight: .infinity)
         }
-        .buttonStyle(.plain)
-        .accessibilityLabel("Sort by \(column.title), \(activeColumn == column ? (descending ? "descending" : "ascending") : "inactive")")
     }
 
     private var searchBinding: Binding<String> {
@@ -478,9 +486,9 @@ struct SystemMonitorProcessesView: View {
             processes = result
             processGeneration &+= 1
             lastUpdated = Date()
-            didLoad = true
-            if let selectedID, !result.contains(where: { $0.id == selectedID }) {
-                self.selectedID = nil
+            selectedProcessIDs.formIntersection(result.map(\.id))
+            if let inspectedProcessID, !result.contains(where: { $0.id == inspectedProcessID }) {
+                self.inspectedProcessID = nil
             }
             try? await Task.sleep(for: .seconds(3))
         }
@@ -495,16 +503,19 @@ struct SystemMonitorProcessesView: View {
             descending: request.descending
         )
         guard !Task.isCancelled, rowsRequest == request else { return }
-        visibleRows = result.rows
-        matchingCount = result.matchingCount
+        tableRows = result.rows.map {
+            OnePlusTableItem(id: $0.id, cells: [$0.tableName, $0.cpuText, $0.memoryText, $0.pidText], symbol: $0.symbol)
+        }
+        selectedProcessIDs.formIntersection(result.rows.map(\.id))
+        if request.generation > 0 { didLoad = true }
     }
 
     private func sampleEndpoints() async {
         networkEndpoints = []
         endpointsLoaded = false
-        guard let selectedID, let pid = processes.first(where: { $0.id == selectedID })?.pid else { return }
+        guard let inspectedProcessID, let pid = processes.first(where: { $0.id == inspectedProcessID })?.pid else { return }
         while !Task.isCancelled {
-            guard processes.contains(where: { $0.id == selectedID }) else { return }
+            guard processes.contains(where: { $0.id == inspectedProcessID }) else { return }
             let endpoints = await SystemMonitorProcessPorts.endpoints(pid: pid)
             guard !Task.isCancelled else { return }
             networkEndpoints = endpoints
@@ -532,75 +543,6 @@ struct SystemMonitorProcessesView: View {
         NSPasteboard.general.setString(value, forType: .string)
     }
 
-}
-
-private struct SystemMonitorProcessRow: View, Equatable {
-    let row: SystemMonitorProcessHierarchy.Row
-    let selected: Bool
-    let inspect: (SystemMonitorProcess) -> Void
-    let copyPath: (String) -> Void
-    let confirm: (SystemMonitorProcess, Bool) -> Void
-
-    static func == (left: Self, right: Self) -> Bool {
-        left.row == right.row && left.selected == right.selected
-    }
-
-    var body: some View {
-        let process = row.process
-        HStack(spacing: 8) {
-            Button { inspect(process) } label: {
-                HStack(spacing: 8) {
-                    HStack(spacing: 8) {
-                        Image(systemName: row.symbol)
-                            .font(.system(size: 13))
-                            .foregroundStyle(TaskManagerTheme.secondary)
-                            .frame(width: 18, height: 18)
-                        Text(row.displayName).lineLimit(1)
-                    }
-                    .padding(.leading, CGFloat(row.depth) * 16)
-                    .frame(maxWidth: .infinity, alignment: .leading)
-                    Text(row.cpuText).frame(width: 72, alignment: .trailing)
-                    Text(row.memoryText).frame(width: 90, alignment: .trailing)
-                    Text(row.pidText).frame(width: 64, alignment: .trailing)
-                }
-                .font(.system(size: 10))
-                .monospacedDigit()
-                .frame(maxWidth: .infinity)
-                .contentShape(Rectangle())
-            }
-            .buttonStyle(.plain)
-            .accessibilityLabel("Inspect \(process.name), PID \(process.pid)")
-            .accessibilityIdentifier("task-manager.process.row.\(process.pid)")
-
-            OnePlusMenuButton("Process actions", systemImage: "ellipsis", variant: .borderedIcon) {
-                var items: [OnePlusPopupMenuEntry] = [
-                    .item(OnePlusPopupMenuItem("Inspect") { inspect(process) }),
-                ]
-                if SystemMonitorProcessActions.canCopyPath(process) {
-                    items.append(.item(OnePlusPopupMenuItem("Copy executable path") { copyPath(process.executablePath) }))
-                }
-                items += [
-                    .separator(),
-                    .item(OnePlusPopupMenuItem("Quit", isEnabled: SystemMonitorProcessActions.canTerminate(process)) { confirm(process, false) }),
-                    .item(OnePlusPopupMenuItem("Force Quit", role: .destructive, isEnabled: SystemMonitorProcessActions.canTerminate(process)) { confirm(process, true) }),
-                ]
-                return items
-            }
-            .accessibilityIdentifier("task-manager.process.actions.\(process.pid)")
-        }
-        .onePlusTableRow(selected: selected)
-        .contextMenu {
-            Button("Inspect") { inspect(process) }
-            if SystemMonitorProcessActions.canCopyPath(process) {
-                Button("Copy executable path") { copyPath(process.executablePath) }
-            }
-            Divider()
-            Button("Quit") { confirm(process, false) }
-                .disabled(!SystemMonitorProcessActions.canTerminate(process))
-            Button("Force Quit", role: .destructive) { confirm(process, true) }
-                .disabled(!SystemMonitorProcessActions.canTerminate(process))
-        }
-    }
 }
 
 struct ProcessDetailSheet: View {
