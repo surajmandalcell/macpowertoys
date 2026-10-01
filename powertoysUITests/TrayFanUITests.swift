@@ -23,7 +23,7 @@ final class TrayFanUITests: XCTestCase {
         tray.click()
         app.buttons["tray.tab.home"].click()
         XCTAssertFalse(app.buttons["tray.tab.system-monitor"].exists)
-        XCTAssertFalse(app.descendants(matching: .any)["Fan Auto"].exists)
+        XCTAssertFalse(app.buttons["Auto"].exists)
 
         let homeCapture = XCTAttachment(screenshot: app.screenshot())
         homeCapture.name = "Main menu without System Monitor"
@@ -35,9 +35,9 @@ final class TrayFanUITests: XCTestCase {
         XCTAssertTrue(monitor.waitForExistence(timeout: 10), app.menuBars.debugDescription)
         monitor.click()
         app.buttons["system-monitor.tray.home"].click()
-        XCTAssertTrue(app.descendants(matching: .any)["Fan Auto"].waitForExistence(timeout: 10), app.debugDescription)
-        XCTAssertTrue(app.descendants(matching: .any)["Fan Cool"].exists)
-        XCTAssertTrue(app.descendants(matching: .any)["Fan Max"].exists)
+        XCTAssertTrue(app.buttons["Auto"].waitForExistence(timeout: 10), app.debugDescription)
+        XCTAssertTrue(app.buttons["Cool"].exists)
+        XCTAssertTrue(app.buttons["Max"].exists)
 
         let setup = app.buttons["fan-control.setup"]
         XCTAssertTrue(setup.waitForExistence(timeout: 20))
@@ -54,9 +54,9 @@ final class TrayFanUITests: XCTestCase {
 
         app.buttons["system-monitor.tray.sensors"].click()
         XCTAssertTrue(app.staticTexts["Enable fan control"].waitForNonExistence(timeout: 5))
-        XCTAssertTrue(app.descendants(matching: .any)["Fan Auto"].waitForExistence(timeout: 5))
-        XCTAssertTrue(app.descendants(matching: .any)["Fan Cool"].exists)
-        XCTAssertTrue(app.descendants(matching: .any)["Fan Max"].exists)
+        XCTAssertTrue(app.buttons["Auto"].waitForExistence(timeout: 5))
+        XCTAssertTrue(app.buttons["Cool"].exists)
+        XCTAssertTrue(app.buttons["Max"].exists)
     }
 
     @MainActor
@@ -200,7 +200,7 @@ final class TrayFanUITests: XCTestCase {
         XCTAssertTrue(moreMenu.waitForExistence(timeout: 5))
         XCTAssertEqual(moreMenu.label, "More")
         moreMenu.click()
-        XCTAssertTrue(app.menuItems["Force Quit"].waitForExistence(timeout: 5))
+        XCTAssertTrue(app.buttons["Force Quit"].waitForExistence(timeout: 5))
         let menuCapture = XCTAttachment(screenshot: app.screenshot())
         menuCapture.name = "Task Manager dark process action menu"
         menuCapture.lifetime = .keepAlways
