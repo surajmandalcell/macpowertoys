@@ -1693,20 +1693,21 @@ final class SystemMonitorMenuController: NSObject {
 
     private func present(_ sender: NSStatusBarButton, profiles: [SystemMonitorRemoteProfile]) {
         guard sender.window?.isVisible == true else { return }
+        let ceiling = (sender.window?.screen?.visibleFrame.height ?? 800) * OnePlusMenuMetrics.heightFraction
         let hosting: NSHostingController<SystemMonitorMenuPopoverView>
         if let existing = popover.contentViewController as? NSHostingController<SystemMonitorMenuPopoverView>,
            presentedProfiles == profiles {
             hosting = existing
         } else {
-            hosting = NSHostingController(rootView: SystemMonitorMenuPopoverView(remoteProfiles: profiles, defaults: defaults) { [weak self] height in
+            hosting = NSHostingController(rootView: SystemMonitorMenuPopoverView(remoteProfiles: profiles, defaults: defaults, maximumHeight: ceiling) { [weak self] height in
                 guard let self,
                       abs(self.popover.contentSize.height - height) > 0.5 else { return }
                 self.popover.contentSize = NSSize(width: OnePlusMenuMetrics.width, height: height)
             })
             presentedProfiles = profiles
         }
+        if hosting.rootView.maximumHeight != ceiling { hosting.rootView.maximumHeight = ceiling }
         hosting.view.appearance = NSApp.appearance
-        let ceiling = (sender.window?.screen?.visibleFrame.height ?? 800) * OnePlusMenuMetrics.heightFraction
         hosting.view.setFrameSize(hosting.sizeThatFits(in: NSSize(width: OnePlusMenuMetrics.width, height: ceiling)))
         hosting.view.layoutSubtreeIfNeeded()
         popover.contentViewController = hosting

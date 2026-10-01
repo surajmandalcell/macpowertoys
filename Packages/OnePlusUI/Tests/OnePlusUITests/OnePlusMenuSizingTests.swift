@@ -177,19 +177,36 @@ final class OnePlusMenuSizingTests: XCTestCase {
         }
     }
 
-    func testExplicitMaximumCannotExceedTheVisibleScreenCap() {
+    func testSuppliedScreenCapIsUsedBeforeFirstMeasurement() {
         let screenHeight = NSScreen.main?.visibleFrame.height ?? 800
+        for cap in [CGFloat(400), screenHeight * 2] {
+            var heights: [CGFloat] = []
+            let host = NSHostingView(rootView: OnePlusMenuPanelShell(
+                maximumHeight: cap, tabs: EmptyView(), actions: EmptyView(),
+                content: { Color.clear.frame(height: screenHeight * 3) }
+            ).onOnePlusMenuHeightChange { heights.append($0) })
+            host.frame.size = NSSize(width: 356, height: cap)
+            host.layoutSubtreeIfNeeded()
+            XCTAssertEqual(host.fittingSize.height, cap, accuracy: 0.5)
+            XCTAssertFalse(heights.isEmpty)
+            XCTAssertTrue(heights.allSatisfy { abs($0 - cap) < 0.5 }, "First heights: \(heights)")
+        }
+    }
+
+    func testAttachedScreenSuppliesTheInitialFallbackCap() throws {
+        let screen = try XCTUnwrap(NSScreen.screens.first { $0.visibleFrame.height != NSScreen.main?.visibleFrame.height }
+                                   ?? NSScreen.screens.last)
+        let window = MenuScreenWindow(screen: screen)
+        window.isReleasedWhenClosed = false
+        defer { window.close() }
         let host = NSHostingView(rootView: OnePlusMenuPanelShell(
-            maximumHeight: screenHeight * 2,
-            tabs: OnePlusMenuTabStrip(tabs: [.init("home", "Home", systemImage: "house")],
-                                      selection: .constant("home")),
-            actions: OnePlusMenuOpenApp {},
-            content: { Color.clear.frame(height: screenHeight * 3) }
-        ).environment(\.onePlusIsVisible, true))
-        host.frame.size = NSSize(width: 356, height: 600)
+            maximumHeight: nil, tabs: EmptyView(), actions: EmptyView(),
+            content: { Color.clear.frame(height: 10_000) }
+        ))
+        window.contentView = host
         host.layoutSubtreeIfNeeded()
-        RunLoop.main.run(until: Date(timeIntervalSinceNow: 0.05))
-        XCTAssertEqual(host.fittingSize.height, screenHeight * 0.9, accuracy: 0.5)
+        let expected = try XCTUnwrap(window.screen).visibleFrame.height * OnePlusMenuMetrics.heightFraction
+        XCTAssertEqual(host.fittingSize.height, expected, accuracy: 0.5)
     }
 
     func testClosedPanelKeepsItsLayoutMounted() {
@@ -209,6 +226,16 @@ final class OnePlusMenuSizingTests: XCTestCase {
         visible.layoutSubtreeIfNeeded()
         XCTAssertGreaterThan(counter.buildCount, 0)
     }
+}
+
+private final class MenuScreenWindow: NSWindow {
+    let attachedScreen: NSScreen
+    init(screen: NSScreen) {
+        attachedScreen = screen
+        super.init(contentRect: NSRect(x: -10000, y: -10000, width: 356, height: 300),
+                   styleMask: .borderless, backing: .buffered, defer: false)
+    }
+    override var screen: NSScreen? { attachedScreen }
 }
 
 private struct MenuRegionMarker: NSViewRepresentable {

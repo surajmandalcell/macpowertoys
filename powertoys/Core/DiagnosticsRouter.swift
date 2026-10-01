@@ -163,6 +163,7 @@ final class DiagnosticsMenuPanels: NSObject {
             return
         }
         let hosting = NSHostingController(rootView: content
+            .environment(\.onePlusMenuMaximumHeight, visible.height * OnePlusMenuMetrics.heightFraction)
             .fixedSize(horizontal: false, vertical: true).frame(width: OnePlusMenuMetrics.width)
             .onePlusFocusPolicy().onOnePlusMenuHeightChange(resize))
         window.contentViewController = hosting
