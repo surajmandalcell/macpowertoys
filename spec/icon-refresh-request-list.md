@@ -19,7 +19,9 @@ contact sheets compare Switch at 16pt beside its emergency-stop artwork and
 Portman's original/restored image in light/dark at 1x/2x:
 `tmp/redesign/captures/glyphs-status/r12/`. All 36 status images pass geometry
 checks at 1x/2x/4x; Portman matches its original drawing pixels exactly.
-Signed surface review remains with the orchestrator.
+Source checkpoint: `5c04a1e7`. The single tests-mode gate compiles the
+Debug app and both desktop test bundles with matching glyph source files.
+Hosted execution and signed surface review remain with the orchestrator.
 
 Requested on 2026-09-25. The owner selected Disk Explorer option 02,
 **Sector platter**, from `tmp/disk-explorer/index.index2.html` and asked for

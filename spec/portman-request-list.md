@@ -93,7 +93,10 @@ centered 11.2pt maximum ink span on a 14pt canvas, measured from Portman's
 11.2pt by 10.6pt ink. Native button margins remain unchanged.
 Original/restored raster equality passes at 1x/2x/4x, alongside all 36 status
 image geometry checks. Evidence: `tmp/redesign/captures/glyphs-status/r12/`.
-Signed menu-bar comparison remains with the orchestrator.
+Source checkpoint: `5c04a1e7`. The single tests-mode gate passes for the
+Debug app and both desktop test bundles; its seven glyph source files match
+that checkpoint. Hosted execution and signed menu-bar comparison remain
+with the orchestrator. Report: `tmp/redesign/logs/w3-glyphs-status.md`.
 
 ## OnePlusUI redesign, 2026-09-29
 
