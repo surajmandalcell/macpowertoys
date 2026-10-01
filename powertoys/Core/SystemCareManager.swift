@@ -1,4 +1,5 @@
 import AppKit
+import CoreFoundation
 import Darwin
 import Foundation
 
@@ -142,6 +143,9 @@ nonisolated struct MoleHistoryItem: Identifiable, Sendable {
     let id = UUID()
     let title: String
     let detail: String
+    let timestamp: String?
+    let result: String?
+    let rawPayload: String
 }
 
 nonisolated enum MoleOperation: String, CaseIterable, Identifiable, Sendable {
@@ -830,12 +834,58 @@ final class SystemCareManager {
 
     nonisolated private static func moleHistory(executable: URL) throws -> [MoleHistoryItem] {
         let data = try run(executable: executable, arguments: ["history", "--json", "--limit", "100"])
-        guard let root = try JSONSerialization.jsonObject(with: data) as? [String: Any] else { return [] }
-        let rows = (root["sessions"] as? [[String: Any]] ?? []) + (root["deletions"] as? [[String: Any]] ?? [])
-        return rows.map { row in
-            let title = (row["operation"] ?? row["command"] ?? row["path"] ?? "Mole operation") as? String ?? "Mole operation"
-            let detail = row.keys.sorted().map { "\($0): \(row[$0] ?? "")" }.joined(separator: " · ")
-            return MoleHistoryItem(title: title, detail: detail)
+        return try parseMoleHistory(data)
+    }
+
+    nonisolated static func parseMoleHistory(_ data: Data) throws -> [MoleHistoryItem] {
+        guard let root = try JSONSerialization.jsonObject(with: data) as? [String: Any] else {
+            throw CocoaError(.coderReadCorrupt)
+        }
+        func text(_ value: Any?) -> String? {
+            guard let value = value as? String else { return nil }
+            let line = value.split(whereSeparator: \.isWhitespace).joined(separator: " ")
+            return line.isEmpty ? nil : line
+        }
+        func count(_ value: Any?) -> Int? {
+            guard let number = value as? NSNumber, CFGetTypeID(number) != CFBooleanGetTypeID(),
+                  let value = value as? Int, value >= 0 else { return nil }
+            return value
+        }
+        var rows: [[String: Any]] = []
+        for key in ["sessions", "deletions"] {
+            guard let value = root[key] else { continue }
+            guard let group = value as? [[String: Any]] else { throw CocoaError(.coderReadCorrupt) }
+            rows += group
+        }
+        return try rows.map { row in
+            try Task.checkCancellation()
+            let title = text(row["operation"]) ?? text(row["command"]) ?? text(row["mode"]) ?? "Mole operation"
+            var summary: [String] = []
+            if let path = text(row["path"]) {
+                summary.append(path)
+            } else {
+                if let items = count(row["items"]) {
+                    summary.append("\(items) \(items == 1 ? "item" : "items")")
+                } else if let operations = count(row["operation_count"]) {
+                    summary.append("\(operations) \(operations == 1 ? "operation" : "operations")")
+                }
+                if let size = text(row["size"]) { summary.append(size) }
+            }
+            let actions = row["actions"] as? [String: Any] ?? [:]
+            var outcomes = ["removed", "trashed", "skipped", "failed", "rebuilt", "other"].compactMap { action -> String? in
+                guard let value = count(actions[action]), value > 0 else { return nil }
+                return "\(value) \(action)"
+            }
+            if let tasks = count(row["failed_tasks"]), tasks > 0 {
+                outcomes.append("\(tasks) \(tasks == 1 ? "task" : "tasks") failed")
+            }
+            let result = text(row["result"]) ?? text(row["status"]) ?? (outcomes.isEmpty ? nil : outcomes.joined(separator: ", "))
+            let raw = try JSONSerialization.data(withJSONObject: row, options: [.sortedKeys])
+            return MoleHistoryItem(
+                title: title, detail: summary.joined(separator: " · "),
+                timestamp: text(row["timestamp"]) ?? text(row["started_at"]) ?? text(row["ended_at"]),
+                result: result, rawPayload: String(decoding: raw, as: UTF8.self)
+            )
         }
     }
 
