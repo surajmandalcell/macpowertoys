@@ -135,22 +135,13 @@ struct MacTweaksSettingsContent: View {
                 }
             }
             .fixedSize(horizontal: false, vertical: true)
-            OnePlusCard {
-                OnePlusCardHeader("Preferences", systemImage: "slider.horizontal.3")
-                OnePlusSettingRow(
-                    "Modified preferences",
-                    caption: "Review and restore changes.",
-                    separator: false
-                ) {
-                    Button("Review changes") {
-                        ToolActionRouter.shared.open(toolID: "mac-tweaks", page: "modified")
-                    }
-                    .buttonStyle(OnePlusButtonStyle(.neutral))
-                }
-                if let notice {
-                    OnePlusBanner(notice.message, tone: notice.isError ? .error : .information)
-                        .padding(OnePlusMetrics.cardPadding)
-                }
+            Button("Review changes") {
+                ToolActionRouter.shared.open(toolID: "mac-tweaks", page: "modified")
+            }
+            .buttonStyle(OnePlusButtonStyle(.neutral))
+            .frame(maxWidth: .infinity, alignment: .trailing)
+            if let notice {
+                OnePlusBanner(notice.message, tone: notice.isError ? .error : .information)
             }
         }
         .task(id: revision) { await reloadPreferences() }
@@ -174,7 +165,8 @@ struct MacTweaksSettingsContent: View {
         selections = snapshot.1
         backedUpIdentities = Set(snapshot.0.keys)
         modifiedIdentities = Set(fields.compactMap {
-            $0.differsFromDefault(snapshot.1[$0.identity] ?? -1) ? $0.identity : nil
+            $0.needsReset(snapshot.1[$0.identity] ?? -1, hasBackup: snapshot.0[$0.identity] != nil)
+                ? $0.identity : nil
         })
         isLoaded = true
     }
