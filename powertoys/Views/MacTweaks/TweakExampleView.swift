@@ -464,17 +464,7 @@ private struct MacTweaksFilmBackground: View {
                 .frame(width: 260, height: 260)
                 .blur(radius: 48)
                 .offset(x: 230, y: -90)
-            Canvas { context, size in
-                for x in stride(from: 0.0, through: size.width, by: 24.0) {
-                    var path = Path()
-                    path.move(to: .init(x: x, y: 0)); path.addLine(to: .init(x: x, y: size.height))
-                    context.stroke(path, with: .color(.white.opacity(0.018)), lineWidth: 0.5)
-                }
-                for y in stride(from: 0.0, through: size.height, by: 24.0) {
-                    var path = Path()
-                    path.move(to: .init(x: 0, y: y)); path.addLine(to: .init(x: size.width, y: y))
-                    context.stroke(path, with: .color(.white.opacity(0.018)), lineWidth: 0.5)
-                }
+            Canvas { context, _ in
                 var ribbon = Path()
                 ribbon.move(to: .init(x: -80, y: 260))
                 ribbon.addCurve(to: .init(x: 388, y: 123), control1: .init(x: 80, y: 28), control2: .init(x: 190, y: 352))
