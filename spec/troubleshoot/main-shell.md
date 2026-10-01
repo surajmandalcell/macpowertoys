@@ -388,6 +388,8 @@
   its existing AppKit panels instead of cloning them in SwiftUI. Mac Tweaks
   reuses its guarded preference rows and utility-task snapshots, not invented
   Window or Safety preferences. Enforced policies use neutral read-only text.
+  Embedded Mac Tweaks uses `needsReset(selection, hasBackup:)`; a value at
+  the system default must not hide a saved original or its reset action.
   Under the 2026-10-01 density rule, related action rows sit directly on the
   page. Cards group multiple rows of content. Main General groups Appearance
   with Windows and Launch with iCloud. Ruler has one direct native action
@@ -400,6 +402,19 @@
   window, and confirm the same value and control surface are present. Review
   loading, error, restore, and advanced-review routes. In both appearances,
   require short cards to end at their final row, not their neighbor's height.
+
+## Marketplace Update Stops A Tool Before Validation
+
+- **Symptom:** A rejected update stops the running tool although its installed
+  bundle is unchanged.
+- **Cause:** The manager requested termination before download and artifact
+  validation.
+- **Invariant:** Keep every artifact guard in the installer. Request
+  termination only after all checks pass, just before activation. Preserve
+  the existing replacement rollback.
+- **Check:** Run `testManagerTerminatesOnlyForValidatedActivation` on CI. Reject
+  download, checksum, and signing-team failures without termination or bundle
+  replacement. A valid update requests termination before replacement.
 
 ## Heavy Launcher Settings First Frame
 
