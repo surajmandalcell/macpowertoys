@@ -183,6 +183,22 @@
   report the installed revision and the exact reason instead of claiming the
   latest UI is running.
 
+## Closed-Window Memory Sampling
+
+- **Symptom:** A settled memory sample is called a closed-window result while
+  every tool window remains visible.
+- **Cause:** The capture loop closes panels only. Its tool windows stay open.
+- **Invariant:** Record visible windows with each sample. Use
+  `open -g macpowertoys://diagnostics/close-window/<tool-id>` for the 13 native
+  tool scenes, and `diagnostics/close-panels` for panels. The close route reuses
+  the scoped native handler, validates the tool ID, and does not activate the
+  app. Preserve warm panel hosts until profiling proves they cause excess use.
+- **Check:** Confirm the signed build contains `a6aeff3a`. Check foreground
+  identity before and after each route. Wait 30 seconds after the last close,
+  then run `heap <pid> -sortBySize` and `vmmap --summary <pid>`. Record the
+  source stamp, PID, window count, and physical footprint. A capture with open
+  windows does not prove recovery below 250 MB.
+
 ## Missing Xcode During Final Build
 
 - **Symptom:** The final Release build fails opening an IOKit SDK header even
