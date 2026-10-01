@@ -52,10 +52,10 @@ extension View {
     }
 
     func utilityAnimation<Value: Equatable>(
-        value: Value,
-        duration: Double = UtilityMotion.standardDuration
+        value _: Value,
+        duration _: Double = UtilityMotion.standardDuration
     ) -> some View {
-        modifier(UtilityAnimationModifier(value: value, duration: duration))
+        self
     }
 
     func utilityContentTransition<Value: Hashable>(value _: Value) -> some View {
@@ -76,19 +76,5 @@ private struct UtilityMotionPolicyModifier: ViewModifier {
             transaction.animation = nil
             transaction.disablesAnimations = true
         }
-    }
-}
-
-private struct UtilityAnimationModifier<Value: Equatable>: ViewModifier {
-    @Environment(\.accessibilityReduceMotion) private var reduceMotion
-
-    let value: Value
-    let duration: Double
-
-    func body(content: Content) -> some View {
-        content.animation(
-            UtilityMotion.animation(reduceMotion: reduceMotion, duration: duration),
-            value: value
-        )
     }
 }

@@ -57,10 +57,7 @@ final class HotkeyBezel {
         panel.setFrame(centeredFrame(on: screen), display: true)
         panel.orderFrontRegardless()
 
-        NSAnimationContext.runAnimationGroup { context in
-            context.duration = 0.12
-            panel.animator().alphaValue = 1
-        }
+        panel.alphaValue = 1
 
         let workItem = DispatchWorkItem { [weak self] in
             self?.hide()
@@ -73,12 +70,8 @@ final class HotkeyBezel {
         hideWorkItem?.cancel()
         hideWorkItem = nil
 
-        NSAnimationContext.runAnimationGroup({ context in
-            context.duration = 0.18
-            panel.animator().alphaValue = 0
-        }, completionHandler: { [weak self] in
-            self?.panel.orderOut(nil)
-        })
+        panel.alphaValue = 0
+        panel.orderOut(nil)
     }
 
     private func centeredFrame(on screen: NSScreen?) -> NSRect {

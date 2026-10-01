@@ -130,7 +130,7 @@ with `textColor: OnePlusColor.ink` for primary identity text.
 | `OnePlusWindowCanvas` | Choose one of the 13 tool canvases or construct a fixed preview canvas. |
 | `OnePlusDensity` / `.onePlusDensity(_:)` | Set `.regular` or `.compact` at the window or panel root. |
 | `OnePlusTextRole` / `.onePlusText(_:)` | Apply one of the 15 type roles with density, color, tracking, and case. |
-| `OnePlusMotion.animation(reduceMotion:duration:)` | Get an animation, or `nil` under Reduce Motion. |
+| `OnePlusMotion.animation(reduceMotion:duration:)` | Returns `nil`; hover, press, selection, and content changes are instant. |
 | `OnePlusFixedWindowChrome` | Apply native fixed-window policy; its measured zoom callback is optional. |
 | `OnePlusWindowRoot` | Compose `canvas`, `sidebar`, and `content` once per window. |
 | `onePlusIsVisible` / `.onePlusLiveUpdates()` | Suspend live observation while hidden; keep the layout tree mounted. |

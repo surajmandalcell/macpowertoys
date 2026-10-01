@@ -261,7 +261,7 @@ public final class OnePlusOverlayScroller: NSScroller {
             do { try await Task.sleep(for: .milliseconds(900)) } catch { return }
             guard let self, !pointerInside else { return }
             if NSWorkspace.shared.accessibilityDisplayShouldReduceMotion { alphaValue = 0 }
-            else { NSAnimationContext.runAnimationGroup({ $0.duration = OnePlusMotion.content; self.animator().alphaValue = 0 }, completionHandler: nil) }
+            else { NSAnimationContext.runAnimationGroup({ $0.duration = OnePlusMotion.scrollIndicatorFade; self.animator().alphaValue = 0 }, completionHandler: nil) }
         }
     }
 }
