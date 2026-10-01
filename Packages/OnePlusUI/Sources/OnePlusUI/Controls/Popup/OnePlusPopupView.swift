@@ -11,6 +11,8 @@ final class OnePlusPopupSession: ObservableObject {
     private var navigation = OnePlusPopupNavigationState()
     var select: (UUID) -> Void = { _ in }
     var close: (Bool) -> Void = { _ in }
+    weak var accessibilityHost: OnePlusPopupAccessibilityHost?
+    var rowAnchors: [UUID: OnePlusPopupRowAnchor] = [:]
 
     init(entries: [OnePlusPopupMenuEntry], density: OnePlusDensity, initialID: UUID?) {
         self.entries = entries
@@ -142,6 +144,7 @@ struct OnePlusPopupItemView: View {
             .contentShape(Rectangle())
         }
         .buttonStyle(.plain)
+        .background { OnePlusPopupRowGeometry(id: item.id, session: session) }
         .disabled(!item.isEnabled)
         .opacity(item.isEnabled ? 1 : OnePlusMetrics.disabledOpacity)
         .onHover { hovering in
@@ -160,17 +163,17 @@ private struct OnePlusPopupAccessibilityView: NSViewRepresentable {
     }
 
     func updateNSView(_ view: OnePlusPopupAccessibilityHost, context: Context) {
-        view.update(entries: session.entries, density: session.density,
-                    highlightedID: session.highlightedID, choose: session.choose)
+        session.accessibilityHost = view
+        view.update(session: session)
     }
 }
 
-private final class OnePlusPopupAccessibilityHost: NSView {
-    private var entries: [OnePlusPopupMenuEntry] = []
-    private var density = OnePlusDensity.regular
+final class OnePlusPopupAccessibilityHost: NSView {
+    private weak var session: OnePlusPopupSession?
     private var highlightedID: UUID?
-    private var choose: (UUID) -> Void = { _ in }
-    private var menuItems: [OnePlusPopupAccessibilityItem] = []
+    private var itemsByID: [UUID: OnePlusPopupAccessibilityItem] = [:]
+    private weak var clipView: NSClipView?
+    private var boundsObserver: NSObjectProtocol?
     override var isFlipped: Bool { true }
 
     override init(frame frameRect: NSRect) {
@@ -179,61 +182,96 @@ private final class OnePlusPopupAccessibilityHost: NSView {
         setAccessibilityRole(.menu)
         setAccessibilityLabel("Menu")
     }
-
     @available(*, unavailable)
     required init?(coder: NSCoder) { fatalError("init(coder:) is unavailable") }
-
+    isolated deinit { if let boundsObserver { NotificationCenter.default.removeObserver(boundsObserver) } }
     override func hitTest(_ point: NSPoint) -> NSView? { nil }
 
-    func update(entries: [OnePlusPopupMenuEntry], density: OnePlusDensity,
-                highlightedID: UUID?, choose: @escaping (UUID) -> Void) {
-        self.entries = entries
-        self.density = density
-        self.highlightedID = highlightedID
-        self.choose = choose
-        rebuildAccessibilityItems()
-    }
-
-    override func layout() {
-        super.layout()
-        rebuildAccessibilityItems()
-    }
-
-    private func rebuildAccessibilityItems() {
-        guard let window else { return }
-        var offset = OnePlusPopupMetrics.padding
-        menuItems = entries.compactMap { entry in
-            let height = OnePlusPopupMetrics.entryHeight(entry, density: density)
-            defer { offset += height }
-            guard let item = entry.item else { return nil }
-            let rect = NSRect(x: OnePlusPopupMetrics.padding, y: offset,
-                              width: max(0, bounds.width - OnePlusPopupMetrics.padding * 2), height: height)
-            let element = OnePlusPopupAccessibilityItem(id: item.id) { [weak self] id in self?.choose(id) }
+    func update(session: OnePlusPopupSession) {
+        self.session = session
+        let oldHighlight = highlightedID
+        highlightedID = session.highlightedID
+        let items = session.entries.compactMap(\.item)
+        let ids = Set(items.map(\.id))
+        itemsByID = itemsByID.filter { ids.contains($0.key) }
+        let children = items.map { item in
+            let element = itemsByID[item.id] ?? OnePlusPopupAccessibilityItem(id: item.id) { [weak session] id in
+                session?.choose(id)
+            }
+            itemsByID[item.id] = element
             element.setAccessibilityRole(.menuItem)
             element.setAccessibilityLabel(item.title)
             element.setAccessibilityEnabled(item.isEnabled)
             element.setAccessibilitySelected(item.isSelected)
             element.setAccessibilityFocused(item.id == highlightedID)
             element.setAccessibilityParent(self)
-            element.setAccessibilityFrame(window.convertToScreen(convert(rect, to: nil)))
             return element
         }
-        setAccessibilityChildren(menuItems)
+        setAccessibilityChildren(children)
+        updateFrames()
+        if oldHighlight != highlightedID, let id = highlightedID, let element = itemsByID[id] {
+            NSAccessibility.post(element: element, notification: .focusedUIElementChanged)
+        }
+    }
+
+    override func layout() { super.layout(); updateFrames() }
+    func updateFrames() {
+        guard let session else { return }
+        for (id, element) in itemsByID {
+            guard let row = session.rowAnchors[id]?.view, let window = row.window else {
+                element.setAccessibilityFrame(.zero)
+                continue
+            }
+            let visible = row.visibleRect.intersection(row.bounds)
+            element.setAccessibilityFrame(visible.isEmpty ? .zero : window.convertToScreen(row.convert(visible, to: nil)))
+            observe(row.enclosingScrollView?.contentView)
+        }
+    }
+
+    private func observe(_ clip: NSClipView?) {
+        guard let clip, clip !== clipView else { return }
+        if let boundsObserver { NotificationCenter.default.removeObserver(boundsObserver) }
+        clipView = clip
+        clip.postsBoundsChangedNotifications = true
+        boundsObserver = NotificationCenter.default.addObserver(forName: NSView.boundsDidChangeNotification,
+                                                               object: clip, queue: .main) { [weak self] _ in
+            MainActor.assumeIsolated { self?.updateFrames() }
+        }
     }
 }
 
-private final class OnePlusPopupAccessibilityItem: NSAccessibilityElement {
+final class OnePlusPopupAccessibilityItem: NSAccessibilityElement {
     let id: UUID
     private let choose: (UUID) -> Void
-
     init(id: UUID, choose: @escaping (UUID) -> Void) {
-        self.id = id
-        self.choose = choose
+        self.id = id; self.choose = choose
         super.init()
     }
-
     override func accessibilityPerformPress() -> Bool {
+        guard isAccessibilityEnabled() else { return false }
         choose(id)
         return true
     }
+}
+
+final class OnePlusPopupRowAnchor {
+    weak var view: NSView?
+}
+
+private struct OnePlusPopupRowGeometry: NSViewRepresentable {
+    let id: UUID
+    let session: OnePlusPopupSession
+    func makeNSView(context: Context) -> OnePlusPopupRowGeometryView { OnePlusPopupRowGeometryView() }
+    func updateNSView(_ view: OnePlusPopupRowGeometryView, context: Context) {
+        let anchor = session.rowAnchors[id] ?? OnePlusPopupRowAnchor()
+        anchor.view = view
+        session.rowAnchors[id] = anchor
+        view.changed = { [weak session] in session?.accessibilityHost?.updateFrames() }
+    }
+}
+private final class OnePlusPopupRowGeometryView: NSView {
+    var changed: () -> Void = {}
+    override func hitTest(_ point: NSPoint) -> NSView? { nil }
+    override func layout() { super.layout(); changed() }
+    override func viewDidMoveToWindow() { super.viewDidMoveToWindow(); changed() }
 }

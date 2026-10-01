@@ -1,9 +1,52 @@
+import AppKit
 import CoreGraphics
 import XCTest
 @testable import OnePlusUI
 
 @MainActor
 final class OnePlusPopupTests: XCTestCase {
+    func testAccessibilityItemsKeepIdentityAndUseClippedScrolledRows() throws {
+        let first = OnePlusPopupMenuItem("First") {}
+        let last = OnePlusPopupMenuItem("Last", isEnabled: false) {}
+        let session = OnePlusPopupSession(entries: [.item(first), .item(last)], density: .regular, initialID: first.id)
+        let host = OnePlusPopupAccessibilityHost(frame: CGRect(x: 0, y: 0, width: 200, height: 60))
+        let window = NSWindow(contentRect: host.frame, styleMask: .borderless, backing: .buffered, defer: false)
+        window.isReleasedWhenClosed = false
+        defer { window.close() }
+        let root = NSView(frame: host.frame)
+        window.contentView = root
+        let scroll = NSScrollView(frame: root.bounds)
+        let document = NSView(frame: CGRect(x: 0, y: 0, width: 200, height: 200))
+        let row = NSView(frame: CGRect(x: 0, y: 90, width: 200, height: 28))
+        document.addSubview(row)
+        scroll.documentView = document
+        root.addSubview(scroll)
+        root.addSubview(host)
+        let anchor = OnePlusPopupRowAnchor()
+        anchor.view = row
+        session.rowAnchors[first.id] = anchor
+        host.update(session: session)
+        let initial = try XCTUnwrap(host.accessibilityChildren() as? [OnePlusPopupAccessibilityItem])
+        scroll.contentView.scroll(to: NSPoint(x: 0, y: 100))
+        host.updateFrames()
+        let expected = window.convertToScreen(row.convert(row.visibleRect.intersection(row.bounds), to: nil))
+        XCTAssertEqual(initial[0].accessibilityFrame(), expected)
+        XCTAssertLessThanOrEqual(expected.height, 28)
+        XCTAssertLessThanOrEqual(expected.height, scroll.contentView.bounds.height)
+        session.hover(first.id)
+        host.update(session: session)
+        let updated = try XCTUnwrap(host.accessibilityChildren() as? [OnePlusPopupAccessibilityItem])
+        XCTAssertTrue(initial[0] === updated[0])
+        XCTAssertTrue(initial[1] === updated[1])
+        XCTAssertTrue(updated[0].isAccessibilityFocused())
+        XCTAssertFalse(updated[1].accessibilityPerformPress())
+        var chosen: UUID?
+        session.select = { chosen = $0 }
+        XCTAssertTrue(updated[0].accessibilityPerformPress())
+        XCTAssertEqual(chosen, first.id)
+        XCTAssertFalse(window.isVisible)
+    }
+
     func testHighlightMovesAcrossEnabledItemsAndWraps() {
         let alpha = OnePlusPopupMenuItem("Alpha") {}
         let beta = OnePlusPopupMenuItem("Beta", isEnabled: false) {}
