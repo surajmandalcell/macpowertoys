@@ -112,11 +112,7 @@ struct TrayPopoverView: View {
                 if selectedTab == .systemCare {
                     ToolActionRouter.shared.open(toolID: "system-care", page: "settings/general")
                 } else {
-                    openWindow(id: "main")
-                    NSApp.activate(ignoringOtherApps: true)
-                    DispatchQueue.main.async {
-                        NotificationCenter.default.post(name: .openToolSettings, object: "home")
-                    }
+                    ToolActionRouter.shared.open(toolID: "main", page: "settings")
                 }
             } label: {
                 Image(systemName: "gearshape")
