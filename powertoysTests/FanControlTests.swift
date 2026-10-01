@@ -9,6 +9,47 @@ import XCTest
 
 final class FanControlTests: XCTestCase {
     @MainActor
+    func testExitRestorationWaitsAndRetainsControlAfterFailure() async throws {
+        let writes = FanExitWrites()
+        let service = FanControlService(readSnapshot: {
+            FanSnapshot(fans: [FanReading(index: 0, actualRPM: 3000, maximumRPM: 5000, mode: "auto")],
+                        profile: "auto", canControl: true)
+        }, applyPreset: { try await writes.apply($0) })
+        service.start(owner: "exit-test")
+        defer { service.stop(owner: "exit-test") }
+        await service.refresh()
+        service.select(.max)
+        for _ in 0..<100 where service.isChanging { try await Task.sleep(for: .milliseconds(5)) }
+        XCTAssertEqual(service.selectedPreset, .max)
+
+        let first = Task { try await service.restoreAutomaticOnExit() }
+        for _ in 0..<100 {
+            if await writes.hasPendingAuto { break }
+            try await Task.sleep(for: .milliseconds(5))
+        }
+        XCTAssertTrue(service.isChanging)
+        service.select(.cool)
+        XCTAssertEqual(service.selectedPreset, .max)
+        await writes.finishAuto(failing: true)
+        do { try await first.value; XCTFail("Quit must receive the restore error") }
+        catch { XCTAssertEqual(error.localizedDescription, "Auto failed") }
+        XCTAssertEqual(service.selectedPreset, .max)
+        XCTAssertEqual(service.errorMessage, "Auto failed")
+
+        let retry = Task { try await service.restoreAutomaticOnExit() }
+        for _ in 0..<100 {
+            if await writes.hasPendingAuto { break }
+            try await Task.sleep(for: .milliseconds(5))
+        }
+        await writes.finishAuto(failing: false)
+        try await retry.value
+        XCTAssertEqual(service.selectedPreset, .auto)
+        XCTAssertFalse(service.isChanging)
+        let recorded = await writes.presets
+        XCTAssertEqual(recorded, [.max, .auto, .auto])
+    }
+
+    @MainActor
     func testFanDisplayCoalescesSamplesAndStopsWithItsOwner() async throws {
         let rpm = Mutex(3_000)
         let publications = Mutex<[ContinuousClock.Instant]>([])
@@ -206,5 +247,25 @@ final class FanControlTests: XCTestCase {
         let started = Date()
         XCTAssertThrowsError(try FanCommand.run("/bin/sh", ["-c", "trap '' TERM; exec /bin/sleep 30"]))
         XCTAssertLessThan(Date().timeIntervalSince(started), 9)
+    }
+}
+
+private actor FanExitWrites {
+    var presets: [FanPreset] = []
+    private var pendingAuto: CheckedContinuation<Void, any Error>?
+    var hasPendingAuto: Bool { pendingAuto != nil }
+    func apply(_ preset: FanPreset) async throws {
+        presets.append(preset)
+        if preset == .auto {
+            try await withCheckedThrowingContinuation { pendingAuto = $0 }
+        }
+    }
+    func finishAuto(failing: Bool) {
+        if failing { pendingAuto?.resume(throwing: Failure()) }
+        else { pendingAuto?.resume() }
+        pendingAuto = nil
+    }
+    private struct Failure: LocalizedError {
+        var errorDescription: String? { "Auto failed" }
     }
 }

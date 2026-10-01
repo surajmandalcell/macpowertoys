@@ -112,8 +112,13 @@ nonisolated enum FanCommand {
         }
     }
 
-    static func restoreAutomatic() {
-        controlQueue.sync { try? applyOnQueue(.auto) }
+    static func apply(_ preset: FanPreset) async throws {
+        try await withCheckedThrowingContinuation { (continuation: CheckedContinuation<Void, any Error>) in
+            apply(preset) { message in
+                if let message { continuation.resume(throwing: FanError(message)) }
+                else { continuation.resume() }
+            }
+        }
     }
 
     private static func applyOnQueue(_ preset: FanPreset) throws {
@@ -308,11 +313,14 @@ final class FanControlService {
     @ObservationIgnored private var lastDisplayPublication: ContinuousClock.Instant?
     @ObservationIgnored private var displayRevision = 0
     @ObservationIgnored private let readSnapshot: @Sendable () -> FanSnapshot?
+    @ObservationIgnored private let applyPreset: @Sendable (FanPreset) async throws -> Void
     private var owners = Set<String>()
     private var pollTask: Task<Void, Never>?
     private var coolResetTask: Task<Void, Never>?
     private var ownsManualControl = false
     private var hasPendingManualCommand = false
+    private var isRestoringOnExit = false
+    private var commandRevision = 0
     private var helperCommit: String?
     private var revision = 0
 
@@ -321,15 +329,17 @@ final class FanControlService {
         Self.current = self
     }
 
-    init(readSnapshot: @escaping @Sendable () -> FanSnapshot?) {
+    init(readSnapshot: @escaping @Sendable () -> FanSnapshot?,
+         applyPreset: @escaping @Sendable (FanPreset) async throws -> Void = { try await FanCommand.apply($0) }) {
         self.readSnapshot = readSnapshot
+        self.applyPreset = applyPreset
     }
 
     var pollOwnerCount: Int { pollTask == nil ? 0 : 1 }
     var isAvailable: Bool { snapshot?.fans.isEmpty == false }
     var canControl: Bool { snapshot?.canControl == true }
     var canRestoreAutomatic: Bool {
-        (ownsManualControl || snapshot?.hasExternalManualControl == true)
+        (ownsManualControl || hasPendingManualCommand || snapshot?.hasExternalManualControl == true)
             && (FanCommand.smctlPath != nil || NetToysNeighborServiceManager.shared.isEnabled)
     }
     var needsApproval: Bool { NetToysNeighborServiceManager.shared.status == .requiresApproval }
@@ -400,42 +410,64 @@ final class FanControlService {
     }
 
     func select(_ preset: FanPreset) {
+        guard !isRestoringOnExit else { return }
         guard FanControlPresentation.canSelect(preset, canControl: canControl,
                                               canRestoreAutomatic: canRestoreAutomatic, isChanging: isChanging) else { return }
         isChanging = true
         hasPendingManualCommand = preset != .auto
         errorMessage = nil
-        FanCommand.apply(preset) { [weak self] commandError in
-            Task { @MainActor [weak self] in
-                guard let self else { return }
-                self.hasPendingManualCommand = false
-                if let commandError {
-                    self.errorMessage = commandError
-                } else {
-                    self.coolResetTask?.cancel()
-                    self.coolResetTask = nil
-                    self.ownsManualControl = preset != .auto
-                    self.selectedPreset = preset
-                    if preset == .cool {
-                        self.coolResetTask = Task { [weak self] in
-                            try? await Task.sleep(for: .seconds(600))
-                            guard !Task.isCancelled else { return }
-                            self?.select(.auto)
-                        }
+        commandRevision &+= 1
+        let currentCommand = commandRevision
+        let applyPreset = applyPreset
+        Task { [weak self] in
+            var commandError: String?
+            do { try await applyPreset(preset) }
+            catch { commandError = error.localizedDescription }
+            guard let self else { return }
+            guard currentCommand == self.commandRevision else { return }
+            self.hasPendingManualCommand = false
+            if let commandError {
+                self.errorMessage = commandError
+            } else {
+                self.coolResetTask?.cancel()
+                self.coolResetTask = nil
+                self.ownsManualControl = preset != .auto
+                self.selectedPreset = preset
+                if preset == .cool {
+                    self.coolResetTask = Task { [weak self] in
+                        try? await Task.sleep(for: .seconds(600))
+                        guard !Task.isCancelled else { return }
+                        self?.select(.auto)
                     }
                 }
-                await self.refresh()
-                self.isChanging = false
             }
+            await self.refresh()
+            self.isChanging = false
         }
     }
 
-    func restoreAutomaticOnExit() {
+    func restoreAutomaticOnExit() async throws {
+        guard !isRestoringOnExit else { throw FanError("Automatic fan restoration is already in progress.") }
         guard ownsManualControl || hasPendingManualCommand else { return }
+        isRestoringOnExit = true
+        isChanging = true
+        commandRevision &+= 1
         coolResetTask?.cancel()
-        FanCommand.restoreAutomatic()
-        ownsManualControl = false
-        hasPendingManualCommand = false
+        coolResetTask = nil
+        defer {
+            isRestoringOnExit = false
+            isChanging = false
+        }
+        do {
+            try await applyPreset(.auto)
+            ownsManualControl = false
+            hasPendingManualCommand = false
+            selectedPreset = .auto
+            errorMessage = nil
+        } catch {
+            errorMessage = error.localizedDescription
+            throw error
+        }
     }
 
     private func scheduleDisplay() {
