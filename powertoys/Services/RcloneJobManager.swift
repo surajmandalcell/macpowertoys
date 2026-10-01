@@ -104,7 +104,7 @@ final class RcloneJobManager {
     private var remoteBeingCreated: String?
 
     let daemon = RcloneDaemon()
-    private var client: RcloneRCClient?
+    private(set) var client: RcloneRCClient?
     private var pollTask: Task<Void, Never>?
     private var started = false
     private var engineRetryTask: Task<Void, Never>?
@@ -465,24 +465,21 @@ final class RcloneJobManager {
     func downloadForPreview(remote: RcloneRemote, entry: RemoteEntry) async throws -> URL {
         guard let client else { throw RcloneRCError.notReachable }
 
-        let cacheKey = SHA256.hash(data: Data("\(remote.name):\(entry.path)".utf8))
-            .prefix(12)
-            .map { String(format: "%02x", $0) }
-            .joined()
+        let cacheKey = Self.previewCacheKey(remoteName: remote.name, entry: entry)
         let directory = FileManager.default.temporaryDirectory
             .appendingPathComponent("rsync-preview", isDirectory: true)
             .appendingPathComponent(cacheKey, isDirectory: true)
         try? FileManager.default.createDirectory(at: directory, withIntermediateDirectories: true)
         let destination = directory.appendingPathComponent(entry.name)
 
-        if let cachedSize = try? FileManager.default.attributesOfItem(atPath: destination.path)[.size] as? Int64,
+        if entry.modTime != nil, let cachedSize = try? FileManager.default.attributesOfItem(atPath: destination.path)[.size] as? Int64,
            cachedSize == entry.size {
             return destination
         }
         try? FileManager.default.removeItem(at: destination)
 
         let group = "preview/\(UUID().uuidString)"
-        let jobid = try await client.startCopyFileJob(
+        let jobid = try await client.startFileJob(
             srcFs: remote.pathPrefix,
             srcRemote: entry.path,
             dstFs: directory.path,
@@ -517,6 +514,11 @@ final class RcloneJobManager {
         }
         try? await client.stopJob(jobid: jobid)
         throw RcloneRCError.http(status: 0, message: "Preview download timed out.")
+    }
+
+    nonisolated static func previewCacheKey(remoteName: String, entry: RemoteEntry) -> String {
+        let identity = "\(remoteName):\(entry.path):\(entry.size):\(entry.modTime?.timeIntervalSince1970.description ?? "unknown")"
+        return SHA256.hash(data: Data(identity.utf8)).prefix(12).map { String(format: "%02x", $0) }.joined()
     }
 
     private nonisolated static func sweepTemporaryCaches() {
@@ -1562,13 +1564,14 @@ final class RcloneJobManager {
                 case .file:
                     let source = Self.fileEndpointComponents(src)
                     let destination = Self.fileEndpointComponents(dst)
-                    jobid = try await client.startCopyFileJob(
+                    jobid = try await client.startFileJob(
                         srcFs: source.fs,
                         srcRemote: source.remote,
                         dstFs: destination.fs,
                         dstRemote: destination.remote,
                         group: group,
-                        config: config
+                        config: config,
+                        operation: job.operation
                     )
                 }
                 if job.state != .running {

@@ -312,7 +312,7 @@ final class RcloneRCClientTests: XCTestCase {
         }
 
         let client = makeClient()
-        let jobID = try await client.startCopyFileJob(
+        let jobID = try await client.startFileJob(
             srcFs: "source:", srcRemote: "one.txt", dstFs: "dest:", dstRemote: "two.txt", group: "job/file", config: ["Checkers": 3]
         )
         XCTAssertEqual(jobID, 8)
@@ -392,6 +392,43 @@ final class RcloneRCClientTests: XCTestCase {
             XCTFail("Expected reachability failure")
         } catch let error as RcloneRCError {
             XCTAssertEqual(error.errorDescription, "The rclone daemon is not reachable.")
+        }
+    }
+
+    func testFileMoveUsesMoveEndpoint() async throws {
+        URLProtocolStub.handler = { request in
+            XCTAssertEqual(request.url?.path, "/operations/movefile")
+            let body = try Self.body(for: request)
+            XCTAssertEqual(body["srcRemote"] as? String, "one.txt")
+            XCTAssertEqual(body["dstRemote"] as? String, "two.txt")
+            return try Self.response(for: request, json: ["jobid": 9])
+        }
+        let jobID = try await makeClient().startFileJob(
+            srcFs: "source:", srcRemote: "one.txt", dstFs: "dest:", dstRemote: "two.txt",
+            group: "job/move", operation: .move
+        )
+        XCTAssertEqual(jobID, 9)
+    }
+
+    func testDragDownloadReusesAuthenticationAndRemovesFailedOutput() async throws {
+        let directory = URL(fileURLWithPath: #filePath).deletingLastPathComponent().deletingLastPathComponent()
+            .appendingPathComponent("tmp/redesign/audit-cloudsync/drag-\(UUID().uuidString)")
+        defer { try? FileManager.default.removeItem(at: directory) }
+        let expectedAuth = "Basic " + Data("fixture:session".utf8).base64EncodedString()
+        URLProtocolStub.handler = { request in
+            XCTAssertEqual(request.value(forHTTPHeaderField: "Authorization"), expectedAuth)
+            if request.url?.path == "/operations/copyfile" {
+                return try Self.response(for: request, status: 401, json: ["error": "rejected"])
+            }
+            return try Self.response(for: request, json: [:])
+        }
+        let item = RemoteFileDragItem(client: makeClient(credentials: .init(username: "fixture", password: "session")),
+                                      srcFs: "fixture:", srcRemote: "one.txt", fileName: "one.txt")
+        do {
+            _ = try await item.download(to: directory)
+            XCTFail("A rejected job must fail the export")
+        } catch {
+            XCTAssertFalse(FileManager.default.fileExists(atPath: directory.path))
         }
     }
 

@@ -51,6 +51,37 @@ final class RcloneJobManagerLogicTests: XCTestCase {
         XCTAssertNil(RcloneJobManager.remoteFolderPath(fromFs: "/Users/me/photo.jpg", transferKind: .file))
     }
 
+    func testNewTransferAppendsASelectedFileToTheDestinationFolder() {
+        let source = EndpointConfig(localPath: "/fixture/photo.txt", localIsFile: true)
+        let local = EndpointConfig(localPath: "/fixture/destination")
+        XCTAssertEqual(local.transferDestination(for: source), "/fixture/destination/photo.txt")
+        let remote = EndpointConfig(kind: .remote, remoteName: "archive", remotePath: "photos")
+        XCTAssertEqual(remote.transferDestination(for: source), "archive:photos/photo.txt")
+        let root = EndpointConfig(kind: .remote, remoteName: "archive")
+        XCTAssertEqual(root.transferDestination(for: source), "archive:photo.txt")
+        let folder = EndpointConfig(localPath: "/fixture/source")
+        XCTAssertEqual(remote.transferDestination(for: folder), "archive:photos")
+    }
+
+    func testAverageSpeedIncludesProgressBeforeResume() {
+        let job = makeJob()
+        job.startedAt = Date(timeIntervalSince1970: 100)
+        job.finishedAt = Date(timeIntervalSince1970: 110)
+        job.resumeBaselineBytes = 100
+        job.stats.bytes = 50
+        job.stats.totalBytes = 50
+        job.expectedBytes = 150
+        XCTAssertEqual(TransferRecord(job: job).averageSpeed, 15)
+        XCTAssertEqual(TransferDetails(job: job).averageSpeed, 15)
+    }
+
+    func testPreviewCacheChangesForSameSizeRemoteEdits() {
+        let old = RemoteEntry(path: "one.txt", name: "one.txt", size: 10, modTime: Date(timeIntervalSince1970: 100), isDir: false, mimeType: "text/plain")
+        let edited = RemoteEntry(path: "one.txt", name: "one.txt", size: 10, modTime: Date(timeIntervalSince1970: 101), isDir: false, mimeType: "text/plain")
+        XCTAssertNotEqual(RcloneJobManager.previewCacheKey(remoteName: "fixture", entry: old),
+                          RcloneJobManager.previewCacheKey(remoteName: "fixture", entry: edited))
+    }
+
     func testRemoteNameOnlyParsesRcloneFileSystems() {
         XCTAssertEqual(RcloneJobManager.remoteName(fromFs: "archive:folder"), "archive")
         XCTAssertEqual(RcloneJobManager.remoteName(fromFs: "archive:"), "archive")

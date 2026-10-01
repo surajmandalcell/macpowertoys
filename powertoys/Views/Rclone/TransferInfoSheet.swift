@@ -14,10 +14,9 @@ struct TransferInfoSheet: View {
     @Environment(\.dismiss) private var dismiss
     @AppStorage("cloudsync.details.selectedTab") private var selectedTab: InfoTab = .overview
     @State private var showTransferPlanInfo = false
-    @State private var isHoveringTransferPlanInfo = false
 
-    private static let gutter: CGFloat = 20
-    private static let cardPadding: CGFloat = 14
+    private static let gutter = OnePlusMetrics.spacing[7]
+    private static let cardPadding = OnePlusMetrics.cardPadding
 
     init(details: TransferDetails) {
         self.recordDetails = details
@@ -120,25 +119,21 @@ struct TransferInfoSheet: View {
                     section("Performance") {
                         VStack(alignment: .leading, spacing: 2) {
                             StepperField(label: "Parallel file transfers", value: settingBinding(job, \.transfersOverride), range: 0...64, format: .number)
-                                .font(.system(size: 13))
-                            Text("0 inherits the remote or global setting.")
-                                .font(.system(size: 11))
-                                .foregroundStyle(.tertiary)
+                                .onePlusText(.row)
+                                .help("0 inherits the remote or global setting.")
                         }
                         VStack(alignment: .leading, spacing: 2) {
                             StepperField(label: "Checkers", value: settingBinding(job, \.checkersOverride), range: 0...128, format: .number)
-                                .font(.system(size: 13))
-                            Text("Parallel comparisons while scanning for changes.")
-                                .font(.system(size: 11))
-                                .foregroundStyle(.tertiary)
+                                .onePlusText(.row)
+                                .help("Parallel comparisons while scanning for changes.")
                         }
                     }
 
-                    section("Upload Order") {
+                    VStack(alignment: .leading, spacing: OnePlusMetrics.spacing[2]) {
                         HStack {
                             Text("Transfer order")
-                                .font(.system(size: 13))
-                                .foregroundStyle(.secondary)
+                                .onePlusText(.row)
+                                .foregroundStyle(OnePlusColor.secondary)
                             Spacer(minLength: 12)
                             OnePlusSelect(
                                 choices: TransferOrder.allCases.map { ($0, $0.displayName) },
@@ -161,9 +156,10 @@ struct TransferInfoSheet: View {
                                       isOn: settingBinding(job, \.compareChecksums))
                     }
 
-                    Text("Changes apply to queued work immediately. A running transfer restarts after a short delay. Completed files stay complete. The active file can restart if its cloud backend cannot resume it.")
-                        .font(.system(size: 11))
-                        .foregroundStyle(.tertiary)
+                    Image(systemName: "info.circle")
+                        .foregroundStyle(OnePlusColor.secondary)
+                        .help("Changes apply to queued work immediately. A running transfer restarts after a short delay. Completed files stay complete. The active file can restart if its cloud backend cannot resume it.")
+                        .accessibilityLabel("About applying transfer settings")
                 }
             }
             .padding(.horizontal, Self.gutter)
@@ -184,17 +180,15 @@ struct TransferInfoSheet: View {
     }
 
     private func settingToggle(_ title: String, caption: String, isOn: Binding<Bool>) -> some View {
-        HStack(alignment: .firstTextBaseline) {
-            VStack(alignment: .leading, spacing: 2) {
-                Text(title)
-                    .font(.system(size: 13))
-                Text(caption)
-                    .font(.system(size: 11))
-                    .foregroundStyle(.tertiary)
-            }
+        HStack {
+            Text(title).onePlusText(.row)
+            Image(systemName: "info.circle")
+                .foregroundStyle(OnePlusColor.secondary)
+                .help(caption)
+                .accessibilityLabel(caption)
             Spacer(minLength: 12)
             Toggle(title, isOn: isOn)
-                .toggleStyle(.switch)
+                .toggleStyle(OnePlusSwitchStyle())
                 .controlSize(.small)
                 .labelsHidden()
         }
@@ -203,27 +197,27 @@ struct TransferInfoSheet: View {
     private func section(_ title: String, @ViewBuilder content: () -> some View) -> some View {
         VStack(alignment: .leading, spacing: 8) {
             Text(title.uppercased())
-                .font(.system(size: 10, weight: .medium))
-                .foregroundStyle(.secondary)
+                .onePlusText(.caption)
+                .foregroundStyle(OnePlusColor.secondary)
 
             VStack(alignment: .leading, spacing: 10) {
                 content()
             }
             .padding(Self.cardPadding)
             .frame(maxWidth: .infinity, alignment: .leading)
-            .background(Color.primary.opacity(0.05))
-            .clipShape(RoundedRectangle(cornerRadius: 12))
+            .background(OnePlusColor.track)
+            .clipShape(RoundedRectangle(cornerRadius: OnePlusMetrics.panelRadius))
         }
     }
 
     private func row(_ label: String, value: String) -> some View {
         HStack(alignment: .firstTextBaseline) {
             Text(label)
-                .font(.system(size: 13))
-                .foregroundStyle(.secondary)
+                .onePlusText(.row)
+                .foregroundStyle(OnePlusColor.secondary)
             Spacer(minLength: 12)
             Text(value)
-                .font(.system(size: 13))
+                .onePlusText(.row)
                 .multilineTextAlignment(.trailing)
                 .textSelection(.enabled)
         }
@@ -232,11 +226,11 @@ struct TransferInfoSheet: View {
     private func monoRow(_ label: String, value: String) -> some View {
         HStack(alignment: .firstTextBaseline) {
             Text(label)
-                .font(.system(size: 13))
-                .foregroundStyle(.secondary)
+                .onePlusText(.row)
+                .foregroundStyle(OnePlusColor.secondary)
             Spacer(minLength: 12)
             Text(value)
-                .font(.system(size: 12, design: .monospaced))
+                .onePlusText(.mono)
                 .multilineTextAlignment(.trailing)
                 .textSelection(.enabled)
         }
@@ -251,14 +245,14 @@ struct TransferInfoSheet: View {
                 .lineLimit(1)
                 .truncationMode(.middle)
             Image(systemName: "arrow.right")
-                .font(.system(size: 10, weight: .semibold))
-                .foregroundStyle(.tertiary)
+                .onePlusText(.caption)
+                .foregroundStyle(OnePlusColor.muted)
             Text(details.destinationDisplay)
                 .lineLimit(1)
                 .truncationMode(.middle)
             Spacer(minLength: 0)
         }
-        .font(.system(size: 13))
+        .onePlusText(.row)
 
         row("Kind", value: details.kind == .directory ? "Folder" : "Single file")
         monoRow("Source", value: details.sourceFs)
@@ -269,14 +263,14 @@ struct TransferInfoSheet: View {
     private var resultRows: some View {
         HStack(alignment: .firstTextBaseline) {
             Text("State")
-                .font(.system(size: 13))
-                .foregroundStyle(.secondary)
+                .onePlusText(.row)
+                .foregroundStyle(OnePlusColor.secondary)
             Spacer(minLength: 12)
             HStack(spacing: 4) {
                 Image(systemName: details.state.icon)
-                    .font(.system(size: 11))
+                    .onePlusText(.caption)
                 Text(details.state.displayName)
-                    .font(.system(size: 13))
+                    .onePlusText(.row)
             }
             .foregroundStyle(details.state.tint)
         }
@@ -284,9 +278,7 @@ struct TransferInfoSheet: View {
         row("Data moved", value: "\(RcloneFormat.bytes(details.bytes)) of \(RcloneFormat.bytes(details.totalBytes))")
         if let job, job.networkBytes > job.displayBytes {
             row("Network attempted", value: RcloneFormat.bytes(job.networkBytes))
-            Text("Network attempts include retried bytes. They do not increase the planned transfer total.")
-                .font(.system(size: 11))
-                .foregroundStyle(.tertiary)
+                .help("Network attempts include retried bytes. They do not increase the planned total.")
         }
         row("Files", value: "\(details.filesTransferred) of \(details.totalFiles)")
         row("Average speed", value: RcloneFormat.speed(details.averageSpeed))
@@ -295,31 +287,23 @@ struct TransferInfoSheet: View {
             HStack {
                 HStack(spacing: 2) {
                     Text("Transfer plan")
-                        .font(.system(size: 13))
-                        .foregroundStyle(.secondary)
+                        .onePlusText(.row)
+                        .foregroundStyle(OnePlusColor.secondary)
 
                     Button {
                         showTransferPlanInfo.toggle()
                     } label: {
                         Image(systemName: "info.circle")
-                            .font(.system(size: 11, weight: .medium))
-                            .foregroundStyle(.secondary)
-                            .frame(width: 24, height: 24)
-                            .background(
-                                RoundedRectangle(cornerRadius: 6)
-                                    .fill(Color.primary.opacity(isHoveringTransferPlanInfo ? 0.06 : 0))
-                            )
-                            .contentShape(Rectangle())
+                            .onePlusText(.caption)
+                            .foregroundStyle(OnePlusColor.secondary)
                     }
-                    .buttonStyle(.plain)
-                    .focusEffectDisabled()
+                    .buttonStyle(OnePlusButtonStyle(.icon, size: .small))
                     .accessibilityLabel("About transfer plan")
-                    .onHover { isHoveringTransferPlanInfo = $0 }
                     .help("About the transfer plan")
                     .popover(isPresented: $showTransferPlanInfo) {
                         Text("Runs an rclone dry comparison. The total only grows when new work is found.")
-                            .font(.system(size: 11))
-                            .foregroundStyle(.secondary)
+                            .onePlusText(.caption)
+                            .foregroundStyle(OnePlusColor.secondary)
                             .frame(width: 220, alignment: .leading)
                             .padding(12)
                     }
@@ -330,8 +314,8 @@ struct TransferInfoSheet: View {
                         ProgressView()
                             .controlSize(.small)
                         Text("Comparing")
-                            .font(.system(size: 12))
-                            .foregroundStyle(.secondary)
+                            .onePlusText(.row)
+                            .foregroundStyle(OnePlusColor.secondary)
                     }
                     .fixedSize()
                 } else {
@@ -341,8 +325,8 @@ struct TransferInfoSheet: View {
             }
             if let error = job.recalculationError {
                 Text(error)
-                    .font(.system(size: 11))
-                    .foregroundStyle(.red)
+                    .onePlusText(.caption)
+                    .foregroundStyle(OnePlusColor.danger)
             }
         }
 
@@ -352,8 +336,8 @@ struct TransferInfoSheet: View {
 
         if let message = details.errorMessage {
             Text(message)
-                .font(.system(size: 11))
-                .foregroundStyle(.red)
+                .onePlusText(.caption)
+                .foregroundStyle(OnePlusColor.danger)
                 .textSelection(.enabled)
         }
 
@@ -371,12 +355,12 @@ struct TransferInfoSheet: View {
     private var ignoreRuleRows: some View {
         if details.excludePatterns.isEmpty {
             Text("None")
-                .font(.system(size: 12))
-                .foregroundStyle(.tertiary)
+                .onePlusText(.row)
+                .foregroundStyle(OnePlusColor.muted)
         } else {
             ForEach(details.excludePatterns, id: \.self) { pattern in
                 Text(pattern)
-                    .font(.system(size: 11, design: .monospaced))
+                    .onePlusText(.mono)
                     .textSelection(.enabled)
             }
         }
@@ -398,14 +382,13 @@ private struct TransferChangesTab: View {
                 VStack(alignment: .leading, spacing: 3) {
                     Text("CHANGED FILES AUDIT")
                         .utilitySectionHeader()
-                    Text("The latest source-folder changes observed after this transfer was added.")
-                        .font(.system(size: 11))
-                        .foregroundStyle(.secondary)
+                        .help("The latest source-folder changes observed after this transfer was added.")
+
                 }
                 Spacer()
                 Text("\(entries.count) / 100")
-                    .font(.system(size: 11))
-                    .foregroundStyle(.tertiary)
+                    .onePlusText(.caption)
+                    .foregroundStyle(OnePlusColor.muted)
                     .monospacedDigit()
             }
 
@@ -435,7 +418,7 @@ private struct TransferChangesTab: View {
     private func changeRow(_ entry: LocalChangeRecord) -> some View {
         HStack(alignment: .top, spacing: 10) {
             Image(systemName: entry.kind.icon)
-                .font(.system(size: 13, weight: .medium))
+                .onePlusText(.cardTitle)
                 .foregroundStyle(changeTint(entry.kind))
                 .frame(width: 24, height: 24)
                 .background(changeTint(entry.kind).opacity(0.1))
@@ -443,25 +426,25 @@ private struct TransferChangesTab: View {
 
             VStack(alignment: .leading, spacing: 3) {
                 Text(entry.relativePath)
-                    .font(.system(size: 12, design: .monospaced))
+                    .onePlusText(.mono)
                     .lineLimit(2)
                     .textSelection(.enabled)
                 Text("\(entry.kind.displayName) · \(entry.operation.displayName) · \(entry.sourceDisplay)")
-                    .font(.system(size: 10))
-                    .foregroundStyle(.secondary)
+                    .onePlusText(.caption)
+                    .foregroundStyle(OnePlusColor.secondary)
                     .lineLimit(1)
             }
 
             Spacer(minLength: 12)
 
             Text(entry.timestamp.formatted(date: .abbreviated, time: .shortened))
-                .font(.system(size: 10))
-                .foregroundStyle(.tertiary)
+                .onePlusText(.caption)
+                .foregroundStyle(OnePlusColor.muted)
                 .multilineTextAlignment(.trailing)
                 .fixedSize(horizontal: true, vertical: false)
         }
         .padding(10)
-        .background(Color.primary.opacity(0.04))
+        .background(OnePlusColor.track)
         .clipShape(RoundedRectangle(cornerRadius: 10))
     }
 
@@ -513,7 +496,7 @@ struct TransferDetails {
         totalFiles = job.effectiveTotalFiles
         attempts = job.attempt
         if let duration = job.duration, duration > 0 {
-            averageSpeed = Double(job.stats.bytes) / duration
+            averageSpeed = Double(job.displayBytes) / duration
         } else {
             averageSpeed = job.stats.speed
         }
