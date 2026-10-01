@@ -17,13 +17,13 @@ final class FanControlTests: XCTestCase {
             return FanSnapshot(fans: [FanReading(index: 0, actualRPM: Double(value), maximumRPM: 5_000, mode: "auto")],
                                profile: "auto", canControl: true)
         })
-        @MainActor func observe() {
+        @MainActor @Sendable func observe() async {
             withObservationTracking { _ = service.display } onChange: {
                 publications.withLock { $0.append(.now) }
-                Task { @MainActor in observe() }
+                Task { @MainActor in await observe() }
             }
         }
-        observe()
+        await observe()
         service.start(owner: "fan-display-cap-test")
         defer { service.stop(owner: "fan-display-cap-test") }
         for _ in 0..<80 {
