@@ -163,6 +163,19 @@ final class SystemMonitorTests: XCTestCase {
         }
     }
 
+    func testSubprocessDefaultOutputIsBounded() async throws {
+        do {
+            _ = try await SSHProcessRunner.run(
+                executableURL: URL(fileURLWithPath: "/bin/sh"),
+                arguments: ["-c", "/bin/dd if=/dev/zero bs=65536 count=65 2>/dev/null"],
+                timeout: 5
+            )
+            XCTFail("Default subprocess output exceeded 4 MiB")
+        } catch SSHKeyAccessError.outputLimit {
+            // Every caller receives a cap, including SSH key setup.
+        }
+    }
+
     func testMonitorSubprocessHasDeadline() async throws {
         do {
             _ = try await SSHProcessRunner.run(

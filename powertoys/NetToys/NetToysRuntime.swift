@@ -54,9 +54,10 @@ nonisolated enum SSHProcessRunner {
         arguments: [String],
         environment: [String: String] = baseEnvironment(),
         standardInput: Data? = nil,
-        maximumOutputBytes: Int? = nil,
+        maximumOutputBytes: Int = 4 * 1_024 * 1_024,
         timeout: TimeInterval
     ) async throws -> SSHProcessResult {
+        guard maximumOutputBytes > 0 else { throw SSHKeyAccessError.outputLimit }
         let worker = Task.detached(priority: .userInitiated) {
             let process = Process()
             let output = Pipe()
@@ -74,10 +75,10 @@ nonisolated enum SSHProcessRunner {
                 throw SSHKeyAccessError.processLaunchFailed(error.localizedDescription)
             }
             let outputReader = Task.detached {
-                read(output.fileHandleForReading, maximumBytes: maximumOutputBytes)
+                read(output.fileHandleForReading, maximumBytes: maximumOutputBytes, process: process)
             }
             let errorReader = Task.detached {
-                read(error.fileHandleForReading, maximumBytes: maximumOutputBytes)
+                read(error.fileHandleForReading, maximumBytes: maximumOutputBytes, process: process)
             }
             if let standardInput, let input {
                 input.fileHandleForWriting.write(standardInput)
@@ -116,15 +117,16 @@ nonisolated enum SSHProcessRunner {
         }
     }
 
-    private static func read(_ handle: FileHandle, maximumBytes: Int?) -> (data: Data, exceeded: Bool) {
+    private static func read(_ handle: FileHandle, maximumBytes: Int, process: Process) -> (data: Data, exceeded: Bool) {
         var data = Data()
         var exceeded = false
         while true {
-            let chunk = handle.readData(ofLength: 8_192)
+            let chunk = autoreleasepool { handle.readData(ofLength: 8_192) }
             if chunk.isEmpty { break }
-            let remaining = maximumBytes.map { max($0 - data.count, 0) } ?? chunk.count
+            let remaining = max(maximumBytes - data.count, 0)
             data.append(chunk.prefix(remaining))
             exceeded = exceeded || chunk.count > remaining
+            if exceeded, process.isRunning { process.terminate() }
         }
         return (data, exceeded)
     }
@@ -321,7 +323,7 @@ nonisolated enum TailscalePeerCatalog {
                 var data = Data()
                 var exceeded = false
                 while true {
-                    let chunk = output.fileHandleForReading.readData(ofLength: 8_192)
+                    let chunk = autoreleasepool { output.fileHandleForReading.readData(ofLength: 8_192) }
                     if chunk.isEmpty { break }
                     let remaining = max(maximumOutputBytes - data.count, 0)
                     data.append(contentsOf: chunk.prefix(remaining))
