@@ -4,6 +4,7 @@ import ServiceManagement
 import SwiftUI
 
 struct FanControlView: View {
+    nonisolated private static let presetChoices = FanPreset.allCases.map { (Optional($0), $0.rawValue) }
     let owner: String
     var compact = false
 
@@ -12,46 +13,8 @@ struct FanControlView: View {
     @Environment(\.colorSchemeContrast) private var contrast
     @Environment(\.onePlusIsVisible) private var isVisible
 
-    private var rpm: String {
-        service.snapshot?.averageRPM.map { $0.formatted() + " RPM" } ?? "— RPM"
-    }
-
-    private var utilization: String {
-        service.snapshot?.utilization.map { "\($0)%" } ?? "—%"
-    }
-
-    private var detail: String {
-        if let error = service.errorMessage { return error }
-        guard let snapshot = service.snapshot else { return "Fan data unavailable" }
-        guard !snapshot.fans.isEmpty else { return "No fans detected" }
-        if service.selectedPreset == nil, snapshot.hasExternalManualControl {
-            return service.canRestoreAutomatic
-                ? "Manual fan speed set elsewhere · Auto restores macOS"
-                : "Manual fan speed set elsewhere · read only"
-        }
-        if activePreset == .auto { return "Auto follows macOS" }
-        guard service.canControl else {
-            if service.canRestoreAutomatic {
-                return snapshot.hasExternalManualControl
-                    ? "Manual control active · Auto restores macOS"
-                    : "Fan helper unavailable · try Auto"
-            }
-            if service.needsApproval { return "Allow MacPowerToys in Login Items" }
-            if service.needsHelperUpdate { return "Update the built-in fan helper" }
-            if snapshot.fans.contains(where: { $0.mode?.hasPrefix("unknown") == true }) {
-                return "Fan control unavailable on this Mac"
-            }
-            return snapshot.hasExternalManualControl
-                ? "Manual fan speed set elsewhere · read only"
-                : "Read only · enable built-in fan control"
-        }
-        switch service.selectedPreset {
-        case .auto: return "Controlled by macOS"
-        case .cool: return "Cooling boost · Auto in 10 minutes"
-        case .max: return "Maximum cooling"
-        case nil: return "Manual control active"
-        }
-    }
+    private var display: FanControlPresentation { service.display }
+    private var detail: String { display.detail }
 
     var body: some View {
         VStack(alignment: .leading, spacing: compact ? 6 : 12) {
@@ -74,7 +37,7 @@ struct FanControlView: View {
             }
         }
         .onDisappear { service.stop(owner: owner) }
-        .onChange(of: service.canControl) { _, canControl in
+        .onChange(of: display.canControl) { _, canControl in
             if canControl { showsSetup = false }
         }
         .popover(isPresented: $showsSetup, arrowEdge: .bottom) { setupPopover }
@@ -83,13 +46,13 @@ struct FanControlView: View {
     private var compactContent: some View {
         OnePlusMenuControlRow("Fan", systemImage: "fanblades", status: compactStatus) {
             HStack(spacing: 2) {
-                if service.errorMessage != nil || (service.hasCompletedRead && !service.canControl) {
+                if display.hasError || (display.hasCompletedRead && !display.canControl) {
                     Button { showsSetup = true } label: {
                         Image(systemName: "exclamationmark.triangle")
                             .foregroundStyle(OnePlusColor.warn)
                     }
                     .buttonStyle(OnePlusButtonStyle(.icon, size: .small))
-                    .accessibilityLabel(service.errorMessage == nil ? "Set up fan control" : "Fan control issue")
+                    .accessibilityLabel(!display.hasError ? "Set up fan control" : "Fan control issue")
                     .accessibilityHint(detail)
                     .accessibilityIdentifier("fan-control.setup")
                     .help(detail)
@@ -101,12 +64,12 @@ struct FanControlView: View {
     }
 
     private var compactStatus: String {
-        return "\(rpm) · \(utilization)"
+        display.status
     }
 
     private var setupPopover: some View {
         VStack(alignment: .leading, spacing: OnePlusMetrics.spacing[5]) {
-            Label(service.errorMessage == nil ? "Enable fan control" : "Fan control issue", systemImage: "fanblades")
+            Label(!display.hasError ? "Enable fan control" : "Fan control issue", systemImage: "fanblades")
                 .font(.system(size: 14, weight: .semibold))
             Text(detail)
                 .font(.system(size: 11))
@@ -116,18 +79,18 @@ struct FanControlView: View {
                 .font(.system(size: 11))
                 .foregroundStyle(.secondary)
                 .fixedSize(horizontal: false, vertical: true)
-            if service.canRestoreAutomatic && !service.canControl {
+            if display.canRestoreAutomatic && !display.canControl {
                 Button("Restore Auto") { service.select(.auto) }
                     .taskManagerControl()
-                    .disabled(service.isChanging)
+                    .disabled(display.isChanging)
                     .help("Return fan control to macOS")
             }
             HStack(spacing: 8) {
-                if service.needsApproval {
+                if display.needsApproval {
                     Button("Open Login Items") { SMAppService.openSystemSettingsLoginItems() }
                         .taskManagerControl(.primary)
-                } else if !service.canControl {
-                    Button(service.needsHelperUpdate ? "Update Fan Helper" : "Enable Fan Control") {
+                } else if !display.canControl {
+                    Button(display.needsHelperUpdate ? "Update Fan Helper" : "Enable Fan Control") {
                         Task { await service.enableControl() }
                     }
                     .taskManagerControl(.primary)
@@ -148,7 +111,7 @@ struct FanControlView: View {
     private var expandedContent: some View {
         VStack(spacing: 0) {
             OnePlusCardHeader("Fan", systemImage: "fanblades") {
-                Text("\(rpm) · \(utilization)")
+                Text(display.status)
                     .font(.system(size: 10, design: .monospaced))
                     .foregroundStyle(TaskManagerTheme.secondary)
             }
@@ -160,7 +123,7 @@ struct FanControlView: View {
                 Toggle("Fan control", isOn: fanControlBinding)
                     .labelsHidden()
                     .toggleStyle(OnePlusSwitchStyle())
-                    .disabled(service.isChanging)
+                    .disabled(display.isChanging)
                     .accessibilityIdentifier("fan-control.enabled")
             }
             OnePlusSettingRow(
@@ -176,12 +139,12 @@ struct FanControlView: View {
 
     private var fanControlBinding: Binding<Bool> {
         Binding(
-            get: { service.selectedPreset != nil && service.selectedPreset != .auto },
+            get: { display.selectedPreset != nil && display.selectedPreset != .auto },
             set: { enabled in
                 if enabled {
-                    if service.canControl { service.select(.cool) }
+                    if display.canControl { service.select(.cool) }
                     else { showsSetup = true }
-                } else if service.canControl || service.canRestoreAutomatic {
+                } else if display.canControl || display.canRestoreAutomatic {
                     service.select(.auto)
                 }
             }
@@ -189,14 +152,11 @@ struct FanControlView: View {
     }
 
     private var activePreset: FanPreset? {
-        Self.reportedPreset(service.snapshot, selectedPreset: service.selectedPreset)
+        display.activePreset
     }
 
     nonisolated static func reportedPreset(_ snapshot: FanSnapshot?, selectedPreset: FanPreset?) -> FanPreset? {
-        if let selectedPreset { return selectedPreset }
-        guard let snapshot, !snapshot.fans.isEmpty else { return nil }
-        if let detected = snapshot.detectedPreset { return detected }
-        return snapshot.fans.allSatisfy { ["auto", "system"].contains($0.mode?.lowercased() ?? "") } ? .auto : nil
+        FanControlPresentation.reportedPreset(snapshot, selectedPreset: selectedPreset)
     }
 
     private var presetBinding: Binding<FanPreset?> {
@@ -208,13 +168,13 @@ struct FanControlView: View {
 
     private var presetButtons: some View {
         OnePlusSegmented(
-            choices: FanPreset.allCases.map { (Optional($0), $0.rawValue) },
+            choices: Self.presetChoices,
             selection: presetBinding,
-            accessibilityLabel: "Fan preset"
+            accessibilityLabel: "Fan preset",
+            isChoiceEnabled: { display.canSelect($0) }
         )
         .onePlusDensity(.compact)
-        .disabled(service.isChanging || !service.canControl)
+        .disabled(display.isChanging)
         .help("Auto follows macOS. Cool boosts cooling for 10 minutes. Max runs fans at their hardware maximum.")
-
     }
 }
