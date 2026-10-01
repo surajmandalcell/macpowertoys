@@ -164,14 +164,8 @@ struct SystemMonitorWindowView: View {
             OnePlusPage(scrolls: false) {
                 header
             } content: {
-                Group {
-                    if isWindowActive {
-                        pageContent
-                    } else {
-                        Color.clear.accessibilityHidden(true)
-                    }
-                }
-                .frame(maxWidth: .infinity, maxHeight: .infinity)
+                pageContent
+                    .frame(maxWidth: .infinity, maxHeight: .infinity)
             }
             .background(TaskManagerVisibilityBinding(isVisible: $isWindowActive))
         }

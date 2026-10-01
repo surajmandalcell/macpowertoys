@@ -188,6 +188,7 @@ struct SystemMonitorOverviewProcessesView: View {
 
     @State private var sampler = SystemMonitorProcessSampler()
     @State private var rows: [SystemMonitorProcessHierarchy.Row] = []
+    @Environment(\.onePlusIsVisible) private var isVisible
 
     var body: some View {
         VStack(alignment: .leading, spacing: 10) {
@@ -240,7 +241,10 @@ struct SystemMonitorOverviewProcessesView: View {
                 .frame(height: 203, alignment: .top)
             }
         }
-        .task { await sample() }
+        .task(id: isVisible) {
+            guard isVisible else { return }
+            await sample()
+        }
     }
 
     private func sample() async {
@@ -262,6 +266,7 @@ struct SystemMonitorOverviewProcessesView: View {
 }
 
 struct SystemMonitorProcessesView: View {
+    @Environment(\.onePlusIsVisible) private var isVisible
     @AppStorage("systemMonitor.processSortColumn") private var sortColumn = ProcessSortColumn.cpu.rawValue
     @AppStorage("systemMonitor.processSortDescending") private var descending = true
     @AppStorage("systemMonitor.processHierarchy") private var storedHierarchy = false
@@ -321,9 +326,18 @@ struct SystemMonitorProcessesView: View {
             processTable
         }
         .foregroundStyle(TaskManagerTheme.ink)
-        .task { await sampleProcesses() }
-        .task(id: rowsRequest) { await prepareVisibleRows(rowsRequest) }
-        .task(id: selectedID) { await sampleEndpoints() }
+        .task(id: isVisible) {
+            guard isVisible else { return }
+            await sampleProcesses()
+        }
+        .task(id: rowsRequest) {
+            guard isVisible else { return }
+            await prepareVisibleRows(rowsRequest)
+        }
+        .task(id: isVisible ? selectedID : nil) {
+            guard isVisible else { return }
+            await sampleEndpoints()
+        }
         .sheet(isPresented: Binding(
             get: { selectedID != nil },
             set: { if !$0 { selectedID = nil } }
