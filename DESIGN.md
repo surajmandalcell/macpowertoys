@@ -40,6 +40,7 @@ geometry:
   title-row: 54
   centerline: 27            # traffic lights and sidebar title only
   content-top: 16           # page title first line box top (owner 2026-09-30); sidebar content starts at 54
+  dot-title-cap-offset: 1   # optical offset within the regular page-title line box
   applet-titlebar: 40
   applet-centerline: 22
   sidebar-title-gap-after-zoom: 14
@@ -195,7 +196,9 @@ the title reads as part of the titlebar row and never pokes above it.
 low.) Task Manager's dot-matrix title has no ascender space, so its glyph
 top aligns with the cap top of the text titles in the other windows, never
 above it (owner correction 2026-10-01: its header sat above the sidebar
-title row). Measure the painted pixels, not the frames.
+title row). Center the 20 pt dot canvas in the regular 28.8 pt title line
+box with the 1 pt optical cap offset. Measure the painted pixels, not the
+frames.
 The subtitle follows 2 pt below the title line, tabs follow, and the
 first content element starts 16 pt below them (about y = 80 on a page with a
 subtitle and tabs). Header actions center on the page title's first line.

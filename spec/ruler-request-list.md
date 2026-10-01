@@ -45,6 +45,10 @@ Update this list whenever Ruler requirements or verification results change.
 
 ## Verification record
 
+- The 2026-10-01 chrome audit did not open Ruler. Its deep-link action calls
+  `openFreeRuler()`, which activates the app. The production pass forbids
+  taking focus. Ruler keeps its native chrome and is outside the shared fix.
+
 - Hosted redesign run `36741797887` at `b3d55c3c` passed
   `RulerCoreTests`. All 995 executed unit tests passed, with five skips
   and no failures. Signed Ruler window checks remain with the orchestrator.

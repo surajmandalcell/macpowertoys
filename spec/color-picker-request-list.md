@@ -10,6 +10,11 @@ direct user correction or verified result changes a status.
 
 ## OnePlusUI redesign, 2026-09-29
 
+The 2026-10-01 shared chrome fix preserves native button frames and moves
+the enclosing titlebar container with its tracking areas. Package checks pass
+for the 22pt applet centerline in both appearances. Signed pointer hover
+checks remain with the orchestrator. See `tmp/redesign/logs/w1-chrome.md`.
+
 Foundation round 10 gates history-row focus fill on the shared live policy.
 Full Keyboard Access or VoiceOver can expose keyboard actions. All 72 package
 tests, Debug, and desktop build-for-testing pass. Signed history interaction
