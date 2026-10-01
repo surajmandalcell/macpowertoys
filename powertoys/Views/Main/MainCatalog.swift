@@ -21,11 +21,11 @@ enum MainSettingsTab: String, CaseIterable {
 enum MainPageRoute: Equatable {
     case catalog(MainCatalogFilter), settings(MainSettingsTab), modified, tool(String)
 
-    static func resolve(_ page: String, toolIDs: [String]) -> Self? {
+    static func resolve(_ page: String, toolIDs: [String], savedSettingsTab: String = MainSettingsTab.general.rawValue) -> Self? {
         switch page {
         case "all-tools": return .catalog(.all)
         case "favorites": return .catalog(.favorites)
-        case "settings": return .settings(.general)
+        case "settings": return .settings(MainSettingsTab(rawValue: savedSettingsTab) ?? .general)
         case "settings-marketplace": return .settings(.marketplace)
         case "settings-about": return .settings(.about)
         case "modified": return .modified
