@@ -4,6 +4,43 @@ import XCTest
 
 @MainActor
 final class AppletHistoryUndoTests: XCTestCase {
+    func testSnapshotEncodingFailureRetainsCurrentStateForRetry() async throws {
+        let suite = "ColorPersistenceFailure.\(UUID().uuidString)"
+        let defaults = UserDefaults(suiteName: suite)!
+        defer { defaults.removePersistentDomain(forName: suite) }
+        let pasteboard = NSPasteboard(name: NSPasteboard.Name(suite))
+        defer { pasteboard.clearContents() }
+        let service = ColorPickerService(defaults: defaults, sampler: HistoryUndoSampler(), pasteboard: pasteboard)
+        let originalProject = try XCTUnwrap(service.createProject(named: "Original"))
+        service.add(ColorSample(red: 1, green: 0, blue: 0, alpha: 1))
+        try await service.flushPersistence()
+        let savedHistory = defaults.data(forKey: "color-picker.history.v1")
+        let savedProjects = defaults.data(forKey: "color-picker.projects.v1")
+
+        let invalid = ColorSample(red: 0, green: 1, blue: 0, alpha: 1,
+                                  createdAt: Date(timeIntervalSinceReferenceDate: .infinity))
+        service.add(invalid)
+        let newProject = try XCTUnwrap(service.createProject(named: "Retained"))
+        let retainedHistory = service.history
+        for _ in 0..<2 {
+            do {
+                try await service.flushPersistence()
+                XCTFail("An unencodable snapshot must cancel shutdown")
+            } catch EncodingError.invalidValue {
+                // Keep Open and repeated Retry preserve both current arrays.
+            }
+            XCTAssertEqual(service.history, retainedHistory)
+            XCTAssertEqual(service.projects, [originalProject, newProject])
+            XCTAssertEqual(defaults.data(forKey: "color-picker.history.v1"), savedHistory)
+            XCTAssertEqual(defaults.data(forKey: "color-picker.projects.v1"), savedProjects)
+        }
+        service.remove(invalid.id)
+        try await service.flushPersistence()
+        let restored = ColorPickerService(defaults: defaults, sampler: HistoryUndoSampler())
+        XCTAssertEqual(restored.history, service.history)
+        XCTAssertEqual(restored.projects, [originalProject, newProject])
+    }
+
     func testHistoryUndoPreservesRecordsOrderProjectsAndNewArrivals() async throws {
         let suite = "audit-applets-r11.undo.\(UUID().uuidString)"
         let defaults = UserDefaults(suiteName: suite)!
@@ -54,7 +91,7 @@ final class AppletHistoryUndoTests: XCTestCase {
         XCTAssertTrue(color.history[0].id == newPick.id && color.history[0].projectID == nil)
         manager.redo(); XCTAssertTrue(color.projects == [project, createdProject] && color.selectedProjectID == createdProject.id)
         XCTAssertTrue(color.history[0] == newPick)
-        await color.flushPersistence()
+        try await color.flushPersistence()
         let restored = ColorPickerService(defaults: defaults, sampler: HistoryUndoSampler())
         XCTAssertTrue(restored.history == color.history && restored.projects == color.projects)
         XCTAssertTrue(restored.selectedProjectID == color.selectedProjectID)

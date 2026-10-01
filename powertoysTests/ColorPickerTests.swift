@@ -41,7 +41,7 @@ final class ColorPickerTests: XCTestCase {
         XCTAssertEqual(service.samples(in: website.id).count, 1)
         XCTAssertEqual(service.samples(in: app.id).count, 1)
         XCTAssertEqual(service.selectedProjectID, app.id)
-        await service.flushPersistence()
+        try await service.flushPersistence()
     }
 
     func testProjectsAndSelectionPersist() async throws {
@@ -50,7 +50,7 @@ final class ColorPickerTests: XCTestCase {
         let project = try XCTUnwrap(service.createProject(named: "Brand"))
         service.add(ColorSample(red: 0.1, green: 0.2, blue: 0.3, alpha: 1))
 
-        await service.flushPersistence()
+        try await service.flushPersistence()
         let restored = ColorPickerService(defaults: defaults)
 
         XCTAssertEqual(restored.projects, [project])
@@ -68,7 +68,7 @@ final class ColorPickerTests: XCTestCase {
         service.togglePin(service.history[0].id)
 
         service.clearAll()
-        await service.flushPersistence()
+        try await service.flushPersistence()
         let restored = ColorPickerService(defaults: defaults)
 
         XCTAssertTrue(service.history.isEmpty)
@@ -86,7 +86,7 @@ final class ColorPickerTests: XCTestCase {
         service.togglePin(history[0].id)
         service.togglePin(history[1].id)
         service.togglePin(history[0].id)
-        await service.flushPersistence()
+        try await service.flushPersistence()
         let restored = ColorPickerService(defaults: serviceDefaults, sampler: ColorSamplerStub())
         XCTAssertEqual(restored.history, service.history)
         XCTAssertEqual(restored.history.count, 10_000)
