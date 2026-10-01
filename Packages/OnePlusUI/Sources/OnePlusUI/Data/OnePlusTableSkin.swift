@@ -108,6 +108,9 @@ private struct OnePlusTableConfigurator: NSViewRepresentable {
 /// Paint the shared line above their backgrounds, without replacing their delegate.
 final class OnePlusTableLines: NSView {
     private weak var table: NSTableView?
+    private weak var hoveredRow: NSTableRowView?
+    private var restingBackground: NSColor?
+    private var hoverArea: NSTrackingArea?
     init(table: NSTableView) {
         self.table = table
         super.init(frame: table.bounds)
@@ -119,7 +122,31 @@ final class OnePlusTableLines: NSView {
     @available(*, unavailable) required init?(coder: NSCoder) { fatalError() }
     override var isFlipped: Bool { true }
     override func hitTest(_ point: NSPoint) -> NSView? { nil }
-    override func viewDidChangeEffectiveAppearance() { super.viewDidChangeEffectiveAppearance(); needsDisplay = true }
+    override func updateTrackingAreas() {
+        super.updateTrackingAreas()
+        if let hoverArea { removeTrackingArea(hoverArea) }
+        let area = NSTrackingArea(rect: .zero, options: [.mouseMoved, .mouseEnteredAndExited, .activeAlways, .inVisibleRect], owner: self)
+        addTrackingArea(area); hoverArea = area
+    }
+    override func mouseEntered(with event: NSEvent) { mouseMoved(with: event) }
+    override func mouseMoved(with event: NSEvent) {
+        guard let table else { return }
+        setHoveredRow(table.row(at: table.convert(event.locationInWindow, from: nil)))
+    }
+    override func mouseExited(with event: NSEvent) { setHoveredRow(-1) }
+    func setHoveredRow(_ index: Int) {
+        let next = index >= 0 ? table?.rowView(atRow: index, makeIfNecessary: false) : nil
+        guard next !== hoveredRow else { return }
+        if let hoveredRow, let restingBackground { hoveredRow.backgroundColor = restingBackground }
+        hoveredRow = next
+        restingBackground = next?.backgroundColor
+        next?.backgroundColor = NSColor(OnePlusColor.raised)
+    }
+    override func viewDidChangeEffectiveAppearance() {
+        super.viewDidChangeEffectiveAppearance()
+        hoveredRow?.backgroundColor = NSColor(OnePlusColor.raised)
+        needsDisplay = true
+    }
     override func draw(_ dirtyRect: NSRect) {
         guard let table else { return }
         let rows = table.rows(in: dirtyRect)

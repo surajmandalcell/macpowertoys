@@ -78,12 +78,10 @@ public struct OnePlusTabStrip<Value: Hashable, Tools: View>: View {
             ForEach(tabs) { tab in
                 Button { selection = tab.id } label: {
                     HStack(spacing: 6) {
-                        Text(tab.title).onePlusText(.tab, selected: selection == tab.id)
+                        Text(tab.title)
                         if let count = tab.count { OnePlusNavBadge(count, minimumDigits: tab.countDigits) }
-                    }.frame(height: 36)
-                        .overlay(alignment: .bottom) { Rectangle().fill(selection == tab.id ? OnePlusColor.accent : .clear).frame(height: 2) }
-                        .contentShape(Rectangle())
-                }.buttonStyle(OnePlusInteractionStyle())
+                    }
+                }.buttonStyle(OnePlusTabButtonStyle(selected: selection == tab.id))
                     .accessibilityAddTraits(selection == tab.id ? .isSelected : [])
             }
             Spacer(minLength: 8)
@@ -99,6 +97,45 @@ public struct OnePlusTabStrip<Value: Hashable, Tools: View>: View {
                                                                direction: direction == .left || direction == .up ? -1 : 1) { selection = next }
         }
         .accessibilityElement(children: .contain).accessibilityLabel("Pages")
+    }
+}
+
+struct OnePlusTabButtonStyle: ButtonStyle {
+    let selected: Bool
+    func makeBody(configuration: Configuration) -> some View {
+        OnePlusTabButtonBody(label: configuration.label, selected: selected, pressed: configuration.isPressed)
+    }
+}
+
+private struct OnePlusTabButtonBody<Label: View>: View {
+    let label: Label
+    let selected: Bool
+    let pressed: Bool
+    @Environment(\.isEnabled) private var enabled
+    @Environment(\.isFocused) private var focused
+    @Environment(\.onePlusControlState) private var sample
+    @State private var hover = false
+    private var hovering: Bool { enabled && (hover || sample == .hover) }
+    private var pressing: Bool { enabled && (pressed || sample == .pressed) }
+    var body: some View {
+        label.onePlusText(.tab, color: selected || hovering ? OnePlusColor.ink : OnePlusColor.secondary)
+            .background {
+                RoundedRectangle(cornerRadius: OnePlusMetrics.navRowRadius)
+                    .fill(pressing ? OnePlusColor.pressed : hovering ? OnePlusColor.raised : .clear)
+                    .padding(.horizontal, -8).padding(.vertical, -4)
+                    .allowsHitTesting(false)
+            }
+            .frame(height: 36)
+            .overlay(alignment: .bottom) {
+                OnePlusColor.accent.frame(height: 2).opacity(selected ? 1 : 0)
+            }
+            .overlay {
+                if enabled && focused && OnePlusFocusPolicy.shared.showsFocus {
+                    RoundedRectangle(cornerRadius: OnePlusMetrics.navRowRadius).strokeBorder(OnePlusColor.focus, lineWidth: 1)
+                }
+            }
+            .contentShape(Rectangle()).opacity(enabled ? 1 : OnePlusMetrics.disabledOpacity)
+            .onHover { hover = $0 }
     }
 }
 

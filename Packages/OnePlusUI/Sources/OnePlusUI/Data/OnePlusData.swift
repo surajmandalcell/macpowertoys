@@ -8,7 +8,10 @@ public struct OnePlusMetricTile<Chart: View>: View {
     let caption: String?
     let action: (() -> Void)?
     let chart: Chart
+    @Environment(\.isEnabled) private var enabled
+    @Environment(\.onePlusControlState) private var sample
     @State private var hover = false
+    private var hovering: Bool { enabled && (hover || sample == .hover) }
     public init(_ title: String, systemImage: String, value: String, unit: String = "", caption: String? = nil,
                 action: (() -> Void)? = nil, @ViewBuilder chart: () -> Chart) {
         self.title = title; icon = systemImage; self.value = value; self.unit = unit
@@ -22,22 +25,26 @@ public struct OnePlusMetricTile<Chart: View>: View {
     }
     private var tile: some View {
         VStack(alignment: .leading, spacing: 8) {
-            HStack(spacing: 8) {
-                Image(systemName: icon).font(.system(size: 13)).foregroundStyle(OnePlusColor.secondary).accessibilityHidden(true)
-                Text(title).onePlusText(.cardTitle)
-                Spacer()
-                Image(systemName: "chevron.right").font(.system(size: 9)).foregroundStyle(OnePlusColor.muted)
-                    .opacity(action != nil && hover ? 1 : 0).accessibilityHidden(true)
+            VStack(alignment: .leading, spacing: 2) {
+                HStack(spacing: 8) {
+                    Image(systemName: icon).font(.system(size: 13)).foregroundStyle(OnePlusColor.secondary).accessibilityHidden(true)
+                    Text(title).onePlusText(.cardTitle)
+                    Spacer(minLength: 8)
+                    HStack(alignment: .firstTextBaseline, spacing: 4) {
+                        Text(value).onePlusText(.metric)
+                        Text(unit).onePlusText(.unit)
+                    }
+                    if action != nil {
+                        Image(systemName: "chevron.right").font(.system(size: 9))
+                            .foregroundStyle(hovering ? OnePlusColor.ink : OnePlusColor.muted).accessibilityHidden(true)
+                    }
+                }
+                if let caption { Text(caption).onePlusText(.caption).lineLimit(1).help(caption) }
             }
-            HStack(alignment: .firstTextBaseline, spacing: 4) {
-                Text(value).onePlusText(.metric)
-                Text(unit).onePlusText(.unit)
-            }
-            if let caption { Text(caption).onePlusText(.caption).lineLimit(1).help(caption) }
             chart
         }
-        .padding(16).frame(maxWidth: .infinity, alignment: .leading)
-        .background(action != nil && hover ? OnePlusColor.panelHover : OnePlusColor.panel)
+        .padding(16).frame(maxWidth: .infinity, alignment: .leading).contentShape(Rectangle())
+        .background(action != nil && hovering ? OnePlusColor.panelHover : OnePlusColor.panel)
         .onePlusGrain().clipShape(RoundedRectangle(cornerRadius: 8))
         .overlay { RoundedRectangle(cornerRadius: 8).strokeBorder(OnePlusColor.line, lineWidth: 1) }
         .accessibilityElement(children: .combine)
@@ -99,7 +106,8 @@ public struct OnePlusKeyValueRow: View {
             Text(label).onePlusText(.caption)
             Spacer(minLength: 8)
             Text(value).onePlusText(monospaced ? .mono : .row).lineLimit(1).truncationMode(.middle).help(value).textSelection(.enabled)
-        }.frame(minHeight: 28).accessibilityElement(children: .combine)
+        }.frame(maxWidth: .infinity, minHeight: 28, alignment: .leading)
+            .contentShape(Rectangle()).accessibilityElement(children: .combine)
     }
 }
 
@@ -133,13 +141,10 @@ public extension View {
 private struct OnePlusTableRowModifier: ViewModifier {
     let selected: Bool
     @Environment(\.onePlusDensity) private var density
-    @State private var hover = false
     func body(content: Content) -> some View {
         content.onePlusText(.row).padding(.horizontal, OnePlusTable.cellInset).frame(height: OnePlusTable.rowHeight(density))
-            .frame(maxWidth: .infinity, alignment: .leading)
-            .background(selected ? OnePlusColor.selection : hover ? OnePlusColor.raised : .clear)
+            .onePlusRowHover(selected: selected)
             .overlay(alignment: .bottom) { OnePlusColor.lineSoft.frame(height: 1) }
-            .onHover { hover = $0 }
     }
 }
 

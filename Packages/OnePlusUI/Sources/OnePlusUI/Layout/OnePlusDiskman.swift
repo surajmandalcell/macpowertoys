@@ -55,12 +55,13 @@ public struct OnePlusDeviceNavRow<Trailing: View>: View {
                     Spacer(minLength: 0)
                     if locked { Image(systemName: "lock.fill").onePlusText(.caption) }
                 }.padding(.leading, 10).frame(maxWidth: .infinity, minHeight: 56, alignment: .leading)
+                .contentShape(Rectangle())
             }.buttonStyle(OnePlusInteractionStyle(selected: selected))
                 .accessibilityLabel("\(title), \(subtitle), \(locked ? "write locked" : "unlocked")")
                 .accessibilityAddTraits(selected ? .isSelected : [])
                 .accessibilityIdentifier(identifier)
             trailing
-        }.background(selected ? OnePlusColor.selection : .clear, in: RoundedRectangle(cornerRadius: 5))
+        }.onePlusRowHover(selected: selected, radius: OnePlusMetrics.navRowRadius)
     }
 }
 

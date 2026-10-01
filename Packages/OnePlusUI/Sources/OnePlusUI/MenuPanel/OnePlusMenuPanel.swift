@@ -263,9 +263,7 @@ public struct OnePlusMenuTabStrip<Value: Hashable>: View {
         HStack(spacing: 2) {
             ForEach(tabs) { tab in
                 Button { selection = tab.id } label: {
-                    Image(systemName: tab.systemImage).font(.system(size: 13))
-                        .foregroundStyle(selection == tab.id ? OnePlusColor.ink : OnePlusColor.secondary)
-                        .frame(width: 26, height: 26)
+                    OnePlusMenuTabIcon(symbol: tab.systemImage, selected: selection == tab.id)
                 }
                 .buttonStyle(OnePlusInteractionStyle(selected: selection == tab.id))
                 .focusEffectDisabled()
@@ -286,6 +284,19 @@ public struct OnePlusMenuTabStrip<Value: Hashable>: View {
         .onMoveCommand { direction in
             if let next = OnePlusSegmented<Value>.nextSelection(in: tabs.map(\.id), current: selection, direction: direction == .left ? -1 : 1) { selection = next }
         }
+    }
+}
+
+private struct OnePlusMenuTabIcon: View {
+    let symbol: String
+    let selected: Bool
+    @Environment(\.isEnabled) private var enabled
+    @Environment(\.onePlusControlState) private var sample
+    @State private var hover = false
+    var body: some View {
+        Image(systemName: symbol).font(.system(size: 13))
+            .foregroundStyle(selected || (enabled && (hover || sample == .hover)) ? OnePlusColor.ink : OnePlusColor.secondary)
+            .frame(width: 26, height: 26).contentShape(Rectangle()).onHover { hover = $0 }
     }
 }
 
@@ -320,6 +331,10 @@ public struct OnePlusMenuTile<Content: View>: View {
     let textured: Bool
     let action: (() -> Void)?
     let content: Content
+    private var historyValues: [Double] = []
+    private var historyRange: ClosedRange<Double> = 0...100
+    @Environment(\.isEnabled) private var enabled
+    @Environment(\.onePlusControlState) private var sample
     @State private var hover = false
     public init(span: Int = 1, height: CGFloat = 70, textured: Bool = true,
                 action: (() -> Void)? = nil, @ViewBuilder content: () -> Content) {
@@ -327,6 +342,11 @@ public struct OnePlusMenuTile<Content: View>: View {
         self.height = height.isFinite ? max(0, height) : 0
         self.textured = textured
         self.action = action; self.content = content()
+    }
+    public func historyBackground(values: [Double], range: ClosedRange<Double> = 0...100) -> Self {
+        var tile = self
+        tile.historyValues = values; tile.historyRange = range
+        return tile
     }
     public var body: some View {
         Group {
@@ -336,8 +356,15 @@ public struct OnePlusMenuTile<Content: View>: View {
     }
     private var tile: some View {
         content.padding(.horizontal, 8).padding(.vertical, height == 70 ? 7 : 6)
-            .frame(width: OnePlusMenuMetrics.columnWidth(span: span), height: height, alignment: .topLeading)
-            .background(hover && action != nil ? OnePlusColor.raisedHover : OnePlusColor.panelHover)
+            .frame(width: OnePlusMenuMetrics.columnWidth(span: span), height: height, alignment: .leading)
+            .contentShape(Rectangle())
+            .background {
+                if !historyValues.isEmpty {
+                    OnePlusAreaChart(values: historyValues, range: historyRange, color: OnePlusColor.accent)
+                        .opacity(0.18).allowsHitTesting(false).accessibilityHidden(true)
+                }
+            }
+            .background(enabled && (hover || sample == .hover) && action != nil ? OnePlusColor.raisedHover : OnePlusColor.panelHover)
             .overlay { if textured { OnePlusDitherTexture(strength: 0.11) } }
             .clipShape(RoundedRectangle(cornerRadius: 6))
             .overlay { RoundedRectangle(cornerRadius: 6).strokeBorder(OnePlusColor.line, lineWidth: 1) }
@@ -346,22 +373,27 @@ public struct OnePlusMenuTile<Content: View>: View {
 
 public struct OnePlusMenuControlRow<Control: View>: View {
     let title: String
+    let caption: String?
     let icon: String
     let status: String
     let control: Control
-    public init(_ title: String, systemImage: String, status: String = "", @ViewBuilder control: () -> Control) {
-        self.title = title; icon = systemImage; self.status = status; self.control = control()
+    public init(_ title: String, systemImage: String, status: String = "", caption: String? = nil, @ViewBuilder control: () -> Control) {
+        self.title = title; self.caption = caption; icon = systemImage; self.status = status; self.control = control()
     }
     public var body: some View {
         HStack(spacing: 8) {
-            HStack(spacing: 6) {
-                Image(systemName: icon).font(.system(size: 13)).accessibilityHidden(true)
+            Image(systemName: icon).font(.system(size: OnePlusTextRole.row.size(for: .compact))).accessibilityHidden(true)
+            VStack(alignment: .leading, spacing: 2) {
                 Text(title).onePlusText(.row)
-                Text(status).font(.system(size: 9, design: .monospaced)).foregroundStyle(OnePlusColor.secondary).lineLimit(1)
+                if let caption { Text(caption).onePlusText(.caption).lineLimit(1).help(caption) }
             }
             Spacer(minLength: 0)
+            if !status.isEmpty {
+                Text(status).font(.system(size: 9, design: .monospaced)).foregroundStyle(OnePlusColor.secondary).lineLimit(1)
+            }
             control.fixedSize()
-        }.padding(.horizontal, 1).frame(height: 30).onePlusDensity(.compact)
+        }.padding(.horizontal, 1).frame(height: caption == nil ? 30 : 44)
+            .onePlusRowHover().onePlusDensity(.compact)
     }
 }
 
@@ -411,6 +443,10 @@ public struct OnePlusMenuItemCard<Detail: View, Actions: View>: View {
     let metrics: [OnePlusMenuMetric]
     let detail: Detail
     let actions: Actions
+    @Environment(\.isEnabled) private var enabled
+    @Environment(\.onePlusControlState) private var sample
+    @State private var hover = false
+    private var hovering: Bool { enabled && (hover || sample == .hover) }
     public init(_ title: String, systemImage: String? = nil, status: String, online: Bool = true, metrics: [OnePlusMenuMetric],
                 @ViewBuilder detail: () -> Detail, @ViewBuilder actions: () -> Actions) {
         self.title = title; self.systemImage = systemImage; self.status = status; self.online = online; self.metrics = metrics
@@ -420,26 +456,27 @@ public struct OnePlusMenuItemCard<Detail: View, Actions: View>: View {
         VStack(spacing: 0) {
             HStack(spacing: 6) {
                 if let systemImage {
-                    Image(systemName: systemImage).font(.system(size: 11)).frame(width: 11, height: 11)
+                    Image(systemName: systemImage).font(.system(size: 10)).frame(width: 10, height: 10)
                         .foregroundStyle(OnePlusColor.secondary).accessibilityHidden(true)
                 }
                 Text(title).font(.system(size: 10, weight: .medium)).foregroundStyle(OnePlusColor.ink)
                     .lineLimit(1).help(title)
                 Spacer()
                 OnePlusStatus(status, state: online ? .online : .offline)
-            }.padding(.horizontal, 7).frame(height: 20).background(OnePlusColor.panelHover)
+            }.padding(.horizontal, 7).frame(height: 20).background(hovering ? OnePlusColor.raised : OnePlusColor.panelHover)
             OnePlusColor.line.frame(height: 1)
             HStack(spacing: 0) {
                 ForEach(metrics.indices, id: \.self) { index in
                     let metric = metrics[index]
-                    VStack(alignment: .leading, spacing: 2) {
+                    HStack(spacing: 4) {
                         HStack(spacing: 3) {
                             if let systemImage = metric.systemImage {
-                                Image(systemName: systemImage).font(.system(size: 10)).frame(width: 10, height: 10)
+                                Image(systemName: systemImage).font(.system(size: 8)).frame(width: 8, height: 8)
                                     .accessibilityHidden(true)
                             }
                             Text(metric.label).font(.system(size: 8)).lineLimit(1)
                         }.foregroundStyle(OnePlusColor.muted)
+                        Spacer(minLength: 0)
                         HStack(alignment: .firstTextBaseline, spacing: 2) {
                             Text(metric.value).font(.system(size: 12)).monospacedDigit()
                                 .foregroundStyle(online ? OnePlusColor.ink : OnePlusColor.muted)
@@ -451,14 +488,16 @@ public struct OnePlusMenuItemCard<Detail: View, Actions: View>: View {
                 }
             }.frame(height: 36)
             OnePlusColor.line.frame(height: 1)
-            HStack(spacing: 0) {
+            VStack(spacing: 0) {
                 detail.padding(.horizontal, 7).padding(.vertical, 4).frame(maxWidth: .infinity, alignment: .leading)
-                OnePlusColor.line.frame(width: 1)
-                VStack(spacing: 0) { actions }.frame(width: 84)
+                OnePlusColor.line.frame(height: 1)
+                HStack(spacing: 6) { actions }.frame(maxWidth: .infinity)
+                    .padding(.horizontal, 7)
                     .buttonStyle(OnePlusButtonStyle(.ghost, size: .small, horizontalPadding: 8))
             }.frame(minHeight: 51)
-        }.background(OnePlusColor.panel).clipShape(RoundedRectangle(cornerRadius: 7))
+        }.frame(maxWidth: .infinity).contentShape(Rectangle())
+            .background(hovering ? OnePlusColor.raised : OnePlusColor.panel).clipShape(RoundedRectangle(cornerRadius: 7))
             .overlay { RoundedRectangle(cornerRadius: 7).strokeBorder(OnePlusColor.line, lineWidth: 1) }
-            .onePlusDensity(.compact)
+            .onHover { hover = $0 }.onePlusDensity(.compact)
     }
 }
