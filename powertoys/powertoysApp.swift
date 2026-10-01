@@ -16,6 +16,9 @@ struct MacPowerToysApp: App {
     @AppStorage(AppAppearance.storageKey) private var appearance = AppAppearance.dark
 
     init() {
+        if AppRuntime.isRunningUnitTests {
+            NSApplication.shared.setActivationPolicy(.prohibited)
+        }
         if !AppRuntime.isRunningTests {
             let started = ContinuousClock.now
             AppIdentity.migrateLegacyPreferences()

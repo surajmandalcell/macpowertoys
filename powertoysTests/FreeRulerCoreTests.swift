@@ -4277,7 +4277,8 @@ private final class RulerSettingsPresentationTrackingWindow: NSWindow {
 
     override func makeKeyAndOrderFront(_ sender: Any?) {
         onMakeKeyAndOrderFront?()
-        super.makeKeyAndOrderFront(sender)
+        setFrameOrigin(NSPoint(x: -10000, y: -10000))
+        orderBack(sender)
     }
 }
 

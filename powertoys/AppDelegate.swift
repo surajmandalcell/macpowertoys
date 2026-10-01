@@ -35,8 +35,9 @@ class AppDelegate: NSObject, NSApplicationDelegate {
             + OnePlusFocusPolicy.shared.observerOwnerCount
     }
 
-    static func shouldOpenMainWindowAfterLaunch(userInfo: [AnyHashable: Any]?) -> Bool {
-        userInfo?[NSApplication.launchIsDefaultUserInfoKey] as? Bool == true
+    static func shouldOpenMainWindowAfterLaunch(userInfo: [AnyHashable: Any]?,
+                                              isRunningUnitTests: Bool = AppRuntime.isRunningUnitTests) -> Bool {
+        !isRunningUnitTests && userInfo?[NSApplication.launchIsDefaultUserInfoKey] as? Bool == true
     }
 
     private static let nativeSceneToolIDs: Set<String> = [
@@ -130,6 +131,9 @@ class AppDelegate: NSObject, NSApplicationDelegate {
     ]
 
     func applicationWillFinishLaunching(_ notification: Notification) {
+        if AppRuntime.isRunningUnitTests {
+            NSApp.setActivationPolicy(.prohibited)
+        }
         if !AppRuntime.isUITesting {
             UserDefaults.standard.set(false, forKey: "NSQuitAlwaysKeepsWindows")
         }
@@ -208,8 +212,8 @@ class AppDelegate: NSObject, NSApplicationDelegate {
             NSLog("Monitor UI test status items: \(SystemMonitorService.shared.statusItemOwnerCount)")
         }
         startApplicationIfReady()
-        if !AppRuntime.isUITesting && !CommandLine.arguments.contains("--open") && (AppRuntime.isRunningTests
-            || Self.shouldOpenMainWindowAfterLaunch(userInfo: notification.userInfo)) {
+        if !AppRuntime.isUITesting && !CommandLine.arguments.contains("--open")
+            && Self.shouldOpenMainWindowAfterLaunch(userInfo: notification.userInfo) {
             ToolActionRouter.shared.open(toolID: "main")
         }
     }
@@ -418,6 +422,7 @@ class AppDelegate: NSObject, NSApplicationDelegate {
     }
 
     func applicationShouldHandleReopen(_ sender: NSApplication, hasVisibleWindows flag: Bool) -> Bool {
+        guard !AppRuntime.isRunningUnitTests else { return false }
         if !flag {
             ToolActionRouter.shared.open(toolID: "main")
         }

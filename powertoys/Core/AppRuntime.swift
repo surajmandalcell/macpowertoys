@@ -6,9 +6,12 @@
 import Foundation
 
 enum AppRuntime {
-    nonisolated static var isRunningTests: Bool {
+    nonisolated static var isRunningUnitTests: Bool {
         ProcessInfo.processInfo.environment["XCTestConfigurationFilePath"] != nil
-            || isUITesting
+    }
+
+    nonisolated static var isRunningTests: Bool {
+        isRunningUnitTests || isUITesting
     }
 
     nonisolated static var isUITesting: Bool {

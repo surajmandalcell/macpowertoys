@@ -144,11 +144,11 @@ final class FanControlTests: XCTestCase {
         let owner = "fan-view-visibility-test"
         let host = NSHostingView(rootView: FanControlView(owner: owner, compact: true)
             .environment(\.onePlusIsVisible, false))
-        let window = NSWindow(contentRect: NSRect(x: 0, y: 0, width: 338, height: 30),
+        let window = NSWindow(contentRect: NSRect(x: -10000, y: -10000, width: 338, height: 30),
                               styleMask: [.titled], backing: .buffered, defer: false)
         window.isReleasedWhenClosed = false
         window.contentView = host
-        window.orderFront(nil)
+        window.orderBack(nil)
         defer { window.close(); window.contentView = nil; service.stop(owner: owner) }
         for visible in [false, true, false, true, false] {
             host.rootView = FanControlView(owner: owner, compact: true)
