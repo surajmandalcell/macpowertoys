@@ -95,9 +95,10 @@ private struct OpenToolPageModifier: ViewModifier {
 
 extension View {
     func onToolWindowURL(_ tool: String) -> some View {
+        // AppDelegate owns external URLs. Registering a SwiftUI receiver here
+        // lets already-mounted scene content participate in URL activation.
         onePlusWindowTimings(tool)
             .handlesExternalEvents(preferring: [], allowing: [])
-            .onOpenURL { DeepLinkHandler.shared.handle(url: $0) }
     }
 
     func onOpenToolPage(_ tool: String?, matching page: String? = nil,

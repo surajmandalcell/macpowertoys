@@ -1,5 +1,27 @@
 # Main Shell Troubleshooting
 
+## Background Page Reuse, Run 70, 2026-10-01
+
+- **Symptom:** Signed `b9c129a5` preserves focus for main All tools, then
+  takes focus for Favorites on the same background window.
+- **Cause under verification:** Mounted content still registers a SwiftUI
+  URL receiver outside the router's activation guard. Explicit native reuse
+  calls already preserve intent. Remove the duplicate receiver rather than
+  changing page focus, window class, or application activation policy.
+- **Invariant:** AppDelegate owns every external URL, including warm page
+  requests. Window content must not register an onOpenURL fallback. Keep
+  empty scene creation and existing-window matches. Page requests still
+  reach the same router before presentation. Explicit opens still activate.
+- **Check:** The maintained source probe rejects the old URL receiver.
+  It passes 26 background opens, 26 warm page routes, 13 explicit page
+  reuses, two capture actions, and three deferred sheet routes. Main uses
+  All tools followed by Favorites. Ruler's source probe also passes.
+  The single tests-mode gate compiles the app and both test bundles.
+  These checks do not prove native focus behavior. The orchestrator must
+  install the clean commit and repeat guarded captures for both schemes,
+  all 13 window roots, Ruler, Portman and diagnostic panels.
+  Report: `tmp/redesign/logs/w12-focus-main.md`.
+
 ## Retained Page Insets And General Captures, Run 68, 2026-10-01
 
 - **Symptom:** Main's retained Task Manager page starts 32pt too low.
@@ -67,7 +89,8 @@
 - **Invariant:** AppDelegate sends every external URL through DeepLinkHandler.
   All 13 scenes use empty external-event creation matches. Their shared root
   uses empty preference and allowance matches to exclude existing scenes too.
-  A URL callback fallback uses the same handler. Store page requests before
+  AppDelegate is the only URL receiver; do not register a SwiftUI fallback.
+  Store page requests before
   presentation. Explicit launcher, menu, default app launch and Dock reopen
   actions retain activation. Background window reuse only orders front.
   Ruler Settings keeps its existing action, delegate and controller flag.

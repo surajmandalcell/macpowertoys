@@ -38,7 +38,8 @@ final class AppDelegateTests: XCTestCase {
                        "All cold tool and page URLs must use the background-aware router.")
         XCTAssertTrue(routing.contains(".handlesExternalEvents(preferring: [], allowing: [])"),
                       "Existing scenes must not take focus for external URLs either.")
-        XCTAssertTrue(routing.contains(".onOpenURL { DeepLinkHandler.shared.handle(url: $0) }"))
+        XCTAssertFalse(routing.contains(".onOpenURL"),
+                       "Mounted window content must not register another activating URL receiver.")
         XCTAssertFalse(delegate.contains("requiresManualURLRouting"))
         XCTAssertTrue(delegate.contains("for url in urls {\n            MacPowerToysApp.handleIncomingURL(url)\n        }"))
     }

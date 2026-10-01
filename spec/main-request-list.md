@@ -1,5 +1,15 @@
 # Main Task Request List
 
+Background page reuse, run 70, 2026-10-01: mounted window content no longer
+registers a SwiftUI URL receiver. AppDelegate keeps the single external URL
+entry, which passes background intent to the existing router. Source checks
+pass 26 background opens and 26 warm page routes with zero activation calls.
+All 13 explicit page reuses still activate. Ruler's source check passes.
+The single gate compiles the app and both test bundles. Signed installation
+and guarded All tools -> Favorites replay remain with the orchestrator.
+The native focus cause still requires that replay. Report:
+`tmp/redesign/logs/w12-focus-main.md`.
+
 Round 17 main repair, run 68, 2026-10-01: shared `716ad8b` removes the
 retained native host's second titlebar inset. Offscreen cold and return
 checks place the icon at y20 and Display at y118 in both appearances.
