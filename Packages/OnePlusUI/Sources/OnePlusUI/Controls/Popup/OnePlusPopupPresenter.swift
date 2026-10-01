@@ -163,7 +163,8 @@ final class OnePlusPopupPresenter {
 
     private func installMonitors(window: NSWindow, panel: NSPanel) {
         localKeyMonitor = NSEvent.addLocalMonitorForEvents(matching: .keyDown) { [weak self] event in
-            guard let self, let key = Self.popupKey(for: event), self.session?.handle(key) == true else { return event }
+            guard let self, Self.owns(event, parent: self.parentWindow, popup: self.panel),
+                  let key = Self.popupKey(for: event), self.session?.handle(key) == true else { return event }
             return nil
         }
         let mouseEvents: NSEvent.EventTypeMask = [.leftMouseDown, .rightMouseDown, .otherMouseDown]
@@ -177,7 +178,7 @@ final class OnePlusPopupPresenter {
             self?.close(reason: .outsideClick)
         }
         let center = NotificationCenter.default
-        for name in [NSWindow.didMoveNotification, NSWindow.didResizeNotification, NSWindow.willCloseNotification] {
+        for name in [NSWindow.didMoveNotification, NSWindow.didResizeNotification, NSWindow.willCloseNotification, NSWindow.didResignKeyNotification] {
             observers.append(center.addObserver(forName: name, object: window, queue: .main) { [weak self] _ in
                 MainActor.assumeIsolated { self?.close(reason: .windowChange) }
             })
@@ -205,16 +206,21 @@ final class OnePlusPopupPresenter {
         return anchor.bounds.contains(anchor.convert(event.locationInWindow, from: nil))
     }
 
-    private static func popupKey(for event: NSEvent) -> OnePlusPopupKey? {
+    static func owns(_ event: NSEvent, parent: NSWindow?, popup: NSWindow?) -> Bool {
+        guard let window = event.window else { return false }
+        return window === parent || window === popup
+    }
+
+    static func popupKey(for event: NSEvent) -> OnePlusPopupKey? {
+        let modifiers = event.modifierFlags.intersection(.deviceIndependentFlagsMask)
+        guard modifiers.intersection([.command, .control, .option]).isEmpty else { return nil }
         switch event.keyCode {
-        case 126: return .up
-        case 125: return .down
-        case 36, 76: return .select
-        case 53: return .escape
+        case 126: return modifiers.contains(.shift) ? nil : .up
+        case 125: return modifiers.contains(.shift) ? nil : .down
+        case 36, 76: return modifiers.contains(.shift) ? nil : .select
+        case 53: return modifiers.contains(.shift) ? nil : .escape
         default:
-            let blocked: NSEvent.ModifierFlags = [.command, .control, .option]
-            guard event.modifierFlags.intersection(blocked).isEmpty,
-                  let characters = event.charactersIgnoringModifiers,
+            guard let characters = event.charactersIgnoringModifiers,
                   characters.count == 1,
                   characters.unicodeScalars.first.map(CharacterSet.alphanumerics.contains) == true else { return nil }
             return .type(characters)
