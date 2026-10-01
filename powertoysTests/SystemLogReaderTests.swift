@@ -91,24 +91,64 @@ final class SystemLogReaderTests: XCTestCase {
         XCTAssertEqual(SystemLogRange.oneDay.rawValue, 24 * 60 * 60)
     }
 
-    func testLogPresentationShowsRowDatesAndCollapsesSameDayRanges() throws {
+    func testLocalizedTimesSortRestorationAndPageFallback() throws {
         let timeZone = try XCTUnwrap(TimeZone(secondsFromGMT: 0))
         var calendar = Calendar(identifier: .gregorian)
         calendar.timeZone = timeZone
         let first = try XCTUnwrap(calendar.date(from: DateComponents(
-            year: 2026,
-            month: 9,
-            day: 29,
-            hour: 10,
-            minute: 39,
-            second: 1
+            year: 2026, month: 9, day: 29, hour: 13, minute: 39, second: 1
         )))
         let last = first.addingTimeInterval(52)
+        for (localeID, time) in [("en_US", "1:39:01"), ("en_GB", "13:39:01"), ("de_DE", "13:39:01")] {
+            let locale = Locale(identifier: localeID)
+            let row = LogsPresentation.rowTimeFormatter(locale: locale, calendar: calendar, timeZone: timeZone).string(from: first)
+            let span = LogsPresentation.span(from: first, to: last, locale: locale, calendar: calendar, timeZone: timeZone)
+            XCTAssertTrue(row.contains(time), row)
+            XCTAssertTrue(span.contains(time), span)
+            XCTAssertEqual(span.components(separatedBy: "2026").count, 2, span)
+            let crossDay = LogsPresentation.span(from: first, to: first.addingTimeInterval(86_400),
+                                                  locale: locale, calendar: calendar, timeZone: timeZone)
+            XCTAssertEqual(crossDay.components(separatedBy: "2026").count, 3, crossDay)
+        }
+        XCTAssertEqual(LogsPresentation.exportTimeFormatter(timeZone: timeZone).string(from: first), "09-29 13:39:01")
+        let shifted = LogsPresentation.rowTimeFormatter(locale: Locale(identifier: "en_GB"), calendar: calendar,
+                                                        timeZone: try XCTUnwrap(TimeZone(secondsFromGMT: 3_600))).string(from: first)
+        XCTAssertTrue(shifted.contains("14:39:01"), shifted)
 
-        XCTAssertEqual(LogsPresentation.rowTime(first, timeZone: timeZone), "09-29 10:39:01")
-        XCTAssertEqual(
-            LogsPresentation.span(from: first, to: last, timeZone: timeZone),
-            "2026-09-29, 10:39:01 AM – 10:39:53 AM"
-        )
+        for column in ["time", "level", "source", "message"] {
+            for direction in ["ascending", "descending"] {
+                let restored = try XCTUnwrap(LogsPresentation.sortOrder(column: column, direction: direction).first)
+                XCTAssertEqual(LogsPresentation.sortColumn(for: restored), column)
+                XCTAssertEqual(restored.order, direction == "ascending" ? .forward : .reverse)
+            }
+        }
+        for (column, direction) in [("removed", "ascending"), ("time", "invalid")] {
+            let fallback = try XCTUnwrap(LogsPresentation.sortOrder(column: column, direction: direction).first)
+            XCTAssertEqual(fallback.keyPath, \LogsRow.timestamp)
+            XCTAssertEqual(fallback.order, .reverse)
+        }
+        let suite = "audit-logs-test-\(UUID().uuidString)"
+        let preferences = try XCTUnwrap(UserDefaults(suiteName: suite))
+        defer { preferences.removePersistentDomain(forName: suite) }
+        preferences.set("source", forKey: "logs.sortColumn")
+        preferences.set("ascending", forKey: "logs.sortDirection")
+        preferences.set("settings", forKey: "logs.page")
+        let reopened = try XCTUnwrap(UserDefaults(suiteName: suite))
+        let savedSort = try XCTUnwrap(LogsPresentation.sortOrder(
+            column: reopened.string(forKey: "logs.sortColumn") ?? "time",
+            direction: reopened.string(forKey: "logs.sortDirection") ?? "descending"
+        ).first)
+        XCTAssertEqual(savedSort.keyPath, \LogsRow.source)
+        XCTAssertEqual(savedSort.order, .forward)
+        XCTAssertEqual(LogsPage.restored(reopened.string(forKey: "logs.page") ?? "internal"), .settings)
+        var buddhist = Calendar(identifier: .buddhist)
+        buddhist.timeZone = timeZone
+        let buddhistSpan = LogsPresentation.span(from: first, to: last, locale: Locale(identifier: "en_US"),
+                                                  calendar: buddhist, timeZone: timeZone)
+        XCTAssertTrue(buddhistSpan.contains("2569"), buddhistSpan)
+
+        XCTAssertEqual(LogsPage.restored("system"), .systemIssues)
+        XCTAssertEqual(LogsPage.restored("settings"), .settings)
+        XCTAssertEqual(LogsPage.restored("removed"), .internalLogs)
     }
 }
