@@ -22,12 +22,18 @@ private final class OnePlusAppAppearance {
     static let shared = OnePlusAppAppearance()
     private(set) var scheme = NSApplication.shared.effectiveAppearance.onePlusColorScheme
     @ObservationIgnored private var observation: NSKeyValueObservation?
+    @ObservationIgnored private var displayObserver: NSObjectProtocol?
     @ObservationIgnored private let windows = NSHashTable<NSWindow>.weakObjects()
 
     private init() {
         observation = NSApplication.shared.observe(\.effectiveAppearance) { [weak self] _, _ in
             MainActor.assumeIsolated { self?.refresh() }
         }
+        displayObserver = NSWorkspace.shared.notificationCenter.addObserver(
+            forName: NSWorkspace.accessibilityDisplayOptionsDidChangeNotification,
+            object: NSWorkspace.shared, queue: .main) { [weak self] _ in
+                MainActor.assumeIsolated { self?.refresh(invalidateDisplay: true) }
+            }
     }
 
     func configure(_ view: NSView) {
@@ -42,9 +48,12 @@ private final class OnePlusAppAppearance {
         apply(window)
     }
 
-    private func refresh() {
+    private func refresh(invalidateDisplay: Bool = false) {
         scheme = NSApplication.shared.effectiveAppearance.onePlusColorScheme
-        windows.allObjects.forEach(apply)
+        for window in windows.allObjects {
+            apply(window)
+            if invalidateDisplay { window.contentView?.needsDisplay = true }
+        }
     }
 
     private func apply(_ window: NSWindow) {
