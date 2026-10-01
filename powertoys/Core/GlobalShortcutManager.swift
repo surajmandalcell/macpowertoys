@@ -466,6 +466,7 @@ final class GlobalShortcutManager {
                 registrationStatus[.mainPanel] = .failed("Show the menu bar icon in General to use Quick Access.")
                 return
             }
+            registrationStatus[.mainPanel] = .registered
             if DiagnosticsMenuPanels.shared.mainWindow?.isVisible != true {
                 OnePlusPanelTimings.shared.begin(panel: "main", input: "shortcut")
             }
