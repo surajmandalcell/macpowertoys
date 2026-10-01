@@ -239,13 +239,10 @@ struct IndividualToolMenuPanel: View {
     }
 
     private func quickAction(_ title: String, symbol: String, action: ToolActionID) -> some View {
-        OnePlusMenuTile(span: 3, height: 70, action: {
+        OnePlusMenuTile(span: 3, height: 32, textured: false, action: {
             ToolActionRouter.shared.execute(ToolActionRequest(action: action))
         }) {
-            HStack(spacing: 9) {
-                Image(systemName: symbol).font(.system(size: 13))
-                Text(title).onePlusText(.row)
-            }
+            Label(title, systemImage: symbol)
         }
         .accessibilityLabel(title)
     }
@@ -271,7 +268,8 @@ private struct TrayTabStrip: View {
 
     private var tabRow: some View {
         HStack(spacing: TrayPopoverLayout.tabSpacing) {
-            ForEach(Array(tabs.enumerated()), id: \.element.id) { index, tab in
+            ForEach(tabs) { tab in
+                let index = tabs.firstIndex(of: tab) ?? 0
                 if tab == .home {
                     TrayTabButton(tab: tab, selected: selected == tab) { selected = tab }
                 } else {
@@ -293,6 +291,12 @@ private struct TrayTabStrip: View {
                             .disabled(index >= tabs.count - 1)
                         }
                 }
+            }
+        }
+        .onMoveCommand { direction in
+            guard direction == .left || direction == .right else { return }
+            if let next = OnePlusSegmented<TrayTab>.nextSelection(in: tabs, current: selected, direction: direction == .left ? -1 : 1) {
+                selected = next
             }
         }
     }
