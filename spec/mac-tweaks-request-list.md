@@ -1,5 +1,11 @@
 # Mac Tweaks request list
 
+## Round 18 root texture correction, run 71, 2026-10-02
+
+- [x] Remove the decorative window ribbon once in `OnePlusWindowRoot` for `.macTweaks`. Shared commit: `0516519`. Keep the flat fill and all other canvases unchanged.
+- [x] Add one offscreen package regression across all 13 canvases in both appearances. It fails on the old Mac Tweaks root and passes with the exception. Both texture tests pass.
+- [~] `swift test` executes 148 tests: 147 pass. The known unowned `OnePlusStatCell` compact-height check still measures 46pt against 44pt. The orchestrator owns that correction, publication, tagging, dependency adoption, installation, and signed captures of all ten pages plus search. Report: `tmp/redesign/logs/w13-fix18-oneplus.md`.
+
 ## Round 11 control and wallpaper corrections, 2026-10-01
 
 - [x] T084: remove the extra disabled opacity from shared selects and segments. Keep one 0.38 treatment on the custom timing field. T085: use the mono role with control ink for timing values; keep caption units, the native stepper, and 28pt height. Commit: `e9f06d55`.

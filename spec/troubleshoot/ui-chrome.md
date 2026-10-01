@@ -346,6 +346,11 @@ latency benefit still needs measurement. See `tmp/redesign/logs/w4-perf-windows.
 - **Check:** `rg -n "MacTweaksPreview|MacTweaksGrain|MacTweaksRibbon"
   powertoys` returns nothing. Each category page shows only cards in one
   column at 820pt.
+  Round 18 still showed the shared root ribbon. OnePlusUI `0516519`
+  omits `OnePlusWindowTexture()` only for `.macTweaks`. The offscreen
+  regression fails before the fix and passes across all 13 canvases in both
+  appearances, preserving opaque flat fills and the other ribbons.
+  Tagged adoption and signed page/search captures remain with the orchestrator.
 
 ## Mac Tweaks Shared Control Callers, 2026-09-30
 

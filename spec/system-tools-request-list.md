@@ -300,6 +300,15 @@ comparison remain with the orchestrator, who owns installation. Report:
 
 ## NetToys
 
+Round 18 permission actions, run 73, 2026-10-02: NetToys `7c2a619`
+applies `OnePlusButtonStyle(.neutral)` to the Permissions card at inherited
+density. Coverage is Wi-Fi Allow access/Settings, Local network Settings/Try
+Again, and MAC addresses Settings/Enable. The 44pt rows, status/action layout,
+gaps, help and accessibility names remain. All 100 package tests pass.
+The orchestrator owns publication, dependency adoption, signed installation,
+and both-appearance visual and interaction checks for every action state.
+Report: `tmp/redesign/logs/w13-fix18-nettoys.md`.
+
 Run 69 Scanner correction, 2026-10-01: NetToys `746abf9` gives stale results
 one quiet toolbar note and preserves "Last scan: <target>" in the footer.
 Current-target all-down scans use the same inline text style. The padded
@@ -366,6 +375,14 @@ compilation pass. Hosted tests and signed interaction remain. Report: `tmp/redes
 
 ## Input Devices
 
+Round 18 tray identities, run 72, 2026-10-02: `cf56cc76` places each glyph
+beside one name/transport stack with a 2pt gap. State and profile stay on
+the trailing side. Actual-source checks fail before the fix and pass after
+it for mouse and trackpad, with and without battery, in both appearances.
+Cards keep their 44pt and 58pt heights. The shared row hover stays. The
+single tests-mode gate passes. Signed hover and visual review remain with
+the orchestrator. Report: `tmp/redesign/logs/w13-fix18-app.md`.
+
 Scroll reverse, run 52, 2026-10-01: `59122487` fixes the saved 3.0x
 endpoint. The native slider stored `3.0000000000000004`; the strict range
 guard added in `57acd38c` rejected the mouse profile before reversal or
@@ -417,6 +434,16 @@ verification. Report: `tmp/redesign/logs/w4-scroll-fix.md`.
 
 ## System Care and Mole
 
+Round 18 Tasks underline, run 72, 2026-10-02: reject the missing-underline
+finding. Both supplied signed Mole PNGs contain 64 opaque coral pixels at
+x224-255, y100-101. Both History PNGs contain 82 at x278-318, y100-101.
+Actual-source checks use the real router, initial state, aliases,
+Maintenance page, Tasks card, and shared strip. Debug and Release paint
+the same underline on initial entry and after History in both appearances.
+No source fix is needed. A failing pre-fix check cannot be claimed because
+the supplied files and source already pass. Live tab actions remain with
+the orchestrator. Report: `tmp/redesign/logs/w13-fix18-app.md`.
+
 Memory, 2026-10-01: `1529ae52` replaces each 70.52 MiB app-icon TIFF
 with an 80 x 80 CGImage and clears window icon caches on close. Signed
 `e25d7c99` grew from 85 MB at rest to 7,055 MB with 6.5 GB in Foundation.
@@ -462,6 +489,15 @@ or restart. Report: `tmp/redesign/logs/w4-memory.md`.
 | Verify | Use the new System Care cleanup-tray icon. | `SystemCareLogo` is a 512px RGBA asset with one removable coral block. Focused icon and Raycast checks pass. | Inspect launcher and Dock in the final signed app. |
 
 ## Task Manager (formerly System Monitor)
+
+Round 18 CPU/Memory capacity, run 72, 2026-10-02: `054a6be7` uses
+"<count> logical CPUs" beside CPU and removes its duplicate count row.
+Memory keeps capacity beside its value and removes the Total detail row.
+Actual-source checks preserve all load, allocation, history, pending, and
+stale readings. Each removed shared detail row measures 28pt. The existing
+regression now covers CPU and Memory; the single tests-mode gate passes.
+Hosted execution, signed heights, and both-appearance review remain with
+the orchestrator. Report: `tmp/redesign/logs/w13-fix18-app.md`.
 
 Memory5, 2026-10-01: signed `d911b0fa`, PID 86076, remains at
 327.5 MiB after the owner's complete close pass. Its heap has 73 ViewGraphs
