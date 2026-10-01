@@ -7,6 +7,7 @@ struct ToolAboutView: View {
     let toolId: String
     var showsModalCloseButton = false
     var showsSettings = true
+    var startsWithGuide = false
     var changed: () -> Void = {}
     @Environment(\.dismiss) private var dismiss
     @State private var tab = MainToolTab.settings
@@ -37,7 +38,9 @@ struct ToolAboutView: View {
                 }
             }
             .clipped()
-            .onChange(of: toolId) { _, _ in tab = .settings }
+            .onChange(of: startsWithGuide ? "manual/" + toolId : toolId, initial: true) { _, _ in
+                tab = startsWithGuide ? .guide : .settings
+            }
         } else {
             OnePlusEmptyState("Unknown tool", systemImage: "questionmark.circle",
                               caption: "This tool is no longer installed.")
