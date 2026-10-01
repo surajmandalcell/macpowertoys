@@ -24,6 +24,8 @@
   preferences without creating the data folder. These values exclude full
   app startup and cold OS caches. Run
   `tmp/redesign/checks/app-lifecycle/store-check.py` and `profile-startup.py`.
+  The tests-mode gate compiles the Debug app and both test bundles at
+  `b4a79152`; log: `tmp/redesign/logs/app-lifecycle-tests-retry1.log`.
   Hosted AppLifecycleTests and signed readiness, native recovery, Finder reveal,
   and Cloud Sync first-frame checks remain with the orchestrator.
 
