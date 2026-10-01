@@ -1,6 +1,8 @@
 import Darwin
 import AppKit
 import XCTest
+import SwiftUI
+import OnePlusUI
 @testable import powertoys
 
 @MainActor
@@ -13,6 +15,22 @@ final class SystemCareTests: XCTestCase {
         let kilobyte = SystemCareByteMetric(1_000)
         XCTAssertEqual(kilobyte.value, "1")
         XCTAssertEqual(kilobyte.unit, "KB")
+        for (bytes, expected) in [(Int64(366_849_000_000), "366.8"), (113_649_000_000, "113.6"),
+                                   (999_940_000_000, "999.9")] {
+            let metric = SystemCareByteMetric(bytes)
+            XCTAssertEqual(metric.value, expected)
+            XCTAssertEqual(metric.unit, "GB")
+            for appearance in [NSAppearance.Name.aqua, .darkAqua] {
+                let host = NSHostingView(rootView: HStack(alignment: .firstTextBaseline, spacing: OnePlusMetrics.navRowGap) {
+                    Text(metric.value).onePlusText(.metric).fixedSize()
+                    Text(metric.unit).onePlusText(.unit).fixedSize()
+                }.onePlusDensity(.compact))
+                host.appearance = NSAppearance(named: appearance)
+                XCTAssertLessThanOrEqual(host.fittingSize.width, (338 - 16 - 2 * 16) / 3)
+            }
+        }
+        XCTAssertEqual(SystemCareByteMetric(999_950_000_000).unit, "TB")
+        XCTAssertEqual(SystemCareByteMetric(Int64.max).unit, "EB")
     }
 
     func testApplicationMetadataUsesFinalUnavailableLabels() {

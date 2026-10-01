@@ -8,7 +8,7 @@ struct SystemCareByteMetric: Equatable {
     let unit: String
 
     init(_ bytes: Int64) {
-        let parts = bytes.formattedByteCount.split(maxSplits: 1, whereSeparator: \.isWhitespace)
+        let parts = TrayPopoverLayout.compactDiskBytes(bytes).split(maxSplits: 1, whereSeparator: \.isWhitespace)
         value = bytes == 0 ? "0" : String(parts.first ?? "0")
         unit = parts.count == 2 ? String(parts[1]) : ""
     }
