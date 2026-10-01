@@ -423,7 +423,7 @@ private struct LogsSidebar: View {
 
 private struct LogsPageView: View {
     private static let columns: [OnePlusGridColumn] = [
-        OnePlusGridColumn("Time", width: 160, textRole: .mono),
+        OnePlusGridColumn("Time", width: 168, textRole: .mono),
         OnePlusGridColumn("Level", width: 96, textColor: OnePlusColor.secondary,
                           headerLabelInset: OnePlusMetrics.navIcon + OnePlusMetrics.spacing[1]),
         OnePlusGridColumn("Source", width: 215),

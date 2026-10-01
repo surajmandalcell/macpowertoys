@@ -24,7 +24,7 @@
   skin or its cells. The header and body therefore used different insets.
 - **Invariant:** Define each column once. Pass those models to
   `onePlusNativeTable(columns:)` and apply `onePlusTableCell(_:position:)` to
-  every cell. Keep 12pt adjoining insets, a 160pt Time column, and a 215pt
+  every cell. Keep 12pt adjoining insets, a 168pt Time column, and a 215pt
   Source column. Give Level a fixed glyph lane and the same header label inset.
   Truncate Source in its padded bounds. Keep full text in the detail sheet.
 - **Check:** The shared column geometry regression checks header and cell
