@@ -266,7 +266,7 @@ struct SystemMonitorOverviewProcessesView: View {
                         Text("MEMORY").frame(width: 82, alignment: .trailing)
                     }
                     .onePlusTableHeader()
-                    ForEach(rows) { row in
+                    ForEach(Array(zip(rows.indices, rows)), id: \.1.id) { index, row in
                         Button { onSelect(row.process) } label: {
                             HStack(spacing: 8) {
                                 HStack(spacing: 8) {
@@ -293,7 +293,7 @@ struct SystemMonitorOverviewProcessesView: View {
                             .contentShape(Rectangle())
                         }
                         .buttonStyle(UtilityInteractionButtonStyle(cornerRadius: 0))
-                        .onePlusTableRow()
+                        .onePlusTableRow(index: index)
                     }
                     if rows.isEmpty {
                         Text("—")
@@ -498,7 +498,7 @@ struct SystemMonitorProcessesView: View {
             .overlay {
                 if tableRows.isEmpty {
                     VStack(spacing: 0) {
-                        Color.clear.frame(height: 28) // Native table header stays fixed.
+                        Color.clear.frame(height: OnePlusTable.headerHeight) // Native table header stays fixed.
                         ZStack {
                             if !didLoad { ProgressView().controlSize(.small) }
                             else {
@@ -676,8 +676,8 @@ struct ProcessDetailSheet: View {
 
     private func stat(_ title: String, _ value: String) -> some View {
         VStack(alignment: .leading, spacing: 5) {
-            Text(title).font(.system(size: 9)).foregroundStyle(TaskManagerTheme.secondary)
-            Text(value).font(.system(size: 18, weight: .medium)).monospacedDigit().lineLimit(1)
+            Text(title).onePlusText(.metricCaption)
+            Text(value).onePlusText(.metric).monospacedDigit().lineLimit(1).minimumScaleFactor(0.65).help(value)
         }
         .padding(.horizontal, 12)
         .frame(maxWidth: .infinity, alignment: .leading)

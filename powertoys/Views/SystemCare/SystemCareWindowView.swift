@@ -241,10 +241,7 @@ struct SystemCareWindowView: View {
         OnePlusWindowRoot(canvas: .systemCare) {
             sidebar
         } content: {
-            VStack(spacing: 0) {
-                pageContent
-                statusBanner
-            }
+            pageContent
         }
         .background(WindowAccessor(identifier: "system-care"))
         .quickLookPreview($previewURL)
@@ -387,6 +384,7 @@ struct SystemCareWindowView: View {
                 }
             }
         } footer: {
+            statusBanner
             if let url = manager.storageURL {
                 HStack {
                     Text(url.path).onePlusText(.mono).lineLimit(1).truncationMode(.middle)
@@ -544,6 +542,7 @@ struct SystemCareWindowView: View {
                 }
             }
         } footer: {
+            statusBanner
             if let result = manager.lastTrashResult {
                 HStack {
                     if !result.failures.isEmpty {
@@ -682,8 +681,9 @@ struct SystemCareWindowView: View {
                         OnePlusEmptyState("No candidates from this location", systemImage: "folder",
                                           caption: "Review other locations or check scan coverage.")
                     }
-                    ForEach(cleanupSnapshot.groups[selectedCategory] ?? []) { row in
-                        SystemCareCandidateRow(row: row, manager: manager)
+                    let rows = cleanupSnapshot.groups[selectedCategory] ?? []
+                    ForEach(Array(zip(rows.indices, rows)), id: \.1.id) { index, row in
+                        SystemCareCandidateRow(row: row, manager: manager, rowIndex: index)
                     }
                 }
             }.onePlusScrollIndicators()
@@ -720,6 +720,8 @@ struct SystemCareWindowView: View {
                 Button("Refresh", systemImage: "arrow.clockwise") { refreshApplications() }
                     .disabled(manager.isWorking)
             }
+        } footer: {
+            statusBanner
         } content: {
             HStack(alignment: .top, spacing: OnePlusMetrics.cardGap) {
                 applicationsTable
@@ -860,6 +862,7 @@ struct SystemCareWindowView: View {
                 }
             }
         } footer: {
+            statusBanner
             HStack {
                 Button("Manage Whitelist…") { manager.openMoleWhitelist() }
                     .disabled(manager.molePath == nil || manager.isWorking)
@@ -921,9 +924,9 @@ struct SystemCareWindowView: View {
                 historyCells(nil, showTime: showTime, showResult: showResult).onePlusTableHeader()
                 ScrollView {
                     LazyVStack(spacing: 0) {
-                        ForEach(manager.history) { item in
+                        ForEach(Array(zip(manager.history.indices, manager.history)), id: \.1.id) { index, item in
                             historyCells(item, showTime: showTime, showResult: showResult)
-                                .onePlusTableRow().textSelection(.enabled).help(item.rawPayload)
+                                .onePlusTableRow(index: index).textSelection(.enabled).help(item.rawPayload)
                         }
                     }
                 }.onePlusScrollIndicators()
@@ -956,6 +959,8 @@ struct SystemCareWindowView: View {
         } tabs: {
             OnePlusTabStrip(tabs: [OnePlusTab("general", "General"), OnePlusTab("about", "About")],
                             selection: $settingsTab)
+        } footer: {
+            statusBanner
         } content: {
             if settingsTab == "general" { SystemCareSettingsCards(mode: modeBinding) }
             else { aboutCard }
@@ -990,8 +995,6 @@ struct SystemCareWindowView: View {
                 }
                 if manager.isWorking { ProgressView().controlSize(.small) }
             }
-            .padding(.horizontal, OnePlusMetrics.gutter)
-            .padding(.bottom, OnePlusMetrics.gutter)
         }
     }
 

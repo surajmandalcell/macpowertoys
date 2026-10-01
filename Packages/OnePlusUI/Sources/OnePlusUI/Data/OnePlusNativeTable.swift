@@ -59,7 +59,7 @@ public struct OnePlusNativeTable: NSViewRepresentable {
         table.gridStyleMask = []
         table.gridColor = NSColor(OnePlusColor.lineSoft)
         table.columnAutoresizingStyle = .firstColumnOnlyAutoresizingStyle
-        table.headerView = OnePlusTableHeaderView(frame: NSRect(x: 0, y: 0, width: 0, height: 28))
+        table.headerView = OnePlusTableHeaderView(frame: NSRect(x: 0, y: 0, width: 0, height: OnePlusTable.headerHeight))
         configureColumns(in: table)
         table.setDraggingSourceOperationMask(.copy, forLocal: false)
         table.makeMenu = { [weak coordinator = context.coordinator] ids in coordinator?.menu(ids) }
@@ -248,11 +248,9 @@ public struct OnePlusNativeTable: NSViewRepresentable {
             return cell
         }
         public func tableView(_ tableView: NSTableView, rowViewForRow row: Int) -> NSTableRowView? {
-            if let view = tableView.makeView(withIdentifier: Self.rowID, owner: self) as? StorageRow {
-                return view
-            }
-            let view = StorageRow()
+            let view = tableView.makeView(withIdentifier: Self.rowID, owner: self) as? StorageRow ?? StorageRow()
             view.identifier = Self.rowID
+            view.rowIndex = row
             return view
         }
         public func tableViewSelectionDidChange(_ notification: Notification) {
@@ -345,6 +343,7 @@ private final class StorageTextCell: NSTableCellView {
 }
 
 private final class StorageRow: NSTableRowView {
+    var rowIndex = 0 { didSet { needsDisplay = true } }
     private var hovering = false
     private var hoverArea: NSTrackingArea?
     override var isSelected: Bool { didSet { updateCells(); needsDisplay = true } }
@@ -372,7 +371,7 @@ private final class StorageRow: NSTableRowView {
         if button.alphaValue != opacity { button.alphaValue = opacity }
     }
     override func drawBackground(in dirtyRect: NSRect) {
-        NSColor(hovering ? OnePlusColor.raised : OnePlusColor.panel).setFill(); bounds.fill()
+        NSColor(hovering ? OnePlusColor.raised : OnePlusTable.rowBackground(rowIndex)).setFill(); bounds.fill()
     }
     override func drawSelection(in dirtyRect: NSRect) {
         NSColor(isEmphasized ? OnePlusColor.selection : OnePlusColor.selectionInactive).setFill(); bounds.fill()
@@ -424,7 +423,7 @@ final class OnePlusTableHeaderCell: NSTableHeaderCell {
         ])
     }
     override var cellSize: NSSize {
-        NSSize(width: ceil(label.size().width) + leadingInset + trailingInset, height: 28)
+        NSSize(width: ceil(label.size().width) + leadingInset + trailingInset, height: OnePlusTable.headerHeight)
     }
     override func draw(withFrame cellFrame: NSRect, in controlView: NSView) {
         NSColor(OnePlusColor.sidebar).setFill(); cellFrame.fill()
@@ -479,13 +478,13 @@ final class OnePlusTableHeaderView: NSTableHeaderView {
     override func setFrameSize(_ newSize: NSSize) {
         // AppKit retiles the floating header after native appearance/layout changes.
         // Keep its reserved extent identical to the header cells in both themes.
-        super.setFrameSize(NSSize(width: newSize.width, height: 28))
+        super.setFrameSize(NSSize(width: newSize.width, height: OnePlusTable.headerHeight))
     }
 
     override func headerRect(ofColumn column: Int) -> NSRect {
         guard let tableView, tableView.tableColumns.indices.contains(column) else { return super.headerRect(ofColumn: column) }
         let rect = tableView.rect(ofColumn: column)
-        return NSRect(x: rect.minX, y: 0, width: rect.width, height: 28)
+        return NSRect(x: rect.minX, y: 0, width: rect.width, height: OnePlusTable.headerHeight)
     }
     override func draw(_ dirtyRect: NSRect) {
         NSColor(OnePlusColor.sidebar).setFill(); bounds.fill()

@@ -75,12 +75,12 @@ private struct OnePlusTableConfigurator: NSViewRepresentable {
             if let scroll = table.enclosingScrollView, scroll.borderType != .noBorder {
                 scroll.borderType = .noBorder
             }
-            if !table.subviews.contains(where: { $0 is OnePlusTableLines }) {
-                table.addSubview(OnePlusTableLines(table: table))
-            }
+            let lines = table.subviews.compactMap { $0 as? OnePlusTableLines }.first ?? OnePlusTableLines(table: table)
+            if lines.superview == nil { table.addSubview(lines) }
+            lines.updateRowBackgrounds()
             table.focusRingType = .none
             if !(table.headerView is OnePlusTableHeaderView) {
-                table.headerView = OnePlusTableHeaderView(frame: NSRect(x: 0, y: 0, width: table.bounds.width, height: 28))
+                table.headerView = OnePlusTableHeaderView(frame: NSRect(x: 0, y: 0, width: table.bounds.width, height: OnePlusTable.headerHeight))
             }
             for (index, column) in table.tableColumns.enumerated() {
                 let model = columns.indices.contains(index) ? columns[index] : nil
@@ -109,8 +109,8 @@ private struct OnePlusTableConfigurator: NSViewRepresentable {
 final class OnePlusTableLines: NSView {
     private weak var table: NSTableView?
     private weak var hoveredRow: NSTableRowView?
-    private var restingBackground: NSColor?
     private var hoverArea: NSTrackingArea?
+    private var selectionObservation: NSKeyValueObservation?
     init(table: NSTableView) {
         self.table = table
         super.init(frame: table.bounds)
@@ -118,6 +118,9 @@ final class OnePlusTableLines: NSView {
         wantsLayer = true
         layer?.zPosition = 1
         setAccessibilityElement(false)
+        selectionObservation = table.observe(\.selectedRowIndexes) { [weak self] _, _ in
+            MainActor.assumeIsolated { self?.updateRowBackgrounds() }
+        }
     }
     @available(*, unavailable) required init?(coder: NSCoder) { fatalError() }
     override var isFlipped: Bool { true }
@@ -137,18 +140,25 @@ final class OnePlusTableLines: NSView {
     func setHoveredRow(_ index: Int) {
         let next = index >= 0 ? table?.rowView(atRow: index, makeIfNecessary: false) : nil
         guard next !== hoveredRow else { return }
-        if let hoveredRow, let restingBackground { hoveredRow.backgroundColor = restingBackground }
         hoveredRow = next
-        restingBackground = next?.backgroundColor
-        next?.backgroundColor = NSColor(OnePlusColor.raised)
+        updateRowBackgrounds()
     }
     override func viewDidChangeEffectiveAppearance() {
         super.viewDidChangeEffectiveAppearance()
-        hoveredRow?.backgroundColor = NSColor(OnePlusColor.raised)
+        updateRowBackgrounds()
         needsDisplay = true
+    }
+    func updateRowBackgrounds() {
+        table?.enumerateAvailableRowViews { row, index in
+            row.selectionHighlightStyle = .none
+            let color = NSColor(row.isSelected ? (row.isEmphasized ? OnePlusColor.selection : OnePlusColor.selectionInactive)
+                : row === self.hoveredRow ? OnePlusColor.raised : OnePlusTable.rowBackground(index))
+            if row.backgroundColor != color { row.backgroundColor = color }
+        }
     }
     override func draw(_ dirtyRect: NSRect) {
         guard let table else { return }
+        updateRowBackgrounds()
         let rows = table.rows(in: dirtyRect)
         guard rows.location != NSNotFound else { return }
         NSColor(OnePlusColor.lineSoft).setFill()

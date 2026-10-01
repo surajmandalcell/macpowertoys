@@ -198,12 +198,12 @@ struct DiskModifyView: View {
             }
             partitionCells(name: "Name", format: "Format", size: "Size", used: "Used", mount: "Mount point", protection: "Protection")
                 .onePlusTableHeader()
-            ForEach(disk.partitions) { item in
+            ForEach(Array(zip(disk.partitions.indices, disk.partitions)), id: \.1.id) { index, item in
                 Button { model.selectedPartitionID = item.id } label: {
                     partitionCells(name: item.name, format: item.displayType, size: item.size.diskSize,
                                    used: usedBytes[item.id]?.diskSize ?? "-", mount: item.mountPoint ?? "Not mounted",
                                    protection: item.content == "EFI" ? "ESP · Protected" : "-", child: item.isAPFSVolume)
-                        .onePlusTableRow(selected: model.selectedPartitionID == item.id)
+                        .onePlusTableRow(index: index, selected: model.selectedPartitionID == item.id)
                 }.buttonStyle(OnePlusInteractionStyle(selected: model.selectedPartitionID == item.id))
                     .accessibilityIdentifier("diskman.partition.\(item.id)")
                     .accessibilityAddTraits(model.selectedPartitionID == item.id ? .isSelected : [])

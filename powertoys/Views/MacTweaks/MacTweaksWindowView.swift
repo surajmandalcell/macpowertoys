@@ -573,7 +573,9 @@ struct MacTweaksWindowView: View {
                                         .padding(.horizontal, OnePlusMetrics.cardPadding)
                                         .frame(height: OnePlusMetrics.navRowHeight)
                                     }.buttonStyle(OnePlusInteractionStyle())
-                                    ForEach(entries) { entry in modifiedRow(entry) }
+                                    ForEach(Array(zip(entries.indices, entries)), id: \.1.id) { index, entry in
+                                        modifiedRow(entry, index: index)
+                                    }
                                 }
                             }
                         }
@@ -584,7 +586,7 @@ struct MacTweaksWindowView: View {
         }
     }
 
-    private func modifiedRow(_ entry: MacTweaksModifiedEntry) -> some View {
+    private func modifiedRow(_ entry: MacTweaksModifiedEntry, index: Int) -> some View {
         HStack(spacing: OnePlusMetrics.spacing[3]) {
             Text(entry.field.label).onePlusText(.row)
                 .frame(maxWidth: .infinity, alignment: .leading)
@@ -607,12 +609,8 @@ struct MacTweaksWindowView: View {
             .accessibilityLabel("Reset \(entry.field.label)")
         }
         .onePlusText(.control)
-        .padding(.horizontal, OnePlusMetrics.cardPadding)
-        .frame(height: OnePlusMetrics.settingRow)
-        .onePlusRowHover()
-        .overlay(alignment: .top) {
-            OnePlusColor.lineSoft.frame(height: 1).padding(.leading, OnePlusMetrics.cardPadding)
-        }
+        .padding(.horizontal, OnePlusMetrics.cardPadding - OnePlusTable.cellInset)
+        .onePlusTableRow(index: index)
     }
 
     private var aboutPage: some View {

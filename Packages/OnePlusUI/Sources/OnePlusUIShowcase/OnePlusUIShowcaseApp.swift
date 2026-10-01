@@ -367,7 +367,7 @@ private struct OnePlusUIShowcase: View {
                                            }, actions: { ids in [.init("Show names") {
                                                announce(tableRows.filter { ids.contains($0.id) }.map { $0.cells[0] }.joined(separator: ", "))
                                            }] })
-                            .frame(height: OnePlusTable.rowHeight(density) * 4 + 28)
+                            .frame(height: OnePlusTable.rowHeight(density) * 4 + OnePlusTable.headerHeight)
                     }
                     OnePlusCard {
                         OnePlusCardHeader("SwiftUI Table · \(density.rawValue)")
@@ -375,7 +375,7 @@ private struct OnePlusUIShowcase: View {
                             TableColumn("Name") { Text($0.cells[0]).onePlusTableCell(Self.tableColumns[0], position: .first) }.width(min: 140, ideal: 170)
                             TableColumn("MAC vendor") { Text($0.cells[1]).onePlusTableCell(Self.tableColumns[1]) }.width(120)
                             TableColumn("Completed") { Text($0.cells[2]).onePlusTableCell(Self.tableColumns[2], position: .last) }.width(110)
-                        }.onePlusNativeTable(columns: Self.tableColumns).frame(height: OnePlusTable.rowHeight(density) * 4 + 28)
+                        }.onePlusNativeTable(columns: Self.tableColumns).frame(height: OnePlusTable.rowHeight(density) * 4 + OnePlusTable.headerHeight)
                     }
                 }.onePlusDensity(density)
             }

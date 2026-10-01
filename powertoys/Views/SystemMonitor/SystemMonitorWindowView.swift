@@ -452,10 +452,10 @@ struct SystemMonitorWindowView: View {
                                 .frame(width: 8, height: 12)
                                 .opacity(hoveredMetric == identity || (OnePlusFocusPolicy.shared.showsFocus && focusedMetric == identity) ? 1 : 0)
                         }
-                        metricValue(value, overview: true, thermal: metric == .thermal)
+                        metricValue(value, overview: true)
                             .padding(.top, 7)
                         Text(detail)
-                            .onePlusText(.caption, color: TaskManagerTheme.secondary)
+                            .onePlusText(.metricCaption)
                             .lineLimit(1)
                             .padding(.top, 4)
                         Spacer(minLength: 8)
@@ -889,7 +889,7 @@ struct SystemMonitorWindowView: View {
                                 .font(.system(size: 10)).foregroundStyle(TaskManagerTheme.secondary)
                             metricValue(service.snapshot?.diskUsed.map(Self.diskBytes) ?? "—")
                             Text("used of \(service.snapshot?.diskTotal.map(Self.diskBytes) ?? "—")")
-                                .font(.system(size: 9)).foregroundStyle(TaskManagerTheme.secondary)
+                                .onePlusText(.metricCaption)
                         }
                         Spacer()
                         detailStat("Available", diskAvailable)
@@ -1088,16 +1088,15 @@ struct SystemMonitorWindowView: View {
         .padding(.leading, 24)
     }
 
-    private func metricValue(_ text: String, overview: Bool = false, thermal: Bool = false) -> some View {
+    private func metricValue(_ text: String, overview: Bool = false) -> some View {
         let parts = TaskManagerMetricText.parts(text)
         return HStack(alignment: .firstTextBaseline, spacing: 3) {
             Text(parts.value)
                 .onePlusText(.metric)
-                .font(.system(size: overview ? (thermal ? 23 : 27) : 21, weight: overview ? .regular : .semibold))
             if !parts.unit.isEmpty {
                 Text(parts.unit)
                     .onePlusText(.unit)
-                    .font(.system(size: overview ? 12 : 10))
+                    .onePlusDensity(overview ? .regular : .compact)
             }
         }
         .lineLimit(1)
@@ -1300,8 +1299,8 @@ struct SystemMonitorSettingsContent: View {
             }
             LazyVStack(spacing: 0) {
                 itemsHeader
-                ForEach(service.menuSettings.items) { item in
-                    itemRow(item)
+                ForEach(Array(zip(service.menuSettings.items.indices, service.menuSettings.items)), id: \.1.id) { index, item in
+                    itemRow(item, index: index)
                 }
             }
         }
@@ -1322,7 +1321,7 @@ struct SystemMonitorSettingsContent: View {
         .onePlusTableHeader()
     }
 
-    private func itemRow(_ item: SystemMonitorMenuItemConfiguration) -> some View {
+    private func itemRow(_ item: SystemMonitorMenuItemConfiguration, index: Int) -> some View {
         VStack(spacing: 0) {
             HStack(spacing: 8) {
                 reorderMenu(item.metric).frame(width: Column.drag)
@@ -1349,8 +1348,9 @@ struct SystemMonitorSettingsContent: View {
             }
             .frame(maxWidth: .infinity, alignment: .leading)
             .padding(.horizontal, OnePlusMetrics.cardPadding)
-            .frame(height: 34)
+            .frame(height: OnePlusTable.rowHeight(density))
             .onePlusRowHover()
+            .background(OnePlusTable.rowBackground(index))
             .overlay(alignment: .bottom) { OnePlusColor.lineSoft.frame(height: 1) }
             if expandedMetric == item.metric { detailsRow(item) }
         }

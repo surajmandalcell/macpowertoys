@@ -40,7 +40,7 @@ struct SystemCareDiskSummary: View {
     private func value(_ title: String, bytes: Int64?) -> some View {
         let metric = bytes.map(SystemCareByteMetric.init)
         return VStack(alignment: .leading, spacing: OnePlusMetrics.navRowGap) {
-            Text(title).onePlusText(.caption)
+            Text(title).onePlusText(.metricCaption)
             HStack(alignment: .firstTextBaseline, spacing: OnePlusMetrics.navRowGap) {
                 Text(metric?.value ?? "—").onePlusText(.metric).monospacedDigit()
                 Text(metric?.unit ?? "").onePlusText(.unit)
@@ -53,6 +53,7 @@ struct SystemCareDiskSummary: View {
 struct SystemCareCandidateRow: View {
     let row: SystemCareCleanupRow
     let manager: SystemCareManager
+    var rowIndex = 0
     @Environment(\.onePlusDensity) private var density
     @State private var previewURL: URL?
 
@@ -63,18 +64,15 @@ struct SystemCareCandidateRow: View {
                 set: { manager.setCandidate(row.id, selected: $0) }
             ))
             .labelsHidden().toggleStyle(OnePlusCheckboxStyle()).disabled(manager.isWorking)
-            VStack(alignment: .leading, spacing: OnePlusMetrics.navRowGap) {
-                HStack {
-                    Text(row.candidate.name).onePlusText(.row).lineLimit(1).truncationMode(.middle)
-                    Spacer(minLength: OnePlusMetrics.spacing[1])
-                    Text(row.size).onePlusText(.mono)
-                }
-                Text(row.candidate.url.path).onePlusText(.mono).lineLimit(1).truncationMode(.middle)
-            }
+            Text(row.candidate.name).onePlusText(.row).lineLimit(1).truncationMode(.middle)
+            Text(row.candidate.url.deletingLastPathComponent().path).onePlusText(.mono)
+                .lineLimit(1).truncationMode(.middle).frame(maxWidth: .infinity, alignment: .trailing)
+            Text(row.size).onePlusText(.mono)
         }
         .padding(.horizontal, density == .regular ? OnePlusMetrics.cardPadding : OnePlusMenuMetrics.bodyInset)
-        .frame(height: density == .regular ? OnePlusMetrics.captionedSettingRow : OnePlusMetrics.settingRow)
+        .frame(height: OnePlusTable.rowHeight(density))
         .onePlusRowHover()
+        .background(OnePlusTable.rowBackground(rowIndex))
         .overlay(alignment: .bottom) { OnePlusColor.lineSoft.frame(height: 1) }
         .contextMenu { SystemCareFileActions(url: row.candidate.url, previewURL: $previewURL) }
         .quickLookPreview($previewURL)

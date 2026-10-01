@@ -7,6 +7,7 @@ colors:
   window: { dark: "#161616", light: "#F5F5F5" }
   sidebar: { dark: "#1D1D1D", light: "#E7E7E7" }
   panel: { dark: "#202020", light: "#FAFAFA" }
+  table-alternate: { dark: "#242424", light: "#F2F2F2" }
   panel-hover: { dark: "#262626", light: "#FFFFFF" }
   raised: { dark: "#292929", light: "#FFFFFF" }
   raised-hover: { dark: "#303030", light: "#F0F0F0" }
@@ -21,7 +22,8 @@ colors:
   line-soft: { dark: "#2B2B2B", light: "#E1E1E1" }
   ink: { dark: "#EDEDED", light: "#242424" }
   secondary: { dark: "#C8C8C8", light: "#4B4B4B" }
-  muted: { dark: "#BCBCBC", light: "#565656" }  # at least 4.5:1 including card grain
+  muted: { dark: "#BCBCBC", light: "#565656" }  # at least 4.5:1 including card texture
+  metric-caption: { dark: "#A0A0A0", light: "#5B5B5B" }
   control-ink: { dark: "#DEDEDE", light: "#343434" }
   accent: { dark: "#EE5B50", light: "#D94F45" }
   data-blue: { dark: "#8AAEEA", light: "#3564A4" } # Cloud Sync progress and network data
@@ -38,6 +40,7 @@ colors:
 high-contrast:
   ink: { dark: "#FFFFFF", light: "#000000" }
   secondary-and-muted: { dark: "#DADADA", light: "#444444" }
+  metric-caption: { dark: "#DADADA", light: "#444444" }
   control-ink: { dark: "#FFFFFF", light: "#000000" }
   warn: { dark: "#FFE0C0", light: "#6B3208" }
   danger: { dark: "#FFCCC6", light: "#792820" }
@@ -48,8 +51,9 @@ high-contrast:
   selection: { dark: "#3D3D3D", light: "#C8C8C8" }
   selection-inactive: { dark: "#2B2B2B", light: "#DDDDDD" }
 typography:
-  regular: { sidebar-title: 12.5, nav: 12.5, caption-upper: 9, page-title: 24, subtitle: 12.5, tab: 12, section-title: 13, card-title: 12, row: 12, control: 12, caption: 10.5, table-header: 9, mono: 11, metric: 27, unit: 12 }
-  compact: { sidebar-title: 12.5, nav: 11.5, caption-upper: 9, page-title: 20, subtitle: 10.5, tab: 11, section-title: 12, card-title: 11, row: 10.5, control: 10.5, caption: 9.5, table-header: 8.5, mono: 9.5, metric: 21, unit: 10 }
+  regular: { sidebar-title: 12.5, nav: 12.5, caption-upper: 9, page-title: 24, subtitle: 12.5, tab: 12, section-title: 13, card-title: 12, row: 12, control: 12, caption: 10.5, metric-caption: 10.5, table-header: 9, mono: 11, metric: 27, unit: 12 }
+  compact: { sidebar-title: 12.5, nav: 11.5, caption-upper: 9, page-title: 20, subtitle: 10.5, tab: 11, section-title: 12, card-title: 11, row: 10.5, control: 10.5, caption: 9.5, metric-caption: 9.5, table-header: 8.5, mono: 9.5, metric: 27, unit: 10 }
+  metric: { weight: 550, line-height: 30.24 }
 rounded: { segment: 3, nav-row: 5, icon-button: 5, control: 6, menu-tile: 6, card: 8, window: 13 }
 spacing: { scale: [2, 4, 6, 8, 10, 12, 16, 20, 24, 28], gutter: 24, task-manager-gutter: 20, card-gap: 16, card-padding: 16, content-top: 20 }
 geometry:
@@ -63,6 +67,7 @@ geometry:
   search: { height: 32, inset-x: 12, below: 14 }
   nav-row: { regular: 32, compact: 29, gap: 2, container-inset: 10, padding: 10, icon: 15, icon-gap: 10 }
   card-header: 40
+  table: { header: 33, row: 34 }
   setting-row: 44
   control: { height: 28, compact-height: 24, column: 160, wide-column: 180 }
   tab-strip: { height: 36, gap: 22, underline: 2 }
@@ -83,7 +88,7 @@ windows:
 menu-panel: { status-icon: 14, status-icon-ink: 11.2, width: 356, max-height-fraction: 0.9, top-bar-padding: [10, 8, 6], tab-group-radius: 7, tab: 26, tab-gap: 2, body-inset: 8, tile-radius: 6, tile-gap: 5, columns: 3, action-button-height: 32 }
 popup-menu: { padding: 5, radius: 7, item: 28, item-compact: 24, item-radius: 4, item-padding: 9, max-visible-items: 12 }
 performance: { page-switch-ms: 100, table-rows-smooth: 1000 }
-texture: { ribbon: [700, 220], ribbon-drawn: [630, 198], ribbon-opacity-dark: 0.20, ribbon-opacity-light: 0.10, grain: [200, 125], card-grain: 0.14, menu-grain: 0.11, chart-dot-cell: 4 }
+texture: { ribbon: [700, 220], ribbon-drawn: [630, 198], ribbon-opacity-dark: 0.20, ribbon-opacity-light: 0.10, grain: [200, 125], metric-wave: [180, 110], metric-wave-opacity: 0.07, chart-dot-cell: 4 }
 motion: { hover: 0, selection: 0, content: 0, idle-animation: none }
 ---
 
@@ -154,7 +159,8 @@ Color rules:
   its storage series (see the Diskman recipe).
 - Text selection uses accent at 28% with primary text.
 - Every text token reaches at least 4.5:1 contrast on `window`, `sidebar`,
-  and `panel` in its appearance. Small captions never go below `muted`.
+  and `panel` in its appearance. Metric captions use `metricCaption`; other
+  small captions never go below `muted`.
 - Check text contrast on its actual hover, selected, and textured fill too.
   Ordinary selected metadata uses a readable selected-text role.
 - Menus, menu buttons, icon buttons, drag handles, and shortcut hints use
@@ -182,14 +188,16 @@ everywhere.
 | Caption | 10.5 | 9.5 | regular | 0 | `muted` |
 | Table header | 9 uppercase | 8.5 uppercase | medium | +0.4 | `muted` |
 | Mono value | 11 SF Mono | 9.5 SF Mono | regular | 0 | `secondary` |
-| Metric value | 27 | 21 | semibold | -1 | `ink` |
+| Metric caption | 10.5 | 9.5 | regular | 0 | `metricCaption` |
+| Metric value | 27 | 27 | 550, line 30.24 | -1 | `ink` |
 | Metric unit | 12 | 10 | regular | 0 | `secondary` |
 
 - Regular density: main window, Mac Tweaks, Diskman, Cloud Sync, Logs, Input
   Devices, System Care, NetToys, Switch, compact applets, and sheets.
 - Compact density: the Task Manager window and every menu-bar panel.
 - Descriptions and metric units use `secondary`. Supporting captions and metadata use
-  `muted`. These roles must stay visibly separate from primary values.
+  `muted`; metric captions use `metricCaption`. These roles stay separate
+  from primary values.
 - The dot-matrix title is Task Manager's identity only. It is drawn from the
   5 x 7 glyph table as one cached path with one accessibility label. The Task
   Manager sidebar title uses the normal system role.
@@ -275,12 +283,11 @@ clipped to a header, tab strip, or scroll view.
 - Workspace ribbon: the 700 x 220 ordered-dither ribbon drawn at 630 x 198,
   top -8, right -16, at the front-matter opacity, with a horizontal alpha
   fade (0%, 26%, 82%, 100%).
-- Corner grain: cards marked `textured` draw the 200 x 125 grain in their
-  top-right corner at 0.14 (metric tiles) or 0.11 (menu tiles), clipped to
-  the card. Text, icons, controls, rows, and list views
-  never carry texture.
-- Grain stays above the fill and below all content. It never overlays text
-  or controls.
+- Metric wave: cards and menu tiles marked `textured` draw the cached
+  grayscale ribbon at 180 x 110 pt in their top-right corner, opacity 0.07,
+  clipped to the card. Diskman keeps its explicit grain texture.
+- Texture stays above the fill and below all content. Text, icons, controls,
+  rows, and list views never carry texture.
 - Chart dither: ordered 4 x 4 pt dots under area charts, masked to the chart,
   one cached pattern, never one view per dot.
 - Textures change luminance only. They never tint semantic color. They are
@@ -412,12 +419,12 @@ Use only these. Names are the package API.
 | `OnePlusCard`, `OnePlusCardHeader`, `OnePlusSettingRow` | As defined in "Cards, rows, and the control column". |
 | `OnePlusPageHeader`, `OnePlusTabStrip` | As defined in "Page". |
 | `OnePlusSidebar`, `OnePlusNavRow`, `OnePlusNavCaption` | As defined in "Sidebar". |
-| `OnePlusMetricTile` | Label row (13 pt icon, card title role), value with unit, caption, and an optional sparkline or bar. Textured corner. Hover `panelHover` and a trailing chevron when it navigates. |
+| `OnePlusMetricTile` | Label row (13 pt icon, card title role), value with unit, caption, and an optional sparkline or bar. Quiet wave corner. Hover `panelHover` and a trailing chevron when it navigates. |
 | `OnePlusSparkline`, `OnePlusAreaChart` | Cached `Canvas` paths, 1.2 pt stroke, chart dither under area charts. Static while values do not change. |
 | `OnePlusUsageBar`, `OnePlusSegmentBar` | 5 pt capsule track (`line`) with a neutral fill. Segmented bars use 2 pt gaps. |
 | `OnePlusStatus` | A 4 pt dot and text. Hollow dot for offline. |
 | `OnePlusBadge` | 9 pt SF Mono count. A filled pending badge only for actionable counts. |
-| `OnePlusTable` | Fixed columns, a 9 pt uppercase header row on `sidebar` fill, 34 pt rows (28 compact), `lineSoft` separators, hover `raised`, selection `selection`. Native behavior: arrow keys, sort, context menus, type-select. |
+| `OnePlusTable` | Fixed columns, a 9 pt uppercase header row on `sidebar` fill, 33 pt headers and 34 pt rows in every density, `lineSoft` separators, hover `raised`, selection `selection`. Native behavior: arrow keys, sort, context menus, type-select. |
 | `OnePlusKeyValueRow` | Label leading in `muted`, value trailing in `ink` or SF Mono. |
 | `OnePlusEmptyState` | A centered 26 pt glyph, 13 pt medium title, one caption sentence, and an optional neutral button, with at least 40 pt vertical padding. |
 | `OnePlusToast` | A non-focusable overlay 20 pt above the content bottom, radius 6, `raised` at 96%, 1 pt `line`, 11 pt text. It also posts an accessibility announcement. |
@@ -457,13 +464,13 @@ in windows and menu-bar panels.
   medium and semibold), 30.24 pt line, in compact density too (was 21 pt
   semibold). Units keep their role.
 - B. Captions under metric values are quieter: `#A0A0A0` in dark (was
-  `#C8C8C8`); light keeps an equivalent contrast step. Values stay the
-  strongest text.
+  `#C8C8C8`); light uses `#5B5B5B`. Both keep at least 4.5:1 contrast
+  on card, hover, and selection fills. Values stay the strongest text.
 - C. Metric cards use the quiet wave texture instead of the corner grain:
   a 180 x 110 pt grayscale ribbon at 0.07 opacity, below all content.
 - H. Table header rows are 33 pt and body rows 34 pt in every density.
 - I. Table body rows alternate surfaces: odd rows `#202020`, even rows
-  `#242424` in dark, with a matching light step. Hover and selection still
+  `#242424` in dark, with `#FAFAFA` / `#F2F2F2` in light. Hover and selection still
   paint the complete row on top.
 - Process lists show the real app icon when a process belongs to an app
   bundle, and a terminal glyph for command-line processes. Show no generic
@@ -595,7 +602,7 @@ separate tool panel.
   tile fill and line. Never stack the glyph above the label.
 - Body: padding 3 top, 8 horizontal, 8 bottom. Content width 338.
 - Tiles (`OnePlusMenuTile`): radius 6, one step above `panel` (`#262626`
-  dark), 1 pt `line`, 7 x 8 padding, grain 0.11, 5 pt grid gaps, three
+  dark), 1 pt `line`, 7 x 8 padding, metric wave 0.07, 5 pt grid gaps, three
   109.33 pt columns. Wide tiles span two columns. A metric tile with history
   (CPU, GPU, Memory) draws it behind the tile content at full width in the
   lower 60 percent. Use a smooth 1 pt line at 35 percent opacity and a
@@ -692,20 +699,20 @@ Processes, CPU, GPU, Memory, Network, Disk, Battery, Sensors, Remote stats,
 System Report, About, and Settings. The Task Manager menu panel follows the
 HTML panel exactly, except `Open App`, which uses the ghost style.
 
-Overview uses regular 27 pt values with 12 pt units, 23 pt thermal words,
-and 13 pt glyphs, approved in round 11. Metric labels use chartSeries[0];
-notes and glyphs use secondary ink. Cards and grid columns have 16 pt gaps.
+Overview uses 27 pt values and thermal words, weight 550, line 30.24 pt,
+with 12 pt units and 13 pt glyphs. Metric labels use chartSeries[0];
+notes use metricCaption and glyphs use secondary ink. Cards and grid columns have 16 pt gaps.
 Detail legends share the card label's 12 pt inset; time axes follow plots.
 Chart captions and core IDs use compact 9.5 pt caption or mono roles.
 Navigation chevrons reserve their frame and appear only on hover or
 accessible keyboard focus. Histories use chartLine and 1.2 pt strokes,
 with the shared ordered-dot pattern clipped to the measured area.
 
-Remote window cards use regular 18 pt values, approved in round 11. Host
+Remote window cards use the shared 27 pt metric role in both densities. Host
 destination and platform sit beside the identity. Configure, Refresh,
 Open SSH, and Connect/Disconnect/Open App share a horizontal row of 24 pt
 buttons with compact control type. The connected/host count sits beside
-Add host. The menu panel keeps its 20 pt header, 36 pt metrics, and 84 pt
+Add host. The menu panel keeps its 20 pt header, shared 27 pt metrics, and 84 pt
 trailing action column.
 
 ### Diskman

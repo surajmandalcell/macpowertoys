@@ -529,7 +529,7 @@ private struct TaskManagerMenuProcessesView: View {
                     }
                     .onePlusText(.tableHeader)
                     .padding(.horizontal, OnePlusMenuMetrics.bodyInset)
-                    .frame(height: OnePlusTable.rowHeight(.compact))
+                    .frame(height: OnePlusTable.headerHeight)
                     .background(OnePlusColor.sidebar)
 
                     ScrollView {
@@ -539,8 +539,8 @@ private struct TaskManagerMenuProcessesView: View {
                                     .onePlusText(.caption)
                                     .frame(maxWidth: .infinity, minHeight: OnePlusTable.rowHeight(.compact))
                             }
-                            ForEach(model.rows) { row in
-                                TaskManagerMenuProcessRow(row: row, image: row.appBundlePath.flatMap { model.icons.images[$0] }).equatable()
+                            ForEach(Array(zip(model.rows.indices, model.rows)), id: \.1.id) { index, row in
+                                TaskManagerMenuProcessRow(row: row, image: row.appBundlePath.flatMap { model.icons.images[$0] }, rowIndex: index).equatable()
                             }
                         }
                     }
@@ -600,12 +600,13 @@ private struct TaskManagerMenuProcessesView: View {
 private struct TaskManagerMenuProcessRow: View, Equatable {
     let row: SystemMonitorProcessHierarchy.Row
     let image: NSImage?
+    let rowIndex: Int
 
     static func == (lhs: Self, rhs: Self) -> Bool {
         lhs.row.id == rhs.row.id && lhs.row.displayName == rhs.row.displayName
             && lhs.row.symbol == rhs.row.symbol && lhs.row.cpuText == rhs.row.cpuText
             && lhs.row.memoryText == rhs.row.memoryText
-            && lhs.image == rhs.image
+            && lhs.image == rhs.image && lhs.rowIndex == rhs.rowIndex
     }
 
     var body: some View {
@@ -630,7 +631,8 @@ private struct TaskManagerMenuProcessRow: View, Equatable {
             .frame(maxWidth: .infinity, minHeight: OnePlusTable.rowHeight(.compact))
             .contentShape(Rectangle())
         }
-        .buttonStyle(OnePlusInteractionStyle(radius: OnePlusMetrics.menuTileRadius))
+        .buttonStyle(OnePlusInteractionStyle(radius: 0))
+        .background(OnePlusTable.rowBackground(rowIndex))
         .overlay(alignment: .bottom) { OnePlusRule() }
     }
 
