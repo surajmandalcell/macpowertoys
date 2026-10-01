@@ -66,6 +66,14 @@ final class DiskExplorerViewTests: XCTestCase {
         XCTAssertTrue(projection.entriesByID[big.id] === big)
     }
 
+    func testQuickLookKeepsAllRealSelectionsInOrder() {
+        let first = entry("/tmp/Diskman/first")
+        let second = entry("/tmp/Diskman/second")
+        let grouped = entry("/tmp/Diskman/grouped", kind: .aggregate)
+        XCTAssertEqual(DiskEntryPresentation.previewURLs([grouped, second, first]), [second.url, first.url])
+        XCTAssertTrue(DiskEntryPresentation.previewURLs([grouped]).isEmpty)
+    }
+
     func testTableKeepsItsPresentationAcrossScanRevisions() {
         let original = DiskEntryTableRequest(revision: .distantPast, sourceID: "largest-files", search: "",
                                              column: 2, ascending: false, apparent: false, showsFileCount: false)

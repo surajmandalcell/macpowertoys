@@ -45,6 +45,9 @@ enum DiskEntryPresentation {
     static func copy(_ paths: [String]) {
         NSPasteboard.general.clearContents(); NSPasteboard.general.setString(paths.joined(separator: "\n"), forType: .string)
     }
+    nonisolated static func previewURLs(_ entries: [DiskEntry]) -> [URL] {
+        entries.filter { $0.kind != .aggregate }.map(\.url)
+    }
     static func openFullDiskAccess() {
         if let url = URL(string: "x-apple.systempreferences:com.apple.preference.security?Privacy_AllFiles") { NSWorkspace.shared.open(url) }
     }
@@ -103,7 +106,7 @@ struct DiskEntryTable: View {
     let apparent: Bool
     @Binding var selection: Set<String>
     let open: (DiskEntry) -> Void
-    let preview: (DiskEntry) -> Void
+    let preview: ([DiskEntry]) -> Void
     let actions: ([DiskEntry]) -> [OnePlusTableAction]
     let remove: ([DiskEntry]) -> Void
     var showsFileCount = false
@@ -169,7 +172,7 @@ struct DiskEntryTable: View {
                            sortColumn: column, ascending: ascending,
                            sort: { column = $0; ascending = $1 },
                            open: { $0.compactMap { current.entriesByID[$0] }.filter { $0.kind != .aggregate }.forEach(open) },
-                           preview: { if let entry = $0.sorted().compactMap({ current.entriesByID[$0] }).first, entry.kind != .aggregate { preview(entry) } },
+                           preview: { ids in preview(current.rows.filter { ids.contains($0.id) }.map(\.entry)) },
                            remove: { remove($0.compactMap { current.entriesByID[$0] }) },
                            actions: { actions($0.sorted().compactMap { current.entriesByID[$0] }) })
             .thinScrollIndicators()
@@ -410,7 +413,7 @@ struct DiskExplorerSettingsView: View {
                     set: { settings.setToolEnabled($0, for: "disk-explorer") }))
                     .labelsHidden().toggleStyle(OnePlusSwitchStyle())
                     .disabled(settings.isToolTransitioning("disk-explorer"))
-            }.help("Show Diskman in the launcher")
+            }.environment(\.onePlusCardPadding, 0).help("Show Diskman in the launcher")
             OnePlusCard {
                 OnePlusCardHeader("Display", systemImage: "square.grid.2x2")
                 OnePlusSettingRow("Visualization") {
