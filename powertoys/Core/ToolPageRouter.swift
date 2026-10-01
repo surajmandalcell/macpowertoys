@@ -1,5 +1,6 @@
 import AppKit
 import SwiftUI
+import OnePlusUI
 
 nonisolated struct OpenToolRoute: Equatable, Sendable {
     let tool: String
@@ -50,11 +51,16 @@ final class ToolPageRouter {
         }
         // SwiftUI opens native scenes itself. Deliver their page without reopening.
         guard !AppDelegate.requiresManualURLRouting(url),
-              let route = OpenToolRoute.parse(url), route.tool == tool, let page = route.page else { return }
-        post(tool: tool, page: page)
+              let route = OpenToolRoute.parse(url), route.tool == tool else { return }
+        if !OnePlusPanelTimings.shared.hasPending("window.\(tool)") {
+            OnePlusPanelTimings.shared.begin(panel: "window.\(tool)", operation: .windowOpen, input: "scene-url")
+        }
+        if let page = route.page { post(tool: tool, page: page) }
     }
 
     func post(tool: String, page: String) {
+        OnePlusPanelTimings.shared.begin(panel: "page.\(tool)", operation: .pageSwitch,
+                                        tab: page, input: "page-router")
         let request = ToolPageRequest(tool: tool, page: page)
         pending[tool] = request
         NotificationCenter.default.post(name: .openToolPage, object: request,
@@ -88,7 +94,8 @@ private struct OpenToolPageModifier: ViewModifier {
 
 extension View {
     func onNativeToolPageURL(_ tool: String) -> some View {
-        onOpenURL { ToolPageRouter.shared.handleNativeURL($0, tool: tool) }
+        onePlusWindowTimings(tool)
+            .onOpenURL { ToolPageRouter.shared.handleNativeURL($0, tool: tool) }
     }
 
     func onOpenToolPage(_ tool: String, matching page: String? = nil,

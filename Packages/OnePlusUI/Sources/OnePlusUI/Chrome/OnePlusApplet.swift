@@ -31,11 +31,18 @@ public struct OnePlusFloatingSettingsButton: View {
     let active: Bool
     let label: String
     let action: () -> Void
+    @Environment(\.onePlusTimingWindow) private var timingWindow
     public init(isActive: Bool, help: String? = nil, action: @escaping () -> Void) {
         active = isActive; label = help ?? (isActive ? "Back to home" : "Settings"); self.action = action
     }
     public var body: some View {
-        Button(action: action) {
+        Button {
+            if !timingWindow.isEmpty {
+                OnePlusPanelTimings.shared.begin(panel: timingWindow, operation: .pageSwitch,
+                                                tab: active ? "content" : "settings", input: "settings-button")
+            }
+            action()
+        } label: {
             Image(systemName: active ? "gearshape.fill" : "gearshape")
                 .font(.system(size: 12)).foregroundStyle(OnePlusColor.secondary)
                 .frame(width: 24, height: 24)

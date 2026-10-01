@@ -100,6 +100,7 @@ public struct OnePlusNavRow: View {
     private let muted: Bool
     private let action: () -> Void
     @Environment(\.onePlusDensity) private var density
+    @Environment(\.onePlusTimingWindow) private var timingWindow
     public init(_ title: String, systemImage: String, image: Image? = nil, iconRotation: Double = 0, selected: Bool = false,
                 count: Int? = nil, external: Bool = false, muted: Bool = false, action: @escaping () -> Void) {
         self.title = title; self.systemImage = systemImage; self.image = image
@@ -107,7 +108,13 @@ public struct OnePlusNavRow: View {
         self.selected = selected; self.count = count; self.external = external; self.muted = muted; self.action = action
     }
     public var body: some View {
-        Button(action: action) {
+        Button {
+            if !selected, !external, !timingWindow.isEmpty {
+                OnePlusPanelTimings.shared.begin(panel: timingWindow, operation: .pageSwitch,
+                                                tab: title, input: "sidebar")
+            }
+            action()
+        } label: {
             HStack(spacing: 10) {
                 if let image { image.resizable().scaledToFit().frame(width: 15, height: 15).accessibilityHidden(true) }
                 else { Image(systemName: systemImage).font(.system(size: 15, weight: .regular)).rotationEffect(.degrees(iconRotation)).frame(width: 15).accessibilityHidden(true) }

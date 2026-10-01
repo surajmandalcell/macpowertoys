@@ -405,8 +405,13 @@ class AppDelegate: NSObject, NSApplicationDelegate {
     }
 
     func application(_ application: NSApplication, open urls: [URL]) {
-        for url in urls where Self.requiresManualURLRouting(url) {
-            MacPowerToysApp.handleIncomingURL(url)
+        for url in urls {
+            if Self.requiresManualURLRouting(url) {
+                MacPowerToysApp.handleIncomingURL(url)
+            } else if let route = OpenToolRoute.parse(url) {
+                OnePlusPanelTimings.shared.begin(panel: "window.\(route.tool)", operation: .windowOpen,
+                                                input: "native-url")
+            }
         }
     }
 

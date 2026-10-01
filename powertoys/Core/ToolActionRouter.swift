@@ -1,6 +1,8 @@
 import AppKit
 import Foundation
 import SwiftUI
+import OnePlusUI
+import QuartzCore
 
 enum ToolActionID: String, CaseIterable, Codable, Sendable {
     case rulerOpen = "ruler.open"
@@ -99,6 +101,9 @@ final class ToolActionRouter {
         }
 
         if resolved == "main" || ToolRegistry.builtInTools.contains(where: { $0.id == resolved }) {
+            if !OnePlusPanelTimings.shared.hasPending("window.\(resolved)") {
+                OnePlusPanelTimings.shared.begin(panel: "window.\(resolved)", operation: .windowOpen, input: "tool-router")
+            }
             guard let openWindowAction else {
                 if pendingToolOpens.last?.id != resolved || pendingToolOpens.last?.activateApp != activateApp {
                     if pendingToolOpens.count == Self.maximumPendingCount { pendingToolOpens.removeFirst() }
@@ -155,12 +160,27 @@ final class ToolActionRouter {
             open(toolID: request.action.toolID)
         }
 
+        if request.action == .rulerOpen {
+            OnePlusPanelTimings.shared.begin(panel: "window.ruler", operation: .windowOpen, input: "tool-router")
+        }
         NotificationCenter.default.post(
             name: .toolActionRequested,
             object: request.action,
             userInfo: request.parameters
         )
-        if request.action == .rulerOpen { dismissMainWindowAfterToolOpen() }
+        if request.action == .rulerOpen {
+            dismissMainWindowAfterToolOpen()
+            DispatchQueue.main.async {
+                guard let window = NSApp.windows.first(where: {
+                    $0.identifier?.rawValue == "ruler-window" && $0.isVisible
+                }) else { OnePlusPanelTimings.shared.cancel(panel: "window.ruler"); return }
+                window.contentView?.layoutSubtreeIfNeeded()
+                window.displayIfNeeded()
+                CATransaction.flush()
+                OnePlusPanelTimings.shared.finish(panel: "window.ruler", tab: nil,
+                                                  size: window.contentView?.frame.size ?? .zero)
+            }
+        }
     }
 
     private func presentSingleWindow(id: String, using openWindow: OpenWindowAction, activateApp: Bool) {
