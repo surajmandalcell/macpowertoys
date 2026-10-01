@@ -91,6 +91,19 @@ final class SystemMonitorWindowAuditTests: XCTestCase {
                        "Latest value " + 50.0.formatted())
     }
 
+    @MainActor
+    func testProtectedProcessTableMenusOmitTermination() {
+        for (pid, started, expected) in [(Int32(1), UInt64(1), ["Inspect", "Copy executable path"]),
+                                         (Int32.max, 0, ["Inspect"]),
+                                         (Int32.max, 1, ["Inspect", "Copy executable path", "Quit", "Force Quit"])] {
+            let process = SystemMonitorProcess(pid: pid, started: started, name: "Test", cpuPercent: nil,
+                                                residentBytes: 0, virtualBytes: 0, threads: 0, parentPID: 1,
+                                                userID: UInt32.max, executablePath: started == 0 ? "Protected process" : "/bin/test")
+            let menu = SystemMonitorProcessActions.tableActions(process, inspect: {}, copyPath: { _ in }, confirm: { _, _ in })
+            XCTAssertEqual(menu.map(\.title), expected)
+        }
+    }
+
     func testProcessActionsRejectStartupSelfUnknownIdentityAndUnavailablePaths() {
         for (pid, started, allowed) in [(Int32(1), UInt64(1), false),
                                        (ProcessInfo.processInfo.processIdentifier, 1, false),

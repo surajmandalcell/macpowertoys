@@ -176,10 +176,9 @@ final class TrayFanUITests: XCTestCase {
         searchFocusedCapture.name = "Task Manager search focused baseline"
         searchFocusedCapture.lifetime = .keepAlways
         add(searchFocusedCapture)
-        let processRows = app.buttons.matching(NSPredicate(
-            format: "identifier BEGINSWITH %@", "task-manager.process.row."
-        ))
-        let firstProcess = processRows.firstMatch
+        let nativeTable = taskManager.tables.firstMatch
+        XCTAssertTrue(nativeTable.waitForExistence(timeout: 15), app.debugDescription)
+        let firstProcess = nativeTable.descendants(matching: .tableRow).firstMatch
         XCTAssertTrue(firstProcess.waitForExistence(timeout: 15), app.debugDescription)
         firstProcess.hover()
 
@@ -189,6 +188,11 @@ final class TrayFanUITests: XCTestCase {
         add(hoverCapture)
 
         firstProcess.click()
+        XCTAssertFalse(app.staticTexts["Process Information"].exists, "A single click selects without inspecting")
+        XCTAssertTrue(firstProcess.isSelected)
+        nativeTable.typeKey(.downArrow, modifierFlags: [])
+        XCTAssertFalse(firstProcess.isSelected, "Arrow keys move native selection")
+        nativeTable.typeKey(.return, modifierFlags: [])
         XCTAssertTrue(app.staticTexts["Process Information"].waitForExistence(timeout: 5))
 
         let sheetCapture = XCTAttachment(screenshot: app.screenshot())
