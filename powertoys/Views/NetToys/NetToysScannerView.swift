@@ -864,31 +864,7 @@ struct NetToysScannerView: View {
             OnePlusTextField("Ports", text: $model.portInput)
                 .frame(width: OnePlusMetrics.controlColumn)
                 .accessibilityLabel("TCP ports")
-            OnePlusActionMenu(model.isImporting ? "Importing..." : "Presets") {
-                Button(activeNetworkCIDR.map { "Local Subnet · \($0)" } ?? "Local Subnet") {
-                    if let activeNetworkCIDR { model.useActiveNetwork(activeNetworkCIDR) }
-                }
-                .disabled(activeNetworkCIDR == nil)
-                Button("Random Addresses…") { showRandomTargets = true }
-                Button("Import Target List…") { model.importTargets() }
-                    .disabled(model.isScanning || model.isImporting)
-                Button("Load Saved Results…") { model.loadResults() }
-                    .disabled(model.isScanning || model.isImporting)
-                Divider()
-                Button(model.favoriteTargets.contains(model.targetInput)
-                    ? "Remove Current Favorite"
-                    : "Save Current Favorite") {
-                    model.toggleFavoriteTarget()
-                }
-                if !model.favoriteTargets.isEmpty {
-                    Menu("Favorite Targets") {
-                        ForEach(model.favoriteTargets, id: \.self) { target in
-                            Button(target) { model.targetInput = target }
-                        }
-                    }
-                }
-            }
-            .accessibilityLabel(model.isImporting ? "Importing scan file" : "More scan options")
+            scanPresets
 
             if model.isScanning {
                 Button("Stop", role: .cancel) { model.cancel() }
@@ -901,52 +877,60 @@ struct NetToysScannerView: View {
         }
     }
 
+    private var scanPresets: some View {
+        OnePlusActionMenu(model.isImporting ? "Importing..." : "Presets") {
+            Button(activeNetworkCIDR.map { "Local Subnet · \($0)" } ?? "Local Subnet") {
+                if let activeNetworkCIDR { model.useActiveNetwork(activeNetworkCIDR) }
+            }
+            .disabled(activeNetworkCIDR == nil)
+            Button("Random Addresses…") { showRandomTargets = true }
+            Button("Import Target List…") { model.importTargets() }
+                .disabled(model.isScanning || model.isImporting)
+            Button("Load Saved Results…") { model.loadResults() }
+                .disabled(model.isScanning || model.isImporting)
+            Divider()
+            Button(model.favoriteTargets.contains(model.targetInput)
+                ? "Remove Current Favorite"
+                : "Save Current Favorite") {
+                model.toggleFavoriteTarget()
+            }
+            if !model.favoriteTargets.isEmpty {
+                Menu("Favorite Targets") {
+                    ForEach(model.favoriteTargets, id: \.self) { target in
+                        Button(target) { model.targetInput = target }
+                    }
+                }
+            }
+        }
+        .accessibilityLabel(model.isImporting ? "Importing scan file" : "More scan options")
+    }
+
     private func applyPrefill(_ prefill: NetToysScanPrefill?) {
         guard let prefill else { return }
         model.targetInput = prefill.targets
         if let ports = prefill.ports { model.portInput = ports }
     }
 
+    private var resultFilterChoices: [(NetToysResultFilter, String)] {
+        [
+            (.all, "All \(model.results.count)"),
+            (.alive, "Alive \(model.aliveResultCount)"),
+            (.openPorts, "Open Ports \(model.openPortResultCount)")
+        ]
+    }
+
     private var resultControls: some View {
         let selected = selectedRows
         return HStack(spacing: OnePlusMetrics.actionSpacing) {
-            OnePlusSegmented(choices: [
-                (.all, "All \(model.results.count)"),
-                (.alive, "Alive \(model.aliveResultCount)"),
-                (.openPorts, "Open Ports \(model.openPortResultCount)")
-            ], selection: $model.filter, accessibilityLabel: "Results")
+            OnePlusSegmented(choices: resultFilterChoices, selection: $model.filter,
+                             accessibilityLabel: "Results")
                 .fixedSize()
             OnePlusSearchField(prompt: "Find address, host, MAC, or port", text: $model.searchText,
                                width: nil, focusTrigger: searchFocus)
 
             Spacer()
 
-            OnePlusActionMenu("More", width: OnePlusMetrics.controlColumn / 2) {
-                Menu("Go to Result") {
-                    Button("Next Alive Host") { select(offset: 1, where: \.isReachable) }
-                    Button("Previous Alive Host") { select(offset: -1, where: \.isReachable) }
-                    Divider()
-                    Button("Next Down Host") { select(offset: 1) { !$0.isReachable } }
-                    Button("Previous Down Host") { select(offset: -1) { !$0.isReachable } }
-                    Divider()
-                    Button("Next Host With Open Ports") { select(offset: 1) { !$0.openPorts.isEmpty } }
-                    Button("Previous Host With Open Ports") { select(offset: -1) { !$0.openPorts.isEmpty } }
-                }
-                Button("Scan Statistics…") { showStatistics = true }
-                    .disabled(model.results.isEmpty)
-                Button("Add SSH Anchor") {
-                    if let result = selected.first { openSSHAnchor(result) }
-                }
-                .disabled(selected.count != 1)
-                Divider()
-                Button("Copy Selected Details") { copyDetails(selected) }
-                    .disabled(model.selection.isEmpty)
-                Button("Delete Selected", role: .destructive) {
-                    pendingRemoval = model.selection
-                    confirmRemoval = true
-                }
-                .disabled(model.selection.isEmpty)
-            }
+            resultActions
 
             Button("Copy IP") {
                 NSPasteboard.general.clearContents()
@@ -959,28 +943,63 @@ struct NetToysScannerView: View {
             }
             .disabled(model.selection.isEmpty || model.isScanning)
 
-            OnePlusActionMenu("Export", width: OnePlusMetrics.controlColumn / 2) {
-                ForEach(NetToysExportFormat.allCases) { format in
-                    Button(format.rawValue) {
-                        model.export(format, rows: selected.isEmpty ? model.visibleResults : selected)
-                    }
-                }
-                Divider()
-                Menu("Append to Existing File") {
-                    ForEach(NetToysExportFormat.allCases.filter(\.canAppend)) { format in
-                        Button(format.rawValue) {
-                            model.append(format, rows: selected.isEmpty ? model.visibleResults : selected)
-                        }
-                    }
-                }
-            }
-            .disabled(model.visibleResults.isEmpty || model.isExporting)
+            resultExport
             if model.isExporting {
                 ProgressView()
                     .controlSize(.small)
                     .accessibilityLabel("Exporting scan results")
             }
         }
+    }
+
+    private var resultActions: some View {
+        let selected = selectedRows
+        return OnePlusActionMenu("More", width: OnePlusMetrics.controlColumn / 2) {
+            Menu("Go to Result") {
+                Button("Next Alive Host") { select(offset: 1, where: \.isReachable) }
+                Button("Previous Alive Host") { select(offset: -1, where: \.isReachable) }
+                Divider()
+                Button("Next Down Host") { select(offset: 1) { !$0.isReachable } }
+                Button("Previous Down Host") { select(offset: -1) { !$0.isReachable } }
+                Divider()
+                Button("Next Host With Open Ports") { select(offset: 1) { !$0.openPorts.isEmpty } }
+                Button("Previous Host With Open Ports") { select(offset: -1) { !$0.openPorts.isEmpty } }
+            }
+            Button("Scan Statistics…") { showStatistics = true }
+                .disabled(model.results.isEmpty)
+            Button("Add SSH Anchor") {
+                if let result = selected.first { openSSHAnchor(result) }
+            }
+            .disabled(selected.count != 1)
+            Divider()
+            Button("Copy Selected Details") { copyDetails(selected) }
+                .disabled(model.selection.isEmpty)
+            Button("Delete Selected", role: .destructive) {
+                pendingRemoval = model.selection
+                confirmRemoval = true
+            }
+            .disabled(model.selection.isEmpty)
+        }
+    }
+
+    private var resultExport: some View {
+        let selected = selectedRows
+        return OnePlusActionMenu("Export", width: OnePlusMetrics.controlColumn / 2) {
+            ForEach(NetToysExportFormat.allCases) { format in
+                Button(format.rawValue) {
+                    model.export(format, rows: selected.isEmpty ? model.visibleResults : selected)
+                }
+            }
+            Divider()
+            Menu("Append to Existing File") {
+                ForEach(NetToysExportFormat.allCases.filter(\.canAppend)) { format in
+                    Button(format.rawValue) {
+                        model.append(format, rows: selected.isEmpty ? model.visibleResults : selected)
+                    }
+                }
+            }
+        }
+        .disabled(model.visibleResults.isEmpty || model.isExporting)
     }
 
     private var resultsTable: some View {
