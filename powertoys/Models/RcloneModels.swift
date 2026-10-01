@@ -703,6 +703,11 @@ struct TransferJobSnapshot: Codable, Sendable {
 }
 
 extension TransferJob {
+    var terminationSnapshot: TransferJobSnapshot {
+        // Restore commits only completed work and preserves a user's manual pause.
+        TransferJob(snapshot: snapshot).snapshot
+    }
+
     var snapshot: TransferJobSnapshot {
         TransferJobSnapshot(
             id: id,
