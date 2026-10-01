@@ -252,20 +252,18 @@ struct ColorHistoryView: View {
                     .buttonStyle(OnePlusButtonStyle(.ghost, size: .small))
             }
             if isCreatingProject { newProjectField }
-            OnePlusCard {
-                ScrollView {
-                    LazyVStack(spacing: 0) {
-                        projectRow(id: nil, name: "Unfiled", project: nil)
-                        ForEach(service.projects) { project in
-                            projectRow(id: project.id, name: project.name, project: project)
-                        }
+            ScrollView {
+                LazyVStack(spacing: 0) {
+                    projectRow(id: nil, name: "Unfiled", project: nil)
+                    ForEach(service.projects) { project in
+                        projectRow(id: project.id, name: project.name, project: project)
                     }
                 }
-                .onePlusScrollIndicators()
-                .frame(minHeight: OnePlusMetrics.settingRow, maxHeight: .infinity)
             }
+            .onePlusScrollIndicators()
+            .frame(maxHeight: CGFloat(service.projects.count + 1) * OnePlusMetrics.settingRow)
         }
-        .frame(maxHeight: .infinity)
+        .frame(maxHeight: .infinity, alignment: .top)
         .padding(.horizontal, OnePlusMetrics.appletGutter)
         .padding(.top, OnePlusMetrics.contentGap)
     }

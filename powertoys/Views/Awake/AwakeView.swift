@@ -140,38 +140,40 @@ struct AwakeSettingsView: View {
     private var modes: some View {
         VStack(alignment: .leading, spacing: OnePlusMetrics.actionSpacing) {
             OnePlusSectionTitle("Session")
-            OnePlusSettingRow("Keep awake", separator: showsDisplayToggle || service.configuration.mode == .timed || service.configuration.mode == .until || duration == 0) {
-                OnePlusSelect(choices: [(AwakeMode.passive, "Off"), (.indefinite, "Indefinitely"),
-                                        (.timed, "For a duration"), (.until, "Until a time")],
-                              selection: Binding(get: { service.configuration.mode }, set: selectMode),
-                              accessibilityLabel: "Keep awake")
-                    .accessibilityIdentifier("awake.mode")
-            }
-            if showsDisplayToggle {
-                OnePlusSettingRow("Keep display on", separator: service.configuration.mode == .timed || service.configuration.mode == .until || duration == 0) {
-                    Toggle("Keep Display On", isOn: Binding(
-                        get: { service.configuration.keepDisplayOn }, set: service.setKeepDisplayOn
-                    )).labelsHidden().toggleStyle(OnePlusSwitchStyle())
+            VStack(spacing: 0) {
+                OnePlusSettingRow("Keep awake", separator: showsDisplayToggle || service.configuration.mode == .timed || service.configuration.mode == .until || duration == 0) {
+                    OnePlusSelect(choices: [(AwakeMode.passive, "Off"), (.indefinite, "Indefinitely"),
+                                            (.timed, "For a duration"), (.until, "Until a time")],
+                                  selection: Binding(get: { service.configuration.mode }, set: selectMode),
+                                  accessibilityLabel: "Keep awake")
+                        .accessibilityIdentifier("awake.mode")
                 }
-            }
-            if service.configuration.mode == .timed || service.configuration.mode == .until || duration == 0 {
-                VStack(spacing: OnePlusMetrics.actionSpacing) {
-                    if service.configuration.mode == .timed || duration == 0 {
-                        HStack(spacing: OnePlusMetrics.actionSpacing) {
-                            OnePlusStepperField("Hours", value: $hours, in: 0...168, unit: "h")
-                            OnePlusStepperField("Minutes", value: $minutes, in: 0...59, step: 5, unit: "min")
-                            Button("Start") { selectMode(.timed) }.disabled(duration == 0)
-                        }
+                if showsDisplayToggle {
+                    OnePlusSettingRow("Keep display on", separator: service.configuration.mode == .timed || service.configuration.mode == .until || duration == 0) {
+                        Toggle("Keep Display On", isOn: Binding(
+                            get: { service.configuration.keepDisplayOn }, set: service.setKeepDisplayOn
+                        )).labelsHidden().toggleStyle(OnePlusSwitchStyle())
                     }
-                    if service.configuration.mode == .until {
-                        HStack(spacing: OnePlusMetrics.actionSpacing) {
-                            DatePicker("End time", selection: $expiration, in: Date()...)
-                                .labelsHidden().datePickerStyle(.field).controlSize(.small)
-                                .frame(maxWidth: .infinity, alignment: .leading)
-                            Button("Start") { selectMode(.until) }
+                }
+                if service.configuration.mode == .timed || service.configuration.mode == .until || duration == 0 {
+                    VStack(spacing: OnePlusMetrics.actionSpacing) {
+                        if service.configuration.mode == .timed || duration == 0 {
+                            HStack(spacing: OnePlusMetrics.actionSpacing) {
+                                OnePlusStepperField("Hours", value: $hours, in: 0...168, unit: "h")
+                                OnePlusStepperField("Minutes", value: $minutes, in: 0...59, step: 5, unit: "min")
+                                Button("Start") { selectMode(.timed) }.disabled(duration == 0)
+                            }
                         }
-                    }
-                }.frame(minHeight: OnePlusMetrics.settingRow)
+                        if service.configuration.mode == .until {
+                            HStack(spacing: OnePlusMetrics.actionSpacing) {
+                                DatePicker("End time", selection: $expiration, in: Date()...)
+                                    .labelsHidden().datePickerStyle(.field).controlSize(.small)
+                                    .frame(maxWidth: .infinity, alignment: .leading)
+                                Button("Start") { selectMode(.until) }
+                            }
+                        }
+                    }.frame(minHeight: OnePlusMetrics.settingRow)
+                }
             }
         }
     }
@@ -217,22 +219,29 @@ struct AwakeSettingsView: View {
 
     private var process: some View {
         VStack(alignment: .leading, spacing: OnePlusMetrics.actionSpacing) {
+            OnePlusSectionTitle("Attach to a process")
             HStack(spacing: OnePlusMetrics.actionSpacing) {
-                OnePlusSectionTitle("Attach to a process")
-                HStack(spacing: OnePlusMetrics.actionSpacing) {
-                    Button("Attach", action: attach)
-                    if service.configuration.attachedProcessID != nil {
-                        Button("Detach") { service.attach(to: nil) }
-                    }
+                Text("Process ID").onePlusText(.row)
+                    .help(processHelp).accessibilityHint(processHelp)
+                Image(systemName: "questionmark.circle")
+                    .foregroundStyle(OnePlusColor.muted).help(processHelp)
+                    .accessibilityLabel(processHelp)
+                Spacer(minLength: OnePlusMetrics.actionSpacing)
+                OnePlusTextField("Process ID", text: $processID, onSubmit: attach)
+                    .frame(width: OnePlusMetrics.controlColumn)
+                Button("Attach", action: attach).fixedSize()
+                if service.configuration.attachedProcessID != nil {
+                    Button("Detach") { service.attach(to: nil) }.fixedSize()
                 }
             }
-            OnePlusSettingRow("Process ID", help: service.configuration.attachedProcessID.map {
-                "Stops when PID \(String($0)) exits."
-            } ?? "Stops when this process exits.", separator: false) {
-                OnePlusTextField("Process ID", text: $processID, error: processError, onSubmit: attach)
-                    .frame(width: OnePlusMetrics.controlColumn)
-            }
+            .frame(height: OnePlusMetrics.settingRow)
+            if let processError { OnePlusBanner(processError, tone: .error) }
         }
+    }
+
+    private var processHelp: String {
+        service.configuration.attachedProcessID.map { "Stops when PID \(String($0)) exits." }
+            ?? "Stops when this process exits."
     }
 
     private func selectMode(_ mode: AwakeMode) {
