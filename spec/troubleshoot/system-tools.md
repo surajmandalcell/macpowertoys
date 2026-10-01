@@ -511,15 +511,20 @@
   HID enumeration on the main actor and replaces an active event tap. Pending
   smoothing steps can still post after tool disablement because the saved
   scroll-control preference remains on. Signed `198055e4` review also found
-  a 1,146 pt panel because all four sections defaulted to expanded.
-- **Cause:** Every disclosure used an expanded fallback. One shared disclosure
+  a 1,146 pt panel because all four sections defaulted to expanded. Round 10
+  also shows a second 16pt inset and repeated Devices/Connected devices headers.
+- **Cause:** Direct groups inherited card padding and a second section header.
+  Every disclosure used an expanded fallback. One shared disclosure
   gate owns both profiles. Refresh couples
   device discovery to tap creation, and delayed steps check only the preference.
 - **Invariant:** Devices, Mouse, Trackpad, and Scroll device have independent
   persisted disclosures. For unset keys, open Devices and collapse Mouse,
   Trackpad, and Scroll device; never overwrite saved choices. Collapsed profile
   headers show live direction and speed on the trailing side. Devices keeps its
-  count and Scroll device keeps its selected mode. Show every detected device
+  count and Scroll device keeps its selected mode. Use zero onePlusCardPadding
+  for direct groups; true cards keep their inset. Devices has one header with
+  count, Refresh, and chevron trailing. Refresh is a separate button beside
+  the full-row disclosure, so it does not toggle the section. Show every detected device
   and all seven profile rows when expanded.
   Keep one "Use custom scrolling" switch with a help-glyph explanation.
   Put counts and status on the trailing side of their row. Keep the master
@@ -536,7 +541,11 @@
   final signed app, test fresh disclosure defaults and saved choices across
   panel recreation, collapsed header values, both profile
   gates, permission recovery, tap refresh, and immediate disablement during a
-  smoothed notch. Preserve the owner's scroll preferences.
+  smoothed notch. Check direct header/label/control edges against the shell
+  gutter and Refresh separately from disclosure. In an isolated session, revoke
+  Accessibility during interception, require stopped control and visible recovery,
+  then regrant and retry only on explicit action or confirmed permission change.
+  A source trace is not this live acceptance. Preserve the owner's scroll preferences.
 
 ## System Care And Mole
 
