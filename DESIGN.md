@@ -537,6 +537,11 @@ The Task Manager panel is the pattern for every menu-bar panel: the combined
 MacPowerToys panel, the Task Manager panel, the Portman panel, and any
 separate tool panel.
 
+- Shell corner radius: 8 pt, the product's card and panel radius (owner
+  correction 2026-10-01: the combined panel's larger system popover radius
+  did not match the product). Every menu-bar panel window (combined,
+  Task Manager, Portman, separate tool items) clips its window, border,
+  and shadow to 8 pt.
 - Shell: 356 pt wide. Its height is always the natural height of the
   current tab's content; 90% of the visible screen is only a ceiling for
   content that is taller (owner correction: a short tab must never open as a
