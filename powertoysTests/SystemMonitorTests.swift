@@ -295,7 +295,13 @@ final class SystemMonitorTests: XCTestCase {
         )
         let row = SystemMonitorProcessHierarchy.Row(process: process, depth: 0, parentName: "Parent")
         XCTAssertEqual(row.displayName, "Orca (2.1.284)")
-        XCTAssertEqual(row.symbol, "app")
+        XCTAssertEqual(row.appBundlePath, "/Applications/Orca.app")
+        let nested = SystemMonitorProcess(pid: 44, started: 1, name: "Helper", cpuPercent: nil,
+                                          residentBytes: 0, virtualBytes: 0, threads: 1, parentPID: 42, userID: 501,
+                                          executablePath: "/Applications/My App.app/Contents/Frameworks/Helper.app/Contents/MacOS/Helper")
+        XCTAssertEqual(SystemMonitorProcessHierarchy.Row(process: nested, depth: 1).appBundlePath,
+                       "/Applications/My App.app")
+        XCTAssertEqual(row.symbol, "terminal")
         let protected = SystemMonitorProcess(
             pid: 43, started: 0, name: "2.1.282", cpuPercent: nil,
             residentBytes: 0, virtualBytes: 0, threads: 0, parentPID: 42, userID: 501,
@@ -304,6 +310,7 @@ final class SystemMonitorTests: XCTestCase {
         let child = SystemMonitorProcessHierarchy.Row(process: protected, depth: 1, parentName: "Orca")
         XCTAssertEqual(child.displayName, "Orca (2.1.282)")
         XCTAssertEqual(child.symbol, "lock")
+        XCTAssertNil(child.appBundlePath)
     }
 
     func testSelectedProcessCountersRefreshAcrossSamples() async throws {

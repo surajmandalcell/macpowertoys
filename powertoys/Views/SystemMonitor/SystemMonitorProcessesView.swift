@@ -1,5 +1,6 @@
 import AppKit
 import OnePlusUI
+import Observation
 import SwiftUI
 
 nonisolated enum ProcessSortColumn: String, CaseIterable, Hashable, Sendable {
@@ -58,6 +59,7 @@ nonisolated enum SystemMonitorProcessHierarchy {
         let displayName: String
         let tableName: String
         let symbol: String
+        let appBundlePath: String?
         var id: String { process.id }
 
         init(process: SystemMonitorProcess, depth: Int, parentName: String? = nil) {
@@ -75,12 +77,15 @@ nonisolated enum SystemMonitorProcessHierarchy {
             pidText = String(process.pid)
             let parts = process.name.split(separator: ".")
             let isVersion = parts.count > 1 && parts.allSatisfy { Int($0) != nil }
-            let bundleName = URL(fileURLWithPath: process.executablePath).pathComponents
-                .first { $0.hasSuffix(".app") }.map { String($0.dropLast(4)) }
+            let components = URL(fileURLWithPath: process.executablePath).pathComponents
+            appBundlePath = components.firstIndex(where: { $0.hasSuffix(".app") }).map {
+                NSString.path(withComponents: Array(components[...$0]))
+            }
+            let bundleName = appBundlePath.map { URL(fileURLWithPath: $0).deletingPathExtension().lastPathComponent }
             let owner = bundleName ?? parentName
             displayName = isVersion ? owner.map { "\($0) (\(process.name))" } ?? process.name : process.name
             tableName = String(repeating: "    ", count: depth) + displayName
-            symbol = bundleName != nil ? "app" : process.started == 0 ? "lock"
+            symbol = process.started == 0 ? "lock"
                 : process.executablePath.hasPrefix("/System/Library/") ? "gearshape" : "terminal"
         }
     }
@@ -192,6 +197,39 @@ nonisolated enum SystemMonitorProcessActions {
 
 }
 
+@MainActor @Observable
+private final class SystemMonitorProcessIcons {
+    private(set) var images: [String: NSImage] = [:]
+    private var loaded = Set<String>()
+
+    func load(for rows: [SystemMonitorProcessHierarchy.Row]) async {
+        let paths = Set(rows.compactMap(\.appBundlePath))
+        for path in images.keys where !paths.contains(path) { images[path] = nil }
+        loaded.formIntersection(paths)
+        let missing = paths.subtracting(loaded)
+        guard !missing.isEmpty else { return }
+        let worker = Task.detached(priority: .utility) {
+            var data: [String: Data] = [:]
+            for path in missing {
+                guard !Task.isCancelled else { break }
+                var isDirectory: ObjCBool = false
+                if FileManager.default.fileExists(atPath: path, isDirectory: &isDirectory), isDirectory.boolValue {
+                    data[path] = NSWorkspace.shared.icon(forFile: path).tiffRepresentation
+                }
+            }
+            return data
+        }
+        let data = await withTaskCancellationHandler {
+            await worker.value
+        } onCancel: {
+            worker.cancel()
+        }
+        guard !Task.isCancelled else { return }
+        loaded.formUnion(missing)
+        for (path, bytes) in data { images[path] = NSImage(data: bytes) }
+    }
+}
+
 private struct SystemMonitorProcessRowsRequest: Hashable {
     let generation: Int
     let search: String
@@ -205,6 +243,7 @@ struct SystemMonitorOverviewProcessesView: View {
     let onSelect: (SystemMonitorProcess) -> Void
 
     @State private var sampler = SystemMonitorProcessSampler()
+    @State private var processIcons = SystemMonitorProcessIcons()
     @State private var rows: [SystemMonitorProcessHierarchy.Row] = []
     @Environment(\.onePlusIsVisible) private var isVisible
 
@@ -229,10 +268,13 @@ struct SystemMonitorOverviewProcessesView: View {
                         Button { onSelect(row.process) } label: {
                             HStack(spacing: 8) {
                                 HStack(spacing: 8) {
-                                    Image(systemName: row.symbol)
-                                        .font(.system(size: 13))
-                                        .foregroundStyle(TaskManagerTheme.secondary)
-                                        .frame(width: 18, height: 18)
+                                    Group {
+                                        if let path = row.appBundlePath, let icon = processIcons.images[path] {
+                                            Image(nsImage: icon).resizable().scaledToFit()
+                                        } else { Image(systemName: row.symbol).font(.system(size: 13)) }
+                                    }
+                                    .foregroundStyle(TaskManagerTheme.secondary)
+                                    .frame(width: 18, height: 18)
                                     Text(row.displayName)
                                         .font(.system(size: 10))
                                         .foregroundStyle(TaskManagerTheme.ink)
@@ -278,6 +320,7 @@ struct SystemMonitorOverviewProcessesView: View {
             )
             guard !Task.isCancelled else { return }
             rows = result.rows
+            await processIcons.load(for: result.rows)
             try? await Task.sleep(for: .seconds(3))
         }
     }
@@ -289,6 +332,7 @@ struct SystemMonitorProcessesView: View {
     @AppStorage("systemMonitor.processSortDescending") private var descending = true
     @AppStorage("systemMonitor.processHierarchy") private var storedHierarchy = false
     @State private var sampler = SystemMonitorProcessSampler()
+    @State private var processIcons = SystemMonitorProcessIcons()
     @State private var processes: [SystemMonitorProcess] = []
     @State private var processGeneration = 0
     @State private var internalSearch = ""
@@ -503,11 +547,20 @@ struct SystemMonitorProcessesView: View {
             descending: request.descending
         )
         guard !Task.isCancelled, rowsRequest == request else { return }
-        tableRows = result.rows.map {
-            OnePlusTableItem(id: $0.id, cells: [$0.tableName, $0.cpuText, $0.memoryText, $0.pidText], symbol: $0.symbol)
-        }
+        updateTableRows(result.rows)
         selectedProcessIDs.formIntersection(result.rows.map(\.id))
         if request.generation > 0 { didLoad = true }
+        await processIcons.load(for: result.rows)
+        guard !Task.isCancelled, rowsRequest == request else { return }
+        updateTableRows(result.rows)
+    }
+
+    private func updateTableRows(_ rows: [SystemMonitorProcessHierarchy.Row]) {
+        let prepared = rows.map { row in
+            OnePlusTableItem(id: row.id, cells: [row.tableName, row.cpuText, row.memoryText, row.pidText],
+                             symbol: row.symbol, image: row.appBundlePath.flatMap { processIcons.images[$0] })
+        }
+        if tableRows != prepared { tableRows = prepared }
     }
 
     private func sampleEndpoints() async {

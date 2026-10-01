@@ -5,6 +5,84 @@ import XCTest
 
 @MainActor
 final class OnePlusTableTests: XCTestCase {
+    func testHeaderSortIndicatorChangesDirectionWithoutMovingAlignedLabels() throws {
+        for appearance in [NSAppearance.Name.aqua, .darkAqua] {
+            let host = NSHostingView(rootView: OnePlusNativeTable(columns: [
+                .init("Process", width: 200), .init("Long centered heading", width: 120, alignment: .center),
+                .init("CPU", width: 84, trailing: true), .init("Memory", width: 102, trailing: true),
+                .init("PID", width: 76, trailing: true)
+            ], rows: [.init(id: "1", cells: ["Process", "Running", "1%", "1 MB", "42"], symbol: "terminal")],
+                selection: .constant([]), sortColumn: 3, sort: { _, _ in }, actions: { _ in [] })
+                .onePlusDensity(.compact))
+            let window = NSWindow(contentRect: NSRect(x: -10000, y: -10000, width: 622, height: 100),
+                                  styleMask: .borderless, backing: .buffered, defer: false)
+            window.isReleasedWhenClosed = false
+            defer { window.close() }
+            window.appearance = NSAppearance(named: appearance)
+            window.contentView = host
+            host.layoutSubtreeIfNeeded()
+            let table = try XCTUnwrap(findTable(in: host))
+            let header = try XCTUnwrap(table.headerView)
+            XCTAssertEqual(header.frame.height, 28)
+            XCTAssertEqual(table.rowHeight, 28)
+            for index in 0..<5 {
+                let cell = try XCTUnwrap(table.tableColumns[index].headerCell as? OnePlusTableHeaderCell)
+                let frame = header.headerRect(ofColumn: index)
+                let label = cell.labelRect(for: frame)
+                let indicator = cell.sortIndicatorRect(forBounds: frame)
+                XCTAssertTrue(label.intersection(indicator).isEmpty)
+                XCTAssertTrue(frame.contains(indicator))
+                var paints: [Data] = []
+                for ascending in [nil, true, false] as [Bool?] {
+                    table.sortDescriptors = ascending.map { [NSSortDescriptor(key: String(index), ascending: $0)] } ?? []
+                    header.needsDisplay = true
+                    let bitmap = try XCTUnwrap(header.bitmapImageRepForCachingDisplay(in: frame))
+                    header.cacheDisplay(in: frame, to: bitmap)
+                    paints.append(try XCTUnwrap(bitmap.representation(using: .png, properties: [:])))
+                    XCTAssertEqual(cell.labelRect(for: frame), label)
+                }
+                XCTAssertNotEqual(paints[0], paints[1], "The active column must paint a native sort indicator")
+                XCTAssertNotEqual(paints[1], paints[2], "Native sort direction must change the painted header")
+            }
+        }
+    }
+
+    func testNativePrimaryImageUpdatesWithoutTintOrColumnMovement() throws {
+        let first = NSImage(size: NSSize(width: 15, height: 15))
+        let second = NSImage(size: NSSize(width: 15, height: 15))
+        func view(_ image: NSImage?) -> OnePlusNativeTable {
+            OnePlusNativeTable(columns: [.init("Process", width: 200)],
+                rows: [.init(id: "1", cells: ["Application"], symbol: "terminal", image: image)],
+                selection: .constant([]), sort: { _, _ in }, actions: { _ in [] })
+        }
+        let coordinator = view(first).makeCoordinator()
+        let table = ReloadCountingTable(frame: NSRect(x: 0, y: 0, width: 240, height: 100))
+        table.dataSource = coordinator
+        let column = NSTableColumn(identifier: .init("0")); column.width = 200
+        table.addTableColumn(column)
+        coordinator.update(view(first), in: table, density: .compact)
+        let cell = try XCTUnwrap(coordinator.tableView(table, viewFor: column, row: 0) as? NSTableCellView)
+        cell.frame = NSRect(x: 0, y: 0, width: 200, height: 28)
+        cell.layoutSubtreeIfNeeded()
+        XCTAssertTrue(cell.imageView?.image === first)
+        XCTAssertNil(cell.imageView?.contentTintColor)
+        XCTAssertEqual(cell.imageView?.frame.size, NSSize(width: 15, height: 15))
+        let icon = try XCTUnwrap(cell.imageView)
+        let text = try XCTUnwrap(cell.textField)
+        XCTAssertEqual(text.alignmentRect(forFrame: text.frame).minX - icon.alignmentRect(forFrame: icon.frame).maxX,
+                       10, accuracy: 0.01)
+        let reloads = table.fullReloads
+        coordinator.update(view(second), in: table, density: .compact)
+        XCTAssertEqual(table.fullReloads, reloads)
+        XCTAssertEqual(table.cellReloads.last?.1, IndexSet(integer: 0))
+        let updated = try XCTUnwrap(coordinator.tableView(table, viewFor: column, row: 0) as? NSTableCellView)
+        XCTAssertTrue(updated.imageView?.image === second)
+        coordinator.update(view(nil), in: table, density: .compact)
+        let fallback = try XCTUnwrap(coordinator.tableView(table, viewFor: column, row: 0) as? NSTableCellView)
+        XCTAssertNotNil(fallback.imageView?.image)
+        XCTAssertEqual(fallback.imageView?.contentTintColor, NSColor(OnePlusColor.secondary))
+    }
+
     func testSelectedMetadataPaintMeetsContrastInBothAppearances() throws {
         for role in [OnePlusColor.muted, OnePlusColor.danger, OnePlusColor.warn] {
             for appearance in [NSAppearance.Name.aqua, .darkAqua, .accessibilityHighContrastAqua, .accessibilityHighContrastDarkAqua] {
