@@ -94,7 +94,8 @@ struct SystemMonitorMenuPopoverView: View {
 
 struct SystemMonitorTrayView: View {
     private let diagnostic: Bool
-    @AppStorage("systemMonitor.trayPage") private var pageID = SystemMonitorTrayPage.home.rawValue
+    @AppStorage("systemMonitor.trayPage") private var savedPageID = SystemMonitorTrayPage.home.rawValue
+    @State private var selectedPageID: String?
     private let remoteProfiles: [SystemMonitorRemoteProfile]
     private let onPreferredHeight: (CGFloat) -> Void
     @State private var processModel = TaskManagerMenuProcessModel.shared
@@ -115,6 +116,10 @@ struct SystemMonitorTrayView: View {
         self.onPreferredHeight = onPreferredHeight
     }
 
+    private var pageID: String {
+        get { selectedPageID ?? savedPageID }
+        nonmutating set { selectedPageID = newValue }
+    }
     private var page: SystemMonitorTrayPage { SystemMonitorTrayPage(rawValue: pageID) ?? .home }
     private var selection: Binding<SystemMonitorTrayPage> {
         Binding(get: { page }, set: select)
@@ -145,6 +150,7 @@ struct SystemMonitorTrayView: View {
                 tabs: Self.tabs,
                 selection: selection
             )
+            .modifier(TaskManagerMenuPageStorage(save: saveSelectedPage))
         } actions: {
             OnePlusMenuOpenApp {
                 ToolActionRouter.shared.open(toolID: "system-monitor")
@@ -164,7 +170,26 @@ struct SystemMonitorTrayView: View {
         .onOpenToolPage(diagnostic ? "menu.system-monitor" : nil) { id in
             if let destination = SystemMonitorTrayPage(rawValue: id) { select(destination) }
         }
-        .onDisappear { selectionTask?.cancel() }
+        .onChange(of: savedPageID) { _, id in selectedPageID = id }
+        .onDisappear {
+            selectionTask?.cancel()
+            saveSelectedPage()
+        }
+    }
+
+    private func saveSelectedPage() {
+        if let selectedPageID, savedPageID != selectedPageID { savedPageID = selectedPageID }
+    }
+}
+
+private struct TaskManagerMenuPageStorage: ViewModifier {
+    @Environment(\.onePlusIsVisible) private var isVisible
+    let save: () -> Void
+
+    func body(content: Content) -> some View {
+        content.onChange(of: isVisible) { _, visible in
+            if !visible { save() }
+        }
     }
 }
 
