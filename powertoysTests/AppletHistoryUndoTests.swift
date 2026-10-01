@@ -12,7 +12,9 @@ final class AppletHistoryUndoTests: XCTestCase {
         let samples = (0..<3).map { ColorSample(red: Double($0) / 2, green: 0.2, blue: 0.5, alpha: 1, projectID: project.id) }
         defaults.set(try JSONEncoder().encode(samples), forKey: "color-picker.history.v1")
         defaults.set(try JSONEncoder().encode([project]), forKey: "color-picker.projects.v1")
-        let color = ColorPickerService(defaults: defaults, sampler: HistoryUndoSampler())
+        let pasteboard = NSPasteboard(name: NSPasteboard.Name(suite))
+        defer { pasteboard.clearContents() }
+        let color = ColorPickerService(defaults: defaults, sampler: HistoryUndoSampler(), pasteboard: pasteboard)
         let manager = UndoManager()
         manager.groupsByEvent = false
         func perform(_ action: () -> Void) {
@@ -46,8 +48,12 @@ final class AppletHistoryUndoTests: XCTestCase {
         var created: ColorProject?
         perform { created = color.createProject(named: "New", undoManager: manager) }
         let createdProject = try XCTUnwrap(created)
-        manager.undo(); XCTAssertTrue(color.projects == [project] && color.history.count == 3)
+        color.add(ColorSample(red: 0.4, green: 0.5, blue: 0.6, alpha: 1))
+        let newPick = color.history[0]
+        manager.undo(); XCTAssertTrue(color.projects == [project] && color.history.count == 4)
+        XCTAssertTrue(color.history[0].id == newPick.id && color.history[0].projectID == nil)
         manager.redo(); XCTAssertTrue(color.projects == [project, createdProject] && color.selectedProjectID == createdProject.id)
+        XCTAssertTrue(color.history[0] == newPick)
         await color.flushPersistence()
         let restored = ColorPickerService(defaults: defaults, sampler: HistoryUndoSampler())
         XCTAssertTrue(restored.history == color.history && restored.projects == color.projects)
