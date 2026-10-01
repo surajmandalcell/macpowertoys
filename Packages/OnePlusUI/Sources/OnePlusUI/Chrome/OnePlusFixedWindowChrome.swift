@@ -2,7 +2,7 @@ import AppKit
 import SwiftUI
 
 private struct OnePlusZoomTrailingKey: EnvironmentKey {
-    static let defaultValue: CGFloat = 70
+    static let defaultValue: CGFloat = 74
 }
 
 private struct OnePlusCanvasAppliedKey: EnvironmentKey {
@@ -147,7 +147,9 @@ final class OnePlusChromeView: NSView {
         guard !applying, pendingPass == nil, let window = observedWindow else { return }
         for type in [NSWindow.ButtonType.closeButton, .miniaturizeButton, .zoomButton] {
             guard let button = window.standardWindowButton(type) else { continue }
-            if abs(window.frame.height - button.convert(button.bounds, to: nil).midY - centerline) > 0.01 {
+            let frame = button.convert(button.bounds, to: nil)
+            if abs(window.frame.height - frame.midY - centerline) > 0.01 ||
+                (type == .closeButton && abs(frame.minX - OnePlusMetrics.trafficLightLeadingInset) > 0.01) {
                 apply()
                 return
             }
@@ -224,9 +226,11 @@ final class OnePlusChromeView: NSView {
                 button.setFrameOrigin(NSPoint(x: button.frame.minX, y: y))
             }
             let delta = window.frame.height - centerline - parent.convert(parent.bounds, to: nil).midY
+            let deltaX = type == .closeButton
+                ? OnePlusMetrics.trafficLightLeadingInset - button.convert(button.bounds, to: nil).minX : 0
             let container = parent.superview ?? parent
-            if abs(delta) > 0.01, let ancestor = container.superview {
-                container.setFrameOrigin(NSPoint(x: container.frame.minX,
+            if abs(delta) > 0.01 || abs(deltaX) > 0.01, let ancestor = container.superview {
+                container.setFrameOrigin(NSPoint(x: container.frame.minX + deltaX,
                                                  y: container.frame.minY + (ancestor.isFlipped ? -delta : delta)))
             }
             var trackingView: NSView? = parent
@@ -255,7 +259,7 @@ public extension View {
 private struct OnePlusFixedCanvasModifier: ViewModifier {
     let canvas: OnePlusWindowCanvas
     @Environment(\.self) private var environment
-    @State private var zoomTrailingX: CGFloat = 70
+    @State private var zoomTrailingX: CGFloat = 74
     @State private var topInset: CGFloat = 0
 
     @ViewBuilder

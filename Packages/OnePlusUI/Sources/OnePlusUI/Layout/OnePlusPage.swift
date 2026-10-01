@@ -1,4 +1,45 @@
+import AppKit
+import CoreText
 import SwiftUI
+
+private struct OnePlusHeaderTopAlignedKey: EnvironmentKey {
+    static let defaultValue = false
+}
+
+extension EnvironmentValues {
+    var onePlusHeaderTopAligned: Bool {
+        get { self[OnePlusHeaderTopAlignedKey.self] }
+        set { self[OnePlusHeaderTopAlignedKey.self] = newValue }
+    }
+}
+
+/// Keep the existing line box while placing the painted capitals on the header top line.
+struct OnePlusHeaderTitleLayout: Layout {
+    var text = ""
+    let pointSize: CGFloat
+    let height: CGFloat
+    let scale: CGFloat
+    func sizeThatFits(proposal: ProposedViewSize, subviews: Subviews, cache: inout ()) -> CGSize {
+        CGSize(width: subviews.first?.sizeThatFits(.init(width: proposal.width, height: nil)).width ?? 0,
+               height: height)
+    }
+    func placeSubviews(in bounds: CGRect, proposal: ProposedViewSize, subviews: Subviews, cache: inout ()) {
+        guard let title = subviews.first else { return }
+        let proposal = ProposedViewSize(width: bounds.width, height: nil)
+        let dimensions = title.dimensions(in: proposal)
+        let font = NSFont.systemFont(ofSize: pointSize, weight: .semibold)
+        let line = CTLineCreateWithAttributedString(NSAttributedString(string: text, attributes: [.font: font]))
+        let capHeight = text.isEmpty ? font.capHeight : CTLineGetBoundsWithOptions(line, .useGlyphPathBounds).maxY
+        // SF type retains half-point cap precision even on a 1x surface.
+        let precision = max(2, scale)
+        let capTop = dimensions[.firstTextBaseline] - ceil(capHeight * precision) / precision
+        title.place(at: CGPoint(x: bounds.minX, y: bounds.minY - capTop), anchor: .topLeading, proposal: proposal)
+    }
+    func explicitAlignment(of guide: VerticalAlignment, in bounds: CGRect, proposal: ProposedViewSize,
+                           subviews: Subviews, cache: inout ()) -> CGFloat? {
+        guide == .top ? bounds.minY : nil
+    }
+}
 
 public enum OnePlusTitleStyle: Sendable {
     case system, dotMatrix
@@ -15,6 +56,7 @@ public struct OnePlusPageHeader<Actions: View>: View {
     private let subtitleRole: OnePlusTextRole
     private let actions: Actions
     @Environment(\.onePlusDensity) private var density
+    @Environment(\.displayScale) private var displayScale
     public init(title: String, subtitle: String? = nil, titleStyle: OnePlusTitleStyle = .system,
                 subtitleRole: OnePlusTextRole = .subtitle,
                 @ViewBuilder actions: () -> Actions) {
@@ -27,22 +69,32 @@ public struct OnePlusPageHeader<Actions: View>: View {
             VStack(alignment: .leading, spacing: 2) {
                 Group {
                     if titleStyle == .dotMatrix {
-                        OnePlusDotTitle(title).offset(y: OnePlusMetrics.dotTitleCapOffset)
+                        let drawing = OnePlusDotGlyphs.drawing(title, height: OnePlusDotTitle.lineHeight, scale: displayScale)
+                        OnePlusDotTitle(title)
+                            .padding(.top, -drawing.path.boundingRect.minY)
+                            .frame(height: titleHeight, alignment: .top)
                     }
-                    else { Text(title).onePlusText(.pageTitle).lineLimit(1).help(title) }
-                }.frame(height: titleHeight).accessibilityAddTraits(.isHeader)
+                    else {
+                        OnePlusHeaderTitleLayout(text: title, pointSize: OnePlusTextRole.pageTitle.size(for: density),
+                                                 height: titleHeight, scale: displayScale) {
+                            Text(title).onePlusText(.pageTitle).lineLimit(1).help(title)
+                        }
+                    }
+                }.accessibilityAddTraits(.isHeader)
                 if let subtitle {
                     Text(subtitle).onePlusText(subtitleRole).lineLimit(1)
                         .truncationMode(subtitleRole == .mono ? .middle : .tail).help(subtitle)
                 }
             }
             Spacer(minLength: 0)
-            HStack(spacing: 8) { actions }.frame(height: titleHeight).fixedSize(horizontal: true, vertical: false)
+            HStack(alignment: .top, spacing: 8) { actions }
+                .frame(height: titleHeight, alignment: .top).fixedSize(horizontal: true, vertical: false)
         }
         .padding(.horizontal, density.gutter)
         .padding(.top, OnePlusMetrics.contentTop)
         .padding(.bottom, OnePlusMetrics.pageHeaderBottom)
         .background(OnePlusWindowDragArea())
+        .environment(\.onePlusHeaderTopAligned, true)
     }
 }
 

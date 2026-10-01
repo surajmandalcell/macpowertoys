@@ -2,6 +2,7 @@ import AppKit
 import SwiftUI
 
 public struct OnePlusSwitchStyle: ToggleStyle {
+    @Environment(\.onePlusHeaderTopAligned) private var topAligned
     public init() {}
     public func makeBody(configuration: Configuration) -> some View {
         LabeledContent {
@@ -13,7 +14,7 @@ public struct OnePlusSwitchStyle: ToggleStyle {
                             .frame(width: 11, height: 11).padding(.horizontal, 3)
                     }
                     .frame(width: 29, height: 17)
-                    .frame(height: 24)
+                    .frame(height: 24, alignment: topAligned ? .top : .center)
             }
             .buttonStyle(OnePlusInteractionStyle(radius: 10))
             .accessibilityRepresentation {

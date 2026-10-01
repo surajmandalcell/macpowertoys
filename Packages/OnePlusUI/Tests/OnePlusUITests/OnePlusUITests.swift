@@ -30,10 +30,10 @@ final class OnePlusUITests: XCTestCase {
 
     func testSharedTitlebarGeometryKeepsTheRequiredTrafficLightGap() {
         XCTAssertEqual(OnePlusMetrics.titlebarHeight, 54)
-        XCTAssertEqual(OnePlusMetrics.titleLeadingInset, 84)
-        XCTAssertEqual(OnePlusMetrics.fixedTitleLeadingInset, 84)
+        XCTAssertEqual(OnePlusMetrics.titleLeadingInset, 88)
+        XCTAssertEqual(OnePlusMetrics.fixedTitleLeadingInset, 88)
         XCTAssertEqual(OnePlusMetrics.trafficLightVerticalOffset, 11)
-        XCTAssertGreaterThanOrEqual(OnePlusMetrics.titleLeadingInset - 70, 12)
+        XCTAssertGreaterThanOrEqual(OnePlusMetrics.titleLeadingInset - 74, 14)
         XCTAssertGreaterThanOrEqual(OnePlusMetrics.fixedTitleLeadingInset - 48, 12)
     }
 

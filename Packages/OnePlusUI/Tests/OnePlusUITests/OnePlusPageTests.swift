@@ -28,7 +28,7 @@ final class OnePlusPageTests: XCTestCase {
                 host.cacheDisplay(in: host.bounds, to: bitmap)
                 let scale = CGFloat(bitmap.pixelsWide) / host.bounds.width
                 var underline: [CGPoint] = []
-                for y in 94..<100 { for x in 224..<350 {
+                for y in 98..<104 { for x in 224..<350 {
                     let color = try XCTUnwrap(bitmap.colorAt(x: Int(CGFloat(x) * scale),
                         y: Int(CGFloat(y) * scale))?.usingColorSpace(.sRGB))
                     if color.redComponent > 0.6 && color.redComponent > color.greenComponent * 1.6
@@ -36,8 +36,8 @@ final class OnePlusPageTests: XCTestCase {
                         underline.append(CGPoint(x: x, y: y))
                     }
                 } }
-                XCTAssertEqual(underline.map(\.y).min(), 96, "Initial entry and tab changes must paint the 2pt underline")
-                XCTAssertEqual(underline.map(\.y).max(), 97)
+                XCTAssertEqual(underline.map(\.y).min(), 100, "Initial entry and tab changes must paint the 2pt underline")
+                XCTAssertEqual(underline.map(\.y).max(), 101)
                 XCTAssertEqual(underline.map(\.x).min(), selection == "tasks" ? 224 : 278)
                 XCTAssertEqual(underline.map(\.x).max(), selection == "tasks" ? 255 : 318)
                 XCTAssertEqual(underline.count, selection == "tasks" ? 64 : 82)
@@ -229,7 +229,7 @@ final class OnePlusPageTests: XCTestCase {
                 return view.convert(view.bounds, to: host)
             }
             let toolbar = try rect("toolbar"), rows = try rect("rows"), footer = try rect("footer")
-            XCTAssertEqual(toolbar.minY, showsTabs ? 92 : 56, accuracy: 0.5)
+            XCTAssertEqual(toolbar.minY, showsTabs ? 96 : 60, accuracy: 0.5)
             XCTAssertEqual(rows.minY - toolbar.maxY, 16, accuracy: 0.5)
             XCTAssertEqual(footer.minY - rows.maxY, 16, accuracy: 0.5)
             XCTAssertEqual(rows.minX, 16, accuracy: 0.5)
@@ -278,7 +278,7 @@ final class OnePlusPageTests: XCTestCase {
     }
 
     func testTitleLineStartsAtTheTrafficLightTopEdge() {
-        XCTAssertEqual(OnePlusMetrics.contentTop, 16)
+        XCTAssertEqual(OnePlusMetrics.contentTop, 20)
         XCTAssertEqual(OnePlusMetrics.contentGap, 16)
         XCTAssertEqual(OnePlusMetrics.titleRow, 54)
         for density in OnePlusDensity.allCases {
@@ -287,16 +287,16 @@ final class OnePlusPageTests: XCTestCase {
                 let host = NSHostingView(rootView: OnePlusPageHeader(title: "Overview", titleStyle: style) {
                     PageRegionProbe("action").frame(width: 24, height: 24)
                 }.onePlusDensity(density).frame(width: 600))
-                XCTAssertEqual(host.fittingSize.height, 16 + line + OnePlusMetrics.pageHeaderBottom, accuracy: 0.5)
+                XCTAssertEqual(host.fittingSize.height, 20 + line + OnePlusMetrics.pageHeaderBottom, accuracy: 0.5)
                 host.frame.size = host.fittingSize
                 host.layoutSubtreeIfNeeded()
                 let action = descendants(host).first { $0.identifier?.rawValue == "action" }!
-                XCTAssertEqual(action.convert(action.bounds, to: host).midY, 16 + line / 2, accuracy: 1)
+                XCTAssertEqual(action.convert(action.bounds, to: host).minY, 20, accuracy: 1)
             }
         }
         let drawing = OnePlusDotGlyphs.drawing("OVERVIEW", height: OnePlusDotTitle.lineHeight, scale: 2)
-        XCTAssertGreaterThanOrEqual(drawing.path.boundingRect.minY + OnePlusMetrics.contentTop, 16)
-        XCTAssertLessThanOrEqual(drawing.path.boundingRect.maxY + OnePlusMetrics.contentTop, 36)
+        XCTAssertGreaterThanOrEqual(drawing.path.boundingRect.minY + OnePlusMetrics.contentTop, 20)
+        XCTAssertLessThanOrEqual(drawing.path.boundingRect.maxY + OnePlusMetrics.contentTop, 40)
     }
 
     func testNamedHeadersUseTheSharedTitleTopWithoutASecondOffset() {
@@ -310,7 +310,7 @@ final class OnePlusPageTests: XCTestCase {
             let catalog = NSHostingView(rootView: OnePlusToolPageHeader(title: "Tool", subtitle: "Description") {
                 Color.clear
             } actions: { EmptyView() }.onePlusDensity(density).frame(width: 600))
-            XCTAssertGreaterThanOrEqual(catalog.fittingSize.height, 16 + 40 + OnePlusMetrics.pageHeaderBottom)
+            XCTAssertGreaterThanOrEqual(catalog.fittingSize.height, 20 + 40 + OnePlusMetrics.pageHeaderBottom)
         }
     }
 }
