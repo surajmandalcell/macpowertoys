@@ -192,7 +192,7 @@ public struct OnePlusNativeTable: NSViewRepresentable {
                 : .systemFont(ofSize: role.size(for: density), weight: weight)
             cell.restingInk = NSColor(owner.columns[index].textColor ?? owner.columns[index].textRole.map(\.color) ?? (index == 0 ? OnePlusColor.ink : OnePlusColor.secondary))
             let semantic = owner.columns[index].textColor
-            cell.preservesSemanticInk = semantic == OnePlusColor.danger || semantic == OnePlusColor.warn || semantic == OnePlusColor.ok
+            cell.preservesSemanticInk = semantic == OnePlusColor.danger || semantic == OnePlusColor.warn
             cell.selected = tableView.selectedRowIndexes.contains(row)
             text.alignment = owner.columns[index].nsTextAlignment
             cell.imageView?.image = NSImage(systemSymbolName: item.symbol, accessibilityDescription: nil)

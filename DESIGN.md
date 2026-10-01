@@ -20,7 +20,7 @@ colors:
   line: { dark: "#343434", light: "#D1D1D1" }
   line-soft: { dark: "#2B2B2B", light: "#E1E1E1" }
   ink: { dark: "#EDEDED", light: "#242424" }
-  secondary: { dark: "#A3A3A3", light: "#656565" }
+  secondary: { dark: "#C8C8C8", light: "#4B4B4B" }
   muted: { dark: "#BCBCBC", light: "#565656" }  # at least 4.5:1 including card grain
   control-ink: { dark: "#DEDEDE", light: "#343434" }
   accent: { dark: "#EE5B50", light: "#D94F45" }
@@ -31,8 +31,8 @@ colors:
   primary-fill: { dark: "#DDDDDD", light: "#383838" }
   primary-ink: { dark: "#252525", light: "#FFFFFF" }
   ok: { dark: "#7FA889", light: "#3F7A4E" }
-  warn: { dark: "#FFC09A", light: "#8B461C" }
-  danger: { dark: "#FFB6AC", light: "#9B382F" }
+  warn: { dark: "#FFC09A", light: "#74390F" }
+  danger: { dark: "#FFB6AC", light: "#872E25" }
   danger-fill: { dark: "#382624", light: "#FBE9E7" }
   danger-line: { dark: "#6D4541", light: "#E3B3AD" }
 high-contrast:
@@ -43,7 +43,7 @@ high-contrast:
   danger: { dark: "#FFCCC6", light: "#792820" }
   line: { dark: "#A0A0A0", light: "#707070" }
   line-soft: { dark: "#919191", light: "#777777" }
-  danger-line: { dark: "#E99B91", light: "#9B382F" }
+  danger-line: { dark: "#E99B91", light: "#872E25" }
   focus: { dark: "#C0C0C0", light: "#505050" }
   selection: { dark: "#3D3D3D", light: "#C8C8C8" }
   selection-inactive: { dark: "#2B2B2B", light: "#DDDDDD" }

@@ -6,45 +6,48 @@ import XCTest
 @MainActor
 final class OnePlusTableTests: XCTestCase {
     func testSelectedMetadataPaintMeetsContrastInBothAppearances() throws {
-        for appearance in [NSAppearance.Name.aqua, .darkAqua, .accessibilityHighContrastAqua, .accessibilityHighContrastDarkAqua] {
-            let host = NSHostingView(rootView: OnePlusNativeTable(columns: [
-                .init("Name", width: 180), .init("Metadata", width: 180, textColor: OnePlusColor.muted)
-            ], rows: [.init(id: "1", cells: ["Item", "MMMMMMMM"], symbol: "doc")],
-                selection: .constant(["1"]), sort: { _, _ in }, actions: { _ in [] }))
-            let window = NSWindow(contentRect: CGRect(x: -10000, y: -10000, width: 420, height: 120),
-                                  styleMask: .borderless, backing: .buffered, defer: false)
-            window.isReleasedWhenClosed = false
-            defer { window.close() }
-            window.appearance = NSAppearance(named: appearance)
-            window.contentView = host
-            host.layoutSubtreeIfNeeded()
-            let table = try XCTUnwrap(findTable(in: host))
-            let row = try XCTUnwrap(table.rowView(atRow: 0, makeIfNecessary: true))
-            let cell = try XCTUnwrap(table.view(atColumn: 1, row: 0, makeIfNecessary: true) as? NSTableCellView)
-            let resting = cell.textField?.textColor
-            var fills: [NSColor] = []
-            for emphasized in [false, true] {
-                row.isEmphasized = emphasized
-                row.layoutSubtreeIfNeeded()
-                let bitmap = try XCTUnwrap(row.bitmapImageRepForCachingDisplay(in: row.bounds))
-                row.cacheDisplay(in: row.bounds, to: bitmap)
-                let scale = CGFloat(bitmap.pixelsWide) / row.bounds.width
-                let fill = try XCTUnwrap(bitmap.colorAt(x: Int(350 * scale), y: bitmap.pixelsHigh / 2))
-                fills.append(fill)
-                let frame = cell.convert(cell.bounds, to: row)
-                var strongest = 1.0
-                for y in Int(5 * scale)..<Int((row.bounds.height - 5) * scale) {
-                    for x in Int((frame.minX + 12) * scale)..<Int((frame.minX + 120) * scale) {
-                        if let pixel = bitmap.colorAt(x: x, y: y) { strongest = max(strongest, contrast(pixel, fill)) }
+        for role in [OnePlusColor.muted, OnePlusColor.danger, OnePlusColor.warn] {
+            for appearance in [NSAppearance.Name.aqua, .darkAqua, .accessibilityHighContrastAqua, .accessibilityHighContrastDarkAqua] {
+                let host = NSHostingView(rootView: OnePlusNativeTable(columns: [
+                    .init("Name", width: 180), .init("Metadata", width: 180, textColor: role)
+                ], rows: [.init(id: "1", cells: ["Item", "MMMMMMMM"], symbol: "doc")],
+                    selection: .constant(["1"]), sort: { _, _ in }, actions: { _ in [] }))
+                let window = NSWindow(contentRect: CGRect(x: -10000, y: -10000, width: 420, height: 120),
+                                      styleMask: .borderless, backing: .buffered, defer: false)
+                window.isReleasedWhenClosed = false
+                defer { window.close() }
+                window.appearance = NSAppearance(named: appearance)
+                window.contentView = host
+                host.layoutSubtreeIfNeeded()
+                let table = try XCTUnwrap(findTable(in: host))
+                let row = try XCTUnwrap(table.rowView(atRow: 0, makeIfNecessary: true))
+                let cell = try XCTUnwrap(table.view(atColumn: 1, row: 0, makeIfNecessary: true) as? NSTableCellView)
+                let resting = cell.textField?.textColor
+                var fills: [NSColor] = []
+                for emphasized in [false, true] {
+                    row.isEmphasized = emphasized
+                    row.layoutSubtreeIfNeeded()
+                    let bitmap = try XCTUnwrap(row.bitmapImageRepForCachingDisplay(in: row.bounds))
+                    row.cacheDisplay(in: row.bounds, to: bitmap)
+                    let scale = CGFloat(bitmap.pixelsWide) / row.bounds.width
+                    let fill = try XCTUnwrap(bitmap.colorAt(x: Int(350 * scale), y: bitmap.pixelsHigh / 2))
+                    fills.append(fill)
+                    let frame = cell.convert(cell.bounds, to: row)
+                    var strongest = 1.0
+                    for y in Int(5 * scale)..<Int((row.bounds.height - 5) * scale) {
+                        for x in Int((frame.minX + 12) * scale)..<Int((frame.minX + 120) * scale) {
+                            if let pixel = bitmap.colorAt(x: x, y: y) { strongest = max(strongest, contrast(pixel, fill)) }
+                        }
                     }
+                    XCTAssertGreaterThanOrEqual(strongest, 4.5, "Actual selected metadata paint: \(appearance), emphasized \(emphasized)")
                 }
-                XCTAssertGreaterThanOrEqual(strongest, 4.5, "Actual selected metadata paint: \(appearance), emphasized \(emphasized)")
+                XCTAssertNotEqual(fills[0], fills[1], "Active and inactive selection must differ")
+                table.deselectAll(nil)
+                row.layoutSubtreeIfNeeded()
+                XCTAssertEqual(cell.textField?.textColor, NSColor(role))
+                if role == OnePlusColor.muted { XCTAssertNotEqual(resting, cell.textField?.textColor) }
+                else { XCTAssertEqual(resting, cell.textField?.textColor) }
             }
-            XCTAssertNotEqual(fills[0], fills[1], "Active and inactive selection must differ")
-            table.deselectAll(nil)
-            row.layoutSubtreeIfNeeded()
-            XCTAssertEqual(cell.textField?.textColor, NSColor(OnePlusColor.muted))
-            XCTAssertNotEqual(resting, cell.textField?.textColor)
         }
     }
 

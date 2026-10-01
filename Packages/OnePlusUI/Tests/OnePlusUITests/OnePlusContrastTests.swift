@@ -19,7 +19,7 @@ final class OnePlusContrastTests: XCTestCase {
             let appearance = try XCTUnwrap(NSAppearance(named: name))
             appearance.performAsCurrentDrawingAppearance {
                 var minimum = Double.infinity
-                for ink in [OnePlusColor.muted, OnePlusColor.warn, OnePlusColor.danger] {
+                for ink in [OnePlusColor.secondary, OnePlusColor.muted, OnePlusColor.warn, OnePlusColor.danger] {
                     for fill in [OnePlusColor.window, OnePlusColor.sidebar, OnePlusColor.panel, OnePlusColor.panelHover, OnePlusColor.raised, OnePlusColor.raisedHover, OnePlusColor.pressed, OnePlusColor.field, OnePlusColor.fieldFocus, OnePlusColor.selection, OnePlusColor.selectionInactive, OnePlusColor.dangerFill] {
                         let base = NSColor(fill).usingColorSpace(.sRGB)!
                         for strength in [CGFloat(0), 0.11, 0.14] {
