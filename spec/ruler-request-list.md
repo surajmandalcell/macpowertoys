@@ -27,7 +27,7 @@ Build, hosted checks, and signed interaction remain with the production pass.
 
 | Status | Request | Evidence | Remaining work |
 |---|---|---|---|
-| Source complete; signed review pending | Show and dismiss hotkey feedback at once in both Reduce Motion modes. | `0948ba7a` removes the custom AppKit alpha animations. The existing 1.2-second dismissal and native panel ordering stay in place. Ruler geometry and controls are unchanged. | Compile through the shared gate and check grouping, units, float, shadow, and origin feedback in the installed app. Report: `tmp/redesign/logs/w1-motion-sweep.md`. |
+| Build verified; signed review pending | Show and dismiss hotkey feedback at once in both Reduce Motion modes. | `0948ba7a` removes the custom AppKit alpha animations. The existing 1.2-second dismissal and native panel ordering stay in place. The gated Debug retry compiles the app and both desktop test bundles. Ruler geometry and controls are unchanged. | Check grouping, units, float, shadow, and origin feedback in the installed app. Report: `tmp/redesign/logs/w1-motion-sweep.md`. |
 
 ## OnePlusUI redesign, 2026-09-29
 
