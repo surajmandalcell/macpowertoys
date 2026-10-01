@@ -266,9 +266,9 @@ private struct DesktopPreviewScene: View {
                 menuBar.offset(y: -18 * menuHiddenAmount)
             }
             finderWindow
-            if kind == .screenshots { captureOverlay }
-            if kind == .layout { layoutOverlays }
-            if kind == .screenshots { captureThumbnail }
+            if kind == .screenshots && captureAmount > 0 { captureOverlay }
+            if kind == .layout && (stackAmount > 0 || switcherAmount > 0) { layoutOverlays }
+            if kind == .screenshots && thumbnailAmount > 0 { captureThumbnail }
             if kind != .finder { dock }
             if kind != .finder && kind != .apps { cursor }
             LinearGradient(colors: [.clear, .black.opacity(0.18)], startPoint: .center, endPoint: .bottom)
@@ -751,7 +751,7 @@ private struct DockPreviewBar: View {
                 }
                 PreviewAppIcon(app: app, size: app == .trash ? 29 : 31)
                     .overlay {
-                        if index == 7 {
+                        if index == 7 && minimized > 0 {
                             VStack(spacing: 2) {
                                 HStack(spacing: 2) {
                                     Circle().fill(Color.red.opacity(0.75)).frame(width: 2.5, height: 2.5)
