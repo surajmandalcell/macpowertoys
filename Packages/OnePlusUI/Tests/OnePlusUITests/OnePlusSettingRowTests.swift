@@ -5,6 +5,23 @@ import XCTest
 
 @MainActor
 final class OnePlusSettingRowTests: XCTestCase {
+    func testHorizontalPathRowKeepsIntrinsicActionAndFixedPitch() throws {
+        for width in [CGFloat(338), 976] {
+            let host = NSHostingView(rootView: OnePlusPathSettingRow("Backup", path: String(repeating: "/long/path", count: 50),
+                layout: .horizontal, help: "Backup location") {
+                    SettingControlProbe().frame(width: 48, height: 28)
+                })
+            host.frame = CGRect(x: 0, y: 0, width: width, height: 44)
+            host.layoutSubtreeIfNeeded()
+            let control = try XCTUnwrap(descendants(host).first { $0.identifier?.rawValue == "control" })
+            let frame = control.convert(control.bounds, to: host)
+            XCTAssertEqual(host.fittingSize.height, 44)
+            XCTAssertEqual(frame.width, 48)
+            XCTAssertEqual(frame.maxX, width - 16, accuracy: 0.5)
+            XCTAssertEqual(frame.midY, 22, accuracy: 0.5)
+        }
+    }
+
     func testCompactHeaderAndSettingControlShareTheTwelvePointInset() throws {
         let host = NSHostingView(rootView: OnePlusCard {
             OnePlusCardHeader("Fan", systemImage: "fan") { SettingControlProbe().frame(width: 40) }
