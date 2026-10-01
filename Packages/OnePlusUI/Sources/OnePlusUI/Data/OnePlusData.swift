@@ -25,21 +25,21 @@ public struct OnePlusMetricTile<Chart: View>: View {
     }
     private var tile: some View {
         VStack(alignment: .leading, spacing: 8) {
-            VStack(alignment: .leading, spacing: 2) {
-                HStack(spacing: 8) {
-                    Image(systemName: icon).font(.system(size: 13)).foregroundStyle(OnePlusColor.secondary).accessibilityHidden(true)
+            HStack(spacing: 8) {
+                Image(systemName: icon).font(.system(size: 13)).foregroundStyle(OnePlusColor.secondary).accessibilityHidden(true)
+                VStack(alignment: .leading, spacing: 2) {
                     Text(title).onePlusText(.cardTitle)
-                    Spacer(minLength: 8)
-                    HStack(alignment: .firstTextBaseline, spacing: 4) {
-                        Text(value).onePlusText(.metric)
-                        Text(unit).onePlusText(.unit)
-                    }
-                    if action != nil {
-                        Image(systemName: "chevron.right").font(.system(size: 9))
-                            .foregroundStyle(hovering ? OnePlusColor.ink : OnePlusColor.muted).accessibilityHidden(true)
-                    }
+                    if let caption { Text(caption).onePlusText(.caption).lineLimit(1).help(caption) }
                 }
-                if let caption { Text(caption).onePlusText(.caption).lineLimit(1).help(caption) }
+                Spacer(minLength: 8)
+                HStack(alignment: .firstTextBaseline, spacing: 4) {
+                    Text(value).onePlusText(.metric)
+                    Text(unit).onePlusText(.unit)
+                }
+                if action != nil {
+                    Image(systemName: "chevron.right").font(.system(size: 9))
+                        .foregroundStyle(hovering ? OnePlusColor.ink : OnePlusColor.muted).accessibilityHidden(true)
+                }
             }
             chart
         }
