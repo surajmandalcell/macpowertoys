@@ -41,7 +41,7 @@ public struct OnePlusDitherTexture: View {
         GeometryReader { _ in
             if let image = Self.resourceImage {
                 Image(nsImage: image).resizable().interpolation(.none)
-                    .frame(width: 240, height: 150).opacity(strength)
+                    .frame(width: 200, height: 125).opacity(strength)
                     .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topTrailing)
             }
         }

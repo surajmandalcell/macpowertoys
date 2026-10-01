@@ -83,7 +83,7 @@ windows:
 menu-panel: { status-icon: 14, status-icon-ink: 11.2, width: 356, max-height-fraction: 0.9, top-bar-padding: [10, 8, 6], tab-group-radius: 7, tab: 26, tab-gap: 2, body-inset: 8, tile-radius: 6, tile-gap: 5, columns: 3, action-button-height: 32 }
 popup-menu: { padding: 5, radius: 7, item: 28, item-compact: 24, item-radius: 4, item-padding: 9, max-visible-items: 12 }
 performance: { page-switch-ms: 100, table-rows-smooth: 1000 }
-texture: { ribbon: [700, 220], ribbon-drawn: [630, 198], ribbon-opacity-dark: 0.20, ribbon-opacity-light: 0.10, grain: [240, 150], card-grain: 0.14, menu-grain: 0.11, chart-dot-cell: 4 }
+texture: { ribbon: [700, 220], ribbon-drawn: [630, 198], ribbon-opacity-dark: 0.20, ribbon-opacity-light: 0.10, grain: [200, 125], card-grain: 0.14, menu-grain: 0.11, chart-dot-cell: 4 }
 motion: { hover: 0, selection: 0, content: 0, idle-animation: none }
 ---
 
@@ -271,7 +271,7 @@ clipped to a header, tab strip, or scroll view.
 - Workspace ribbon: the 700 x 220 ordered-dither ribbon drawn at 630 x 198,
   top -8, right -16, at the front-matter opacity, with a horizontal alpha
   fade (0%, 26%, 82%, 100%).
-- Corner grain: cards marked `textured` draw the 240 x 150 grain in their
+- Corner grain: cards marked `textured` draw the 200 x 125 grain in their
   top-right corner at 0.14 (metric tiles) or 0.11 (menu tiles), clipped to
   the card. Text, icons, controls, rows, and list views
   never carry texture.

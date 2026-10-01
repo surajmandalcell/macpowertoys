@@ -44,8 +44,10 @@ public struct OnePlusMetricTile<Chart: View>: View {
             chart
         }
         .padding(16).frame(maxWidth: .infinity, alignment: .leading).contentShape(Rectangle())
-        .background(action != nil && hovering ? OnePlusColor.panelHover : OnePlusColor.panel)
-        .onePlusGrain().clipShape(RoundedRectangle(cornerRadius: 8))
+        .background {
+            (action != nil && hovering ? OnePlusColor.panelHover : OnePlusColor.panel)
+                .overlay { OnePlusDitherTexture() }
+        }.clipShape(RoundedRectangle(cornerRadius: 8))
         .overlay { RoundedRectangle(cornerRadius: 8).strokeBorder(OnePlusColor.line, lineWidth: 1) }
         .accessibilityElement(children: .combine)
     }

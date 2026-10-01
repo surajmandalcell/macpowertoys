@@ -14,14 +14,19 @@ public extension EnvironmentValues {
 public struct OnePlusCard<Content: View>: View {
     private let textured: Bool
     private let content: Content
+    @Environment(\.onePlusCardPadding) private var cardPadding
+    @State private var errors: [String] = []
     public init(textured: Bool = false, @ViewBuilder content: () -> Content) {
         self.textured = textured; self.content = content()
     }
     public var body: some View {
-        VStack(alignment: .leading, spacing: 0) { content }
+        VStack(alignment: .leading, spacing: 0) {
+            content.environment(\.onePlusGroupedFieldErrors, true)
+            if !errors.isEmpty { OnePlusBanner(errors.joined(separator: "\n"), tone: .error).padding(cardPadding) }
+        }
+            .onPreferenceChange(OnePlusFieldErrorPreference.self) { errors = $0 }
             .frame(maxWidth: .infinity, alignment: .leading)
-            .background(OnePlusColor.panel)
-            .overlay { if textured { OnePlusDitherTexture() } }
+            .background { OnePlusColor.panel.overlay { if textured { OnePlusDitherTexture() } } }
             .clipShape(RoundedRectangle(cornerRadius: 8))
             .overlay { RoundedRectangle(cornerRadius: 8).strokeBorder(OnePlusColor.line, lineWidth: 1) }
     }
@@ -37,8 +42,7 @@ public struct OnePlusMenuCard<Content: View>: View {
     public var body: some View {
         content.padding(padded ? OnePlusMenuMetrics.bodyInset : 0)
             .frame(maxWidth: .infinity, alignment: .leading)
-            .background(OnePlusColor.panelHover)
-            .overlay { if textured { OnePlusDitherTexture(strength: 0.11) } }
+            .background { OnePlusColor.panelHover.overlay { if textured { OnePlusDitherTexture(strength: 0.11) } } }
             .clipShape(RoundedRectangle(cornerRadius: OnePlusMetrics.menuTileRadius))
             .overlay {
                 RoundedRectangle(cornerRadius: OnePlusMetrics.menuTileRadius)
@@ -73,7 +77,7 @@ public struct OnePlusCardHeader<Accessory: View>: View {
                     .foregroundStyle(OnePlusColor.secondary).accessibilityHidden(true)
             }
             VStack(alignment: .leading, spacing: 2) {
-                Text(title).onePlusText(.cardTitle).lineLimit(1).accessibilityAddTraits(.isHeader)
+                Text(title).onePlusText(.cardTitle).lineLimit(1).help(title).accessibilityAddTraits(.isHeader)
                 if let subtitle { Text(subtitle).onePlusText(.caption).lineLimit(1).help(subtitle) }
             }
             Spacer(minLength: 8)
@@ -120,6 +124,7 @@ public struct OnePlusSettingRow<Control: View>: View {
     private let separator: Bool
     private let control: Control
     @Environment(\.onePlusCardPadding) private var cardPadding
+    @State private var hovering = false
     public init(_ label: String, caption: String? = nil, help: String? = nil, reset: (() -> Void)? = nil,
                 controlWidth: CGFloat = 160, separator: Bool = true, @ViewBuilder control: () -> Control) {
         self.label = label; self.caption = caption; self.help = help; self.reset = reset
@@ -129,22 +134,44 @@ public struct OnePlusSettingRow<Control: View>: View {
         HStack(spacing: 16) {
             VStack(alignment: .leading, spacing: 2) {
                 HStack(spacing: 4) {
-                    Text(label).onePlusText(.row).lineLimit(1).help(label)
-                    if let help { Image(systemName: "questionmark.circle").foregroundStyle(OnePlusColor.muted).help(help).accessibilityLabel(help) }
+                    Text(label).onePlusText(.row).lineLimit(1).help(help ?? label).accessibilityHint(help ?? "")
+                    if let help { OnePlusSettingHelp(label: label, explanation: help, hovering: hovering) }
+                    Group {
+                        if let reset {
+                            Button(action: reset) { Image(systemName: "arrow.counterclockwise") }
+                                .buttonStyle(OnePlusButtonStyle(.icon, size: .small))
+                                .help("Reset \(label)").accessibilityLabel("Reset \(label)")
+                        } else { Color.clear.accessibilityHidden(true) }
+                    }.frame(width: 24, height: 24)
                 }
                 if let caption { Text(caption).onePlusText(.caption).lineLimit(1).help(caption) }
             }.frame(maxWidth: .infinity, alignment: .leading)
-            if let reset {
-                Button(action: reset) { Image(systemName: "arrow.counterclockwise") }
-                    .buttonStyle(OnePlusButtonStyle(.icon, size: .small))
-                    .help("Reset \(label)").accessibilityLabel("Reset \(label)")
-            }
             control.frame(width: controlWidth, alignment: .trailing)
         }
         .padding(.horizontal, cardPadding)
         .frame(height: caption == nil ? OnePlusMetrics.settingRow : OnePlusMetrics.captionedSettingRow)
+        .contentShape(Rectangle()).onHover { hovering = $0 }
         // Keep the separator inside the row's declared pitch.
         .overlay(alignment: .bottom) { if separator { OnePlusColor.lineSoft.frame(height: 1) } }
+    }
+}
+
+private struct OnePlusSettingHelp: View {
+    let label: String
+    let explanation: String
+    let hovering: Bool
+    @Environment(\.onePlusDensity) private var density
+    @FocusState private var focused: Bool
+    @State private var presented = false
+    var body: some View {
+        Button { presented.toggle() } label: {
+            Image(systemName: "questionmark.circle").font(.system(size: OnePlusTextRole.row.size(for: density)))
+                .foregroundStyle(OnePlusColor.muted).frame(width: 12, height: 24)
+        }
+        .buttonStyle(OnePlusInteractionStyle()).focused($focused)
+        .opacity(hovering || (focused && OnePlusFocusPolicy.shared.showsFocus) ? 1 : 0)
+        .help(explanation).accessibilityLabel("Help for \(label)").accessibilityHint(explanation)
+        .popover(isPresented: $presented) { Text(explanation).onePlusText(.row).padding(16).frame(maxWidth: 320) }
     }
 }
 
