@@ -76,8 +76,9 @@ struct MainModifiedView: View {
 
     private func group(_ toolID: String) -> some View {
         let lastID = groupedDifferences[toolID]?.last?.id
-        return OnePlusCard {
-            OnePlusCardHeader(groupTitles[toolID] ?? toolID)
+        return VStack(alignment: .leading, spacing: OnePlusMetrics.actionSpacing) {
+            OnePlusSectionTitle(groupTitles[toolID] ?? toolID)
+                .padding(.horizontal, OnePlusMetrics.cardPadding)
             LazyVStack(spacing: 0) {
                 ForEach(groupedDifferences[toolID] ?? []) { difference in
                     row(difference, separator: difference.id != lastID)
@@ -89,15 +90,23 @@ struct MainModifiedView: View {
     private func row(_ difference: SettingsRegistry.Difference, separator: Bool) -> some View {
         OnePlusSettingRow(
             difference.label,
-            caption: "Current: \(difference.currentDisplay) · Default: \(difference.defaultDisplay)",
+            controlWidth: OnePlusCatalogMetrics.placementWidth,
             separator: separator
         ) {
-            Button("Reset") { resetRequest = difference.id }
-                .buttonStyle(OnePlusButtonStyle(.neutral, minWidth: OnePlusCatalogMetrics.openWidth))
-                .disabled(resetRequest != nil)
-                .help("Reset \(difference.label)")
-                .accessibilityLabel("Reset \(difference.label)")
+            HStack(spacing: OnePlusMetrics.actionSpacing) {
+                Text("\(difference.currentDisplay) → \(difference.defaultDisplay)")
+                    .onePlusText(.caption).lineLimit(1).truncationMode(.middle)
+                    .help("Current: \(difference.currentDisplay) · Default: \(difference.defaultDisplay)")
+                    .accessibilityLabel("Current: \(difference.currentDisplay) · Default: \(difference.defaultDisplay)")
+                Button("Reset") { resetRequest = difference.id }
+                    .buttonStyle(OnePlusButtonStyle(.neutral, minWidth: OnePlusCatalogMetrics.openWidth))
+                    .disabled(resetRequest != nil)
+                    .help("Reset \(difference.label)")
+                    .accessibilityLabel("Reset \(difference.label)")
+            }
         }
+        .accessibilityValue("Current: \(difference.currentDisplay) · Default: \(difference.defaultDisplay)")
+        .onePlusRowHover()
         .contextMenu {
             Button("Reset \(difference.label)") { resetRequest = difference.id }.disabled(resetRequest != nil)
         }

@@ -38,10 +38,6 @@ private struct MainGeneralSettings: View {
                 appearanceCard
                 launchCard
             }.fixedSize(horizontal: false, vertical: true)
-            HStack(alignment: .top, spacing: OnePlusMetrics.cardGap) {
-                windowsCard
-                syncCard
-            }.fixedSize(horizontal: false, vertical: true)
         }
         .onChange(of: appearance) { _, value in value.apply(); changed() }
         .onChange(of: closeMainAfterOpen) { changed() }
@@ -64,19 +60,11 @@ private struct MainGeneralSettings: View {
     private var appearanceCard: some View {
         OnePlusPanel {
             VStack(spacing: 0) {
-                OnePlusCardHeader("Appearance", systemImage: "circle.lefthalf.filled")
-                OnePlusSettingRow("Appearance", controlWidth: OnePlusCatalogMetrics.placementWidth, separator: false) {
+                OnePlusCardHeader("Appearance and windows", systemImage: "macwindow")
+                OnePlusSettingRow("Appearance", controlWidth: OnePlusCatalogMetrics.placementWidth) {
                     OnePlusSegmented(choices: AppAppearance.allCases.map { ($0, $0.title) },
                                      selection: $appearance, accessibilityLabel: "Appearance")
                 }
-            }
-        }
-    }
-
-    private var windowsCard: some View {
-        OnePlusPanel {
-            VStack(spacing: 0) {
-                OnePlusCardHeader("Windows", systemImage: "macwindow")
                 OnePlusSettingRow("Close after opening a tool") {
                     Toggle("Close main window after opening a tool", isOn: $closeMainAfterOpen)
                         .labelsHidden().toggleStyle(OnePlusSwitchStyle())
@@ -91,8 +79,8 @@ private struct MainGeneralSettings: View {
     private var launchCard: some View {
         OnePlusPanel {
             VStack(spacing: 0) {
-                OnePlusCardHeader("Launch", systemImage: "power")
-                OnePlusSettingRow("Open at login", separator: false) {
+                OnePlusCardHeader("Launch and iCloud", systemImage: "power")
+                OnePlusSettingRow("Open at login") {
                     Toggle("Open at login", isOn: Binding(
                         get: { loginStatus == .enabled || loginStatus == .requiresApproval }, set: setOpenAtLogin
                     )).labelsHidden().toggleStyle(OnePlusSwitchStyle())
@@ -105,26 +93,14 @@ private struct MainGeneralSettings: View {
                 if let loginError {
                     OnePlusBanner(loginError, tone: .error).padding(OnePlusMetrics.cardPadding)
                 }
-            }
-        }
-    }
-
-    private var syncCard: some View {
-        OnePlusPanel {
-            VStack(spacing: 0) {
-                OnePlusCardHeader("iCloud", systemImage: "icloud")
-                OnePlusSettingRow("Sync settings via iCloud", separator: false) {
+                OnePlusSettingRow("Sync settings via iCloud",
+                                  help: "Syncs safe preferences and marketplace sources. Credentials, histories, file paths, and installed apps stay on this Mac.",
+                                  separator: false) {
                     Toggle("Sync settings via iCloud", isOn: Binding(get: { sync.isEnabled }, set: { enabled in
                         if enabled { showSyncConflict = sync.enable() == .conflict }
                         else { sync.disable() }
                     })).labelsHidden().toggleStyle(OnePlusSwitchStyle())
                 }
-                Text("Syncs safe preferences and marketplace sources. Credentials, histories, file paths, and installed apps stay on this Mac.")
-                    .onePlusText(.caption)
-                    .fixedSize(horizontal: false, vertical: true)
-                    .frame(maxWidth: .infinity, alignment: .leading)
-                    .padding(.horizontal, OnePlusMetrics.cardPadding)
-                    .padding(.bottom, OnePlusMetrics.cardPadding)
             }
         }
     }
@@ -176,7 +152,7 @@ private struct MainAboutSettings: View {
                 OnePlusCard {
                     VStack(spacing: 0) {
                         OnePlusCardHeader("Acknowledgements", systemImage: "book")
-                        linkRow("Cloud Sync engine", caption: "By Nick Craig-Wood and contributors",
+                        linkRow("Cloud Sync engine", help: "By Nick Craig-Wood and contributors",
                                 title: "Powered by rclone", url: "https://rclone.org/")
                         linkRow("rclone license", title: "MIT license", url: "https://rclone.org/licence/", separator: false)
                     }
@@ -192,8 +168,8 @@ private struct MainAboutSettings: View {
         }
     }
 
-    private func linkRow(_ label: String, caption: String? = nil, title: String, url: String, separator: Bool = true) -> some View {
-        OnePlusSettingRow(label, caption: caption, controlWidth: OnePlusCatalogMetrics.placementWidth, separator: separator) {
+    private func linkRow(_ label: String, help: String? = nil, title: String, url: String, separator: Bool = true) -> some View {
+        OnePlusSettingRow(label, help: help, controlWidth: OnePlusCatalogMetrics.placementWidth, separator: separator) {
             if let destination = URL(string: url) {
                 Link(title, destination: destination)
                     .buttonStyle(OnePlusButtonStyle(.link, horizontalPadding: 0))
