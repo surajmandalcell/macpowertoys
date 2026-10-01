@@ -100,6 +100,9 @@ final class SystemMonitorTests: XCTestCase {
         let proposal = NSSize(width: OnePlusMenuMetrics.width, height: screen.height * OnePlusMenuMetrics.heightFraction)
         let emptyHost = NSHostingController(rootView: SystemMonitorMenuPopoverView(remoteProfiles: [], defaults: defaults))
         let emptyHeight = emptyHost.sizeThatFits(in: proposal).height
+        let profiles = await Task.detached { SystemMonitorRemoteProfiles.load(defaults: defaults) }.value
+        let preparedHost = NSHostingController(rootView: SystemMonitorMenuPopoverView(remoteProfiles: profiles, defaults: defaults))
+        let preparedHeight = preparedHost.sizeThatFits(in: proposal).height
         let popover = NSPopover()
         popover.animates = false
         let host = NSHostingController(rootView: SystemMonitorMenuPopoverView(defaults: defaults) { [weak popover] height in
@@ -127,6 +130,8 @@ final class SystemMonitorTests: XCTestCase {
         }
         try await settle()
         let homeHeight = popover.contentSize.height
+        XCTAssertEqual(preparedHeight, homeHeight, accuracy: 1, "Prepared profiles must have the final Home height before presentation")
+        XCTAssertGreaterThan(preparedHeight, emptyHeight)
         XCTAssertEqual(homeHeight, host.sizeThatFits(in: proposal).height, accuracy: 1)
         XCTAssertGreaterThan(homeHeight, emptyHeight, "The asynchronous profiles must increase Home height")
         for page in [SystemMonitorTrayPage.cpu, .processes, .sensors, .home] {
