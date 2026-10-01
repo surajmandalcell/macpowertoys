@@ -8,6 +8,7 @@ orchestrator.
 
 Production window performance, 2026-10-01: the tool router now records Ruler
 open through native layout and display submission in the shared timing ledger.
+Debug and desktop test compile gates pass. Hosted tests were not run.
 No Ruler window was opened in the background pass because its current opener
 activates the app. Live latency and foreground preservation remain open.
 See `tmp/redesign/perf/w1-windows.md`.

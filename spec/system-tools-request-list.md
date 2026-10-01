@@ -22,6 +22,7 @@ Production window performance, 2026-10-01: Input Devices, System Care, and
 Task Manager use the shared window and page timing ledger. All saved fixed
 workspaces now restore position once, on attachment, and keep their current
 size. The source restoration check passes; two timing package checks pass.
+Debug and desktop test compile gates pass. Hosted tests were not run.
 P2, P3, and P5 remain open. Task Manager still gates its page body on delayed
 visibility, and signed sampling, idle CPU, and complete-frame checks remain.
 See `tmp/redesign/perf/w1-windows.md` for the baseline and exact commands.
