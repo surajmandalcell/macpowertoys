@@ -267,7 +267,7 @@ struct PortmanPanelView: View {
     private var panel: some View {
         OnePlusMenuPanel(contentID: page.panelID) {
             OnePlusMenuTabStrip(tabs: [
-                OnePlusMenuTab(.local, "Servers", systemImage: "server.rack", accessibilityIdentifier: "portman.page.Servers"),
+                OnePlusMenuTab(.local, "Servers", systemImage: ToolGlyph.portman.symbol, image: ToolGlyph.portman.assetImage, accessibilityIdentifier: "portman.page.Servers"),
                 OnePlusMenuTab(.forward, "Forward", systemImage: "arrow.left.arrow.right", accessibilityIdentifier: "portman.page.Forward"),
                 OnePlusMenuTab(.settings, "Settings", systemImage: "gearshape", accessibilityIdentifier: "portman.page.Settings")
             ], selection: Binding(get: { page }, set: navigate))

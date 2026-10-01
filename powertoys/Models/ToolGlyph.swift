@@ -1,3 +1,5 @@
+import SwiftUI
+
 nonisolated enum ToolGlyph: String, CaseIterable {
     case cloudSync = "rclone"
     case logs, ruler, awake
@@ -25,11 +27,18 @@ nonisolated enum ToolGlyph: String, CaseIterable {
         case .diskman: "opticaldisc"
         case .taskManager: "waveform.path.ecg.rectangle"
         case .netToys: "point.3.connected.trianglepath.dotted"
-        case .portman: "cable.connector.horizontal"
+        case .portman: "PortmanStatusGlyph"
         case .macTweaks: "slider.vertical.3"
-        case .switchAccounts: "power.circle.fill"
+        case .switchAccounts: "stop.circle"
         }
     }
+
+    @MainActor var assetImage: Image? {
+        guard self == .portman, let image = NSImage(named: symbol) else { return nil }
+        return Image(nsImage: image).renderingMode(.template)
+    }
+
+    @MainActor var image: Image { assetImage ?? Image(systemName: symbol) }
 
     var rotation: Double { self == .ruler ? -45 : 0 }
 }
