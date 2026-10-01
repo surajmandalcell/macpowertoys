@@ -778,7 +778,8 @@
   eight Home statistics. An enabled Monitor menu has at least one metric;
   restore RAM for an empty saved selection and default to RAM for new users.
   Use neutral near-black cards with one red accent and visible ordered dots,
-  without smooth color washes. Fan is available only on Sensors.
+  without smooth color washes. The 2026-10-01 owner correction keeps Fan on
+  Task Manager Home and Sensors and restores it below Awake on main Home.
 - **Check:** Capture the window and dedicated popup in dark and light from the
   exact source-stamped build; inspect card pixels, alignment, and clipping.
   Exercise grouped and separate status-item clicks, page selection, and final
@@ -945,27 +946,46 @@
   command went to the clipboard.
 - **Invariant:** Name the destination Remote Stats. Return starts the same
   validated connection as Connect. Refresh offers Manual, 5, 10, 30, 60, 120, and
-  300 seconds; changing it or pressing Refresh Now restarts the page-owned
-  polling task without installing a remote daemon. The selected cadence is
-  persisted. Disconnect and page exit cancel polling. Open Terminal passes an
-  `ssh://` URL to Terminal only after the user presses it. Use large native
-  connection actions with balanced padding.
+  300 seconds. Save edits to restart that host with its selected cadence.
+  Manual obtains the baseline pair needed for rates, then stops repeats.
+  Refresh Now takes a new bounded sample. Preserve SSH config when user or
+  port is blank. Disconnect cancels work. Closing the last owning window or
+  panel cancels work; changing window pages keeps Overview readings live.
+  Open SSH sends a private executable command file to Terminal after the user
+  presses it. The command keeps the host alias and explicit user and port.
+  It removes its temporary file and directory before SSH starts.
 - **Check:** Use an SSH alias, press Return, change refresh while connected,
-  select Manual and confirm no second automatic sample, then disconnect.
-  Open Terminal from the action and confirm it starts the selected SSH session.
+  select Manual and confirm no repeats after the baseline pair, then refresh
+  once and disconnect. Verify empty user and port preserve SSH config.
+  Open SSH and confirm Terminal starts the selected command. On the signed
+  build, test edits, removal, host selection, and window and panel closure.
 
 - **Symptom:** A 5-second Remote Stats refresh establishes a fresh SSH
   connection for every sample.
 - **Cause:** Each bounded remote command launched a new OpenSSH client with no
   control socket to reuse the authenticated connection.
-- **Invariant:** Reuse a per-user OpenSSH control socket while Remote Stats is
-  connected, keep BatchMode and host validation, and send an explicit master
-  exit on disconnect, page exit, or sample failure. The temporary socket must
-  fit macOS's Unix-domain path limit.
+- **Invariant:** Reuse one private OpenSSH control socket per host session.
+  Use a short `/tmp/mpt-remote-UUID/ssh` path in a mode-0700 directory.
+  Keep BatchMode and host validation. Cancel and await an in-flight sample
+  before master exit on disconnect, final owner close, or sample failure.
+  One host session must not close another session's master.
 - **Check:** `ssh -G` resolves ControlMaster, ControlPersist, and the short
   temporary ControlPath. The focused argument regression keeps the remote
   command unchanged. On a live host, confirm the second sample reuses the
   master and no control socket or SSH master remains after Disconnect.
+
+- **Symptom:** Remote Overview and panel cards stay Offline while the window
+  samples a host, or a saved host disappears when profiles load.
+- **Cause:** Reading state belonged to one page; other cards used constants.
+  The child copied an empty initial profile array before its parent loaded it.
+- **Invariant:** All surfaces observe `SystemMonitorRemoteSessions` by stable
+  profile ID. Apply asynchronously loaded profiles and saved edits to cards.
+  Failed or disconnected sessions clear readings and show the precise reason.
+  Reject empty numeric fields, malformed loads, and impossible disk values.
+- **Check:** `SystemMonitorRemoteTests` covers three protocols, legacy profiles,
+  manual refresh, late responses, errors, and last-owner closure. Compile here
+  and execute on CI. Real `oci2` sampling and socket removal pass in
+  `tmp/redesign/logs/remote-live-smoke.log`. Signed interaction remains open.
 
 - **Symptom:** A protected-process fallback can leave Processes loading when
   `/bin/ps` stalls or emits excessive output.
