@@ -194,6 +194,8 @@ final class OnePlusChromeView: NSView {
         if window.styleMask != style { window.styleMask = style }
         if window.titleVisibility != .hidden { window.titleVisibility = .hidden }
         if !window.titlebarAppearsTransparent { window.titlebarAppearsTransparent = true }
+        // Finish AppKit's titlebar layout before reading its inset or moving lights.
+        window.contentView?.superview?.layoutSubtreeIfNeeded()
         let topInset = window.contentView?.safeAreaInsets.top ?? 0
         if lastTopInset != topInset {
             lastTopInset = topInset
