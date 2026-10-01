@@ -775,3 +775,23 @@ and
   to 253pt and 133pt. Commits: `b7e222d7`, `8801bfd9`, `0fa0407d`.
   Physical first-frame checks on both stacked displays remain with the
   orchestrator. Report: `tmp/redesign/logs/w3-perf-panels.md`.
+
+
+## Task Manager Diagnostic URLs Select A Native Scene, 2026-10-01
+
+- **Symptom:** Signed `43ce0eb9` Task Manager tabs take 128ms median while
+  Main and Portman tab medians are below 100ms. A background diagnostic
+  profile also changes the foreground application.
+- **Cause:** The Task Manager scene condition contains only the tool ID,
+  which also occurs in panel diagnostic URLs. The trace contains 24-35ms
+  native scene-root updates inside failing switches. This establishes an
+  unwanted route overlap; the remaining latency needs a signed after check.
+- **Invariant:** Match the native `://open/system-monitor` URL portion.
+  AppDelegate already owns valid diagnostics. Keep the callback fallback,
+  native page routing, current height measurement, and timing endpoint.
+- **Check:** `python3 tmp/redesign/perf/r11-tm-route-check.py` passes eight
+  native and eight diagnostic cases; the original condition fails. After
+  signed installation, verify foreground preservation before the unchanged
+  timing rerun. Require Task Manager tabs <=100ms and preserve other panels.
+  Commit: `547b5586`. Profile: `tmp/redesign/perf/r11-tm-interval-costs.json`.
+  Matching semantics: [Apple scene routing](https://developer.apple.com/documentation/swiftui/scene/handlesexternalevents(matching:)).
