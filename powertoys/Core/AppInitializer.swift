@@ -55,14 +55,13 @@ final class AppInitializer {
         let started = ContinuousClock.now
         if !AppRuntime.isRunningTests {
             await Task.detached(priority: .userInitiated) {
-                AppIdentity.migrateLegacyData()
-                AppDataLocation.migrateLegacyStoreIfNeeded()
+                AppIdentity.migrateLegacyPreferences()
             }.value
         }
         if isShuttingDown {
             await withCheckedContinuation { initializationWaiter = $0 }
         }
-        LogManager.shared.info("Startup migrations completed in \(started.duration(to: .now))", source: "AppInitializer")
+        LogManager.shared.info("Startup preferences migrated in \(started.duration(to: .now))", source: "AppInitializer")
         _ = SettingsManager.shared
         if SettingsManager.shared.isToolEnabled("awake") { _ = AwakeService.shared }
         _ = ColorPickerService.shared
@@ -236,10 +235,8 @@ final class AppModelStore {
         showsRecovery = false
         let task = Task {
             defer { isOpening = false; openingTask = nil }
-            let started = ContinuousClock.now
             do {
                 container = try await Task.detached(priority: .userInitiated, operation: create).value
-                NSLog("Startup ModelContainer created in %@", String(describing: started.duration(to: .now)))
             } catch {
                 let failure = error as NSError
                 errorMessage = "\(failure.localizedDescription)\n\(failure.domain) (\(failure.code))"
@@ -251,13 +248,21 @@ final class AppModelStore {
     }
 
     nonisolated static func createContainer() throws -> ModelContainer {
-        try createContainer(at: AppRuntime.isRunningTests ? nil : AppDataLocation.storeURL)
+        if !AppRuntime.isRunningTests {
+            let started = ContinuousClock.now
+            AppDataLocation.migrateLegacyStoreIfNeeded()
+            NSLog("Startup store migration completed in %@", String(describing: started.duration(to: .now)))
+        }
+        return try createContainer(at: AppRuntime.isRunningTests ? nil : AppDataLocation.storeURL)
     }
 
     nonisolated static func createContainer(at url: URL?) throws -> ModelContainer {
+        let started = ContinuousClock.now
         let schema = Schema([LogEntry.self, TransferRecord.self])
         let configuration = url.map { ModelConfiguration(schema: schema, url: $0) }
             ?? ModelConfiguration(schema: schema, isStoredInMemoryOnly: true)
-        return try ModelContainer(for: schema, configurations: [configuration])
+        let container = try ModelContainer(for: schema, configurations: [configuration])
+        NSLog("Startup ModelContainer created in %@", String(describing: started.duration(to: .now)))
+        return container
     }
 }
