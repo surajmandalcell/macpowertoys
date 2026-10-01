@@ -7,7 +7,6 @@ import AppKit
 import SwiftUI
 import Combine
 import QuickLook
-import CoreTransferable
 import UniformTypeIdentifiers
 import OnePlusUI
 
@@ -32,20 +31,22 @@ nonisolated private struct RemoteDisplayEntry: Identifiable, Sendable {
 }
 
 struct RemoteBrowserView: View {
-    private enum SortColumn: Sendable { case name, size, modified }
+    private enum SortColumn: Int, Sendable { case name, size, modified }
 
     let remote: RcloneRemote
 
     @Environment(RcloneJobManager.self) private var manager
+    @Environment(\.isEnabled) private var isEnabled
     @State private var path = ""
     @State private var entries: [RemoteEntry] = []
     @State private var isLoading = false
     @State private var errorMessage: String?
     @State private var previewURL: URL?
-    @State private var selection: String?
+    @State private var selection: Set<String> = []
     @State private var fetchingPreviewName: String?
     @State private var isDropTargeted = false
-    @State private var showsDropToast = false
+    @State private var isChoosingUpload = false
+    @State private var queuedUploadCount = 0
     @State private var dropToastTask: Task<Void, Never>?
     @State private var isShowingCleanup = false
     @State private var isShowingSettings = false
@@ -58,17 +59,30 @@ struct RemoteBrowserView: View {
     @State private var visibleEntries: [RemoteDisplayEntry] = []
     @State private var sortTask: Task<Void, Never>?
 
+    private var isBusy: Bool {
+        !isEnabled || isLoading || isChoosingUpload || isShowingCleanup || isShowingSettings || isShowingNewFolder
+            || isCreatingFolder || fetchingPreviewName != nil || manager.isShuttingDown
+    }
+
     private var pathComponents: [String] {
         path.isEmpty ? [] : path.split(separator: "/").map(String.init)
     }
 
     var body: some View {
-        OnePlusPage(scrolls: false) {
+        let refresh: (() -> Void)? = isBusy || manager.client == nil ? nil : { Task { await load() } }
+        let upload: (() -> Void)? = isBusy || manager.client == nil ? nil : { chooseUpload() }
+        let preview: (() -> Void)? = canQuickLook ? { quickLookSelection(selection) } : nil
+        let copy: (() -> Void)? = selection.isEmpty || isBusy ? nil : { copyPaths(selection) }
+        return OnePlusPage(scrolls: false) {
             header
         } content: {
             contentArea
         }
         .quickLookPreview($previewURL)
+        .focusedSceneValue(\.appRefresh, refresh)
+        .focusedSceneValue(\.appUpload, upload)
+        .focusedSceneValue(\.appQuickLook, preview)
+        .focusedSceneValue(\.appCopyPath, copy)
         .sheet(isPresented: $isShowingCleanup) {
             CleanupRemoteSheet(remote: remote, startPath: path)
         }
@@ -80,7 +94,7 @@ struct RemoteBrowserView: View {
                 .keyboardShortcut(.defaultAction)
                 .disabled(RemoteFolderName.error(for: newFolderName) != nil)
         } message: {
-            Text(RemoteFolderName.error(for: newFolderName) ?? "Create this folder in \(remote.name):\(path).")
+            Text(newFolderMessage)
         }
         .onReceive(NotificationCenter.default.publisher(for: .remoteCleanupCompleted)) { notification in
             guard notification.object as? String == remote.name else { return }
@@ -89,7 +103,7 @@ struct RemoteBrowserView: View {
         .task(id: "\(remote.name)|\(path)") { await load() }
         .onChange(of: remote) {
             path = ""
-            selection = nil
+            selection.removeAll()
             errorMessage = nil
             folderCreationError = nil
         }
@@ -98,7 +112,13 @@ struct RemoteBrowserView: View {
         .onDisappear {
             sortTask?.cancel()
             sortTask = nil
+            dropToastTask?.cancel()
+            dropToastTask = nil
         }
+    }
+
+    private var newFolderMessage: String {
+        RemoteFolderName.error(for: newFolderName) ?? "Create this folder in \(remote.name):\(path)."
     }
 
     // MARK: Header
@@ -107,16 +127,18 @@ struct RemoteBrowserView: View {
         OnePlusPageHeader(title: remote.displayName, subtitle: remote.typeLabel) {
             Button("Upload") { chooseUpload() }
                 .buttonStyle(OnePlusButtonStyle(.neutral))
+                .disabled(isBusy || manager.client == nil)
+                .help("Drag files and folders from Finder. Save or export Mail and Photos items as local files first.")
             Button("New Folder") {
                 newFolderName = ""
                 folderCreationError = nil
                 isShowingNewFolder = true
             }
             .buttonStyle(OnePlusButtonStyle(.neutral))
-            .disabled(isCreatingFolder)
+            .disabled(isBusy || manager.client == nil)
             Button { Task { await load() } } label: { Label("Refresh", systemImage: "arrow.clockwise") }
                 .buttonStyle(OnePlusButtonStyle(.ghost))
-                .disabled(isLoading)
+                .disabled(isBusy || manager.client == nil)
             OnePlusMenuButton("More remote actions", variant: .borderedIcon, items: [
                 .item(.init("Remote Settings…") { isShowingSettings = true }),
                 .item(.init("Clean Up by Ignore Rules…") { isShowingCleanup = true })
@@ -212,65 +234,79 @@ struct RemoteBrowserView: View {
         }
         .frame(maxWidth: .infinity, maxHeight: .infinity)
         .dropDestination(for: URL.self) { (urls: [URL], _: CGPoint) in
-            manager.createDroppedTransfers(urls: urls, remote: remote, directoryPath: path)
-            showDropToast()
+            guard !isBusy else { return false }
+            let queued = manager.createDroppedTransfers(urls: urls, remote: remote, directoryPath: path)
+            guard queued > 0 else { return false }
+            showDropToast(count: queued)
             return true
         } isTargeted: {
             isDropTargeted = $0
         }
-        .overlay(alignment: .bottom) { statusChips }
+        .overlay(alignment: .bottom) { statusFeedback }
     }
 
-    private var entryList: some View {
-        VStack(spacing: 0) {
-            HStack(spacing: 0) {
-                sortButton("Name", column: .name).frame(maxWidth: .infinity, alignment: .leading)
-                sortButton("Size", column: .size).frame(width: 92, alignment: .trailing)
-                sortButton("Modified", column: .modified).frame(width: 116, alignment: .trailing)
-            }
-            .onePlusTableHeader()
-            ScrollView {
-                LazyVStack(spacing: 0) {
-                ForEach(visibleEntries) { displayEntry in
-                    RemoteEntryRow(
-                        displayEntry: displayEntry,
-                        isSelected: selection == displayEntry.id,
-                        dragItem: dragItem(for: displayEntry.entry),
-                        onSelect: { selection = displayEntry.id },
-                        onOpen: { open(displayEntry.entry) },
-                        onQuickLook: { quickLook(displayEntry.entry) }
-                    )
-                }
-            }
-            }
-            .onePlusScrollIndicators()
+    private var entryList: OnePlusNativeTable {
+        let rows: [OnePlusTableItem] = visibleEntries.map {
+            OnePlusTableItem(id: $0.id, cells: [$0.entry.name, $0.size, $0.modified], symbol: $0.entry.icon)
         }
-        .focusable()
-        .focusEffectDisabled(!OnePlusFocusPolicy.shared.showsFocus)
-        .onKeyPress(.space) {
-            guard let selection,
-                  let entry = entries.first(where: { $0.id == selection }),
-                  !entry.isDir else { return .ignored }
-            quickLook(entry)
-            return .handled
-        }
+        let onOpen: ((Set<String>) -> Void)? = selectedEntry == nil || isBusy || manager.client == nil ? nil : { openSelection($0) }
+        let onPreview: ((Set<String>) -> Void)? = canQuickLook ? { quickLookSelection($0) } : nil
+        return OnePlusNativeTable(
+            columns: [
+                OnePlusGridColumn("Name", width: 240, textColor: OnePlusColor.ink),
+                OnePlusGridColumn("Size", width: 92, trailing: true, textRole: .mono),
+                OnePlusGridColumn("Modified", width: 116, trailing: true, textRole: .mono)
+            ],
+            rows: rows,
+            selection: $selection,
+            sortColumn: sortColumn.rawValue,
+            ascending: sortAscending,
+            sort: { column, ascending in
+                sortColumn = SortColumn(rawValue: column) ?? .name
+                sortAscending = ascending
+            },
+            open: onOpen,
+            preview: onPreview,
+            actions: entryActions
+        )
     }
 
-    private func sortButton(_ title: String, column: SortColumn) -> some View {
-        Button {
-            if sortColumn == column { sortAscending.toggle() }
-            else { sortColumn = column; sortAscending = true }
-        } label: {
-            HStack(spacing: OnePlusMetrics.spacing[1]) {
-                Text(title.uppercased())
-                if sortColumn == column {
-                    Image(systemName: sortAscending ? "chevron.up" : "chevron.down")
-                        .accessibilityHidden(true)
-                }
-            }
+    private var selectedEntry: RemoteEntry? {
+        guard selection.count == 1, let id = selection.first else { return nil }
+        return entries.first { $0.path == id }
+    }
+
+    private var canQuickLook: Bool {
+        selectedEntry?.isDir == false && !isBusy && manager.client != nil
+    }
+
+    private func openSelection(_ ids: Set<String>) {
+        guard ids.count == 1, let entry = entries.first(where: { ids.contains($0.path) }) else { return }
+        open(entry)
+    }
+
+    private func quickLookSelection(_ ids: Set<String>) {
+        guard ids.count == 1, let entry = entries.first(where: { ids.contains($0.path) }) else { return }
+        quickLook(entry)
+    }
+
+    private func copyPaths(_ ids: Set<String>) {
+        let paths = visibleEntries.filter { ids.contains($0.id) }.map(\.entry.path)
+        guard !paths.isEmpty else { return }
+        NSPasteboard.general.clearContents()
+        NSPasteboard.general.setString(paths.joined(separator: "\n"), forType: .string)
+    }
+
+    private func entryActions(_ ids: Set<String>) -> [OnePlusTableAction] {
+        guard !ids.isEmpty else { return [] }
+        var actions: [OnePlusTableAction] = []
+        if ids.count == 1, let entry = entries.first(where: { ids.contains($0.path) }) {
+            actions.append(OnePlusTableAction(entry.isDir ? "Open" : "Quick Look", enabled: !isBusy && manager.client != nil) {
+                open(entry)
+            })
         }
-        .buttonStyle(.plain)
-        .accessibilityValue(sortColumn == column ? (sortAscending ? "Ascending" : "Descending") : "Not sorted")
+        actions.append(OnePlusTableAction(ids.count == 1 ? "Copy Path" : "Copy Paths", enabled: !isBusy) { copyPaths(ids) })
+        return actions
     }
 
     private func errorState(_ message: String) -> some View {
@@ -293,7 +329,7 @@ struct RemoteBrowserView: View {
                 VStack(spacing: OnePlusMetrics.spacing[3]) {
                     Image(systemName: "arrow.down.circle")
                         .foregroundStyle(OnePlusColor.ink)
-                    Text("Drop to upload to \(remote.name):\(path)")
+                    Text("Drop Finder files or folders to upload to \(remote.name):\(path)")
                         .onePlusText(.cardTitle)
                 }
             )
@@ -302,45 +338,23 @@ struct RemoteBrowserView: View {
     }
 
     @ViewBuilder
-    private var statusChips: some View {
-        VStack(spacing: OnePlusMetrics.spacing[2]) {
+    private var statusFeedback: some View {
+        VStack(spacing: 0) {
             if let fetchingPreviewName {
-                chip {
-                    ProgressView()
-                        .controlSize(.small)
-                    Text("Fetching \(fetchingPreviewName)…")
-                        .onePlusText(.caption)
-                        .lineLimit(1)
-                        .truncationMode(.middle)
-                }
+                OnePlusToast("Fetching \(fetchingPreviewName)…", systemImage: "arrow.down.circle")
             }
-            if showsDropToast {
-                chip {
-                    Image(systemName: "checkmark.circle.fill")
-                        .foregroundStyle(OnePlusColor.ok)
-                    Text("Transfer queued. View it in Transfers.")
-                        .onePlusText(.caption)
-                }
+            if queuedUploadCount > 0 {
+                OnePlusToast(queuedUploadCount == 1
+                    ? "Transfer queued. View it in Transfers."
+                    : "\(queuedUploadCount) transfers queued. View them in Transfers.")
             }
         }
-        .padding(.bottom, OnePlusMetrics.spacing[4])
-        .allowsHitTesting(false)
-    }
-
-    private func chip<Content: View>(@ViewBuilder content: () -> Content) -> some View {
-        HStack(spacing: OnePlusMetrics.spacing[3]) {
-            content()
-        }
-        .padding(.horizontal, OnePlusMetrics.spacing[4])
-        .frame(height: OnePlusMetrics.controlHeight)
-        .background(OnePlusColor.raised, in: Capsule())
-        .overlay { Capsule().strokeBorder(OnePlusColor.line) }
     }
 
     // MARK: Actions
 
     private func navigate(to newPath: String) {
-        selection = nil
+        selection.removeAll()
         errorMessage = nil
         path = newPath
     }
@@ -368,33 +382,53 @@ struct RemoteBrowserView: View {
 
     private func dragItem(for entry: RemoteEntry) -> RemoteFileDragItem? {
         guard !entry.isDir, let client = manager.client else { return nil }
-        return RemoteFileDragItem(
+        let item = RemoteFileDragItem(
             client: client,
             srcFs: remote.pathPrefix,
             srcRemote: entry.path,
             fileName: entry.name
         )
+        return item.hasValidFileName ? item : nil
     }
 
-    private func showDropToast() {
+    private func pasteboardWriter(for id: String) -> (any NSPasteboardWriting)? {
+        guard !isBusy,
+              let entry = entries.first(where: { $0.path == id }),
+              let item = dragItem(for: entry) else { return nil }
+        let delegate = RemoteFilePromiseDelegate(item: item)
+        let provider = NSFilePromiseProvider(fileType: UTType.data.identifier, delegate: delegate)
+        provider.userInfo = delegate
+        return provider
+    }
+
+    private func showDropToast(count: Int) {
         dropToastTask?.cancel()
-        showsDropToast = true
+        queuedUploadCount = count
         dropToastTask = Task {
             try? await Task.sleep(for: .seconds(2.5))
             guard !Task.isCancelled else { return }
-            showsDropToast = false
+            queuedUploadCount = 0
         }
     }
 
     private func chooseUpload() {
+        guard !isBusy, manager.client != nil else { return }
+        guard let window = NSApp.windows.first(where: { $0.identifier?.rawValue == "rclone" }),
+              window.attachedSheet == nil else { return }
         let panel = NSOpenPanel()
         panel.canChooseFiles = true
         panel.canChooseDirectories = true
         panel.allowsMultipleSelection = true
         panel.prompt = "Upload"
-        guard panel.runModal() == .OK else { return }
-        manager.createDroppedTransfers(urls: panel.urls, remote: remote, directoryPath: path)
-        showDropToast()
+        let remote = remote
+        let destinationPath = path
+        isChoosingUpload = true
+        Task {
+            defer { isChoosingUpload = false }
+            guard await panel.beginSheetModal(for: window) == .OK else { return }
+            let queued = manager.createDroppedTransfers(urls: panel.urls, remote: remote, directoryPath: destinationPath)
+            if queued > 0 { showDropToast(count: queued) }
+        }
     }
 
     private func createFolder() {
@@ -442,6 +476,7 @@ struct RemoteBrowserView: View {
             }.value
             guard !Task.isCancelled else { return }
             visibleEntries = displayEntries
+            selection.formIntersection(Set(entries.map(\.path)))
         }
     }
 
@@ -485,103 +520,56 @@ struct RemoteBrowserView: View {
     }
 }
 
-// MARK: - Entry Row
-
-private struct RemoteEntryRow: View {
-    let displayEntry: RemoteDisplayEntry
-    let isSelected: Bool
-    let dragItem: RemoteFileDragItem?
-    let onSelect: () -> Void
-    let onOpen: () -> Void
-    let onQuickLook: () -> Void
-
-    @State private var isHovering = false
-
-    private var entry: RemoteEntry { displayEntry.entry }
-
-    var body: some View {
-        if let dragItem {
-            row.draggable(dragItem)
-        } else {
-            row
-        }
-    }
-
-    private var row: some View {
-        Button(action: onSelect) {
-            HStack(spacing: 10) {
-                Image(systemName: entry.icon)
-                    .foregroundStyle(OnePlusColor.secondary)
-                    .frame(width: OnePlusMetrics.navIcon)
-
-                Text(entry.name)
-                    .onePlusText(.row)
-                    .lineLimit(1)
-                    .truncationMode(.middle)
-
-                Spacer(minLength: 8)
-
-                if !entry.isDir && (isHovering || isSelected) {
-                    quickLookButton
-                }
-
-                if !entry.isDir {
-                    Text(displayEntry.size)
-                        .onePlusText(.mono)
-                        .foregroundStyle(OnePlusColor.secondary)
-                        .frame(width: 92, alignment: .trailing)
-                }
-
-                Text(displayEntry.modified)
-                    .onePlusText(.mono)
-                    .foregroundStyle(OnePlusColor.muted)
-                    .frame(width: 116, alignment: .trailing)
-            }
-            .contentShape(Rectangle())
-        }
-        .buttonStyle(.plain)
-        .focusEffectDisabled(!OnePlusFocusPolicy.shared.showsFocus)
-        .onePlusTableRow(selected: isSelected)
-        .simultaneousGesture(TapGesture(count: 2).onEnded { onOpen() })
-        .onHover { isHovering = $0 }
-        .contextMenu {
-            Button(entry.isDir ? "Open" : "Quick Look") { entry.isDir ? onOpen() : onQuickLook() }
-            Button("Copy Path") {
-                NSPasteboard.general.clearContents()
-                NSPasteboard.general.setString(entry.path, forType: .string)
-            }
-        }
-    }
-
-    private var quickLookButton: some View {
-        Button(action: onQuickLook) {
-            Image(systemName: "eye")
-                .frame(width: OnePlusMetrics.compactControlHeight, height: OnePlusMetrics.compactControlHeight)
-        }
-        .buttonStyle(OnePlusButtonStyle(.icon, size: .small))
-        .focusEffectDisabled(!OnePlusFocusPolicy.shared.showsFocus)
-        .accessibilityLabel("Quick Look")
-    }
-
-}
-
 // MARK: - Drag Out
 
-nonisolated struct RemoteFileDragItem: Transferable, Sendable {
+private final class RemoteFilePromiseDelegate: NSObject, NSFilePromiseProviderDelegate {
+    nonisolated let item: RemoteFileDragItem
+    private static let writeQueue = OperationQueue()
+
+    init(item: RemoteFileDragItem) { self.item = item }
+
+    func filePromiseProvider(_ filePromiseProvider: NSFilePromiseProvider, fileNameForType fileType: String) -> String {
+        item.fileName
+    }
+
+    func operationQueue(for filePromiseProvider: NSFilePromiseProvider) -> OperationQueue { Self.writeQueue }
+
+    nonisolated func filePromiseProvider(
+        _ filePromiseProvider: NSFilePromiseProvider,
+        writePromiseTo url: URL,
+        completionHandler: @escaping (Error?) -> Void
+    ) {
+        let item = item
+        // AppKit permits this completion block on the provider background queue.
+        nonisolated(unsafe) let complete = completionHandler
+        Task {
+            let staging = FileManager.default.temporaryDirectory
+                .appendingPathComponent("rsync-drag/\(UUID().uuidString)", isDirectory: true)
+            defer { try? FileManager.default.removeItem(at: staging) }
+            do {
+                let file = try await item.download(to: staging)
+                try FileManager.default.moveItem(at: file, to: url)
+                complete(nil)
+            } catch {
+                complete(error)
+            }
+        }
+    }
+}
+
+nonisolated struct RemoteFileDragItem: Sendable {
     let client: RcloneRCClient
     let srcFs: String
     let srcRemote: String
     let fileName: String
 
-    static var transferRepresentation: some TransferRepresentation {
-        FileRepresentation(exportedContentType: .data) { item in
-            SentTransferredFile(try await item.download(), allowAccessingOriginalFile: true)
-        }
+    var hasValidFileName: Bool {
+        !fileName.isEmpty && fileName != "." && fileName != ".." && !fileName.contains("/") && !fileName.contains("\0")
     }
 
     func download(to directory: URL = FileManager.default.temporaryDirectory
         .appendingPathComponent("rsync-drag/\(UUID().uuidString)", isDirectory: true)) async throws -> URL {
-        guard !fileName.isEmpty, fileName != ".", fileName != "..", !fileName.contains("/"), !fileName.contains("\0") else {
+        guard hasValidFileName else {
             throw RcloneRCError.decoding("Invalid download file name")
         }
         try FileManager.default.createDirectory(at: directory, withIntermediateDirectories: true)

@@ -44,6 +44,7 @@ nonisolated private struct ActivityVersion: Equatable, Sendable {
 }
 
 struct ActivityView: View {
+    @Environment(\.isEnabled) private var isEnabled
     @Query(sort: \TransferRecord.createdAt, order: .reverse) private var records: [TransferRecord]
     @State private var search = ""
     @State private var searchFocus = 0
@@ -116,7 +117,7 @@ struct ActivityView: View {
             projectionTask?.cancel()
             projectionTask = nil
         }
-        .focusedSceneValue(\.appFind, showDetails ? nil : AppCommandAction(title: "Find in Activity", perform: { searchFocus &+= 1 }))
+        .focusedSceneValue(\.appFind, showDetails || !isEnabled ? nil : AppCommandAction(title: "Find in Activity", perform: { searchFocus &+= 1 }))
         .accessibilityIdentifier("rclone.activity")
     }
 
