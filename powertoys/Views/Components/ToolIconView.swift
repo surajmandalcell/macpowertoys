@@ -27,7 +27,7 @@ struct ToolIconView: View {
     }
 
     private var symbolIcon: some View {
-        Image(systemName: tool.icon)
+        (ToolGlyph(rawValue: tool.id)?.image ?? Image(systemName: tool.icon))
             .resizable()
             .rotationEffect(.degrees(tool.iconRotation))
             .scaledToFit()

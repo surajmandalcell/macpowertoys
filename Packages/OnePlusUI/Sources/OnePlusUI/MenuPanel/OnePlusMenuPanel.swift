@@ -308,9 +308,10 @@ public struct OnePlusMenuTab<Value: Hashable>: Identifiable {
     public let id: Value
     public let title: String
     public let systemImage: String
+    public let image: Image?
     public let accessibilityIdentifier: String?
-    public init(_ id: Value, _ title: String, systemImage: String, accessibilityIdentifier: String? = nil) {
-        self.id = id; self.title = title; self.systemImage = systemImage
+    public init(_ id: Value, _ title: String, systemImage: String, image: Image? = nil, accessibilityIdentifier: String? = nil) {
+        self.id = id; self.title = title; self.systemImage = systemImage; self.image = image
         self.accessibilityIdentifier = accessibilityIdentifier
     }
 }
@@ -332,7 +333,7 @@ public struct OnePlusMenuTabStrip<Value: Hashable>: View {
         HStack(spacing: 2) {
             ForEach(tabs) { tab in
                 Button { selection = tab.id } label: {
-                    OnePlusMenuTabIcon(symbol: tab.systemImage, selected: selection == tab.id)
+                    OnePlusMenuTabIcon(symbol: tab.systemImage, image: tab.image, selected: selection == tab.id)
                 }
                 .buttonStyle(OnePlusInteractionStyle(selected: selection == tab.id))
                 .help(tab.title).accessibilityLabel(tab.title).accessibilityAddTraits(selection == tab.id ? .isSelected : [])
@@ -360,12 +361,16 @@ public struct OnePlusMenuTabStrip<Value: Hashable>: View {
 
 private struct OnePlusMenuTabIcon: View {
     let symbol: String
+    let image: Image?
     let selected: Bool
     @Environment(\.isEnabled) private var enabled
     @Environment(\.onePlusControlState) private var sample
     @State private var hover = false
     var body: some View {
-        Image(systemName: symbol).font(.system(size: 13))
+        Group {
+            if let image { image.resizable().scaledToFit().frame(width: 13, height: 13) }
+            else { Image(systemName: symbol).font(.system(size: 13)) }
+        }
             .foregroundStyle(selected || (enabled && (hover || sample == .hover)) ? OnePlusColor.ink : OnePlusColor.secondary)
             .frame(width: 26, height: 26).contentShape(Rectangle()).onHover { hover = $0 }
     }

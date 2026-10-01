@@ -8,6 +8,13 @@ enum StatusItemIcon {
 
     static func symbol(_ name: String) -> NSImage? {
         if let image = symbols[name] { return image }
+        if name == ToolGlyph.portman.symbol {
+            guard let image = NSImage(named: name)?.copy() as? NSImage else { return nil }
+            image.size = NSSize(width: OnePlusMenuMetrics.statusIconSize, height: OnePlusMenuMetrics.statusIconSize)
+            image.isTemplate = true
+            symbols[name] = image
+            return image
+        }
         guard let source = NSImage(systemSymbolName: name, accessibilityDescription: nil)?
             .withSymbolConfiguration(.init(pointSize: OnePlusMenuMetrics.statusIconSize, weight: .regular))
         else { return nil }

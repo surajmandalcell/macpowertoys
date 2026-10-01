@@ -9,13 +9,17 @@ so this lane changes no Dock asset or rendering policy. Live focus, close,
 and appearance acceptance remains with the orchestrator on the integrated
 signed build. Evidence: `tmp/redesign/logs/w3-glyphs-status.md`.
 
-`91d9a538` keeps the approved bitmap and SVG tool icons and defines 14 unique
-SF Symbols in `ToolGlyph`. Ruler is slanted, Switch uses `power.circle.fill`,
-System Care uses `tray.and.arrow.up`, and Diskman uses `opticaldisc`.
-Launcher, panel, and status identity glyphs use those shared definitions.
-The icon/glyph contact sheet was reviewed at 16pt and 32pt in both appearances:
-`tmp/redesign/captures/glyphs-status/contact-sheet.png`. Signed surface review
-remains with the orchestrator.
+`ToolGlyph` owns 14 unique identities and retains the approved colored artwork.
+Ruler is slanted, Switch uses regular `stop.circle`, System Care uses
+`tray.and.arrow.up`, and Diskman uses `opticaldisc`. The owner's Round 12
+correction restores Portman's original `PortmanStatusGlyph` socket asset,
+including its copied 14pt template status image; other tools use SF Symbols.
+Sidebar, panel, and status consumers share the definitions. Actual-source
+contact sheets compare Switch at 16pt beside its emergency-stop artwork and
+Portman's original/restored image in light/dark at 1x/2x:
+`tmp/redesign/captures/glyphs-status/r12/`. All 36 status images pass geometry
+checks at 1x/2x/4x; Portman matches its original drawing pixels exactly.
+Signed surface review remains with the orchestrator.
 
 Requested on 2026-09-25. The owner selected Disk Explorer option 02,
 **Sector platter**, from `tmp/disk-explorer/index.index2.html` and asked for

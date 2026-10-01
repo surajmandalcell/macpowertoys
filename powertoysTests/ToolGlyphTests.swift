@@ -51,7 +51,18 @@ final class ToolGlyphTests: XCTestCase {
         }
     }
 
-    private func inkBounds(_ image: NSImage, scale: CGFloat) throws -> NSRect {
+    func testPortmanKeepsTheOriginalStatusAsset() throws {
+        let image = try XCTUnwrap(StatusItemIcon.symbol(ToolGlyph.portman.symbol))
+        let original = try XCTUnwrap(NSImage(named: "PortmanStatusGlyph")?.copy() as? NSImage)
+        original.size = NSSize(width: 14, height: 14)
+        original.isTemplate = true
+        for scale in [CGFloat(1), 2, 4] {
+            XCTAssertEqual(try raster(image, scale: scale).tiffRepresentation,
+                           try raster(original, scale: scale).tiffRepresentation)
+        }
+    }
+
+    private func raster(_ image: NSImage, scale: CGFloat) throws -> NSBitmapImageRep {
         let side = Int(14 * scale)
         let bitmap = try XCTUnwrap(NSBitmapImageRep(bitmapDataPlanes: nil, pixelsWide: side, pixelsHigh: side,
             bitsPerSample: 8, samplesPerPixel: 4, hasAlpha: true, isPlanar: false,
@@ -61,6 +72,12 @@ final class ToolGlyphTests: XCTestCase {
         NSGraphicsContext.current = NSGraphicsContext(bitmapImageRep: bitmap)
         image.draw(in: NSRect(origin: .zero, size: image.size))
         NSGraphicsContext.restoreGraphicsState()
+        return bitmap
+    }
+
+    private func inkBounds(_ image: NSImage, scale: CGFloat) throws -> NSRect {
+        let bitmap = try raster(image, scale: scale)
+        let side = bitmap.pixelsWide
         var bounds = NSRect.null
         for y in 0..<side {
             for x in 0..<side where (bitmap.colorAt(x: x, y: y)?.alphaComponent ?? 0) > 0.1 {

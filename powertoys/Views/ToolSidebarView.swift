@@ -20,7 +20,7 @@ struct ToolSidebarView: View {
             }
             OnePlusNavCaption("Your tools")
             ForEach(visibleTools, id: \.id) { tool in
-                OnePlusNavRow(tool.name, systemImage: tool.icon, iconRotation: tool.iconRotation, selected: selectedTool == tool.id,
+                OnePlusNavRow(tool.name, systemImage: tool.icon, image: ToolGlyph(rawValue: tool.id)?.assetImage, iconRotation: tool.iconRotation, selected: selectedTool == tool.id,
                               muted: !settings.isToolEnabled(tool.id)) { selectedTool = tool.id }
                     .accessibilityIdentifier("main.sidebar.\(tool.id)")
                     .accessibilityValue(settings.isToolEnabled(tool.id) ? "Enabled" : "Disabled")

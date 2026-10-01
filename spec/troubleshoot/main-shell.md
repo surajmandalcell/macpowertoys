@@ -54,17 +54,23 @@
 
 - **Symptom:** Sidebar and panel glyphs differ from approved tool icons. Native
   status items look larger than Portman, and one Memory item hides the Task
-  Manager identity.
+  Manager identity. Replacing Portman's socket loses its approved identity.
 - **Cause:** Tool symbols were copied across enums. Native SF images kept
   intrinsic bounds, and equal point sizes did not give equal painted sizes.
-- **Invariant:** `ToolGlyph` owns the 14 unique tool symbols and Ruler angle.
-  `StatusItemIcon` caches template images on a 14pt canvas with a centered
-  11.2pt maximum ink span, measured from the old Portman socket. Rasterize
-  once at 4x to keep SF hinting from changing geometry at display scale.
+  Treating every glyph as an SF Symbol replaced Portman's original SVG.
+- **Invariant:** `ToolGlyph` owns 14 unique glyphs and Ruler angle. Switch uses
+  regular `stop.circle`. Portman uses the original `PortmanStatusGlyph` asset
+  across glyph surfaces. Copy it at 14pt and set template mode, exactly as
+  before `91d9a538`. Preserve its native vector drawing without normalization.
+  `StatusItemIcon` caches other template images on a 14pt canvas with a
+  centered 11.2pt maximum ink span measured from that socket. Rasterize SF
+  images once at 4x to keep hinting from changing geometry at display scale.
   Use the Task Manager glyph when exactly one metric is enabled; retain saved
   per-metric choices for multiple metrics and preserve Value Only behavior.
-- **Check:** Run `ToolGlyphTests` on hosted CI. Compare the 16pt/32pt contact
-  sheet in both appearances. After signed installation, capture only the
+- **Check:** Run `ToolGlyphTests` on hosted CI, including exact original/restored
+  Portman pixel equality at 1x/2x/4x. The source-derived r12 check passes that
+  comparison and 36 image geometries. Inspect the 16pt Switch/artwork contact
+  sheets in both appearances. After signed installation, capture only the
   menu bar with `screencapture -R` and inspect all separate/grouped styles.
 
 ## Diagnostic Panel URLs Consumed By Native Scenes, 2026-09-30

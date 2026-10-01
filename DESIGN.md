@@ -565,8 +565,10 @@ separate tool panel.
   A Task Manager item that shows only one metric uses the Task Manager
   glyph, not the metric glyph.
 - Sidebar and panel glyphs mirror each tool's icon metaphor (for example a
-  slanted ruler, an emergency-stop button for Switch). No two tools share a
-  glyph.
+  slanted ruler, regular `stop.circle` for Switch). No two tools share a glyph.
+  Portman retains its original `PortmanStatusGlyph` socket asset on every
+  glyph surface. Its status image is an unmodified 14 pt template copy;
+  its 11.2 pt maximum ink span remains the reference for other status items.
 - Control rows (Fan, Awake): 30 pt, a leading 13 pt glyph, 10.5 pt label, and
   SF Mono status, with a trailing 24 pt segmented control.
 - Section header: a 1 pt `line` divider, 7 pt top padding, a 9.5 pt section

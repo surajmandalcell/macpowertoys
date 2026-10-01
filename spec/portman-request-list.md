@@ -84,13 +84,16 @@ This patch remains for integration because the topic has other owners' edits.
 
 ## Status glyph, 2026-10-01
 
-The owner now requires one SF Symbol identity on every glyph surface.
-`91d9a538` uses `ToolGlyph.portman` and preserves the trailing server count.
-The old socket status image measured 14pt square with 11.2pt by 10.6pt ink.
-All status images now use a centered 11.2pt maximum ink span on a 14pt
-template canvas. The native status item keeps system button margins and
-a single space before its count. Headless geometry checks pass. The signed
-menu-bar comparison remains with the orchestrator.
+The owner's Round 12 correction restores the original `PortmanStatusGlyph`
+socket asset, introduced in `49f41b41`, with the exact pre-wave-1 drawing:
+a copied 14pt template image. The asset is byte-for-byte unchanged from
+`91d9a538^`; the trailing server count remains. The sidebar, Servers panel
+tab, and glyph fallback use the same socket. Other status images retain the
+centered 11.2pt maximum ink span on a 14pt canvas, measured from Portman's
+11.2pt by 10.6pt ink. Native button margins remain unchanged.
+Original/restored raster equality passes at 1x/2x/4x, alongside all 36 status
+image geometry checks. Evidence: `tmp/redesign/captures/glyphs-status/r12/`.
+Signed menu-bar comparison remains with the orchestrator.
 
 ## OnePlusUI redesign, 2026-09-29
 
