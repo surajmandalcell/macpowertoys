@@ -72,8 +72,9 @@ final class LogManager {
     private static let iso8601Formatter = ISO8601DateFormatter()
 
     private(set) var logs: [LogEntryData] = []
-    private let maxMemoryEntries = 1000
-    private let retentionDays = 2
+    nonisolated static let maxMemoryEntries = 1000
+    nonisolated static let retentionDays = 2
+    private(set) var persistenceError: String?
 
     private var persistence: LogPersistence?
     private var pendingPersist: [LogEntryData] = []
@@ -90,8 +91,8 @@ final class LogManager {
 
         logs.append(entry)
 
-        if logs.count > maxMemoryEntries {
-            logs.removeFirst(logs.count - maxMemoryEntries)
+        if logs.count > Self.maxMemoryEntries {
+            logs.removeFirst(logs.count - Self.maxMemoryEntries)
         }
 
         pendingPersist.append(entry)
@@ -107,6 +108,7 @@ final class LogManager {
         guard flushTask == nil else { return }
         flushTask = Task { [weak self] in
             try? await Task.sleep(for: .seconds(2))
+            guard !Task.isCancelled else { return }
             await self?.flushPending()
         }
     }
@@ -117,7 +119,14 @@ final class LogManager {
         guard let persistence, !pendingPersist.isEmpty else { return }
         let batch = pendingPersist
         pendingPersist.removeAll()
-        await persistence.persist(batch)
+        do {
+            try await persistence.persist(batch)
+            persistenceError = nil
+            await pruneOldLogs()
+        } catch {
+            pendingPersist.insert(contentsOf: batch, at: 0)
+            persistenceError = error.localizedDescription
+        }
     }
 
     func error(_ message: String, source: String = "App") {
@@ -141,18 +150,34 @@ final class LogManager {
     }
 
     func pruneOldLogs() async {
-        let cutoffDate = Calendar.current.date(byAdding: .day, value: -retentionDays, to: Date()) ?? Date()
+        let cutoffDate = Self.retentionCutoff()
 
         logs.removeAll { $0.timestamp < cutoffDate }
 
-        await persistence?.prune(before: cutoffDate)
-
-        info("Pruned logs older than \(retentionDays) days", source: "LogManager")
+        do {
+            try await persistence?.prune(before: cutoffDate)
+        } catch {
+            persistenceError = error.localizedDescription
+        }
     }
 
     func loadPersistedLogs() async {
         guard let persistence else { return }
-        let cutoffDate = Calendar.current.date(byAdding: .day, value: -retentionDays, to: Date()) ?? Date()
-        logs = await persistence.load(since: cutoffDate, limit: maxMemoryEntries)
+        do {
+            let loaded = try await persistence.load(since: Self.retentionCutoff(), limit: Self.maxMemoryEntries)
+            logs = Self.merging(loaded, with: logs)
+        } catch {
+            persistenceError = error.localizedDescription
+        }
+    }
+
+    nonisolated static func retentionCutoff(now: Date = Date(), calendar: Calendar = .current) -> Date {
+        calendar.date(byAdding: .day, value: -retentionDays, to: now) ?? now
+    }
+
+    nonisolated static func merging(_ loaded: [LogEntryData], with current: [LogEntryData]) -> [LogEntryData] {
+        let currentIDs = Set(current.map(\.id))
+        return Array((loaded.filter { !currentIDs.contains($0.id) } + current)
+            .sorted { $0.timestamp < $1.timestamp }.suffix(maxMemoryEntries))
     }
 }

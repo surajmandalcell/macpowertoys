@@ -58,14 +58,22 @@ final class SystemLogReader {
     private(set) var isLoading = false
     private(set) var errorMessage: String?
     private var loadTask: Task<Void, Never>?
+    private let read: @Sendable (SystemLogRange) throws -> [SystemLogLine]
+
+    init(read: @escaping @Sendable (SystemLogRange) throws -> [SystemLogLine] = { try SystemLogReader.readEntries(range: $0) }) {
+        self.read = read
+    }
 
     func refresh(range: SystemLogRange) {
         loadTask?.cancel()
         isLoading = true
         errorMessage = nil
+        entries = []
+        let read = read
         loadTask = Task { [weak self] in
             do {
-                let entries = try await Task.detached(priority: .utility) { try Self.readEntries(range: range) }.value
+                let work = Task.detached(priority: .utility) { try read(range) }
+                let entries = try await withTaskCancellationHandler { try await work.value } onCancel: { work.cancel() }
                 guard !Task.isCancelled else { return }
                 self?.entries = entries
             } catch is CancellationError {
@@ -84,7 +92,14 @@ final class SystemLogReader {
         isLoading = false
     }
 
-    nonisolated private static func readEntries(range: SystemLogRange) throws -> [SystemLogLine] {
+    func close() {
+        cancel()
+        entries = []
+        errorMessage = nil
+    }
+
+    nonisolated static func readEntries(range: SystemLogRange) throws -> [SystemLogLine] {
+        try Task.checkCancellation()
         let store = try OSLogStore(scope: .system)
         let now = Date()
         let cutoff = now.addingTimeInterval(-range.rawValue)
@@ -157,6 +172,7 @@ nonisolated private struct LogsRow: Identifiable, Sendable {
 nonisolated private struct PreparedLogs: Sendable {
     let rows: [LogsRow]
     let span: String?
+    let sources: [String]
 }
 
 nonisolated private struct LogsVersion: Equatable, Sendable {
@@ -165,6 +181,13 @@ nonisolated private struct LogsVersion: Equatable, Sendable {
 }
 
 nonisolated enum LogsPresentation {
+    static func includes(level: LogLevel, source: String, message: String,
+                         levels: Set<LogLevel>, sourceFilter: String?, search: String) -> Bool {
+        levels.contains(level) && (sourceFilter == nil || source == sourceFilter)
+            && (search.isEmpty || source.localizedCaseInsensitiveContains(search)
+                || message.localizedCaseInsensitiveContains(search))
+    }
+
     static func rowTime(_ date: Date, timeZone: TimeZone = .current) -> String {
         rowTimeFormatter(timeZone: timeZone).string(from: date)
     }
@@ -216,13 +239,19 @@ struct LogsWindowView: View {
         }
             .background(WindowAccessor(identifier: "logs"))
             .buttonStyle(OnePlusButtonStyle())
+            .onAppear {
+                if page == .systemIssues && systemLogs.entries.isEmpty && !systemLogs.isLoading {
+                    systemLogs.refresh(range: systemRange)
+                }
+            }
             .onChange(of: page) { _, newPage in
                 if newPage == .systemIssues && systemLogs.entries.isEmpty { systemLogs.refresh(range: systemRange) }
+                else if newPage != .systemIssues { systemLogs.cancel() }
             }
             .onChange(of: systemRange) { _, _ in
                 if page == .systemIssues { systemLogs.refresh(range: systemRange) }
             }
-            .onDisappear { systemLogs.cancel() }
+            .onDisappear { systemLogs.close() }
             .onReceive(NotificationCenter.default.publisher(for: .commandOpenSettings)) { _ in
                 guard NSApp.keyWindow?.identifier?.rawValue.hasPrefix("logs") == true else { return }
                 page = .settings
@@ -370,6 +399,10 @@ private struct LogsPageView: View {
     @State private var rowLoadTask: Task<Void, Never>?
     @State private var detailID: String?
     @State private var confirmClear = false
+    @State private var sourceFilter: String?
+    @State private var sources: [String] = []
+    @State private var isExporting = false
+    @State private var exportError: String?
     @AppStorage("logs.fontSize") private var logsFontSize = 11
 
     private var internalVersion: LogsVersion {
@@ -386,7 +419,7 @@ private struct LogsPageView: View {
 
     var body: some View {
         OnePlusPage(scrolls: false) {
-            OnePlusPageHeader(title: page.title, subtitle: subtitle) {
+            OnePlusPageHeader(title: page.title) {
                 if page == .systemIssues {
                     OnePlusSelect(
                         choices: SystemLogRange.allCases.map { ($0, $0.title) },
@@ -401,34 +434,46 @@ private struct LogsPageView: View {
                         .accessibilityLabel("Refresh system issues")
                 }
                 Button("Copy") { copyRows() }.buttonStyle(OnePlusButtonStyle(.ghost)).disabled(visibleRows.isEmpty)
-                Button("Export") { exportRows() }.buttonStyle(OnePlusButtonStyle(.ghost)).disabled(visibleRows.isEmpty)
+                Button("Export") { exportRows() }.buttonStyle(OnePlusButtonStyle(.ghost)).disabled(visibleRows.isEmpty || isExporting)
                 if page == .internalLogs {
                     Button("Clear") { confirmClear = true }.buttonStyle(OnePlusButtonStyle(.ghost)).disabled(logManager.logs.isEmpty)
                 }
             }
+        } toolbar: {
+            HStack(spacing: OnePlusMetrics.spacing[2]) {
+                OnePlusSelect(
+                    choices: [(String?.none, "All sources")] + sources.map { (Optional($0), $0) },
+                    selection: $sourceFilter,
+                    width: OnePlusMetrics.controlColumn,
+                    accessibilityLabel: "Log source"
+                )
+                Spacer(minLength: 0)
+                Text(summary).onePlusText(.caption).lineLimit(1).truncationMode(.middle).help(summary)
+                if page == .systemIssues {
+                    Image(systemName: "info.circle")
+                        .foregroundStyle(OnePlusColor.muted)
+                        .help("Reads macOS errors and faults on demand, up to \(SystemLogReader.maximumEntries) entries. System issues are not stored.")
+                        .accessibilityLabel("System issues are read on demand, limited to \(SystemLogReader.maximumEntries) entries, and not stored.")
+                }
+            }
         } content: {
+            if let error = logManager.persistenceError, page == .internalLogs {
+                OnePlusBanner("Internal log storage is unavailable: \(error)", tone: .error)
+            }
             if let error = systemLogs.errorMessage, page == .systemIssues {
                 OnePlusBanner(error, tone: .error) {
                     Button("Try Again") { systemLogs.refresh(range: systemRange) }
                 }
             }
             if systemLogs.isLoading && page == .systemIssues && systemLogs.entries.isEmpty {
-                OnePlusCard {
-                    ProgressView("Reading system issues…")
-                        .frame(maxWidth: .infinity, maxHeight: .infinity)
-                        .padding(OnePlusMetrics.spacing[8])
-                }
-                .frame(maxHeight: .infinity)
+                ProgressView("Reading system issues…")
+                    .frame(maxWidth: .infinity, maxHeight: .infinity)
             } else if visibleRows.isEmpty {
-                OnePlusCard {
-                    OnePlusEmptyState(
-                        page == .internalLogs ? "No internal logs" : "No system issues",
-                        systemImage: page == .internalLogs ? "doc.text" : "checkmark.circle",
-                        caption: search.isEmpty ? "No entries match the selected levels." : "Clear the search or include another level."
-                    )
+                OnePlusEmptyState(
+                    page == .internalLogs ? "No internal logs" : "No system issues",
+                    systemImage: page == .internalLogs ? "doc.text" : "checkmark.circle"
+                )
                     .frame(maxHeight: .infinity)
-                }
-                .frame(maxHeight: .infinity)
             } else {
                 OnePlusCard {
                     Table(visibleRows, selection: $selection, sortOrder: sortBinding) {
@@ -482,9 +527,11 @@ private struct LogsPageView: View {
         .task { rebuildRows() }
         .onChange(of: page) {
             selection.removeAll()
+            sourceFilter = nil
             rebuildRows()
         }
         .onChange(of: search) { rebuildRows() }
+        .onChange(of: sourceFilter) { rebuildRows() }
         .onChange(of: selectedLevels) { rebuildRows() }
         .onChange(of: internalVersion) { rebuildRows() }
         .onChange(of: systemVersion) { rebuildRows() }
@@ -503,18 +550,16 @@ private struct LogsPageView: View {
         } message: {
             Text("This clears the in-memory internal log list.")
         }
+        .alert("Could not export logs", isPresented: Binding(
+            get: { exportError != nil }, set: { if !$0 { exportError = nil } }
+        )) {
+            Button("OK") { exportError = nil }
+        } message: { Text(exportError ?? "The file could not be written.") }
     }
 
-    private var subtitle: String {
-        guard let visibleSpan else {
-            return page == .systemIssues
-                ? "0 entries · read on demand · \(SystemLogReader.maximumEntries)-entry limit"
-                : "0 entries"
-        }
-        let summary = "\(visibleRows.count) entries · \(visibleSpan)"
-        return page == .systemIssues
-            ? "\(summary) · \(SystemLogReader.maximumEntries)-entry limit"
-            : summary
+    private var summary: String {
+        guard let visibleSpan else { return "0 entries" }
+        return "\(visibleRows.count) entries · \(visibleSpan)"
     }
 
     private var sortBinding: Binding<[KeyPathComparator<LogsRow>]> {
@@ -533,6 +578,7 @@ private struct LogsPageView: View {
         let systemEntries = page == .systemIssues ? systemLogs.entries : []
         let page = page
         let selectedLevels = selectedLevels
+        let sourceFilter = sourceFilter
         let search = search
         let sortOrder = sortOrder
 
@@ -544,10 +590,8 @@ private struct LogsPageView: View {
                     : systemEntries.map { LogsRow($0, time: rowTimeFormatter.string(from: $0.timestamp)) }
                 let rows = source
                     .filter {
-                        selectedLevels.contains($0.levelFilter)
-                            && (search.isEmpty
-                                || $0.source.localizedCaseInsensitiveContains(search)
-                                || $0.message.localizedCaseInsensitiveContains(search))
+                        LogsPresentation.includes(level: $0.levelFilter, source: $0.source, message: $0.message,
+                                                  levels: selectedLevels, sourceFilter: sourceFilter, search: search)
                     }
                     .sorted(using: sortOrder)
                 let firstTimestamp = rows.map(\.timestamp).min()
@@ -558,17 +602,16 @@ private struct LogsPageView: View {
                 } else {
                     span = nil
                 }
-                return PreparedLogs(rows: rows, span: span)
+                return PreparedLogs(rows: rows, span: span, sources: Set(source.map(\.source)).sorted())
             }.value
             guard !Task.isCancelled else { return }
             visibleRows = prepared.rows
             visibleSpan = prepared.span
+            sources = prepared.sources
         }
     }
 
     private func row(for id: String) -> LogsRow? { visibleRows.first { $0.id == id } }
-
-    private func openDetail(_ ids: Set<String>) { detailID = ids.first }
 
     @ViewBuilder private func logContextMenu(_ ids: Set<String>) -> some View {
         if let id = ids.first, let row = row(for: id) {
@@ -608,14 +651,23 @@ private struct LogsPageView: View {
     }
 
     private func exportRows() {
+        guard !isExporting,
+              let window = NSApp.windows.first(where: { $0.identifier?.rawValue == "logs" && $0.isVisible }) else { return }
         let panel = NSSavePanel()
         panel.nameFieldStringValue = page == .internalLogs ? "MacPowerToys-Internal-Logs.txt" : "MacPowerToys-System-Issues.txt"
         panel.allowedContentTypes = [.plainText]
-        guard panel.runModal() == .OK, let url = panel.url else { return }
-        do {
-            try selectedOrVisibleRows().map(rowText).joined(separator: "\n").write(to: url, atomically: true, encoding: .utf8)
-        } catch {
-            LogManager.shared.error("Could not export logs: \(error.localizedDescription)", source: "LogsWindowView")
+        let text = selectedOrVisibleRows().map(rowText).joined(separator: "\n")
+        isExporting = true
+        panel.beginSheetModal(for: window) { response in
+            guard response == .OK, let url = panel.url else { isExporting = false; return }
+            Task { @MainActor in
+                do {
+                    try await Task.detached(priority: .userInitiated) {
+                        try text.write(to: url, atomically: true, encoding: .utf8)
+                    }.value
+                } catch { exportError = error.localizedDescription }
+                isExporting = false
+            }
         }
     }
 }
@@ -627,17 +679,27 @@ private struct LogDetailSheet: View {
 
     var body: some View {
         OnePlusSheet("Log Entry", width: .large, close: close) {
-            VStack(alignment: .leading, spacing: OnePlusMetrics.spacing[3]) {
-                OnePlusKeyValueRow("Time", value: row.timestamp.formatted(date: .abbreviated, time: .standard), monospaced: true)
-                OnePlusKeyValueRow("Level", value: row.level)
-                OnePlusKeyValueRow("Source", value: row.source, monospaced: true)
-                OnePlusColor.lineSoft.frame(height: 1)
-                Text(row.message)
-                    .font(.system(size: CGFloat(fontSize), design: .monospaced))
-                    .foregroundStyle(OnePlusColor.ink)
-                    .textSelection(.enabled)
-                    .frame(maxWidth: .infinity, minHeight: OnePlusMetrics.spacing[8] * 4, alignment: .topLeading)
+            ScrollView {
+                VStack(alignment: .leading, spacing: OnePlusMetrics.spacing[3]) {
+                    OnePlusKeyValueRow("Time", value: row.timestamp.formatted(date: .abbreviated, time: .standard), monospaced: true)
+                    OnePlusKeyValueRow("Level", value: row.level)
+                    HStack(alignment: .firstTextBaseline, spacing: OnePlusMetrics.spacing[2]) {
+                        Text("Source").onePlusText(.caption)
+                            .fixedSize()
+                        Spacer(minLength: 0)
+                        Text(row.source).onePlusText(.mono).textSelection(.enabled)
+                            .multilineTextAlignment(.trailing)
+                    }
+                    OnePlusColor.lineSoft.frame(height: 1)
+                    Text(row.message)
+                        .font(.system(size: CGFloat(fontSize), design: .monospaced))
+                        .foregroundStyle(OnePlusColor.ink)
+                        .textSelection(.enabled)
+                        .frame(maxWidth: .infinity, minHeight: OnePlusMetrics.spacing[8] * 4, alignment: .topLeading)
+                }
             }
+            .onePlusScrollIndicators()
+            .frame(maxHeight: OnePlusWindowCanvas.logs.size.height / 2)
         } footer: {
             Button("Copy Message") {
                 NSPasteboard.general.clearContents()
@@ -654,7 +716,7 @@ private struct LogDetailSheet: View {
 struct LogsSettingsPage: View {
     var body: some View {
         OnePlusPage {
-            OnePlusPageHeader(title: "Settings", subtitle: "Log display and retention")
+            OnePlusPageHeader(title: "Settings")
         } content: {
             LogsSettingsView()
         }
@@ -669,28 +731,19 @@ struct LogsSettingsView: View {
         VStack(spacing: OnePlusMetrics.cardGap) {
             OnePlusCard {
                 OnePlusCardHeader("Logs")
-                OnePlusSettingRow("Font size", caption: "Used for selectable log detail text.") {
+                OnePlusSettingRow("Font size", help: "Used for selectable log detail text.") {
                     OnePlusSelect(
                         choices: [(10, "Small"), (11, "Medium"), (12, "Default"), (14, "Large")],
                         selection: $fontSize,
                         accessibilityLabel: "Log font size"
                     )
                 }
-                VStack(alignment: .leading, spacing: OnePlusMetrics.spacing[1]) {
-                    OnePlusKeyValueRow("Retention", value: "2 days")
-                    Text("Fixed policy for internal logs.")
-                        .onePlusText(.caption)
+                OnePlusSettingRow("Retention", help: "Fixed policy for internal logs.") {
+                    Text("\(LogManager.retentionDays) days").onePlusText(.row)
                 }
-                .padding(.horizontal, OnePlusMetrics.cardPadding)
-                .frame(height: OnePlusMetrics.captionedSettingRow)
-                .overlay(alignment: .bottom) { OnePlusColor.lineSoft.frame(height: 1) }
-                VStack(alignment: .leading, spacing: OnePlusMetrics.spacing[1]) {
-                    OnePlusKeyValueRow("System issues", value: "Not stored")
-                    Text("Read from macOS only when requested.")
-                        .onePlusText(.caption)
+                OnePlusSettingRow("System issues", help: "Read from macOS only when requested.", separator: false) {
+                    Text("Not stored").onePlusText(.row)
                 }
-                .padding(.horizontal, OnePlusMetrics.cardPadding)
-                .frame(height: OnePlusMetrics.captionedSettingRow)
             }
         }
     }
