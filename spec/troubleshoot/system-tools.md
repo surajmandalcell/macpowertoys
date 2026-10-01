@@ -646,8 +646,8 @@
   Keep time labels outside the plot. Fan always shows the shared 24pt Auto,
   Cool, and Max control. Its warning action owns helper setup and Restore Auto.
   The shared segmented API uses `isChoiceEnabled` for real buttons and arrow
-  keys. Auto requires manual control or automatic recovery; Cool and Max require manual
-  control. Changing state disables every choice. Fan text is prepared on a
+  keys. Auto requires manual control or automatic recovery; Cool and Max
+  require manual control. Changing state disables every choice. Fan text is prepared on a
   utility task, equal results do not publish, and publications stay at least
   250 ms apart. The final visible owner cancels pending preparation.
   Offline hosts keep unavailable CPU, RAM, and Network values but no empty
