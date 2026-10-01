@@ -5,323 +5,218 @@ import SwiftUI
 struct SystemMonitorRemoteView: View {
     let addRequest: Int
     private let loadsProfiles: Bool
+    private let suppliedProfiles: [SystemMonitorRemoteProfile]?
     private let onProfilesChange: ([SystemMonitorRemoteProfile]) -> Void
     @State private var profiles: [SystemMonitorRemoteProfile]
-    @State private var poller = SystemMonitorRemotePoller()
-    @State private var connectedID: String?
-    @State private var reading: SystemMonitorRemoteReading?
-    @State private var history: [SystemMonitorRemoteReading] = []
-    @State private var lastUpdated: Date?
-    @State private var errorMessage: String?
-    @State private var refreshGeneration = 0
+    @ObservedObject private var sessions = SystemMonitorRemoteSessions.shared
     @State private var editor: SystemMonitorRemoteProfile?
+    @State private var errorMessage: String?
 
-    init(
-        addRequest: Int = 0,
-        initialProfiles: [SystemMonitorRemoteProfile]? = nil,
-        onProfilesChange: @escaping ([SystemMonitorRemoteProfile]) -> Void = { _ in }
-    ) {
+    init(addRequest: Int = 0, initialProfiles: [SystemMonitorRemoteProfile]? = nil,
+         onProfilesChange: @escaping ([SystemMonitorRemoteProfile]) -> Void = { _ in }) {
         self.addRequest = addRequest
         loadsProfiles = initialProfiles == nil
+        suppliedProfiles = initialProfiles
         self.onProfilesChange = onProfilesChange
         _profiles = State(initialValue: initialProfiles ?? [])
     }
 
-    private var activeProfile: SystemMonitorRemoteProfile? {
-        profiles.first { $0.id == connectedID }
-    }
-
     var body: some View {
-        VStack(alignment: .leading, spacing: 10) {
-            remoteHeader
-            if let errorMessage {
-                Label(errorMessage, systemImage: "exclamationmark.triangle")
-                    .font(.system(size: 10))
-                    .foregroundStyle(TaskManagerTheme.accent)
-                    .padding(12)
-                    .frame(maxWidth: .infinity, alignment: .leading)
-                    .background(TaskManagerTheme.card,
-                                in: RoundedRectangle(cornerRadius: TaskManagerTheme.panelRadius))
-            }
-            ScrollView {
-                VStack(alignment: .leading, spacing: 10) {
-                    if profiles.isEmpty {
-                        emptyState
-                    } else if profiles.count == 1, let profile = profiles.first {
-                        HStack(alignment: .top, spacing: 10) {
-                            remoteCard(profile).frame(maxWidth: .infinity)
-                            connectionSettings.frame(maxWidth: .infinity)
+        VStack(alignment: .leading, spacing: OnePlusMetrics.cardGap) {
+            Text("\(profiles.filter { sessions.state(for: $0.id).phase == .connected }.count) connected · \(profiles.count) hosts")
+                .onePlusText(.caption)
+            if let errorMessage { OnePlusBanner(errorMessage, tone: .error) }
+            ScrollViewReader { proxy in
+                ScrollView {
+                    VStack(alignment: .leading, spacing: OnePlusMetrics.cardGap) {
+                        if profiles.isEmpty {
+                            OnePlusEmptyState("No remote hosts", systemImage: "server.rack",
+                                              caption: "Add a Linux, macOS, or Windows SSH host.") {
+                                Button("Add host") { editor = SystemMonitorRemoteProfile(name: "", host: "") }
+                            }
                         }
-                    } else {
-                        LazyVGrid(
-                            columns: [GridItem(.flexible(), spacing: 10, alignment: .top), GridItem(.flexible(), alignment: .top)],
-                            spacing: 10
-                        ) {
-                            ForEach(profiles) { profile in remoteCard(profile) }
+                        ForEach(profiles) { profile in
+                            remoteCard(profile).id(profile.id)
                         }
-                        connectionSettings
+                        if !profiles.isEmpty { connectionSettings }
                     }
-                }
+                }.thinScrollIndicators()
+                    .onReceive(sessions.$selectedID) { id in
+                        if let id { proxy.scrollTo(id, anchor: .top) }
+                    }
+                    .onChange(of: profiles.map(\.id)) { _, _ in
+                        if let id = sessions.selectedID { proxy.scrollTo(id, anchor: .top) }
+                    }
             }
-            .thinScrollIndicators()
         }
-        .foregroundStyle(TaskManagerTheme.ink)
         .task {
-            guard loadsProfiles else { return }
-            let loaded = await Task.detached(priority: .userInitiated) {
-                SystemMonitorRemoteProfiles.load()
-            }.value
-            guard !Task.isCancelled else { return }
-            profiles = loaded
-            onProfilesChange(loaded)
-        }
-        .task(id: taskID) { await poll() }
-        .onChange(of: addRequest) { _, _ in
-            editor = SystemMonitorRemoteProfile(name: "", host: "")
-        }
-        .onDisappear { disconnect() }
-        .sheet(item: $editor) { profile in
-            TaskManagerRemoteEditor(
-                profile: profile,
-                canDelete: profiles.contains { $0.id == profile.id },
-                onSave: { updated, connect in save(updated, connect: connect) },
-                onDelete: { remove(profile.id) },
-                onCancel: { editor = nil }
-            )
-        }
-    }
-
-    private var remoteHeader: some View {
-        HStack {
-            Text("\(connectedID == nil ? 0 : 1) connected · \(profiles.count) \(profiles.count == 1 ? "host" : "hosts")")
-                .font(.system(size: 9))
-                .foregroundStyle(TaskManagerTheme.secondary)
-            Spacer()
-        }
-    }
-
-    private var emptyState: some View {
-        TaskManagerPanel(textured: true) {
-            VStack(spacing: 10) {
-                Image(systemName: "server.rack")
-                    .font(.system(size: 25))
-                    .foregroundStyle(TaskManagerTheme.secondary)
-                Text("No remote hosts")
-                    .font(.system(size: 13, weight: .medium))
-                Text("Add a Linux, macOS, or Windows SSH host. Task Manager connects only when you ask it to.")
-                    .font(.system(size: 10))
-                    .foregroundStyle(TaskManagerTheme.secondary)
-                    .multilineTextAlignment(.center)
-                    .frame(maxWidth: 360)
-                Button("Add host") {
-                    editor = SystemMonitorRemoteProfile(name: "", host: "")
-                }
-                .taskManagerControl()
+            if loadsProfiles {
+                let loaded = await Task.detached(priority: .userInitiated) { SystemMonitorRemoteProfiles.load() }.value
+                guard !Task.isCancelled else { return }
+                profiles = loaded
+                onProfilesChange(loaded)
             }
-            .frame(maxWidth: .infinity, minHeight: 230)
+            if addRequest > 0 { editor = SystemMonitorRemoteProfile(name: "", host: "") }
+        }
+        .onChange(of: addRequest) { _, _ in editor = SystemMonitorRemoteProfile(name: "", host: "") }
+        .onChange(of: suppliedProfiles) { _, loaded in
+            if let loaded { profiles = loaded }
+        }
+        .sheet(item: $editor) { profile in
+            TaskManagerRemoteEditor(profile: profile, canDelete: profiles.contains { $0.id == profile.id },
+                                    onSave: { save($0, connect: $1) },
+                                    onDelete: { remove(profile.id) }, onCancel: { editor = nil })
         }
     }
 
     private func remoteCard(_ profile: SystemMonitorRemoteProfile) -> some View {
-        let active = profile.id == connectedID
-        return TaskManagerRemoteCard(
-            profile: profile,
-            reading: active ? reading : nil,
-            state: active ? (reading == nil ? "Connecting" : "Connected") : "Offline",
-            history: active ? history : [],
-            onTerminal: { openTerminal(profile) },
-            primaryTitle: active ? "Disconnect" : "Connect",
-            primarySymbol: active ? "stop.circle" : "play.circle",
-            onPrimary: { active ? disconnect() : connect(profile.id) }
-        )
+        let state = sessions.state(for: profile.id)
+        return VStack(alignment: .leading, spacing: OnePlusMetrics.actionSpacing) {
+            TaskManagerRemoteCard(profile: profile, reading: state.reading, state: state.phase.rawValue,
+                                  history: state.history, onTerminal: { openTerminal(profile) },
+                                  primaryTitle: state.phase == .offline ? "Connect" : "Disconnect",
+                                  primarySymbol: state.phase == .offline ? "play.circle" : "stop.circle",
+                                  onPrimary: { state.phase == .offline ? sessions.connect(profile) : sessions.disconnect(profile.id) })
+            if let reading = state.reading, !reading.disks.isEmpty {
+                OnePlusCard {
+                    OnePlusCardHeader("Disks")
+                    ForEach(reading.disks) { disk in
+                        OnePlusKeyValueRow(disk.id, value: "\(TrayPopoverLayout.diskBytes(Int64(clamping: disk.used))) / \(TrayPopoverLayout.diskBytes(Int64(clamping: disk.total)))")
+                    }
+                }
+            }
+        }
     }
 
     private var connectionSettings: some View {
-        let lastProfileID = profiles.last?.id
-        return OnePlusCard {
+        OnePlusCard {
             OnePlusCardHeader("Connection settings")
-                VStack(spacing: 0) {
-                    ForEach(profiles) { profile in
-                        HStack(spacing: 12) {
-                            VStack(alignment: .leading, spacing: 3) {
-                                Text(profile.name)
-                                    .font(.system(size: 10.5, weight: .medium))
-                                Text([profile.host == profile.name ? "" : profile.host,
-                                      profile.platform.rawValue, intervalTitle(profile.interval)]
-                                    .filter { !$0.isEmpty }.joined(separator: " · "))
-                                    .font(.system(size: 8.5))
-                                    .monospacedDigit()
-                                    .foregroundStyle(TaskManagerTheme.secondary)
-                                    .lineLimit(1)
-                            }
-                            Spacer(minLength: 12)
-                            HStack(spacing: 8) {
-                                Button("Configure") { editor = profile }
-                                    .taskManagerRemoteButton()
-                                    .accessibilityIdentifier("system-monitor.remote.configure.\(profile.id)")
-                            }
-                            .fixedSize()
-                        }
-                        .padding(.horizontal, 12)
-                        .frame(height: 56)
-                        if profile.id != lastProfileID {
-                            Rectangle().fill(TaskManagerTheme.lineSoft).frame(height: 1)
-                        }
-                    }
-
-                    if connectedID != nil {
-                        Rectangle().fill(TaskManagerTheme.lineSoft).frame(height: 1)
-                        HStack(spacing: 8) {
-                            Button {
-                                refreshGeneration += 1
-                            } label: {
-                                Label("Refresh now", systemImage: "arrow.clockwise")
-                            }
-                            .taskManagerRemoteButton()
-                            if let activeProfile {
-                                Button {
-                                    openTerminal(activeProfile)
-                                } label: {
-                                    Label("Open Terminal", systemImage: "terminal")
-                                }
-                                .taskManagerRemoteButton()
-                            }
-                            Spacer()
-                            if let lastUpdated {
-                                Text("Updated \(lastUpdated, style: .time)")
-                                    .font(.system(size: 9))
-                                    .foregroundStyle(TaskManagerTheme.muted)
-                            }
-                        }
-                        .padding(.horizontal, 12)
-                        .frame(minHeight: 48)
-                    }
+            ForEach(profiles) { profile in
+                OnePlusSettingRow(profile.name, caption: "\(profile.destination) · \(profile.platform.rawValue)") {
+                    HStack(spacing: OnePlusMetrics.actionSpacing) {
+                        Button { sessions.refresh(profile) } label: { Image(systemName: "arrow.clockwise") }
+                            .help("Refresh now").accessibilityLabel("Refresh \(profile.name) now")
+                            .disabled(sessions.state(for: profile.id).phase != .connected)
+                        Button("Configure") { editor = profile }
+                            .accessibilityIdentifier("system-monitor.remote.configure.\(profile.id)")
+                    }.buttonStyle(OnePlusButtonStyle(.neutral, size: .small))
                 }
-        }
-    }
-
-    private var taskID: String {
-        guard let activeProfile else { return "disconnected" }
-        return "\(activeProfile.id):\(activeProfile.host):\(activeProfile.platform.rawValue):\(activeProfile.interval):\(refreshGeneration)"
-    }
-
-    private func poll() async {
-        guard let activeProfile else { return }
-        while !Task.isCancelled {
-            do {
-                let sample = try await poller.sample(host: activeProfile.host, platform: activeProfile.platform)
-                guard !Task.isCancelled, connectedID == activeProfile.id else { return }
-                reading = sample
-                history.append(sample)
-                if history.count > 120 { history.removeFirst(history.count - 120) }
-                lastUpdated = Date()
-                errorMessage = nil
-            } catch {
-                guard !Task.isCancelled else { return }
-                errorMessage = error.localizedDescription
-                disconnect()
-                return
             }
-            guard activeProfile.interval > 0 else { return }
-            try? await Task.sleep(for: .seconds(max(activeProfile.interval, 5)))
         }
-    }
-
-    private func connect(_ id: String) {
-        guard let profile = profiles.first(where: { $0.id == id }),
-              SystemMonitorRemoteProtocol.validHost(profile.host) else {
-            errorMessage = SystemMonitorRemoteError.unsafeHost.localizedDescription
-            return
-        }
-        if connectedID != nil { disconnect() }
-        poller = SystemMonitorRemotePoller()
-        connectedID = id
-        reading = nil
-        history = []
-        lastUpdated = nil
-        errorMessage = nil
-    }
-
-    private func disconnect() {
-        let stoppedPoller = poller
-        Task { await stoppedPoller.close() }
-        connectedID = nil
-        reading = nil
-        history = []
-        lastUpdated = nil
     }
 
     private func save(_ profile: SystemMonitorRemoteProfile, connect shouldConnect: Bool) {
-        guard SystemMonitorRemoteProtocol.validHost(profile.host) else {
-            errorMessage = SystemMonitorRemoteError.unsafeHost.localizedDescription
-            return
-        }
-        var profile = profile
-        let wasConnected = connectedID == profile.id
-        profile.name = profile.name.trimmingCharacters(in: .whitespacesAndNewlines)
-        if profile.name.isEmpty { profile.name = profile.host }
-        if let index = profiles.firstIndex(where: { $0.id == profile.id }) {
-            profiles[index] = profile
-        } else {
-            profiles.append(profile)
-        }
+        if let message = profile.validationMessage { errorMessage = message; return }
+        let wasConnected = sessions.state(for: profile.id).phase != .offline
+        sessions.disconnect(profile.id)
+        if let index = profiles.firstIndex(where: { $0.id == profile.id }) { profiles[index] = profile }
+        else { profiles.append(profile) }
         SystemMonitorRemoteProfiles.save(profiles)
+        sessions.savedProfiles = profiles
         onProfilesChange(profiles)
         editor = nil
         errorMessage = nil
-        if wasConnected || shouldConnect { connect(profile.id) }
+        if wasConnected || shouldConnect { sessions.connect(profile) }
     }
 
     private func remove(_ id: String) {
-        if connectedID == id { disconnect() }
+        sessions.remove(id)
         profiles.removeAll { $0.id == id }
         SystemMonitorRemoteProfiles.save(profiles)
+        sessions.savedProfiles = profiles
         onProfilesChange(profiles)
         editor = nil
     }
 
     private func openTerminal(_ profile: SystemMonitorRemoteProfile) {
         SystemMonitorRemoteTerminal.open(profile) { error in
-            guard let error else { return }
-            Task { @MainActor in
-                errorMessage = "Could not open Terminal: \(error.localizedDescription)"
-            }
+            if let error { errorMessage = error.localizedDescription }
         }
     }
-
-    private func intervalTitle(_ seconds: Int) -> String {
-        switch seconds {
-        case 0: "Manual"
-        case 60: "1 minute"
-        case 120: "2 minutes"
-        case 300: "5 minutes"
-        default: "\(seconds) seconds"
-        }
-    }
-
 }
 
 enum SystemMonitorRemoteTerminal {
-    static func open(
-        _ profile: SystemMonitorRemoteProfile,
-        completion: ((Error?) -> Void)? = nil
-    ) {
-        guard SystemMonitorRemoteProtocol.validHost(profile.host),
-              let address = URL(string: "ssh://\(profile.host)") else { return }
-        let terminal = URL(fileURLWithPath: "/System/Applications/Utilities/Terminal.app")
-        NSWorkspace.shared.open(
-            [address],
-            withApplicationAt: terminal,
-            configuration: NSWorkspace.OpenConfiguration()
-        ) { _, error in completion?(error) }
+    static func command(_ profile: SystemMonitorRemoteProfile) throws -> String {
+        if let message = profile.validationMessage { throw SystemMonitorRemoteError.invalidProfile(message) }
+        var args = ["/usr/bin/ssh"]
+        if !profile.user.isEmpty { args += ["-l", profile.user] }
+        if let port = profile.port { args += ["-p", String(port)] }
+        args += ["--", profile.host]
+        return args.map { "'" + $0.replacingOccurrences(of: "'", with: "'\\''") + "'" }.joined(separator: " ")
+    }
+
+    static func open(_ profile: SystemMonitorRemoteProfile, completion: (@MainActor @Sendable (Error?) -> Void)? = nil) {
+        Task {
+            do {
+                let command = try command(profile)
+                let file = try await Task.detached(priority: .userInitiated) {
+                    let directory = FileManager.default.temporaryDirectory.appendingPathComponent("mpt-terminal-\(UUID().uuidString)")
+                    try FileManager.default.createDirectory(at: directory, withIntermediateDirectories: false,
+                                                           attributes: [.posixPermissions: 0o700])
+                    let file = directory.appendingPathComponent("SSH.command")
+                    let script = "#!/bin/sh\n/bin/rm -- \"$0\"\n/bin/rmdir -- \"$(/usr/bin/dirname \"$0\")\"\nexec \(command)\n"
+                    do {
+                        try script.write(to: file, atomically: true, encoding: .utf8)
+                        try FileManager.default.setAttributes([.posixPermissions: 0o700], ofItemAtPath: file.path)
+                    } catch {
+                        try? FileManager.default.removeItem(at: directory)
+                        throw error
+                    }
+                    return file
+                }.value
+                NSWorkspace.shared.open([file], withApplicationAt: URL(fileURLWithPath: "/System/Applications/Utilities/Terminal.app"),
+                                        configuration: NSWorkspace.OpenConfiguration()) { _, error in
+                    if error != nil { try? FileManager.default.removeItem(at: file.deletingLastPathComponent()) }
+                    Task { @MainActor in
+                        if let error { SystemMonitorRemoteSessions.shared.report(error, for: profile.id) }
+                        completion?(error)
+                    }
+                }
+            } catch {
+                SystemMonitorRemoteSessions.shared.report(error, for: profile.id)
+                completion?(error)
+            }
+        }
+    }
+}
+
+private struct SystemMonitorRemoteWindowOwner: NSViewRepresentable {
+    let profileID: String
+    func makeNSView(context: Context) -> OwnerView { OwnerView(profileID: profileID) }
+    func updateNSView(_ view: OwnerView, context: Context) {
+        view.profileID = profileID
+        if let window = view.window { SystemMonitorRemoteSessions.shared.register(profileID, window: window) }
+    }
+    final class OwnerView: NSView {
+        var profileID: String
+        init(profileID: String) { self.profileID = profileID; super.init(frame: .zero) }
+        required init?(coder: NSCoder) { return nil }
+        override func viewDidMoveToWindow() {
+            super.viewDidMoveToWindow()
+            if let window { SystemMonitorRemoteSessions.shared.register(profileID, window: window) }
+        }
     }
 }
 
 struct TaskManagerRemoteCard: View {
     let profile: SystemMonitorRemoteProfile
-    let reading: SystemMonitorRemoteReading?
-    let state: String
-    var history: [SystemMonitorRemoteReading] = []
+    private let fallbackReading: SystemMonitorRemoteReading?
+    private let fallbackState: String
+    private let fallbackHistory: [SystemMonitorRemoteReading]
+    @ObservedObject private var sessions = SystemMonitorRemoteSessions.shared
+    private var reading: SystemMonitorRemoteReading? {
+        if let state = sessions.states[profile.id] { return state.reading }
+        return fallbackReading
+    }
+    private var state: String { sessions.states[profile.id]?.phase.rawValue ?? fallbackState }
+    private var history: [SystemMonitorRemoteReading] { sessions.states[profile.id]?.history ?? fallbackHistory }
+
+    init(profile: SystemMonitorRemoteProfile, reading: SystemMonitorRemoteReading?, state: String,
+         history: [SystemMonitorRemoteReading] = [], onTerminal: (() -> Void)? = nil,
+         primaryTitle: String, primarySymbol: String, onPrimary: @escaping () -> Void) {
+        self.profile = profile; fallbackReading = reading; fallbackState = state; fallbackHistory = history
+        self.onTerminal = onTerminal; self.primaryTitle = primaryTitle; self.primarySymbol = primarySymbol; self.onPrimary = onPrimary
+    }
     var onTerminal: (() -> Void)?
     let primaryTitle: String
     let primarySymbol: String
@@ -331,6 +226,10 @@ struct TaskManagerRemoteCard: View {
         TaskManagerPanel(textured: true) {
             VStack(spacing: 0) {
                 header
+                if let reason = sessions.state(for: profile.id).reason {
+                    Text(reason).onePlusText(.caption).textSelection(.enabled)
+                        .padding(OnePlusMetrics.cardGap).frame(maxWidth: .infinity, alignment: .leading)
+                }
                 if profile.host != profile.name {
                     Text(profile.host).onePlusText(.mono)
                         .lineLimit(1).padding(12).frame(maxWidth: .infinity, alignment: .leading)
@@ -362,6 +261,7 @@ struct TaskManagerRemoteCard: View {
                 }
             }
         }
+        .background(SystemMonitorRemoteWindowOwner(profileID: profile.id).frame(width: 0, height: 0))
     }
 
     private var header: some View {
@@ -411,7 +311,10 @@ struct TaskManagerRemoteCard: View {
     }
 
     private func action(_ title: String, symbol: String, height: CGFloat, perform: @escaping () -> Void) -> some View {
-        Button(action: perform) {
+        Button {
+            if title == "Open App" { sessions.selectedID = profile.id }
+            perform()
+        } label: {
             HStack {
                 Text(title)
                 Spacer()
@@ -447,13 +350,13 @@ struct TaskManagerRemoteCard: View {
         return TrayPopoverLayout.diskBytes(Int64(clamping: total - min(used, total))) + " free"
     }
 
-    nonisolated private static func shortRate(_ value: Double) -> String {
+    nonisolated static func shortRate(_ value: Double) -> String {
         SystemMonitorDisplayFormat.byteRate(value)
             .replacingOccurrences(of: "/s", with: "")
             .replacingOccurrences(of: " ", with: "")
     }
 
-    nonisolated private static func shortBytes(_ value: UInt64) -> String {
+    nonisolated static func shortBytes(_ value: UInt64) -> String {
         ByteCountFormatter.string(fromByteCount: Int64(min(value, UInt64(Int64.max))), countStyle: .memory)
             .replacingOccurrences(of: " ", with: "")
     }
@@ -461,144 +364,88 @@ struct TaskManagerRemoteCard: View {
 
 private struct TaskManagerRemoteEditor: View {
     @State private var profile: SystemMonitorRemoteProfile
+    @State private var port: String
+    @State private var errorMessage: String?
+    @State private var confirmsRemoval = false
     let canDelete: Bool
     let onSave: (SystemMonitorRemoteProfile, Bool) -> Void
     let onDelete: () -> Void
     let onCancel: () -> Void
 
-    init(
-        profile: SystemMonitorRemoteProfile,
-        canDelete: Bool,
-        onSave: @escaping (SystemMonitorRemoteProfile, Bool) -> Void,
-        onDelete: @escaping () -> Void,
-        onCancel: @escaping () -> Void
-    ) {
+    init(profile: SystemMonitorRemoteProfile, canDelete: Bool,
+         onSave: @escaping (SystemMonitorRemoteProfile, Bool) -> Void,
+         onDelete: @escaping () -> Void, onCancel: @escaping () -> Void) {
+        var profile = profile
+        let address = profile.host.split(separator: "@")
+        if address.count == 2, profile.user.isEmpty {
+            profile.user = String(address[0]); profile.host = String(address[1])
+        }
         _profile = State(initialValue: profile)
-        self.canDelete = canDelete
-        self.onSave = onSave
-        self.onDelete = onDelete
-        self.onCancel = onCancel
+        _port = State(initialValue: profile.port.map(String.init) ?? "")
+        self.canDelete = canDelete; self.onSave = onSave; self.onDelete = onDelete; self.onCancel = onCancel
     }
 
     var body: some View {
-        VStack(spacing: 0) {
-            HStack {
-                Text(canDelete ? "Configure remote host" : "Add remote host")
-                    .font(.system(size: 12, weight: .medium))
-                Spacer()
-                Button(action: onCancel) {
-                    Image(systemName: "xmark")
-                        .font(.system(size: 9, weight: .semibold))
-                        .frame(width: 23, height: 23)
+        OnePlusSheet(canDelete ? "Configure remote host" : "Add remote host", close: onCancel) {
+            VStack(alignment: .leading, spacing: OnePlusMetrics.cardGap) {
+                field("Name", placeholder: "Build server", text: $profile.name)
+                field("SSH host or alias", placeholder: "oci2", text: $profile.host)
+                    .accessibilityIdentifier("system-monitor.remote.host")
+                field("User", placeholder: "Use SSH config", text: $profile.user)
+                field("Port", placeholder: "Use SSH config", text: $port)
+                HStack {
+                    Text("Operating system").onePlusText(.row)
+                    Spacer()
+                    OnePlusSelect(choices: SystemMonitorRemotePlatform.allCases.map { ($0, $0.rawValue) },
+                                  selection: $profile.platform, width: OnePlusMetrics.controlColumn,
+                                  accessibilityLabel: "Operating system")
                 }
-                .taskManagerControl(.quiet, minWidth: 23, minHeight: 23, horizontalPadding: 0)
-                .accessibilityLabel("Close")
+                HStack {
+                    Text("Refresh interval").onePlusText(.row)
+                    Spacer()
+                    OnePlusSelect(choices: [(0, "Manual only"), (5, "5 seconds"), (10, "10 seconds"),
+                                           (30, "30 seconds"), (60, "1 minute"), (120, "2 minutes"), (300, "5 minutes")],
+                                  selection: $profile.interval, width: OnePlusMetrics.controlColumn,
+                                  accessibilityLabel: "Refresh interval")
+                }
+                if let errorMessage { OnePlusBanner(errorMessage, tone: .error) }
             }
-            .padding(.horizontal, 16)
-            .frame(height: 44)
-            .background(TaskManagerTheme.window)
-            .overlay(alignment: .bottom) { Rectangle().fill(TaskManagerTheme.lineSoft).frame(height: 1) }
-
-            VStack(spacing: 0) {
-                editorRow("Name", detail: "A label shown in Task Manager.") {
-                    TextField("Build server", text: $profile.name)
-                        .taskManagerRemoteField()
-                }
-                divider
-                editorRow("SSH host", detail: "Host or alias from ~/.ssh/config.") {
-                    TextField("user@host", text: $profile.host)
-                        .taskManagerRemoteField()
-                        .onSubmit { submit(connect: true) }
-                        .accessibilityIdentifier("system-monitor.remote.host")
-                }
-                divider
-                editorRow("System", detail: "The operating system on this host.") {
-                    TaskManagerSegments(
-                        choices: SystemMonitorRemotePlatform.allCases.map { ($0, $0.rawValue) },
-                        selection: $profile.platform
-                    )
-                }
-                divider
-                editorRow("Refresh", detail: "No sampling occurs while disconnected.") {
-                    TaskManagerSelect(
-                        choices: [
-                            (0, "Manual only"), (5, "5 seconds"), (10, "10 seconds"),
-                            (30, "30 seconds"), (60, "1 minute"),
-                            (120, "2 minutes"), (300, "5 minutes"),
-                        ],
-                        selection: $profile.interval,
-                        width: 128,
-                        accessibilityLabel: "Refresh interval"
-                    )
-                }
+        } footer: {
+            if canDelete {
+                Button("Remove", role: .destructive) { confirmsRemoval = true }
+                    .buttonStyle(OnePlusButtonStyle(.destructive))
             }
-
-            HStack(spacing: 8) {
-                if canDelete {
-                    Button("Remove", role: .destructive, action: onDelete)
-                        .taskManagerControl(.destructive)
-                }
-                Spacer()
-                Button("Cancel", action: onCancel)
-                    .taskManagerControl(.quiet)
-                Button("Save") { submit(connect: false) }
-                    .taskManagerControl()
-                Button("Save & Connect") { submit(connect: true) }
-                    .taskManagerControl(.primary)
-                    .disabled(!SystemMonitorRemoteProtocol.validHost(profile.host))
-            }
-            .padding(.horizontal, 16)
-            .frame(height: 56)
-            .background(TaskManagerTheme.window)
-            .overlay(alignment: .top) { Rectangle().fill(TaskManagerTheme.lineSoft).frame(height: 1) }
+            Button("Cancel", action: onCancel).buttonStyle(OnePlusButtonStyle(.ghost))
+            Button("Save") { submit(connect: false) }.buttonStyle(OnePlusButtonStyle(.neutral))
+            Button("Save & Connect") { submit(connect: true) }
+                .buttonStyle(OnePlusButtonStyle(.primary)).keyboardShortcut(.defaultAction)
         }
-        .frame(width: 530)
-        .background(TaskManagerTheme.window)
-        .foregroundStyle(TaskManagerTheme.ink)
+        .confirmationDialog("Remove \(profile.name)?", isPresented: $confirmsRemoval) {
+            Button("Remove host", role: .destructive, action: onDelete)
+        } message: { Text("This removes the saved host and disconnects its SSH session.") }
     }
 
-    private func editorRow<Content: View>(
-        _ title: String,
-        detail: String,
-        @ViewBuilder control: () -> Content
-    ) -> some View {
-        HStack(spacing: 20) {
-            VStack(alignment: .leading, spacing: 4) {
-                Text(title).font(.system(size: 11))
-                Text(detail)
-                    .font(.system(size: 9))
-                    .foregroundStyle(TaskManagerTheme.secondary)
-            }
-            Spacer(minLength: 16)
-            control()
+    private func field(_ title: String, placeholder: String, text: Binding<String>) -> some View {
+        HStack {
+            Text(title).onePlusText(.row)
+            Spacer()
+            OnePlusTextField(placeholder, text: text, onSubmit: { submit(connect: true) })
+                .accessibilityLabel(title).frame(width: OnePlusMetrics.controlColumn)
         }
-        .padding(.horizontal, 16)
-        .frame(minHeight: 60)
-    }
-
-    private var divider: some View {
-        Rectangle().fill(TaskManagerTheme.lineSoft).frame(height: 1)
     }
 
     private func submit(connect: Bool) {
+        profile.name = profile.name.trimmingCharacters(in: .whitespacesAndNewlines)
+        profile.host = profile.host.trimmingCharacters(in: .whitespacesAndNewlines)
+        profile.user = profile.user.trimmingCharacters(in: .whitespacesAndNewlines)
+        let value = port.trimmingCharacters(in: .whitespacesAndNewlines)
+        if !value.isEmpty && (Int(value) == nil || !value.utf8.allSatisfy({ (48...57).contains($0) })) {
+            errorMessage = "Enter a port from 1 to 65535, or leave it blank to use SSH config."
+            return
+        }
+        profile.port = value.isEmpty ? nil : Int(value)
+        if let message = profile.validationMessage { errorMessage = message; return }
+        errorMessage = nil
         onSave(profile, connect)
-    }
-}
-
-private extension View {
-    func taskManagerRemoteButton(primary: Bool = false) -> some View {
-        buttonStyle(OnePlusButtonStyle(primary ? .primary : .neutral,
-                                       size: .small,
-                                       minWidth: 88,
-                                       horizontalPadding: 8))
-    }
-
-    func taskManagerRemoteField() -> some View {
-        textFieldStyle(.plain)
-            .font(.system(size: 10, design: .monospaced))
-            .padding(.horizontal, 10)
-            .frame(width: 220, height: 31)
-            .background(Color.white.opacity(0.035), in: RoundedRectangle(cornerRadius: 5))
-            .overlay { RoundedRectangle(cornerRadius: 5).strokeBorder(TaskManagerTheme.line) }
     }
 }
