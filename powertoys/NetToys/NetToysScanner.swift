@@ -1779,11 +1779,13 @@ nonisolated enum NetToysScanImport {
     enum ImportError: LocalizedError {
         case unsupportedVersion(Int)
         case empty
+        case duplicateAddress
 
         var errorDescription: String? {
             switch self {
             case .unsupportedVersion(let version): "Unsupported NetToys results version: \(version)"
             case .empty: "The NetToys results file is empty."
+            case .duplicateAddress: "The NetToys results file contains duplicate IP addresses."
             }
         }
     }
@@ -1797,6 +1799,9 @@ nonisolated enum NetToysScanImport {
         let value = try JSONDecoder().decode(SavedResults.self, from: data)
         guard value.version == 1 else { throw ImportError.unsupportedVersion(value.version) }
         guard !value.results.isEmpty else { throw ImportError.empty }
+        guard Set(value.results.map(\.id)).count == value.results.count else {
+            throw ImportError.duplicateAddress
+        }
         return value.results
     }
 }

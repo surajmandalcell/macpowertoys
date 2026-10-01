@@ -150,7 +150,13 @@ struct NetToysWindowView: View {
             guard let requestedPage = notification.object as? NetToysPage else { return }
             page = requestedPage
         }
-        .task { localNetworkAccess.request() }
+        .task {
+            localNetworkAccess.request()
+            await scannerModel.loadStoredState()
+        }
+        .onReceive(NotificationCenter.default.publisher(for: .netToysHistoryCleared)) { _ in
+            scannerModel.clearRestoredResults()
+        }
         .onDisappear { scannerModel.cancel() }
         .onReceive(NotificationCenter.default.publisher(for: NSApplication.didBecomeActiveNotification)) { _ in
             localNetworkAccess.request()
@@ -206,9 +212,9 @@ struct NetToysWindowView: View {
                 OnePlusPageHeader(title: "How to use", subtitle: "Discover devices and keep your network available")
             } content: {
                 ForEach(NetToysTool.shared.manual) { section in
-                    howToCard(section.title, section.points.joined(separator: "\n\n"))
+                    howToSection(section.title, section.points.joined(separator: "\n\n"))
                 }
-                howToCard("Wi-Fi Priority", "Add at least two saved Wi-Fi networks, set their order, and enable failover. macOS manages the final Personal Hotspot fallback.")
+                howToSection("Wi-Fi Priority", "Add at least two saved Wi-Fi networks, set their order, and enable failover. macOS manages the final Personal Hotspot fallback.")
                 OnePlusBanner("Wi-Fi names need Location access. IP scanning needs Local Network access. Settings shows each permission and its recovery action.") {
                     Button("Open Settings") {
                         settingsSection = "permissions"
@@ -220,17 +226,14 @@ struct NetToysWindowView: View {
         }
     }
 
-    private func howToCard(_ title: String, _ message: String) -> some View {
-        OnePlusCard {
-            OnePlusCardHeader(title)
-            VStack(alignment: .leading, spacing: OnePlusMetrics.actionSpacing) {
-                ForEach(Array(message.components(separatedBy: "\n\n").enumerated()), id: \.offset) { _, paragraph in
-                    Text(paragraph).onePlusText(.row).textSelection(.enabled)
-                }
+    private func howToSection(_ title: String, _ message: String) -> some View {
+        VStack(alignment: .leading, spacing: OnePlusMetrics.actionSpacing) {
+            Text(title).onePlusText(.cardTitle)
+            ForEach(Array(message.components(separatedBy: "\n\n").enumerated()), id: \.offset) { _, paragraph in
+                Text(paragraph).onePlusText(.row).textSelection(.enabled)
             }
-            .padding(OnePlusMetrics.cardPadding)
-            .frame(maxWidth: .infinity, alignment: .leading)
         }
+        .frame(maxWidth: .infinity, alignment: .leading)
     }
 }
 
@@ -240,4 +243,5 @@ extension Notification.Name {
     static let netToysOpenAnchor = Notification.Name("netToysOpenAnchor")
     static let netToysApplyAnchorPrefill = Notification.Name("netToysApplyAnchorPrefill")
     static let netToysOpenPage = Notification.Name("netToysOpenPage")
+    static let netToysHistoryCleared = Notification.Name("netToysHistoryCleared")
 }

@@ -6,6 +6,80 @@ import XCTest
 
 @MainActor
 final class NetToysScannerLayoutTests: XCTestCase {
+    func testNumericSortsKeepTheirValuesAndDirectionWhenRestored() throws {
+        let suite = "NetToysScannerLayoutTests.numeric.\(UUID().uuidString)"
+        let defaults = try XCTUnwrap(UserDefaults(suiteName: suite))
+        defer { defaults.removePersistentDomain(forName: suite) }
+        let low = NetToysScanResult(
+            address: try XCTUnwrap(IPv4Address("192.0.2.1")), isReachable: true,
+            responseMilliseconds: 20, hostname: nil, macAddress: nil, vendor: nil,
+            openPorts: [], ttl: 64, packetLossPercent: 2
+        )
+        let high = NetToysScanResult(
+            address: try XCTUnwrap(IPv4Address("192.0.2.2")), isReachable: true,
+            responseMilliseconds: 100, hostname: nil, macAddress: nil, vendor: nil,
+            openPorts: [], ttl: 128, packetLossPercent: 10
+        )
+        let unknown = NetToysScanResult(
+            address: try XCTUnwrap(IPv4Address("192.0.2.3")), isReachable: false,
+            responseMilliseconds: nil, hostname: nil, macAddress: nil, vendor: nil, openPorts: []
+        )
+        let archive = NetToysScanArchive(runs: [NetToysScanRun(
+            target: "192.0.2.0/24", ports: [], duration: 1, results: [high, low, unknown]
+        )])
+        let model = NetToysScannerViewModel(archive: archive, defaults: defaults)
+        let comparators = [
+            KeyPathComparator(\NetToysScanResult.responseMilliseconds),
+            KeyPathComparator(\NetToysScanResult.ttl),
+            KeyPathComparator(\NetToysScanResult.packetLossPercent),
+        ]
+        for comparator in comparators {
+            for order in [SortOrder.forward, .reverse] {
+                var comparator = comparator
+                comparator.order = order
+                model.sortOrder = [comparator]
+                let expected = order == .forward ? [unknown.id, low.id, high.id] : [high.id, low.id, unknown.id]
+                XCTAssertEqual(model.visibleResults.map(\.id), expected)
+                let restored = NetToysScannerViewModel(archive: archive, defaults: defaults)
+                XCTAssertEqual(restored.sortOrder.first?.keyPath, comparator.keyPath)
+                XCTAssertEqual(restored.visibleResults.map(\.id), expected)
+            }
+        }
+    }
+
+    func testDuplicateImportsAreRejectedAndDuplicateArchiveRowsDoNotCrash() throws {
+        let suite = "NetToysScannerLayoutTests.duplicates.\(UUID().uuidString)"
+        let defaults = try XCTUnwrap(UserDefaults(suiteName: suite))
+        defer { defaults.removePersistentDomain(forName: suite) }
+        let row = NetToysScanResult(
+            address: try XCTUnwrap(IPv4Address("192.0.2.1")), isReachable: true,
+            responseMilliseconds: 1, hostname: nil, macAddress: nil, vendor: nil, openPorts: [22], comment: "From file"
+        )
+        XCTAssertThrowsError(try NetToysScanImport.savedResults(NetToysScanExport.savedResults([row, row]))) {
+            guard case NetToysScanImport.ImportError.duplicateAddress = $0 else {
+                return XCTFail("Expected the duplicate-address error, got \($0)")
+            }
+        }
+        let model = NetToysScannerViewModel(archive: NetToysScanArchive(runs: [NetToysScanRun(
+            target: row.id, ports: [22], duration: 1, results: [row, row]
+        )]), defaults: defaults)
+        XCTAssertEqual(model.results, [row])
+        XCTAssertEqual(model.annotation(for: row.id).comment, "From file")
+        var rescanned = row
+        rescanned.comment = nil
+        model.applyScanUpdate(rescanned)
+        XCTAssertEqual(model.results.first?.comment, "From file")
+        model.selection = [row.id]
+        model.clearRestoredResults()
+        XCTAssertTrue(model.results.isEmpty)
+        XCTAssertTrue(model.visibleResults.isEmpty)
+        XCTAssertTrue(model.selection.isEmpty)
+        XCTAssertEqual(model.completed, 0)
+        XCTAssertEqual(model.total, 0)
+        XCTAssertNil(model.lastDuration)
+        XCTAssertNil(model.lastScanTarget)
+    }
+
     func testScannerCachesFilteredAndSortedRows() throws {
         let suite = "NetToysScannerLayoutTests.cache.\(UUID().uuidString)"
         let defaults = try XCTUnwrap(UserDefaults(suiteName: suite))
@@ -88,6 +162,10 @@ final class NetToysScannerLayoutTests: XCTestCase {
         defer { defaults.removePersistentDomain(forName: suite) }
         defaults.set("192.0.2.0/24", forKey: "nettoys.scanner.target")
         let model = NetToysScannerViewModel(archive: NetToysScanArchive(), defaults: defaults)
+        model.applyScanUpdate(NetToysScanResult(
+            address: try XCTUnwrap(IPv4Address("192.0.2.1")), isReachable: false,
+            responseMilliseconds: nil, hostname: nil, macAddress: nil, vendor: nil, openPorts: []
+        ))
         let canvas = OnePlusWindowCanvas.netToys
         let workspaceWidth = canvas.size.width - canvas.sidebarWidth
 
@@ -103,6 +181,7 @@ final class NetToysScannerLayoutTests: XCTestCase {
             host.layoutSubtreeIfNeeded()
 
             let table = try XCTUnwrap(findTable(in: host))
+            XCTAssertEqual(table.numberOfRows, 1, "All must retain unreachable hosts for selection and rescan")
             let viewport = try XCTUnwrap(table.enclosingScrollView).contentView.bounds.width
             XCTAssertEqual(viewport, 1190, accuracy: 1)
             let columns = table.tableColumns.indices.filter { !table.tableColumns[$0].isHidden }

@@ -117,6 +117,7 @@ final class NetToysScannerViewModel {
     var lastScanTarget: String?
     var errorMessage: String?
     var isScanning = false
+    private(set) var isLoading: Bool
     var isImporting = false
     var isExporting = false
     var timeoutMilliseconds = 750
@@ -135,8 +136,8 @@ final class NetToysScannerViewModel {
     var customTextPort = 22
     var customTextRequest = ""
     var customTextPattern = ""
-    var favoriteTargets = NetToysScannerStore.favoriteTargets()
-    var annotations = NetToysScannerStore.annotations()
+    var favoriteTargets: [String] = []
+    var annotations: [String: NetToysHostAnnotation] = [:]
     var openers = NetToysOpener.defaults
     var selection = Set<String>()
     var sortOrder = [KeyPathComparator(\NetToysScanResult.sortAddress)] {
@@ -155,11 +156,12 @@ final class NetToysScannerViewModel {
     private var isApplyingActiveNetwork = false
 
     init(
-        archive: NetToysScanArchive = NetToysScannerStore.archive(),
+        archive: NetToysScanArchive? = nil,
         defaults: UserDefaults = .standard
     ) {
         self.defaults = defaults
-        let latestRun = archive.runs.last
+        isLoading = archive == nil
+        let latestRun = archive?.runs.last
         let restoredTarget = defaults.string(forKey: Self.targetKey) ?? latestRun?.target
         targetInput = restoredTarget ?? "192.168.1.0/24"
         targetFollowsActiveNetwork = defaults.object(forKey: Self.followsActiveNetworkKey) as? Bool
@@ -211,6 +213,43 @@ final class NetToysScannerViewModel {
             if !restored.isEmpty { sortOrder = restored }
         }
         replaceResults(results)
+        completed = results.count
+        total = results.count
+    }
+
+    func loadStoredState() async {
+        guard isLoading else { return }
+        let (archive, annotations, favorites) = await Task.detached(priority: .utility) {
+            (NetToysScannerStore.archive(), NetToysScannerStore.annotations(), NetToysScannerStore.favoriteTargets())
+        }.value
+        guard !Task.isCancelled, isLoading else { return }
+        self.annotations = annotations
+        favoriteTargets = favorites
+        if let run = archive.runs.last {
+            if defaults.string(forKey: Self.targetKey) == nil {
+                isApplyingActiveNetwork = true
+                targetInput = run.target
+                isApplyingActiveNetwork = false
+                targetFollowsActiveNetwork = Self.isSingleCIDR(run.target)
+            }
+            replaceResults(run.results)
+            lastDuration = run.duration
+            lastScanTarget = run.target
+            completed = results.count
+            total = results.count
+        }
+        isLoading = false
+    }
+
+    func clearRestoredResults() {
+        cancel()
+        isLoading = false
+        replaceResults([])
+        selection.removeAll()
+        completed = 0
+        total = 0
+        lastDuration = nil
+        lastScanTarget = nil
     }
 
     var hasNoResponsiveHosts: Bool {
@@ -250,9 +289,9 @@ final class NetToysScannerViewModel {
         let field: SortField?
         if keyPath == \NetToysScanResult.sortAddress { field = .address }
         else if keyPath == \NetToysScanResult.statusTitle { field = .status }
-        else if keyPath == \NetToysScanResult.responseTitle { field = .response }
-        else if keyPath == \NetToysScanResult.ttlTitle { field = .ttl }
-        else if keyPath == \NetToysScanResult.packetLossTitle { field = .loss }
+        else if keyPath == \NetToysScanResult.responseMilliseconds { field = .response }
+        else if keyPath == \NetToysScanResult.ttl { field = .ttl }
+        else if keyPath == \NetToysScanResult.packetLossPercent { field = .loss }
         else if keyPath == \NetToysScanResult.hostnameTitle { field = .hostname }
         else if keyPath == \NetToysScanResult.macTitle { field = .mac }
         else if keyPath == \NetToysScanResult.vendorTitle { field = .vendor }
@@ -273,9 +312,9 @@ final class NetToysScannerViewModel {
         switch saved.field {
         case .address: KeyPathComparator(\NetToysScanResult.sortAddress, order: saved.order)
         case .status: KeyPathComparator(\NetToysScanResult.statusTitle, order: saved.order)
-        case .response: KeyPathComparator(\NetToysScanResult.responseTitle, order: saved.order)
-        case .ttl: KeyPathComparator(\NetToysScanResult.ttlTitle, order: saved.order)
-        case .loss: KeyPathComparator(\NetToysScanResult.packetLossTitle, order: saved.order)
+        case .response: KeyPathComparator(\NetToysScanResult.responseMilliseconds, order: saved.order)
+        case .ttl: KeyPathComparator(\NetToysScanResult.ttl, order: saved.order)
+        case .loss: KeyPathComparator(\NetToysScanResult.packetLossPercent, order: saved.order)
         case .hostname: KeyPathComparator(\NetToysScanResult.hostnameTitle, order: saved.order)
         case .mac: KeyPathComparator(\NetToysScanResult.macTitle, order: saved.order)
         case .vendor: KeyPathComparator(\NetToysScanResult.vendorTitle, order: saved.order)
@@ -355,7 +394,7 @@ final class NetToysScannerViewModel {
     }
 
     func start(targets override: [IPv4Address]? = nil) {
-        guard !isScanning, !isImporting else { return }
+        guard !isLoading, !isScanning, !isImporting else { return }
         _ = NetToysNeighborServiceManager.shared.enable()
         do {
             var defaultPorts = try PortList.parse(portInput)
@@ -436,15 +475,21 @@ final class NetToysScannerViewModel {
                     let duration = Date().timeIntervalSince(started)
                     lastDuration = duration
                     lastScanTarget = sourceTarget
-                    isScanning = false
-                    scanIdentifier = nil
-                    scanTask = nil
-                    try NetToysScannerStore.record(NetToysScanRun(
+                    let run = NetToysScanRun(
                         target: sourceTarget,
                         ports: Set(targets.flatMap(\.ports)).sorted(),
                         duration: duration,
-                        results: values
-                    ))
+                        results: values.map { value in
+                            self.resultIndices[value.id].map { self.results[$0] } ?? value
+                        }
+                    )
+                    try await Task.detached(priority: .utility) {
+                        try NetToysScannerStore.record(run)
+                    }.value
+                    guard !Task.isCancelled, scanIdentifier == identifier else { return }
+                    isScanning = false
+                    scanIdentifier = nil
+                    scanTask = nil
                 } catch {
                     guard !Task.isCancelled, scanIdentifier == identifier else { return }
                     errorMessage = error.localizedDescription
@@ -481,7 +526,7 @@ final class NetToysScannerViewModel {
     }
 
     func importTargets() {
-        guard !isScanning, !isImporting else { return }
+        guard !isLoading, !isScanning, !isImporting else { return }
         let panel = NSOpenPanel()
         panel.allowedContentTypes = [.plainText]
         panel.allowsMultipleSelection = false
@@ -564,7 +609,7 @@ final class NetToysScannerViewModel {
     }
 
     func loadResults() {
-        guard !isScanning, !isImporting else { return }
+        guard !isLoading, !isScanning, !isImporting else { return }
         let panel = NSOpenPanel()
         panel.allowedContentTypes = [UTType(filenameExtension: "nettoys") ?? .data]
         panel.allowsMultipleSelection = false
@@ -622,7 +667,9 @@ final class NetToysScannerViewModel {
     }
 
     func annotation(for address: String) -> NetToysHostAnnotation {
-        annotations[address] ?? NetToysHostAnnotation()
+        annotations[address] ?? NetToysHostAnnotation(
+            comment: resultIndices[address].flatMap { results[$0].comment } ?? ""
+        )
     }
 
     func saveAnnotation(_ annotation: NetToysHostAnnotation, for address: String) {
@@ -648,6 +695,7 @@ final class NetToysScannerViewModel {
             update.comment = comment
         }
         if let index = resultIndices[update.id] {
+            if update.comment == nil { update.comment = results[index].comment }
             results[index] = update
         } else {
             resultIndices[update.id] = results.endIndex
@@ -657,7 +705,8 @@ final class NetToysScannerViewModel {
     }
 
     private func replaceResults(_ values: [NetToysScanResult]) {
-        results = values
+        var seen = Set<String>()
+        results = values.filter { seen.insert($0.id).inserted }
         rebuildResultIndices()
         for index in results.indices {
             if let comment = annotations[results[index].id]?.comment, !comment.isEmpty {
@@ -736,13 +785,18 @@ struct NetToysScannerView: View {
                 .buttonStyle(OnePlusButtonStyle(.ghost))
             }
         } content: {
-            OnePlusCard { scanControls.padding(OnePlusMetrics.cardPadding) }
+            scanControls
+                .disabled(model.isLoading)
             if !macAccessEnabled {
                 OnePlusBanner(neighborService.errorMessage ?? "Allow MAC access to identify neighboring devices.", tone: .warning) {
                     Button(neighborService.status == .requiresApproval ? "Open Login Items" : "Enable MAC Access") {
                         neighborService.enable()
                     }
                 }
+            }
+            if model.hasNoResponsiveHosts && !model.visibleResults.isEmpty {
+                OnePlusBanner("No hosts responded. Check that the target matches the current network, then scan again.",
+                              tone: .warning) {}
             }
             resultControls
             OnePlusCard {
@@ -931,7 +985,7 @@ struct NetToysScannerView: View {
 
     private var resultsTable: some View {
         Table(
-            model.hasNoResponsiveHosts ? [] : model.visibleResults,
+            model.visibleResults,
             selection: $model.selection,
             sortOrder: $model.sortOrder,
             columnCustomization: $columnCustomization
@@ -953,7 +1007,7 @@ struct NetToysScannerView: View {
                 .width(80)
                 .customizationID("nettoys.status")
 
-                TableColumn("Response", value: \NetToysScanResult.responseTitle) { result in
+                TableColumn("Response", value: \NetToysScanResult.responseMilliseconds) { result in
                     Text(result.responseTitle.isEmpty ? "—" : "\(result.responseTitle) ms")
                         .onePlusText(.mono)
                         .lineLimit(1)
@@ -962,7 +1016,7 @@ struct NetToysScannerView: View {
                 .width(96)
                 .customizationID("nettoys.response")
 
-                TableColumn("TTL", value: \NetToysScanResult.ttlTitle) { result in
+                TableColumn("TTL", value: \NetToysScanResult.ttl) { result in
                     Text(result.ttlTitle.isEmpty ? "—" : result.ttlTitle)
                         .lineLimit(1)
                         .foregroundStyle(result.isReachable ? OnePlusColor.ink : OnePlusColor.muted)
@@ -971,7 +1025,7 @@ struct NetToysScannerView: View {
                 .customizationID("nettoys.ttl")
                 .defaultVisibility(.hidden)
 
-                TableColumn("Loss", value: \NetToysScanResult.packetLossTitle) { result in
+                TableColumn("Loss", value: \NetToysScanResult.packetLossPercent) { result in
                     Text(result.packetLossTitle.isEmpty ? "—" : "\(result.packetLossTitle)%")
                         .monospacedDigit()
                         .lineLimit(1)
@@ -1120,7 +1174,7 @@ struct NetToysScannerView: View {
         }
         .onePlusNativeTable()
         .overlay {
-            if (model.visibleResults.isEmpty || model.hasNoResponsiveHosts) && !model.isScanning {
+            if model.visibleResults.isEmpty && !model.isScanning {
                 OnePlusEmptyState(
                     model.results.isEmpty ? "Ready to scan"
                         : model.hasNoResponsiveHosts ? "No hosts responded" : "No matching hosts",
@@ -1325,11 +1379,6 @@ struct NetToysScannerSettingsView: View {
                         }
                     }
 
-                    settingsSection("MAC Addresses") {
-                        Text("Allow MAC access in Permissions, then rescan devices with missing addresses.")
-                            .onePlusText(.row).padding(OnePlusMetrics.cardPadding)
-                    }
-
                     settingsSection("Openers") {
                         Grid(alignment: .leading, horizontalSpacing: OnePlusMetrics.actionSpacing,
                              verticalSpacing: OnePlusMetrics.actionSpacing) {
@@ -1346,6 +1395,7 @@ struct NetToysScannerSettingsView: View {
                                     OnePlusTextField("Name", text: $opener.name)
                                         .frame(width: OnePlusMetrics.controlColumn)
                                     OnePlusTextField("URL template", text: $opener.urlTemplate)
+                                        .help("Use {ip}, {hostname}, and {port}. NetToys shows a preview before opening a URL.")
                                     OnePlusStepperField("Port", value: $opener.requiredPort,
                                                         in: 1...65_535).frame(width: OnePlusMetrics.controlColumn)
                                     Button(role: .destructive) {
@@ -1373,8 +1423,6 @@ struct NetToysScannerSettingsView: View {
                             Button("Restore Defaults") { confirmRestore = true }
                         }
                         .padding(.horizontal, OnePlusMetrics.cardPadding)
-                        Text("Use {ip}, {hostname}, and {port}. NetToys opens only URL protocols and always shows a preview.")
-                            .onePlusText(.caption).padding(OnePlusMetrics.cardPadding)
                     }
             if let errorMessage { OnePlusBanner(errorMessage, tone: .error) }
         }
