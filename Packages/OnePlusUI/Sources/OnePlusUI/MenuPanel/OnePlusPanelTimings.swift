@@ -113,9 +113,15 @@ private struct OnePlusPanelFrameReader: NSViewRepresentable {
             super.viewDidMoveToWindow()
             stop()
             guard let window else { return }
-            for name in [NSWindow.didUpdateNotification, NSWindow.didChangeOcclusionStateNotification] {
-                observers.append(NotificationCenter.default.addObserver(forName: name, object: window, queue: .main) { [weak self] _ in
-                    MainActor.assumeIsolated { self?.submit() }
+            for name in [NSWindow.didUpdateNotification, NSWindow.didChangeOcclusionStateNotification, NSWindow.willCloseNotification] {
+                observers.append(NotificationCenter.default.addObserver(forName: name, object: window, queue: .main) { [weak self] notification in
+                    let closing = notification.name == NSWindow.willCloseNotification
+                    MainActor.assumeIsolated {
+                        guard let self else { return }
+                        if closing {
+                            OnePlusPanelTimings.shared.cancel(panel: self.panel)
+                        } else { self.submit() }
+                    }
                 })
             }
             submit()
