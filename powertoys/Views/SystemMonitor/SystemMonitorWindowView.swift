@@ -152,10 +152,10 @@ struct SystemMonitorWindowView: View {
 
     private var page: SystemMonitorPage { SystemMonitorPage.resolve(pageID) ?? .overview }
     private var service: SystemMonitorService { .shared }
-    private func recentHistory(_ metric: SystemMonitorMenuMetric) -> [SystemMonitorSample] {
-        Array(service.history.samples(for: metric).suffix(historySampleCapacity))
+    private func chartHistory(_ metric: SystemMonitorMenuMetric) -> SystemMonitorWindowHistory {
+        service.history.windowValues(for: metric, minutes: historyMinutes)
     }
-    private var historySampleCapacity: Int { max(60, historyMinutes * 60) }
+    private var historySampleCapacity: Int { historyMinutes == 1 ? 60 : SystemMonitorHistory.capacity }
 
     var body: some View {
         OnePlusWindowRoot(canvas: .systemMonitor) {
@@ -369,15 +369,15 @@ struct SystemMonitorWindowView: View {
         VStack(spacing: 10) {
             LazyVGrid(columns: Array(repeating: GridItem(.flexible(), spacing: 10, alignment: .top), count: 4), spacing: 10) {
                 metricCard(.cpu, value: percent(service.snapshot?.cpuUsage), detail: "Across \(ProcessInfo.processInfo.activeProcessorCount) cores",
-                           values: recentHistory(.cpu).compactMap(\.cpuUsage), range: 0...100)
+                           values: chartHistory(.cpu).values, range: 0...100)
                 metricCard(.gpu, value: percent(service.snapshot?.gpuUsage), detail: "Graphics utilization",
-                           values: recentHistory(.gpu).compactMap(\.gpuUsage), range: 0...100)
+                           values: chartHistory(.gpu).values, range: 0...100)
                 metricCard(.memory, value: service.snapshot?.memoryUsage.percent ?? "—", detail: memoryDetail,
-                           values: recentHistory(.memory).compactMap(\.memoryUsage), range: 0...100, accent: memoryIsHigh)
+                           values: chartHistory(.memory).memoryPercent, range: 0...100, accent: memoryIsHigh)
                 metricCard(.network, value: service.snapshot?.networkDownload.map(Self.rate) ?? "—",
                            detail: "↓ Download · ↑ \(service.snapshot?.networkUpload.map(Self.rate) ?? "—")",
-                           values: recentHistory(.network).compactMap(\.networkDownload),
-                           secondary: recentHistory(.network).compactMap(\.networkUpload), range: networkRange)
+                           values: chartHistory(.network).values,
+                           secondary: chartHistory(.network).secondary, range: networkRange)
                 metricCard(.disk, value: service.snapshot?.diskUsage.percent ?? "—", detail: "\(diskAvailable) available",
                            footer: .disk(service.snapshot?.diskUsage))
                 metricCard(.battery, value: service.snapshot?.batteryPercent.map { "\($0)%" } ?? "—", detail: batteryDetail,
@@ -385,7 +385,7 @@ struct SystemMonitorWindowView: View {
                 metricCard(.thermal, title: "Thermal", value: service.snapshot?.thermalState ?? "—",
                            detail: "System thermal pressure", footer: .thermal(service.snapshot?.thermalState))
                 metricCard(.cpu, title: "Load average", value: loadValue, detail: "1 minute · \(ProcessInfo.processInfo.activeProcessorCount) logical CPUs",
-                           values: recentHistory(.cpu).compactMap { $0.loadAverage?.0 }, range: loadRange)
+                           values: chartHistory(.cpu).load, range: loadRange)
                     .help(loadExplanation)
             }
 
@@ -574,24 +574,23 @@ struct SystemMonitorWindowView: View {
     }
 
     private func memoryAllocationPanel(header: String? = nil) -> some View {
-        let used = service.snapshot?.memoryUsed ?? 0
-        let total = max(service.snapshot?.memoryTotal ?? 1, 1)
-        let wired = service.snapshot?.memoryDetails?.wired ?? 0
-        let compressed = service.snapshot?.memoryDetails?.compressed ?? 0
-        let applications = max(used - wired - compressed, 0)
-        let available = max(total - used, 0)
         return TaskManagerPanel {
             VStack(alignment: .leading, spacing: 0) {
                 if let header { OnePlusCardHeader(header) }
-                VStack(alignment: .leading, spacing: 10) {
-                    OnePlusSegmentBar(values: [Double(applications), Double(wired), Double(compressed), Double(available)])
-                    allocationRow("Applications", value: Self.bytes(applications))
-                    allocationRow("Wired", value: Self.bytes(wired))
-                    allocationRow("Compressed", value: Self.bytes(compressed))
-                    Rectangle().fill(TaskManagerTheme.lineSoft).frame(height: 1)
-                    allocationRow("Available", value: Self.bytes(available))
+                if let allocation = service.memoryAllocation {
+                    VStack(alignment: .leading, spacing: 10) {
+                        OnePlusSegmentBar(values: [Double(allocation.applications), Double(allocation.wired),
+                                                   Double(allocation.compressed), Double(allocation.available)])
+                        allocationRow("Applications", value: Self.bytes(allocation.applications))
+                        allocationRow("Wired", value: Self.bytes(allocation.wired))
+                        allocationRow("Compressed", value: Self.bytes(allocation.compressed))
+                        Rectangle().fill(TaskManagerTheme.lineSoft).frame(height: 1)
+                        allocationRow("Available", value: Self.bytes(allocation.available))
+                    }
+                    .padding(12)
+                } else {
+                    OnePlusEmptyState("Memory data unavailable", systemImage: "memorychip")
                 }
-                .padding(12)
             }
             .frame(maxHeight: .infinity, alignment: .topLeading)
         }
@@ -618,10 +617,19 @@ struct SystemMonitorWindowView: View {
         return TaskManagerPanel(textured: true) {
             VStack(spacing: 10) {
                 HStack(alignment: .top, spacing: 18) {
-                    VStack(alignment: .leading, spacing: 6) {
-                        Text(label)
-                            .font(.system(size: 10, weight: .medium))
-                            .foregroundStyle(TaskManagerTheme.secondary)
+                    VStack(alignment: .leading, spacing: OnePlusMetrics.spacing[0]) {
+                        HStack(spacing: OnePlusMetrics.spacing[2]) {
+                            Text(label)
+                                .font(.system(size: 10, weight: .medium))
+                                .foregroundStyle(TaskManagerTheme.secondary)
+                            if !detail.isEmpty {
+                                Image(systemName: "info.circle")
+                                    .font(.system(size: 9))
+                                    .foregroundStyle(TaskManagerTheme.muted)
+                                    .help(detail)
+                                    .accessibilityLabel(detail)
+                            }
+                        }
                         HStack(alignment: .firstTextBaseline, spacing: 4) {
                             Text(displayed.0)
                                 .onePlusText(.metric)
@@ -629,14 +637,11 @@ struct SystemMonitorWindowView: View {
                                 Text(displayed.1).onePlusText(.unit)
                             }
                         }
-                        if !detail.isEmpty {
-                            Text(detail).font(.system(size: 9)).foregroundStyle(TaskManagerTheme.secondary)
-                        }
                     }
                     Spacer(minLength: 8)
                     HStack(spacing: 20) {
                         ForEach(stats.indices, id: \.self) { index in
-                            VStack(alignment: .trailing, spacing: 5) {
+                            HStack(alignment: .firstTextBaseline, spacing: OnePlusMetrics.spacing[2]) {
                                 Text(stats[index].0).font(.system(size: 8)).foregroundStyle(TaskManagerTheme.muted)
                                 Text(stats[index].1)
                                     .font(.system(size: 12))
@@ -664,7 +669,7 @@ struct SystemMonitorWindowView: View {
                     .padding(.vertical, OnePlusMetrics.spacing[2])
                     .padding(.horizontal, 12)
                 HStack {
-                    Text("−\(historyMinutes) min")
+                    Text("−\(historyMinutes == 1 ? 1 : 2) min")
                     Spacer()
                     Text("Now")
                 }
@@ -696,8 +701,8 @@ struct SystemMonitorWindowView: View {
             detailHero(
                 label: "CPU usage", value: service.snapshot?.cpuUsage.map(Self.decimal) ?? "—", unit: "%",
                 detail: "Across \(ProcessInfo.processInfo.activeProcessorCount) logical cores",
-                values: recentHistory(.cpu).compactMap(\.cpuUsage),
-                secondary: recentHistory(.cpu).compactMap { $0.cpuDetails?.system }, range: 0...100,
+                values: chartHistory(.cpu).values,
+                secondary: chartHistory(.cpu).secondary, range: 0...100,
                 upperScaleLabel: "100%", middleScaleLabel: "50%", lowerScaleLabel: "0%",
                 seriesLabels: ["Total usage", "System"],
                 stats: [
@@ -809,7 +814,7 @@ struct SystemMonitorWindowView: View {
             detailHero(
                 label: "GPU usage", value: service.snapshot?.gpuUsage.map(Self.decimal) ?? "—", unit: "%",
                 detail: "Integrated graphics",
-                values: recentHistory(.gpu).compactMap(\.gpuUsage), range: 0...100,
+                values: chartHistory(.gpu).values, range: 0...100,
                 upperScaleLabel: "100%", middleScaleLabel: "50%", lowerScaleLabel: "0%",
                 seriesLabels: ["Graphics utilization"],
                 stats: [("Thermal pressure", service.snapshot?.thermalState ?? "—")]
@@ -823,7 +828,7 @@ struct SystemMonitorWindowView: View {
             detailHero(
                 label: "Memory in use", value: service.snapshot?.memoryUsed.map(Self.bytes) ?? "—",
                 detail: "\(service.snapshot?.memoryTotal.map(Self.bytes) ?? "—") unified memory",
-                values: recentHistory(.memory).compactMap { $0.memoryUsed.map(Double.init) },
+                values: chartHistory(.memory).values,
                 range: 0...Double(max(service.snapshot?.memoryTotal ?? 1, 1)),
                 upperScaleLabel: service.snapshot?.memoryTotal.map(Self.bytes) ?? "—",
                 middleScaleLabel: service.snapshot?.memoryTotal.map { Self.bytes($0 / 2) } ?? "—",
@@ -849,8 +854,8 @@ struct SystemMonitorWindowView: View {
             detailHero(
                 label: "Download", value: service.snapshot?.networkDownload.map(Self.rate) ?? "—",
                 detail: "All active non-loopback interfaces",
-                values: recentHistory(.network).compactMap(\.networkDownload),
-                secondary: recentHistory(.network).compactMap(\.networkUpload), range: networkRange,
+                values: chartHistory(.network).values,
+                secondary: chartHistory(.network).secondary, range: networkRange,
                 upperScaleLabel: Self.rate(networkRange.upperBound),
                 middleScaleLabel: Self.rate(networkRange.upperBound / 2), lowerScaleLabel: "0 KB/s",
                 seriesLabels: ["Download", "Upload"],
@@ -892,8 +897,8 @@ struct SystemMonitorWindowView: View {
                 label: "Disk activity",
                 value: service.snapshot?.diskDetails?.readPerSecond.map(Self.rate) ?? "—",
                 detail: "Read throughput across physical storage",
-                values: recentHistory(.disk).compactMap { $0.diskDetails?.readPerSecond },
-                secondary: recentHistory(.disk).compactMap { $0.diskDetails?.writePerSecond },
+                values: chartHistory(.disk).values,
+                secondary: chartHistory(.disk).secondary,
                 range: diskRateRange,
                 upperScaleLabel: Self.rate(diskRateRange.upperBound),
                 middleScaleLabel: Self.rate(diskRateRange.upperBound / 2), lowerScaleLabel: "0 KB/s",
@@ -930,7 +935,7 @@ struct SystemMonitorWindowView: View {
             detailHero(
                 label: "Battery charge", value: service.snapshot?.batteryPercent.map(String.init) ?? "—", unit: "%",
                 detail: batteryDetail,
-                values: recentHistory(.battery).compactMap { $0.batteryPercent.map(Double.init) }, range: 0...100,
+                values: chartHistory(.battery).values, range: 0...100,
                 upperScaleLabel: "100%", middleScaleLabel: "50%", lowerScaleLabel: "0%",
                 seriesLabels: ["Battery charge"],
                 stats: [("Power source", powerSourceDetail)]
@@ -944,10 +949,10 @@ struct SystemMonitorWindowView: View {
     }
 
     private var powerDrawPanel: some View {
-        let values = recentHistory(.battery).compactMap(Self.powerDraw)
-        let upper = max((values.max() ?? 1) * 1.15, 1)
+        let values = chartHistory(.battery).power
+        let upper = chartHistory(.battery).powerRange.upperBound
         return detailHero(
-            label: "Power draw", value: service.snapshot.flatMap(Self.powerDraw).map(Self.decimal) ?? "—", unit: "W",
+            label: "Power draw", value: service.snapshot.flatMap(SystemMonitorWindowHistory.powerDraw).map(Self.decimal) ?? "—", unit: "W",
             detail: values.isEmpty ? "Power use is not reported for this battery." : "",
             values: values, range: 0...upper,
             upperScaleLabel: "\(Self.decimal(upper)) W",
@@ -961,7 +966,7 @@ struct SystemMonitorWindowView: View {
             detailHero(
                 label: "Thermal pressure", value: service.snapshot?.thermalState ?? "—",
                 detail: "System-reported thermal state",
-                values: recentHistory(.thermal).compactMap { Self.thermalLevel($0.thermalState) }, range: 0...100,
+                values: chartHistory(.thermal).values, range: 0...100,
                 upperScaleLabel: "Critical", middleScaleLabel: "Fair", lowerScaleLabel: "Nominal",
                 scaleLabels: ["Critical", "Serious", "Fair", "Nominal"],
                 seriesLabels: ["Thermal state"], stepped: true,
@@ -984,7 +989,7 @@ struct SystemMonitorWindowView: View {
                 HStack(spacing: 12) {
                     Image("SystemMonitorLogo")
                         .resizable().scaledToFit().frame(width: 40, height: 40)
-                    VStack(alignment: .leading, spacing: 4) {
+                    VStack(alignment: .leading, spacing: OnePlusMetrics.spacing[0]) {
                         Text("Task Manager").onePlusText(.cardTitle).onePlusDensity(.regular)
                         Text("A focused view of your Mac's activity.")
                             .font(.system(size: 10)).foregroundStyle(TaskManagerTheme.secondary)
@@ -1005,7 +1010,13 @@ struct SystemMonitorWindowView: View {
         let hasMissingValue = rows.contains { $0.1 == "—" }
         return TaskManagerPanel {
             VStack(spacing: 0) {
-                OnePlusCardHeader(title)
+                OnePlusCardHeader(title) {
+                    if hasMissingValue {
+                        Image(systemName: "info.circle")
+                            .help("Some details are not reported for this Mac.")
+                            .accessibilityLabel("Some details are not reported for this Mac.")
+                    }
+                }
                 ForEach(rows.indices, id: \.self) { index in
                     HStack(spacing: 12) {
                         Text(rows[index].0).foregroundStyle(TaskManagerTheme.secondary)
@@ -1019,27 +1030,20 @@ struct SystemMonitorWindowView: View {
                     .font(.system(size: 10))
                     .padding(.horizontal, 12)
                     .frame(height: 30)
+                    .onePlusRowHover()
                     .overlay(alignment: .bottom) {
                         if index < rows.count - 1 { rowDivider }
                     }
-                }
-                if hasMissingValue {
-                    Text("Some details are not reported for this Mac.")
-                        .font(.system(size: 8.5))
-                        .foregroundStyle(TaskManagerTheme.muted)
-                        .padding(.horizontal, 12)
-                        .frame(maxWidth: .infinity, minHeight: 30, alignment: .leading)
-                        .overlay(alignment: .top) { rowDivider }
                 }
             }
         }
     }
 
     private func aboutPanel(_ title: String, icon: String, text: String) -> some View {
-        OnePlusCard {
-            OnePlusCardHeader(title, systemImage: icon)
+        VStack(alignment: .leading, spacing: OnePlusMetrics.spacing[2]) {
+            Label(title, systemImage: icon).onePlusText(.sectionTitle)
             Text(text).onePlusText(.row).foregroundStyle(TaskManagerTheme.secondary)
-                .padding(12).frame(maxWidth: .infinity, alignment: .leading)
+                .frame(maxWidth: .infinity, alignment: .leading)
         }
     }
 
@@ -1143,17 +1147,8 @@ struct SystemMonitorWindowView: View {
     private var loadRange: ClosedRange<Double> {
         0...Double(max(ProcessInfo.processInfo.activeProcessorCount, 1))
     }
-    private var networkRange: ClosedRange<Double> {
-        let maximum = recentHistory(.network).flatMap { [$0.networkDownload, $0.networkUpload] }.compactMap { $0 }.max() ?? 1
-        return 0...max(maximum * 1.15, 1)
-    }
-
-    private var diskRateRange: ClosedRange<Double> {
-        let maximum = recentHistory(.disk).flatMap {
-            [$0.diskDetails?.readPerSecond, $0.diskDetails?.writePerSecond]
-        }.compactMap { $0 }.max() ?? 1
-        return 0...max(maximum * 1.15, 1)
-    }
+    private var networkRange: ClosedRange<Double> { chartHistory(.network).range }
+    private var diskRateRange: ClosedRange<Double> { chartHistory(.disk).range }
 
     private var coreLayoutDescription: String {
         guard let layout = TaskManagerHardwareSummary.coreLayout else {
@@ -1202,16 +1197,6 @@ struct SystemMonitorWindowView: View {
     nonisolated private static func bytes(_ value: UInt64) -> String {
         ByteCountFormatter.string(fromByteCount: Int64(min(value, UInt64(Int64.max))), countStyle: .memory)
     }
-    nonisolated private static func thermalLevel(_ state: String?) -> Double? {
-        switch state {
-        case "Nominal": 0
-        case "Fair": 33
-        case "Serious": 66
-        case "Critical": 100
-        default: nil
-        }
-    }
-
     nonisolated private static func thermalBand(_ state: String?) -> Int? {
         switch state {
         case "Nominal": 0
@@ -1222,11 +1207,7 @@ struct SystemMonitorWindowView: View {
         }
     }
 
-    nonisolated private static func powerDraw(_ sample: SystemMonitorSample) -> Double? {
-        guard let voltage = sample.batteryDetails?.voltageMillivolts,
-              let amperage = sample.batteryDetails?.amperageMilliamps else { return nil }
-        return Double(voltage) * Double(abs(amperage)) / 1_000_000
-    }
+
 }
 
 struct SystemMonitorSettingsContent: View {
@@ -1252,6 +1233,7 @@ struct SystemMonitorSettingsContent: View {
             displaySection
             itemsSection
         }
+        .onAppear { if ![1, 2].contains(historyMinutes) { historyMinutes = 2 } }
     }
 
     private var displaySection: some View {
@@ -1277,7 +1259,7 @@ struct SystemMonitorSettingsContent: View {
             }
             OnePlusSettingRow("History window", controlWidth: 180, separator: false) {
                 TaskManagerSelect(
-                    choices: [(1, "1 minute"), (2, "2 minutes"), (5, "5 minutes")],
+                    choices: [(1, "1 minute"), (2, "2 minutes")],
                     selection: $historyMinutes,
                     width: 180,
                     accessibilityLabel: "History window"
@@ -1357,6 +1339,7 @@ struct SystemMonitorSettingsContent: View {
             .frame(maxWidth: .infinity, alignment: .leading)
             .padding(.horizontal, OnePlusMetrics.cardPadding)
             .frame(height: 34)
+            .onePlusRowHover()
             .overlay(alignment: .bottom) { OnePlusColor.lineSoft.frame(height: 1) }
             if expandedMetric == item.metric { detailsRow(item) }
         }
