@@ -51,6 +51,7 @@
 | | **Diskman** | Analyze disks and folders with live treemaps or rings; manage removable disks and partitions. |
 | <img src="powertoys/Assets.xcassets/NetToysLogo.imageset/icon.svg" width="30" alt=""> | **NetToys** | Scan IP networks, keep SSH hosts attached to changing local addresses, and review network outages. |
 | <img src="powertoys/Assets.xcassets/PortmanLogo.imageset/icon.svg" width="30" alt=""> | **Portman** | Inspect local development ports and forward selected ports from a private SSH server to localhost. |
+| <img src="powertoys/Assets.xcassets/MacTweaksLogo.imageset/icon.svg" width="30" alt=""> | **Mac Tweaks** | Search Mac preferences, keep original values, control microphone input, and restore changes. |
 | <img src="powertoys/Assets.xcassets/SwitchLogo.imageset/icon.svg" width="30" alt=""> | **Switch** | Manage CLI accounts, review usage, and recover interrupted account changes. |
 
 ## Designed for the Mac
@@ -141,6 +142,20 @@ changes. Never replace a running installation during a transfer.
   commands stay visible in Terminal.
 - Permission-dependent tools show their current access state. Use their
   settings action to open the correct macOS privacy pane after a denial.
+
+## Mac Tweaks
+
+Use Input, Dock, Finder, Windows, Screenshots, Apps, Power, and Menu bar to
+find controls. Press **Cmd-K** to search. **Modified** lists changed
+preferences; Reset restores a saved original value or the system default.
+Mac Tweaks keeps exact original values before changes. Previews are static
+examples. Follow the saved-change notice, then restart the affected app or
+choose **Later**.
+
+Preference edits are limited to macOS 15.8, 26.7, and 27.0. Other releases
+keep restore available. Individual controls can have narrower limits. Input
+includes Mic Lock; Power uses the shared Awake controls. See **How to use**
+in the launcher for backup, reset, and activation steps.
 
 ## Tool lifetime
 
