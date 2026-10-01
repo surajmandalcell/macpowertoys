@@ -71,7 +71,7 @@ enum AppIdentity {
     static let displayName = "MacPowerToys"
     nonisolated static let bundleIdentifier = "com.surajmandal.macpowertoys"
     nonisolated static let legacyBundleIdentifier = "com.surajmandal.powertoys"
-    nonisolated private static let defaultsMigrationKey = "app.identityMigratedFromPowerToys"
+    private static let defaultsMigrationKey = "app.identityMigratedFromPowerToys"
 
     static var isLegacyAppRunning: Bool {
         hasLegacyApp(in: NSWorkspace.shared.runningApplications.map(\.bundleIdentifier))
@@ -81,7 +81,7 @@ enum AppIdentity {
         bundleIdentifiers.contains(legacyBundleIdentifier)
     }
 
-    nonisolated static func migrateLegacyData() {
+    static func migrateLegacyData() {
         _ = AppDataLocation.directory
         let defaults = UserDefaults.standard
         guard !defaults.bool(forKey: defaultsMigrationKey) else { return }
@@ -91,7 +91,7 @@ enum AppIdentity {
     }
 
     @discardableResult
-    nonisolated static func migrateLegacyDefaults(_ legacy: [String: Any], into defaults: UserDefaults) -> Int {
+    static func migrateLegacyDefaults(_ legacy: [String: Any], into defaults: UserDefaults) -> Int {
         var copied = 0
         for (key, value) in legacy where defaults.object(forKey: key) == nil {
             defaults.set(value, forKey: key)

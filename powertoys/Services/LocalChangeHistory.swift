@@ -44,9 +44,6 @@ final class LocalChangeHistory {
     private var persistTask: Task<Void, Never>?
     private let writer = OrderedAtomicFileWriter()
     private var revision = 0
-    private var needsSave = false
-    private var didRestore = false
-    private var restoreTask: Task<[LocalChangeRecord], Never>?
 
     convenience init() {
         self.init(storageURL: AppDataLocation.localChangesURL)
@@ -58,24 +55,15 @@ final class LocalChangeHistory {
     }
 
     func restore() async {
-        guard !didRestore else { return }
         let url = storageURL
-        let task = restoreTask ?? Task.detached(priority: .utility) {
+        let restored: [LocalChangeRecord] = await Task.detached(priority: .utility) {
             guard let data = try? Data(contentsOf: url),
                   let records = try? JSONDecoder().decode([LocalChangeRecord].self, from: data) else {
                 return [LocalChangeRecord]()
             }
             return records
-        }
-        restoreTask = task
-        let restored = await task.value
-        guard !didRestore else { return }
-        let current = entries
-        let currentIDs = Set(current.map(\.id))
-        entries = limited(current + restored.filter { !currentIDs.contains($0.id) })
-        didRestore = true
-        restoreTask = nil
-        if !current.isEmpty { schedulePersist() }
+        }.value
+        entries = limited(restored)
     }
 
     func record(_ records: [LocalChangeRecord]) {
@@ -95,29 +83,18 @@ final class LocalChangeHistory {
     }
 
     func flush() async {
-        do {
-            try await flushReportingErrors()
-        } catch {
-            LogManager.shared.error("Unable to save local change history: \(error.localizedDescription)", source: "LocalChangeHistory")
-        }
-    }
-
-    func flushReportingErrors() async throws {
-        if needsSave, !didRestore { await restore() }
         persistTask?.cancel()
         persistTask = nil
-        guard needsSave else { return }
-        try await persist(entries)
+        await persist(entries)
     }
 
     private func schedulePersist() {
-        needsSave = true
         persistTask?.cancel()
         persistTask = Task { [weak self] in
             try? await Task.sleep(for: .milliseconds(500))
             guard let self, !Task.isCancelled else { return }
             self.persistTask = nil
-            await self.flush()
+            await self.persist(self.entries)
         }
     }
 
@@ -131,15 +108,14 @@ final class LocalChangeHistory {
         }
     }
 
-    private func persist(_ records: [LocalChangeRecord]) async throws {
+    private func persist(_ records: [LocalChangeRecord]) async {
         let url = storageURL
         revision += 1
         let currentRevision = revision
         let writer = self.writer
-        try await Task.detached(priority: .utility) {
-            let data = try JSONEncoder().encode(records)
-            try await writer.write(data, revision: currentRevision, to: url)
+        await Task.detached(priority: .utility) {
+            guard let data = try? JSONEncoder().encode(records) else { return }
+            await writer.write(data, revision: currentRevision, to: url)
         }.value
-        if entries == records { needsSave = false }
     }
 }

@@ -107,7 +107,6 @@ final class RcloneJobManager {
     private(set) var client: RcloneRCClient?
     private var pollTask: Task<Void, Never>?
     private var started = false
-    private(set) var isShuttingDown = false
     private var engineRetryTask: Task<Void, Never>?
     private var engineRetryAttempt = 0
     private var engineFailureBanner: String?
@@ -250,7 +249,7 @@ final class RcloneJobManager {
     }
 
     func start() async {
-        guard !started, !isShuttingDown else { return }
+        guard !started else { return }
         started = true
         await DevSyncService.shared.start()
         await loadPersistedJobs()
@@ -322,49 +321,7 @@ final class RcloneJobManager {
     }
 
     func shutdown() async {
-        do {
-            try await shutdownForTermination()
-        } catch {
-            LogManager.shared.error("Cloud Sync shutdown failed: \(error.localizedDescription)", source: "RcloneJobManager")
-        }
-    }
-
-    func shutdownForTermination() async throws {
-        try Task.checkCancellation()
-        guard !isShuttingDown else {
-            throw CocoaError(.userCancelled)
-        }
-        isShuttingDown = true
-        defer { isShuttingDown = false }
-        persistJobsTask?.cancel()
-        persistJobsTask = nil
-        let snapshots = jobs.map(\.terminationSnapshot)
-        var saveStage = "transfers"
-        do {
-            if loadedPersistedJobs || !jobs.isEmpty {
-                try await persistSnapshots(snapshots)
-            }
-            try Task.checkCancellation()
-            saveStage = "history"
-            try await LocalChangeHistory.shared.flushReportingErrors()
-            try modelContext?.save()
-            try Task.checkCancellation()
-            await DevSyncService.shared.stop()
-            try Task.checkCancellation()
-            if let name = remoteBeingCreated, let client {
-                try? await client.deleteRemoteConfig(name: name)
-                try Task.checkCancellation()
-            }
-        } catch {
-            if !(error is CancellationError) {
-                let message = "Cloud Sync could not save \(saveStage): \(error.localizedDescription)"
-                errorBanner = message
-                throw NSError(domain: "RcloneJobManager", code: 1, userInfo: [
-                    NSLocalizedDescriptionKey: message, NSUnderlyingErrorKey: error
-                ])
-            }
-            throw error
-        }
+        await DevSyncService.shared.stop()
         engineRetryTask?.cancel()
         engineRetryTask = nil
         pollTask?.cancel()
@@ -375,19 +332,38 @@ final class RcloneJobManager {
         reconnectProcess = nil
         authGeneration = UUID()
         authState = .idle
+        if let name = remoteBeingCreated, let client {
+            try? await client.deleteRemoteConfig(name: name)
+        }
         remoteBeingCreated = nil
-        for watcher in sourceWatchers.values { watcher.stop() }
+        for watcher in sourceWatchers.values {
+            watcher.stop()
+        }
         sourceWatchers.removeAll()
-        for task in continuousSyncTasks.values { task.cancel() }
+        for task in continuousSyncTasks.values {
+            task.cancel()
+        }
         continuousSyncTasks.removeAll()
         stopVolumeWatch()
-        for job in jobs where job.state.isActive && job.state != .paused {
-            if job.state == .running { job.commitAttemptProgress() }
-            job.state = .paused
-            job.autoResumeOnLaunch = true
+        await LocalChangeHistory.shared.flush()
+        for job in jobs where job.state.isActive && !job.state.isTerminal {
+            let jobid = job.rcJobId
+            if job.state == .running {
+                job.commitAttemptProgress()
+            }
+            if job.state != .paused {
+                job.state = .paused
+                job.autoResumeOnLaunch = true
+            }
             job.rcJobId = nil
             job.nextRetryAt = nil
+            if let jobid, let client {
+                try? await client.stopJob(jobid: jobid)
+            }
         }
+        persistJobsTask?.cancel()
+        persistJobsTask = nil
+        await persistJobsNow()
         daemon.stop()
         client = nil
         started = false
@@ -560,38 +536,25 @@ final class RcloneJobManager {
         }
     }
 
-    @discardableResult
-    func createDroppedTransfers(urls: [URL], remote: RcloneRemote, directoryPath: String) -> Int {
-        guard !isShuttingDown else { return 0 }
+    func createDroppedTransfers(urls: [URL], remote: RcloneRemote, directoryPath: String) {
         let base = directoryPath.isEmpty ? "" : directoryPath + "/"
-        var queued = 0
-        for rawURL in urls {
-            guard let url = Self.supportedUploadURL(rawURL),
-                  let values = try? url.resourceValues(forKeys: [.isDirectoryKey, .isPackageKey]) else { continue }
+        for rawURL in urls where rawURL.isFileURL {
+            let url = rawURL.resolvingSymlinksInPath()
             let name = url.lastPathComponent
+            let values = try? url.resourceValues(forKeys: [.isDirectoryKey, .isPackageKey])
+            let isDirectory = values?.isDirectory ?? false
+            let isPackage = values?.isPackage ?? false
             createTransfer(
                 operation: .copy,
-                kind: values.isDirectory == true ? .directory : .file,
+                kind: isDirectory ? .directory : .file,
                 sourceFs: url.path,
                 destinationFs: remote.pathPrefix + base + name,
                 sourceDisplay: "\(name) (local)",
                 destinationDisplay: "\(remote.name):\(base)\(name)",
                 extraExcludes: [],
-                bypassGlobalIgnores: values.isPackage == true
+                bypassGlobalIgnores: isPackage
             )
-            queued += 1
         }
-        return queued
-    }
-
-    nonisolated static func supportedUploadURL(_ rawURL: URL) -> URL? {
-        guard rawURL.isFileURL, rawURL.host == nil || rawURL.host == "" || rawURL.host == "localhost" else { return nil }
-        let url = rawURL.resolvingSymlinksInPath().standardizedFileURL
-        guard !url.lastPathComponent.isEmpty, url.lastPathComponent != "/",
-              let values = try? url.resourceValues(forKeys: [.isDirectoryKey, .isRegularFileKey]),
-              values.isDirectory == true || values.isRegularFile == true,
-              FileManager.default.isReadableFile(atPath: url.path) else { return nil }
-        return url
     }
 
     // MARK: Remote management
@@ -1310,7 +1273,7 @@ final class RcloneJobManager {
     }
 
     private func tick() async {
-        guard !isShuttingDown, let client else { return }
+        guard let client else { return }
 
         if !daemon.isRunning {
             recoverFromDaemonLoss()
@@ -1319,7 +1282,6 @@ final class RcloneJobManager {
 
         await applyBandwidthLimitIfNeeded(client: client)
 
-        guard !isShuttingDown, !Task.isCancelled else { return }
         let running = jobs.filter { $0.state == .running }
         if !running.isEmpty {
             let probes = running.map { (id: $0.id, group: $0.statsGroup, jobid: $0.rcJobId) }
@@ -1342,7 +1304,6 @@ final class RcloneJobManager {
                 }
             }
 
-            guard !isShuttingDown, !Task.isCancelled else { return }
             for job in running {
                 guard job.state == .running else { continue }
                 let (stats, status) = results[job.id] ?? (nil, nil)
@@ -1480,34 +1441,25 @@ final class RcloneJobManager {
     }
 
     func persistJobsSoon() {
-        guard !isShuttingDown else { return }
         persistJobsTask?.cancel()
         persistJobsTask = Task { [weak self] in
             try? await Task.sleep(for: .milliseconds(500))
             guard let self, !Task.isCancelled else { return }
             self.persistJobsTask = nil
-            do {
-                try await self.persistJobsNow()
-            } catch {
-                self.errorBanner = "Cloud Sync could not save transfers: \(error.localizedDescription)"
-                LogManager.shared.error(self.errorBanner ?? "Transfer save failed", source: "RcloneJobManager")
-            }
+            await self.persistJobsNow()
         }
     }
 
-    private func persistJobsNow() async throws {
+    private func persistJobsNow() async {
         guard loadedPersistedJobs else { return }
-        try await persistSnapshots(jobs.map(\.snapshot))
-    }
-
-    private func persistSnapshots(_ snapshots: [TransferJobSnapshot]) async throws {
+        let snapshots = jobs.map(\.snapshot)
         transferRevision += 1
         let revision = transferRevision
         let writer = transferWriter
         let url = AppDataLocation.transfersURL
-        try await Task.detached(priority: .utility) {
-            let data = try JSONEncoder().encode(snapshots)
-            try await writer.write(data, revision: revision, to: url)
+        await Task.detached(priority: .utility) {
+            guard let data = try? JSONEncoder().encode(snapshots) else { return }
+            await writer.write(data, revision: revision, to: url)
         }.value
     }
 
@@ -1532,7 +1484,7 @@ final class RcloneJobManager {
     }
 
     private func promoteQueuedJobs(client: RcloneRCClient) {
-        guard !isGloballyPaused, !isShuttingDown else { return }
+        guard !isGloballyPaused else { return }
         let maxConcurrent = settings.maxConcurrentJobs
         var runningCount = jobs.filter { $0.state == .running }.count
         let now = Date()
