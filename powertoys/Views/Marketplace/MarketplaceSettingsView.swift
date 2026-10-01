@@ -70,6 +70,7 @@ struct MarketplaceSettingsView: View {
             }
             ForEach(sources) { source in sourceRow(source) }
         }
+        .environment(\.onePlusCardPadding, 0)
     }
 
     private var sourceEntry: some View {
