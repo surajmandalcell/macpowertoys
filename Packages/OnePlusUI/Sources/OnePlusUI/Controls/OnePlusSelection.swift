@@ -2,10 +2,11 @@ import AppKit
 import SwiftUI
 
 public struct OnePlusSwitchStyle: ToggleStyle {
-    @Environment(\.onePlusHeaderTopAligned) private var topAligned
+    @Environment(\.onePlusDensity) private var density
     public init() {}
     public func makeBody(configuration: Configuration) -> some View {
-        LabeledContent {
+        let capHeight = NSFont.systemFont(ofSize: OnePlusTextRole.row.size(for: density)).capHeight
+        return LabeledContent {
             Button { configuration.isOn.toggle() } label: {
                 Capsule().fill(configuration.isOn ? OnePlusColor.primaryFill : OnePlusColor.selection)
                     .overlay { Capsule().strokeBorder(OnePlusColor.line, lineWidth: 1) }
@@ -14,14 +15,19 @@ public struct OnePlusSwitchStyle: ToggleStyle {
                             .frame(width: 11, height: 11).padding(.horizontal, 3)
                     }
                     .frame(width: 29, height: 17)
-                    .frame(height: 24, alignment: topAligned ? .top : .center)
+                    .frame(height: 24)
             }
             .buttonStyle(OnePlusInteractionStyle(radius: 10))
             .accessibilityRepresentation {
                 Toggle(isOn: configuration.$isOn) { configuration.label }
             }
         } label: {
-            configuration.label.onePlusText(.row)
+            OnePlusControlContentLayout(pointSize: OnePlusTextRole.row.size(for: density), iconIndex: nil) {
+                configuration.label.onePlusText(.row)
+            }
+        }
+        .alignmentGuide(.firstTextBaseline) { dimensions in
+            dimensions.height / 2 + capHeight / 2
         }
     }
 }
@@ -147,14 +153,14 @@ public struct OnePlusSegments<Value: Hashable>: View {
 
 public struct OnePlusMenuLabel: View {
     let title: String
-    let width: CGFloat
+    let width: CGFloat?
     let expanded: Bool
     @Environment(\.onePlusDensity) private var density
     @Environment(\.onePlusControlHeight) private var controlHeight
     @Environment(\.isFocused) private var focused
     @Environment(\.isEnabled) private var enabled
     @State private var hover = false
-    public init(title: String, width: CGFloat, expanded: Bool = false) {
+    public init(title: String, width: CGFloat?, expanded: Bool = false) {
         self.title = title
         self.width = width
         self.expanded = expanded
@@ -165,6 +171,7 @@ public struct OnePlusMenuLabel: View {
             Image(systemName: "chevron.down").accessibilityHidden(true)
         }
         .onePlusText(.control).padding(.horizontal, 10).frame(width: width, height: controlHeight ?? density.controlHeight)
+        .frame(maxWidth: width == nil ? .infinity : nil)
         .background(enabled && ((focused && OnePlusFocusPolicy.shared.showsFocus) || hover || expanded) ? OnePlusColor.raisedHover : OnePlusColor.raised,
                     in: RoundedRectangle(cornerRadius: 6))
         .overlay { RoundedRectangle(cornerRadius: 6).strokeBorder(focused && OnePlusFocusPolicy.shared.showsFocus ? OnePlusColor.focus : OnePlusColor.line, lineWidth: 1) }
@@ -176,13 +183,13 @@ public struct OnePlusMenuLabel: View {
 public struct OnePlusSelect<Value: Hashable>: View {
     private let choices: [(Value, String)]
     @Binding private var selection: Value
-    private let width: CGFloat
+    private let width: CGFloat?
     private let label: String
     @Environment(\.onePlusDensity) private var density
     @FocusState private var focused: Bool
     @State private var expanded = false
     @State private var anchor = OnePlusPopupAnchorReference()
-    public init(choices: [(Value, String)], selection: Binding<Value>, width: CGFloat = 160, accessibilityLabel: String) {
+    public init(choices: [(Value, String)], selection: Binding<Value>, width: CGFloat? = 160, accessibilityLabel: String) {
         self.choices = choices
         _selection = selection
         self.width = width
@@ -196,7 +203,7 @@ public struct OnePlusSelect<Value: Hashable>: View {
                              width: width, expanded: expanded)
         }
         .buttonStyle(.plain)
-        .fixedSize()
+        .fixedSize(horizontal: width != nil, vertical: true)
         .focused($focused)
         .focusEffectDisabled()
         .background { OnePlusPopupAnchor(reference: anchor) }
