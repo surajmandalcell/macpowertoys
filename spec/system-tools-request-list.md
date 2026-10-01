@@ -1,5 +1,13 @@
 # System Tools Request List
 
+Shared stat check, run 74, 2026-10-02: OnePlusUI `ad42789` corrects
+the stale compact height ceiling. The approved 16pt padding makes the
+single-line StatCell 46pt tall. The check now verifies 32pt of vertical
+padding in both densities and keeps the 52pt single-line ceiling.
+All 148 package tests pass, including the unchanged metric trait checks.
+Production layout and the 27pt metric role remain unchanged.
+Report: `tmp/redesign/logs/w13-statcell.md`.
+
 Round 17 panels repair, run 68, 2026-10-01: `53b31541` keeps System Care
 decimal disk metrics and units complete, with full bytes in help and
 accessibility. `517c5593` moves Memory capacity within its 70pt tile and
@@ -14,7 +22,8 @@ at 1x/2x/4x. Shared `10b09f5` renders named artwork in tool headers.
 The app and both desktop bundles compile against OnePlusUI 1.0.0.
 All five changed app classes pass across guarded runs: 117 distinct tests.
 Two focused shared checks pass. The broader shared geometry class has one
-unowned failure: stat metadata measures 46pt against its 44pt height check.
+failure at that revision: stat metadata measures 46pt against its stale
+44pt height check. Run 74 resolves the check; see the entry above.
 The next shared tag, dependency adoption, signed captures, Refresh and
 disclosure interaction, and complete-frame timing remain with the
 orchestrator. Adopt OnePlusUI 1.0.1 containing `7dbcb3f` and `10b09f5`.

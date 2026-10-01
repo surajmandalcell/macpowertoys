@@ -1,5 +1,17 @@
 # UI Chrome Troubleshooting
 
+## Stat Cell Height Check, Run 74, 2026-10-02
+
+- **Symptom:** Compact StatCell measures 46pt against a 44pt test ceiling.
+- **Cause:** The ceiling predates `68c91bf`, which changed default compact
+  card padding from 12pt to the approved 16pt. StatCell has one baseline
+  row with caption and card-title type; it does not use metric type.
+- **Invariant:** Keep 16pt card padding in both densities. Keep trait A's
+  27pt metric type, weight 550, and 30.24pt line. Correct stale checks.
+- **Check:** OnePlusUI `ad42789` checks the 32pt total vertical inset and
+  52pt single-line ceiling in both densities. All 148 package tests pass.
+  Report: `tmp/redesign/logs/w13-statcell.md`.
+
 ## Panel Identity Glyphs And Disclosure Captions, Run 68, 2026-10-01
 
 - **Symptom:** Input Devices count drops toward the header divider.
