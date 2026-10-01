@@ -116,7 +116,7 @@ struct SystemMonitorTrayView: View {
         selectionTask?.cancel()
         selectionTask = nil
         guard destination != page else { return }
-        if !OnePlusPanelTimings.shared.hasPending("system-monitor") {
+        if !OnePlusPanelTimings.shared.hasPending("system-monitor", tab: destination.rawValue) {
             OnePlusPanelTimings.shared.begin(panel: "system-monitor", operation: .tabSwitch, tab: destination.rawValue)
         }
         if destination == .processes {
