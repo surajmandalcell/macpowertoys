@@ -10,6 +10,12 @@ Reviewed against the pinned [FreeRuler](https://github.com/pascalpp/FreeRuler)
 source at commit `d38ca4f673f16c51485940e63eeee68babfbfeed` on 2026-08-31.
 Update this list whenever Ruler requirements or verification results change.
 
+## Production audit, 2026-10-01
+
+| Status | Request | Evidence | Remaining work |
+|---|---|---|---|
+| Source complete; signed review pending | Show and dismiss hotkey feedback at once in both Reduce Motion modes. | `0948ba7a` removes the custom AppKit alpha animations. The existing 1.2-second dismissal and native panel ordering stay in place. Ruler geometry and controls are unchanged. | Compile through the shared gate and check grouping, units, float, shadow, and origin feedback in the installed app. Report: `tmp/redesign/logs/w1-motion-sweep.md`. |
+
 ## OnePlusUI redesign, 2026-09-29
 
 | Status | Request | Evidence | Remaining work |

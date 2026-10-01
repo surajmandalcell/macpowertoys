@@ -155,7 +155,7 @@
   y137 as its center while the artwork is centered at y160. Scaling enlarged
   the full window to the preview body with no space around it.
 - **Invariant:** Use a 468pt by 292pt crop centered at x300/y160. Preserve
-  uniform scale, the existing hover-only motion, and the static poster frame.
+  uniform scale and the static poster frame. Hover does not play the preview.
   Do not resize or pad the card to conceal a wrong artwork crop.
 - **Check:** The 414pt by 240pt body gives 20.38pt above and 22.38pt below the
   window. Compare Finder at rest and during hover in both appearances on the
@@ -399,8 +399,8 @@
   Give rows a wider inset hover surface and preserve inner text padding. Keep
   one fixed trailing slot: graph plus memory at rest, link plus stop on hover,
   with blue/red action feedback and no width shift. Show only listening-process
-  memory. Equal tab cells each own a bottom line that fades in place on
-  selection; tab content does not fade, and Reduce Motion disables the fade.
+  memory. Equal tab cells each own a bottom line that changes at once on
+  selection. Tab content changes at once in both Reduce Motion modes.
   Accept `user@IP`; use the in-memory SSH askpass channel for a password and
   retry, then clear it on exit. Show the remote process name, with command and
   Docker context only when the row is opened.
@@ -427,20 +427,20 @@
   edges, with padding inside each row for its text. The compact footer contains
   server count, CPU, Sort by Port/Memory/Name/CPU, and Clean up. Port sorts
   ascending by default; resource sorts descend. Servers, Forward, and Settings
-  are equal-width tabs whose fixed underlines and label emphasis fade in place
-  over the standard 0.16-second content duration and respect Reduce Motion.
+  are equal-width tabs whose fixed underlines and label emphasis change at
+  once in both Reduce Motion modes.
   Settings uses the shared native small search field to filter
   individual controls. No Portman alert page, notifications, tray tint, or
   chart threshold remain; automatic cleanup still excludes high-usage servers.
 - **Check:** Compile locally without launching XCTest. On a hosted Mac, inspect
   a four-server panel, compare row and bar frames, open Sort by, select Memory,
   switch Servers → Forward → Settings → Servers at their blank edges, and verify
-  the active underline and label fade at each fixed tab position without
-  travelling from an edge. With Reduce Motion, selection changes immediately.
+  the active underline and label change at once at each fixed tab position
+  in both Reduce Motion modes.
   Search for Scan in Settings and confirm unrelated controls disappear. Inspect
   the final signed installed stamp before a background launch on the owner's Mac.
   Hosted run `36208481934` passed tab navigation; its captures prove the
-  endpoints, not the intermediate fade frames or Reduce Motion behavior.
+  endpoints. The newer owner rule requires instant changes in both modes.
 
 ## Portman Cleanup Number Editing
 
@@ -663,21 +663,22 @@
 - **Check:** Search every SwiftUI view for `Divider()`. Only the shared divider
   implementation and native menu or command separators can remain.
 
-## Interaction And Layout Motion
+## Interaction And Layout Motion, 2026-10-01
 
-- **Symptom:** Custom controls snap between hover and press states, content
-  changes snap, or Reduce Motion still permits a fade or numeric transition.
-- **Cause:** Interactive surfaces changed state without the shared motion
-  policy, or a local animation bypassed the accessibility environment.
-- **Invariant:** Animate custom-control hover and press feedback for 0.12
-  seconds and layout or content changes for 0.16 seconds. Motion is driven only
-  by interactions or actual state changes; an idle window never animates.
-  Apply the root motion policy to every window and menu-bar panel. Reduce
-  Motion makes every state change immediate.
-- **Check:** Hover and press shared controls, change pages, and load results
-  in every app family. Repeat with Reduce Motion enabled. Normal mode gives
-  short feedback and crossfades. Reduce Motion gives no movement, fade, pulse,
-  or numeric animation. Idle windows do not animate or wake for motion.
+- **Symptom:** The owner reports that hover and content motion feels bad.
+- **Cause:** Shared tokens and helpers still return animations after callers
+  remove local modifiers. Custom fades also bypass Reduce Motion.
+- **Invariant:** Hover and press change color at once. Keep geometry fixed.
+  Pages, tabs, content, and selection change at once in both accessibility
+  modes. OnePlusMotion returns nil, even with an explicit duration. Utility
+  animation helpers are no-ops. Native presentations and real work indicators
+  keep system behavior. The overlay scroller keeps its separate 0.12-second
+  native-style hide fade and uses instant hiding with Reduce Motion.
+- **Check:** OnePlusMotionTests checks both modes and rejects animation,
+  offset, and scale effects in shared hover sources. The source check passes
+  and rejects all three isolated mutations. Ruler hotkey feedback shows and
+  hides at once. Signed hover, press, navigation, progress, and presentation
+  checks remain with the orchestrator. See tmp/redesign/logs/w1-motion-sweep.md.
 
 ## Cloud Sync Connector Labels
 
@@ -686,11 +687,10 @@
 - **Cause:** The label uses a repeating marquee animation.
 - **Invariant:** Truncate a long label at the available width and expose its
   complete name through the existing tooltip and accessibility value. The
-  picker runs no animation while idle; hover and auth-state transitions use
-  the shared, Reduce Motion-aware timings.
+  picker runs no animation while idle. Hover and auth-state changes are instant.
 - **Check:** Leave Add Remote open with a long connector name and confirm no
   label moves. Hover and change auth state in normal and Reduce Motion modes;
-  require short feedback only in normal mode.
+  require instant feedback in both modes.
 
 ## Settings Row Alignment
 

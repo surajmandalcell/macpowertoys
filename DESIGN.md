@@ -68,7 +68,7 @@ menu-panel: { status-icon: 14, status-icon-ink: 11.2, width: 356, max-height-fra
 popup-menu: { padding: 5, radius: 7, item: 28, item-compact: 24, item-radius: 4, item-padding: 9, max-visible-items: 12 }
 performance: { page-switch-ms: 100, table-rows-smooth: 1000 }
 texture: { ribbon: [700, 220], ribbon-drawn: [630, 198], ribbon-opacity-dark: 0.20, ribbon-opacity-light: 0.10, grain: [240, 150], card-grain: 0.14, menu-grain: 0.11, chart-dot-cell: 4 }
-motion: { hover: 0.10, selection: 0.14, content: 0.12, idle-animation: none }
+motion: { hover: 0, selection: 0, content: 0, scroll-indicator-fade: 0.12, idle-animation: none }
 ---
 
 # MacPowerToys Design Language
