@@ -29,6 +29,7 @@ private struct MainGeneralSettings: View {
     @AppStorage("app.closeMainWindowAfterOpeningTool") private var closeMainAfterOpen = false
     @AppStorage("app.showTray") private var showTray = true
     @State private var sync = SettingsSyncManager.shared
+    @State private var shortcuts = GlobalShortcutManager.shared
     @State private var showSyncConflict = false
     @State private var loginStatus = SMAppService.mainApp.status
     @State private var loginError: String?
@@ -39,6 +40,7 @@ private struct MainGeneralSettings: View {
                 appearanceCard
                 launchCard
             }.fixedSize(horizontal: false, vertical: true)
+            shortcutCard
         }
         .onChange(of: appearance) { _, value in value.apply(); changed() }
         .onChange(of: closeMainAfterOpen) { changed() }
@@ -113,6 +115,25 @@ private struct MainGeneralSettings: View {
                         else { sync.disable() }
                     })).labelsHidden().toggleStyle(OnePlusSwitchStyle())
                 }
+            }
+        }
+    }
+
+    private var shortcutCard: some View {
+        OnePlusPanel {
+            VStack(spacing: 0) {
+                OnePlusCardHeader("Quick Access shortcut", systemImage: "keyboard")
+                OnePlusSettingRow("Enable shortcut") {
+                    Toggle("Enable Quick Access shortcut", isOn: Binding(
+                        get: { shortcuts.isEnabled(.mainPanel) },
+                        set: { shortcuts.setEnabled($0, for: .mainPanel) }
+                    )).labelsHidden().toggleStyle(OnePlusSwitchStyle())
+                }
+                OnePlusSettingRow("Keyboard shortcut", help: "Assign a shortcut to open Quick Access from any app.",
+                                  separator: false) {
+                    ShortcutRecorderField(action: .mainPanel).disabled(!shortcuts.isEnabled(.mainPanel))
+                }
+                ShortcutPermissionNotice(action: .mainPanel)
             }
         }
     }

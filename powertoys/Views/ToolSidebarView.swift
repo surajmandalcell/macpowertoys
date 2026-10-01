@@ -6,13 +6,14 @@ struct ToolSidebarView: View {
     @Binding var selectedTool: String?
     @Binding var searchText: String
     var modifiedRevision: Int
+    var searchFocusTrigger = 0
     @State private var settings = SettingsManager.shared
     @State private var hasChanges = false
     @State private var visibleTools: [any Tool] = []
 
     var body: some View {
         OnePlusSidebar(title: "MacPowerToys") {
-            OnePlusSidebarSearch(text: $searchText, alternateShortcut: "f")
+            OnePlusSidebarSearch(text: $searchText, focusTrigger: searchFocusTrigger)
         } navigation: {
             OnePlusNavRow("All tools", systemImage: "square.grid.2x2", selected: selectedTool == "all-tools") {
                 selectedTool = "all-tools"
