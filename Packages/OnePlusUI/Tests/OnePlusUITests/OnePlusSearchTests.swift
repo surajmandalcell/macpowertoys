@@ -1,9 +1,49 @@
 import AppKit
+import SwiftUI
 import XCTest
 @testable import OnePlusUI
 
 @MainActor
 final class OnePlusSearchTests: XCTestCase {
+    func testExplicitFindSelectsTheCurrentQuery() throws {
+        let root = { (trigger: Int) in OnePlusSidebarSearch(text: .constant("existing query"), focusTrigger: trigger) }
+        let host = NSHostingView(rootView: root(0))
+        let window = NSWindow(contentRect: CGRect(x: -10000, y: -10000, width: 260, height: 32),
+                              styleMask: .borderless, backing: .buffered, defer: false)
+        window.isReleasedWhenClosed = false
+        defer { window.close() }
+        window.contentView = host
+        host.layoutSubtreeIfNeeded()
+        host.rootView = root(1)
+        host.layoutSubtreeIfNeeded()
+        RunLoop.main.run(until: Date(timeIntervalSinceNow: 0.03))
+        let editor = try XCTUnwrap(window.firstResponder as? NSTextView)
+        XCTAssertEqual(editor.selectedRange(), NSRange(location: 0, length: 14))
+        XCTAssertFalse(window.isVisible)
+    }
+
+    func testSearchBridgeKeepsCompositionUntilExternalValueCanApply() throws {
+        let view = OnePlusSearchView(frame: CGRect(x: 0, y: 0, width: 260, height: 28))
+        let window = NSWindow(contentRect: view.frame, styleMask: .borderless, backing: .buffered, defer: false)
+        window.isReleasedWhenClosed = false
+        defer { window.close() }
+        window.contentView = view
+        view.field.stringValue = "before"
+        view.layoutSubtreeIfNeeded()
+        XCTAssertTrue(window.makeFirstResponder(view.field))
+        let editor = try XCTUnwrap(view.field.currentEditor() as? NSTextView)
+        var published = "before"
+        view.changed = { published = $0 }
+        editor.setMarkedText("あ", selectedRange: NSRange(location: 1, length: 0), replacementRange: NSRange(location: 0, length: 6))
+        view.updateText("external")
+        XCTAssertTrue(editor.hasMarkedText())
+        XCTAssertEqual(editor.string, "あ")
+        editor.insertText("い", replacementRange: editor.markedRange())
+        view.controlTextDidChange(Notification(name: NSControl.textDidChangeNotification, object: view.field))
+        XCTAssertEqual(editor.string, "external")
+        XCTAssertEqual(published, "external")
+    }
+
     func testSearchTextAndEditorStayCentered() throws {
         for appearance in [NSAppearance.Name.aqua, .darkAqua] {
             for height in [CGFloat(28), 32] {
