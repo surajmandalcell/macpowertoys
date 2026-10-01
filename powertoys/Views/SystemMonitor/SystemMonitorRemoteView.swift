@@ -250,7 +250,8 @@ struct TaskManagerRemoteCard: View {
                         .padding(.bottom, 8)
                 }
                 actions
-                    .padding(OnePlusMetrics.cardPadding)
+                    .padding(.horizontal, OnePlusMetrics.compactCardPadding)
+                    .padding(.vertical, OnePlusMetrics.actionSpacing)
             }
         }
         .background(SystemMonitorRemoteWindowOwner(profileID: profile.id).frame(width: 0, height: 0))
@@ -291,7 +292,8 @@ struct TaskManagerRemoteCard: View {
             OnePlusUsageBar(value: Double(diskFraction))
         }
         .padding(.horizontal, 12)
-        .frame(maxWidth: .infinity, minHeight: 67)
+        .padding(.vertical, OnePlusMetrics.actionSpacing)
+        .frame(maxWidth: .infinity)
     }
 
     private var actions: some View {
@@ -352,7 +354,8 @@ struct TaskManagerRemoteCard: View {
     }
 
     nonisolated static func shortBytes(_ value: UInt64) -> String {
-        ByteCountFormatter.string(fromByteCount: Int64(min(value, UInt64(Int64.max))), countStyle: .memory)
+        guard value > 0 else { return "0B" }
+        return ByteCountFormatter.string(fromByteCount: Int64(min(value, UInt64(Int64.max))), countStyle: .memory)
             .replacingOccurrences(of: " ", with: "")
     }
 }

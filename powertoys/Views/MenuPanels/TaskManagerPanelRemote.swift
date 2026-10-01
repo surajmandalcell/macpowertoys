@@ -96,6 +96,9 @@ struct TaskManagerRemoteMenuCard: View {
                 if state.phase == .offline { sessions.connect(profile) } else { sessions.disconnect(profile.id) }
             }
         }
+        .help(reading.map {
+            "CPU \($0.cpuPercent.map { "\(Int($0.rounded()))%" } ?? "—"), RAM \(TaskManagerRemoteCard.shortBytes($0.memoryUsed))/\(TaskManagerRemoteCard.shortBytes($0.memoryTotal)), Network ↓\($0.download.map(TaskManagerRemoteCard.shortRate) ?? "—")/s ↑\($0.upload.map(TaskManagerRemoteCard.shortRate) ?? "—")/s"
+        } ?? "No current reading")
         .accessibilityElement(children: .contain)
         .accessibilityLabel("\(profile.name), \(profile.platform.rawValue), \(state.phase.rawValue)")
     }
