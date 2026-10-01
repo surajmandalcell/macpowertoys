@@ -16,6 +16,22 @@ enum StatusItemIcon {
         return image
     }
 
+    static func attachmentSymbol(_ name: String) -> NSImage? {
+        let key = "attachment." + name
+        if let image = symbols[key] { return image }
+        guard let source = symbol(name) else { return nil }
+        let image = NSImage(size: source.size, flipped: false) { bounds in
+            source.draw(in: bounds)
+            NSColor.labelColor.setFill()
+            bounds.fill(using: .sourceIn)
+            return true
+        }
+        // Text attachments do not apply native template tint. Resolve it on each draw.
+        image.cacheMode = .never
+        symbols[key] = image
+        return image
+    }
+
     private static func normalized(_ source: NSImage) -> NSImage {
         let side = OnePlusMenuMetrics.statusIconSize
         let size = NSSize(width: side, height: side)

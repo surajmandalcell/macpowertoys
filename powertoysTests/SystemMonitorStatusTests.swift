@@ -57,6 +57,30 @@ final class SystemMonitorStatusTests: XCTestCase {
         controller.configure(settings: settings)
     }
 
+    func testAttachmentTintFollowsNativeAppearanceWithoutChangingGeometry() throws {
+        let image = try XCTUnwrap(StatusItemIcon.attachmentSymbol("cpu"))
+        XCTAssertFalse(image.isTemplate)
+        var brightness: [CGFloat] = []
+        for name in [NSAppearance.Name.aqua, .darkAqua] {
+            let bitmap = try XCTUnwrap(NSBitmapImageRep(bitmapDataPlanes: nil, pixelsWide: 28, pixelsHigh: 28,
+                bitsPerSample: 8, samplesPerPixel: 4, hasAlpha: true, isPlanar: false,
+                colorSpaceName: .deviceRGB, bytesPerRow: 0, bitsPerPixel: 0))
+            bitmap.size = image.size
+            NSAppearance(named: name)!.performAsCurrentDrawingAppearance {
+                NSGraphicsContext.saveGraphicsState()
+                NSGraphicsContext.current = NSGraphicsContext(bitmapImageRep: bitmap)
+                image.draw(in: NSRect(origin: .zero, size: image.size))
+                NSGraphicsContext.restoreGraphicsState()
+            }
+            let colors = (0..<28).flatMap { y in (0..<28).compactMap { x in
+                bitmap.colorAt(x: x, y: y)?.usingColorSpace(.deviceRGB)
+            }}.filter { $0.alphaComponent > 0.5 }
+            XCTAssertFalse(colors.isEmpty)
+            brightness.append(colors.map(\.redComponent).reduce(0, +) / CGFloat(colors.count))
+        }
+        XCTAssertGreaterThan(brightness[1] - brightness[0], 0.5)
+    }
+
     private func sample(at seconds: TimeInterval, cpu: Double?, unavailable: Set<SystemMonitorMenuMetric> = []) -> SystemMonitorSample {
         .init(timestamp: Date(timeIntervalSince1970: seconds), cpuUsage: cpu,
               memoryUsed: 6_000_000_000, memoryTotal: 10_000_000_000, gpuUsage: nil,

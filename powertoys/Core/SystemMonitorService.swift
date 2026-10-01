@@ -1780,7 +1780,7 @@ final class SystemMonitorMenuController: NSObject {
         state.map { "\($0.metric.title), \($0.value)" + ($0.stale ? ", Stale reading" : "") }.joined(separator: "; ")
     }
     private func image(symbol: String, description: String) -> NSImage? {
-        StatusItemIcon.symbol(symbol)
+        StatusItemIcon.attachmentSymbol(symbol)
     }
     private func makeStatusItem(autosaveName: String) -> NSStatusItem {
         let item = NSStatusBar.system.statusItem(withLength: NSStatusItem.variableLength)
