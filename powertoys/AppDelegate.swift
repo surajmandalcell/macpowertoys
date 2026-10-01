@@ -44,15 +44,6 @@ class AppDelegate: NSObject, NSApplicationDelegate {
         "text-extractor", "input-devices", "system-care", "disk-explorer", "system-monitor", "nettoys", "switch", "mac-tweaks",
     ]
 
-    static func requiresManualURLRouting(_ url: URL) -> Bool {
-        guard DeepLinkHandler.isSupportedScheme(url.scheme), url.host == "open" else {
-            return true
-        }
-        let toolID = url.pathComponents.first { $0 != "/" }
-        if toolID == "nettoys", url.query != nil { return true }
-        return toolID.map { !nativeSceneToolIDs.contains($0) } ?? true
-    }
-
     @MainActor
     func configureApplication(startup: @escaping @MainActor () async -> Void) {
         applicationStartup = startup
@@ -219,7 +210,7 @@ class AppDelegate: NSObject, NSApplicationDelegate {
         startApplicationIfReady()
         if !AppRuntime.isUITesting && !CommandLine.arguments.contains("--open") && (AppRuntime.isRunningTests
             || Self.shouldOpenMainWindowAfterLaunch(userInfo: notification.userInfo)) {
-            DeepLinkHandler.shared.handle(url: URL(string: "macpowertoys://open/main")!)
+            ToolActionRouter.shared.open(toolID: "main")
         }
     }
 
@@ -422,18 +413,13 @@ class AppDelegate: NSObject, NSApplicationDelegate {
 
     func application(_ application: NSApplication, open urls: [URL]) {
         for url in urls {
-            if Self.requiresManualURLRouting(url) {
-                MacPowerToysApp.handleIncomingURL(url)
-            } else if let route = OpenToolRoute.parse(url) {
-                OnePlusPanelTimings.shared.begin(panel: "window.\(route.tool)", operation: .windowOpen,
-                                                input: "native-url")
-            }
+            MacPowerToysApp.handleIncomingURL(url)
         }
     }
 
     func applicationShouldHandleReopen(_ sender: NSApplication, hasVisibleWindows flag: Bool) -> Bool {
         if !flag {
-            DeepLinkHandler.shared.handle(url: URL(string: "macpowertoys://open/main")!)
+            ToolActionRouter.shared.open(toolID: "main")
         }
         return true
     }

@@ -15,23 +15,20 @@ final class AppDelegateTests: XCTestCase {
         ]))
     }
 
-    func testSwiftUIWindowLinksUseOnlyNativeSceneRouting() {
-        for toolID in [
-            "main", "rclone", "logs", "awake", "color-picker",
-            "text-extractor", "input-devices", "system-care", "system-monitor", "nettoys",
-        ] {
-            let url = URL(string: "macpowertoys://open/\(toolID)")!
-            XCTAssertFalse(AppDelegate.requiresManualURLRouting(url), toolID)
-        }
-
-        for url in [
-            URL(string: "macpowertoys://open/ruler")!,
-            URL(string: "macpowertoys://open/portman")!,
-            URL(string: "macpowertoys://run/awake.toggle")!,
-            URL(string: "macpowertoys://open/nettoys?targets=192.168.1.0%2F24&ports=22%2C443")!,
-        ] {
-            XCTAssertTrue(AppDelegate.requiresManualURLRouting(url), url.absoluteString)
-        }
+    func testExternalURLsCannotBypassBackgroundIntentThroughSwiftUIScenes() throws {
+        let root = URL(fileURLWithPath: #filePath).deletingLastPathComponent().deletingLastPathComponent()
+        let scenes = try String(contentsOf: root.appendingPathComponent("powertoys/powertoysApp.swift"), encoding: .utf8)
+        let routing = try String(contentsOf: root.appendingPathComponent("powertoys/Core/ToolPageRouter.swift"), encoding: .utf8)
+        let delegate = try String(contentsOf: root.appendingPathComponent("powertoys/AppDelegate.swift"), encoding: .utf8)
+        let sceneCount = scenes.components(separatedBy: ".handlesExternalEvents(matching:").count - 1
+        XCTAssertEqual(sceneCount, 13)
+        XCTAssertEqual(scenes.components(separatedBy: ".handlesExternalEvents(matching: [])").count - 1, sceneCount,
+                       "All cold tool and page URLs must use the background-aware router.")
+        XCTAssertTrue(routing.contains(".handlesExternalEvents(preferring: [], allowing: [])"),
+                      "Existing scenes must not take focus for external URLs either.")
+        XCTAssertTrue(routing.contains(".onOpenURL { DeepLinkHandler.shared.handle(url: $0) }"))
+        XCTAssertFalse(delegate.contains("requiresManualURLRouting"))
+        XCTAssertTrue(delegate.contains("for url in urls {\n            MacPowerToysApp.handleIncomingURL(url)\n        }"))
     }
 
     func testNetToysDeepLinkParsesValidatedScanPrefill() {

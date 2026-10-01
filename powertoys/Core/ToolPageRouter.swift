@@ -43,21 +43,6 @@ final class ToolPageRouter {
     static let shared = ToolPageRouter()
     private var pending: [String: ToolPageRequest] = [:]
 
-    func handleNativeURL(_ url: URL, tool: String) {
-        // SwiftUI can deliver diagnostics to a scene whose tool ID occurs in the URL.
-        if DiagnosticsRoute.parse(url) != nil {
-            DeepLinkHandler.shared.handle(url: url)
-            return
-        }
-        // SwiftUI opens native scenes itself. Deliver their page without reopening.
-        guard !AppDelegate.requiresManualURLRouting(url),
-              let route = OpenToolRoute.parse(url), route.tool == tool else { return }
-        if !OnePlusPanelTimings.shared.hasPending("window.\(tool)") {
-            OnePlusPanelTimings.shared.begin(panel: "window.\(tool)", operation: .windowOpen, input: "scene-url")
-        }
-        if let page = route.page { post(tool: tool, page: page) }
-    }
-
     func post(tool: String, page: String, recordTiming: Bool = true) {
         if recordTiming {
             OnePlusPanelTimings.shared.begin(panel: "page.\(tool)", operation: .pageSwitch,
@@ -96,9 +81,10 @@ private struct OpenToolPageModifier: ViewModifier {
 }
 
 extension View {
-    func onNativeToolPageURL(_ tool: String) -> some View {
+    func onToolWindowURL(_ tool: String) -> some View {
         onePlusWindowTimings(tool)
-            .onOpenURL { ToolPageRouter.shared.handleNativeURL($0, tool: tool) }
+            .handlesExternalEvents(preferring: [], allowing: [])
+            .onOpenURL { DeepLinkHandler.shared.handle(url: $0) }
     }
 
     func onOpenToolPage(_ tool: String?, matching page: String? = nil,

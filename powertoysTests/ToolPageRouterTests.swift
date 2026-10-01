@@ -80,21 +80,15 @@ struct ToolPageRouterTests {
         }
     }
 
-    @MainActor @Test func nativeSceneRoutesKeepPendingPagesWithoutReopening() throws {
+    @MainActor @Test func pageRequestsStayScopedAndAreConsumedOnce() {
         let router = ToolPageRouter()
-        let url = try #require(URL(string: "macpowertoys://open/rclone/remote/My%20Drive"))
-        router.handleNativeURL(url, tool: "main")
-        #expect(router.take(tool: "rclone") == nil)
-        router.handleNativeURL(url, tool: "rclone")
+        router.post(tool: "rclone", page: "remote/My Drive", recordTiming: false)
+        #expect(router.take(tool: "main") == nil)
         #expect(router.take(tool: "rclone")?.page == "remote/My Drive")
         #expect(router.take(tool: "rclone") == nil)
-        router.handleNativeURL(try #require(URL(string: "powertoys://open/rclone")), tool: "rclone")
-        #expect(router.take(tool: "rclone") == nil)
-        router.handleNativeURL(try #require(URL(string: "powertoys://open/nettoys/scan?targets=localhost")), tool: "nettoys")
-        #expect(router.take(tool: "nettoys") == nil, "The app delegate owns scan-prefill URLs.")
     }
 
-    @MainActor @Test func nativeSceneDiagnosticsReachMeasuredBackgroundPanels() async throws {
+    @MainActor @Test func externalDiagnosticsReachMeasuredBackgroundPanels() async throws {
         let panels = DiagnosticsMenuPanels.shared
         panels.close(clearCache: true)
         let factory = panels.makeCaptureContent
@@ -109,7 +103,6 @@ struct ToolPageRouterTests {
                 else { defaults.removeObject(forKey: key) }
             }
         }
-        let router = ToolPageRouter()
         var built: [DiagnosticsPanel] = []
         var resize: ((CGFloat) -> Void)?
         panels.makeCaptureContent = { panel, _, onHeightChange in
@@ -123,7 +116,7 @@ struct ToolPageRouterTests {
             for panel in [DiagnosticsPanel.main, .systemMonitor] {
                 let url = try #require(URL(string: "\(scheme)://diagnostics/open-panel/\(panel.rawValue)?tab=home"))
                 defaults.set(panel == .main ? "rclone" : "memory", forKey: panel == .main ? keys[0] : keys[1])
-                router.handleNativeURL(url, tool: panel.rawValue)
+                DeepLinkHandler.shared.handle(url: url)
                 for _ in 0..<200 where panels.captureWindow == nil {
                     try await Task.sleep(for: .milliseconds(5))
                 }
@@ -138,7 +131,7 @@ struct ToolPageRouterTests {
                 #expect(window.contentView?.frame.size == NSSize(width: 356, height: 240))
                 #expect(window.frame.maxY == top)
                 #expect(NSWorkspace.shared.frontmostApplication?.processIdentifier == foreground)
-                #expect(router.take(tool: panel.rawValue) == nil)
+                #expect(ToolPageRouter.shared.take(tool: panel.rawValue) == nil)
                 panels.close(clearCache: true)
             }
         }
