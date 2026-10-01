@@ -12,13 +12,11 @@ struct MacTweaksNotice: Equatable {
 struct MacTweaksPanel<Content: View>: View {
     let title: String
     let glyph: MacTweaksGlyphName
-    let fillsHeight: Bool
     let content: Content
 
-    init(_ title: String, glyph: MacTweaksGlyphName, fillsHeight: Bool = false, @ViewBuilder content: () -> Content) {
+    init(_ title: String, glyph: MacTweaksGlyphName, @ViewBuilder content: () -> Content) {
         self.title = title
         self.glyph = glyph
-        self.fillsHeight = fillsHeight
         self.content = content()
     }
 
@@ -28,9 +26,8 @@ struct MacTweaksPanel<Content: View>: View {
                 OnePlusCardHeader(title, systemImage: glyph.systemImage)
                 content
             }
-            .frame(maxHeight: fillsHeight ? .infinity : nil, alignment: .topLeading)
         }
-        .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topLeading)
+        .frame(maxWidth: .infinity, alignment: .topLeading)
     }
 }
 
@@ -257,5 +254,43 @@ enum MacTweaksPreferenceValue {
         if selection == -1 { return "Default\(field.defaultLabel.map { " (\($0))" } ?? "")" }
         if field.choices.indices.contains(selection) { return field.choices[selection].label }
         return "Custom value"
+    }
+}
+
+enum MacTweaksPalette {
+    static let window = OnePlusColor.window
+    static let sidebar = OnePlusColor.sidebar
+    static let panel = OnePlusColor.panel
+    static let panelRaised = OnePlusColor.raised
+    static let line = OnePlusColor.line
+    static let text = OnePlusColor.ink
+    static let secondary = OnePlusColor.secondary
+    static let muted = OnePlusColor.muted
+    static let accent = OnePlusColor.accent
+}
+
+enum MacTweaksGlyphName: Hashable {
+    case input, dock, finder, windows, screenshots, apps, power, menubar
+    case motion, animation, layers, priority, microphone, keyboard
+}
+
+extension MacTweaksGlyphName {
+    var systemImage: String {
+        switch self {
+        case .dock: "dock.rectangle"
+        case .input: "slider.horizontal.3"
+        case .finder: "folder"
+        case .windows: "macwindow.on.rectangle"
+        case .screenshots: "camera.viewfinder"
+        case .apps: "square.grid.2x2"
+        case .power: "bolt"
+        case .menubar: "menubar.rectangle"
+        case .motion: "gauge.with.dots.needle.33percent"
+        case .animation: "sparkles.rectangle.stack"
+        case .layers: "square.3.layers.3d"
+        case .priority: "arrow.up.arrow.down"
+        case .microphone: "mic"
+        case .keyboard: "keyboard"
+        }
     }
 }

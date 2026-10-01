@@ -102,7 +102,7 @@ public struct OnePlusWindowCanvas: Equatable, Sendable {
     public static let rclone = Self(width: 1240, height: 840, sidebarWidth: 216)
     public static let systemCare = Self(width: 1240, height: 840)
     public static let switchAccounts = Self(width: 1240, height: 840)
-    public static let macTweaks = Self(width: 1120, height: 826)
+    public static let macTweaks = Self(width: 820, height: 660)
     public static let systemMonitor = Self(width: 1080, height: 660, density: .compact)
     public static let logs = Self(width: 1080, height: 660)
     public static let inputDevices = Self(width: 1080, height: 660)

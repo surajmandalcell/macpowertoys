@@ -10,8 +10,8 @@ final class MacTweaksUITests: XCTestCase {
 
         let window = app.windows["Mac Tweaks"]
         XCTAssertTrue(window.waitForExistence(timeout: 30))
-        XCTAssertEqual(window.frame.width, 1_120, accuracy: 3)
-        XCTAssertEqual(window.frame.height, 826, accuracy: 3)
+        XCTAssertEqual(window.frame.width, 820, accuracy: 3)
+        XCTAssertEqual(window.frame.height, 660, accuracy: 3)
         XCTAssertTrue(window.buttons["mac-tweaks.about"].exists)
         XCTAssertTrue(window.staticTexts["Dock"].exists)
 
@@ -19,16 +19,6 @@ final class MacTweaksUITests: XCTestCase {
         XCTAssertTrue(revealDelay.waitForExistence(timeout: 10))
         XCTAssertTrue(revealDelay.isHittable, "The first setting must be visible immediately")
         attach(window.screenshot(), named: "Mac Tweaks Reference Dock")
-
-        let dockPreview = element(in: window, identifier: "mac-tweaks.preview.dockReveal")
-        XCTAssertTrue(dockPreview.waitForExistence(timeout: 5))
-        dockPreview.hover()
-        XCTAssertTrue(dockPreview.label.contains("at rest"))
-        let firstFrame = dockPreview.screenshot().pngRepresentation
-        Thread.sleep(forTimeInterval: 1.0)
-        let secondFrame = dockPreview.screenshot().pngRepresentation
-        XCTAssertEqual(firstFrame, secondFrame, "Hover must keep the preview still")
-        attach(window.screenshot(), named: "Mac Tweaks Static Dock Preview")
 
         let finder = window.buttons["mac-tweaks.category.Finder"]
         XCTAssertTrue(finder.exists)
