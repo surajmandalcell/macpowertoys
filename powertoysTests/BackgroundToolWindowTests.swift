@@ -63,6 +63,9 @@ final class BackgroundToolWindowTests: XCTestCase {
             activate: { XCTFail("Cold first route must not activate") },
             openWindow: { _ in XCTFail("Cold first route must not call openWindow") })
         for explicit in [false, true] {
+            // The presentation spy never resets AppKit's closed-window state.
+            window.orderBack(nil)
+            XCTAssertFalse(window.isKeyWindow)
             window.performClose(nil)
             host.layoutSubtreeIfNeeded()
             RunLoop.main.run(until: Date(timeIntervalSinceNow: 0.05))
@@ -114,6 +117,8 @@ final class BackgroundToolWindowTests: XCTestCase {
                     createWindow: { _ in XCTFail("Applet must keep its scene"); return nil },
                     activate: { XCTFail("Background applet must not activate") },
                     openWindow: { _ in XCTFail("Background applet must not call openWindow") })
+                window.orderBack(nil)
+                XCTAssertFalse(window.isKeyWindow)
                 window.performClose(nil)
                 RunLoop.main.run(until: Date(timeIntervalSinceNow: 0.05))
                 XCTAssertNil(probe.payload)
