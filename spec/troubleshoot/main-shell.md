@@ -178,6 +178,26 @@
   and checks equal heights below the old 151pt height, plus a four-card row.
   Both compile gates pass; hosted execution and signed recapture remain.
 
+## Embedded Enablement And Unboxed Group Insets, 2026-10-01
+
+- **Symptom:** Signed `43ce0eb9` shows two enable switches on the Diskman
+  and Switch tool pages. Modified titles, labels, and Reset actions retain
+  a 16pt inset after their card boundaries were removed.
+- **Cause:** Embedded settings repeat the same enabled binding as the shared
+  page header. Unboxed rows still inherit the default card padding.
+- **Invariant:** The shared header owns enablement on embedded tool pages.
+  Keep the standalone enable controls. Embedded Switch shows percentage
+  usage in one direct 44pt row with zero card padding. Modified groups use
+  zero row padding and no title inset. Keep 8pt action gaps, full-row hover,
+  and the 16pt internal padding of actual cards.
+- **Check:** Callers and final syntax checks pass. The existing embedding
+  check compiles; the single tests-mode gate passes at `5ef050e8` with zero
+  compiler errors. Hosted execution and signed recapture remain. Require
+  Diskman Display at y114, Modified titles and labels at x240/x736, and Reset
+  ending at x720/x1216 in both appearances. Check header and standalone
+  enablement, percentage usage, Reset, and row hover. Fixes: `5ef050e8` and
+  `92466a13`. Log: `tmp/redesign/logs/main-r12-tests.log`.
+
 ## Compact Tool Enablement
 
 - **Symptom:** Tool cards or detail pages spend one row on an `Enabled` label
