@@ -635,15 +635,17 @@ private struct FileTreeRowView: View {
                     .onePlusText(.caption)
                     .foregroundStyle(OnePlusColor.muted)
 
-            } else if isHovering {
+            } else {
                 Button(action: onIgnore) {
                     Image(systemName: "eye.slash")
                         .onePlusText(.caption)
                         .foregroundStyle(OnePlusColor.secondary)
                         .contentShape(Rectangle())
                 }
-                .buttonStyle(.plain)
-                .focusEffectDisabled(!OnePlusFocusPolicy.shared.showsFocus)
+                .buttonStyle(OnePlusButtonStyle(.icon, size: .small))
+                .opacity(isHovering || OnePlusFocusPolicy.shared.showsFocus ? 1 : 0)
+                .allowsHitTesting(isHovering || OnePlusFocusPolicy.shared.showsFocus)
+                .accessibilityHidden(!isHovering && !OnePlusFocusPolicy.shared.showsFocus)
                 .accessibilityLabel("Add to ignore patterns")
             }
 
