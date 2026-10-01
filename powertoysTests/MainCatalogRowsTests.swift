@@ -6,13 +6,9 @@ import XCTest
 final class MainCatalogRowsTests: XCTestCase {
     func testCatalogHasItsFilteredRowsBeforeAppearance() throws {
         let view = AllToolsGridView(selectedTool: .constant("all-tools"), query: "")
-        let state = try XCTUnwrap(Mirror(reflecting: view).children.first { $0.label == "_visibleTools" }?.value
-            as? State<[any Tool]>)
-        XCTAssertEqual(state.wrappedValue.count, ToolRegistry.allTools.count)
+        XCTAssertEqual(view.visibleTools.count, ToolRegistry.allTools.count)
         let noMatches = AllToolsGridView(selectedTool: .constant("all-tools"), query: "no.tool.has.this.name")
-        let filtered = try XCTUnwrap(Mirror(reflecting: noMatches).children.first { $0.label == "_visibleTools" }?.value
-            as? State<[any Tool]>)
-        XCTAssertTrue(filtered.wrappedValue.isEmpty)
+        XCTAssertTrue(noMatches.visibleTools.isEmpty)
     }
 
     func testFirstFrameRowsAndCountsUseTheCurrentFilterAndPreferences() throws {

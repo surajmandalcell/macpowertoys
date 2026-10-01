@@ -53,8 +53,11 @@ final class SwitchWorkspaceTests: XCTestCase {
             .frame(width: 992))
         host.layoutSubtreeIfNeeded()
         let pendingHeight = host.fittingSize.height
-        // 40pt header, 82pt grid, two 16pt insets, and 66pt totals.
-        XCTAssertEqual(pendingHeight, 220, accuracy: 1)
+        let totals = NSHostingView(rootView: OnePlusStatCell("Today", value: "-"))
+        totals.layoutSubtreeIfNeeded()
+        // Reserve all chart rows and insets; totals use the current shared type.
+        XCTAssertEqual(pendingHeight, 40 + 7 * 10 + 6 * 2 + 2 * 16 + totals.fittingSize.height,
+                       accuracy: 1)
 
         host.rootView = SwitchActivityGrid(rows: snapshot.dailyUsage, updatedAt: snapshot.fetchedAt)
             .frame(width: 992)

@@ -1,5 +1,11 @@
 # Switch applet request list
 
+CI repair, run 62, 2026-10-01: Daily activity must retain identical bounds
+while loading, refreshing, empty, or failed. Its check measures the totals
+from the current shared stat cell instead of requiring an old 66pt row.
+All seven chart rows and both 16pt insets remain required. Hosted execution
+remains open. Report: `tmp/redesign/logs/w7-ci-fix.md`.
+
 Switch remains a separately installable macOS app. MacPowerToys embeds the
 versioned `AIManagerCore` Swift package from the Switch repository and provides
 its own lightweight SwiftUI applet. Installing Switch.app is optional. Both apps

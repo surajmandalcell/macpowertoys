@@ -1,5 +1,11 @@
 # Portman request list
 
+CI repair, run 62, 2026-10-01: DESIGN.md requires invalid text to stay in
+its field with an error. The hosted cleanup check must retain the `99`
+draft and range error across tabs, then permit a valid correction. The
+stepper must save only valid integers. Hosted execution remains open.
+Report: `tmp/redesign/logs/w7-ci-fix.md`.
+
 ## Production audit, 2026-10-01
 
 S5 and A4-A7 remain in progress until the orchestrator installs the final
