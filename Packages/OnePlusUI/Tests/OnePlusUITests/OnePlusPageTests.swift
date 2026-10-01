@@ -1,10 +1,50 @@
 import AppKit
+import Observation
 import SwiftUI
 import XCTest
 @testable import OnePlusUI
 
 @MainActor
 final class OnePlusPageTests: XCTestCase {
+    func testSelectedTabUnderlineSurvivesInitialEntryAndTabChanges() throws {
+        for appearance in [NSAppearance.Name.aqua, .darkAqua] {
+            let state = TabEntryState()
+            let host = NSHostingView(rootView: TabEntryPage(state: state))
+            let window = NSWindow(contentRect: CGRect(x: -10000, y: -10000, width: 1240, height: 840),
+                                  styleMask: [.titled, .fullSizeContentView], backing: .buffered, defer: false)
+            window.isReleasedWhenClosed = false
+            window.titleVisibility = .hidden
+            window.titlebarAppearsTransparent = true
+            window.appearance = NSAppearance(named: appearance)
+            window.contentView = host
+            defer { window.close() }
+            host.layoutSubtreeIfNeeded()
+            for selection in ["tasks", "history", "tasks"] {
+                state.selection = selection
+                state.visible = true
+                RunLoop.main.run(until: Date(timeIntervalSinceNow: 0.05))
+                host.layoutSubtreeIfNeeded()
+                let bitmap = try XCTUnwrap(host.bitmapImageRepForCachingDisplay(in: host.bounds))
+                host.cacheDisplay(in: host.bounds, to: bitmap)
+                let scale = CGFloat(bitmap.pixelsWide) / host.bounds.width
+                var underline: [CGPoint] = []
+                for y in 94..<100 { for x in 224..<350 {
+                    let color = try XCTUnwrap(bitmap.colorAt(x: Int(CGFloat(x) * scale),
+                        y: Int(CGFloat(y) * scale))?.usingColorSpace(.sRGB))
+                    if color.redComponent > 0.6 && color.redComponent > color.greenComponent * 1.6
+                        && color.redComponent > color.blueComponent * 1.6 {
+                        underline.append(CGPoint(x: x, y: y))
+                    }
+                } }
+                XCTAssertEqual(underline.map(\.y).min(), 96, "Initial entry and tab changes must paint the 2pt underline")
+                XCTAssertEqual(underline.map(\.y).max(), 97)
+                XCTAssertEqual(underline.map(\.x).min(), selection == "tasks" ? 224 : 278)
+                XCTAssertEqual(underline.map(\.x).max(), selection == "tasks" ? 255 : 318)
+                XCTAssertEqual(underline.count, selection == "tasks" ? 64 : 82)
+            }
+        }
+    }
+
     func testPairedPanelsKeepTheirNaturalHeightAndTopAlignment() throws {
         let host = NSHostingView(rootView: HStack(alignment: .top, spacing: 16) {
             OnePlusPanel {
@@ -275,6 +315,12 @@ final class OnePlusPageTests: XCTestCase {
     }
 }
 
+@MainActor @Observable
+private final class TabEntryState {
+    var visible = false
+    var selection = "tasks"
+}
+
 @MainActor private func descendants(_ view: NSView) -> [NSView] {
     [view] + view.subviews.flatMap(descendants)
 }
@@ -288,4 +334,25 @@ private struct PageRegionProbe: NSViewRepresentable {
         return view
     }
     func updateNSView(_ nsView: NSView, context: Context) {}
+}
+
+@MainActor
+private struct TabEntryPage: View {
+    let state: TabEntryState
+    var body: some View {
+        OnePlusWindowRoot(canvas: .systemCare) {
+            Color.clear
+        } content: {
+            if state.visible {
+                OnePlusPage(scrolls: false) {
+                    OnePlusPageHeader(title: "Maintenance", subtitle: "Run advanced tasks in Terminal.")
+                } tabs: {
+                    OnePlusTabStrip(tabs: [.init("tasks", "Tasks"), .init("history", "History")],
+                        selection: Binding(get: { state.selection }, set: { state.selection = $0 })) {
+                        if state.selection == "history" { Button("Refresh") {} }
+                    }
+                } content: { Text("Mole") }
+            }
+        }.buttonStyle(OnePlusButtonStyle())
+    }
 }
