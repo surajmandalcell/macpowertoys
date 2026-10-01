@@ -27,28 +27,8 @@ struct MacPowerToysApp: App {
         )
     }
 
-    let modelContainer: ModelContainer
-
     init() {
         PortmanShortcuts.updateAppShortcutParameters()
-        do {
-            let started = ContinuousClock.now
-            let schema = Schema([LogEntry.self, TransferRecord.self])
-            let config: ModelConfiguration
-            if AppRuntime.isUITesting || !AppInstanceCoordinator.shared.ownsInstance {
-                config = ModelConfiguration(schema: schema, isStoredInMemoryOnly: true)
-            } else {
-                AppIdentity.migrateLegacyData()
-                AppDataLocation.migrateLegacyStoreIfNeeded()
-                config = ModelConfiguration(schema: schema, url: AppDataLocation.storeURL)
-            }
-            NSLog("Startup migrations completed in %@", String(describing: started.duration(to: .now)))
-            let containerStarted = ContinuousClock.now
-            modelContainer = try ModelContainer(for: schema, configurations: [config])
-            NSLog("Startup ModelContainer created in %@", String(describing: containerStarted.duration(to: .now)))
-        } catch {
-            fatalError("Failed to create ModelContainer: \(error)")
-        }
     }
 
     @MainActor
@@ -56,7 +36,7 @@ struct MacPowerToysApp: App {
         DiagnosticsMenuPanels.shared.makeCaptureContent = { panel, profiles, resize in
             switch panel {
             case .main:
-                AnyView(TrayPopoverView(diagnostic: true).utilityMotionPolicy().modelContainer(modelContainer)
+                AnyView(TrayPopoverView(diagnostic: true).utilityMotionPolicy()
                     .environment(\.self, sceneEnvironment))
             case .systemMonitor:
                 AnyView(SystemMonitorMenuPopoverView(remoteProfiles: profiles, diagnostic: true, onPreferredHeight: resize)
@@ -67,15 +47,17 @@ struct MacPowerToysApp: App {
         appearance.apply()
         appDelegate.configureApplication {
             if AppRuntime.isUITesting {
+                await AppInitializer.shared.openStorage()
                 DeepLinkHandler.shared.setOpenWindowAction(openWindow)
                 DeepLinkHandler.shared.handleCLIArguments()
                 return
             }
             guard !AppRuntime.isRunningTests else {
+                await AppInitializer.shared.openStorage()
                 DeepLinkHandler.shared.setOpenWindowAction(openWindow)
                 return
             }
-            await AppInitializer.shared.initialize(modelContext: modelContainer.mainContext) {
+            await AppInitializer.shared.initialize {
                 appearance.apply()
                 DeepLinkHandler.shared.setOpenWindowAction(openWindow)
                 DeepLinkHandler.shared.handleCLIArguments()
@@ -88,12 +70,12 @@ struct MacPowerToysApp: App {
 
         Window("MacPowerToys", id: "main") {
             MainWindowView()
+                .modifier(AppStorageRecovery())
                 .utilityMotionPolicy()
                 .environment(\.toolWindowID, "main")
                 .onePlusFixedCanvas(.main)
                 .onNativeToolPageURL("main")
         }
-        .modelContainer(modelContainer)
         .windowStyle(.hiddenTitleBar)
         .defaultSize(OnePlusWindowCanvas.main.size)
         .windowResizability(.contentSize)
@@ -106,12 +88,12 @@ struct MacPowerToysApp: App {
         }
 
         Window("Cloud Sync", id: "rclone") {
-            RcloneWindowView()
-                .utilityMotionPolicy()
-                .onePlusFixedCanvas(.rclone)
-                .onNativeToolPageURL("rclone")
+            AppStorageContent {
+                RcloneWindowView()
+                    .utilityMotionPolicy()
+            }
+            .onNativeToolPageURL("rclone")
         }
-        .modelContainer(modelContainer)
         .defaultSize(OnePlusWindowCanvas.rclone.size)
         .windowResizability(.contentSize)
         .windowStyle(.hiddenTitleBar)
@@ -124,7 +106,6 @@ struct MacPowerToysApp: App {
                 .onePlusFixedCanvas(.logs)
                 .onNativeToolPageURL("logs")
         }
-        .modelContainer(modelContainer)
         .defaultSize(OnePlusWindowCanvas.logs.size)
         .windowResizability(.contentSize)
         .windowStyle(.hiddenTitleBar)
@@ -262,8 +243,8 @@ struct MacPowerToysApp: App {
 
         MenuBarExtra(isInserted: trayBinding) {
             TrayPopoverView()
+                .modifier(AppStorageRecovery())
                 .utilityMotionPolicy()
-                .modelContainer(modelContainer)
                 .background(DiagnosticsMainMenuWindow())
         } label: {
             Image(nsImage: StatusItemIcon.main)
@@ -274,6 +255,50 @@ struct MacPowerToysApp: App {
                 .accessibilityIdentifier("MenuBarIcon")
         }
         .menuBarExtraStyle(.window)
+    }
+}
+
+private struct AppStorageRecovery: ViewModifier {
+    private var store: AppModelStore { AppInitializer.shared.modelStore }
+
+    func body(content: Content) -> some View {
+        content.alert("Cannot open saved data", isPresented: Binding(
+            get: { store.showsRecovery }, set: { store.showsRecovery = $0 }
+        )) {
+            Button("Retry") { Task { await AppInitializer.shared.openStorage() } }
+            Button("Reveal Data Folder") { NSWorkspace.shared.open(AppDataLocation.directory) }
+            Button("Keep open", role: .cancel) {}
+        } message: {
+            Text(store.errorMessage ?? "The data store could not be opened.")
+        }
+    }
+}
+
+private struct AppStorageContent<Content: View>: View {
+    @ViewBuilder let content: () -> Content
+    private var store: AppModelStore { AppInitializer.shared.modelStore }
+
+    var body: some View {
+        Group {
+            if let container = store.container {
+                content().modelContainer(container)
+            } else if let error = store.errorMessage {
+                VStack(spacing: OnePlusMetrics.contentGap) {
+                    Text("Cannot open saved data").onePlusText(.sectionTitle)
+                    Text(error).onePlusText(.row).textSelection(.enabled)
+                    HStack {
+                        Button("Retry") { Task { await AppInitializer.shared.openStorage() } }
+                        Button("Reveal Data Folder") { NSWorkspace.shared.open(AppDataLocation.directory) }
+                    }
+                    .buttonStyle(OnePlusButtonStyle(.neutral))
+                }
+                .padding(OnePlusMetrics.gutter)
+            } else {
+                ProgressView("Opening saved data")
+            }
+        }
+        .modifier(AppStorageRecovery())
+        .onePlusFixedCanvas(.rclone)
     }
 }
 
