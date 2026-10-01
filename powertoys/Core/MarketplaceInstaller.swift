@@ -122,7 +122,8 @@ actor MarketplaceInstaller {
     func install(
         _ manifest: MarketplaceToolManifest,
         sourceID: String,
-        sourceURL: URL
+        sourceURL: URL,
+        beforeActivation: @MainActor @Sendable () -> Void = {}
     ) async throws -> MarketplaceReceipt {
         guard Self.architectureSupported(declared: manifest.artifact.architectures) else {
             throw MarketplaceInstallError.architectureUnsupported
@@ -157,6 +158,8 @@ actor MarketplaceInstaller {
             throw MarketplaceInstallError.bundleIDMismatch(bundleID)
         }
 
+        try Task.checkCancellation()
+        await beforeActivation()
         try await activate(appURL: appURL, toolID: manifest.id)
         return MarketplaceReceipt(
             manifest: manifest,

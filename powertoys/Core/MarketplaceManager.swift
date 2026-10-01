@@ -176,6 +176,7 @@ final class MarketplaceManager {
     private let hostEnvironment: HostEnvironment
     private let fetch: CatalogFetcher
     private let installerAdapters: InstallerAdapters
+    private let terminateRunningApplications: @MainActor @Sendable (String) -> Void
     private let uninstallHandler: (@MainActor (MarketplaceReceipt) async throws -> Void)?
     private var installerInstance: MarketplaceInstaller?
 
@@ -185,6 +186,11 @@ final class MarketplaceManager {
         hostEnvironment: HostEnvironment = .current,
         fetch: CatalogFetcher? = nil,
         installerAdapters: InstallerAdapters = .live,
+        terminateRunningApplications: @escaping @MainActor @Sendable (String) -> Void = { bundleID in
+            for app in NSRunningApplication.runningApplications(withBundleIdentifier: bundleID) {
+                app.terminate()
+            }
+        },
         uninstall: (@MainActor (MarketplaceReceipt) async throws -> Void)? = nil
     ) {
         store = MarketplaceStore(
@@ -195,6 +201,7 @@ final class MarketplaceManager {
         self.hostEnvironment = hostEnvironment
         self.fetch = fetch ?? Self.httpFetcher
         self.installerAdapters = installerAdapters
+        self.terminateRunningApplications = terminateRunningApplications
         uninstallHandler = uninstall
     }
 
@@ -357,13 +364,13 @@ final class MarketplaceManager {
         guard manifest.isCompatible(with: hostEnvironment) else {
             throw MarketplaceInstallError.incompatible
         }
-        for app in NSRunningApplication.runningApplications(withBundleIdentifier: manifest.artifact.bundleID) {
-            app.terminate()
-        }
         let receipt = try await installer.install(
             manifest,
             sourceID: source.sourceID ?? source.id,
-            sourceURL: source.url
+            sourceURL: source.url,
+            beforeActivation: { [terminateRunningApplications] in
+                terminateRunningApplications(manifest.artifact.bundleID)
+            }
         )
         try await recordInstall(receipt)
         LogManager.shared.info(
