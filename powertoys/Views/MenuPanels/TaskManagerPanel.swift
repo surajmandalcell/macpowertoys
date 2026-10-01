@@ -219,7 +219,7 @@ private struct TaskManagerMenuHomeTile: View {
                             TaskManagerMenuValueView(parts: data.value)
                             Spacer(minLength: 0)
                             if page != .gpu {
-                                Text(data.caption).onePlusText(.caption).lineLimit(1).minimumScaleFactor(page == .memory ? 1 : 0.7)
+                                Text(data.caption).onePlusText(.metricCaption).lineLimit(1).minimumScaleFactor(page == .memory ? 1 : 0.7)
                                     .fixedSize(horizontal: page == .memory, vertical: false)
                                     .layoutPriority(page == .memory ? 1 : 0)
                                     .accessibilityLabel(data.captionHelp)
@@ -341,7 +341,7 @@ private struct TaskManagerMenuHero: View {
                     Label(title, systemImage: page.symbol).onePlusText(.caption)
                     Spacer(minLength: OnePlusMetrics.navRowGap)
                     if page != .gpu && page != .sensors {
-                        Text(data.caption).onePlusText(.caption).lineLimit(1).minimumScaleFactor(0.7)
+                        Text(data.caption).onePlusText(.metricCaption).lineLimit(1).minimumScaleFactor(0.7)
                     }
                 }.help(data.caption)
                 HStack(alignment: .firstTextBaseline) {
@@ -475,6 +475,7 @@ private struct TaskManagerMenuSampling: ViewModifier {
 final class TaskManagerMenuProcessModel {
     static let shared = TaskManagerMenuProcessModel()
     @ObservationIgnored let sampler = SystemMonitorProcessSampler()
+    let icons = SystemMonitorProcessIcons()
     @ObservationIgnored private var initialPreparation: Task<Void, Never>?
     private(set) var hasPreparedSnapshot = false
     var processes: [SystemMonitorProcess] = []
@@ -492,6 +493,7 @@ final class TaskManagerMenuProcessModel {
             let result = await SystemMonitorProcessRows.prepareOffMain(
                 processes, search: search, hierarchy: false, column: .cpu, descending: true
             )
+            await icons.load(for: result.rows)
             self.processes = processes
             rows = result.rows
             footerTitle = "All " + String(processes.count) + " processes →"
@@ -538,7 +540,7 @@ private struct TaskManagerMenuProcessesView: View {
                                     .frame(maxWidth: .infinity, minHeight: OnePlusTable.rowHeight(.compact))
                             }
                             ForEach(model.rows) { row in
-                                TaskManagerMenuProcessRow(row: row).equatable()
+                                TaskManagerMenuProcessRow(row: row, image: row.appBundlePath.flatMap { model.icons.images[$0] }).equatable()
                             }
                         }
                     }
@@ -587,6 +589,8 @@ private struct TaskManagerMenuProcessesView: View {
         )
         guard !Task.isCancelled, self.request == request else { return }
         if model.rows != result.rows { model.rows = result.rows }
+        await model.icons.load(for: result.rows)
+        guard !Task.isCancelled, self.request == request else { return }
         let footer = "All " + String(processes.count) + " processes →"
         if model.footerTitle != footer { model.footerTitle = footer }
         model.lastPublication = .now
@@ -595,18 +599,27 @@ private struct TaskManagerMenuProcessesView: View {
 
 private struct TaskManagerMenuProcessRow: View, Equatable {
     let row: SystemMonitorProcessHierarchy.Row
+    let image: NSImage?
 
     static func == (lhs: Self, rhs: Self) -> Bool {
         lhs.row.id == rhs.row.id && lhs.row.displayName == rhs.row.displayName
             && lhs.row.symbol == rhs.row.symbol && lhs.row.cpuText == rhs.row.cpuText
             && lhs.row.memoryText == rhs.row.memoryText
+            && lhs.image == rhs.image
     }
 
     var body: some View {
         Button { Self.openProcesses() } label: {
             HStack(spacing: OnePlusMetrics.actionSpacing) {
-                Image(systemName: row.symbol).onePlusText(.caption)
-                    .frame(width: OnePlusMetrics.navIcon, height: OnePlusMetrics.navIcon)
+                Group {
+                    if let image {
+                        Image(nsImage: image).resizable().scaledToFit()
+                    } else if !row.symbol.isEmpty {
+                        Image(systemName: row.symbol).onePlusText(.caption)
+                    } else { Color.clear }
+                }
+                .accessibilityHidden(true)
+                .frame(width: OnePlusMetrics.navIcon, height: OnePlusMetrics.navIcon)
                 Text(row.displayName).onePlusText(.caption, color: OnePlusColor.ink).lineLimit(1)
                 Spacer(minLength: OnePlusMetrics.navRowGap)
                 Text(row.cpuText).frame(width: 52, alignment: .trailing)
