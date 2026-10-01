@@ -793,7 +793,7 @@ struct PortmanPanelView: View {
 
     private func localDetailHeader(_ port: PortmanLocalPort) -> some View {
         let canStop = overviewPresentation.rows.first { $0.id == port.id }?.canStop ?? false
-        return HStack {
+        return OnePlusHeaderActions {
             Button { selectedPortID = nil } label: { Label("Servers", systemImage: "chevron.left") }
                 .buttonStyle(OnePlusButtonStyle(.ghost, size: .small))
             Spacer()
@@ -1099,7 +1099,7 @@ struct PortmanPanelView: View {
 
     private var forwardToolbar: some View {
         VStack(alignment: .leading, spacing: OnePlusMetrics.actionSpacing) {
-            HStack(spacing: OnePlusMetrics.actionSpacing) {
+            OnePlusHeaderActions {
                 OnePlusTextField("alias or user@IP", text: $host, onSubmit: scanRemote)
                     .accessibilityLabel("SSH alias or username at IP address")
                     .help(host.isEmpty ? "SSH alias or username at IP address" : host)
@@ -1129,7 +1129,7 @@ struct PortmanPanelView: View {
                         .disabled(host.isEmpty)
                 }
             }
-            HStack(spacing: OnePlusMetrics.actionSpacing) {
+            OnePlusHeaderActions {
                 OnePlusTextField("Remote port", text: $manualPort, onSubmit: addManualPort)
                     .accessibilityLabel("Remote port to add")
                 Button("Add port", action: addManualPort).disabled(host.isEmpty)
@@ -1749,11 +1749,11 @@ nonisolated enum PortmanEditor {
 }
 
 @MainActor
-final class PortmanMenuController: NSObject, NSPopoverDelegate {
+final class PortmanMenuController: NSObject {
     static let shared = PortmanMenuController()
 
     private var item: NSStatusItem?
-    private let popover = NSPopover()
+    private let popover = OnePlusMenuPresenter()
     private var cachedHosting: NSHostingController<AnyView>?
     private var observers: [NSObjectProtocol] = []
     private var showTask: Task<Void, Never>?
@@ -1762,9 +1762,7 @@ final class PortmanMenuController: NSObject, NSPopoverDelegate {
 
     private override init() {
         super.init()
-        popover.behavior = .transient
-        popover.animates = false
-        popover.delegate = self
+        popover.onClose = { [weak self] in self?.panelDidClose() }
     }
 
     func start() {
@@ -1843,7 +1841,7 @@ final class PortmanMenuController: NSObject, NSPopoverDelegate {
         hosting.view.layoutSubtreeIfNeeded()
         popover.contentViewController = hosting
         popover.contentSize = size
-        popover.show(relativeTo: button.bounds, of: button, preferredEdge: .minY)
+        popover.show(relativeTo: button.bounds, of: button, preferredEdge: .minY, takesFocus: activateApp)
         popover.contentViewController?.view.window?.appearance = NSApp.appearance
         if activateApp {
             NSApp.activate(ignoringOtherApps: true)
@@ -1853,7 +1851,7 @@ final class PortmanMenuController: NSObject, NSPopoverDelegate {
         return popover.isShown
     }
 
-    func popoverDidClose(_ notification: Notification) {
+    private func panelDidClose() {
         OnePlusPanelTimings.shared.cancel(panel: "portman")
         popover.contentViewController = nil
     }
