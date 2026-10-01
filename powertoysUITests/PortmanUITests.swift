@@ -80,12 +80,17 @@ final class PortmanUITests: XCTestCase {
         let link = app.buttons["portman.link.7265"]
         let stop = app.buttons["portman.stop.7265"]
         let rowFrame = row.frame
+        let fullRow = app.descendants(matching: .any)["portman.local.row.7265"]
+        XCTAssertEqual(rowFrame.width, fullRow.frame.width, accuracy: 1,
+                       "Permanent actions stole width from the identity button")
         row.coordinate(withNormalizedOffset: CGVector(dx: 0.05, dy: 0.5)).hover()
         XCTAssertTrue(link.isHittable, "Hover did not expose the link action")
         XCTAssertTrue(stop.isHittable, "Hover did not expose the stop action")
         XCTAssertEqual(row.frame, rowFrame, "Hover changed the identity width")
         let linkFrame = link.frame
         let stopFrame = stop.frame
+        XCTAssertEqual(linkFrame.midY, stopFrame.midY, accuracy: 1)
+        XCTAssertGreaterThanOrEqual(linkFrame.minX, rowFrame.maxX - 134)
         attach(app.screenshot(), named: "Portman server hover")
 
         link.hover()
