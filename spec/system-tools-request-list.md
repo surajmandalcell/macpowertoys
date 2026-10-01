@@ -1,5 +1,12 @@
 # System Tools Request List
 
+Close verification, run 77, 2026-10-02: the stronger actual-source fixture
+checks every native close notification and model release across all 13 roots
+and both window owners. All 102 cycles and all four guarded app tests pass.
+The single tests-mode compile gate passes. The fix changes test presentation
+only. Signed system-tool interaction and memory sampling stay with the
+orchestrator. Report: `tmp/redesign/logs/w14-blank-tests.md`.
+
 Background reopen, run 76, 2026-10-02: Input Devices, System Care, Task
 Manager, and NetToys keep their SwiftUI scene controllers and hosts. Their
 own close roots rebuild, and registered geometry is ready before ordering.

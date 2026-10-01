@@ -1,5 +1,13 @@
 # Color Picker Request List
 
+Close verification, run 77, 2026-10-02: the guarded applet fixture passes
+native close and model release at 250, 355, and 460pt. It now orders the
+offscreen window before each close, so AppKit sends every close notification.
+All four background-window tests and the single compile gate pass. The
+stronger shared probe passes 102 cycles, including both applet height ranges.
+Production source and installed interaction status are unchanged.
+Report: `tmp/redesign/logs/w14-blank-tests.md`.
+
 Background reopen, run 76, 2026-10-02: the shared presenter preserves the
 SwiftUI scene controller and host. WindowAccessor supplies the mounted body
 height before ordering, without the host's stale titlebar inset. The native

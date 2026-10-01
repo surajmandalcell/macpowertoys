@@ -1,5 +1,16 @@
 # Main Task Request List
 
+Close verification, run 77, 2026-10-02: all four guarded background-window
+tests pass with model-release assertions intact. Ordering spies did not reset
+AppKit's closed state. Real offscreen ordering fixes the fixtures. The updated
+source probe checks close notifications and model release across 102 cycles.
+The single tests-mode compile gate passes. Production source is unchanged.
+The General check fails because the locked session exports AXApplication
+instead of AXWindow, including for Chrome. General source identifiers are
+unchanged since 61edaf55; the supplied capture shows the correct tab. The
+orchestrator must repeat the read-only check after the owner unlocks.
+Report: `tmp/redesign/logs/w14-blank-tests.md`.
+
 Background focus and reopen, run 76, 2026-10-02: hidden SwiftUI scenes keep
 their own controller and host. Their close root rebuilds before ordering.
 Fixed canvases and measured applet bodies restore their size and top-left

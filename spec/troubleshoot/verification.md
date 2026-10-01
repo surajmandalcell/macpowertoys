@@ -1,5 +1,38 @@
 # Verification Troubleshooting
 
+## Repeated Native Close Fixtures, Run 77, 2026-10-02
+
+- **Symptom:** BackgroundToolWindowTests reports seven retained-model failures
+  across four tests after native close.
+- **Cause:** The ordering spies do not reopen AppKit's native window. AppKit
+  sends willClose only for the first close until the window is ordered again.
+  An isolated probe confirms one notification across two close calls.
+- **Invariant:** Keep the controller, host, model-release, size, and activation
+  assertions. Order the fixture offscreen with orderBack before each close.
+  Never make it key or activate the test host. Keep the foreground guard.
+- **Check:** All four guarded tests pass with zero failures. The strengthened
+  actual-source probe passes 102 native close/reopen cycles across all 13 roots
+  and both window owners. It checks each close notification and model release.
+  The single tests-mode compile gate passes. Production source is unchanged.
+  Report: `tmp/redesign/logs/w14-blank-tests.md`.
+
+## General Capture Check During Screen Lock, Run 77, 2026-10-02
+
+- **Symptom:** The General identifier check fails on installed a7519de5,
+  while the supplied capture shows General selected.
+- **Cause:** The session is locked. AXWindows returns the AXApplication itself
+  instead of an AXWindow, for both MacPowerToys and Chrome. Its child graph
+  contains menus and a cycle, so the old traversal reaches its 5,000-node cap.
+- **Invariant:** Check the native session lock before inspecting window content.
+  A locked session cannot verify the body identifier or selected tab. Do not
+  unlock, activate, or send routes to obtain that evidence.
+- **Check:** Read-only checks confirm the lock flag, loginwindow foreground,
+  AXApplication roles, and equality with each application root. The installed
+  process path is /Applications. General view identifiers and source are
+  unchanged between 61edaf55 and a7519de5. The capture helper now reports the
+  lock directly. The orchestrator must rerun it after the owner unlocks.
+  Report: `tmp/redesign/logs/w14-blank-tests.md`.
+
 ## Inactive Focus Probe And Cancellation Assertion, Run 65, 2026-10-01
 
 - **Symptom:** The full guarded run fails the focus policy check and crashes
