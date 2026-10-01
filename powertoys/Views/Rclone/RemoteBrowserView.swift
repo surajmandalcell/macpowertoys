@@ -117,13 +117,10 @@ struct RemoteBrowserView: View {
             Button { Task { await load() } } label: { Label("Refresh", systemImage: "arrow.clockwise") }
                 .buttonStyle(OnePlusButtonStyle(.ghost))
                 .disabled(isLoading)
-            Menu {
-                Button("Remote Settings…") { isShowingSettings = true }
-                Button("Clean Up by Ignore Rules…") { isShowingCleanup = true }
-            } label: { Image(systemName: "ellipsis") }
-                .menuStyle(.borderlessButton)
-                .menuIndicator(.hidden)
-                .help("More remote actions")
+            OnePlusMenuButton("More remote actions", variant: .borderedIcon, items: [
+                .item(.init("Remote Settings…") { isShowingSettings = true }),
+                .item(.init("Clean Up by Ignore Rules…") { isShowingCleanup = true })
+            ])
         }
     }
 
@@ -133,15 +130,15 @@ struct RemoteBrowserView: View {
                 breadcrumbButton(isCurrent: pathComponents.isEmpty, destination: "") {
                     HStack(spacing: 5) {
                         Image(systemName: remote.icon)
-                            .font(.system(size: 11))
+                            .onePlusText(.caption)
                         Text(remote.name)
                     }
                 }
 
                 ForEach(pathComponents.indices, id: \.self) { index in
                     Image(systemName: "chevron.right")
-                        .font(.system(size: 9, weight: .semibold))
-                        .foregroundStyle(.tertiary)
+                        .onePlusText(.caption)
+                        .foregroundStyle(OnePlusColor.muted)
 
                     let isCurrent = index == pathComponents.count - 1
                     breadcrumbButton(
@@ -172,7 +169,7 @@ struct RemoteBrowserView: View {
                 .contentShape(Rectangle())
         }
         .buttonStyle(.plain)
-        .focusEffectDisabled()
+        .focusEffectDisabled(!OnePlusFocusPolicy.shared.showsFocus)
     }
 
     // MARK: Content
@@ -185,14 +182,14 @@ struct RemoteBrowserView: View {
                 }
             }
 
+            HStack(spacing: OnePlusMetrics.spacing[3]) {
+                breadcrumbs
+                Spacer(minLength: OnePlusMetrics.spacing[2])
+                Text(entries.count == 1 ? "1 item" : "\(entries.count) items")
+                    .onePlusText(.mono)
+            }
+            .frame(height: OnePlusMetrics.controlHeight)
             OnePlusCard {
-                OnePlusCardHeader("Path") {
-                    breadcrumbs
-                    Spacer(minLength: OnePlusMetrics.spacing[2])
-                    Text(entries.count == 1 ? "1 item" : "\(entries.count) items")
-                        .onePlusText(.mono)
-                        .foregroundStyle(OnePlusColor.muted)
-                }
                 ZStack {
                     if isLoading {
                         ProgressView()
@@ -249,7 +246,7 @@ struct RemoteBrowserView: View {
             .onePlusScrollIndicators()
         }
         .focusable()
-        .focusEffectDisabled()
+        .focusEffectDisabled(!OnePlusFocusPolicy.shared.showsFocus)
         .onKeyPress(.space) {
             guard let selection,
                   let entry = entries.first(where: { $0.id == selection }),
@@ -324,7 +321,6 @@ struct RemoteBrowserView: View {
                     Text("Transfer queued. View it in Transfers.")
                         .onePlusText(.caption)
                 }
-                .transition(.opacity.combined(with: .move(edge: .bottom)))
             }
         }
         .padding(.bottom, OnePlusMetrics.spacing[4])
@@ -371,9 +367,9 @@ struct RemoteBrowserView: View {
     }
 
     private func dragItem(for entry: RemoteEntry) -> RemoteFileDragItem? {
-        guard !entry.isDir, let port = manager.daemonPort else { return nil }
+        guard !entry.isDir, let client = manager.client else { return nil }
         return RemoteFileDragItem(
-            port: port,
+            client: client,
             srcFs: remote.pathPrefix,
             srcRemote: entry.path,
             fileName: entry.name
@@ -382,11 +378,11 @@ struct RemoteBrowserView: View {
 
     private func showDropToast() {
         dropToastTask?.cancel()
-        withAnimation(.easeInOut(duration: 0.2)) { showsDropToast = true }
+        showsDropToast = true
         dropToastTask = Task {
             try? await Task.sleep(for: .seconds(2.5))
             guard !Task.isCancelled else { return }
-            withAnimation(.easeInOut(duration: 0.2)) { showsDropToast = false }
+            showsDropToast = false
         }
     }
 
@@ -544,7 +540,7 @@ private struct RemoteEntryRow: View {
             .contentShape(Rectangle())
         }
         .buttonStyle(.plain)
-        .focusEffectDisabled()
+        .focusEffectDisabled(!OnePlusFocusPolicy.shared.showsFocus)
         .onePlusTableRow(selected: isSelected)
         .simultaneousGesture(TapGesture(count: 2).onEnded { onOpen() })
         .onHover { isHovering = $0 }
@@ -563,7 +559,7 @@ private struct RemoteEntryRow: View {
                 .frame(width: OnePlusMetrics.compactControlHeight, height: OnePlusMetrics.compactControlHeight)
         }
         .buttonStyle(OnePlusButtonStyle(.icon, size: .small))
-        .focusEffectDisabled()
+        .focusEffectDisabled(!OnePlusFocusPolicy.shared.showsFocus)
         .accessibilityLabel("Quick Look")
     }
 
@@ -572,44 +568,54 @@ private struct RemoteEntryRow: View {
 // MARK: - Drag Out
 
 nonisolated struct RemoteFileDragItem: Transferable, Sendable {
-    let port: Int
+    let client: RcloneRCClient
     let srcFs: String
     let srcRemote: String
     let fileName: String
 
     static var transferRepresentation: some TransferRepresentation {
         FileRepresentation(exportedContentType: .data) { item in
-            let client = RcloneRCClient(port: item.port)
-            let directory = FileManager.default.temporaryDirectory
-                .appendingPathComponent("rsync-drag/\(UUID().uuidString)", isDirectory: true)
-            try FileManager.default.createDirectory(at: directory, withIntermediateDirectories: true)
-            let jobid = try await client.startCopyFileJob(
-                srcFs: item.srcFs,
-                srcRemote: item.srcRemote,
-                dstFs: directory.path,
-                dstRemote: item.fileName,
-                group: "drag/\(UUID().uuidString)"
+            SentTransferredFile(try await item.download(), allowAccessingOriginalFile: true)
+        }
+    }
+
+    func download(to directory: URL = FileManager.default.temporaryDirectory
+        .appendingPathComponent("rsync-drag/\(UUID().uuidString)", isDirectory: true)) async throws -> URL {
+        guard !fileName.isEmpty, fileName != ".", fileName != "..", !fileName.contains("/"), !fileName.contains("\0") else {
+            throw RcloneRCError.decoding("Invalid download file name")
+        }
+        try FileManager.default.createDirectory(at: directory, withIntermediateDirectories: true)
+        let group = "drag/\(UUID().uuidString)"
+        var jobid: Int?
+        defer { Task { await client.deleteStats(group: group) } }
+        do {
+            let startedJob = try await client.startFileJob(
+                srcFs: srcFs, srcRemote: srcRemote,
+                dstFs: directory.path, dstRemote: fileName, group: group
             )
-            do {
-                var consecutiveFailures = 0
-                while true {
-                    try await Task.sleep(for: .milliseconds(250))
-                    guard let status = try? await client.jobStatus(jobid: jobid) else {
-                        consecutiveFailures += 1
-                        if consecutiveFailures >= 20 { throw RcloneRCError.notReachable }
-                        continue
-                    }
-                    consecutiveFailures = 0
-                    if status.finished {
-                        if status.success { break }
+            jobid = startedJob
+            var consecutiveFailures = 0
+            let deadline = Date().addingTimeInterval(900)
+            while Date() < deadline {
+                try await Task.sleep(for: .milliseconds(250))
+                guard let status = try? await client.jobStatus(jobid: startedJob) else {
+                    consecutiveFailures += 1
+                    if consecutiveFailures >= 20 { throw RcloneRCError.notReachable }
+                    continue
+                }
+                consecutiveFailures = 0
+                if status.finished {
+                    guard status.success else {
                         throw RcloneRCError.http(status: 0, message: status.error)
                     }
+                    return directory.appendingPathComponent(fileName)
                 }
-            } catch {
-                try? await client.stopJob(jobid: jobid)
-                throw error
             }
-            return SentTransferredFile(directory.appendingPathComponent(item.fileName), allowAccessingOriginalFile: true)
+            throw RcloneRCError.http(status: 0, message: "Download timed out.")
+        } catch {
+            if let jobid { try? await client.stopJob(jobid: jobid) }
+            try? FileManager.default.removeItem(at: directory)
+            throw error
         }
     }
 }

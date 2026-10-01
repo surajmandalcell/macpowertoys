@@ -25,7 +25,8 @@ struct NewTransferSheet: View {
     }
 
     private var canStart: Bool {
-        source.isValid && destination.isValid && source.fs != destination.fs
+        source.isValid && destination.isValid && source.fs != destination.transferDestination(for: source)
+            && !(source.isFile && operation == .sync)
     }
 
     var body: some View {
@@ -36,9 +37,6 @@ struct NewTransferSheet: View {
                     EndpointCard(title: "Source", config: $source, remotes: manager.remotes, chooseDirectoriesOnly: false)
 
                     EndpointCard(title: "Destination", config: $destination, remotes: manager.remotes, chooseDirectoriesOnly: true)
-                    Label("The exact transfer size is calculated by comparing both sides before data moves.", systemImage: "checkmark.circle")
-                        .font(.system(size: 11))
-                        .foregroundStyle(.secondary)
                     excludesSection
                 }
             }
@@ -69,31 +67,32 @@ struct NewTransferSheet: View {
 
     private var operationSection: some View {
         VStack(alignment: .leading, spacing: 8) {
-            SectionLabel(title: "Operation")
-
-            Picker("Operation", selection: $operation) {
-                ForEach(RcloneOperation.allCases) { op in
-                    Text(op.displayName).tag(op)
-                }
+            HStack {
+                SectionLabel(title: "Operation")
+                Image(systemName: "info.circle")
+                    .foregroundStyle(OnePlusColor.secondary)
+                    .help("The exact size is calculated by comparing both sides before files move.")
+                    .accessibilityLabel("The exact size is calculated before files move")
             }
-            .labelsHidden()
-            .pickerStyle(.segmented)
 
-            Text(operation.summary)
-                .font(.system(size: 11))
-                .foregroundStyle(.secondary)
-                .fixedSize(horizontal: false, vertical: true)
+            OnePlusSegmented(choices: RcloneOperation.allCases.map { ($0, $0.displayName) },
+                             selection: $operation, accessibilityLabel: "Operation")
+
+            if source.isFile && operation == .sync {
+                Text("Sync needs a source folder. Choose Copy or Move for a file.")
+                    .onePlusText(.caption)
+            }
 
             if operation.isDestructive {
                 HStack(spacing: 8) {
                     Image(systemName: "exclamationmark.triangle.fill")
-                        .font(.system(size: 12))
-                        .foregroundStyle(.orange)
+                        .onePlusText(.row)
+                        .foregroundStyle(OnePlusColor.warn)
                     Text(operation == .sync
                          ? "Sync deletes files at the destination that no longer exist in the source."
                          : "Move removes files from the source after they are transferred.")
-                        .font(.system(size: 11))
-                        .foregroundStyle(.orange)
+                        .onePlusText(.caption)
+                        .foregroundStyle(OnePlusColor.warn)
                         .fixedSize(horizontal: false, vertical: true)
                 }
                 .padding(.horizontal, 10)
@@ -101,7 +100,7 @@ struct NewTransferSheet: View {
                 .frame(maxWidth: .infinity, alignment: .leading)
                 .background(
                     RoundedRectangle(cornerRadius: 8)
-                        .fill(Color.orange.opacity(0.12))
+                        .fill(OnePlusColor.warn.opacity(0.12))
                 )
             }
         }
@@ -115,37 +114,22 @@ struct NewTransferSheet: View {
 
             if manager.settings.ignorePatterns.isEmpty {
                 Text("No global ignore patterns configured.")
-                    .font(.system(size: 11))
-                    .foregroundStyle(.tertiary)
+                    .onePlusText(.caption)
+                    .foregroundStyle(OnePlusColor.muted)
             } else {
-                ScrollView(.horizontal) {
-                    LazyHStack(spacing: 6) {
-                        ForEach(manager.settings.ignorePatterns, id: \.self) { pattern in
-                            Text(pattern)
-                                .font(.system(size: 11, design: .monospaced))
-                                .foregroundStyle(.secondary)
-                                .padding(.horizontal, 8)
-                                .padding(.vertical, 3)
-                                .background(Color.primary.opacity(0.06))
-                                .clipShape(Capsule())
-                        }
-                    }
-                }
-                .thinScrollIndicators()
-                Text("From settings · applied to every transfer")
-                    .font(.system(size: 10))
-                    .foregroundStyle(.tertiary)
+                Text(manager.settings.ignorePatterns.joined(separator: ", "))
+                    .onePlusText(.mono).lineLimit(2)
+                    .help(manager.settings.ignorePatterns.joined(separator: "\n"))
             }
 
             Text("Additional excludes for this transfer")
-                .font(.system(size: 11))
-                .foregroundStyle(.secondary)
+                .onePlusText(.caption)
+                .foregroundStyle(OnePlusColor.secondary)
                 .padding(.top, 2)
 
             OnePlusTextEditor("Additional ignore patterns", text: $extraExcludesText)
                 .frame(height: 76)
-            Text("One glob per line. Used as an exclude rule for this transfer.")
-                .onePlusText(.caption)
+                .help("One glob per line. Used as an exclude rule for this transfer.")
         }
     }
 
@@ -161,8 +145,9 @@ struct NewTransferSheet: View {
         guard canStart else { return }
         manager.createTransfer(
             operation: operation,
+            kind: source.isFile ? .file : .directory,
             sourceFs: source.fs,
-            destinationFs: destination.fs,
+            destinationFs: destination.transferDestination(for: source),
             sourceDisplay: source.display,
             destinationDisplay: destination.display,
             extraExcludes: parsedExtraExcludes
@@ -173,11 +158,21 @@ struct NewTransferSheet: View {
 
 // MARK: - Endpoint Config
 
-private struct EndpointConfig {
+struct EndpointConfig {
     var kind: EndpointKind = .local
     var localPath: String = ""
+    var localIsFile = false
     var remoteName: String = ""
     var remotePath: String = ""
+
+    var isFile: Bool { kind == .local && localIsFile }
+
+    func transferDestination(for source: EndpointConfig) -> String {
+        guard source.isFile else { return fs }
+        let name = (source.localPath as NSString).lastPathComponent
+        if kind == .local { return URL(fileURLWithPath: localPath).appendingPathComponent(name).path }
+        return fs + (remotePath.isEmpty || remotePath.hasSuffix("/") ? "" : "/") + name
+    }
 
     var fs: String {
         switch kind {
@@ -218,13 +213,9 @@ private struct EndpointCard: View {
             HStack {
                 SectionLabel(title: title)
                 Spacer()
-                Picker("Endpoint kind", selection: $config.kind) {
-                    Text("Local").tag(EndpointKind.local)
-                    Text("Remote").tag(EndpointKind.remote)
-                }
-                .labelsHidden()
-                .pickerStyle(.segmented)
-                .frame(width: 150)
+                OnePlusSegmented(choices: [(EndpointKind.local, "Local"), (.remote, "Remote")],
+                                 selection: $config.kind, accessibilityLabel: "Endpoint kind",
+                                 width: OnePlusMetrics.wideControlColumn)
             }
 
             switch config.kind {
@@ -234,10 +225,10 @@ private struct EndpointCard: View {
 
             HStack(spacing: 6) {
                 Image(systemName: "terminal")
-                    .font(.system(size: 10))
-                    .foregroundStyle(.tertiary)
+                    .onePlusText(.caption)
+                    .foregroundStyle(OnePlusColor.muted)
                 Text(config.fs.isEmpty ? "Not selected" : config.fs)
-                    .font(.system(size: 11, design: .monospaced))
+                    .onePlusText(.mono)
                     .foregroundStyle(config.isValid ? .secondary : .tertiary)
                     .lineLimit(1)
                     .truncationMode(.middle)
@@ -250,7 +241,7 @@ private struct EndpointCard: View {
     private var localSelector: some View {
         HStack(spacing: 10) {
             Text(config.localPath.isEmpty ? "No path selected" : config.localPath)
-                .font(.system(size: 12, design: .monospaced))
+                .onePlusText(.mono)
                 .foregroundStyle(config.localPath.isEmpty ? .tertiary : .primary)
                 .lineLimit(1)
                 .truncationMode(.middle)
@@ -263,9 +254,9 @@ private struct EndpointCard: View {
     private var remoteSelector: some View {
         VStack(alignment: .leading, spacing: 8) {
             if remotes.isEmpty {
-                Text("No remotes configured. Add one with rclone config.")
-                    .font(.system(size: 11))
-                    .foregroundStyle(.tertiary)
+                Text("No remotes configured. Add one from the sidebar.")
+                    .onePlusText(.caption)
+                    .foregroundStyle(OnePlusColor.muted)
             } else {
                 OnePlusSelect(
                     choices: remotes.map { ($0.name, "\($0.name) · \($0.typeLabel)") },
@@ -274,15 +265,7 @@ private struct EndpointCard: View {
                     accessibilityLabel: "Remote"
                 )
 
-                TextField("Path within remote (optional)", text: $config.remotePath)
-                    .textFieldStyle(.plain)
-                    .font(.system(size: 13, design: .monospaced))
-                    .padding(.horizontal, 10)
-                    .padding(.vertical, 7)
-                    .background(
-                        RoundedRectangle(cornerRadius: 6)
-                            .fill(Color.primary.opacity(0.06))
-                    )
+                OnePlusTextField("Path within remote (optional)", text: $config.remotePath)
             }
         }
     }
@@ -293,8 +276,9 @@ private struct EndpointCard: View {
         panel.canChooseFiles = !chooseDirectoriesOnly
         panel.allowsMultipleSelection = false
         panel.prompt = "Select"
-        if panel.runModal() == .OK, let path = panel.url?.path {
-            config.localPath = path
+        if panel.runModal() == .OK, let url = panel.url {
+            config.localPath = url.path
+            config.localIsFile = (try? url.resourceValues(forKeys: [.isDirectoryKey]).isDirectory) == false
         }
     }
 }
@@ -306,7 +290,7 @@ private struct SectionLabel: View {
 
     var body: some View {
         Text(title.uppercased())
-            .font(.system(size: 10, weight: .medium))
-            .foregroundStyle(.secondary)
+            .onePlusText(.caption)
+            .foregroundStyle(OnePlusColor.secondary)
     }
 }

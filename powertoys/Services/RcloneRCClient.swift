@@ -266,7 +266,7 @@ actor RcloneRCClient {
         return id
     }
 
-    func startCopyFileJob(srcFs: String, srcRemote: String, dstFs: String, dstRemote: String, group: String, config: [String: Any] = [:]) async throws -> Int {
+    func startFileJob(srcFs: String, srcRemote: String, dstFs: String, dstRemote: String, group: String, config: [String: Any] = [:], operation: RcloneOperation = .copy) async throws -> Int {
         var body: [String: Any] = [
             "srcFs": srcFs,
             "srcRemote": srcRemote,
@@ -278,7 +278,7 @@ actor RcloneRCClient {
         if !config.isEmpty {
             body["_config"] = config
         }
-        let json = try await post("operations/copyfile", body: body)
+        let json = try await post(operation == .move ? "operations/movefile" : "operations/copyfile", body: body)
         return try Self.parseJobId(json)
     }
 
