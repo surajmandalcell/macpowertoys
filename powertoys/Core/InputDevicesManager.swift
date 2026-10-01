@@ -83,6 +83,14 @@ struct InputScrollResult: Equatable {
 }
 
 enum InputScrollPolicy {
+    static func profile(for kind: InputDeviceDescriptor.Kind, settings: InputDevicesSettings) -> InputScrollProfile {
+        switch settings.eventOverride {
+        case .automatic: kind == .mouse ? settings.mouse : settings.trackpad
+        case .mouse: settings.mouse
+        case .trackpad: settings.trackpad
+        }
+    }
+
     static func transform(
         vertical: Double,
         horizontal: Double,
@@ -90,15 +98,8 @@ enum InputScrollPolicy {
         shiftHeld: Bool = false,
         settings: InputDevicesSettings
     ) -> InputScrollResult? {
-        let trackpadLike: Bool
-        switch settings.eventOverride {
-        case .automatic: trackpadLike = isContinuous
-        case .mouse: trackpadLike = false
-        case .trackpad: trackpadLike = true
-        }
-
-        let profile = trackpadLike ? settings.trackpad : settings.mouse
-        guard profile.enabled else { return nil }
+        let profile = profile(for: isContinuous ? .trackpad : .mouse, settings: settings)
+        guard profile.enabled, profile.speed.isFinite, (0.35...3).contains(profile.speed) else { return nil }
         let convert = shiftHeld && profile.shiftScrollsHorizontally && profile.horizontalEnabled
             && horizontal == 0 && vertical != 0
         let sourceVertical = convert ? 0 : vertical
@@ -114,8 +115,8 @@ enum InputScrollPolicy {
     }
 }
 
-struct InputDeviceDescriptor: Identifiable, Equatable {
-    enum Kind: String {
+nonisolated struct InputDeviceDescriptor: Identifiable, Equatable, Sendable {
+    enum Kind: String, Sendable {
         case mouse = "Mouse"
         case trackpad = "Trackpad"
 
@@ -213,6 +214,8 @@ final class InputDevicesManager {
 
     private var eventTap: CFMachPort?
     private var runLoopSource: CFRunLoopSource?
+    private var refreshTask: Task<Void, Never>?
+    private var interceptionGeneration = 0
 
     private init() {
         settings = .decoded(from: UserDefaults.standard.data(forKey: Self.settingsKey))
@@ -227,8 +230,14 @@ final class InputDevicesManager {
 
     func refresh() {
         permissionGranted = AXIsProcessTrusted()
-        devices = Self.connectedDevices()
         applyInterceptionState()
+        guard refreshTask == nil else { return }
+        refreshTask = Task {
+            let snapshot = await Task.detached(priority: .utility) { Self.connectedDevices() }.value
+            guard !Task.isCancelled else { return }
+            if devices != snapshot { devices = snapshot }
+            refreshTask = nil
+        }
     }
 
     func update(_ change: (inout InputDevicesSettings) -> Void) {
@@ -256,17 +265,24 @@ final class InputDevicesManager {
     }
 
     func stop() {
+        refreshTask?.cancel()
+        refreshTask = nil
         stopInterception()
     }
 
     private func applyInterceptionState() {
-        stopInterception()
-        errorMessage = nil
-        guard settings.scrollControlEnabled else { return }
-        guard permissionGranted else {
-            errorMessage = "Accessibility permission is required to adjust scrolling outside MacPowerToys."
+        guard settings.scrollControlEnabled, SettingsManager.shared.isToolEnabled("input-devices"),
+              permissionGranted else {
+            stopInterception()
+            errorMessage = nil
             return
         }
+        if let eventTap {
+            CGEvent.tapEnable(tap: eventTap, enable: true)
+            return
+        }
+        stopInterception()
+        errorMessage = nil
 
         let mask = CGEventMask(1) << CGEventType.scrollWheel.rawValue
         guard let tap = CGEvent.tapCreate(
@@ -290,6 +306,7 @@ final class InputDevicesManager {
     }
 
     private func stopInterception() {
+        interceptionGeneration &+= 1
         if let eventTap { CGEvent.tapEnable(tap: eventTap, enable: false) }
         if let runLoopSource { CFRunLoopRemoveSource(CFRunLoopGetMain(), runLoopSource, .commonModes) }
         eventTap = nil
@@ -391,11 +408,13 @@ final class InputDevicesManager {
 
     private func postSmoothed(vertical: Double, horizontal: Double) {
         let steps = 5
+        let generation = interceptionGeneration
         for index in 0..<steps {
             DispatchQueue.main.asyncAfter(deadline: .now() + Double(index) * 0.018) {
                 let start = Double(index) / Double(steps)
                 let end = Double(index + 1) / Double(steps)
-                guard self.settings.scrollControlEnabled,
+                guard self.interceptionActive, self.interceptionGeneration == generation,
+                      self.settings.scrollControlEnabled,
                       let event = CGEvent(
                         scrollWheelEvent2Source: nil,
                         units: .pixel,

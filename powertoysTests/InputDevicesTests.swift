@@ -102,6 +102,7 @@ final class InputDevicesTests: XCTestCase {
         XCTAssertEqual(InputKeyboardDetails(keyRepeat: nil, standardFunctionKeys: true).keyRepeat, "System default")
         XCTAssertEqual(InputKeyboardDetails(keyRepeat: nil, standardFunctionKeys: true).functionKeys, "Standard F keys")
         XCTAssertEqual(InputKeyboardDetails(keyRepeat: nil, standardFunctionKeys: false).functionKeys, "Media keys")
+        XCTAssertEqual(InputKeyboardDetails(keyRepeat: nil, standardFunctionKeys: nil).functionKeys, "System default")
     }
 
     func testHIDTelemetryUsesReportedResolutionAndPollingRate() {
@@ -132,29 +133,68 @@ final class InputDevicesTests: XCTestCase {
     func testControlStateFollowsPermissionAndProfile() {
         var settings = InputDevicesSettings()
         XCTAssertEqual(
-            InputControlState.state(settings: settings, permissionGranted: true, kind: .mouse),
+            InputControlState.state(settings: settings, permissionGranted: true, interceptionActive: true, kind: .mouse),
             .disabled
         )
 
         settings.scrollControlEnabled = true
         XCTAssertEqual(
-            InputControlState.state(settings: settings, permissionGranted: false, kind: .mouse),
+            InputControlState.state(settings: settings, permissionGranted: false, interceptionActive: false, kind: .mouse),
             .permissionNeeded
         )
         XCTAssertEqual(
-            InputControlState.state(settings: settings, permissionGranted: true, kind: .trackpad),
+            InputControlState.state(settings: settings, permissionGranted: true, interceptionActive: true, kind: .trackpad),
             .active
         )
 
         settings.mouse.enabled = false
         XCTAssertEqual(
-            InputControlState.state(settings: settings, permissionGranted: true, kind: .mouse),
+            InputControlState.state(settings: settings, permissionGranted: true, interceptionActive: true, kind: .mouse),
             .passthrough
         )
         XCTAssertEqual(
-            InputControlState.state(settings: settings, permissionGranted: true, kind: .trackpad),
+            InputControlState.state(settings: settings, permissionGranted: true, interceptionActive: true, kind: .trackpad),
             .active
         )
+        XCTAssertEqual(
+            InputControlState.state(settings: settings, permissionGranted: true, interceptionActive: false, kind: .trackpad),
+            .unavailable
+        )
+    }
+
+    func testForcedProfileMatchesBothTransformationAndDeviceState() {
+        var settings = InputDevicesSettings()
+        settings.scrollControlEnabled = true
+        settings.mouse.enabled = false
+        settings.trackpad.speed = 2
+        settings.eventOverride = .trackpad
+
+        XCTAssertEqual(InputScrollPolicy.profile(for: .mouse, settings: settings), settings.trackpad)
+        XCTAssertEqual(InputScrollPolicy.transform(vertical: 3, horizontal: 2, isContinuous: false, settings: settings),
+                       InputScrollResult(vertical: 6, horizontal: 4, shouldSmooth: false))
+        XCTAssertEqual(InputControlState.state(settings: settings, permissionGranted: true,
+                                              interceptionActive: true, kind: .mouse), .active)
+
+        settings.eventOverride = .mouse
+        XCTAssertEqual(InputScrollPolicy.profile(for: .trackpad, settings: settings), settings.mouse)
+        XCTAssertNil(InputScrollPolicy.transform(vertical: 3, horizontal: 2, isContinuous: true, settings: settings))
+        XCTAssertEqual(InputControlState.state(settings: settings, permissionGranted: true,
+                                              interceptionActive: true, kind: .trackpad), .passthrough)
+    }
+
+    func testInvalidSavedSpeedPassesThroughWithoutOverflow() throws {
+        for speed in [-1.0, 0, 0.34, 3.01, 1e308] {
+            var settings = InputDevicesSettings()
+            settings.mouse.speed = speed
+            let restored = InputDevicesSettings.decoded(from: try XCTUnwrap(settings.encoded))
+            XCTAssertNil(InputScrollPolicy.transform(vertical: 30, horizontal: 0, isContinuous: false, settings: restored))
+        }
+        for speed in [0.35, 1, 3] {
+            var settings = InputDevicesSettings()
+            settings.mouse.speed = speed
+            XCTAssertEqual(InputScrollPolicy.transform(vertical: 30, horizontal: 0, isContinuous: false, settings: settings)?.vertical,
+                           30 * speed)
+        }
     }
 
     func testDeviceCardsOmitUnavailableValues() {
@@ -175,6 +215,15 @@ final class InputDevicesTests: XCTestCase {
         XCTAssertTrue(InputDeviceCard(device: richMouse, profile: InputScrollProfile(), state: .active).rows.contains { $0.label == "Polling" })
         XCTAssertFalse(InputDeviceCard(device: sparseTrackpad, profile: InputScrollProfile(), state: .disabled).rows.contains { $0.label == "Battery" })
         XCTAssertFalse(InputDeviceCard(device: sparseTrackpad, profile: InputScrollProfile(), state: .disabled).rows.contains { $0.label == "Firmware" })
+        let rows = InputDeviceCard(device: richMouse, profile: InputScrollProfile(), state: .active).rows
+        XCTAssertEqual(rows.first { $0.label == "Location" }?.value, "1D100000")
+        XCTAssertEqual(rows.first { $0.label == "Input report" }?.value, "32 bytes")
+
+        let noIDs = InputDeviceDescriptor(id: "internal", name: "Internal", kind: .trackpad, transport: "FIFO", isBuiltIn: true,
+                                      manufacturer: nil, vendorID: 0, productID: 0, versionNumber: nil, locationID: 0,
+                                      serialNumber: nil, pointerResolutionDPI: nil, pollingRateHz: nil, buttonCount: nil,
+                                      maxInputReportSize: nil, systemTrackingSpeed: nil)
+        XCTAssertFalse(InputDeviceCard(device: noIDs, profile: InputScrollProfile(), state: .disabled).rows.contains { $0.label == "Device ID" })
     }
 
     @MainActor
@@ -193,6 +242,15 @@ final class InputDevicesTests: XCTestCase {
         )
 
         XCTAssertEqual(cardHeight(mouse), cardHeight(trackpad))
+    }
+
+    func testCollapsedProfileKeepsAFullWidthHeaderAndExpandsToAllRows() {
+        let collapsed = InputScrollProfileCard(title: "Mouse", icon: "computermouse", deviceCount: 1,
+                                               profile: .constant(InputScrollProfile()), isExpanded: .constant(false))
+        let expanded = InputScrollProfileCard(title: "Mouse", icon: "computermouse", deviceCount: 1,
+                                              profile: .constant(InputScrollProfile()), isExpanded: .constant(true))
+        XCTAssertEqual(cardHeight(collapsed), 40, accuracy: 1)
+        XCTAssertEqual(cardHeight(expanded) - cardHeight(collapsed), 7 * 44, accuracy: 1)
     }
 
     func testProfileRowsFollowTheirGates() throws {

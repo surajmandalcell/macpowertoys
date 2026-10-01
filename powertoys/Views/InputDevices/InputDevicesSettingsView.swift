@@ -1,83 +1,31 @@
 import OnePlusUI
 import SwiftUI
 
-struct InputDevicesSettingsView: View {
-    private let showsHeader: Bool
-    private let showsContainerScroll: Bool
-    private let contentTopInset: CGFloat
-    private let density: OnePlusDensity
-    private let embedsInPage: Bool
-
-    init() {
-        showsHeader = false
-        showsContainerScroll = false
-        contentTopInset = 0
-        density = .regular
-        embedsInPage = true
-    }
-
-    init(
-        showsHeader: Bool,
-        showsContainerScroll: Bool,
-        contentTopInset: CGFloat = OnePlusMetrics.contentTop,
-        density: OnePlusDensity = .compact
-    ) {
-        self.showsHeader = showsHeader
-        self.showsContainerScroll = showsContainerScroll
-        self.contentTopInset = contentTopInset
-        self.density = density
-        embedsInPage = false
-    }
-
-    @ViewBuilder
-    var body: some View {
-        if embedsInPage {
-            InputDevicesSettingsContent()
-        } else {
-            panelContent
-                .onePlusDensity(density)
-        }
-    }
-
-    private var panelContent: some View {
-        VStack(spacing: OnePlusMetrics.cardGap) {
-            if showsHeader { OnePlusSectionTitle("Scrolling") }
-            Group {
-                if showsContainerScroll {
-                    ScrollView {
-                        InputDevicesSettingsContent(includesDeviceFooter: false)
-                    }
-                    .onePlusScrollIndicators()
-                } else {
-                    InputDevicesSettingsContent(includesDeviceFooter: false)
-                }
-            }
-            InputScrollDeviceBar()
-        }
-        .padding(.horizontal, density.gutter)
-        .padding(.top, contentTopInset)
-        .padding(.bottom, OnePlusMetrics.gutter)
-    }
-}
-
 struct InputScrollDeviceBar: View {
     @State private var manager = InputDevicesManager.shared
+    var isExpanded: Binding<Bool>? = nil
 
     var body: some View {
-        OnePlusCard {
-            OnePlusSettingRow(
-                "Scroll device",
-                help: "Automatic separates continuous trackpad events from mouse wheel steps.",
-                separator: false
-            ) {
-                OnePlusSelect(
-                    choices: InputEventOverride.allCases.map { ($0, $0.title) },
-                    selection: Binding(
-                        get: { manager.settings.eventOverride },
-                        set: { value in manager.update { $0.eventOverride = value } }
-                    ),
-                    accessibilityLabel: "Scroll device"
-                )
+        VStack(alignment: .leading, spacing: 0) {
+            if let isExpanded {
+                InputDisclosureHeader(title: "Scroll device", detail: manager.settings.eventOverride.title,
+                                      isExpanded: isExpanded)
+            }
+            if isExpanded?.wrappedValue != false {
+                OnePlusSettingRow(
+                    isExpanded == nil ? "Scroll device" : "Use profile",
+                    help: "Automatic separates continuous trackpad events from mouse wheel steps.",
+                    separator: false
+                ) {
+                    OnePlusSelect(
+                        choices: InputEventOverride.allCases.map { ($0, $0.title) },
+                        selection: Binding(
+                            get: { manager.settings.eventOverride },
+                            set: { value in manager.update { $0.eventOverride = value } }
+                        ),
+                        accessibilityLabel: "Scroll device"
+                    )
+                }
             }
         }
     }
@@ -87,10 +35,14 @@ struct InputDevicesSettingsContent: View {
     @State private var manager = InputDevicesManager.shared
     @Environment(\.onePlusDensity) private var density
     var includesDeviceFooter = true
+    var collapsible = false
+    @AppStorage("tray.inputDevices.mouse.expanded") private var mouseExpanded = true
+    @AppStorage("tray.inputDevices.trackpad.expanded") private var trackpadExpanded = true
+    @AppStorage("tray.inputDevices.scrollDevice.expanded") private var scrollDeviceExpanded = true
 
     var body: some View {
         VStack(alignment: .leading, spacing: OnePlusMetrics.cardGap) {
-            scrollControlCard
+            scrollControlRows
             if density == .regular {
                 HStack(alignment: .top, spacing: OnePlusMetrics.cardGap) {
                     mouseProfile
@@ -100,19 +52,20 @@ struct InputDevicesSettingsContent: View {
                 mouseProfile
                 trackpadProfile
             }
-            if includesDeviceFooter { InputScrollDeviceBar() }
+            if includesDeviceFooter { InputScrollDeviceBar(isExpanded: collapsible ? $scrollDeviceExpanded : nil) }
         }
     }
 
-    private var scrollControlCard: some View {
-        OnePlusCard {
+    private var scrollControlRows: some View {
+        VStack(alignment: .leading, spacing: 0) {
             OnePlusSettingRow(
-                "Adjust scrolling system wide",
-                caption: "Use the mouse and trackpad profiles outside MacPowerToys.",
+                "Use custom scrolling",
+                help: "Apply these profiles in every app.",
+                controlWidth: OnePlusMetrics.contentControlHeight,
                 separator: !manager.permissionGranted || manager.errorMessage != nil
             ) {
                 Toggle(
-                    "Adjust scrolling system wide",
+                    "Use custom scrolling",
                     isOn: setting(
                         get: { $0.scrollControlEnabled },
                         set: { $0.scrollControlEnabled = $1 }
@@ -123,8 +76,8 @@ struct InputDevicesSettingsContent: View {
             }
             if !manager.permissionGranted {
                 OnePlusSettingRow(
-                    "Accessibility permission",
-                    caption: "Allow MacPowerToys to adjust scroll events.",
+                    "Accessibility",
+                    help: "Allow MacPowerToys to adjust scroll events.",
                     separator: manager.errorMessage != nil
                 ) {
                     HStack(spacing: OnePlusMetrics.actionSpacing) {
@@ -146,7 +99,8 @@ struct InputDevicesSettingsContent: View {
             title: "Mouse",
             icon: InputDeviceDescriptor.Kind.mouse.icon,
             deviceCount: deviceCount(of: .mouse),
-            profile: profileBinding(\.mouse)
+            profile: profileBinding(\.mouse),
+            isExpanded: collapsible ? $mouseExpanded : nil
         )
     }
 
@@ -155,7 +109,8 @@ struct InputDevicesSettingsContent: View {
             title: "Trackpad",
             icon: InputDeviceDescriptor.Kind.trackpad.icon,
             deviceCount: deviceCount(of: .trackpad),
-            profile: profileBinding(\.trackpad)
+            profile: profileBinding(\.trackpad),
+            isExpanded: collapsible ? $trackpadExpanded : nil
         )
     }
 

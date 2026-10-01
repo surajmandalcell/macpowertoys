@@ -6,16 +6,19 @@ enum InputControlState {
     case permissionNeeded
     case passthrough
     case active
+    case unavailable
 
     static func state(
         settings: InputDevicesSettings,
         permissionGranted: Bool,
+        interceptionActive: Bool,
         kind: InputDeviceDescriptor.Kind
     ) -> InputControlState {
         guard settings.scrollControlEnabled else { return .disabled }
         guard permissionGranted else { return .permissionNeeded }
-        let profile = kind == .mouse ? settings.mouse : settings.trackpad
-        return profile.enabled ? .active : .passthrough
+        let profile = InputScrollPolicy.profile(for: kind, settings: settings)
+        guard profile.enabled else { return .passthrough }
+        return interceptionActive ? .active : .unavailable
     }
 
     var title: String {
@@ -24,13 +27,14 @@ enum InputControlState {
         case .permissionNeeded: "Permission needed"
         case .passthrough: "Passthrough"
         case .active: "Controlled"
+        case .unavailable: "Control inactive"
         }
     }
 
     var status: OnePlusStatus.State {
         switch self {
         case .disabled, .passthrough: .offline
-        case .permissionNeeded: .warning
+        case .permissionNeeded, .unavailable: .warning
         case .active: .online
         }
     }
@@ -66,13 +70,22 @@ struct InputDeviceCard: View {
         self.init(device: device, kind: device.kind, profile: profile, state: state)
     }
 
+    @ViewBuilder
     var body: some View {
+        if device == nil {
+            OnePlusCardHeader("No \(kind.rawValue.lowercased()) detected", systemImage: kind.icon)
+        } else {
+            deviceContent
+        }
+    }
+
+    private var deviceContent: some View {
         OnePlusCard {
-            OnePlusCardHeader(device?.name ?? "No \(kind.rawValue.lowercased()) detected", systemImage: kind.icon) {
+            OnePlusCardHeader(device?.name ?? kind.rawValue, systemImage: kind.icon) {
                 InputStateLabel(state: device == nil ? .disabled : state)
             }
             VStack(spacing: 0) {
-                ForEach(Array(rows.enumerated()), id: \.offset) { _, row in
+                ForEach(rows, id: \.label) { row in
                     OnePlusKeyValueRow(
                         row.label,
                         value: row.value,
@@ -92,12 +105,15 @@ struct InputDeviceCard: View {
         return [
             device.modelNumber.map { Row(label: "Model", value: $0) },
             device.vendorName.map { Row(label: "Vendor", value: $0) },
-            Row(label: "Device ID", value: String(format: "%04X:%04X", device.vendorID, device.productID), monospaced: true),
+            device.vendorID > 0 || device.productID > 0
+                ? Row(label: "Device ID", value: String(format: "%04X:%04X", device.vendorID, device.productID), monospaced: true) : nil,
+            device.locationID > 0 ? Row(label: "Location", value: String(format: "%08X", device.locationID), monospaced: true) : nil,
             device.firmwareVersion.map { Row(label: "Firmware", value: $0, monospaced: true) },
             device.serialNumber.flatMap { $0.isEmpty ? nil : Row(label: "Serial", value: $0, monospaced: true) },
             device.connectionSummary.components(separatedBy: " · ").first.map { Row(label: "Connection", value: $0) },
             device.batteryPercent.map { Row(label: "Battery", value: "\($0)%") },
             device.buttonCount.flatMap { $0 > 0 ? Row(label: "Buttons", value: $0.formatted()) : nil },
+            device.maxInputReportSize.flatMap { $0 > 0 ? Row(label: "Input report", value: "\($0) bytes") : nil },
             device.pointerResolutionDPI.map {
                 Row(label: "Resolution", value: $0.formatted(.number.precision(.fractionLength(0))) + " dpi")
             },
@@ -129,7 +145,11 @@ nonisolated struct InputKeyboardDetails: Equatable, Sendable {
         } else {
             self.keyRepeat = "System default"
         }
-        functionKeys = standardFunctionKeys == true ? "Standard F keys" : "Media keys"
+        switch standardFunctionKeys {
+        case true: functionKeys = "Standard F keys"
+        case false: functionKeys = "Media keys"
+        case nil: functionKeys = "System default"
+        }
     }
 
     static func load() -> Self {
@@ -166,36 +186,43 @@ struct InputKeyboardCard: View {
     }
 }
 
-struct InputSettingRow<Control: View>: View {
-    let label: String
-    var help: String?
-    @ViewBuilder let control: Control
-
-    var body: some View {
-        OnePlusSettingRow(label, help: help, control: { control })
-    }
-}
-
 struct InputScrollProfileCard: View {
     let title: String
     let icon: String
     let deviceCount: Int
     @Binding var profile: InputScrollProfile
+    var isExpanded: Binding<Bool>? = nil
 
+    @ViewBuilder
     var body: some View {
-        OnePlusCard {
-            OnePlusCardHeader(title, systemImage: icon) {
-                OnePlusStatus(deviceDetail, state: deviceCount > 0 ? .online : .offline)
+        if isExpanded == nil {
+            OnePlusCard { profileContent }
+        } else {
+            profileContent
+        }
+    }
+
+    private var profileContent: some View {
+        VStack(alignment: .leading, spacing: 0) {
+            if let isExpanded {
+                InputDisclosureHeader(title: title, detail: deviceDetail, isExpanded: isExpanded)
+            } else {
+                OnePlusCardHeader(title, systemImage: icon) {
+                    OnePlusStatus(deviceDetail, state: deviceCount > 0 ? .online : .offline)
+                }
             }
-            OnePlusSettingRow(
-                "Use this profile",
-                help: "Apply this profile to \(title.lowercased()) scroll events."
-            ) {
-                Toggle("Use this profile", isOn: $profile.enabled)
-                    .labelsHidden()
-                    .toggleStyle(OnePlusSwitchStyle())
+            if isExpanded?.wrappedValue != false {
+                OnePlusSettingRow(
+                    "Use this profile",
+                    help: "Apply this profile to \(title.lowercased()) scroll events.",
+                    controlWidth: OnePlusMetrics.contentControlHeight
+                ) {
+                    Toggle("Use \(title.lowercased()) profile", isOn: $profile.enabled)
+                        .labelsHidden()
+                        .toggleStyle(OnePlusSwitchStyle())
+                }
+                settingRows
             }
-            settingRows
         }
     }
 
@@ -204,10 +231,10 @@ struct InputScrollProfileCard: View {
         Group {
             OnePlusSettingRow(
                 "Direction",
-                help: "Choose natural or reversed vertical scrolling."
+                help: "Keep the macOS scroll direction or reverse it."
             ) {
                 OnePlusSegmented(
-                    choices: [(false, "Natural"), (true, "Reversed")],
+                    choices: [(false, "System"), (true, "Reversed")],
                     selection: $profile.reverseVertical,
                     accessibilityLabel: "\(title) scroll direction"
                 )
@@ -218,32 +245,36 @@ struct InputScrollProfileCard: View {
             ) {
                 HStack(spacing: OnePlusMetrics.spacing[3]) {
                     Slider(value: $profile.speed, in: 0.35...3, step: 0.05)
+                        .accessibilityLabel("\(title) scroll speed")
                     Text(profile.speed.formatted(.number.precision(.fractionLength(2))) + "×")
                         .onePlusText(.mono)
                 }
             }
             OnePlusSettingRow(
                 "Horizontal scrolling",
-                help: "Pass horizontal scroll events through."
+                help: "Pass horizontal scroll events through.",
+                controlWidth: OnePlusMetrics.contentControlHeight
             ) {
-                Toggle("Horizontal scrolling", isOn: $profile.horizontalEnabled)
+                Toggle("\(title) horizontal scrolling", isOn: $profile.horizontalEnabled)
                     .labelsHidden()
                     .toggleStyle(OnePlusSwitchStyle())
             }
             OnePlusSettingRow(
                 "Reverse horizontal",
-                help: "Invert left and right scrolling."
+                help: "Invert left and right scrolling.",
+                controlWidth: OnePlusMetrics.contentControlHeight
             ) {
-                Toggle("Reverse horizontal", isOn: $profile.reverseHorizontal)
+                Toggle("\(title) reverse horizontal", isOn: $profile.reverseHorizontal)
                     .labelsHidden()
                     .toggleStyle(OnePlusSwitchStyle())
             }
             .disabled(!profile.horizontalEnabled)
             OnePlusSettingRow(
                 "Shift scrolls sideways",
-                help: "Hold Shift and use the wheel to move sideways."
+                help: "Hold Shift and use the wheel to move sideways.",
+                controlWidth: OnePlusMetrics.contentControlHeight
             ) {
-                Toggle("Shift scrolls sideways", isOn: $profile.shiftScrollsHorizontally)
+                Toggle("\(title) Shift scrolls sideways", isOn: $profile.shiftScrollsHorizontally)
                     .labelsHidden()
                     .toggleStyle(OnePlusSwitchStyle())
             }
@@ -251,9 +282,10 @@ struct InputScrollProfileCard: View {
             OnePlusSettingRow(
                 "Smoothing",
                 help: "Split a coarse wheel notch into smaller steps.",
+                controlWidth: OnePlusMetrics.contentControlHeight,
                 separator: false
             ) {
-                Toggle("Smoothing", isOn: $profile.smooth)
+                Toggle("\(title) smoothing", isOn: $profile.smooth)
                     .labelsHidden()
                     .toggleStyle(OnePlusSwitchStyle())
             }
@@ -267,5 +299,27 @@ struct InputScrollProfileCard: View {
         case 1: "1 connected"
         default: "\(deviceCount) connected"
         }
+    }
+}
+
+struct InputDisclosureHeader: View {
+    let title: String
+    var detail: String? = nil
+    @Binding var isExpanded: Bool
+
+    var body: some View {
+        Button { isExpanded.toggle() } label: {
+            OnePlusCardHeader(title) {
+                if let detail { Text(detail).onePlusText(.caption).lineLimit(1).help(detail) }
+                Image(systemName: isExpanded ? "chevron.down" : "chevron.right")
+                    .onePlusText(.cardTitle)
+                    .accessibilityHidden(true)
+            }
+            .contentShape(Rectangle())
+        }
+        .buttonStyle(OnePlusInteractionStyle(radius: OnePlusMetrics.panelRadius))
+        .accessibilityLabel("\(title) section")
+        .accessibilityValue(isExpanded ? "Expanded" : "Collapsed")
+        .accessibilityHint(isExpanded ? "Hide controls and details" : "Show controls and details")
     }
 }

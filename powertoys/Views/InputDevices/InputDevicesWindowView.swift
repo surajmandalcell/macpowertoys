@@ -50,6 +50,10 @@ struct InputDevicesWindowView: View {
                 page = destination
             }
         }
+        .onReceive(NotificationCenter.default.publisher(for: .commandOpenSettings)) { _ in
+            guard ToolActionRouter.windowIdentifier(NSApp.keyWindow?.identifier?.rawValue, matches: "input-devices") else { return }
+            page = .scrolling
+        }
         .background {
             ForEach(Array(InputDevicesPage.allCases.enumerated()), id: \.offset) { index, destination in
                 Button("") { page = destination }
@@ -94,7 +98,8 @@ struct InputDevicesWindowView: View {
 
     private var devicesPage: some View {
         OnePlusPage {
-            OnePlusPageHeader(title: "Devices", subtitle: deviceSubtitle) {
+            OnePlusPageHeader(title: "Devices") {
+                Text(deviceSubtitle).onePlusText(.caption)
                 Button("Refresh", systemImage: "arrow.clockwise") { manager.refresh() }
                     .buttonStyle(OnePlusButtonStyle(.neutral))
             }
@@ -122,10 +127,10 @@ struct InputDevicesWindowView: View {
 
     private var scrollingPage: some View {
         OnePlusPage(scrolls: false) {
-            OnePlusPageHeader(
-                title: "Scrolling",
-                subtitle: manager.interceptionActive ? "System-wide control is active" : "System-wide control is inactive"
-            )
+            OnePlusPageHeader(title: "Scrolling") {
+                OnePlusStatus(manager.interceptionActive ? "Control active" : "Control inactive",
+                              state: manager.interceptionActive ? .online : .offline)
+            }
         } footer: {
             InputScrollDeviceBar()
         } content: {
@@ -138,16 +143,16 @@ struct InputDevicesWindowView: View {
 
     private var aboutPage: some View {
         OnePlusPage {
-            OnePlusPageHeader(title: "About", subtitle: appVersion)
+            OnePlusPageHeader(title: "About") { Text(appVersion).onePlusText(.caption) }
         } content: {
             OnePlusCard {
                 OnePlusCardHeader("Input Devices", systemImage: ToolGlyph.inputDevices.symbol)
-                OnePlusSettingRow("Profiles", caption: "Mouse and trackpad settings stay independent.") {
+                OnePlusSettingRow("Profiles", help: "Mouse and trackpad settings stay independent.") {
                     OnePlusStatus("Saved locally")
                 }
                 OnePlusSettingRow(
                     "System control",
-                    caption: "Accessibility permission is required only for system-wide scrolling.",
+                    help: "Accessibility permission is required only for system-wide scrolling.",
                     separator: false
                 ) {
                     OnePlusStatus(manager.permissionGranted ? "Allowed" : "Permission needed",
@@ -164,7 +169,7 @@ struct InputDevicesWindowView: View {
     }
 
     private func profile(for kind: InputDeviceDescriptor.Kind) -> InputScrollProfile {
-        kind == .mouse ? manager.settings.mouse : manager.settings.trackpad
+        InputScrollPolicy.profile(for: kind, settings: manager.settings)
     }
 
     private func deviceCard(_ device: InputDeviceDescriptor) -> some View {
@@ -174,6 +179,7 @@ struct InputDevicesWindowView: View {
             state: InputControlState.state(
                 settings: manager.settings,
                 permissionGranted: manager.permissionGranted,
+                interceptionActive: manager.interceptionActive,
                 kind: device.kind
             )
         )
