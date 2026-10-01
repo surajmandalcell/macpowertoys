@@ -34,8 +34,20 @@ nonisolated enum ToolGlyph: String, CaseIterable {
         }
     }
 
+    @MainActor private static var assetImages: [ToolGlyph: NSImage] = [:]
+
+    @MainActor var assetNSImage: NSImage? {
+        guard isAsset else { return nil }
+        if let image = Self.assetImages[self] { return image }
+        guard let source = NSImage(named: symbol) else { return nil }
+        let image = StatusItemIcon.rasterized(source).0
+        image.isTemplate = true
+        Self.assetImages[self] = image
+        return image
+    }
+
     @MainActor var assetImage: Image? {
-        guard isAsset, let image = NSImage(named: symbol) else { return nil }
+        guard let image = assetNSImage else { return nil }
         return Image(nsImage: image).renderingMode(.template)
     }
 
