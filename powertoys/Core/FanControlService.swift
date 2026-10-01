@@ -204,17 +204,110 @@ nonisolated private struct FanError: LocalizedError {
     var errorDescription: String? { message }
 }
 
+nonisolated struct FanControlPresentation: Equatable, Sendable {
+    var status = "— RPM · —%"
+    var detail = "Fan data unavailable"
+    var activePreset: FanPreset?
+    var selectedPreset: FanPreset?
+    var canControl = false
+    var canRestoreAutomatic = false
+    var needsApproval = false
+    var needsHelperUpdate = false
+    var isChanging = false
+    var hasCompletedRead = false
+    var hasError = false
+
+    init(snapshot: FanSnapshot? = nil, selectedPreset: FanPreset? = nil, errorMessage: String? = nil,
+         canRestoreAutomatic: Bool = false, needsApproval: Bool = false, needsHelperUpdate: Bool = false,
+         isChanging: Bool = false, hasCompletedRead: Bool = false) {
+        let rpm = snapshot?.averageRPM.map { $0.formatted() + " RPM" } ?? "— RPM"
+        let utilization = snapshot?.utilization.map { "\($0)%" } ?? "—%"
+        status = "\(rpm) · \(utilization)"
+        self.selectedPreset = selectedPreset
+        activePreset = Self.reportedPreset(snapshot, selectedPreset: selectedPreset)
+        canControl = snapshot?.canControl == true
+        self.canRestoreAutomatic = canRestoreAutomatic
+        self.needsApproval = needsApproval
+        self.needsHelperUpdate = needsHelperUpdate
+        self.isChanging = isChanging
+        self.hasCompletedRead = hasCompletedRead
+        hasError = errorMessage != nil
+        detail = Self.detail(snapshot: snapshot, selectedPreset: selectedPreset, errorMessage: errorMessage,
+                             canControl: canControl, canRestoreAutomatic: canRestoreAutomatic,
+                             needsApproval: needsApproval, needsHelperUpdate: needsHelperUpdate,
+                             activePreset: activePreset)
+    }
+
+    static func canSelect(_ preset: FanPreset, canControl: Bool, canRestoreAutomatic: Bool, isChanging: Bool) -> Bool {
+        !isChanging && (canControl || (preset == .auto && canRestoreAutomatic))
+    }
+
+    func canSelect(_ preset: FanPreset?) -> Bool {
+        guard let preset else { return false }
+        return Self.canSelect(preset, canControl: canControl, canRestoreAutomatic: canRestoreAutomatic, isChanging: isChanging)
+    }
+
+    static func reportedPreset(_ snapshot: FanSnapshot?, selectedPreset: FanPreset?) -> FanPreset? {
+        if let selectedPreset { return selectedPreset }
+        guard let snapshot, !snapshot.fans.isEmpty else { return nil }
+        if let detected = snapshot.detectedPreset { return detected }
+        return snapshot.fans.allSatisfy { ["auto", "system"].contains($0.mode?.lowercased() ?? "") } ? .auto : nil
+    }
+
+    private static func detail(snapshot: FanSnapshot?, selectedPreset: FanPreset?, errorMessage: String?,
+                               canControl: Bool, canRestoreAutomatic: Bool, needsApproval: Bool,
+                               needsHelperUpdate: Bool, activePreset: FanPreset?) -> String {
+        if let error = errorMessage { return error }
+        guard let snapshot = snapshot else { return "Fan data unavailable" }
+        guard !snapshot.fans.isEmpty else { return "No fans detected" }
+        if selectedPreset == nil, snapshot.hasExternalManualControl {
+            return canRestoreAutomatic
+                ? "Manual fan speed set elsewhere · Auto restores macOS"
+                : "Manual fan speed set elsewhere · read only"
+        }
+        if activePreset == .auto { return "Auto follows macOS" }
+        guard canControl else {
+            if canRestoreAutomatic {
+                return snapshot.hasExternalManualControl
+                    ? "Manual control active · Auto restores macOS"
+                    : "Fan helper unavailable · try Auto"
+            }
+            if needsApproval { return "Allow MacPowerToys in Login Items" }
+            if needsHelperUpdate { return "Update the built-in fan helper" }
+            if snapshot.fans.contains(where: { $0.mode?.hasPrefix("unknown") == true }) {
+                return "Fan control unavailable on this Mac"
+            }
+            return snapshot.hasExternalManualControl
+                ? "Manual fan speed set elsewhere · read only"
+                : "Read only · enable built-in fan control"
+        }
+        switch selectedPreset {
+        case .auto: return "Controlled by macOS"
+        case .cool: return "Cooling boost · Auto in 10 minutes"
+        case .max: return "Maximum cooling"
+        case nil: return "Manual control active"
+        }
+    }
+
+}
+
 @Observable
 @MainActor
 final class FanControlService {
     static let shared = FanControlService()
     static weak var current: FanControlService?
+    nonisolated static let minimumDisplayInterval: Duration = .milliseconds(250)
 
-    private(set) var snapshot: FanSnapshot?
-    private(set) var hasCompletedRead = false
-    private(set) var selectedPreset: FanPreset?
-    private(set) var errorMessage: String?
-    private(set) var isChanging = false
+    private(set) var snapshot: FanSnapshot? { didSet { scheduleDisplay() } }
+    private(set) var hasCompletedRead = false { didSet { scheduleDisplay() } }
+    private(set) var selectedPreset: FanPreset? { didSet { scheduleDisplay() } }
+    private(set) var errorMessage: String? { didSet { scheduleDisplay() } }
+    private(set) var isChanging = false { didSet { scheduleDisplay() } }
+    private(set) var display = FanControlPresentation()
+    @ObservationIgnored private var displayTask: Task<Void, Never>?
+    @ObservationIgnored private var lastDisplayPublication: ContinuousClock.Instant?
+    @ObservationIgnored private var displayRevision = 0
+    @ObservationIgnored private let readSnapshot: @Sendable () -> FanSnapshot?
     private var owners = Set<String>()
     private var pollTask: Task<Void, Never>?
     private var coolResetTask: Task<Void, Never>?
@@ -223,7 +316,14 @@ final class FanControlService {
     private var helperCommit: String?
     private var revision = 0
 
-    private init() { Self.current = self }
+    private convenience init() {
+        self.init(readSnapshot: FanCommand.read)
+        Self.current = self
+    }
+
+    init(readSnapshot: @escaping @Sendable () -> FanSnapshot?) {
+        self.readSnapshot = readSnapshot
+    }
 
     var pollOwnerCount: Int { pollTask == nil ? 0 : 1 }
     var isAvailable: Bool { snapshot?.fans.isEmpty == false }
@@ -257,6 +357,7 @@ final class FanControlService {
 
     func start(owner: String) {
         guard owners.insert(owner).inserted, pollTask == nil else { return }
+        scheduleDisplay()
         pollTask = Task { [weak self] in
             while !Task.isCancelled {
                 await self?.refresh()
@@ -270,13 +371,16 @@ final class FanControlService {
         revision &+= 1
         pollTask?.cancel()
         pollTask = nil
+        displayTask?.cancel()
+        displayTask = nil
     }
 
     func refresh() async {
         let currentRevision = revision
-        let result = await Task.detached(priority: .utility) { FanCommand.read() }.value
+        let readSnapshot = readSnapshot
+        let result = await Task.detached(priority: .utility) { readSnapshot() }.value
         guard currentRevision == revision, !owners.isEmpty else { return }
-        if NetToysNeighborServiceManager.shared.isEnabled, helperCommit == nil {
+        if result?.canControl != true, NetToysNeighborServiceManager.shared.isEnabled, helperCommit == nil {
             helperCommit = await Task.detached(priority: .utility) { FanCommand.helperSourceCommit() }.value
         }
         guard currentRevision == revision, !owners.isEmpty else { return }
@@ -296,8 +400,8 @@ final class FanControlService {
     }
 
     func select(_ preset: FanPreset) {
-        guard !isChanging,
-              snapshot?.canControl == true || (preset == .auto && canRestoreAutomatic) else { return }
+        guard FanControlPresentation.canSelect(preset, canControl: canControl,
+                                              canRestoreAutomatic: canRestoreAutomatic, isChanging: isChanging) else { return }
         isChanging = true
         hasPendingManualCommand = preset != .auto
         errorMessage = nil
@@ -332,5 +436,42 @@ final class FanControlService {
         FanCommand.restoreAutomatic()
         ownsManualControl = false
         hasPendingManualCommand = false
+    }
+
+    private func scheduleDisplay() {
+        displayRevision &+= 1
+        guard !owners.isEmpty, displayTask == nil else { return }
+        displayTask = Task { [weak self] in
+            guard let self else { return }
+            if let lastDisplayPublication {
+                try? await Task.sleep(until: lastDisplayPublication.advanced(by: Self.minimumDisplayInterval), clock: .continuous)
+            }
+            guard !Task.isCancelled, !owners.isEmpty else { return }
+            let currentRevision = displayRevision
+            let snapshot = snapshot
+            let selectedPreset = selectedPreset
+            let errorMessage = errorMessage
+            let canRestoreAutomatic = canRestoreAutomatic
+            let needsApproval = needsApproval
+            let needsHelperUpdate = needsHelperUpdate
+            let isChanging = isChanging
+            let hasCompletedRead = hasCompletedRead
+            let next = await Task.detached(priority: .utility) {
+                FanControlPresentation(snapshot: snapshot, selectedPreset: selectedPreset, errorMessage: errorMessage,
+                                       canRestoreAutomatic: canRestoreAutomatic, needsApproval: needsApproval,
+                                       needsHelperUpdate: needsHelperUpdate, isChanging: isChanging,
+                                       hasCompletedRead: hasCompletedRead)
+            }.value
+            guard !Task.isCancelled, !owners.isEmpty else { return }
+            displayTask = nil
+            if currentRevision == displayRevision {
+                if display != next {
+                    display = next
+                    lastDisplayPublication = .now
+                }
+            } else {
+                scheduleDisplay()
+            }
+        }
     }
 }

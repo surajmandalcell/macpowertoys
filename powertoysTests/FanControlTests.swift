@@ -1,11 +1,72 @@
 import AppKit
 import Darwin
 import OnePlusUI
+import Observation
+import Synchronization
 import SwiftUI
 import XCTest
 @testable import powertoys
 
 final class FanControlTests: XCTestCase {
+    @MainActor
+    func testFanDisplayCoalescesSamplesAndStopsWithItsOwner() async throws {
+        let rpm = Mutex(3_000)
+        let publications = Mutex<[ContinuousClock.Instant]>([])
+        let service = FanControlService(readSnapshot: {
+            let value = rpm.withLock { $0 += 1; return $0 }
+            return FanSnapshot(fans: [FanReading(index: 0, actualRPM: Double(value), maximumRPM: 5_000, mode: "auto")],
+                               profile: "auto", canControl: true)
+        })
+        @MainActor func observe() {
+            withObservationTracking { _ = service.display } onChange: {
+                publications.withLock { $0.append(.now) }
+                Task { @MainActor in observe() }
+            }
+        }
+        observe()
+        service.start(owner: "fan-display-cap-test")
+        defer { service.stop(owner: "fan-display-cap-test") }
+        for _ in 0..<80 {
+            await service.refresh()
+            try await Task.sleep(for: .milliseconds(10))
+        }
+        try await Task.sleep(for: .milliseconds(300))
+        let times = publications.withLock { $0 }
+        XCTAssertGreaterThanOrEqual(times.count, 3)
+        for (previous, current) in zip(times, times.dropFirst()) {
+            XCTAssertGreaterThanOrEqual(previous.duration(to: current), .milliseconds(250))
+        }
+        XCTAssertTrue(service.display.status.hasPrefix(rpm.withLock { $0 }.formatted()))
+        service.stop(owner: "fan-display-cap-test")
+        XCTAssertEqual(service.pollOwnerCount, 0)
+        try await Task.sleep(for: .milliseconds(300))
+        XCTAssertEqual(publications.withLock { $0.count }, times.count)
+    }
+
+    func testPreparedFanTextAndIndependentAutomaticRecovery() {
+        let snapshot = FanSnapshot(fans: [FanReading(index: 0, actualRPM: 3_472, maximumRPM: 5_777, mode: "manual")],
+                                   profile: nil, canControl: false)
+        let data = FanControlPresentation(snapshot: snapshot, canRestoreAutomatic: true)
+        XCTAssertEqual(data.status, 3_472.formatted() + " RPM · 60%")
+        XCTAssertNil(data.activePreset)
+        XCTAssertTrue(data.canSelect(.auto))
+        XCTAssertFalse(data.canSelect(.cool))
+        XCTAssertFalse(data.canSelect(.max))
+        for canControl in [false, true] {
+            for canRestore in [false, true] {
+                for changing in [false, true] {
+                    for preset in FanPreset.allCases {
+                        XCTAssertEqual(FanControlPresentation.canSelect(preset, canControl: canControl,
+                                                                       canRestoreAutomatic: canRestore, isChanging: changing),
+                                       !changing && (canControl || (preset == .auto && canRestore)))
+                    }
+                }
+            }
+        }
+        XCTAssertEqual(FanControlPresentation().status, "— RPM · —%")
+        XCTAssertEqual(FanControlService.minimumDisplayInterval, .milliseconds(250))
+    }
+
     @MainActor
     func testFanViewStopsPollingWhileItsLayoutStaysMounted() async throws {
         let service = FanControlService.shared
