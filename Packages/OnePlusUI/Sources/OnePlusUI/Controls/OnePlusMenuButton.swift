@@ -33,9 +33,9 @@ public struct OnePlusMenuButton: View {
             if variant == .borderedIcon {
                 Image(systemName: systemImage).accessibilityHidden(true)
             } else {
-                HStack(spacing: 6) {
+                OnePlusControlContentLayout(pointSize: OnePlusTextRole.control.size(for: density), iconIndex: 1) {
                     Text(title)
-                    Image(systemName: "chevron.down").font(.system(size: 10)).accessibilityHidden(true)
+                    Image(systemName: "chevron.down").accessibilityHidden(true)
                 }
             }
         }

@@ -108,7 +108,7 @@ struct OnePlusPopupMenuView: View {
     }
 }
 
-private struct OnePlusPopupItemView: View {
+struct OnePlusPopupItemView: View {
     let item: OnePlusPopupMenuItem
     @ObservedObject var session: OnePlusPopupSession
 
@@ -116,20 +116,22 @@ private struct OnePlusPopupItemView: View {
         Button { session.choose(item.id) } label: {
             HStack(spacing: OnePlusPopupMetrics.columnGap) {
                 if session.showsSelectionColumn {
-                    Image(systemName: "checkmark")
-                        .font(.system(size: 10, weight: .semibold))
+                    OnePlusControlContentLayout(pointSize: OnePlusTextRole.control.size(for: session.density)) {
+                        Image(systemName: "checkmark")
+                    }
                         .opacity(item.isSelected ? 1 : 0)
                         .frame(width: OnePlusPopupMetrics.checkColumn)
                 }
                 if session.showsSymbolColumn {
-                    Group {
+                    OnePlusControlContentLayout(pointSize: OnePlusTextRole.control.size(for: session.density)) {
                         if let symbol = item.systemImage { Image(systemName: symbol) }
                         else { Color.clear }
                     }
-                    .font(.system(size: 12))
                     .frame(width: OnePlusPopupMetrics.symbolColumn)
                 }
-                Text(item.title).lineLimit(1).frame(maxWidth: .infinity, alignment: .leading)
+                OnePlusControlContentLayout(pointSize: OnePlusTextRole.control.size(for: session.density), iconIndex: nil) {
+                    Text(item.title).lineLimit(1).frame(maxWidth: .infinity, alignment: .leading)
+                }
             }
             .onePlusText(.control, color: item.role == .destructive ? OnePlusColor.danger : nil)
             .padding(.horizontal, OnePlusPopupMetrics.itemPadding)

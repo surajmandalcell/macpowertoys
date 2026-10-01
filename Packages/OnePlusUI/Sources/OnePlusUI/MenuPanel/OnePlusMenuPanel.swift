@@ -365,8 +365,18 @@ public struct OnePlusMenuTile<Content: View>: View {
         }.onHover { hover = $0 }
     }
     private var tile: some View {
-        content.padding(.horizontal, 8).padding(.vertical, height == 70 ? 7 : 6)
-            .frame(width: OnePlusMenuMetrics.columnWidth(span: span), height: height, alignment: .leading)
+        Group {
+            if action != nil && height == 32 {
+                OnePlusControlContentLayout(pointSize: OnePlusTextRole.control.size(for: .compact), iconIndex: nil) {
+                    content
+                }
+                .font(.system(size: OnePlusTextRole.control.size(for: .compact)))
+                .imageScale(.medium)
+                .labelStyle(OnePlusButtonLabelStyle(pointSize: OnePlusTextRole.control.size(for: .compact)))
+            } else { content }
+        }.padding(.horizontal, 8).padding(.vertical, height == 70 ? 7 : 6)
+            .frame(width: OnePlusMenuMetrics.columnWidth(span: span), height: height,
+                   alignment: action != nil && height == 32 ? .center : .leading)
             .contentShape(Rectangle())
             .background {
                 if !historyValues.isEmpty {
