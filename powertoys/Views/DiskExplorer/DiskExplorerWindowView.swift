@@ -230,55 +230,45 @@ struct DiskExplorerWindowView: View {
                     .buttonStyle(OnePlusButtonStyle(.primary)).keyboardShortcut("r")
                     .disabled(model.sourceURL == nil || model.isRemoving)
             }
-            Menu {
-                Button("Reveal in Finder") { if let url = model.sourceURL { NSWorkspace.shared.activateFileViewerSelecting([url]) } }
-                    .disabled(model.sourceURL == nil)
-                Button("Copy Path") { if let url = model.sourceURL { DiskEntryPresentation.copy([url.path]) } }
-                    .disabled(model.sourceURL == nil)
-                Button("Choose Folder...") { showingFolder = true }
-                Divider()
-                Button("Review \(model.markedEntries.count) items") { showingReview = true }.disabled(model.marks.isEmpty)
-            } label: { OnePlusControlLabel(variant: .icon) { Image(systemName: "ellipsis") } }
-                .menuStyle(.borderlessButton).menuIndicator(.hidden).buttonStyle(.plain).fixedSize()
-                .help("More actions").accessibilityLabel("More actions")
+            OnePlusMenuButton("More actions", variant: .borderedIcon, items: [
+                .item(OnePlusPopupMenuItem("Reveal in Finder", isEnabled: model.sourceURL != nil) {
+                    if let url = model.sourceURL { NSWorkspace.shared.activateFileViewerSelecting([url]) }
+                }),
+                .item(OnePlusPopupMenuItem("Copy Path", isEnabled: model.sourceURL != nil) {
+                    if let url = model.sourceURL { DiskEntryPresentation.copy([url.path]) }
+                }),
+                .item(OnePlusPopupMenuItem("Choose Folder...") { showingFolder = true }),
+                .separator(),
+                .item(OnePlusPopupMenuItem("Review \(model.markedEntries.count) items", isEnabled: !model.marks.isEmpty) {
+                    showingReview = true
+                })
+            ])
                 .accessibilityIdentifier("diskExplorer.scan")
         }
     }
 
     private var stats: some View {
         let root = model.result?.root
-        return OnePlusCard {
-            HStack(spacing: 0) {
-                VStack(alignment: .leading, spacing: OnePlusMetrics.actionSpacing) {
-                    if let root { DiskSizeLabel(bytes: root.allocatedBytes, accent: true) }
-                    else { Text("-").onePlusText(.metric) }
-                    Text("Space used").onePlusText(.caption)
-                }.frame(maxWidth: .infinity, alignment: .leading).padding(OnePlusMetrics.cardPadding)
-                statDivider
-                stat("Files scanned", value: root?.fileCount.formatted() ?? "-")
-                statDivider
-                stat("Folders", value: root.map { max(0, $0.directoryCount - 1).formatted() } ?? "-")
-                statDivider
-                VStack(alignment: .leading, spacing: OnePlusMetrics.actionSpacing) {
-                    HStack(spacing: OnePlusMetrics.actionSpacing) {
-                        if model.isScanning { ProgressView().controlSize(.small) }
-                        Text(model.isScanning ? "Scanning..." : model.result?.isComplete == false ? "Cancelled" :
-                             model.result.map { DiskEntryPresentation.date.string(from: $0.scannedAt) } ?? "Not scanned")
-                            .onePlusText(.cardTitle)
-                    }
-                    Text(model.isScanning ? "\(model.scannedEntries.formatted()) items checked" : "Last scan")
-                        .onePlusText(.caption).lineLimit(1)
-                }.frame(maxWidth: .infinity, alignment: .leading).padding(OnePlusMetrics.cardPadding)
-            }.frame(height: OnePlusDiskmanMetrics.statsHeight)
-        }
+        return HStack(spacing: OnePlusMetrics.cardGap) {
+            stat("Space used", value: root?.allocatedBytes.diskSize ?? "-", accent: true)
+            stat("Files scanned", value: root?.fileCount.formatted() ?? "-")
+            stat("Folders", value: root.map { max(0, $0.directoryCount - 1).formatted() } ?? "-")
+            HStack(spacing: OnePlusMetrics.actionSpacing) {
+                if model.isScanning { ProgressView().controlSize(.small) }
+                stat(model.isScanning ? "Scanning" : "Last scan",
+                     value: model.isScanning ? "\(model.scannedEntries.formatted()) checked" :
+                        model.result?.isComplete == false ? "Stopped" :
+                        model.result.map { DiskEntryPresentation.date.string(from: $0.scannedAt) } ?? "Not scanned")
+            }
+        }.frame(height: OnePlusMetrics.controlHeight)
     }
-    private var statDivider: some View { OnePlusColor.line.frame(width: 1).padding(.vertical, OnePlusMetrics.cardPadding) }
     private func stat(_ title: String, value: String, accent: Bool = false) -> some View {
-        VStack(alignment: .leading, spacing: OnePlusMetrics.actionSpacing) {
-            Text(value).font(.system(size: OnePlusTextRole.metric.size(for: .regular), weight: .semibold))
-                .foregroundStyle(accent ? OnePlusColor.accent : OnePlusColor.ink).monospacedDigit().lineLimit(1)
+        HStack(spacing: OnePlusMetrics.actionSpacing) {
             Text(title).onePlusText(.caption)
-        }.frame(maxWidth: .infinity, alignment: .leading).padding(OnePlusMetrics.cardPadding)
+            Spacer(minLength: 0)
+            Text(value).onePlusText(.mono)
+                .foregroundStyle(accent ? OnePlusColor.accent : OnePlusColor.ink).monospacedDigit().lineLimit(1)
+        }.frame(maxWidth: .infinity)
     }
     @ViewBuilder private var tabTools: some View {
         if resultTab == .visualization {
@@ -309,11 +299,12 @@ struct DiskExplorerWindowView: View {
                 chartView(current).padding(OnePlusMetrics.actionSpacing).frame(maxWidth: .infinity, maxHeight: .infinity)
                 if measure == .age { ageLegend }
                 HStack {
-                    Text(hoveredDetail ?? chartCaption)
+                    Text(hoveredDetail ?? "")
                         .lineLimit(1).help(hoveredDetail ?? "")
                         .accessibilityIdentifier("diskExplorer.hoverDetail").accessibilityValue(hoveredDetail ?? "")
                     Spacer(minLength: OnePlusMetrics.actionSpacing)
-                    Text("Double-click to explore").fixedSize()
+                    Image(systemName: "info.circle").help("\(chartCaption). Click to select. Double-click a folder to explore.")
+                        .accessibilityLabel("Chart guidance")
                 }.onePlusText(.caption).padding(.horizontal, OnePlusMetrics.cardPadding).frame(height: OnePlusMetrics.controlHeight)
             }
             DiskSelectionInspector(entry: inspected, parent: inspectedParent ?? current, apparent: apparentSize,
@@ -368,7 +359,7 @@ struct DiskExplorerWindowView: View {
         }
     }
     private func results(_ current: DiskEntry?) -> some View {
-        OnePlusCard {
+        VStack(spacing: OnePlusMetrics.actionSpacing) {
             HStack(spacing: OnePlusMetrics.actionSpacing) {
                 OnePlusSearchField(prompt: resultTab == .largestFiles ? "Search largest files" : "Search Results", text: $search,
                                    focusTrigger: searchFocus, shortcutHint: "⌘F")
@@ -377,17 +368,19 @@ struct DiskExplorerWindowView: View {
                     .onePlusText(.caption)
                 Button("Review \(model.markedEntries.count)") { showingReview = true }
                     .buttonStyle(OnePlusButtonStyle()).disabled(model.marks.isEmpty || model.isRemoving)
-            }.padding(OnePlusMetrics.cardPadding)
-            if resultTab == .results {
-                breadcrumbs(current).padding(.horizontal, OnePlusMetrics.cardPadding).frame(height: OnePlusMetrics.controlHeight)
             }
-            DiskEntryTable(entries: resultTab == .largestFiles ? model.result?.largestFiles ?? [] : current?.children ?? [],
-                           revision: model.result?.scannedAt ?? .distantPast,
-                           sourceID: resultTab == .largestFiles ? "largest-files" : current?.id ?? "pending-results",
-                           search: search, apparent: apparentSize, selection: $selection, open: open,
-                           preview: preview, actions: fileActions, remove: stageRemoval, showsFileCount: resultTab == .results,
-                           isWaitingForScan: model.result == nil && model.isScanning)
-                .frame(maxHeight: .infinity)
+            if resultTab == .results {
+                breadcrumbs(current).frame(height: OnePlusMetrics.controlHeight)
+            }
+            OnePlusCard {
+                DiskEntryTable(entries: resultTab == .largestFiles ? model.result?.largestFiles ?? [] : current?.children ?? [],
+                               revision: model.result?.scannedAt ?? .distantPast,
+                               sourceID: resultTab == .largestFiles ? "largest-files" : current?.id ?? "pending-results",
+                               search: search, apparent: apparentSize, selection: $selection, open: open,
+                               preview: preview, actions: fileActions, remove: stageRemoval, showsFileCount: resultTab == .results,
+                               isWaitingForScan: model.result == nil && model.isScanning)
+                    .frame(maxHeight: .infinity)
+            }
         }.frame(maxHeight: .infinity)
     }
     private func breadcrumbs(_ current: DiskEntry?) -> some View {
@@ -407,24 +400,21 @@ struct DiskExplorerWindowView: View {
         }.thinScrollIndicators().frame(height: OnePlusMetrics.compactControlHeight)
     }
     private var emptyState: some View {
-        OnePlusCard {
-            OnePlusEmptyState("Choose a location", systemImage: "internaldrive",
-                              caption: "Analyze a volume or folder to see where its space goes.") {
-                Button("Choose Folder") { showingFolder = true }
-            }.frame(maxHeight: .infinity)
-        }
+        OnePlusEmptyState("Choose a location", systemImage: "internaldrive") {
+            Button("Choose Folder") { showingFolder = true }
+        }.frame(maxHeight: .infinity)
     }
     private func unreadableNotice(_ count: Int) -> some View {
-        OnePlusCard {
-            HStack(spacing: OnePlusMetrics.actionSpacing) {
-                Image(systemName: "lock").foregroundStyle(OnePlusColor.warn)
-                Text("\(count.formatted()) items could not be read.").onePlusText(.row)
-                Text("Grant Full Disk Access to complete the scan.").onePlusText(.caption)
-                Spacer()
-                Button("Open Settings") { DiskEntryPresentation.openFullDiskAccess() }
-                    .buttonStyle(OnePlusButtonStyle(.link, horizontalPadding: 0))
-            }.padding(.horizontal, OnePlusMetrics.cardPadding).frame(height: OnePlusMetrics.settingRow)
-        }.accessibilityIdentifier("diskExplorer.unreadableInfo")
+        HStack(spacing: OnePlusMetrics.actionSpacing) {
+            Image(systemName: "lock").foregroundStyle(OnePlusColor.warn)
+            Text("Items could not be read").onePlusText(.row)
+            Spacer()
+            Text(count.formatted()).onePlusText(.mono)
+            Button("Open Settings") { DiskEntryPresentation.openFullDiskAccess() }
+                .buttonStyle(OnePlusButtonStyle(.link, horizontalPadding: 0))
+        }.frame(height: OnePlusMetrics.controlHeight)
+            .help("Grant Full Disk Access to complete the scan.")
+            .accessibilityIdentifier("diskExplorer.unreadableInfo")
     }
     private var folderSheet: some View {
         DiskChooseFolderSheet(volumes: model.volumes, result: model.result, choose: { url in

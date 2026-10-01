@@ -170,9 +170,6 @@ struct DiskTreemapView: View {
     var actions: ([DiskEntry]) -> [OnePlusTableAction] = { _ in [] }
     @State private var hoveredID: String?
     @State private var displayedLayout: [DiskChartTile] = []
-    @State private var displayedTileIDs: [String] = []
-    @Environment(\.accessibilityReduceMotion) private var reduceMotion
-    private var chartAnimation: Animation? { OnePlusMotion.animation(reduceMotion: reduceMotion, duration: OnePlusMotion.content) }
 
     var tiles: [DiskChartTile] { Self.tiles(for: input, hiding: []) }
 
@@ -243,11 +240,13 @@ struct DiskTreemapView: View {
                     ForEach(layout, id: \.id) { tile in tileView(tile) }
                 }
                 .frame(width: geometry.size.width, height: geometry.size.height)
-                .animation(chartAnimation, value: displayedTileIDs)
+                .transaction { transaction in
+                    transaction.animation = nil
+                    transaction.disablesAnimations = true
+                }
                 .task(id: key) {
                     if let cached = cache.treemap(for: key) {
                         displayedLayout = cached
-                        displayedTileIDs = cached.map(\.id)
                         return
                     }
                     let input = self.input
@@ -257,7 +256,6 @@ struct DiskTreemapView: View {
                     guard !Task.isCancelled else { return }
                     cache.store(next, for: key)
                     displayedLayout = next
-                    displayedTileIDs = next.map(\.id)
                 }
                 .focusable()
                 .onMoveCommand { direction in
@@ -283,14 +281,10 @@ struct DiskTreemapView: View {
             } label: {
                 OnePlusStorageTile(color: tile.style.color, selected: selectedEntryID == tile.id, hovered: hoveredID == tile.id) {
                     if rect.width > OnePlusDiskmanMetrics.tileLabelWidth && rect.height > OnePlusDiskmanMetrics.tileLabelHeight {
-                        VStack(alignment: .leading, spacing: OnePlusMetrics.spacing[0]) {
+                        HStack(spacing: OnePlusMetrics.actionSpacing) {
                             Text(tile.label).font(.system(size: OnePlusTextRole.cardTitle.size(for: .regular), weight: .semibold))
-                            Text(tile.detail).font(.system(size: OnePlusTextRole.mono.size(for: .regular), design: .monospaced))
-                            if rect.height > OnePlusDiskmanMetrics.tileCountsHeight, let entry = tile.entry {
-                                Spacer(minLength: OnePlusMetrics.actionSpacing)
-                                Text("\(entry.fileCount.formatted()) files · \(max(0, entry.directoryCount - (entry.kind == .directory ? 1 : 0))) folders")
-                                    .font(.system(size: OnePlusTextRole.caption.size(for: .regular)))
-                            }
+                            Spacer(minLength: 0)
+                            Text(tile.detail).font(.system(size: OnePlusTextRole.mono.size(for: .regular), design: .monospaced)).fixedSize()
                         }.foregroundStyle(OnePlusStorageStyle.ink).lineLimit(1)
                     }
                 }
@@ -308,7 +302,7 @@ struct DiskTreemapView: View {
                 } else if hoveredID == tile.id {
                     hoveredID = nil; onHoverDetail(nil)
                 }
-            }.animation(chartAnimation, value: rect)
+            }
         }
     }
 
@@ -425,12 +419,12 @@ struct DiskSunburstView: View {
                             transaction.animation = nil
                             transaction.disablesAnimations = true
                         }
-                    VStack(spacing: OnePlusMetrics.spacing[1]) {
+                    HStack(spacing: OnePlusMetrics.actionSpacing) {
                         Text(directory.name)
                             .onePlusText(.cardTitle)
-                            .lineLimit(2).multilineTextAlignment(.center)
+                            .lineLimit(1)
                         Text(measure.detail(directory, apparent: apparent))
-                            .onePlusText(.mono)
+                            .onePlusText(.mono).lineLimit(1)
                     }
                     .frame(width: radius * 0.56)
                     .position(center)
@@ -519,14 +513,10 @@ struct DiskSunburstView: View {
                               y: geometry.size.height / 2 + sin(angle) * radius - side / 2,
                               width: side, height: side)
             if side > OnePlusDiskmanMetrics.tileLabelWidth, DiskChartGeometry.isDrawable(rect) {
-                VStack(spacing: OnePlusMetrics.spacing[0]) {
+                HStack(spacing: OnePlusMetrics.actionSpacing) {
                     Text(segment.label).font(.system(size: OnePlusTextRole.cardTitle.size(for: .regular), weight: .semibold))
+                    Spacer(minLength: 0)
                     Text(segment.detail).font(.system(size: OnePlusTextRole.mono.size(for: .regular), design: .monospaced))
-                    if side > OnePlusDiskmanMetrics.tileCountsHeight, let entry = segment.entry {
-                        Text("\(entry.fileCount.formatted()) files").font(.system(size: OnePlusTextRole.caption.size(for: .regular)))
-                        Text("\(max(0, entry.directoryCount - (entry.kind == .directory ? 1 : 0))) folders")
-                            .font(.system(size: OnePlusTextRole.caption.size(for: .regular)))
-                    }
                 }.foregroundStyle(OnePlusStorageStyle.ink).lineLimit(1)
                     .frame(width: side, height: side).clipped()
                     .position(x: rect.midX, y: rect.midY)

@@ -63,21 +63,6 @@ extension Int64 {
     var diskSize: String { DiskEntryPresentation.size.string(fromByteCount: self) }
 }
 
-struct DiskSizeLabel: View {
-    let bytes: Int64
-    var accent = false
-    var body: some View {
-        let parts = bytes.diskSize.split(separator: " ")
-        HStack(alignment: .firstTextBaseline, spacing: OnePlusMetrics.spacing[1]) {
-            Text(parts.count > 1 ? parts.dropLast().joined(separator: " ") : bytes.diskSize)
-                .font(.system(size: OnePlusTextRole.metric.size(for: .regular), weight: .semibold))
-            if parts.count > 1 {
-                Text(String(parts.last!)).font(.system(size: OnePlusTextRole.unit.size(for: .regular)))
-            }
-        }.foregroundStyle(accent ? OnePlusColor.accent : OnePlusColor.ink).monospacedDigit().lineLimit(1)
-    }
-}
-
 nonisolated struct DiskEntryTableRequest: Hashable, Sendable {
     let revision: Date
     let sourceID: String
@@ -191,12 +176,11 @@ struct DiskEntryTable: View {
             .overlay {
                 if isWaitingForScan || (cached == nil && !keepsPreviousRows) {
                     OnePlusEmptyState(sourceID == "largest-files" ? "Loading largest files" : "Loading results",
-                                      systemImage: "arrow.triangle.2.circlepath",
-                                      caption: "Preparing file rows.") {
+                                      systemImage: "arrow.triangle.2.circlepath") {
                         ProgressView().controlSize(.small)
                     }
                 }
-                else if current.rows.isEmpty { OnePlusEmptyState("No matching items", systemImage: "doc.text.magnifyingglass", caption: "Try another search or location.") }
+                else if current.rows.isEmpty { OnePlusEmptyState("No matching items", systemImage: "doc.text.magnifyingglass") }
             }
             .task(id: request) {
                 guard projections[request] == nil else { return }
@@ -268,9 +252,12 @@ struct DiskSelectionInspector: View {
                         if entry.kind == .directory { children(current.request == nil ? nil : current.children) }
                     }
                 } else if let pendingURL {
-                    Label(pendingURL.lastPathComponent, systemImage: "folder").onePlusText(.sectionTitle)
+                    HStack {
+                        Label(pendingURL.lastPathComponent, systemImage: "folder").onePlusText(.sectionTitle).lineLimit(1)
+                        Spacer(minLength: 0)
+                        Text("-").onePlusText(.mono)
+                    }
                     Text(pendingURL.path).onePlusText(.mono).lineLimit(2).truncationMode(.middle)
-                    Text("-").onePlusText(.metric)
                     OnePlusUsageBar(value: 0)
                     VStack(spacing: 0) {
                         OnePlusKeyValueRow("Kind", value: "Folder")
@@ -278,7 +265,7 @@ struct DiskSelectionInspector: View {
                         OnePlusKeyValueRow("Contents", value: "-")
                     }
                 } else {
-                    OnePlusEmptyState("Select an item", systemImage: "cursorarrow", caption: "Click a tile to see its details.")
+                    OnePlusEmptyState("Select an item", systemImage: "cursorarrow")
                 }
                 Spacer(minLength: 0)
                 HStack(spacing: OnePlusMetrics.actionSpacing) {
@@ -316,9 +303,12 @@ struct DiskSelectionInspector: View {
     private func identity(_ entry: DiskEntry, path: String) -> some View {
         let share = DiskChartGeometry.fraction(Double(entry.bytes(apparent: apparent)), of: Double(parent?.bytes(apparent: apparent) ?? 0))
         return VStack(alignment: .leading, spacing: OnePlusMetrics.actionSpacing) {
-            Label(entry.name, systemImage: DiskEntryPresentation.symbol(entry)).onePlusText(.sectionTitle).lineLimit(2).help(entry.name)
+            HStack(spacing: OnePlusMetrics.actionSpacing) {
+                Label(entry.name, systemImage: DiskEntryPresentation.symbol(entry)).onePlusText(.sectionTitle).lineLimit(1).help(entry.name)
+                Spacer(minLength: 0)
+                Text(entry.bytes(apparent: apparent).diskSize).onePlusText(.mono).fixedSize()
+            }
             Text(path.isEmpty ? "-" : path).onePlusText(.mono).lineLimit(2).truncationMode(.middle).textSelection(.enabled).help(path)
-            DiskSizeLabel(bytes: entry.bytes(apparent: apparent)).padding(.top, OnePlusMetrics.actionSpacing)
             HStack {
                 Text("Of parent folder")
                 Spacer()
@@ -373,35 +363,34 @@ struct DiskChooseFolderSheet: View {
     var body: some View {
         OnePlusSheet(diskmanFolderTitle: "Choose a folder") {
             VStack(alignment: .leading, spacing: OnePlusMetrics.cardGap) {
-                Text("Select a common location or browse for another folder.").onePlusText(.caption)
                 ScrollView {
                     OnePlusCard {
                         location("Home Folder", url: FileManager.default.homeDirectoryForCurrentUser, icon: "house")
                         ForEach(volumes) { volume in location(volume.name, url: volume.url, icon: "externaldrive") }
                     }
                 }.thinScrollIndicators()
-                    .frame(height: min(CGFloat(volumes.count + 1) * OnePlusMetrics.captionedSettingRow, OnePlusDiskmanMetrics.folderListHeight))
-                Button("Browse for folder...", systemImage: "folder.badge.plus", action: browse).buttonStyle(OnePlusButtonStyle())
+                    .frame(height: min(CGFloat(volumes.count + 1) * OnePlusMetrics.settingRow, OnePlusDiskmanMetrics.folderListHeight))
             }
-        } footer: { Button("Cancel") { dismiss() }.buttonStyle(OnePlusButtonStyle(.ghost)).keyboardShortcut(.cancelAction) }
+        } footer: {
+            Button("Cancel") { dismiss() }.buttonStyle(OnePlusButtonStyle(.ghost)).keyboardShortcut(.cancelAction)
+            Button("Browse for folder...", systemImage: "folder.badge.plus", action: browse).buttonStyle(OnePlusButtonStyle())
+        }
     }
     private func location(_ title: String, url: URL, icon: String) -> some View {
         Button { choose(url) } label: {
             HStack(spacing: OnePlusMetrics.navIconGap) {
                 Image(systemName: icon)
-                VStack(alignment: .leading, spacing: OnePlusMetrics.spacing[0]) {
-                    Text(title).onePlusText(.row)
-                    Text(result?.root.url == url ? "\(result!.root.allocatedBytes.diskSize) \(result!.isComplete ? "indexed" : "measured so far")" : "Not indexed")
-                        .onePlusText(.caption)
-                }
+                Text(title).onePlusText(.row).lineLimit(1)
                 Spacer()
+                Text(result?.root.url == url ? "\(result!.root.allocatedBytes.diskSize) \(result!.isComplete ? "indexed" : "measured so far")" : "Not indexed")
+                    .onePlusText(.caption).lineLimit(1)
                 Image(systemName: "chevron.right").onePlusText(.caption)
-            }.padding(.horizontal, OnePlusMetrics.cardPadding).frame(height: OnePlusMetrics.captionedSettingRow)
+            }.padding(.horizontal, OnePlusMetrics.cardPadding).frame(height: OnePlusMetrics.settingRow)
         }.buttonStyle(OnePlusInteractionStyle()).help(url.path)
     }
 }
 
-/// Cards only. The host supplies the page, scrolling, gutters, and density.
+/// Settings content only. The host supplies page chrome, scrolling and density.
 struct DiskExplorerSettingsView: View {
     let unreadableCount: Int?
     @AppStorage("diskExplorer.chartStyle") private var chartStyle = DiskChartStyle.treemap.rawValue
@@ -416,14 +405,12 @@ struct DiskExplorerSettingsView: View {
 
     var body: some View {
         VStack(spacing: OnePlusMetrics.cardGap) {
-            OnePlusCard {
-                OnePlusSettingRow("Enable Diskman", caption: "Show Diskman in the launcher", separator: false) {
-                    Toggle("Enable Diskman", isOn: Binding(get: { settings.isToolEnabled("disk-explorer") },
-                        set: { settings.setToolEnabled($0, for: "disk-explorer") }))
-                        .labelsHidden().toggleStyle(OnePlusSwitchStyle())
-                        .disabled(settings.isToolTransitioning("disk-explorer"))
-                }
-            }
+            OnePlusSettingRow("Enable Diskman", separator: false) {
+                Toggle("Enable Diskman", isOn: Binding(get: { settings.isToolEnabled("disk-explorer") },
+                    set: { settings.setToolEnabled($0, for: "disk-explorer") }))
+                    .labelsHidden().toggleStyle(OnePlusSwitchStyle())
+                    .disabled(settings.isToolTransitioning("disk-explorer"))
+            }.help("Show Diskman in the launcher")
             OnePlusCard {
                 OnePlusCardHeader("Display", systemImage: "square.grid.2x2")
                 OnePlusSettingRow("Visualization") {
@@ -432,25 +419,23 @@ struct DiskExplorerSettingsView: View {
                 OnePlusSettingRow("Measure") {
                     OnePlusSelect(choices: DiskChartMeasure.allCases.map { ($0.rawValue, $0.title) }, selection: $chartMeasure, accessibilityLabel: "Measure")
                 }
-                OnePlusSettingRow("Show apparent file size", caption: "File length before storage allocation", separator: false) {
+                OnePlusSettingRow("Show apparent file size", separator: false) {
                     Toggle("Show apparent file size", isOn: $apparentSize).labelsHidden().toggleStyle(OnePlusSwitchStyle())
-                }
+                }.help("File length before storage allocation")
             }
-            HStack(alignment: .top, spacing: OnePlusMetrics.cardGap) {
-                OnePlusCard {
-                    OnePlusCardHeader("Scanning", systemImage: "folder")
-                    OnePlusSettingRow("Include hidden files", caption: "Include files and folders with hidden names.", separator: false) {
-                        Toggle("Include hidden files", isOn: $includeHidden).labelsHidden().toggleStyle(OnePlusSwitchStyle())
-                    }
-                }
-                OnePlusCard {
-                    OnePlusCardHeader("Disk access", systemImage: "lock.shield")
-                    OnePlusSettingRow(unreadableCount.map { $0 > 0 ? "Needs attention" : "No blocked folders found" } ?? "Not checked",
-                                      caption: "A scan reports folders that macOS did not let Diskman read.", separator: false) {
+            OnePlusCard {
+                OnePlusCardHeader("Scanning", systemImage: "folder")
+                OnePlusSettingRow("Include hidden files") {
+                    Toggle("Include hidden files", isOn: $includeHidden).labelsHidden().toggleStyle(OnePlusSwitchStyle())
+                }.help("Include files and folders with hidden names.")
+                OnePlusSettingRow("Disk access", controlWidth: OnePlusMetrics.controlColumn * 2, separator: false) {
+                    HStack(spacing: OnePlusMetrics.actionSpacing) {
+                        Text(unreadableCount.map { $0 > 0 ? "Needs attention" : "No blocked folders found" } ?? "Not checked")
+                            .onePlusText(.mono)
                         Button("Open Settings") { DiskEntryPresentation.openFullDiskAccess() }
                             .buttonStyle(OnePlusButtonStyle(.link, horizontalPadding: 0))
                     }
-                }
+                }.help("A scan reports folders that macOS did not let Diskman read.")
             }
         }
     }
@@ -463,8 +448,7 @@ struct DiskmanAboutPage: View {
                 OnePlusCardHeader("Diskman")
                 VStack(alignment: .leading, spacing: OnePlusMetrics.cardGap) {
                     Text("Find large folders and files, review removals, and manage physical disks with macOS tools.").onePlusText(.row)
-                    Text("Space used counts allocated blocks once per hard-linked file. APFS clones can share blocks, so removed size may differ from recovered space.")
-                        .onePlusText(.caption)
+                        .help("Space used counts allocated blocks once per hard-linked file. APFS clones can share blocks, so removed size may differ from recovered space.")
                     OnePlusKeyValueRow("Version", value: Bundle.main.infoDictionary?["CFBundleShortVersionString"] as? String ?? "Unknown")
                 }.padding(OnePlusMetrics.cardPadding)
             }
@@ -483,16 +467,11 @@ struct DiskmanAboutPage: View {
                     OnePlusCardHeader(section.title)
                     VStack(alignment: .leading, spacing: OnePlusMetrics.actionSpacing) {
                         ForEach(section.points, id: \.self) { point in
-                            Text(guideText(point)).onePlusText(.row).frame(maxWidth: .infinity, alignment: .leading)
+                            Text(point).onePlusText(.row).frame(maxWidth: .infinity, alignment: .leading)
                         }
                     }.padding(OnePlusMetrics.cardPadding)
                 }
             }
         }
-    }
-    private func guideText(_ point: String) -> String {
-        if point.hasPrefix("Your Home Folder scans") { return "Choose Home Folder, a mounted volume, or another folder to start a scan." }
-        if point.hasPrefix("Click a folder in the chart") { return "Click an item to select it. Double-click a folder to explore it. Use the breadcrumb to go back." }
-        return point
     }
 }
