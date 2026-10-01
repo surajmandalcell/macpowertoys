@@ -43,7 +43,6 @@ struct TrayPopoverView: View {
     private let diagnostic: Bool
     @AppStorage("tray.selectedTab.v2") private var selectedTabID = TrayTab.home.rawValue
     @AppStorage("tray.tabOrder.v2") private var storedTabOrder = ""
-    @Environment(\.openWindow) private var openWindow
     @State private var switchModel = SwitchWorkspaceModel.shared
     @State private var netToysSnapshot = NetToysTraySnapshot()
     @State private var careSnapshot = SystemCareTraySnapshot()
@@ -103,8 +102,7 @@ struct TrayPopoverView: View {
                 if selectedTab == .systemCare {
                     ToolActionRouter.shared.open(toolID: "system-care", page: "cleanup")
                 } else {
-                    openWindow(id: "main")
-                    NSApp.activate(ignoringOtherApps: true)
+                    ToolActionRouter.shared.open(toolID: "main")
                 }
             }
             Button {
