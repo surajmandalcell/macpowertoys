@@ -33,11 +33,13 @@ public struct OnePlusTextField: View {
         self.title = title; _text = text; self.error = error; self.onSubmit = onSubmit
     }
     public var body: some View {
-        VStack(alignment: .leading, spacing: 4) {
+        let capHeight = NSFont.systemFont(ofSize: OnePlusTextRole.control.size(for: density)).capHeight
+        return VStack(alignment: .leading, spacing: 4) {
             OnePlusNativeTextInput(title: title, text: $text, enabled: enabled,
                                    pointSize: OnePlusTextRole.control.size(for: density),
                                    onSubmit: onSubmit, focusChanged: { focused = $0 })
                 .padding(.horizontal, 8).frame(height: controlHeight ?? density.controlHeight)
+                .alignmentGuide(.firstTextBaseline) { $0.height / 2 + capHeight / 2 }
                 .background((focused && OnePlusFocusPolicy.shared.showsFocus) || (enabled && hover) ? OnePlusColor.fieldFocus : OnePlusColor.field,
                             in: RoundedRectangle(cornerRadius: 6))
                 .overlay { RoundedRectangle(cornerRadius: 6).strokeBorder(error != nil ? OnePlusColor.dangerLine : focused && OnePlusFocusPolicy.shared.showsFocus ? OnePlusColor.focus : OnePlusColor.line, lineWidth: 1) }

@@ -17,13 +17,12 @@ public struct OnePlusAppletTitlebar<Title: View, Actions: View>: View {
                 title.onePlusText(.sidebarTitle).lineLimit(1)
             }
             Spacer(minLength: 12)
-            actions
+            OnePlusHeaderActions { actions }
         }
         .frame(height: 24, alignment: .top).padding(.top, OnePlusMetrics.contentTop)
         .padding(.leading, clearsTrafficLights ? OnePlusMetrics.titleStart(afterZoom: zoomTrailingX) : 16)
         .padding(.trailing, 16).frame(height: OnePlusMetrics.appletTitlebar)
         .background(OnePlusWindowDragArea())
-        .environment(\.onePlusHeaderTopAligned, true)
     }
 }
 

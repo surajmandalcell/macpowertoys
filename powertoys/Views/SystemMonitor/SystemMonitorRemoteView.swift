@@ -123,7 +123,7 @@ struct SystemMonitorRemoteHeader: View {
     @ObservedObject private var sessions = SystemMonitorRemoteSessions.shared
 
     var body: some View {
-        HStack(spacing: OnePlusMetrics.actionSpacing) {
+        OnePlusHeaderActions {
             Text("\(profiles.filter { sessions.state(for: $0.id).phase == .connected }.count) connected · \(profiles.count) \(profiles.count == 1 ? "host" : "hosts")")
                 .onePlusText(.caption)
             Button(action: addHost) { Label("Add host", systemImage: "plus") }

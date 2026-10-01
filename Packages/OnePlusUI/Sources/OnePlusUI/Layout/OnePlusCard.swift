@@ -85,7 +85,7 @@ public struct OnePlusCardHeader<Accessory: View>: View {
                 if let subtitle { Text(subtitle).onePlusText(.caption).lineLimit(1).help(subtitle) }
             }
             Spacer(minLength: 8)
-            accessory
+            OnePlusHeaderActions { accessory }
         }.padding(.horizontal, cardPadding).frame(height: 40)
             .overlay(alignment: .bottom) { OnePlusColor.lineSoft.frame(height: 1) }
     }

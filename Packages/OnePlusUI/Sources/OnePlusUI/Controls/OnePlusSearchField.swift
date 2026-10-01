@@ -25,10 +25,12 @@ public struct OnePlusSearchField: View {
     }
 
     public var body: some View {
-        OnePlusNativeSearch(prompt: prompt, text: $text, focusTrigger: focusTrigger,
+        let capHeight = NSFont.systemFont(ofSize: OnePlusTextRole.control.size(for: density)).capHeight
+        return OnePlusNativeSearch(prompt: prompt, text: $text, focusTrigger: focusTrigger,
                             identifier: identifier, hint: shortcutHint,
                             fontSize: OnePlusTextRole.control.size(for: density), enabled: enabled)
             .frame(width: width, height: height)
+            .alignmentGuide(.firstTextBaseline) { $0.height / 2 + capHeight / 2 }
             .opacity(enabled ? 1 : OnePlusMetrics.disabledOpacity)
     }
 }

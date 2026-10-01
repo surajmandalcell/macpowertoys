@@ -64,6 +64,7 @@ public struct OnePlusStatus: View {
     let title: String
     let state: State
     let textRole: OnePlusTextRole
+    @Environment(\.onePlusDensity) private var density
     public init(_ title: String, state: State = .neutral, textRole: OnePlusTextRole = .caption) {
         self.title = title; self.state = state; self.textRole = textRole
     }
@@ -77,7 +78,7 @@ public struct OnePlusStatus: View {
         }
     }
     public var body: some View {
-        HStack(spacing: 6) {
+        OnePlusControlContentLayout(pointSize: textRole.size(for: density)) {
             Circle().fill(state == .offline ? .clear : color)
                 .overlay { Circle().strokeBorder(color, lineWidth: state == .offline ? 1 : 0) }
                 .frame(width: 4, height: 4).accessibilityHidden(true)

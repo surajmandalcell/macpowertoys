@@ -487,7 +487,7 @@ private struct LogsPageView: View {
                 }
             }
         } toolbar: {
-            HStack(spacing: OnePlusMetrics.spacing[2]) {
+            OnePlusHeaderActions {
                 OnePlusSelect(
                     choices: [(String?.none, "All sources")] + sources.map { (Optional($0), $0) },
                     selection: $sourceFilter,

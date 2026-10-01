@@ -83,7 +83,7 @@ struct OnePlusMenuPanelShell<Tabs: View, Actions: View, Body: View>: View {
             HStack(spacing: 7) {
                 tabs
                 Spacer(minLength: 0)
-                HStack(spacing: 2) { actions }.fixedSize()
+                OnePlusHeaderActions { actions }.fixedSize()
             }.padding(.horizontal, 8).padding(.top, OnePlusMenuMetrics.topBarTop).padding(.bottom, OnePlusMenuMetrics.topBarBottom)
                 .frame(height: OnePlusMenuMetrics.topBar - 2)
             fixedRegion(toolbar?() ?? AnyView(EmptyView()), top: 3, bottom: 5)
@@ -479,10 +479,12 @@ public struct OnePlusMenuControlRow<Control: View>: View {
                 if let caption { Text(caption).onePlusText(.caption).lineLimit(1).help(caption) }
             }
             Spacer(minLength: 0)
-            if !status.isEmpty {
-                Text(status).font(.system(size: 9, design: .monospaced)).foregroundStyle(OnePlusColor.secondary).lineLimit(1)
+            OnePlusHeaderActions {
+                if !status.isEmpty {
+                    Text(status).monospaced().onePlusText(.caption, color: OnePlusColor.secondary).lineLimit(1)
+                }
+                control.fixedSize()
             }
-            control.fixedSize()
         }.padding(.horizontal, 1).frame(height: caption == nil ? 30 : 44)
             .onePlusRowHover().onePlusDensity(.compact)
     }
@@ -501,7 +503,7 @@ public struct OnePlusMenuSectionHeader: View {
     public var body: some View {
         VStack(spacing: 7) {
             OnePlusColor.line.frame(height: 1)
-            HStack {
+            OnePlusHeaderActions {
                 Text(title).font(.system(size: 9.5)).foregroundStyle(OnePlusColor.secondary).accessibilityAddTraits(.isHeader)
                 Spacer()
                 if let actionTitle, let action {

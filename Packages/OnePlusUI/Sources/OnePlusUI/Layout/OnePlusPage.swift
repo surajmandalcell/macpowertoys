@@ -49,6 +49,14 @@ public enum OnePlusTitleStyle: Sendable {
     }
 }
 
+public struct OnePlusHeaderActions<Content: View>: View {
+    private let content: Content
+    public init(@ViewBuilder content: () -> Content) { self.content = content() }
+    public var body: some View {
+        HStack(alignment: .firstTextBaseline, spacing: 12) { content }
+    }
+}
+
 public struct OnePlusPageHeader<Actions: View>: View {
     private let title: String
     private let subtitle: String?
@@ -87,14 +95,13 @@ public struct OnePlusPageHeader<Actions: View>: View {
                 }
             }
             Spacer(minLength: 0)
-            HStack(alignment: .top, spacing: 8) { actions }
+            OnePlusHeaderActions { actions }
                 .frame(height: titleHeight, alignment: .top).fixedSize(horizontal: true, vertical: false)
         }
         .padding(.horizontal, density.gutter)
         .padding(.top, OnePlusMetrics.contentTop)
         .padding(.bottom, OnePlusMetrics.pageHeaderBottom)
         .background(OnePlusWindowDragArea())
-        .environment(\.onePlusHeaderTopAligned, true)
     }
 }
 
@@ -148,7 +155,7 @@ public struct OnePlusTabStrip<Value: Hashable, Tools: View>: View {
                     .accessibilityAddTraits(selection == tab.id ? .isSelected : [])
             }
             Spacer(minLength: 8)
-            tools
+            OnePlusHeaderActions { tools }
         }
         .padding(.horizontal, layout == .applet ? OnePlusMetrics.appletGutter : density.gutter).frame(height: 36)
         .background(alignment: .bottom) {
