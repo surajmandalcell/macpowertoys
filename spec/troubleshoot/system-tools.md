@@ -528,6 +528,21 @@
 
 ## System Monitor
 
+- **Symptom:** Unknown RAM shows zero allocation, a report save silently fails,
+  or hover and accessibility labels format again during chart rendering.
+- **Cause:** Views substitute zero before a sample, export uses `try?`, and
+  chart text formats directly inside `body`.
+- **Invariant:** Keep missing RAM absent and bound real allocation segments to
+  total RAM. Prepare bounded chart series and labels outside rendering. Save
+  exports atomically on a utility task and show write errors. Report search
+  must track changed content, and repeated section names must still render.
+  Keep full-row hover on values and actions. Place update time on the trailing
+  side, keep related actions together, and put help in info tooltips.
+- **Check:** Run `SystemMonitorWindowAuditTests` on hosted CI. Source-derived
+  checks pass for PID/path guards, missing and clamped RAM, 60/120-sample
+  history, chart labels, raw JSON values, and failed writes. A mutation that
+  swallows the write error fails the check. Signed interaction remains open.
+
 - **Symptom:** Task Manager page changes pause, body cards start on a second
   inset, or search, headers, sidebars, and footers move with table rows.
 - **Cause:** The window used one outer page scroller, process and report rows
