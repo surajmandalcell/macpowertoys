@@ -53,15 +53,9 @@ final class AppInitializer {
         LogManager.shared.info("App initializing...", source: "AppInitializer")
 
         let started = ContinuousClock.now
-        if !AppRuntime.isRunningTests {
-            await Task.detached(priority: .userInitiated) {
-                AppIdentity.migrateLegacyPreferences()
-            }.value
-        }
         if isShuttingDown {
             await withCheckedContinuation { initializationWaiter = $0 }
         }
-        LogManager.shared.info("Startup preferences migrated in \(started.duration(to: .now))", source: "AppInitializer")
         _ = SettingsManager.shared
         if SettingsManager.shared.isToolEnabled("awake") { _ = AwakeService.shared }
         _ = ColorPickerService.shared
