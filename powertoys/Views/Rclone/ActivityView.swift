@@ -85,12 +85,12 @@ struct ActivityView: View {
                     OnePlusNativeTable(
                         columns: [
                             OnePlusGridColumn("Time", width: 176, textRole: .mono),
-                            OnePlusGridColumn("Operation", width: 88),
+                            OnePlusGridColumn("Operation", width: 100),
                             OnePlusGridColumn("Source", width: 188, textRole: .mono, textColor: OnePlusColor.ink),
                             OnePlusGridColumn("Destination", width: 200, textRole: .mono),
                             OnePlusGridColumn("Size", width: 88, trailing: true),
                             OnePlusGridColumn("Duration", width: 88, trailing: true),
-                            OnePlusGridColumn("Result", width: 108)
+                            OnePlusGridColumn("Result", width: 96)
                         ],
                         rows: rows,
                         selection: $selection,
