@@ -10,8 +10,9 @@ effective sampling intervals, help, accessibility, and panel detail show
 stale status. A source-derived check covers 6,804 configurations and unit
 boundaries. The widest seven-metric group is 803pt in the 1280pt display
 model. The real service deadline marks a stalled sample stale and cancels
-when the last owner closes. Build gates are queued. Hosted tests, native
-menu crowding, and signed installation remain with the orchestrator.
+when the last owner closes. The shared app and test-bundle compilation gate
+passes at `f52c553b`. Hosted tests, native menu crowding, and signed
+installation remain with the orchestrator.
 Report: `tmp/redesign/logs/w3-glyphs-status.md`.
 
 Production glyph pass, 2026-10-01: `91d9a538` gives Input Devices, System
