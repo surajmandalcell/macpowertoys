@@ -49,13 +49,14 @@ struct MacPowerToysApp: App {
 
     @MainActor
     private func configureApplication() {
-        DiagnosticsMenuPanels.shared.makeCaptureContent = { panel, resize in
+        DiagnosticsMenuPanels.shared.makeCaptureContent = { panel, profiles, resize in
             switch panel {
             case .main:
-                AnyView(TrayPopoverView().utilityMotionPolicy().modelContainer(modelContainer)
+                AnyView(TrayPopoverView(diagnostic: true).utilityMotionPolicy().modelContainer(modelContainer)
                     .environment(\.self, sceneEnvironment))
             case .systemMonitor:
-                AnyView(SystemMonitorMenuPopoverView(onPreferredHeight: resize).environment(\.self, sceneEnvironment))
+                AnyView(SystemMonitorMenuPopoverView(remoteProfiles: profiles, diagnostic: true, onPreferredHeight: resize)
+                    .environment(\.self, sceneEnvironment))
             case .portman: nil
             }
         }

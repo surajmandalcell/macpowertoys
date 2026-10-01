@@ -94,14 +94,15 @@ struct ToolPageRouterTests {
         #expect(router.take(tool: "nettoys") == nil, "The app delegate owns scan-prefill URLs.")
     }
 
-    @MainActor @Test func nativeSceneDiagnosticsReachMeasuredBackgroundPanels() throws {
+    @MainActor @Test func nativeSceneDiagnosticsReachMeasuredBackgroundPanels() async throws {
         let panels = DiagnosticsMenuPanels.shared
+        panels.close(clearCache: true)
         let factory = panels.makeCaptureContent
         let defaults = UserDefaults.standard
         let keys = ["tray.selectedTab.v2", "systemMonitor.trayPage"]
         let saved = keys.map { defaults.object(forKey: $0) }
         defer {
-            panels.close()
+            panels.close(clearCache: true)
             panels.makeCaptureContent = factory
             for (key, value) in zip(keys, saved) {
                 if let value { defaults.set(value, forKey: key) }
@@ -111,7 +112,7 @@ struct ToolPageRouterTests {
         let router = ToolPageRouter()
         var built: [DiagnosticsPanel] = []
         var resize: ((CGFloat) -> Void)?
-        panels.makeCaptureContent = { panel, onHeightChange in
+        panels.makeCaptureContent = { panel, _, onHeightChange in
             built.append(panel)
             resize = onHeightChange
             #expect(defaults.string(forKey: panel == .main ? keys[0] : keys[1]) == "home")
@@ -123,6 +124,9 @@ struct ToolPageRouterTests {
                 let url = try #require(URL(string: "\(scheme)://diagnostics/open-panel/\(panel.rawValue)?tab=home"))
                 defaults.set(panel == .main ? "rclone" : "memory", forKey: panel == .main ? keys[0] : keys[1])
                 router.handleNativeURL(url, tool: panel.rawValue)
+                for _ in 0..<200 where panels.captureWindow == nil {
+                    try await Task.sleep(for: .milliseconds(5))
+                }
                 #expect(built.last == panel)
                 let window = try #require(panels.captureWindow)
                 #expect(window.identifier?.rawValue == "diagnostics-panel.\(panel.rawValue)")
@@ -135,7 +139,7 @@ struct ToolPageRouterTests {
                 #expect(window.frame.maxY == top)
                 #expect(NSWorkspace.shared.frontmostApplication?.processIdentifier == foreground)
                 #expect(router.take(tool: panel.rawValue) == nil)
-                panels.close()
+                panels.close(clearCache: true)
             }
         }
         #expect(built == [.main, .systemMonitor, .main, .systemMonitor])
@@ -211,7 +215,7 @@ struct ToolPageRouterTests {
         #expect(DiagnosticsPanel.main.matchingButton(in: [monitor, portman, individual]) == nil)
     }
 
-    @MainActor @Test func diagnosticsSelectAndMeasureBeforePresentingCaptureContent() throws {
+    @MainActor @Test func diagnosticsSelectAndMeasureBeforePresentingCaptureContent() async throws {
         let suite = "DiagnosticPanelTests.\(UUID().uuidString)"
         let defaults = try #require(UserDefaults(suiteName: suite))
         defer { defaults.removePersistentDomain(forName: suite) }
@@ -219,7 +223,7 @@ struct ToolPageRouterTests {
         let router = DiagnosticsMenuPanels(defaults: defaults)
         defer { router.close() }
         var built: [DiagnosticsPanel] = []
-        router.makeCaptureContent = { panel, _ in
+        router.makeCaptureContent = { panel, _, _ in
             built.append(panel)
             #expect(defaults.string(forKey: panel == .main ? "tray.selectedTab.v2" : "systemMonitor.trayPage")
                 == (panel == .main ? "rclone" : "memory"))
@@ -235,9 +239,12 @@ struct ToolPageRouterTests {
         #expect(NSApp.isActive == wasActive)
         let firstWindow = try #require(router.captureWindow)
         router.open(.systemMonitor, tab: "memory")
+        for _ in 0..<200 where router.captureWindow == nil {
+            try await Task.sleep(for: .milliseconds(5))
+        }
         #expect(built == [.main, .systemMonitor])
         #expect(firstWindow.isVisible == false)
-        #expect(firstWindow.contentViewController == nil)
+        #expect(firstWindow.contentViewController != nil)
         #expect(defaults.string(forKey: "systemMonitor.trayPage") == "memory")
         router.close()
         #expect(router.captureWindow == nil)

@@ -58,9 +58,11 @@ final class ToolPageRouter {
         if let page = route.page { post(tool: tool, page: page) }
     }
 
-    func post(tool: String, page: String) {
-        OnePlusPanelTimings.shared.begin(panel: "page.\(tool)", operation: .pageSwitch,
-                                        tab: page, input: "page-router")
+    func post(tool: String, page: String, recordTiming: Bool = true) {
+        if recordTiming {
+            OnePlusPanelTimings.shared.begin(panel: "page.\(tool)", operation: .pageSwitch,
+                                            tab: page, input: "page-router")
+        }
         let request = ToolPageRequest(tool: tool, page: page)
         pending[tool] = request
         NotificationCenter.default.post(name: .openToolPage, object: request,
@@ -75,11 +77,12 @@ final class ToolPageRouter {
 }
 
 private struct OpenToolPageModifier: ViewModifier {
-    let tool: String
+    let tool: String?
     let page: String?
     let action: (String) -> Void
 
     private func deliver() {
+        guard let tool else { return }
         if let request = ToolPageRouter.shared.take(tool: tool, matching: page) { action(request.page) }
     }
 
@@ -98,7 +101,7 @@ extension View {
             .onOpenURL { ToolPageRouter.shared.handleNativeURL($0, tool: tool) }
     }
 
-    func onOpenToolPage(_ tool: String, matching page: String? = nil,
+    func onOpenToolPage(_ tool: String?, matching page: String? = nil,
                         perform action: @escaping (String) -> Void) -> some View {
         modifier(OpenToolPageModifier(tool: tool, page: page, action: action))
     }
@@ -127,14 +130,20 @@ nonisolated enum DiagnosticsPanel: String, CaseIterable, Sendable {
         case .main:
             guard let tab = TrayTab(panelID: id), tab.panelID == id,
                   tab == .home || TrayPopoverLayout.defaultComplexTabs.contains(tab) else { return }
-            defaults.set(tab.rawValue, forKey: "tray.selectedTab.v2")
+            if defaults.string(forKey: "tray.selectedTab.v2") != tab.rawValue {
+                defaults.set(tab.rawValue, forKey: "tray.selectedTab.v2")
+            }
         case .systemMonitor:
             guard let page = SystemMonitorTrayPage(rawValue: id) else { return }
-            defaults.set(page.rawValue, forKey: "systemMonitor.trayPage")
+            if defaults.string(forKey: "systemMonitor.trayPage") != page.rawValue {
+                defaults.set(page.rawValue, forKey: "systemMonitor.trayPage")
+            }
         case .portman:
             let pages: [String: PortmanPanelView.Page] = ["servers": .local, "forward": .forward, "settings": .settings]
             guard let page = pages[id] else { return }
-            defaults.set(page.rawValue, forKey: "portman.selectedPage")
+            if defaults.string(forKey: "portman.selectedPage") != page.rawValue {
+                defaults.set(page.rawValue, forKey: "portman.selectedPage")
+            }
         }
     }
 
