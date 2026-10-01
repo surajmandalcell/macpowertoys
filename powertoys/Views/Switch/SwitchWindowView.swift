@@ -627,17 +627,23 @@ struct SwitchWindowView: View {
 
     private var aboutContent: some View {
         Group {
-        OnePlusCard {
-            OnePlusCardHeader("Switch")
-            VStack(alignment: .leading, spacing: OnePlusMetrics.cardGap) {
-                Image("SwitchLogo").resizable().scaledToFit().frame(width: OnePlusMetrics.titleRow, height: OnePlusMetrics.titleRow)
-                Text("Keep CLI accounts together and switch identities.").onePlusText(.sectionTitle)
-                Text("Switch manages sign-in, imports, defaults, usage, and recovery through the shared Switch Core package. The standalone Switch app is optional.")
-                    .onePlusText(.row).textSelection(.enabled)
-                OnePlusKeyValueRow("Version", value: Bundle.main.infoDictionary?["CFBundleShortVersionString"] as? String ?? "Unknown")
-                Text("Conversation browsing and cleanup are available in standalone Switch.").onePlusText(.caption)
-            }.padding(OnePlusMetrics.cardPadding)
-        }
+            OnePlusCard {
+                OnePlusCardHeader("Switch")
+                HStack(alignment: .top, spacing: OnePlusMetrics.cardGap) {
+                    Image("SwitchLogo").resizable().scaledToFit().toolIconTile(size: 48)
+                    VStack(alignment: .leading, spacing: OnePlusMetrics.actionSpacing) {
+                        HStack(alignment: .firstTextBaseline, spacing: OnePlusMetrics.actionSpacing) {
+                            Text("Keep CLI accounts together and switch identities.").onePlusText(.sectionTitle)
+                            Spacer()
+                            Text("Version \(Bundle.main.infoDictionary?["CFBundleShortVersionString"] as? String ?? "Unknown")")
+                                .onePlusText(.mono).fixedSize()
+                        }
+                        Text("Switch manages sign-in, imports, defaults, usage, and recovery through the shared Switch Core package. The standalone Switch app is optional.")
+                            .onePlusText(.row).textSelection(.enabled)
+                        Text("Conversation browsing and cleanup are available in standalone Switch.").onePlusText(.caption)
+                    }.frame(maxWidth: .infinity, alignment: .leading)
+                }.padding(OnePlusMetrics.cardPadding)
+            }
             ForEach(SwitchTool.shared.manual) { section in
                 OnePlusCard {
                     OnePlusCardHeader(section.title)

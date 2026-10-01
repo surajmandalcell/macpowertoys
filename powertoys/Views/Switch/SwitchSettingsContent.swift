@@ -16,26 +16,28 @@ struct SwitchSettingsContent: View {
 
     var body: some View {
         VStack(alignment: .leading, spacing: OnePlusMetrics.cardGap) {
-            OnePlusCard {
-                OnePlusCardHeader("App behavior")
-                OnePlusSettingRow("Enable Switch", help: "Show Switch in MacPowerToys.") {
-                    Toggle("Enable Switch", isOn: Binding(get: { settings.isToolEnabled("switch") },
-                           set: { settings.setToolEnabled($0, for: "switch") }))
-                        .labelsHidden().toggleStyle(OnePlusSwitchStyle())
-                        .disabled(settings.isToolTransitioning("switch"))
+            HStack(alignment: .top, spacing: OnePlusMetrics.cardGap) {
+                OnePlusCard {
+                    OnePlusCardHeader("App behavior")
+                    OnePlusSettingRow("Enable Switch", help: "Show Switch in MacPowerToys.") {
+                        Toggle("Enable Switch", isOn: Binding(get: { settings.isToolEnabled("switch") },
+                               set: { settings.setToolEnabled($0, for: "switch") }))
+                            .labelsHidden().toggleStyle(OnePlusSwitchStyle())
+                            .disabled(settings.isToolTransitioning("switch"))
+                    }
+                    OnePlusSettingRow("Show percentage used", help: "Turn off to show the percentage left.", separator: false) {
+                        Toggle("Show percentage used", isOn: $showUsageAsUsed).labelsHidden().toggleStyle(OnePlusSwitchStyle())
+                    }
                 }
-                OnePlusSettingRow("Show percentage used", help: "Turn off to show the percentage left.", separator: false) {
-                    Toggle("Show percentage used", isOn: $showUsageAsUsed).labelsHidden().toggleStyle(OnePlusSwitchStyle())
-                }
-            }
-            OnePlusCard {
-                OnePlusCardHeader("Menu bar defaults")
-                OnePlusSettingRow("Show account usage", help: "Used for accounts without their own choice.") {
-                    Toggle("Show account usage", isOn: $defaultShowTrayUsage).labelsHidden().toggleStyle(OnePlusSwitchStyle())
-                }
-                OnePlusSettingRow("Token summary", help: "The period shown beside each account's usage.", separator: false) {
-                    OnePlusSelect(choices: SwitchTrayTokenPeriod.allCases.map { ($0.rawValue, $0.label) },
-                                  selection: $trayTokenPeriod, accessibilityLabel: "Token summary")
+                OnePlusCard {
+                    OnePlusCardHeader("Menu bar defaults")
+                    OnePlusSettingRow("Show account usage", help: "Used for accounts without their own choice.") {
+                        Toggle("Show account usage", isOn: $defaultShowTrayUsage).labelsHidden().toggleStyle(OnePlusSwitchStyle())
+                    }
+                    OnePlusSettingRow("Token summary", help: "The period shown beside each account's usage.", separator: false) {
+                        OnePlusSelect(choices: SwitchTrayTokenPeriod.allCases.map { ($0.rawValue, $0.label) },
+                                      selection: $trayTokenPeriod, accessibilityLabel: "Token summary")
+                    }
                 }
             }
             OnePlusCard {
