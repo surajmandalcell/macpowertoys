@@ -27,6 +27,7 @@ final class AppInitializer {
     private var restorationFinished = false
     @ObservationIgnored private var initializationWaiter: CheckedContinuation<Void, Never>?
     private let fanShutdown = AppShutdownStage()
+    private let colorShutdown = AppShutdownStage()
     private let logShutdown = AppShutdownStage()
     private let cloudShutdown = AppShutdownStage()
     private(set) var formattingRevision = 0
@@ -128,6 +129,9 @@ final class AppInitializer {
         do {
             try await fanShutdown.run(name: "Fan Auto restoration", timeout: .seconds(20)) {
                 try await FanControlService.current?.restoreAutomaticOnExit()
+            }
+            try await colorShutdown.run(name: "Saving Color Picker history and projects", timeout: .seconds(10)) {
+                try await ColorPickerService.shared.flushPersistence()
             }
             try await logShutdown.run(name: "Saving logs", timeout: .seconds(10)) {
                 await LogManager.shared.flushPending()
