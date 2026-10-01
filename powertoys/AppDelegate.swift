@@ -227,7 +227,6 @@ class AppDelegate: NSObject, NSApplicationDelegate {
         if let statusItemTimingMonitor { NSEvent.removeMonitor(statusItemTimingMonitor) }
         statusItemTimingMonitor = nil
         OnePlusFocusPolicy.shared.stop()
-        FanControlService.current?.restoreAutomaticOnExit()
         PortmanService.shared.stopAll()
     }
 
@@ -447,15 +446,39 @@ class AppDelegate: NSObject, NSApplicationDelegate {
         updateFreeRulerForApplicationActivation(false)
     }
 
+    private var terminationTask: Task<Void, Never>?
+
     func applicationShouldTerminate(_ sender: NSApplication) -> NSApplication.TerminateReply {
-        prepareFreeRulerForTermination()
-        AwakeService.shared.shutdown()
-        GlobalShortcutManager.shared.shutdown()
-        Task { @MainActor in
-            await RcloneJobManager.shared.shutdown()
-            await LogManager.shared.flushPending()
-            await AppInitializer.shared.shutdown()
-            sender.reply(toApplicationShouldTerminate: true)
+        guard ownsInstance else { return .terminateNow }
+        guard terminationTask == nil else { return .terminateLater }
+        terminationTask = Task { @MainActor in
+            do {
+                try await AppInitializer.shared.shutdown()
+                prepareFreeRulerForTermination()
+                AwakeService.shared.shutdown()
+                GlobalShortcutManager.shared.shutdown()
+                terminationTask = nil
+                sender.reply(toApplicationShouldTerminate: true)
+            } catch {
+                terminationTask = nil
+                sender.reply(toApplicationShouldTerminate: false)
+                let alert = NSAlert()
+                alert.messageText = "MacPowerToys could not quit"
+                alert.informativeText = error.localizedDescription
+                alert.alertStyle = .warning
+                alert.addButton(withTitle: "Retry")
+                alert.addButton(withTitle: "Keep Open")
+                alert.buttons.last?.keyEquivalent = "\u{1b}"
+                let completion: (NSApplication.ModalResponse) -> Void = { response in
+                    if response == .alertFirstButtonReturn { sender.terminate(nil) }
+                }
+                if let window = sender.keyWindow ?? sender.mainWindow,
+                   window.sheetParent == nil, window.attachedSheet == nil {
+                    alert.beginSheetModal(for: window, completionHandler: completion)
+                } else {
+                    completion(alert.runModal())
+                }
+            }
         }
         return .terminateLater
     }
