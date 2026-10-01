@@ -1,6 +1,24 @@
 {
-  "originHash" : "e2b785a39d60da4d029d234b49b8ec469267c8b5deff57189d1e65b061e3279e",
+  "originHash" : "59ca63d3a34b2a5266095f2c9980959fe4418dc5d0e1685e30585d92afa3c7e9",
   "pins" : [
+    {
+      "identity" : "nettoys",
+      "kind" : "remoteSourceControl",
+      "location" : "https://github.com/surajmandalcell/nettoys.git",
+      "state" : {
+        "revision" : "746abf9144bf66f137a1ac57c89ea4c37b7875ae",
+        "version" : "1.0.2"
+      }
+    },
+    {
+      "identity" : "oneplus-ui",
+      "kind" : "remoteSourceControl",
+      "location" : "https://github.com/surajmandalcell/oneplus-ui.git",
+      "state" : {
+        "revision" : "10b09f536f35054be2b6bf530098a00588cabca5",
+        "version" : "1.0.1"
+      }
+    },
     {
       "identity" : "swift-asn1",
       "kind" : "remoteSourceControl",
