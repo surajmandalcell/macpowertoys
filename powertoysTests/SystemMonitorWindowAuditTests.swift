@@ -3,6 +3,44 @@ import XCTest
 @testable import powertoys
 
 final class SystemMonitorWindowAuditTests: XCTestCase {
+    @MainActor
+    func testWindowSamplesImmediatelyAndKeepsItsLatestSnapshotOnReopen() async throws {
+        let service = SystemMonitorService(menuSettings: SystemMonitorMenuSettings(), observesWake: false)
+        service.startDetailed(owner: "startup-test")
+        defer { service.stopDetailed(owner: "startup-test") }
+        let deadline = ContinuousClock.now.advanced(by: .milliseconds(500))
+        while service.snapshot == nil, ContinuousClock.now < deadline {
+            try await Task.sleep(for: .milliseconds(5))
+        }
+        let first = try XCTUnwrap(service.snapshot)
+        service.stopDetailed(owner: "startup-test")
+        service.startDetailed(owner: "startup-test")
+        XCTAssertEqual(service.snapshot?.timestamp, first.timestamp)
+        XCTAssertEqual(service.timerOwnerCount, 1)
+        service.stopDetailed(owner: "startup-test")
+        XCTAssertEqual(service.timerOwnerCount, 0)
+    }
+
+    func testPendingBatteryDoesNotClaimTheHardwareIsAbsent() {
+        func sample(percent: Int? = nil, charging: Bool? = nil,
+                    unavailable: Set<SystemMonitorMenuMetric> = []) -> SystemMonitorSample {
+            SystemMonitorSample(timestamp: Date(), cpuUsage: nil, memoryUsed: nil, memoryTotal: nil,
+                                gpuUsage: nil, networkDownload: nil, networkUpload: nil,
+                                diskUsed: nil, diskTotal: nil, batteryPercent: percent,
+                                batteryCharging: charging, thermalState: nil, loadAverage: nil,
+                                unavailableMetrics: unavailable)
+        }
+        XCTAssertEqual(SystemMonitorWindowView.batteryDetail(for: nil), "—")
+        XCTAssertEqual(SystemMonitorWindowView.batteryDetail(for: sample()), "—")
+        XCTAssertEqual(SystemMonitorWindowView.batteryDetail(for: sample(unavailable: [.battery])),
+                       "No internal battery detected")
+        XCTAssertEqual(SystemMonitorWindowView.batteryDetail(for: sample(percent: 65)), "—")
+        XCTAssertEqual(SystemMonitorWindowView.batteryDetail(for: sample(percent: 65, charging: true)),
+                       "Connected to power")
+        XCTAssertEqual(SystemMonitorWindowView.batteryDetail(for: sample(percent: 65, charging: false)),
+                       "On battery")
+    }
+
     func testWindowHistoryKeepsOneAndTwoMinuteSeriesBoundedAndMissingValuesAbsent() {
         var history = SystemMonitorHistory()
         for index in 0..<130 {

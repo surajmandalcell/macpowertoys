@@ -168,6 +168,7 @@ struct SystemMonitorWindowView: View {
                     .frame(maxWidth: .infinity, maxHeight: .infinity)
             }
             .background(TaskManagerVisibilityBinding(isVisible: $isWindowActive))
+            .onePlusLiveUpdates(includeOccluded: true)
         }
         .onePlusDensity(.compact)
         .background(WindowAccessor(identifier: "system-monitor"))
@@ -1130,8 +1131,16 @@ struct SystemMonitorWindowView: View {
     }
 
     private var batteryDetail: String {
-        guard service.snapshot?.batteryPercent != nil else { return "No internal battery detected" }
-        return service.snapshot?.batteryCharging == true ? "Connected to power" : "On battery"
+        Self.batteryDetail(for: service.snapshot)
+    }
+
+    nonisolated static func batteryDetail(for sample: SystemMonitorSample?) -> String {
+        guard let sample else { return "—" }
+        guard sample.batteryPercent != nil else {
+            return sample.unavailableMetrics.contains(.battery) ? "No internal battery detected" : "—"
+        }
+        guard let charging = sample.batteryCharging else { return "—" }
+        return charging ? "Connected to power" : "On battery"
     }
 
     private var loadValue: String { service.snapshot?.loadAverage.map { Self.decimal($0.0) } ?? "—" }
