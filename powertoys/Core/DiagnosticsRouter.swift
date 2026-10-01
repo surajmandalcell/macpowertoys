@@ -6,6 +6,7 @@ nonisolated enum DiagnosticsRoute: Equatable, Sendable {
     case openPanel(DiagnosticsPanel, tab: String? = nil)
     case appearance(AppAppearance)
     case closePanels
+    case closeWindow(String)
     case timings
     case openIndividualPanel(String)
 
@@ -13,12 +14,18 @@ nonisolated enum DiagnosticsRoute: Equatable, Sendable {
         guard DeepLinkHandler.isSupportedScheme(url.scheme), url.host == "diagnostics",
               url.user == nil, url.password == nil, url.port == nil,
               url.fragment == nil else { return nil }
-        let query = URLComponents(url: url, resolvingAgainstBaseURL: false)?.queryItems ?? []
-        let parts = url.path.split(separator: "/", omittingEmptySubsequences: false)
+        guard let components = URLComponents(url: url, resolvingAgainstBaseURL: false) else { return nil }
+        let query = components.queryItems ?? []
+        let parts = components.path.split(separator: "/", omittingEmptySubsequences: false)
         if parts == ["", "close-panels"], url.query == nil { return .closePanels }
         if parts == ["", "timings"], url.query == nil { return .timings }
         guard parts.count == 3, parts[0].isEmpty else { return nil }
         switch parts[1] {
+        case "close-window":
+            let id = String(parts[2])
+            guard url.query == nil, !id.isEmpty, id.utf8.count <= 80,
+                  id.utf8.allSatisfy({ (97...122).contains($0) || (48...57).contains($0) || $0 == 45 }) else { return nil }
+            return .closeWindow(id)
         case "open-tool-panel":
             guard url.query == nil, IndividualMenuBarTool(rawValue: String(parts[2])) != nil else { return nil }
             return .openIndividualPanel(String(parts[2]))

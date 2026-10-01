@@ -121,6 +121,11 @@ final class DeepLinkHandler {
         case .closePanels:
             DiagnosticsMenuPanels.shared.close()
             return
+        case .closeWindow(let id):
+            guard id == "main" || AppDelegate.quitCommandToolID(for: id) == id else { return }
+            let windows = NSApp.windows.filter { AppDelegate.window($0, belongsTo: id) }
+            AppDelegate.closeToolWindows(id, activeWindow: windows.first, windows: windows)
+            return
         default: break
         }
 
