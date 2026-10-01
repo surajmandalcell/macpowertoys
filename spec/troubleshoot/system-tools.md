@@ -549,6 +549,24 @@
 
 ## System Care And Mole
 
+- **Symptom:** Populated Mole history rows show the same truncated actions
+  dictionary instead of distinct activity.
+- **Cause:** Foundation dictionary descriptions put line breaks into the
+  one-line details cell. Nested action counts were never parsed.
+- **Invariant:** Parse recorded session counts and sizes into a one-line summary,
+  and deletion modes and paths into an operation and target. Keep supplied
+  timestamp/status or positive action counts separate. Omit absent values.
+  Session JSON has no target paths; do not infer them or a success state.
+  Timestamp text has no supplied time zone. Keep raw record JSON in detail/help,
+  outside the summary. Reject malformed record groups and retain prior history
+  on a read failure. Parsing stays in the existing utility worker.
+- **Check:** The source-derived nested fixture fails before 7b606373 and passes
+  afterward. The Swift 6 parser/regression typecheck passes. Run
+  testMoleHistoryParsesNestedCountsTargetsAndOptionalMetadata on hosted CI.
+  syscare-ui owns matching 34pt header/body rows, 12pt insets, and optional
+  trailing time/result columns. Compare populated signed captures in both
+  appearances and inspect full raw JSON help. No cleanup is needed for this test.
+
 - **Symptom:** Cleanup accepts a changed target, reports incomplete roots as a
   complete scan, loses rows after sibling selection changes, or becomes idle
   while its worker or CLI still runs. Name-based uninstall can select a second
