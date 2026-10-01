@@ -133,6 +133,12 @@ struct TrayPopoverView: View {
             tabContent
         }
         .onePlusPanelTimings(panel: "main", tab: selectedTab.panelID)
+        .focusedValue(\.appOpenSettings) {
+            ToolActionRouter.shared.open(
+                toolID: selectedTab == .systemCare ? "system-care" : "main",
+                page: selectedTab == .systemCare ? "settings/general" : "settings"
+            )
+        }
         .onOpenToolPage(diagnostic ? "menu.main" : nil) { id in
             if let tab = TrayTab(panelID: id), tabs.contains(tab) { select(tab) }
         }
@@ -239,6 +245,9 @@ struct IndividualToolMenuPanel: View {
             content
         }
         .onePlusPanelTimings(panel: tool.id, tab: tool.id)
+        .focusedValue(\.appOpenSettings) {
+            ToolActionRouter.shared.open(toolID: tool.id, page: "settings")
+        }
     }
 
     @ViewBuilder
