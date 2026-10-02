@@ -4,6 +4,13 @@ Notable changes are documented here. The project follows semantic versioning aft
 
 ## [Unreleased]
 
+## [1.9.3] - 2026-10-02
+
+### Fixed
+
+- NetToys reads this Mac's own MAC address from the neighbor table instead
+  of showing macOS's 02:00:00:00:00:00 privacy placeholder.
+
 ## [1.9.2] - 2026-10-02
 
 ### Fixed
