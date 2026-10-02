@@ -16,6 +16,7 @@ final class WindowStateManager {
     private let userDefaultsPrefix = "windowState"
     private var observers: [NSObjectProtocol] = []
     private let restoredWindows = NSHashTable<NSWindow>.weakObjects()
+    private let closedSceneWindows = NSHashTable<NSWindow>.weakObjects()
 
     var observerOwnerCount: Int { observers.count }
 
@@ -53,7 +54,25 @@ final class WindowStateManager {
             }
         }
 
-        observers = [moveObserver, resizeObserver]
+        let closeObserver = NotificationCenter.default.addObserver(
+            forName: NSWindow.willCloseNotification,
+            object: nil,
+            queue: .main
+        ) { [weak self] notification in
+            MainActor.assumeIsolated {
+                guard let self, let window = notification.object as? NSWindow,
+                      !(window is BackgroundToolWindow),
+                      let identifier = window.identifier?.rawValue,
+                      let id = Self.storageIdentifier(for: identifier), id != "portman" else { return }
+                self.closedSceneWindows.add(window)
+            }
+        }
+
+        observers = [moveObserver, resizeObserver, closeObserver]
+    }
+
+    func isClosedSceneWindow(_ window: NSWindow) -> Bool {
+        closedSceneWindows.contains(window)
     }
 
     nonisolated private static let knownWindowIdentifiers = [
@@ -116,6 +135,8 @@ final class WindowStateManager {
     }
 
     func restoreState(for window: NSWindow) {
+        // A newly attached scene root can reuse its native window object.
+        closedSceneWindows.remove(window)
         guard !AppRuntime.isUITesting else { return }
         guard !restoredWindows.contains(window) else { return }
         guard let identifier = window.identifier?.rawValue,

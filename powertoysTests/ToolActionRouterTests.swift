@@ -14,6 +14,7 @@ final class ToolActionRouterTests: XCTestCase {
             override var isMiniaturized: Bool { minimized }
             override func makeKeyAndOrderFront(_ sender: Any?) { keyOrders += 1 }
             override func orderFrontRegardless() { backgroundOrders += 1 }
+            override func orderBack(_ sender: Any?) { backgroundOrders += 1 }
             override func deminiaturize(_ sender: Any?) { deminiaturizations += 1 }
         }
         let tools = ["main", "rclone", "logs", "awake", "color-picker", "text-extractor",
@@ -61,6 +62,71 @@ final class ToolActionRouterTests: XCTestCase {
                 XCTAssertEqual(opened, [tool])
                 XCTAssertEqual(activations, 2)
             }
+        }
+    }
+
+    @MainActor
+    func testNativeCloseUsesTheDelegateAndClosedScenesLeaveNativeReuse() {
+        final class CloseDelegate: NSObject, NSWindowDelegate {
+            var closes = 0
+            func windowShouldClose(_ sender: NSWindow) -> Bool { closes += 1; return true }
+        }
+        final class WindowSpy: NSWindow {
+            var reportsVisible = true
+            var orders = 0
+            override var isVisible: Bool { reportsVisible }
+            override var isOnActiveSpace: Bool { true }
+            override func orderBack(_ sender: Any?) { orders += 1 }
+            override func orderFrontRegardless() { orders += 1 }
+            override func makeKeyAndOrderFront(_ sender: Any?) { orders += 1 }
+            override func close() { reportsVisible = false; super.close() }
+        }
+        let tools = ["main", "rclone", "logs", "awake", "color-picker", "text-extractor",
+                     "input-devices", "system-care", "disk-explorer", "system-monitor", "nettoys", "switch", "mac-tweaks"]
+        let manager = WindowStateManager.shared
+        for tool in tools {
+            let window = WindowSpy(contentRect: .zero, styleMask: [.titled, .closable], backing: .buffered, defer: false)
+            window.identifier = .init("\(tool)-AppWindow-1")
+            window.isReleasedWhenClosed = false
+            let delegate = CloseDelegate()
+            window.delegate = delegate
+            XCTAssertFalse(manager.isClosedSceneWindow(window), "A cold hidden scene is reusable")
+            DeepLinkHandler.nativeCloseWindow(id: "unknown", windows: [window])
+            XCTAssertEqual(delegate.closes, 0)
+            DeepLinkHandler.nativeCloseWindow(id: tool, windows: [window])
+            XCTAssertEqual(delegate.closes, 1, tool)
+            XCTAssertTrue(window.delegate === delegate)
+            XCTAssertTrue(manager.isClosedSceneWindow(window), tool)
+            XCTAssertEqual(window.orders, 0, "Native close must not order a window")
+
+            let replacement = WindowSpy(contentRect: .zero, styleMask: [], backing: .buffered, defer: true)
+            replacement.identifier = .init(tool)
+            replacement.isReleasedWhenClosed = false
+            var created: [String] = []
+            var opened: [String] = []
+            var activations = 0
+            ToolActionRouter.presentSingleWindow(id: tool, windows: [window], activateApp: false,
+                createWindow: { created.append($0); return replacement },
+                activate: { activations += 1 }, openWindow: { opened.append($0) })
+            XCTAssertEqual(created, [tool], "Closed scene must use the background factory")
+            XCTAssertTrue(opened.isEmpty)
+            XCTAssertEqual(activations, 0)
+            XCTAssertEqual(replacement.orders, 1)
+            XCTAssertEqual(window.orders, 0, "Never prepare or order the closed scene")
+            ToolActionRouter.presentSingleWindow(id: tool, windows: [window, replacement], activateApp: false,
+                createWindow: { _ in XCTFail("Reuse the replacement"); return nil },
+                activate: { XCTFail("Background reuse must not activate") },
+                openWindow: { _ in XCTFail("Background reuse must not open a scene") })
+            XCTAssertEqual(replacement.orders, 2, "Skip the stale scene before its replacement")
+            ToolActionRouter.presentSingleWindow(id: tool, windows: [window], activateApp: true,
+                createWindow: { _ in XCTFail("Explicit reopen belongs to SwiftUI"); return nil },
+                activate: { activations += 1 }, openWindow: { opened.append($0) })
+            XCTAssertEqual(opened, [tool])
+            XCTAssertEqual(activations, 1)
+            manager.restoreState(for: window)
+            XCTAssertFalse(manager.isClosedSceneWindow(window), "A new root attachment clears the close state")
+            window.close()
+            replacement.close()
         }
     }
 

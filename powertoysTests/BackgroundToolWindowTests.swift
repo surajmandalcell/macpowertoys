@@ -88,7 +88,7 @@ final class BackgroundToolWindowTests: XCTestCase {
         }
     }
 
-    func testColdAndClosedSceneRoutesKeepTheirHostBeforeOrdering() throws {
+    func testColdHiddenSceneKeepsItsHostBeforeOrdering() throws {
         final class WindowSpy: NSWindow {
             override var isOnActiveSpace: Bool { true }
             var beforeOrdering: () -> Void = {}
@@ -103,7 +103,7 @@ final class BackgroundToolWindowTests: XCTestCase {
             styleMask: [.titled, .closable, .fullSizeContentView], backing: .buffered, defer: false)
         window.identifier = .init("main")
         window.isReleasedWhenClosed = false
-        defer { window.close() }
+        defer { window.beforeOrdering = {}; window.close() }
         let probe = BackgroundWindowProbe()
         window.contentViewController = NSHostingController(rootView:
             OnePlusWindowContent {
@@ -121,29 +121,13 @@ final class BackgroundToolWindowTests: XCTestCase {
             createWindow: { _ in XCTFail("Cold first route must keep its scene"); return nil },
             activate: { XCTFail("Cold first route must not activate") },
             openWindow: { _ in XCTFail("Cold first route must not call openWindow") })
-        for explicit in [false, true] {
-            // The presentation spy never resets AppKit's closed-window state.
-            window.order(.below, relativeTo: 0)
-            XCTAssertFalse(window.isKeyWindow)
-            window.performClose(nil)
-            host.layoutSubtreeIfNeeded()
-            RunLoop.main.run(until: Date(timeIntervalSinceNow: 0.05))
-            XCTAssertNil(probe.payload)
-            var activations = 0
-            ToolActionRouter.presentSingleWindow(id: "main", windows: [window], activateApp: explicit,
-                createWindow: { _ in XCTFail("Reopen must reuse the native window"); return nil },
-                activate: { activations += 1 },
-                openWindow: { _ in XCTFail("Reopen must not depend on SwiftUI scene creation") })
-            XCTAssertEqual(activations, explicit ? 1 : 0)
-            XCTAssertFalse(window.isVisible)
-            XCTAssertFalse(window.isKeyWindow)
-        }
-        window.beforeOrdering = {}
-        XCTAssertEqual(window.backgroundOrders, 2)
-        XCTAssertEqual(window.keyOrders, 1)
+        XCTAssertFalse(window.isVisible)
+        XCTAssertFalse(window.isKeyWindow)
+        XCTAssertEqual(window.backgroundOrders, 1)
+        XCTAssertEqual(window.keyOrders, 0)
     }
 
-    func testClosedAppletMeasuresItsBodyBeforeOrdering() throws {
+    func testColdHiddenAppletMeasuresItsBodyBeforeOrdering() throws {
         final class WindowSpy: NSWindow {
             override var isOnActiveSpace: Bool { true }
             var beforeOrdering: () -> Void = {}
@@ -172,18 +156,11 @@ final class BackgroundToolWindowTests: XCTestCase {
                 XCTAssertNotNil(probe.payload)
                 XCTAssertEqual(window.frame.size, NSSize(width: 420, height: height))
             }
-            for _ in 0..<3 {
-                window.identifier = .init("color-picker")
-                ToolActionRouter.presentSingleWindow(id: "color-picker", windows: [window], activateApp: false,
-                    createWindow: { _ in XCTFail("Applet must keep its scene"); return nil },
-                    activate: { XCTFail("Background applet must not activate") },
-                    openWindow: { _ in XCTFail("Background applet must not call openWindow") })
-                window.order(.below, relativeTo: 0)
-                XCTAssertFalse(window.isKeyWindow)
-                window.performClose(nil)
-                RunLoop.main.run(until: Date(timeIntervalSinceNow: 0.05))
-                XCTAssertNil(probe.payload)
-            }
+            ToolActionRouter.presentSingleWindow(id: "color-picker", windows: [window], activateApp: false,
+                createWindow: { _ in XCTFail("Cold applet must keep its scene"); return nil },
+                activate: { XCTFail("Background applet must not activate") },
+                openWindow: { _ in XCTFail("Background applet must not call openWindow") })
+            XCTAssertFalse(window.isKeyWindow)
         }
     }
 

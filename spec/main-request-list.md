@@ -1,5 +1,20 @@
 # Main Task Request List
 
+Native close and reopen, run 80, 2026-10-02: the owner's signed `3b3a67ab`
+replay disproves the Run 75–77 scene-reopen claim. A real red close followed
+by Main/Favorites returns blank at 1240 x 872. Closed SwiftUI scene windows
+must leave the native reuse path. Explicit reopens must use `openWindow`.
+Background reopens must use the existing native content factory without
+activation or front ordering. Cold hidden and minimized scenes keep their
+current behavior. Add `diagnostics/native-close/<id>` with `performClose(nil)`
+on the visible scene window, without changing its delegate or ending sheets.
+All 13 scene IDs are in scope. Signed close/open/capture proof remains with
+the orchestrator. The single test build and all 31 guarded tests pass.
+The source probe rejects `3b3a67ab` and passes 26 closed-scene background
+cases plus replacement reuse and explicit reopen. Existing 104 inactive and
+104 off-Space page cases still pass with zero activation calls.
+Report: `tmp/redesign/logs/w17-native-close.md`.
+
 Inactive background ordering, run 79, 2026-10-02: all 13 scene roots use
 back ordering while the app is inactive. Other Spaces still skip ordering.
 Native background windows and all diagnostic panel paths share this rule.
@@ -35,8 +50,9 @@ unchanged since 61edaf55; the supplied capture shows the correct tab. The
 orchestrator must repeat the read-only check after the owner unlocks.
 Report: `tmp/redesign/logs/w14-blank-tests.md`.
 
-Background focus and reopen, run 76, 2026-10-02: hidden SwiftUI scenes keep
-their own controller and host. Their close root rebuilds before ordering.
+Background focus and reopen, run 76, 2026-10-02: cold hidden SwiftUI scenes
+keep their own controller and host. Run 80 replaces the closed-scene reuse
+claim; the plain native fixture's close root rebuilds before ordering.
 Fixed canvases and measured applet bodies restore their size and top-left
 point first. Both maintained probes reject `a46233f2`. Source checks cover
 all 13 shared roots, cold first routes without a run-loop wait, native close,

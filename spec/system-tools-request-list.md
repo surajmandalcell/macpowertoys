@@ -1,5 +1,16 @@
 # System Tools Request List
 
+Native close and reopen, run 80, 2026-10-02: Input Devices, System Care,
+System Monitor, Disk Explorer and NetToys share the closed-scene guard.
+Background reopen uses the existing native factory without activation;
+explicit reopen uses SwiftUI. Cold hidden and minimized windows keep their
+current Space and focus rules. Native-close uses each existing delegate.
+Portman has no SwiftUI Window scene and keeps its current path.
+The orchestrator owns installed close/open/capture checks for every scene.
+The single test build and all 31 guarded tests pass. The source probe passes
+all 26 closed-scene background cases, with zero activation or front ordering.
+Report: `tmp/redesign/logs/w17-native-close.md`.
+
 Inactive background ordering, run 79, 2026-10-02: Input Devices, System
 Care, Task Manager and NetToys use back ordering while the app is inactive.
 Main/Task Manager capture panels, Portman diagnostics and all five separate

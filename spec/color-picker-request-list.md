@@ -1,5 +1,16 @@
 # Color Picker Request List
 
+Native close and reopen, run 80, 2026-10-02: the shared opener must skip
+closed SwiftUI applet windows. Background reopen uses the existing native
+factory; explicit reopen uses SwiftUI. Cold hidden applet measurement and
+the Space and focus rules stay in effect. The new native-close route calls
+the existing window delegate. Prior plain-host height and release fixtures
+do not prove real scene recovery. The orchestrator owns installed History,
+Projects and Settings close/open/capture checks.
+The single test build and 31 guarded tests pass, including cold applet body
+measurement. Closed-scene source cases pass without activation.
+Report: `tmp/redesign/logs/w17-native-close.md`.
+
 Inactive background ordering, run 79, 2026-10-02: applet routes and the
 separate diagnostic panel use back ordering while the app is inactive.
 Other Spaces still skip ordering. Explicit opens and Pick keep their paths.

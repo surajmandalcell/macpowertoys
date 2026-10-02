@@ -1,5 +1,42 @@
 # Main Shell Troubleshooting
 
+## Real Scene Close and Blank Reopen, Run 80, 2026-10-02
+
+- **Evidence:** The owner closed Main with the red button on signed
+  `3b3a67ab`. A plain Main/Favorites URL returned blank at 1240 x 872.
+  Run 75–77 fixtures own plain NSHostingController windows. They do not
+  reproduce the SwiftUI Window scene delegate or prove this failure fixed.
+- **Cause:** The shared opener matches retained NSWindow identifiers without
+  checking whether the SwiftUI scene closed. Its shared content notification
+  and frame update do not reopen a closed SwiftUI scene. The exact private
+  scene teardown is unproved; this is a scene ownership error in our opener.
+  Apple documents [openWindow](https://developer.apple.com/documentation/swiftui/openwindowaction)
+  as the scene opener. It orders windows to the front and has no background
+  intent parameter. A bare background call would break the focus rule.
+- **Invariant:** Observe real willClose notifications with weak window
+  references. Never reuse a closed scene shell or replace its controller.
+  Explicit reopens use SwiftUI. Background reopens use the existing native
+  factory, which mounts the common root and sizes it before back ordering.
+  A new scene-root attachment clears the close record. Cold hidden and
+  minimized windows retain their existing behavior and Space guard.
+- **Diagnostics:** `diagnostics/native-close/<id>` selects the visible or
+  minimized scene window and calls
+  [performClose](https://developer.apple.com/documentation/appkit/nswindow/performclose(_:)).
+  This invokes its existing close delegate. It does not end sheets, activate,
+  order windows, replace the delegate, or send synthetic close notifications.
+  Keep the older close-window route for its separate close-all behavior.
+- **Scope:** Main, Rclone, Logs, Awake, Color Picker, Text Extractor,
+  Input Devices, System Care, Disk Explorer, System Monitor, NetToys, Switch
+  and Mac Tweaks. Ruler and Portman have no SwiftUI Window scene.
+- **Check:** The single test build and 31 guarded tests pass. A real AppKit
+  close delegate runs for every scene ID, without ordering. The source probe
+  rejects `3b3a67ab` and passes 26 closed-scene background cases, replacement
+  reuse and explicit reopen. All 104 inactive and 104 off-Space page cases
+  still pass. Chrome stays in front during guarded tests.
+  Report: `tmp/redesign/logs/w17-native-close.md`. Installed native-close/open/capture
+  for all 13 IDs belongs to the orchestrator. Earlier plain-host reopen
+  results establish native host behavior only, not SwiftUI scene recovery.
+
 ## Inactive Background Ordering, Run 79, 2026-10-02
 
 - **Symptom:** Signed `210a39b8` becomes active 1.64 seconds after a background
@@ -66,8 +103,8 @@
 - **Cause:** Run 75 replaces the controller of every hidden SwiftUI scene,
   including scenes that have never closed. This changes scene ownership
   outside SwiftUI. Its fixture checks size but accepts that replacement.
-- **Invariant:** Remount only BackgroundToolWindow controllers. SwiftUI scenes
-  keep their controller, host, and native style. Notify their own close root,
+- **Invariant:** Run 80 supersedes reuse of closed scene shells. Cold SwiftUI
+  scenes keep their controller, host, and native style. Notify their own root,
   force its layout, then fix hidden geometry before ordering. Fixed roots use
   their registered canvas. Applets use the mounted WindowAccessor's body size;
   hosting-controller fitting sizes can include a stale 32pt titlebar inset.
@@ -85,11 +122,14 @@
 
 - **Symptom:** Native close followed by a background Main route shows an
   empty 1240 x 872pt window instead of the complete 1240 x 840pt canvas.
-- **Cause:** Closed SwiftUI scenes retain their controller and clear root.
+- **Cause:** This was inferred from plain hosting-controller fixtures and
+  does not establish the real scene lifecycle. Run 80 replaces that inference.
+  Closed native fixtures retain their controller and clear root.
   Reuse only sends a notification to that root. Replacement background
   controllers also export temporary intrinsic sizes before deferred chrome.
   Prior tests settle the run loop after reopening and miss the first frame.
-- **Invariant:** Run 76 supersedes generic scene-controller remounting.
+- **Invariant:** Run 80 supersedes closed-scene reuse; Run 76 supersedes
+  generic scene-controller remounting.
   Remount only controllers owned by BackgroundToolWindow before ordering.
   Prepare background controllers before sending the shared open notification.
   Fixed native hosts do not drive window size through intrinsic constraints.

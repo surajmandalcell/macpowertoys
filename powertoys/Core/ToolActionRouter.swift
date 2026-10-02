@@ -215,6 +215,7 @@ final class ToolActionRouter {
                                     activate: () -> Void, openWindow: (String) -> Void) {
         let existing = windows.first(where: {
             Self.windowIdentifier($0.identifier?.rawValue, matches: id)
+                && !WindowStateManager.shared.isClosedSceneWindow($0)
         })
         if existing == nil, activateApp {
             openWindow(id)

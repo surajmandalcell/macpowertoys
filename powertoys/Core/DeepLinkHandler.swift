@@ -99,6 +99,9 @@ final class DeepLinkHandler {
             let windows = NSApp.windows.filter { AppDelegate.window($0, belongsTo: id) }
             AppDelegate.closeToolWindows(id, activeWindow: windows.first, windows: windows)
             return
+        case .nativeClose(let id):
+            Self.nativeCloseWindow(id: id, windows: NSApp.windows)
+            return
         default: break
         }
 
@@ -110,6 +113,14 @@ final class DeepLinkHandler {
         }
 
         processURL(url)
+    }
+
+    static func nativeCloseWindow(id: String, windows: [NSWindow]) {
+        guard OnePlusWindowCanvas.tool(id) != nil,
+              let window = windows.first(where: {
+                  AppDelegate.window($0, belongsTo: id) && ($0.isVisible || $0.isMiniaturized)
+              }) else { return }
+        window.performClose(nil)
     }
 
     nonisolated static func isSupportedScheme(_ scheme: String?) -> Bool {
