@@ -7,9 +7,12 @@ import Testing
 struct ToolPageRouterTests {
     @Test func closeWindowDiagnosticsRequireOneBoundedToolID() throws {
         for scheme in ["macpowertoys", "powertoys"] {
-            for tool in ["main", "system-monitor", "disk-explorer", "rclone"] {
+            for tool in ["main", "rclone", "logs", "awake", "color-picker", "text-extractor",
+                         "input-devices", "system-care", "disk-explorer", "system-monitor", "nettoys", "switch", "mac-tweaks"] {
                 #expect(DiagnosticsRoute.parse(try #require(URL(string: "\(scheme)://diagnostics/close-window/\(tool)")))
                     == .closeWindow(tool))
+                #expect(DiagnosticsRoute.parse(try #require(URL(string: "\(scheme)://diagnostics/native-close/\(tool)")))
+                    == .nativeClose(tool))
             }
         }
         for value in ["https://diagnostics/close-window/main", "powertoys://open/close-window/main",
@@ -19,6 +22,7 @@ struct ToolPageRouterTests {
                       "powertoys://diagnostics/close-window/Main", "powertoys://diagnostics/close-window/bad%20id",
                       "powertoys://diagnostics/close-window/" + String(repeating: "a", count: 81)] {
             #expect(DiagnosticsRoute.parse(try #require(URL(string: value))) == nil)
+            #expect(DiagnosticsRoute.parse(try #require(URL(string: value.replacingOccurrences(of: "close-window", with: "native-close")))) == nil)
         }
     }
 
