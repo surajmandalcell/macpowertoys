@@ -1,5 +1,12 @@
 # Ruler Request List
 
+Background Spaces, run 78, 2026-10-02: Ruler and Settings update content
+but skip background ordering on another Space. Settings also skips new ruler
+suspension when its window cannot be shown on the current Space. Explicit
+opens keep activation and key ordering. Actual-source presentation spies pass
+both Space states and both intents. Signed full-screen and lock/unlock checks
+remain with the orchestrator. Report: `tmp/redesign/logs/w15-space-focus.md`.
+
 Reopen audit, run 75, 2026-10-02: Ruler uses native controllers and does
 not use the closed SwiftUI scene host. Its controller applies ruler state
 before ordering. The existing source-derived presentation check passes

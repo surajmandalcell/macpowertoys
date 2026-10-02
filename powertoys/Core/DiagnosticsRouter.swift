@@ -141,7 +141,7 @@ final class DiagnosticsMenuPanels: NSObject {
            panel != .systemMonitor || cachedProfiles == profiles {
             captureWindow = window
             window.contentView?.layoutSubtreeIfNeeded()
-            window.orderFrontRegardless()
+            window.orderFrontInBackground()
             return
         }
         let window = DiagnosticsCapturePanel(contentRect: CGRect(x: 0, y: 0, width: OnePlusMenuMetrics.width, height: 80),
@@ -185,7 +185,7 @@ final class DiagnosticsMenuPanels: NSObject {
         cachedWindows[panel] = window
         cachedTabs[panel] = tab ?? ""
         if panel == .systemMonitor { cachedProfiles = profiles }
-        window.orderFrontRegardless()
+        window.orderFrontInBackground()
     }
 }
 

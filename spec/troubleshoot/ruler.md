@@ -1,5 +1,16 @@
 # Ruler Troubleshooting
 
+## Background Ruler On Another Space, Run 78, 2026-10-02
+
+- **Invariant:** Background ruler and Settings routes update their content
+  without ordering a window on another Space. Hidden Settings must not suspend
+  its ruler when the Settings window cannot be shown on the current Space.
+  Explicit opens retain showWindow, key ordering and host activation.
+- **Check:** Actual-source spies pass both Space states and explicit intent.
+  The broader source probe checks Settings updates and suspension too.
+  Signed Space transitions remain with the orchestrator.
+  Report: `tmp/redesign/logs/w15-space-focus.md`.
+
 ## Unit Presentation Spies, Run 66, 2026-10-01
 
 - **Symptom:** Ruler fixtures call native key-window paths during local tests.

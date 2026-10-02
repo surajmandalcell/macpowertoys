@@ -363,6 +363,7 @@ final class BackgroundToolWindow: NSWindow {
 
     override func orderFrontRegardless() {
         prepareContent()
+        guard isOnActiveSpace else { return }
         super.orderFrontRegardless()
     }
 

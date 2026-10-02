@@ -1858,14 +1858,18 @@ final class PortmanMenuController: NSObject {
         hosting.view.layoutSubtreeIfNeeded()
         popover.contentViewController = hosting
         popover.contentSize = size
-        popover.show(relativeTo: button.bounds, of: button, preferredEdge: .minY, takesFocus: activateApp)
+        if activateApp {
+            popover.show(relativeTo: button.bounds, of: button, preferredEdge: .minY)
+        } else {
+            popover.showInBackground(relativeTo: button.bounds, of: button)
+        }
         popover.contentViewController?.view.window?.appearance = NSApp.appearance
         if activateApp {
             NSApp.activate(ignoringOtherApps: true)
             popover.contentViewController?.view.window?.makeKey()
         }
         if AppRuntime.isUITesting { NSLog("Portman popover shown: \(popover.isShown)") }
-        return popover.isShown
+        return !activateApp || popover.isShown
     }
 
     private func panelDidClose() {

@@ -247,7 +247,7 @@ final class ToolActionRouter {
             activate()
         } else {
             // Deminiaturizing also makes a window key; leave it to an explicit open.
-            window.orderFrontRegardless()
+            window.orderFrontInBackground()
         }
     }
 
@@ -288,5 +288,20 @@ final class ToolActionRouter {
                 if let value = item.value { result[item.name] = value }
             } ?? [:]
         return ToolActionRequest(action: action, parameters: parameters, activateApp: false)
+    }
+}
+
+extension NSWindow {
+    func orderFrontInBackground() {
+        // Ordering a window on another Space can switch Spaces and activate its app.
+        guard isOnActiveSpace else { return }
+        orderFrontRegardless()
+    }
+}
+
+extension OnePlusMenuPresenter {
+    func showInBackground(relativeTo rect: NSRect, of view: NSView) {
+        guard contentViewController?.view.window?.isOnActiveSpace == true else { return }
+        show(relativeTo: rect, of: view, preferredEdge: .minY, takesFocus: false)
     }
 }

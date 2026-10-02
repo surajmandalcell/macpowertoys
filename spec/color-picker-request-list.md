@@ -1,5 +1,15 @@
 # Color Picker Request List
 
+Background Spaces, run 78, 2026-10-02: applet routes and the separate
+diagnostic panel skip ordering on another Space while retaining content and
+page updates. Explicit opens and Pick keep their activation paths. Source
+checks pass off-Space applet reuse and retain the input-capture
+guard. Native close/reopen still passes every height bound. All five guarded
+background-window tests pass, including off-Space and applet-height checks.
+Signed History, Projects, Settings, lock/unlock and full-screen checks remain
+with the
+orchestrator. Report: `tmp/redesign/logs/w15-space-focus.md`.
+
 Close verification, run 77, 2026-10-02: the guarded applet fixture passes
 native close and model release at 250, 355, and 460pt. It now orders the
 offscreen window before each close, so AppKit sends every close notification.

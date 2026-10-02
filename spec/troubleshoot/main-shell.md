@@ -1,5 +1,30 @@
 # Main Shell Troubleshooting
 
+## Background Ordering Across Spaces, Run 78, 2026-10-02
+
+- **Symptom:** Signed `590b25af` takes focus on Main Favorites after All tools
+  on an existing window following lock and unlock. The owner did not click.
+- **Cause:** Background presentation calls orderFrontRegardless without an
+  active-Space check. The source fixture proves this call occurs for a window
+  on another Space. The signed Space transition still needs isolated replay.
+- **Invariant:** Update content and page state, then skip background ordering
+  when isOnActiveSpace is false. Keep Space membership and collectionBehavior.
+  Apply the guard to all 13 scene roots, BackgroundToolWindow's native override,
+  Ruler, Ruler Settings, diagnostic panels, Portman and five separate panels.
+  Explicit opens keep native activation. Keep Run 75/76 host and frame repairs.
+- **Check:** The maintained no-activation probe rejects `590b25af` with
+  `--off-space-before`. Current source passes 104 off-Space page routes with
+  zero ordering, key, scene or activation calls. Native close/reopen passes
+  102 cycles. The permanent window test reports a changed Space through a spy.
+  All five guarded BackgroundToolWindowTests pass with zero failures.
+  The one compile gate found two AppKit property-name conflicts in the fixture;
+  both are renamed, and the guarded final rebuild passes.
+  No installed route is allowed in this task. Installation and signed
+  lock/unlock, full-screen and explicit-open checks belong to the orchestrator.
+  Report: `tmp/redesign/logs/w15-space-focus.md`.
+  Apple documents the hidden-window meaning of
+  [isOnActiveSpace](https://developer.apple.com/documentation/appkit/nswindow/isonactivespace).
+
 ## Cold Background Scene Takes Focus, Run 76, 2026-10-02
 
 - **Symptom:** The owner reports that signed `a46233f2` takes focus on the

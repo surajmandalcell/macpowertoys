@@ -1,5 +1,14 @@
 # System Tools Request List
 
+Background Spaces, run 78, 2026-10-02: Input Devices, System Care,
+Task Manager and NetToys keep their page and content updates without ordering
+off-Space windows. Main and Task Manager diagnostic panels and separate Input
+Devices diagnostics also check the current Space. Explicit opens keep
+activation. All 104 off-Space page cases and 102 native reopen cycles pass.
+All five guarded background-window tests pass on the final compiled source.
+Signed installation and full-screen/lock/unlock replay stay with the
+orchestrator. Report: `tmp/redesign/logs/w15-space-focus.md`.
+
 Close verification, run 77, 2026-10-02: the stronger actual-source fixture
 checks every native close notification and model release across all 13 roots
 and both window owners. All 102 cycles and all four guarded app tests pass.

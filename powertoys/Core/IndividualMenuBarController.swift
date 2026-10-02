@@ -229,7 +229,11 @@ final class IndividualMenuBarController: NSObject {
         host.view.setFrameSize(size)
         host.view.layoutSubtreeIfNeeded()
         popover.contentSize = size
-        popover.show(relativeTo: button.bounds, of: button, preferredEdge: .minY, takesFocus: !diagnostic)
+        if diagnostic {
+            popover.showInBackground(relativeTo: button.bounds, of: button)
+        } else {
+            popover.show(relativeTo: button.bounds, of: button, preferredEdge: .minY)
+        }
     }
 
     private func makePopover(for tool: IndividualMenuBarTool, maximumHeight: CGFloat) -> OnePlusMenuPresenter {

@@ -1,5 +1,17 @@
 # Main Task Request List
 
+Background Spaces, run 78, 2026-10-02: keep content and page updates but
+skip background ordering when the window is on another Space. Main and all
+12 other scene roots share the guard. BackgroundToolWindow also guards its
+native override. Ruler, Settings, main/Task Manager diagnostics, Portman and
+all five separate panels use the same Space check. Explicit opens retain
+activation. The probe rejects `590b25af` and passes 104 off-Space page routes
+with zero ordering or activation. The 102 native reopen cycles still pass.
+All five guarded background-window tests pass with zero failures. The one
+compile gate found two test-name conflicts; the guarded final rebuild passes.
+The orchestrator owns signed installation and lock/unlock/full-screen replay.
+Report: `tmp/redesign/logs/w15-space-focus.md`.
+
 Close verification, run 77, 2026-10-02: all four guarded background-window
 tests pass with model-release assertions intact. Ordering spies did not reset
 AppKit's closed state. Real offscreen ordering fixes the fixtures. The updated
