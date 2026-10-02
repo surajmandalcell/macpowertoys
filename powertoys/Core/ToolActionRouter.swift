@@ -243,6 +243,9 @@ final class ToolActionRouter {
         }
         if activateApp {
             if window.isMiniaturized { window.deminiaturize(nil) }
+            if !(window is BackgroundToolWindow) {
+                ActivationDiagnostics.noteOrdering("makeKeyAndOrderFront", window: window)
+            }
             window.makeKeyAndOrderFront(nil)
             activate()
         } else {
@@ -293,15 +296,47 @@ final class ToolActionRouter {
 
 extension NSWindow {
     func orderFrontInBackground() {
-        // Ordering a window on another Space can switch Spaces and activate its app.
         guard isOnActiveSpace else { return }
-        orderFrontRegardless()
+        if NSApp.isActive {
+            if !(self is BackgroundToolWindow) {
+                ActivationDiagnostics.noteOrdering("orderFrontRegardless", window: self)
+            }
+            orderFrontRegardless()
+        } else {
+            // Inactive background opens must not ask WindowServer to order front.
+            if !(self is BackgroundToolWindow) {
+                ActivationDiagnostics.noteOrdering("orderBack", window: self)
+            }
+            orderBack(nil)
+        }
     }
 }
 
 extension OnePlusMenuPresenter {
     func showInBackground(relativeTo rect: NSRect, of view: NSView) {
-        guard contentViewController?.view.window?.isOnActiveSpace == true else { return }
-        show(relativeTo: rect, of: view, preferredEdge: .minY, takesFocus: false)
+        guard let window = contentViewController?.view.window, window.isOnActiveSpace else { return }
+        if NSApp.isActive {
+            ActivationDiagnostics.noteOrdering("orderFrontRegardless", window: window)
+            show(relativeTo: rect, of: view, preferredEdge: .minY, takesFocus: false)
+        } else {
+            // Diagnostic panels use the measured production host without its front-ordering show path.
+            // ponytail: skips private dismissal monitors; add a dependency background-show API
+            // if diagnostics need click dismissal.
+            guard let owner = view.window, let screen = owner.screen else { return }
+            appearance = NSApp.appearance
+            let anchor = owner.convertToScreen(view.convert(rect, to: nil))
+            let bounds = screen.visibleFrame
+            let size = contentSize
+            let frame = NSRect(
+                x: min(max(bounds.minX, anchor.midX - size.width / 2), bounds.maxX - size.width),
+                y: max(bounds.minY, min(anchor.minY, bounds.maxY) - size.height),
+                width: size.width, height: size.height)
+            window.setFrame(frame, display: false)
+            window.contentView?.layoutSubtreeIfNeeded()
+            window.displayIfNeeded()
+            window.invalidateShadow()
+            window.orderFrontInBackground()
+            NotificationCenter.default.post(name: Self.didShowNotification, object: self)
+        }
     }
 }

@@ -13,17 +13,21 @@ final class BackgroundToolWindowTests: XCTestCase {
             var minimized = false
             var reportsVisible = false
             var backgroundOrders = 0
+            var frontOrders = 0
             var keyOrders = 0
             var deminiaturizations = 0
             override var isOnActiveSpace: Bool { reportsActiveSpace }
             override var isMiniaturized: Bool { minimized }
             override var isVisible: Bool { reportsVisible }
-            override func orderFrontRegardless() { backgroundOrders += 1 }
+            override func orderFrontRegardless() { frontOrders += 1 }
+            override func orderFront(_ sender: Any?) { frontOrders += 1 }
+            override func orderBack(_ sender: Any?) { backgroundOrders += 1 }
             override func makeKeyAndOrderFront(_ sender: Any?) { keyOrders += 1 }
             override func deminiaturize(_ sender: Any?) { deminiaturizations += 1 }
         }
         let tools = ["main", "rclone", "logs", "awake", "color-picker", "text-extractor",
                      "input-devices", "system-care", "disk-explorer", "system-monitor", "nettoys", "switch", "mac-tweaks"]
+        XCTAssertFalse(NSApp.isActive, "The guarded unit host must stay inactive")
         for tool in tools {
             for visible in [false, true] {
                 let window = WindowSpy(contentRect: .zero, styleMask: [], backing: .buffered, defer: true)
@@ -49,6 +53,7 @@ final class BackgroundToolWindowTests: XCTestCase {
                 present(false)
                 XCTAssertEqual(window.backgroundOrders, 1)
                 XCTAssertEqual(window.keyOrders, 0)
+                XCTAssertEqual(window.frontOrders, 0, "Inactive routes must make no front-ordering call")
                 XCTAssertEqual(window.deminiaturizations, 0)
                 XCTAssertEqual(activations, 0)
                 present(true)
@@ -89,7 +94,8 @@ final class BackgroundToolWindowTests: XCTestCase {
             var beforeOrdering: () -> Void = {}
             var backgroundOrders = 0
             var keyOrders = 0
-            override func orderFrontRegardless() { beforeOrdering(); backgroundOrders += 1 }
+            override func orderFrontRegardless() { XCTFail("Inactive scene ordered front") }
+            override func orderBack(_ sender: Any?) { beforeOrdering(); backgroundOrders += 1 }
             override func makeKeyAndOrderFront(_ sender: Any?) { beforeOrdering(); keyOrders += 1 }
         }
         let window = WindowSpy(
@@ -117,7 +123,7 @@ final class BackgroundToolWindowTests: XCTestCase {
             openWindow: { _ in XCTFail("Cold first route must not call openWindow") })
         for explicit in [false, true] {
             // The presentation spy never resets AppKit's closed-window state.
-            window.orderBack(nil)
+            window.order(.below, relativeTo: 0)
             XCTAssertFalse(window.isKeyWindow)
             window.performClose(nil)
             host.layoutSubtreeIfNeeded()
@@ -141,7 +147,8 @@ final class BackgroundToolWindowTests: XCTestCase {
         final class WindowSpy: NSWindow {
             override var isOnActiveSpace: Bool { true }
             var beforeOrdering: () -> Void = {}
-            override func orderFrontRegardless() { beforeOrdering() }
+            override func orderFrontRegardless() { XCTFail("Inactive applet ordered front") }
+            override func orderBack(_ sender: Any?) { beforeOrdering() }
         }
         for height: CGFloat in [250, 355, 460] {
             let window = WindowSpy(
@@ -171,7 +178,7 @@ final class BackgroundToolWindowTests: XCTestCase {
                     createWindow: { _ in XCTFail("Applet must keep its scene"); return nil },
                     activate: { XCTFail("Background applet must not activate") },
                     openWindow: { _ in XCTFail("Background applet must not call openWindow") })
-                window.orderBack(nil)
+                window.order(.below, relativeTo: 0)
                 XCTAssertFalse(window.isKeyWindow)
                 window.performClose(nil)
                 RunLoop.main.run(until: Date(timeIntervalSinceNow: 0.05))
