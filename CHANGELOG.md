@@ -4,6 +4,13 @@ Notable changes are documented here. The project follows semantic versioning aft
 
 ## [Unreleased]
 
+## [1.9.2] - 2026-10-02
+
+### Fixed
+
+- NetToys shows this Mac's own MAC address instead of "macOS restricted".
+- NetToys labels randomized Wi-Fi MAC addresses as "Private address".
+
 ## [1.9.1] - 2026-10-02
 
 ### Fixed
