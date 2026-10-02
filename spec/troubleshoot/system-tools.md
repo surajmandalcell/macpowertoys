@@ -324,6 +324,20 @@ Report: `tmp/redesign/logs/w8-tests-quiet.md`.
   daemon over XPC; it must return bytes, not 4102. After an app reinstall,
   the daemon PID must change. A /24 scan must list silent phones with MACs.
 
+### Own MAC And First Scan After Launch, 2026-10-02
+
+- **Symptom:** This Mac's row showed `02:00:00:00:00:00`. The first scan after
+  a relaunch listed no open ports or response times; the next scan did.
+- **Cause:** This Mac's ARP entry is routed through lo0, so filtering by
+  `rtm_index` dropped it, and `getifaddrs` returns the privacy placeholder to
+  apps. Right after launch, LAN connections fail at once while macOS is still
+  enabling Local Network access, so every TCP probe looked closed.
+- **Invariant:** Filter neighbor entries by the link-layer `sdl_index`, like
+  arp(8), and reject `02:00:00:00:00:00`. Before a scan, probe the gateway and
+  wait (at most three seconds) while it fails within 20 ms.
+- **Check:** Relaunch the installed app and click Scan at once: the router,
+  ShashiPC, and the ESP32 keep their ports, and this Mac shows its real MAC.
+
 ### Scan Toolbar Layout Shift, 2026-10-02
 
 - **Symptom:** Choosing a preset or editing the target squeezed the target
