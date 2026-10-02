@@ -4,6 +4,43 @@ Notable changes are documented here. The project follows semantic versioning aft
 
 ## [Unreleased]
 
+## [1.9.0] - 2026-10-02
+
+### Added
+
+- Diskman: map disk usage as a treemap or rings, see the largest files, and
+  manage removable drives and partitions with guarded operations.
+- Portman: find local development servers, see their memory use, and forward
+  ports from a private SSH server. It has its own menu bar item.
+- Mac Tweaks: change hidden Dock, Finder, window, screenshot, app, input, and
+  power settings. Every original value is kept and can be restored. Includes
+  Mic Lock for microphone priority.
+- Switch: switch Codex CLI, Grok Build, and Claude Code accounts and review
+  usage, using the shared Switch Core.
+- A menu bar popup with tabs for Home, Cloud Sync, Input Devices, System Care,
+  NetToys, and Switch, plus separate menu bar items for tools that support them.
+- Task Manager remote hosts over SSH, process details, System Report, and
+  optional fan control.
+- An Appearance setting: Dark, Light, or Automatic.
+
+### Changed
+
+- Redesigned every window, page, and popup on the shared OnePlusUI package:
+  fixed dark canvases, one accent color, and native controls.
+- Renamed System Monitor to Task Manager.
+- NetToys and OnePlusUI now live in their own repositories and are used by
+  exact version.
+- Mac Tweaks uses one column of settings in a smaller window, like System
+  Settings.
+- New icons for several tools, and sidebar glyphs drawn from each tool's icon.
+- Accent buttons use white text. Text contrast is measured with APCA.
+
+### Removed
+
+- The main window's Modified page. Tools that change system settings keep
+  their own reset controls.
+- Mac Tweaks preview artwork.
+
 ## [1.8.1] - 2026-09-21
 
 ### Changed
