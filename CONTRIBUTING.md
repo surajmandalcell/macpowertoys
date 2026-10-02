@@ -23,7 +23,7 @@ make build-for-testing DERIVED_DATA=/tmp/macpowertoys-build-tests
 
 Hosted macOS workflows run the unit, package, and UI checks. On the owner's
 desktop, compile only. Run executable tests in hosted CI or a separate macOS
-account or VM. Use these checks before you open a pull request:
+account. Use these checks before you open a pull request:
 
 ```bash
 make build-for-testing DERIVED_DATA=/tmp/macpowertoys-build-tests

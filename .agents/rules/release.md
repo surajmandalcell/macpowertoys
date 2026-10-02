@@ -35,7 +35,7 @@ Pause and restart preserve completed files. The active file resumes only when it
    decision 2026-10-01: CI minutes run out). Run unit tests on the owner's
    Mac with `tmp/redesign/tools/xtest.sh` only while no game or full-screen
    app is in front. It aborts the run if the front app changes. UI tests
-   still need a separate macOS account or VM.
+   still need a separate macOS account. Never use a VM.
 3. Run `make build`.
 4. Verify the result with `codesign --verify --deep --strict`.
 5. Quit the installed app, then run `make install ALLOW_INSTALL=1`.

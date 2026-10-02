@@ -13,9 +13,9 @@ make build-for-testing     # compiles the app and test bundles, launches nothing
 ```
 
 You can also open `powertoys.xcodeproj` and run the `powertoys` scheme.
-Executable tests launch the app as a host, so run them in a separate macOS
-account or VM with `TEST_SESSION=isolated make test`. Release, signing, and
-installation steps are in [`.agents/rules/release.md`](../.agents/rules/release.md).
+Executable tests launch the app as a test host. Run them with
+`TEST_SESSION=isolated make test` while nothing you need is in front.
+Release, signing, and installation steps are in [`.agents/rules/release.md`](../.agents/rules/release.md).
 
 Personal-team signing works on the signing Mac. Public, warning-free
 distribution needs Developer ID signing and Apple notarization.

@@ -88,7 +88,7 @@
   and requesting removable-volume access. The source checkout is on a
   removable volume.
 - **Invariant:** The shared `powertoys` scheme has no test action. Executable
-  tests use `powertoys-desktop-tests` only in an isolated macOS account or VM.
+  tests use `powertoys-desktop-tests` only in an isolated macOS account.
   `make test` requires `TEST_SESSION=isolated`, signs its products, and disables
   parallel test launches. Owner decision 2026-10-01: unit tests also run
   locally on the owner's Mac through the guarded `tmp/redesign/tools/xtest.sh`
@@ -184,7 +184,7 @@
 - **Cause:** Verification stopped at the build or inspected an older binary.
 - **Invariant:** Run the smallest static check, build the final source state,
   then exercise every changed state in the running final binary only when
-  desktop interaction is permitted or an isolated account or VM is available.
+  desktop interaction is permitted or an isolated account is available.
   Under a focus-preserving request, stop at the compile-only check and report
   the unverified interaction states. Rebuild after any edit following visual QA.
 - **Check:** Record the exact final build result and inspect default, hover,
@@ -223,7 +223,7 @@
 - **Cause:** The Xcode automation harness failed to bootstrap; this is not a
   product assertion result.
 - **Invariant:** Distinguish harness failure from app failure. Retry the smallest
-  signed runner once in an isolated account or VM, then use live accessibility
+  signed runner once in an isolated account, then use live accessibility
   and visual interaction there while reporting the harness limitation. Do not
   retry or use that fallback on the owner's active desktop when focus must stay
   undisturbed.
