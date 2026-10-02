@@ -426,6 +426,7 @@ private struct AppStorageContent<Content: View>: View {
 
 extension MacPowerToysApp {
     static func handleIncomingURL(_ url: URL) {
+        ActivationDiagnostics.noteURL(url)
         DeepLinkHandler.shared.handle(url: url)
     }
 }
