@@ -100,7 +100,7 @@ final class UtilityToolsTests: XCTestCase {
         XCTAssertTrue(try cornerAlphaValues(of: image).allSatisfy { $0 < 0.01 })
     }
 
-    func testLogsArtworkKeepsDarkGroundInDarkAppearance() throws {
+    func testLogsArtworkUsesPorcelainGroundInDarkAppearance() throws {
         let image = try XCTUnwrap(NSImage(named: "LogsLogo"))
         let bitmap = try XCTUnwrap(NSBitmapImageRep(
             bitmapDataPlanes: nil,
@@ -127,7 +127,7 @@ final class UtilityToolsTests: XCTestCase {
         let luminance = 0.2126 * ground.redComponent
             + 0.7152 * ground.greenComponent
             + 0.0722 * ground.blueComponent
-        XCTAssertLessThan(luminance, 0.35)
+        XCTAssertGreaterThan(luminance, 0.7)
     }
 
     func testAppIconUsesSystemResetPath() {
