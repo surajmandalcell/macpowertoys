@@ -10,7 +10,7 @@
 </p>
 
 <p align="center">
-  <a href="https://github.com/surajmandalcell/macpowertoys/releases/latest">Download for macOS</a> · Apple Silicon · macOS 26.2+ · MIT
+  <a href="https://github.com/surajmandalcell/macpowertoys/releases/latest">Download for macOS</a> · Apple Silicon and Intel · macOS 26.2+ · MIT
 </p>
 
 <p align="center">
