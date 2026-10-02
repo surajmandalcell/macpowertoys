@@ -147,6 +147,7 @@ class AppDelegate: NSObject, NSApplicationDelegate {
         }
 
         installFreeRulerRouting()
+        ActivationDiagnostics.install()
         dockIconAppearanceObservation = NSApp.observe(
             \.effectiveAppearance,
             options: [.new]
