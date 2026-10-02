@@ -6,8 +6,8 @@
       "kind" : "remoteSourceControl",
       "location" : "https://github.com/surajmandalcell/nettoys.git",
       "state" : {
-        "revision" : "593ea0189a05912b1bed6e16a94ff6f045f87ac4",
-        "version" : "1.0.8"
+        "revision" : "d5e04bb5def034f65f249108e5b16c8cc3be3cb5",
+        "version" : "1.0.10"
       }
     },
     {

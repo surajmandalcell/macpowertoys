@@ -4,6 +4,14 @@ Notable changes are documented here. The project follows semantic versioning aft
 
 ## [Unreleased]
 
+## [1.9.4] - 2026-10-02
+
+### Fixed
+
+- The first NetToys scan after launch no longer reports every port closed.
+  It waits briefly while macOS finishes enabling Local Network access.
+- NetToys can no longer hang while reading Tailscale status.
+
 ## [1.9.3] - 2026-10-02
 
 ### Fixed
