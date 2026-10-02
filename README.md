@@ -1,226 +1,134 @@
 <p align="center">
-  <img src="docs/appicon.svg" width="112" height="112" alt="MacPowerToys icon">
+  <img src="docs/appicon.svg" width="128" height="128" alt="MacPowerToys app icon">
 </p>
 
 <h1 align="center">MacPowerToys</h1>
 
 <p align="center">
-  <strong>Small macOS utilities. One native home.</strong><br>
-  Capture text, tune input, monitor your Mac, clean storage, and sync files<br>
-  without installing a pile of unrelated menu bar apps.
+  Fourteen small Mac utilities in one native, dark app.<br>
+  Measure, pick colors, read text from the screen, watch your Mac, clean storage, and sync files.
 </p>
 
 <p align="center">
-  <a href="https://github.com/surajmandalcell/macpowertoys/releases/latest"><img alt="Latest release" src="https://img.shields.io/github/v/release/surajmandalcell/macpowertoys?style=flat-square&color=087EFF"></a>
-  <img alt="macOS 26.2 or newer" src="https://img.shields.io/badge/macOS-26.2%2B-171717?style=flat-square&logo=apple">
-  <img alt="Built with Swift" src="https://img.shields.io/badge/Swift-5-F05138?style=flat-square&logo=swift&logoColor=white">
-  <a href="LICENSE"><img alt="MIT license" src="https://img.shields.io/badge/license-MIT-34C759?style=flat-square"></a>
+  <a href="https://github.com/surajmandalcell/macpowertoys/releases/latest">Download for macOS</a> · Apple Silicon · macOS 26.2+ · MIT
 </p>
 
 <p align="center">
-  <a href="https://github.com/surajmandalcell/macpowertoys/releases/latest"><b>Download for macOS</b></a>
-  &nbsp;&nbsp;·&nbsp;&nbsp;
-  <a href="#build-from-source">Build from source</a>
+  <img src="docs/screenshots/macpowertoys-launcher.png" width="100%" alt="The MacPowerToys launcher showing all fourteen tools as cards with enable switches and Open buttons">
 </p>
 
 <p align="center">
-  <img src="docs/screenshots/macpowertoys-launcher.png" width="1200" alt="MacPowerToys launcher">
+  <img src="docs/screenshots/menu-home.png" width="49%" alt="The menu bar popup with Pick Color, Extract Text, and Ruler actions, Awake duration, and fan mode">
+  <img src="docs/screenshots/menu-portman.png" width="49%" alt="The Portman menu bar popup listing local listening servers with their memory use">
 </p>
 
-<table>
-  <tr>
-    <td width="33%" align="center"><b>Native</b><br><sub>SwiftUI, AppKit, system materials, and proper Mac windows.</sub></td>
-    <td width="33%" align="center"><b>Private</b><br><sub>No first-party analytics, advertising SDK, or telemetry service.</sub></td>
-    <td width="33%" align="center"><b>Consistent</b><br><sub>One launcher, remembered windows, and keyboard-first controls.</sub></td>
-  </tr>
-</table>
-
-## Focused tools
+## What it does
 
 | | Tool | What it does |
 |:--:|---|---|
-| <img src="powertoys/Assets.xcassets/RulerLogo.imageset/icon.svg" width="30" alt=""> | **Ruler** | Measure the screen with movable, resizable rulers in pixels, millimeters, or inches. |
-| <img src="powertoys/Assets.xcassets/AwakeLogo.imageset/icon.svg" width="30" alt=""> | **Awake** | Keep the Mac or display awake by duration, end time, or running process. |
-| <img src="powertoys/Assets.xcassets/ColorPickerLogo.imageset/icon.svg" width="30" alt=""> | **Color Picker** | Sample the screen, copy developer formats, and search local color history. |
-| <img src="powertoys/Assets.xcassets/TextExtractorLogo.imageset/icon.svg" width="30" alt=""> | **Text Extractor** | Select any screen region and copy text with on-device Apple Vision. |
-| <img src="powertoys/Assets.xcassets/CloudSyncLogo.imageset/icon.svg" width="30" alt=""> | **Cloud Sync** | Plan and run copy, move, mirror, and two-way rclone transfers. |
-| <img src="powertoys/Assets.xcassets/LogsLogo.imageset/icon.svg" width="30" alt=""> | **Logs** | Search and filter MacPowerToys diagnostics. |
-| <img src="powertoys/Assets.xcassets/InputDevicesLogoA.imageset/icon.svg" width="30" alt=""> | **Input Devices** | Control mouse and trackpad scrolling independently, including direction, speed, horizontal movement, and wheel smoothing. |
-| <img src="powertoys/Assets.xcassets/SystemCareLogo.imageset/icon.svg" width="30" alt=""> | **System Care** | Analyze storage, preview safe cleanup, remove apps, and use advanced Mole maintenance. |
-| <img src="powertoys/Assets.xcassets/SystemMonitorLogo.imageset/icon.svg" width="30" alt=""> | **Task Manager** | Inspect processes, live system activity, sensors, and opt-in remote hosts. An optional privileged helper enables Auto, Cool, and Max fan control on supported Macs. |
-| | **Diskman** | Analyze disks and folders with live treemaps or rings; manage removable disks and partitions. |
-| <img src="powertoys/Assets.xcassets/NetToysLogo.imageset/icon.svg" width="30" alt=""> | **NetToys** | Scan IP networks, keep SSH hosts attached to changing local addresses, and review network outages. |
-| <img src="powertoys/Assets.xcassets/PortmanLogo.imageset/icon.svg" width="30" alt=""> | **Portman** | Inspect local development ports and forward selected ports from a private SSH server to localhost. |
-| <img src="powertoys/Assets.xcassets/MacTweaksLogo.imageset/icon.svg" width="30" alt=""> | **Mac Tweaks** | Search Mac preferences, keep original values, control microphone input, and restore changes. |
-| <img src="powertoys/Assets.xcassets/SwitchLogo.imageset/icon.svg" width="30" alt=""> | **Switch** | Manage CLI accounts, review usage, and recover interrupted account changes. |
+| <img src="powertoys/Assets.xcassets/RulerLogo.imageset/icon.svg" width="28" alt=""> | **Ruler** | Measure the screen with movable rulers in pixels, millimeters, or inches. |
+| <img src="powertoys/Assets.xcassets/AwakeLogo.imageset/icon.svg" width="28" alt=""> | **Awake** | Keep the Mac or display awake for a duration, until a time, or while a process runs. |
+| <img src="powertoys/Assets.xcassets/ColorPickerLogo.imageset/icon.png" width="28" alt=""> | **Color Picker** | Sample any pixel, copy it in nine formats, and keep colors in projects. |
+| <img src="powertoys/Assets.xcassets/TextExtractorLogo.imageset/icon.png" width="28" alt=""> | **Text Extractor** | Select a screen region and copy its text. Apple Vision runs on the Mac. |
+| <img src="powertoys/Assets.xcassets/CloudSyncLogo.imageset/icon.svg" width="28" alt=""> | **Cloud Sync** | Plan and run copy, move, mirror, and two-way rclone transfers. |
+| <img src="powertoys/Assets.xcassets/LogsLogo.imageset/icon.svg" width="28" alt=""> | **Logs** | Read app activity and recent macOS errors. |
+| <img src="powertoys/Assets.xcassets/InputDevicesLogoA.imageset/icon.png" width="28" alt=""> | **Input Devices** | Set scroll direction, speed, and smoothing separately for mouse and trackpad. |
+| <img src="powertoys/Assets.xcassets/SystemCareLogo.imageset/icon.png" width="28" alt=""> | **System Care** | Review storage, preview cleanup, move items to Trash, and remove apps. |
+| <img src="powertoys/Assets.xcassets/DiskExplorerLogo.imageset/icon.png" width="28" alt=""> | **Diskman** | Map disk usage as a treemap or rings, and manage removable drives. |
+| <img src="powertoys/Assets.xcassets/SystemMonitorLogo.imageset/icon.png" width="28" alt=""> | **Task Manager** | Inspect processes and live activity on this Mac or on hosts over SSH. Optional fan control. |
+| <img src="powertoys/Assets.xcassets/NetToysLogo.imageset/icon.png" width="28" alt=""> | **NetToys** | Scan networks, track outages, and keep SSH hosts linked when their address changes. |
+| <img src="powertoys/Assets.xcassets/PortmanLogo.imageset/icon.png" width="28" alt=""> | **Portman** | Find local dev servers and forward ports from a private SSH server. |
+| <img src="powertoys/Assets.xcassets/MacTweaksLogo.imageset/icon.svg" width="28" alt=""> | **Mac Tweaks** | Change hidden Dock, Finder, window, and input settings. Every original value is kept. |
+| <img src="powertoys/Assets.xcassets/SwitchLogo.imageset/icon.png" width="28" alt=""> | **Switch** | Switch Codex and Grok CLI accounts and review their usage. |
 
-## Designed for the Mac
+Each tool opens in its own window and does no work while it is closed.
+Turn tools on or off from the launcher. Tools with menu bar content can
+appear in the shared popup, as their own menu bar item, or not at all.
 
 <p align="center">
-  <a href="docs/screenshots/cloud-sync.png"><img src="docs/screenshots/cloud-sync.png" width="1100" alt="Cloud Sync showing a completed local sync transfer between Product Assets and Release Mirror"></a><br>
-  <sub><b>Cloud Sync</b> · plan and run copy, move, mirror, and two-way transfers</sub>
+  <img src="docs/screenshots/task-manager.png" width="49%" alt="Task Manager overview with CPU, memory, disk, thermal, and load cards, and two remote SSH hosts">
+  <img src="docs/screenshots/diskman.png" width="49%" alt="Diskman treemap of a home folder with a size breakdown of the selected folder">
 </p>
 
-<table>
-  <tr>
-    <td width="50%" valign="top">
-      <a href="docs/screenshots/input-devices.png"><img src="docs/screenshots/input-devices.png" width="100%" alt="Input Devices scrolling controls with separate mouse and trackpad profiles"></a><br>
-      <sub><b>Input Devices</b> · separate mouse and trackpad profiles under one system-wide switch</sub>
-    </td>
-    <td width="50%" valign="top">
-      <a href="docs/screenshots/nettoys.png"><img src="docs/screenshots/nettoys.png" width="100%" alt="NetToys IP Scanner showing a completed privacy-safe localhost scan"></a><br>
-      <sub><b>NetToys</b> · one-click disable and clear permission state</sub>
-    </td>
-  </tr>
-  <tr>
-    <td width="50%" valign="top">
-      <a href="docs/screenshots/task-manager.png"><img src="docs/screenshots/task-manager.png" width="100%" alt="Task Manager overview with live CPU, GPU, memory, disk, network, thermal, battery, and load graphs"></a><br>
-      <sub><b>Task Manager</b> · processes and live system activity without a persistent heavy dashboard</sub>
-    </td>
-    <td width="50%" valign="top">
-      <a href="docs/screenshots/cloud-sync.png"><img src="docs/screenshots/cloud-sync.png" width="100%" alt="Cloud Sync showing a completed local sync transfer between Product Assets and Release Mirror"></a><br>
-      <sub><b>Cloud Sync</b> · durable transfer progress with focused controls and activity history</sub>
-    </td>
-  </tr>
-</table>
+## Setup
 
-## Build from source
+1. Download the latest release, move **MacPowerToys** to Applications, and open it.
+2. The build is signed with a personal Apple Development identity and is not
+   notarized. If macOS blocks the first launch, open **System Settings →
+   Privacy & Security** and choose **Open Anyway**.
+3. Turn on the tools you want in the launcher.
+4. Grant access only when a tool asks: Screen Recording for Text Extractor,
+   Accessibility for Input Devices and the Pick Color shortcut, and Local
+   Network and Location for NetToys. Each tool shows its access state and a button
+   that opens the right privacy pane.
+5. For Cloud Sync, install [rclone](https://rclone.org/install/) with
+   `brew install rclone`.
 
-You need macOS 26.2+, Xcode 26.2+, and
-[rclone](https://rclone.org/install/) for Cloud Sync.
+Task Manager fan control and NetToys MAC addresses use signed helpers. macOS
+asks you to approve them once in **Login Items**.
+
+## Keyboard
+
+| Shortcut | Action |
+| --- | --- |
+| Command-Shift-3 | Pick a color (works in any app) |
+| Command-Shift-2 | Extract text from a screen region (works in any app) |
+| Option-Command-P | Open Portman (works in any app) |
+| Command-1 to Command-9 | Open launcher pages: All tools, then the first eight tools |
+| Command-O | Open the selected tool |
+| Command-F | Search in the current window |
+| Command-comma | Open settings for the current window |
+| Command-W | Close the window; the app keeps running in the menu bar |
+| Option-Command-Q | Quit MacPowerToys |
+
+Change or turn off the global shortcuts in each tool's settings.
+
+## Limits
+
+- Releases are signed for personal use, not notarized. Developer ID signing
+  and notarization are still open.
+- Cloud Sync cannot reorder files inside a running directory transfer. A paused
+  file can restart; finished files stay complete.
+- Google Drive setup needs your own OAuth client ID.
+- Input Devices separates mouse and trackpad by event type. macOS does not give
+  each scroll event a device identity.
+- NetToys scanning and SSH Anchor support IPv4 only.
+- System Care moves items to Trash. Use **Put Back** in Finder before you empty it.
+- macOS restores a window's position and display, but not its Space.
+
+## Privacy
+
+MacPowerToys has no analytics, ads, or telemetry. Text recognition runs on the
+Mac. rclone keeps provider credentials in its own configuration. Optional
+iCloud settings sync uses an allowlist and never syncs credentials, paths,
+histories, or logs. Read the [Privacy Policy](PRIVACY.md) and
+[Security Policy](SECURITY.md).
+
+## Related projects
+
+- [Switch](https://github.com/surajmandalcell/switch): the standalone Switch app and terminal tool. MacPowerToys uses its shared Core package.
+- [NetToys](https://github.com/surajmandalcell/nettoys): NetToys as its own app. MacPowerToys embeds the same package.
+- [OnePlusUI](https://github.com/surajmandalcell/oneplus-ui): the SwiftUI component package behind every window and popup.
+
+You can also [build and share your own tool](docs/MARKETPLACE_TOOLS.md) through
+a Marketplace catalog.
+
+## Build and tests
 
 ```bash
 brew install rclone
 git clone https://github.com/surajmandalcell/macpowertoys.git
 cd macpowertoys
-make build
+make build          # or: make build ADHOC=1 without an Apple Development identity
 ```
 
-Open `powertoys.xcodeproj` and run the `powertoys` scheme, or
-use `make build ADHOC=1` on a Mac without an Apple Development
-identity. Raycast users can import the `raycast` directory;
-the extension exposes the launcher and shortcuts to supported tools.
+[Development guide](docs/DEVELOPMENT.md) · [Contributing](CONTRIBUTING.md) · [Changelog](CHANGELOG.md)
 
-Switch is also available as a separate app; MacPowerToys uses its shared Core
-without requiring that app. See [Switch integration](#switch-integration).
+## Credits
 
-> [!NOTE]
-> Personal-team signing works on the signing Mac. Public,
-> warning-free distribution requires Developer ID signing and
-> Apple notarization.
-
-## Cloud Sync is powered by rclone
-
-MacPowerToys gives the excellent open-source
-[rclone](https://rclone.org/) project a native Mac interface.
-Provider credentials and remote configuration remain under
-rclone's control.
-
-Every transfer is dry-run planned before data moves. Completed
-progress survives relaunches, **Recalculate** only adds newly
-discovered work, and each transfer keeps its latest 100 local
-changes. Never replace a running installation during a transfer.
-
-## Current limits and recovery
-
-- Builds from `main` use local development signing. Do not distribute them
-  until the Developer ID and notarization checks pass.
-- macOS can restore a window's size, position, and display. It cannot assign a
-  reopened window to its former Space with a public API.
-- Cloud Sync cannot change one file's priority during a directory transfer.
-  Use **Pause**, **Resume**, **Retry**, or **Recalculate** when needed. Finished
-  files stay complete, but the active file can restart after a pause.
-- Google Drive setup needs your own OAuth client ID. rclone's shared Google
-  client ID is being retired during 2026.
-- Input Devices uses macOS event metadata to separate mouse and trackpad
-  scrolling. macOS does not give each general scroll event a device identity.
-- NetToys IP Scanner and SSH Anchor currently use IPv4. SSH Anchor changes only
-  the selected `HostName` value, keeps a private backup, verifies the new
-  address, and restores the old value when verification fails.
-- System Care native cleanup moves reviewed items to Trash. Use Finder's
-  **Put Back** before you empty Trash. Mole is optional, and privileged Mole
-  commands stay visible in Terminal.
-- Permission-dependent tools show their current access state. Use their
-  settings action to open the correct macOS privacy pane after a denial.
-
-## Mac Tweaks
-
-Use Input, Dock, Finder, Windows, Screenshots, Apps, Power, and Menu bar to
-find controls. Press **Cmd-K** to search. **Modified** lists changed
-preferences; Reset restores a saved original value or the system default.
-Mac Tweaks keeps exact original values before changes. Previews are static
-examples. Follow the saved-change notice, then restart the affected app or
-choose **Later**.
-
-Preference edits are limited to macOS 15.8, 26.7, and 27.0. Other releases
-keep restore available. Individual controls can have narrower limits. Input
-includes Mic Lock; Power uses the shared Awake controls. See **How to use**
-in the launcher for backup, reset, and activation steps.
-
-## Tool lifetime
-
-Each tool keeps its own window and saved state. Windows restore their display
-and position before they appear. Heavy work runs on demand. Detailed Task
-Manager sampling stops when no visible window or panel needs it. Optional
-menu-bar summaries and enabled background features keep their own lifetimes.
-No performance or cleanup benchmark is claimed without a measurement.
-
-## Switch integration
-
-MacPowerToys uses the versioned `AIManagerCore` package from the separate
-Switch repository. The apps have separate interfaces and share Core's data
-paths and cross-process operation lock. Conversation browsing and cleanup
-stay in standalone Switch. The combined menu supports quick switching and
-on-demand usage refresh without background polling.
-
-```text
-Switch packages/core/Sources/AIManagerCore
-    -> MacPowerToys powertoys/Views/Switch/
-Switch packages/mac-gui and packages/tui
-    -> standalone interfaces
-```
-
-Existing `~/Library/Application Support/AI Manager` data keeps its path for
-compatibility. Updating Switch.app cannot update Core inside MacPowerToys.
-To update both apps, release a new Core package, update the exact version in
-`powertoys.xcodeproj/project.pbxproj`, resolve and review `Package.resolved`,
-run isolated Core and MacPowerToys tests, then release MacPowerToys.
-Tests use a disposable `AI_MANAGER_ROOT`. They do not inspect real auth files
-or the owner's Keychain. The applet opens Core only on demand and does not
-build a conversation index.
-
-## Third-party notices
-
-Ruler includes [Free Ruler](https://github.com/pascalpp/FreeRuler) source and
-resources at commit `d38ca4f673f16c51485940e63eeee68babfbfeed`.
-Copyright (c) 2019 Pascal Balthrop. The MIT license is bundled in
-[powertoys/FreeRuler/FreeRuler-LICENSE.txt](powertoys/FreeRuler/FreeRuler-LICENSE.txt).
-
-The native SMC fan reader adapts connection, data layout, and decoding code
-from [smctl](https://github.com/leaperone/smctl) at commit
-`ca68174f8cdafc53778908c67d77117cb754e9ef`. The MIT license is bundled in
-[powertoys/Core/smctl-LICENSE.txt](powertoys/Core/smctl-LICENSE.txt).
-
-## Privacy and security
-
-- MacPowerToys has no first-party analytics, advertising SDK, or telemetry service.
-- Text Extractor processes the selected screenshot with Apple Vision on the Mac.
-- rclone stores provider credentials in its local configuration according to
-  rclone's behavior.
-- Optional iCloud settings sync uses an explicit allowlist of preferences.
-  It does not sync credentials, rclone configuration, file paths,
-  security-scoped bookmarks, histories, logs, caches, transfer records,
-  window geometry, installed app bundles, or receipts.
-- The rclone control API uses a fresh random credential per launch.
-- Marketplace apps require a declared checksum, Developer ID,
-  bundle identity, and Apple notarization.
-- You can [build and share a MacPowerToys tool](docs/MARKETPLACE_TOOLS.md) in
-  Swift, Rust, or another language through a Marketplace catalog.
-
-Read the [Privacy Policy](PRIVACY.md),
-[Security Policy](SECURITY.md), and
-[Contributing Guide](CONTRIBUTING.md).
-
-<p align="center">
-  Made for macOS · Released under the <a href="LICENSE">MIT License</a> · Menu bar glyph adapted from <a href="https://lucide.dev">Lucide</a> (ISC)
-</p>
+Ruler includes [Free Ruler](https://github.com/pascalpp/FreeRuler) by Pascal
+Balthrop (MIT, [license](powertoys/FreeRuler/FreeRuler-LICENSE.txt)). The fan
+reader adapts code from [smctl](https://github.com/leaperone/smctl) (MIT,
+[license](powertoys/Core/smctl-LICENSE.txt)). Cloud Sync is a native interface
+for [rclone](https://rclone.org/). The menu bar glyph is adapted from
+[Lucide](https://lucide.dev) (ISC).
