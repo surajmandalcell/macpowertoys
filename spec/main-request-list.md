@@ -1,5 +1,17 @@
 # Main Task Request List
 
+Inactive background ordering, run 79, 2026-10-02: all 13 scene roots use
+back ordering while the app is inactive. Other Spaces still skip ordering.
+Native background windows and all diagnostic panel paths share this rule.
+Explicit opens retain key/front ordering and activation. The source probe
+rejects `210a39b8` and passes 104 inactive and 104 off-Space page cases.
+Explicit cold, reused and native opens and active-app URL routes also pass.
+The one test build passes. Guarded native tests stop before execution when
+the foreground app changes. New activation logs include subtype, foreground
+state, recent ordering calls and a stack. The actual activation requester
+remains unproved. The orchestrator owns installation and isolated background,
+capture, AX and plain Raycast checks. Report: `tmp/redesign/logs/w16-activation-cause.md`.
+
 Background Spaces, run 78, 2026-10-02: keep content and page updates but
 skip background ordering when the window is on another Space. Main and all
 12 other scene roots share the guard. BackgroundToolWindow also guards its

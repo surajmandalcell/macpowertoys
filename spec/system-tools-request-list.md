@@ -1,5 +1,15 @@
 # System Tools Request List
 
+Inactive background ordering, run 79, 2026-10-02: Input Devices, System
+Care, Task Manager and NetToys use back ordering while the app is inactive.
+Main/Task Manager capture panels, Portman diagnostics and all five separate
+diagnostic panels share this rule. Other Spaces still skip ordering. Explicit
+opens retain activation. The source probe passes 104 inactive and 104 off-Space
+page cases. The one test build passes. Guarded native tests stop before
+execution when the foreground app changes. The orchestrator owns signed
+installation, isolated replay and the new activation log.
+Report: `tmp/redesign/logs/w16-activation-cause.md`.
+
 Background Spaces, run 78, 2026-10-02: Input Devices, System Care,
 Task Manager and NetToys keep their page and content updates without ordering
 off-Space windows. Main and Task Manager diagnostic panels and separate Input

@@ -1,5 +1,39 @@
 # Main Shell Troubleshooting
 
+## Inactive Background Ordering, Run 79, 2026-10-02
+
+- **Symptom:** Signed `210a39b8` becomes active 1.64 seconds after a background
+  Main URL. The event type is 13; its subtype and ordering history are missing.
+- **Evidence:** WindowServer logs the foreground change at 06:32:23.548.
+  The app receives an accessibility request at 06:32:23.580, after that change.
+  This sequence does not identify who requested activation. An activation
+  notification stack can show delivery rather than the original requester.
+- **Invariant:** Inactive background routes use orderBack on the current
+  Space. Other Spaces still skip ordering. Native background overrides follow
+  the same rule. Explicit key/front opens retain their own ordering intent.
+  Diagnostic panels use their existing host without the dependency's
+  front-ordering show method. Normal menu clicks keep that method.
+- **Diagnostics:** Record event subtype, route activity and foreground app,
+  will-activate foreground app, last external foreground app, activation
+  policy, three seconds of ordering calls with ages, and 14 stack frames.
+  The existing size-limited log writes on a serial background queue.
+- **Check:** `check.py --inactive-before` rejects `210a39b8`. Current source
+  passes 104 inactive page routes with zero front, key, activation or scene
+  calls, plus 104 off-Space page routes. Explicit cold/reused/native opens and
+  routes delivered to an active app pass. The single test build succeeds.
+  Guarded native tests stop before execution when the foreground app changes.
+  The orchestrator owns signed installation, isolated replay, the new log,
+  plain Raycast URL opening, and capture/AX checks tested separately.
+  Report: `tmp/redesign/logs/w16-activation-cause.md`.
+- **Platform limits:** Apple permits inactive
+  [front ordering](https://developer.apple.com/documentation/appkit/nswindow/orderfrontregardless());
+  it does not document that call as an activation cause.
+  [Back ordering](https://developer.apple.com/documentation/appkit/nswindow/orderback(_:))
+  preserves key/main state. Normal
+  [workspace opens activate by default](https://developer.apple.com/documentation/appkit/nsworkspace/openconfiguration/activates).
+  These contracts support the ordering rule, but do not prove the signed
+  failure's cause or a future foreground transition cannot occur.
+
 ## Background Ordering Across Spaces, Run 78, 2026-10-02
 
 - **Symptom:** Signed `590b25af` takes focus on Main Favorites after All tools

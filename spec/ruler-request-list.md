@@ -1,5 +1,12 @@
 # Ruler Request List
 
+Inactive background ordering, run 79, 2026-10-02: Ruler and Settings use
+the shared back-ordering helper while the app is inactive. Other Spaces still
+skip ordering. Explicit opens keep their native key/front paths. Source-derived
+spies pass both Space states without inactive front/key calls. The one test
+build passes. Signed Ruler and Settings presentation and foreground checks
+remain with the orchestrator. Report: `tmp/redesign/logs/w16-activation-cause.md`.
+
 Background Spaces, run 78, 2026-10-02: Ruler and Settings update content
 but skip background ordering on another Space. Settings also skips new ruler
 suspension when its window cannot be shown on the current Space. Explicit

@@ -1,5 +1,14 @@
 # Color Picker Request List
 
+Inactive background ordering, run 79, 2026-10-02: applet routes and the
+separate diagnostic panel use back ordering while the app is inactive.
+Other Spaces still skip ordering. Explicit opens and Pick keep their paths.
+The shared source probe passes inactive applet reuse and diagnostic panel
+ordering, with zero front/key calls. The one test build passes. Guarded native
+tests stop before execution when the foreground app changes. Signed History,
+Projects, Settings and panel capture remain with the orchestrator.
+Report: `tmp/redesign/logs/w16-activation-cause.md`.
+
 Background Spaces, run 78, 2026-10-02: applet routes and the separate
 diagnostic panel skip ordering on another Space while retaining content and
 page updates. Explicit opens and Pick keep their activation paths. Source

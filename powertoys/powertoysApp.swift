@@ -326,6 +326,8 @@ struct MacPowerToysApp: App {
 }
 
 final class BackgroundToolWindow: NSWindow {
+    private var allowsForegroundOrdering = false
+
     func prepareContent() {
         guard contentViewController == nil, let id = identifier?.rawValue else { return }
         Self.mountContent(id: id, in: self)
@@ -364,16 +366,41 @@ final class BackgroundToolWindow: NSWindow {
     override func orderFrontRegardless() {
         prepareContent()
         guard isOnActiveSpace else { return }
-        super.orderFrontRegardless()
+        if NSApp.isActive || allowsForegroundOrdering {
+            ActivationDiagnostics.noteOrdering("orderFrontRegardless", window: self)
+            super.orderFrontRegardless()
+        } else {
+            orderBack(nil)
+        }
     }
 
     override func orderFront(_ sender: Any?) {
         prepareContent()
-        super.orderFront(sender)
+        guard isOnActiveSpace || allowsForegroundOrdering else { return }
+        if NSApp.isActive || allowsForegroundOrdering {
+            ActivationDiagnostics.noteOrdering("orderFront", window: self)
+            super.orderFront(sender)
+        } else {
+            orderBack(sender)
+        }
+    }
+
+    override func orderBack(_ sender: Any?) {
+        prepareContent()
+        ActivationDiagnostics.noteOrdering("orderBack", window: self)
+        super.orderBack(sender)
+    }
+
+    override func makeKey() {
+        ActivationDiagnostics.noteOrdering("makeKey", window: self)
+        super.makeKey()
     }
 
     override func makeKeyAndOrderFront(_ sender: Any?) {
         prepareContent()
+        ActivationDiagnostics.noteOrdering("makeKeyAndOrderFront", window: self)
+        allowsForegroundOrdering = true
+        defer { allowsForegroundOrdering = false }
         super.makeKeyAndOrderFront(sender)
     }
 }
