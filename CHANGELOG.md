@@ -4,6 +4,20 @@ Notable changes are documented here. The project follows semantic versioning aft
 
 ## [Unreleased]
 
+## [1.9.1] - 2026-10-02
+
+### Fixed
+
+- NetToys shows MAC addresses again. The neighbor helper kept running after
+  app updates and its replies were rejected; it now exits when idle, and the
+  app restarts an outdated helper once.
+- NetToys lists devices that answer only ARP, such as phones with no open
+  port, as alive with their MAC address and vendor.
+- NetToys finds host names from the router when the system DNS (for example
+  1.1.1.1) has none, then falls back to multicast DNS.
+- The NetToys scan row no longer jumps when you pick a preset or edit the
+  target. The "Results are from…" notice moved to the status bar.
+
 ## [1.9.0] - 2026-10-02
 
 ### Added
