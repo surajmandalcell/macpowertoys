@@ -7,6 +7,58 @@ import XCTest
 
 @MainActor
 final class BackgroundToolWindowTests: XCTestCase {
+    func testOffSpaceRoutesUpdatePagesWithoutOrdering() {
+        final class WindowSpy: NSWindow {
+            var reportsActiveSpace = true
+            var minimized = false
+            var reportsVisible = false
+            var backgroundOrders = 0
+            var keyOrders = 0
+            var deminiaturizations = 0
+            override var isOnActiveSpace: Bool { reportsActiveSpace }
+            override var isMiniaturized: Bool { minimized }
+            override var isVisible: Bool { reportsVisible }
+            override func orderFrontRegardless() { backgroundOrders += 1 }
+            override func makeKeyAndOrderFront(_ sender: Any?) { keyOrders += 1 }
+            override func deminiaturize(_ sender: Any?) { deminiaturizations += 1 }
+        }
+        let tools = ["main", "rclone", "logs", "awake", "color-picker", "text-extractor",
+                     "input-devices", "system-care", "disk-explorer", "system-monitor", "nettoys", "switch", "mac-tweaks"]
+        for tool in tools {
+            for visible in [false, true] {
+                let window = WindowSpy(contentRect: .zero, styleMask: [], backing: .buffered, defer: true)
+                window.identifier = .init(tool)
+                window.reportsVisible = visible
+                var activations = 0
+                func present(_ explicit: Bool) {
+                    ToolActionRouter.presentSingleWindow(id: tool, windows: [window], activateApp: explicit,
+                        createWindow: { _ in XCTFail("Reuse must keep the window"); return nil },
+                        activate: { activations += 1 },
+                        openWindow: { _ in XCTFail("Reuse must not call openWindow") })
+                }
+                present(false)
+                XCTAssertEqual(window.backgroundOrders, 1)
+                window.reportsActiveSpace = false
+                for page in tool == "main" ? ["all-tools", "favorites"] : ["settings", "settings"] {
+                    ToolPageRouter.shared.post(tool: tool, page: page, recordTiming: false)
+                    present(false)
+                    XCTAssertEqual(ToolPageRouter.shared.take(tool: tool)?.page, page)
+                    XCTAssertEqual(window.backgroundOrders, 1, "Off-Space route: \(tool)/\(page)")
+                }
+                window.minimized = true
+                present(false)
+                XCTAssertEqual(window.backgroundOrders, 1)
+                XCTAssertEqual(window.keyOrders, 0)
+                XCTAssertEqual(window.deminiaturizations, 0)
+                XCTAssertEqual(activations, 0)
+                present(true)
+                XCTAssertEqual(window.keyOrders, 1)
+                XCTAssertEqual(window.deminiaturizations, 1)
+                XCTAssertEqual(activations, 1)
+            }
+        }
+    }
+
     func testNativeCloseRebuildsTheHostAndFixedFrameBeforeOrdering() throws {
         let window = BackgroundToolWindow(
             contentRect: NSRect(x: -10000, y: -10000, width: 1240, height: 840),
@@ -33,6 +85,7 @@ final class BackgroundToolWindowTests: XCTestCase {
 
     func testColdAndClosedSceneRoutesKeepTheirHostBeforeOrdering() throws {
         final class WindowSpy: NSWindow {
+            override var isOnActiveSpace: Bool { true }
             var beforeOrdering: () -> Void = {}
             var backgroundOrders = 0
             var keyOrders = 0
@@ -86,6 +139,7 @@ final class BackgroundToolWindowTests: XCTestCase {
 
     func testClosedAppletMeasuresItsBodyBeforeOrdering() throws {
         final class WindowSpy: NSWindow {
+            override var isOnActiveSpace: Bool { true }
             var beforeOrdering: () -> Void = {}
             override func orderFrontRegardless() { beforeOrdering() }
         }

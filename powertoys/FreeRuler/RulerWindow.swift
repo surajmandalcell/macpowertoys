@@ -1241,8 +1241,12 @@ final class RulerController: NSWindowController, NSWindowDelegate, NotificationO
 
     func show(activateApp: Bool = true) {
         applyStateToWindow(display: false)
-        if activateApp { showWindow(self) }
-        rulerWindow.orderFrontRegardless()
+        if activateApp {
+            showWindow(self)
+            rulerWindow.orderFrontRegardless()
+        } else {
+            rulerWindow.orderFrontInBackground()
+        }
     }
 
     func show(

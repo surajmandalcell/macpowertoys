@@ -6,6 +6,7 @@ final class ToolActionRouterTests: XCTestCase {
     @MainActor
     func testBackgroundWindowsNeverUseActivationOrSceneCreation() {
         final class WindowSpy: NSWindow {
+            override var isOnActiveSpace: Bool { true }
             var keyOrders = 0
             var backgroundOrders = 0
             var deminiaturizations = 0

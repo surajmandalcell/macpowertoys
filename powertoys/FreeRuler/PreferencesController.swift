@@ -1093,12 +1093,13 @@ final class RulerSettingsController: NSWindowController, NSWindowDelegate {
         detachWindowIfNeeded()
         configureOpaqueColorPicking()
         updateView()
+        guard activateApp || window?.isOnActiveSpace == true else { return }
         updateRulerInteractionSuspension(isPresenting: true)
         if activateApp {
             window?.makeKeyAndOrderFront(sender)
             window?.makeFirstResponder(unitSegmentedControl)
         } else {
-            window?.orderFrontRegardless()
+            window?.orderFrontInBackground()
         }
     }
 
