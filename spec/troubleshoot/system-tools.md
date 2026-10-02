@@ -105,6 +105,12 @@ Report: `tmp/redesign/logs/w8-tests-quiet.md`.
 - **Invariant:** Query the system DNS responder for a PTR record with a
   1.5-second deadline, accept only bounded valid name data, and publish
   protocol fields while the hostname query runs.
+- **2026-10-02:** No local host had a name. The system resolvers were 1.1.1.1
+  and Tailscale, which cannot answer PTR for 192.168.x.x; the router can
+  (`dig -x 192.168.1.4 @192.168.1.1` returns `PB-iphone.bbrouter`). For an
+  address in the active subnet, fall back to a bounded UDP PTR query to the
+  default gateway, then to multicast DNS. A live /24 scan named all four
+  responding hosts.
 - **Check:** Hosted run `36096121530` passes the streaming and malformed PTR
   checks; the same one-host fixture completes in 1.57 seconds. Confirm real
   network hostnames in the final signed app.
@@ -298,6 +304,35 @@ Report: `tmp/redesign/logs/w8-tests-quiet.md`.
   Replace the app while the approved daemon remains alive, rescan, and confirm
   its canonical MAC still appears. Confirm another interface and an
   unrequested address are ignored.
+
+### Stale Neighbor Daemon Drops Every MAC, 2026-10-02
+
+- **Symptom:** No scan row had a MAC address, and phones with no open port
+  were listed as down, while Angry IP Scanner showed both.
+- **Cause:** On macOS 27 the `NET_RT_FLAGS`/`RTF_LLINFO` sysctl returns an
+  empty table to ordinary processes; only Apple's `arp` and root get it. The
+  root neighbor daemon had run since Sep 26. App reinstalls replaced its
+  binary, so the process failed its code-signing requirement
+  (`NSXPCConnectionCodeSigningRequirementFailure`, 4102) and the app dropped
+  its replies without a message.
+- **Invariant:** Both neighbor daemons exit 30 seconds after their last
+  connection closes, so launchd starts the installed binary next time.
+  `NetToysNeighborServiceManager` probes the daemon once per launch and
+  restarts it through `SMAppService` when the probe reports 4102. A local
+  address with a neighbor MAC counts as alive and gets a name lookup.
+- **Check:** Sign a probe tool as `com.surajmandal.macpowertoys` and call the
+  daemon over XPC; it must return bytes, not 4102. After an app reinstall,
+  the daemon PID must change. A /24 scan must list silent phones with MACs.
+
+### Scan Toolbar Layout Shift, 2026-10-02
+
+- **Symptom:** Choosing a preset or editing the target squeezed the target
+  field and moved every control in the Scan row.
+- **Cause:** The "Results are from … Scan to refresh." notice appeared inside
+  the row, the menu label changed to "Importing...", and Scan and Stop had
+  different widths.
+- **Invariant:** The row holds only fixed controls. The notice and import
+  state show in the results status bar. Scan and Stop share one width.
 
 ## NetToys Helper Status Blocks Page Rendering
 
