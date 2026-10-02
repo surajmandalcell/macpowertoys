@@ -3,6 +3,7 @@ import NetToysCore
 
 final class NetToysNeighborDaemon: NSObject, NSXPCListenerDelegate, @unchecked Sendable {
     private let service = NetToysNeighborService()
+    private let idleExit = NetToysDaemonIdleExit()
 
     static func run() -> Never {
         let delegate = NetToysNeighborDaemon()
@@ -20,6 +21,7 @@ final class NetToysNeighborDaemon: NSObject, NSXPCListenerDelegate, @unchecked S
     ) -> Bool {
         connection.exportedInterface = NSXPCInterface(with: MacPowerToysHelperXPCProtocol.self)
         connection.exportedObject = service
+        idleExit.track(connection)
         connection.resume()
         return true
     }
