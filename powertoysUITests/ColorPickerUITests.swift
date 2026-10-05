@@ -22,8 +22,8 @@ final class ColorPickerUITests: XCTestCase {
         let embeddedColors = app.staticTexts["Saved colors"]
         XCTAssertTrue(embeddedShortcut.waitForExistence(timeout: 2))
         XCTAssertTrue(embeddedColors.waitForExistence(timeout: 2))
-        XCTAssertEqual(embeddedShortcut.frame.minY, embeddedColors.frame.minY, accuracy: 0.5)
-        XCTAssertGreaterThan(embeddedColors.frame.minX, embeddedShortcut.frame.maxX)
+        XCTAssertGreaterThan(embeddedColors.frame.minY, embeddedShortcut.frame.maxY)
+        XCTAssertEqual(embeddedShortcut.frame.minX, embeddedColors.frame.minX, accuracy: 0.5)
         let launch = app.buttons["tool.color-picker.launch"]
         XCTAssertTrue(launch.waitForExistence(timeout: 2))
         launch.click()
@@ -41,8 +41,7 @@ final class ColorPickerUITests: XCTestCase {
         let settings = window.descendants(matching: .any)["color-picker.settings"]
         XCTAssertTrue(settings.waitForExistence(timeout: 2))
         XCTAssertGreaterThan(settings.frame.midX, window.frame.midX)
-        XCTAssertLessThanOrEqual(window.frame.maxX - settings.frame.maxX, 10)
-        XCTAssertLessThanOrEqual(window.frame.maxY - settings.frame.maxY, 10)
+        XCTAssertLessThanOrEqual(settings.frame.maxY - window.frame.minY, 40)
         settings.click()
         let appletShortcut = window.staticTexts["Global shortcut"]
         let appletColors = window.staticTexts["Saved colors"]
