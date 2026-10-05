@@ -633,7 +633,8 @@ separate tool panel.
   glyph, not the metric glyph.
 - Sidebar and panel glyphs are drawn from each tool's own icon, not picked
   from a loose SF Symbol (owner correction 2026-10-01). Examples: a slanted
-  ruler; `SystemCareGlyph`, a tray with one block lifted out. No two tools
+  ruler; `SystemCareGlyph`, a tray with one block lifted out;
+  `EventViewerGlyph`, a log tablet with a warning badge. No two tools
   share a glyph.
   Portman retains its original `PortmanStatusGlyph` socket asset on every
   glyph surface. Its status image is an unmodified 14 pt template copy;
@@ -894,7 +895,7 @@ variant weakens the deliberate temperature and contrast difference.
 | Tool | Light appearance | Dark appearance | Decision |
 |---|---|---|---|
 | RSync UI | Midnight | Chosen Color | Preserve the blue cloud echo in dark mode |
-| Event Viewer | Midnight | Porcelain | Use the neutral contrast inversion without an exception |
+| Event Viewer | Chosen Color | Chosen Color | Ceramic log tablet with a coral warning badge |
 | Ruler | Chosen Color | Chosen Color | Orange identity is fixed in both appearances |
 | Kwake | Chosen Color | Chosen Color | Yellow eye identity is fixed in both appearances |
 | Color Picker | Chosen Color | Chosen Color | Eyedropper with attached color samples |
@@ -908,10 +909,11 @@ variant weakens the deliberate temperature and contrast difference.
 | Mac Tweaks | Chosen Color | Chosen Color | Owner-selected 01 Faders in both appearances |
 
 The 2026-09-25 owner request in `spec/icon-refresh-request-list.md` replaces
-the prior identities for these six tools. They use 512px PNG image sets with
-transparent rounded corners and one universal appearance. Their detailed
-material finish follows the owner-selected Sector platter. All remaining tool
-icons continue to follow the SVG construction rules below.
+the prior identities for these six tools. The 2026-10-05 owner pick EV1
+gives Event Viewer the same treatment. These seven tools use 512px PNG image
+sets with transparent rounded corners and one universal appearance. Their
+detailed material finish follows the owner-selected Sector platter. All
+remaining tool icons continue to follow the SVG construction rules below.
 
 For SVG tools, the base `icon.svg` entry is the light-appearance asset. Add `icon-dark.svg`
 with a `luminosity: dark` appearance only when the matrix calls for a different
@@ -949,12 +951,12 @@ palette or reuse another tool's semantic hue.
   physical cutout. Never use one for a catchlight or decorative control.
 - New Chosen Color icons use warm off-white `#F7F5F0` and charcoal `#23272E`,
   never pure white or black. The Chosen Color palette table is the binding
-  legacy exception: RSync UI and Event Viewer retain their listed
-  `#FFFFFF` foregrounds. Neutral Midnight/Porcelain assets always use their own
+  legacy exception: RSync UI retains its listed `#FFFFFF` foreground.
+  Neutral Midnight/Porcelain assets always use their own
   closed glyph tokens rather than either white.
 - SVG icons use no decorative outline, gloss, blur, rim light, or soft drop
   shadow. A gradient is allowed only when color itself is the metaphor or part
-  of an approved legacy Chosen Color asset. The six bitmap icons above keep
+  of an approved legacy Chosen Color asset. The seven bitmap icons above keep
   their shallow material lighting from the approved visual direction.
 
 The base application icon is the deliberate exception to the tool/plugin SVG
@@ -999,13 +1001,12 @@ has been changed.
 | Tool | Ground | Foreground | Semantic accent |
 |---|---|---|---|
 | RSync UI | `#1C1D22` | `#FFFFFF` at `.92` | `#5B8DEF` cloud echo at `.30` |
-| Event Viewer | `#475569` to `#0F172A` | `#FFFFFF` | Terminal prompt |
 | Ruler | `#F04E23` | `#23272E` | Cream graduation cutouts |
 | Kwake | `#F5B71E` | `#23272E`, `#F7F5F0` | Cream eye catchlight |
 | Task Manager | `#002B26` | `#E0FFF8` | M02 Scope trace identity |
 | Mac Tweaks | `#25262B` and `#32333A` panel | `#F7F5F0` faders | `#AC86E8` center handle |
 
-The six bitmap identities in the appearance matrix take their colors from
+The seven bitmap identities in the appearance matrix take their colors from
 their approved `icon.png` assets, rather than this SVG palette table.
 
 New Chosen Color tools should receive their own semantic hue unless a documented
@@ -1058,7 +1059,7 @@ An image set with different appearance assets uses this shape:
 
 ### Generation workflow
 
-The steps below apply to SVG tool icons. The six bitmap icons named in the
+The steps below apply to SVG tool icons. The seven bitmap icons named in the
 appearance matrix use 512px RGBA PNG sources, one universal image entry per
 image set, transparent corners, and 512/64/32/16px visual checks.
 

@@ -1,5 +1,13 @@
 # Tool icon refresh request list
 
+Event Viewer EV1, 2026-10-05: the owner picked EV1, a ceramic log tablet
+with a coral warning badge. `LogsLogo` is one universal 512px PNG in the
+bitmap family; the Midnight and Porcelain SVGs are removed. Raycast
+`logs.png` is the same PNG. `EventViewerGlyph` replaces the `terminal`
+symbol on sidebar, panel, and status surfaces; its ink spans 25.6 of 32
+units and is centered. Signed catalog, Dock, and glyph review remain with
+the orchestrator.
+
 Round 18 Logs appearance, run 72, 2026-10-02: `583fa6ef` adds the Porcelain
 dark luminosity asset beside the existing Midnight light asset. The SVG
 geometry, 18px/22px echo offset, vector setting, and shared tile mask stay.

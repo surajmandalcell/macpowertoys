@@ -99,34 +99,36 @@ final class UtilityToolsTests: XCTestCase {
         XCTAssertTrue(try cornerAlphaValues(of: image).allSatisfy { $0 < 0.01 })
     }
 
-    func testLogsArtworkUsesPorcelainGroundInDarkAppearance() throws {
+    func testEventViewerArtworkUsesCharcoalTileInBothAppearances() throws {
         let image = try XCTUnwrap(NSImage(named: "LogsLogo"))
-        let bitmap = try XCTUnwrap(NSBitmapImageRep(
-            bitmapDataPlanes: nil,
-            pixelsWide: 512,
-            pixelsHigh: 512,
-            bitsPerSample: 8,
-            samplesPerPixel: 4,
-            hasAlpha: true,
-            isPlanar: false,
-            colorSpaceName: .deviceRGB,
-            bytesPerRow: 0,
-            bitsPerPixel: 0
-        ))
-        bitmap.size = NSSize(width: 512, height: 512)
+        for name in [NSAppearance.Name.aqua, .darkAqua] {
+            let bitmap = try XCTUnwrap(NSBitmapImageRep(
+                bitmapDataPlanes: nil,
+                pixelsWide: 512,
+                pixelsHigh: 512,
+                bitsPerSample: 8,
+                samplesPerPixel: 4,
+                hasAlpha: true,
+                isPlanar: false,
+                colorSpaceName: .deviceRGB,
+                bytesPerRow: 0,
+                bitsPerPixel: 0
+            ))
+            bitmap.size = NSSize(width: 512, height: 512)
 
-        NSAppearance(named: .darkAqua)?.performAsCurrentDrawingAppearance {
-            NSGraphicsContext.saveGraphicsState()
-            defer { NSGraphicsContext.restoreGraphicsState() }
-            NSGraphicsContext.current = NSGraphicsContext(bitmapImageRep: bitmap)
-            image.draw(in: NSRect(x: 0, y: 0, width: 512, height: 512))
+            NSAppearance(named: name)?.performAsCurrentDrawingAppearance {
+                NSGraphicsContext.saveGraphicsState()
+                defer { NSGraphicsContext.restoreGraphicsState() }
+                NSGraphicsContext.current = NSGraphicsContext(bitmapImageRep: bitmap)
+                image.draw(in: NSRect(x: 0, y: 0, width: 512, height: 512))
+            }
+
+            let ground = try XCTUnwrap(bitmap.colorAt(x: 256, y: 64)?.usingColorSpace(.deviceRGB))
+            let luminance = 0.2126 * ground.redComponent
+                + 0.7152 * ground.greenComponent
+                + 0.0722 * ground.blueComponent
+            XCTAssertLessThan(luminance, 0.3, name.rawValue)
         }
-
-        let ground = try XCTUnwrap(bitmap.colorAt(x: 256, y: 64)?.usingColorSpace(.deviceRGB))
-        let luminance = 0.2126 * ground.redComponent
-            + 0.7152 * ground.greenComponent
-            + 0.0722 * ground.blueComponent
-        XCTAssertGreaterThan(luminance, 0.7)
     }
 
     func testAppIconUsesSystemResetPath() {
