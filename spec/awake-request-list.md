@@ -8,11 +8,11 @@ The app and test bundles compile. The orchestrator must tag and adopt
 OnePlusUI, then verify signed Home, Settings, and display-switch states.
 Report: `tmp/redesign/logs/w10-fix17-applets.md`.
 
-Scroll edges, 2026-10-01: the shared floating gear overlays Home and Settings.
-Its 52pt reserve is scroll-content end padding, so it does not shrink the body.
-The 15 focused package checks pass, including both gear states at the 560x500
-canvas. The four regressions fail on the old source. Signed scrolling and gear
-interaction remain with the orchestrator. Report: `tmp/redesign/logs/w4-scroll-edges.md`.
+Settings gear and scroll end: the gear is the titlebar ghost icon button
+`OnePlusAppletSettingsButton`, left of the Keep Display On switch, selected
+while Settings is open. Nothing floats over content. Home scroll content and
+the Settings page end 24pt above the window bottom. Signed scrolling and gear
+interaction remain with the orchestrator.
 
 Round 48 header picks, 2026-10-01: `bd2e0963` implements Inset B
 (close x13, title 14pt after zoom) and Top B (title caps, icons, and action
@@ -75,7 +75,7 @@ every settings card header uses a 13pt symbol.
 Round 6 starts Home 16pt below the titlebar. Applet content no longer uses the
 58pt workspace-title offset.
 
-Round 2 requires a protected floating settings area and a readable 12pt
+Round 2 requires a 24pt bottom gutter and a readable 12pt
 status row. Window height uses the shared fixed-canvas correction.
 
 Round 2 verification: Debug and build-for-testing pass. Tests were compiled,
@@ -93,7 +93,7 @@ remain with the orchestrator.
 | Verify | Remove the duplicate applet display control and align the quick-time row. | The applet passes `showsDisplayToggle: false`; quick times use one leading 8pt-spaced row with the add icon after the presets. Minute labels render as `15 min` and `30 min`. | Verify Home and Settings in both appearances. |
 | Verify | Keep Awake's status visible while its controls scroll, without adding a workspace header inset. | Home now places `AwakeStatusCard` above the only `ScrollView`; Settings still uses the shared cards-only implementation inside `OnePlusPage`. | Verify scroll limits and page switching in the signed build. |
 | Verify | Share one cards-only settings view between Awake and the main tool page. | `AwakeSettingsView()` owns the display, mode, quick-time, and process cards. The applet owns its OnePlusPage and floating-settings inset. Quick times use one row; the minute-based preset editor remains available. Debug and build-for-testing pass. | Foundation must dispatch to this type and remove AwakePreferencesView; then verify both hosts. |
-| Verify | Keep the floating settings button clear of both page bodies. | Round 2 applies the shared 52pt body inset before the gear overlay. The old inner 44pt padding is removed. The gear keeps its 8pt edge inset and Command-comma action. | Verify scrolling, window size, and both pages in the next signed capture. |
+| Verify | Put the settings gear in the titlebar and keep both page bodies clear of the window bottom. | `OnePlusAppletSettingsButton` sits left of the Keep Display On switch, keeps Command-comma, and shows a selected fill on Settings. Page bodies end 24pt above the window bottom. | Verify scrolling, window size, and both pages in the signed build. |
 | Verify | Render the Awake status in readable row type. | OnePlusStatus keeps the regular 12pt row role. Round 12 replaces success ink with the neutral `.online` state for a steady active assertion. The 4pt dot stays filled; Off remains hollow and muted. | Review active and inactive states in the next signed capture. |
 | Verify | Use the 560 x 500 OnePlusUI applet, persistent display switch, status card, segmented modes, quick times, process attachment, and a replacing Settings page. | Debug build passes. DESIGN.md v14 supersedes the older material and two-light rules below. Routes are `home` and `settings`. | Review both appearances and controls in the orchestrator's installed build. |
 

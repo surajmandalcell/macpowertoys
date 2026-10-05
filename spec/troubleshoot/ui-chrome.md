@@ -48,29 +48,23 @@
   No production chrome change was needed. Log:
   `tmp/redesign/logs/local-tests-package-final.log`.
 
-## Scroll edges and floating controls, 2026-10-01
+## Scroll edges
 
 - **Symptom:** Task Manager Overview cuts off its lower cards above the
-  window bottom. Compact applet gears reduce the available body height.
+  window bottom.
 - **Cause:** Fixed OnePlusPage bodies had bottom padding outside their scroll
-  view. Floating-settings reserve also padded the body outside its scrollers.
-  Scrolling page footers occupied a separate row below the viewport.
+  view. Scrolling page footers occupied a separate row below the viewport.
 - **Invariant:** A page-owned scroll viewport reaches the window bottom.
-  Card scrollers clip at the card edge. Put the 24pt page gutter and measured
-  scrolling-page footer clearance inside scroll content. Keep fixed headers,
-  table headers, inspectors, and card-page footers. Overlay the applet gear
-  at its 8pt edge inset with 52pt scroll-end padding and no body-height change.
-  Consume the inset once so nested editors and horizontal strips do not
-  inherit it. Empty footer slots consume no height. Stack multiple footer
-  views before measuring them.
-- **Check:** OnePlusPageTests and the floating-gear size test pass all 15
-  checks. They cover native clip geometry at all 13 shared canvas sizes,
-  scrolling-page footer clearance, fixed regions, and both gear states at
-  every applet height bound. The four edge/gear regressions fail against
-  b8d58b19. Source inventory covers every window and applet; Ruler's native
-  overlay and settings have no shared page scroll host. Signed installation,
-  scrolling, bottom-row actions, and gear interaction remain with the
-  orchestrator. Report: `tmp/redesign/logs/w4-scroll-edges.md`.
+  Card scrollers clip at the card edge. Put the 24pt page gutter, in
+  workspaces and applets alike, and measured scrolling-page footer clearance
+  inside scroll content. Keep fixed headers, table headers, inspectors, and
+  card-page footers. Consume the inset once so nested editors and horizontal
+  strips do not inherit it. Empty footer slots consume no height. Stack
+  multiple footer views before measuring them.
+- **Check:** OnePlusPageTests cover native clip geometry at all 13 shared
+  canvas sizes, scrolling-page footer clearance, fixed regions, and applet
+  scroll end at every applet height bound. Ruler's native overlay and settings
+  have no shared page scroll host.
 
 ## Task Manager Home Labels And Host Actions, 2026-10-01
 

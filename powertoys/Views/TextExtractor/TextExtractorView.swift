@@ -37,9 +37,13 @@ struct TextExtractorView: View {
     @Environment(\.undoManager) private var undoManager
     @State private var service = TextExtractorService.shared
     @State private var shortcuts = GlobalShortcutManager.shared
-    @State private var page = TextExtractorPage.history
+    @State private var page: TextExtractorPage
     @State private var selectedExtraction: TextExtraction?
     @State private var historyRows: [TextExtractionPresentation] = []
+
+    init(page: TextExtractorPage = .history) {
+        _page = State(initialValue: page)
+    }
 
     var body: some View {
         OnePlusWindowRoot(canvas: .textExtractor, sidebar: { EmptyView() }) {
@@ -55,15 +59,6 @@ struct TextExtractorView: View {
                     }
                 }
                 .frame(maxHeight: .infinity, alignment: .top)
-                .onePlusFloatingSettingsInset()
-                .overlay(alignment: .bottomTrailing) {
-                    OnePlusFloatingSettingsButton(isActive: page == .settings, help: page == .settings ? "Back to History" : "Recognition Settings") {
-                        page = page == .settings ? .history : .settings
-                    }
-                    .keyboardShortcut(",")
-                    .accessibilityIdentifier("text-extractor.settings")
-                    .padding(OnePlusMetrics.actionSpacing)
-                }
             }
         }
         .frame(height: page == .settings ? TextExtractorLayout.maximumWindowHeight
@@ -94,6 +89,12 @@ struct TextExtractorView: View {
 
     private var titlebar: some View {
         OnePlusAppletTitlebar(title: "Text Extractor") {
+            OnePlusAppletSettingsButton(isActive: page == .settings,
+                                        help: page == .settings ? "Back to History" : "Recognition Settings") {
+                page = page == .settings ? .history : .settings
+            }
+            .keyboardShortcut(",")
+            .accessibilityIdentifier("text-extractor.settings")
             Button("Extract Text") { service.begin() }
                 .buttonStyle(OnePlusButtonStyle(.primary, size: .small))
                 .disabled(isExtracting)
@@ -136,6 +137,7 @@ struct TextExtractorView: View {
         .frame(maxHeight: .infinity, alignment: .top)
         .padding(.horizontal, OnePlusMetrics.appletGutter)
         .padding(.top, OnePlusMetrics.contentGap)
+        .padding(.bottom, OnePlusMetrics.gutter)
     }
 
     @ViewBuilder private var statusBanner: some View {
@@ -248,7 +250,7 @@ struct TextExtractorSettingsView: View {
     }
 }
 
-private enum TextExtractorPage: String { case history, settings }
+enum TextExtractorPage: String { case history, settings }
 
 private struct TextExtractionRow: View {
     let row: TextExtractionPresentation
