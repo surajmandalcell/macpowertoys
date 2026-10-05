@@ -79,7 +79,7 @@ final class BackgroundToolWindowTests: XCTestCase {
             window.prepareContent()
             XCTAssertNotNil(window.contentViewController)
             XCTAssertFalse(window.contentViewController === original)
-            XCTAssertEqual(window.frame.size, NSSize(width: 1240, height: 840))
+            XCTAssertEqual(window.frame.size, OnePlusWindowCanvas.mainWindow.size)
             XCTAssertFalse(window.styleMask.contains(.resizable))
             XCTAssertTrue(window.styleMask.contains(.fullSizeContentView))
             XCTAssertTrue(window.titlebarAppearsTransparent)
@@ -107,7 +107,7 @@ final class BackgroundToolWindowTests: XCTestCase {
         let probe = BackgroundWindowProbe()
         window.contentViewController = NSHostingController(rootView:
             OnePlusWindowContent {
-                BackgroundWindowPayloadView(probe: probe).onePlusFixedCanvas(.main)
+                BackgroundWindowPayloadView(probe: probe).onePlusFixedCanvas(.mainWindow)
             })
         let original = try XCTUnwrap(window.contentViewController)
         let host = try XCTUnwrap(window.contentView)
@@ -115,7 +115,7 @@ final class BackgroundToolWindowTests: XCTestCase {
             XCTAssertTrue(window.contentViewController === original)
             XCTAssertTrue(window.contentView === host)
             XCTAssertNotNil(probe.payload)
-            XCTAssertEqual(window.frame.size, NSSize(width: 1240, height: 840))
+            XCTAssertEqual(window.frame.size, OnePlusWindowCanvas.mainWindow.size)
         }
         ToolActionRouter.presentSingleWindow(id: "main", windows: [window], activateApp: false,
             createWindow: { _ in XCTFail("Cold first route must keep its scene"); return nil },

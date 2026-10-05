@@ -35,23 +35,18 @@ struct RulerLauncherSettingsView: View {
     @State private var settings = SettingsManager.shared
 
     var body: some View {
-        HStack(spacing: OnePlusMetrics.actionSpacing) {
-            Button {
-                ToolActionRouter.shared.execute(ToolActionRequest(action: .rulerSettings))
-            } label: {
-                Label {
-                    Text("Open Ruler Settings")
-                } icon: {
-                    Image(systemName: ToolGlyph.ruler.symbol).rotationEffect(.degrees(ToolGlyph.ruler.rotation))
+        OnePlusCard {
+            OnePlusSettingRow("Settings for the active rulers") {
+                Button("Open Ruler Settings") {
+                    ToolActionRouter.shared.execute(ToolActionRequest(action: .rulerSettings))
                 }
-            }
-            .buttonStyle(OnePlusButtonStyle())
-            .help("Settings for the active rulers")
-            Button("Open Defaults") { AppDelegate.current?.openPreferences(self) }
                 .buttonStyle(OnePlusButtonStyle())
-                .help("Defaults for new rulers")
+            }
+            OnePlusSettingRow("Defaults for new rulers", separator: false) {
+                Button("Open Defaults") { AppDelegate.current?.openPreferences(self) }
+                    .buttonStyle(OnePlusButtonStyle())
+            }
         }
-        .frame(maxWidth: .infinity, alignment: .leading)
         .disabled(!settings.isToolEnabled("ruler") || settings.isToolTransitioning("ruler"))
     }
 }

@@ -1,19 +1,19 @@
 import SwiftUI
 import OnePlusUI
 
+/// The Settings-style overview: an identity block, a filter, and one grouped section per category.
 struct AllToolsGridView: View {
     @Binding var selectedTool: String?
     var query: String
     @Binding var filter: MainCatalogFilter
     @Binding var focusedToolID: String?
     @AppStorage("main.favorites") private var storedFavorites = "[]"
-    @AppStorage("main.sort") private var sort = MainCatalogSort.defaultOrder
-    @AppStorage("main.viewMode") private var viewMode = MainCatalogViewMode.grid
     @State private var settings = SettingsManager.shared
-    @FocusState private var focusedCard: String?
+    @FocusState private var focusedRow: String?
     @State private var typedPrefix = ""
     @State private var lastTypedAt = Date.distantPast
     @State private var favoriteIDs: Set<String> = []
+    @State private var groups: [MainToolGroup] = []
     @State private(set) var visibleTools: [any Tool] = []
     @State private var toolCount = 0
     @State private var enabledCount = 0
@@ -25,8 +25,9 @@ struct AllToolsGridView: View {
         _selectedTool = selectedTool; self.query = query; _filter = filter; _focusedToolID = focusedToolID
         let favorites = MainCatalog.favorites(from: storedFavorites)
         let rows = MainCatalog.preparedRows(ToolRegistry.allTools, query: query, filter: filter.wrappedValue,
-                                            sort: sort, favorites: favorites, disabled: SettingsManager.shared.disabledToolIDs)
+                                            favorites: favorites, disabled: SettingsManager.shared.disabledToolIDs)
         _favoriteIDs = State(initialValue: favorites)
+        _groups = State(initialValue: rows.groups)
         _visibleTools = State(initialValue: rows.visible)
         _toolCount = State(initialValue: rows.total)
         _enabledCount = State(initialValue: rows.enabled)
@@ -34,21 +35,31 @@ struct AllToolsGridView: View {
     }
 
     var body: some View {
-        OnePlusPage(scrolls: !visibleTools.isEmpty) {
-            OnePlusPageHeader(title: "All tools", subtitle: "Your Mac, a little more capable.")
-        } tabs: {
-            OnePlusTabStrip(tabs: [
-                OnePlusTab(.all, "All tools", count: toolCount),
-                OnePlusTab(.enabled, "Enabled", count: enabledCount),
-                OnePlusTab(.favorites, "Favorites", count: favoriteCount)
-            ], selection: $filter) { tabTools }
-        } content: {
-            if visibleTools.isEmpty { emptyState }
-            else if viewMode == .grid { grid }
-            else { list }
+        MainPaneScroll {
+            MainHero(title: "MacPowerToys", subtitle: "Your Mac, a little more capable.") {
+                MainAppIconTile(size: MainPaneMetrics.heroIcon)
+            } controls: {
+                OnePlusSegmented(choices: [(MainCatalogFilter.all, "All \(toolCount)"),
+                                           (.enabled, "Enabled \(enabledCount)"),
+                                           (.favorites, "Favorites \(favoriteCount)")],
+                                 selection: $filter, accessibilityLabel: "Show tools",
+                                 width: MainPaneMetrics.segmentedWidth)
+            }
+            if groups.isEmpty { emptyState }
+            ForEach(groups) { group in
+                MainSection(title: group.category.rawValue) {
+                    ForEach(group.tools, id: \.id) { tool in
+                        MainToolRow(tool: tool, favorite: favoriteBinding(tool.id), focusedToolID: $focusedToolID,
+                                    bodyFocus: $focusedRow, separator: tool.id != group.tools.last?.id,
+                                    move: { moveFocus(from: tool.id, direction: $0) }, typeSelect: typeSelect) {
+                            selectSettings(tool.id)
+                        }
+                    }
+                }
+            }
         }
         .accessibilityIdentifier("main.all-tools")
-        .onChange(of: focusedCard) { _, id in if let id { focusedToolID = id } }
+        .onChange(of: focusedRow) { _, id in if let id { focusedToolID = id } }
         .onChange(of: query) { _, _ in refreshCatalog() }
         .onChange(of: filter) { _, _ in refreshCatalog() }
         .onChange(of: settings.disabledToolIDs) { _, _ in refreshCatalog() }
@@ -56,43 +67,7 @@ struct AllToolsGridView: View {
             let updated = MainCatalog.favorites(from: value)
             if updated != favoriteIDs { favoriteIDs = updated; refreshCatalog() }
         }
-        .onChange(of: sort) { refreshCatalog() }
         .onReceive(NotificationCenter.default.publisher(for: .marketplaceReceiptsChanged)) { _ in refreshCatalog() }
-    }
-
-    private var tabTools: some View {
-        HStack(spacing: OnePlusMetrics.actionSpacing) {
-            OnePlusSelect(choices: MainCatalogSort.choices,
-                          selection: $sort, accessibilityLabel: "Sort tools")
-            OnePlusSegmented(iconChoices: [(.grid, "Grid", "square.grid.2x2"), (.list, "List", "list.bullet")],
-                             selection: $viewMode, accessibilityLabel: "Tool view")
-                .frame(width: OnePlusCatalogMetrics.viewControlWidth)
-        }
-    }
-
-    private var grid: some View {
-        LazyVGrid(columns: Array(repeating: GridItem(.flexible(), spacing: OnePlusCatalogMetrics.gap),
-                                 count: OnePlusCatalogMetrics.columns), spacing: OnePlusCatalogMetrics.gap) {
-            ForEach(visibleTools, id: \.id) { tool in
-                MainToolCard(tool: tool, favorite: favoriteBinding(tool.id), focusedToolID: $focusedToolID,
-                             bodyFocus: $focusedCard, move: { moveFocus(from: tool.id, direction: $0) }, typeSelect: typeSelect) {
-                    selectSettings(tool.id)
-                }
-            }
-        }
-    }
-
-    private var list: some View {
-        OnePlusCard {
-            LazyVStack(spacing: 0) {
-                ForEach(visibleTools, id: \.id) { tool in
-                    MainToolListRow(tool: tool, favorite: favoriteBinding(tool.id), focusedToolID: $focusedToolID,
-                                    bodyFocus: $focusedCard, move: { moveFocus(from: tool.id, direction: $0) }, typeSelect: typeSelect) {
-                        selectSettings(tool.id)
-                    }
-                }
-            }
-        }
     }
 
     private var emptyState: some View {
@@ -101,7 +76,7 @@ struct AllToolsGridView: View {
                           caption: query.isEmpty
                             ? filter == .favorites ? "Use the star on a tool to add a favorite." : "Enable a tool to show it here."
                             : "Try another name, category, or keyword.")
-            .frame(maxWidth: .infinity, maxHeight: .infinity)
+            .frame(maxWidth: .infinity)
     }
 
     private func favoriteBinding(_ id: String) -> Binding<Bool> {
@@ -122,33 +97,31 @@ struct AllToolsGridView: View {
     private func moveFocus(from id: String, direction: MoveCommandDirection) {
         let ids = visibleTools.map(\.id)
         guard let index = ids.firstIndex(of: id) else { return }
-        let stride = viewMode == .grid ? OnePlusCatalogMetrics.columns : 1
         let offset: Int
         switch direction {
-        case .up: offset = -stride
-        case .down: offset = stride
-        case .left: offset = -1
-        case .right: offset = 1
+        case .up, .left: offset = -1
+        case .down, .right: offset = 1
         @unknown default: return
         }
-        focusedCard = ids[min(max(index + offset, 0), ids.count - 1)]
+        focusedRow = ids[min(max(index + offset, 0), ids.count - 1)]
     }
 
     private func typeSelect(_ characters: String) {
         let now = Date()
         typedPrefix = now.timeIntervalSince(lastTypedAt) > 1 ? characters : typedPrefix + characters
         lastTypedAt = now
-        focusedCard = visibleTools.first {
+        focusedRow = visibleTools.first {
             $0.name.range(of: typedPrefix, options: [.anchored, .caseInsensitive, .diacriticInsensitive]) != nil
-        }?.id ?? focusedCard
+        }?.id ?? focusedRow
     }
 
     private func refreshCatalog() {
         let rows = MainCatalog.preparedRows(ToolRegistry.allTools, query: query, filter: filter,
-                                            sort: sort, favorites: favoriteIDs, disabled: settings.disabledToolIDs)
+                                            favorites: favoriteIDs, disabled: settings.disabledToolIDs)
         toolCount = rows.total
         enabledCount = rows.enabled
         favoriteCount = rows.favorites
+        groups = rows.groups
         visibleTools = rows.visible
     }
 }

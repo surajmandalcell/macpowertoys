@@ -1,21 +1,15 @@
 import Foundation
 
 enum MainCatalogFilter: String { case all, enabled, favorites }
-enum MainCatalogSort: String, CaseIterable {
-    case defaultOrder, name, category
-    static let choices = allCases.map { ($0, $0.title) }
-    var title: String {
-        switch self {
-        case .defaultOrder: "Default order"
-        case .name: "Name"
-        case .category: "Category"
-        }
-    }
-}
-enum MainCatalogViewMode: String { case grid, list }
 enum MainSettingsTab: String, CaseIterable {
     case general, marketplace, about
     var title: String { rawValue.capitalized }
+}
+
+struct MainToolGroup: Identifiable {
+    let category: ToolCategory
+    let tools: [any Tool]
+    var id: ToolCategory { category }
 }
 
 enum MainPageRoute: Equatable {
@@ -57,14 +51,16 @@ enum MainCatalog {
         return String(decoding: data, as: UTF8.self)
     }
 
-    static func sorted(_ tools: [any Tool], by sort: MainCatalogSort) -> [any Tool] {
-        guard sort != .defaultOrder else { return tools }
-        return tools.sorted { left, right in
-            if sort == .category, left.category != right.category {
-                return left.category.rawValue.localizedStandardCompare(right.category.rawValue) == .orderedAscending
-            }
-            let order = left.name.localizedStandardCompare(right.name)
-            return order == .orderedSame ? left.id < right.id : order == .orderedAscending
+    /// Sidebar and overview groups: one per category, in category order, registry order inside.
+    static func groups(_ tools: [any Tool]) -> [MainToolGroup] {
+        ToolCategory.allCases.compactMap { category in
+            let members = tools.filter { $0.category == category }
+            return members.isEmpty ? nil : MainToolGroup(category: category, tools: members)
         }
+    }
+
+    /// Command-2 to Command-9 follow the sidebar order after All tools.
+    static func shortcutTools(_ tools: [any Tool]) -> [any Tool] {
+        Array(groups(tools).flatMap(\.tools).prefix(8))
     }
 }

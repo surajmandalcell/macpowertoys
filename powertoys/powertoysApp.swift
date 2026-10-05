@@ -191,7 +191,7 @@ struct MacPowerToysApp: App {
             Self.windowContent(id: "main")
         }
         .windowStyle(.hiddenTitleBar)
-        .defaultSize(OnePlusWindowCanvas.main.size)
+        .defaultSize(OnePlusWindowCanvas.mainWindow.size)
         .windowResizability(.contentSize)
         .restorationBehavior(.disabled)
         .defaultLaunchBehavior(.suppressed)

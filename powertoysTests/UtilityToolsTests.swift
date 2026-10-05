@@ -337,7 +337,7 @@ final class UtilityToolsTests: XCTestCase {
     func testToolSettingsRememberEachToolTabWithoutRebuildingThePage() throws {
         let source = try toolAboutViewSource()
         XCTAssertTrue(source.contains("MainToolTab.storageKey(for: toolId)"))
-        XCTAssertTrue(source.contains("MainToolTab(rawValue: storedTab) == nil"))
+        XCTAssertTrue(source.contains("storedTab = MainToolTab.settings.rawValue"))
         XCTAssertNotEqual(MainToolTab.storageKey(for: "awake"), MainToolTab.storageKey(for: "rclone"))
         XCTAssertFalse(source.contains(".id(tool.id)"))
     }

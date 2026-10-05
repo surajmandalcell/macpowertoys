@@ -7,11 +7,10 @@ struct MainSettingsView: View {
     var showManual: (String) -> Void = { _ in }
 
     var body: some View {
-        OnePlusPage {
-            OnePlusPageHeader(title: "Settings")
-        } tabs: {
-            OnePlusTabStrip(tabs: MainSettingsTab.allCases.map { OnePlusTab($0, $0.title) }, selection: $tab)
-        } content: {
+        MainPaneScroll {
+            OnePlusSegmented(choices: MainSettingsTab.allCases.map { ($0, $0.title) }, selection: $tab,
+                             accessibilityLabel: "Settings page", width: MainPaneMetrics.segmentedWidth)
+                .frame(maxWidth: .infinity)
             switch tab {
             case .general: MainGeneralSettings()
             case .marketplace: MarketplaceSettingsView()
@@ -33,11 +32,9 @@ private struct MainGeneralSettings: View {
     @State private var loginError: String?
 
     var body: some View {
-        VStack(spacing: OnePlusMetrics.cardGap) {
-            HStack(alignment: .top, spacing: OnePlusMetrics.cardGap) {
-                appearanceCard
-                launchCard
-            }.fixedSize(horizontal: false, vertical: true)
+        VStack(alignment: .leading, spacing: MainPaneMetrics.sectionGap) {
+            appearanceCard
+            launchCard
             shortcutCard
         }
         .onChange(of: appearance) { _, value in value.apply() }
@@ -55,9 +52,8 @@ private struct MainGeneralSettings: View {
     }
 
     private var appearanceCard: some View {
-        OnePlusPanel {
+        MainSection(title: "Appearance and windows") {
             VStack(spacing: 0) {
-                OnePlusCardHeader("Appearance and windows", systemImage: "macwindow")
                 OnePlusSettingRow("Appearance", controlWidth: OnePlusCatalogMetrics.placementWidth) {
                     OnePlusSegmented(choices: AppAppearance.allCases.map { ($0, $0.title) },
                                      selection: $appearance, accessibilityLabel: "Appearance")
@@ -85,9 +81,8 @@ private struct MainGeneralSettings: View {
     }
 
     private var launchCard: some View {
-        OnePlusPanel {
+        MainSection(title: "Launch and iCloud") {
             VStack(spacing: 0) {
-                OnePlusCardHeader("Launch and iCloud", systemImage: "power")
                 OnePlusSettingRow("Open at login") {
                     Toggle("Open at login", isOn: Binding(
                         get: { loginStatus == .enabled || loginStatus == .requiresApproval }, set: setOpenAtLogin
@@ -114,9 +109,8 @@ private struct MainGeneralSettings: View {
     }
 
     private var shortcutCard: some View {
-        OnePlusPanel {
+        MainSection(title: "Quick Access shortcut") {
             VStack(spacing: 0) {
-                OnePlusCardHeader("Quick Access shortcut", systemImage: "keyboard")
                 OnePlusSettingRow("Enable shortcut") {
                     Toggle("Enable Quick Access shortcut", isOn: Binding(
                         get: { shortcuts.isEnabled(.mainPanel) },
@@ -151,56 +145,39 @@ private struct MainAboutSettings: View {
     private var repository: String { HostAppMetadata.repository.absoluteString }
 
     var body: some View {
-        VStack(alignment: .leading, spacing: OnePlusMetrics.cardGap) {
-            updateCheck
-            OnePlusCard {
-                OnePlusCardHeader("MacPowerToys")
-                HStack(spacing: OnePlusMetrics.cardGap) {
-                    Image(nsImage: NSImage(named: "AppIcon") ?? NSApp.applicationIconImage)
-                        .resizable().scaledToFit()
-                        .frame(width: OnePlusCatalogMetrics.iconSize, height: OnePlusCatalogMetrics.iconSize)
-                    Text("A collection of tools for your Mac.").onePlusText(.row)
-                    Spacer()
-                }
-                .padding(OnePlusMetrics.cardPadding)
-                .overlay(alignment: .bottom) { OnePlusColor.lineSoft.frame(height: 1) }
+        VStack(alignment: .leading, spacing: MainPaneMetrics.sectionGap) {
+            MainHero(title: "MacPowerToys", subtitle: "A collection of tools for your Mac.") {
+                MainAppIconTile(size: MainPaneMetrics.heroIcon)
+            } controls: { updateCheck }
+            MainSection {
                 metadataRow("Version", value: metadata.version)
                 metadataRow("Build", value: metadata.build)
                 metadataRow("Source commit", value: metadata.sourceCommit)
                 metadataRow("Developer", value: HostAppMetadata.developer, monospaced: false)
-                linkRow("Contact", title: HostAppMetadata.contact, url: "mailto:" + HostAppMetadata.contact)
+                linkRow("Contact", title: HostAppMetadata.contact, url: "mailto:" + HostAppMetadata.contact,
+                        separator: false)
             }
-            HStack(alignment: .top, spacing: OnePlusMetrics.cardGap) {
-                OnePlusCard {
-                    VStack(spacing: 0) {
-                        OnePlusCardHeader("Links", systemImage: "link")
-                        linkRow("Repository", title: "GitHub", url: repository)
-                        linkRow("Privacy", title: "Privacy policy", url: repository + "/blob/main/PRIVACY.md")
-                        linkRow("License", title: "MIT license", url: repository + "/blob/main/LICENSE", separator: false)
-                    }
-                }.frame(maxWidth: .infinity)
-                OnePlusCard {
-                    VStack(spacing: 0) {
-                        OnePlusCardHeader("Acknowledgements", systemImage: "book")
-                        linkRow("RSync UI engine", help: "By Nick Craig-Wood and contributors",
-                                title: "Powered by rclone", url: "https://rclone.org/")
-                        linkRow("rclone license", title: "MIT license", url: "https://rclone.org/licence/", separator: false)
-                    }
-                }.frame(maxWidth: .infinity)
-            }.fixedSize(horizontal: false, vertical: true)
-            VStack(alignment: .leading, spacing: OnePlusMetrics.actionSpacing) {
-                HStack {
-                    OnePlusSectionTitle("Using MacPowerToys")
-                    Spacer()
-                    Menu("Tool manuals") {
+            MainSection(title: "Links") {
+                linkRow("Repository", title: "GitHub", url: repository)
+                linkRow("Privacy", title: "Privacy policy", url: repository + "/blob/main/PRIVACY.md")
+                linkRow("License", title: "MIT license", url: repository + "/blob/main/LICENSE", separator: false)
+            }
+            MainSection(title: "Acknowledgements") {
+                linkRow("RSync UI engine", help: "By Nick Craig-Wood and contributors",
+                        title: "Powered by rclone", url: "https://rclone.org/")
+                linkRow("rclone license", title: "MIT license", url: "https://rclone.org/licence/", separator: false)
+            }
+            MainSection(title: "Using MacPowerToys") {
+                OnePlusSettingRow("Tool manuals", controlWidth: OnePlusCatalogMetrics.placementWidth, separator: false) {
+                    Menu("Open a manual") {
                         ForEach(ToolRegistry.allTools, id: \.id) { tool in
                             Button(tool.name) { showManual(tool.id) }
                         }
                     }.menuStyle(.borderlessButton).fixedSize()
                 }
-                Text("Closing a window leaves enabled background tools running. Choose Quit MacPowerToys to stop them. Each tool's How to use page explains its actions and background work.")
-                    .onePlusText(.row, color: OnePlusColor.secondary)
             }
+            Text("Closing a window leaves enabled background tools running. Choose Quit MacPowerToys to stop them. Each tool's How to use section explains its actions and background work.")
+                .onePlusText(.caption).padding(.horizontal, MainPaneMetrics.sectionTitleInset)
         }
     }
 

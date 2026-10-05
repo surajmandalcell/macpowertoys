@@ -10,17 +10,17 @@ final class MainCatalogTests: XCTestCase {
 
         let tool = try sourceFile("powertoys/Views/ToolAboutView.swift")
         XCTAssertFalse(tool.contains(".id(tool.id)"))
-        XCTAssertTrue(tool.contains("MainToolTab(rawValue: storedTab) ?? .settings"))
+        XCTAssertTrue(tool.contains("proxy.scrollTo(Self.guideAnchor"))
         XCTAssertTrue(home.contains("case .manual(let id): MainToolTab.select(.guide, for: id)"))
     }
 
     func testMainCatalogPreparesRowsOutsideBodyEvaluation() throws {
         let catalog = try sourceFile("powertoys/Views/AllToolsGridView.swift")
         let catalogBody = try XCTUnwrap(catalog.range(of: "var body: some View"))
-        let catalogHelpers = try XCTUnwrap(catalog.range(of: "private var tabTools"))
+        let catalogHelpers = try XCTUnwrap(catalog.range(of: "private var emptyState"))
         let body = catalog[catalogBody.lowerBound..<catalogHelpers.lowerBound]
         XCTAssertFalse(body.contains(".filter"))
-        XCTAssertFalse(body.contains("MainCatalog.sorted"))
+        XCTAssertFalse(body.contains("MainCatalog.groups"))
         XCTAssertTrue(catalog.contains("@State private(set) var visibleTools"))
         XCTAssertTrue(catalog.contains("private func refreshCatalog()"))
 
@@ -56,15 +56,35 @@ final class MainCatalogTests: XCTestCase {
         XCTAssertTrue(MainCatalog.favorites(from: "not json").isEmpty)
     }
 
-    func testSortPreservesRegistryOrderAndGroupsCategories() {
+    func testGroupsFollowCategoryOrderAndKeepRegistryOrderInside() {
         let tools: [any Tool] = [
             CatalogTool(id: "notes", name: "Notes", category: .text),
             CatalogTool(id: "logs", name: "Activity", category: .system),
-            CatalogTool(id: "files", name: "Files", category: .files)
+            CatalogTool(id: "files", name: "Files", category: .files),
+            CatalogTool(id: "trace", name: "Trace", category: .system)
         ]
-        XCTAssertEqual(MainCatalog.sorted(tools, by: .defaultOrder).map(\.id), ["notes", "logs", "files"])
-        XCTAssertEqual(MainCatalog.sorted(tools, by: .name).map(\.id), ["logs", "files", "notes"])
-        XCTAssertEqual(MainCatalog.sorted(tools, by: .category).map(\.id), ["files", "logs", "notes"])
+        let groups = MainCatalog.groups(tools)
+        XCTAssertEqual(groups.map(\.category), [.text, .files, .system])
+        XCTAssertEqual(groups.map { $0.tools.map(\.id) }, [["notes"], ["files"], ["logs", "trace"]])
+        XCTAssertEqual(MainCatalog.shortcutTools(tools).map(\.id), ["notes", "files", "logs", "trace"])
+        XCTAssertEqual(MainCatalog.shortcutTools(ToolRegistry.builtInTools).map(\.id),
+                       Array(MainCatalog.groups(ToolRegistry.builtInTools).flatMap(\.tools).map(\.id).prefix(8)))
+    }
+
+    func testPageHistoryGoesBackAndForwardAndForgetsForwardOnVisit() {
+        var history = MainPageHistory()
+        history.record(from: "all-tools", to: "ruler")
+        history.record(from: "ruler", to: "ruler")
+        history.record(from: "ruler", to: "settings")
+        XCTAssertEqual(history.back, ["all-tools", "ruler"])
+        XCTAssertEqual(history.goBack(from: "settings"), "ruler")
+        XCTAssertEqual(history.goBack(from: "ruler"), "all-tools")
+        XCTAssertNil(history.goBack(from: "all-tools"))
+        XCTAssertEqual(history.goForward(from: "all-tools"), "ruler")
+        history.record(from: "ruler", to: "logs")
+        XCTAssertTrue(history.forward.isEmpty)
+        for index in 0..<(MainPageHistory.limit + 10) { history.record(from: "page\(index)", to: "next") }
+        XCTAssertEqual(history.back.count, MainPageHistory.limit)
     }
 
     func testRoutesCoverCatalogSettingsAndEveryRegisteredTool() {
