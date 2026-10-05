@@ -1,757 +1,343 @@
 # System Tools Request List
 
-Native close and reopen, run 80, 2026-10-02: Input Devices, System Care,
-System Monitor, Disk Explorer and NetToys share the closed-scene guard.
-Background reopen uses the existing native factory without activation;
-explicit reopen uses SwiftUI. Cold hidden and minimized windows keep their
-current Space and focus rules. Native-close uses each existing delegate.
-Portman has no SwiftUI Window scene and keeps its current path.
-The orchestrator owns installed close/open/capture checks for every scene.
-The single test build and all 31 guarded tests pass. The source probe passes
-all 26 closed-scene background cases, with zero activation or front ordering.
-Report: `tmp/redesign/logs/w17-native-close.md`.
+Scope: Input Devices, System Care (with Mole), Task Manager (formerly System
+Monitor), NetToys, and the window behavior these tools share.
 
-Inactive background ordering, run 79, 2026-10-02: Input Devices, System
-Care, Task Manager and NetToys use back ordering while the app is inactive.
-Main/Task Manager capture panels, Portman diagnostics and all five separate
-diagnostic panels share this rule. Other Spaces still skip ordering. Explicit
-opens retain activation. The source probe passes 104 inactive and 104 off-Space
-page cases. The one test build passes. Guarded native tests stop before
-execution when the foreground app changes. The orchestrator owns signed
-installation, isolated replay and the new activation log.
-Report: `tmp/redesign/logs/w16-activation-cause.md`.
+Ownership: the orchestrator owns hosted tests, clean signed installation, and
+installed-app interaction checks unless a row says otherwise. Status words:
+Done (no work left), Verify (source built, check pending), Open (work or
+publication pending). Logs live in `tmp/redesign/logs/` and
+`tmp/redesign/perf/`. Update this list when a direct user correction or a
+verified result changes a status.
 
-Background Spaces, run 78, 2026-10-02: Input Devices, System Care,
-Task Manager and NetToys keep their page and content updates without ordering
-off-Space windows. Main and Task Manager diagnostic panels and separate Input
-Devices diagnostics also check the current Space. Explicit opens keep
-activation. All 104 off-Space page cases and 102 native reopen cycles pass.
-All five guarded background-window tests pass on the final compiled source.
-Signed installation and full-screen/lock/unlock replay stay with the
-orchestrator. Report: `tmp/redesign/logs/w15-space-focus.md`.
+## Cross-tool open verification
 
-Close verification, run 77, 2026-10-02: the stronger actual-source fixture
-checks every native close notification and model release across all 13 roots
-and both window owners. All 102 cycles and all four guarded app tests pass.
-The single tests-mode compile gate passes. The fix changes test presentation
-only. Signed system-tool interaction and memory sampling stay with the
-orchestrator. Report: `tmp/redesign/logs/w14-blank-tests.md`.
+- Install: the installed app is older than current source (most notes cite
+  `198055e4`). Install a clean signed HEAD and check its source stamp and
+  running path. See `spec/troubleshoot/verification.md`.
+- Background opens (runs 55-80): background routes must order windows back
+  without activation, skip other Spaces, and reuse closed scene hosts. Source
+  probes pass for all 13 scene roots. Still open on the signed build: close
+  and reopen, Dock reopen, menu Open App, launcher Open, full-screen, and
+  lock/unlock replay, with the frontmost app unchanged. Guarded native tests
+  stop when the foreground app changes, so they need a quiet desktop.
+- Hosted tests: most rows ran source-derived checks and compile gates only.
+  Run the focused classes (`InputDevicesTests`, `SystemCareTests`,
+  `SystemMonitorTests`, `SystemMonitorRemoteTests`, NetToys tests) with
+  `tmp/redesign/tools/xtest.sh` while no game or full-screen app is in front.
+- Performance (DESIGN quality gate 9): warm panel open at most 100ms, cold
+  panel and window open at most 250ms, page and tab switch at most 100ms,
+  measured to the complete final frame. Signed `198055e4` measured Task
+  Manager pages at 215-287ms and panel tabs at 128-244ms. Fixes since then
+  (`da3146a3`, `8adbcc30`, `027ea904`, `e0432849`, `58932d0c`, `00227de5`,
+  `ff74d88b`) need a signed rerun. Cold Processes preparation is open.
+  Evidence: `tmp/redesign/perf/w1-windows.md`.
+- Shared OnePlusUI: adopt the next tag with `7dbcb3f`, `10b09f5`, `68c91bf`,
+  `716ad8b`, and `a02d43d`. The app pins 1.0.0, so two corrected applet
+  Settings height assertions wait for the tag. Then verify Task Manager card
+  headers, System Care panel glyphs, and Disk geometry in both appearances.
+- Both appearances: every row marked Verify needs a Light and Dark capture of
+  the signed build, including focus modes (Full Keyboard Access, VoiceOver).
 
-Background reopen, run 76, 2026-10-02: Input Devices, System Care, Task
-Manager, and NetToys keep their SwiftUI scene controllers and hosts. Their
-own close roots rebuild, and registered geometry is ready before ordering.
-The native fixture checks cold first routes and native close/reopen across
-all 13 shared roots. Both probes reject `a46233f2`. Signed native interaction,
-unchanged foreground focus, complete frames, and timing remain with the
-orchestrator. Report: `tmp/redesign/logs/w14-blank-focus.md`.
+### Memory and closed-window recovery
 
-Native reopen, run 75, 2026-10-02: the shared presenter remounts hidden
-scene controllers before ordering. Background hosts restore mounted content
-and their fixed canvas first. The source-derived native fixture passes all
-13 roots across 102 close/reopen cycles with zero activation calls. Coverage
-includes Input Devices, System Care, Task Manager, and both applet height
-ranges. Two permanent native regressions and both desktop bundles compile
-through the single tests gate. The orchestrator owns installed native close,
-routes, launcher Open, Dock reopen, menu Open App, and complete first frames.
-Report: `tmp/redesign/logs/w14-blank-main.md`.
+Signed `e25d7c99` grew to 7,055 MB with 6.5 GB in Foundation (app-icon TIFFs).
+Signed `d911b0fa` stayed at 327.5 MiB after all windows closed. Fixes:
+`1529ae52` (80 x 80 icon images, caches cleared on close), `1b789232`,
+`92e3b394`, `76ed9b89` (subprocess output caps and drained pools),
+`44d8e12c` (unmount closed scene roots), `bc4132ca` (release inactive panel
+roots), `329d6caf` (reuse glyph bitmaps), `2a036b02` (release closed
+hosting controllers), and `a6aeff3a` (diagnostic `close-window/<tool-id>`
+route). A follow-up sample found no retained 550 MB Overview increase.
 
-Shared stat check, run 74, 2026-10-02: OnePlusUI `ad42789` corrects
-the stale compact height ceiling. The approved 16pt padding makes the
-single-line StatCell 46pt tall. The check now verifies 32pt of vertical
-padding in both densities and keeps the 52pt single-line ceiling.
-All 148 package tests pass, including the unchanged metric trait checks.
-Production layout and the 27pt metric role remain unchanged.
-Report: `tmp/redesign/logs/w13-statcell.md`.
-
-Round 17 panels repair, run 68, 2026-10-01: `53b31541` keeps System Care
-decimal disk metrics and units complete, with full bytes in help and
-accessibility. `517c5593` moves Memory capacity within its 70pt tile and
-keeps CPU/GPU/Memory at the full 27pt metric role. Disk and Battery retain
-each hero fact once, plus real activity, cycles, power and stale readings.
-`7c2a8222` centers Devices, profile and Scroll device disclosure accessories.
-Refresh keeps its separate target and the body keeps its single gutter.
-`34c24557` adds the approved NetToys socket glyph and 13pt glyphs for Home,
-Cloud Sync, Input Devices, System Care, Task Manager, NetToys and Switch tabs.
-All five glyph tests pass, including 14pt status canvases and 11.2pt ink
-at 1x/2x/4x. Shared `10b09f5` renders named artwork in tool headers.
-The app and both desktop bundles compile against OnePlusUI 1.0.0.
-All five changed app classes pass across guarded runs: 117 distinct tests.
-Two focused shared checks pass. The broader shared geometry class has one
-failure at that revision: stat metadata measures 46pt against its stale
-44pt height check. Run 74 resolves the check; see the entry above.
-The next shared tag, dependency adoption, signed captures, Refresh and
-disclosure interaction, and complete-frame timing remain with the
-orchestrator. Adopt OnePlusUI 1.0.1 containing `7dbcb3f` and `10b09f5`.
-Report: `tmp/redesign/logs/w10-fix17-panels.md`.
-
-Round 17 Task Manager repair, run 68, 2026-10-01: shared `68c91bf` sets
-card headers and settings to 16pt in both densities. `aecfb5b7` aligns custom
-information, Allocation, Remote and System Report rows with their headers.
-Coverage includes CPU Core activity/Load average, GPU Graphics details,
-Memory Allocation/Virtual memory, Network Current connection/All interfaces,
-Disk Volume, Battery details, About Keyboard shortcuts, Fan and remote hosts.
-Disk Available and Used share a baseline, with 6pt within each pair and 20pt
-between pairs. Its trailing edge remains at x1048. The approved detail-chart
-labels and legends keep 12pt. Reorder instructions use handle help.
-Six focused package tests pass. Both app/test compile batches pass against
-OnePlusUI 1.0.0. Shared `716ad8b` also fixes the retained main page's native
-titlebar inset. The orchestrator must tag and adopt the shared changes, then
-verify all listed groups, Disk geometry and real reorder controls in both
-installed appearances. Report: `tmp/redesign/logs/w10-fix17-main.md`.
-
-Local verification, run 65, 2026-10-01: `8c0cc71b` fixes the System Care
-cancellation test's illegal expectation change and the inactive focus probe.
-All 13 System Care tests pass. The guarded selected run passes 43 tests with
-zero failures. Two earlier attempts stop before tests start. The original
-full run has one focus failure and a System Care host crash, then stops when
-Chrome changes to Finder. No uninterrupted full-suite pass is claimed.
-Installation and live acceptance stay with the orchestrator.
-Report: `tmp/redesign/logs/w8-tests-finish.md`.
-
-Local verification, run 64, 2026-10-01: unit-test activation calls now use
-offscreen fixtures, and the XCTest host skips activation, Main launch, and
-reopen. Native panel height, render, and Fan lifecycle assertions remain.
-The app and both desktop bundles compile. The guarded attempts refuse the
-game, then stop during build when Chrome changes to the League client.
-Zero unit tests execute; zero assertion failures are recorded. Task Manager,
-Input Devices, and System Care execution waits for the orchestrator.
-Report: `tmp/redesign/logs/w8-tests-quiet.md`.
-
-Local verification, run 63, 2026-10-01: `a57d0c4d` commits shared switch
-alignment and flexible selects. `e738cbed` commits Task Manager adoption.
-All 145 package tests pass, including retained-page and flexible-width checks.
-The guarded app run aborts in FocusEffectTests after 475 passes and 5 skips.
-Task Manager and Input Devices app classes had not run. No full pass is claimed.
-The orchestrator owns safe app-test completion, installation, and live checks.
-Report: `tmp/redesign/logs/w7-local-tests.md`.
-
-CI repair, run 62, 2026-10-01: the shared menu presenter must leave anchor
-clicks to the status-item toggle. Its outside-click monitor must not close
-and then reopen the panel. Task Manager panel dismissal and remembered
-selection require the next hosted run. No installed app was changed.
-Report: `tmp/redesign/logs/w7-ci-fix.md`.
-
-Background creation, run 60, 2026-10-01: cold, retained, and closed Input
-Devices, System Care, and Task Manager windows must preserve the frontmost
-app. Page routes and diagnostic panels must keep false activation intent.
-The source probe passes cold and retained ordering without activation across
-all 13 scene windows. The final app module and changed tests typecheck after
-repair of the single compile-gate error. The guarded installed replay remains
-with the orchestrator.
-Report: `tmp/redesign/logs/w6-no-activation.md`.
-
-Round 59 page performance, 2026-10-01: `58932d0c` adds the shared retained
-page host. Overview and Settings create their hosts on first visit, then keep
-page state while another page is selected. Selection stays outside content
-equality. Hidden Overview keeps its last frame without observing live metric
-changes; hidden child tasks stop before detachment. Teardown clears the graph.
-`e738cbed` commits the window adoption with navigation, header, and flexible
-picker changes. The shared picker and its layout test are in `a57d0c4d`.
-The offscreen check reduces 20 selection rebuilds to zero, sees zero builds
-for 20 hidden samples, preserves state through 10 returns, and releases the
-host on teardown. The main and window storage probes reduce 20 writes to zero.
-The one tests-mode gate compiles the app and both desktop bundles.
-Supplied signed `e0432849` Overview/Settings times are 126/141ms. Signed after
-times, complete frames, native controls, and the <=100ms P3 gate stay open for
-the orchestrator's installed handoff. Report: `tmp/redesign/logs/w6-perf-pages.md`.
-
-Round 58 Task Manager performance, 2026-10-01: `027ea904` removes the live
-selection binding from retained content and Home tiles. The tab strip still
-binds the selected page. `e0432849` keeps panel navigation in local state and
-saves on shell hide or disappearance. `e738cbed` commits the matching window
-change after review.
-Time Profiler on installed `83835ecf` records 71.4 percent
-of main-thread samples in AttributeGraph. The focused retention check changes
-selection 20 times: old content rebuilds 20 times; current content zero times.
-Retained actions, child readings, environment, profiles, and tab changes pass.
-Window and panel storage checks reduce 20 switch writes to zero and preserve
-initial restoration, external requests, hide persistence, and reopen. On signed
-`d40b9397`, window page intervals also include unrelated menu layout and Switch
-token formatting. Warm CPU, Overview, and Settings measured 108.5, 122.4, and
-126.9ms with profiling attached.
-With profiling attached, panel switches measured 192.5-468.8ms. These numbers
-use display submission and do not prove complete-frame timing. The round 14
-baseline remains open 333ms, tabs 132-163ms, Overview 123ms, and Settings 122ms.
-P1, P3, P4, and P5 stay open until the orchestrator installs the source fix and
-measures warm open, all tabs, and window pages. All three sequential batch
-compile gates pass, one per source batch. The shared window change is now
-committed in `e738cbed`.
-Report: `tmp/redesign/logs/w5-perf-tm.md`.
-
-Header action rows, run 57, 2026-10-01: the shared row puts only the
-tallest control at y20. Captions, status dots, switches, and smaller buttons
-share its center and text baseline, with 12pt gaps. NetToys MAC access and
-Input Devices counts inherit the fix. Task Manager, Diskman, Logs, System
-Care, and Portman toolbars adopt the shared row. Three focused package
-checks pass in both appearances at 1x/2x. One app/test-bundle gate passes.
-The orchestrator owns installed captures and control interaction.
-Report: `tmp/redesign/logs/w4-header-rows.md`.
-
-Round 56 page performance, 2026-10-01: Task Manager settings use flexible
-format pickers instead of seven GeometryReaders. The native package check
-passes for fixed and flexible widths in both densities. The shared picker
-file and its alignment edits are in `a57d0c4d`; `e738cbed` commits the window
-use. The one tests-mode gate compiles the app and both desktop bundles.
-Signed `76ed9b89` before maxima are main Task Manager 171.6ms and window
-Overview 144.1ms. A retained Overview tree is rejected for this batch because
-it would keep global snapshot dependencies while another page is visible.
-P3 and signed control checks stay open. The orchestrator owns the clean
-installed handoff and after measurement. Report:
-`tmp/redesign/logs/w4-perf-alltools.md`.
-
-Recap Pro table traits H, I, 2026-10-01: `e25d7c99` uses shared 33pt
-headers and 34pt body rows in both densities. Dark rows alternate #202020
-and #242424; Light uses #FAFAFA and #F2F2F2. Hover and selection cover the
-full row. Processes, menu items, cleanup candidates, history, storage,
-applications, and System Report adopt the shared geometry and row index.
-All 13 package table checks pass in Light and Dark. The table batch's one
-app/test compile gate passes. Signed scrolling, sorting, selection, focus,
-and pointer checks remain with the orchestrator.
-Report: `tmp/redesign/logs/w4-traits-tables.md`.
-
-Recap Pro metric traits A, B, C, 2026-10-01: `e14b7e38` and the shared
-`e25d7c99` edits provide values at 27pt,
-weight 550, and a 30.24pt line in both densities. Metric captions use dark
-#A0A0A0 and light #5B5B5B. Textured cards and metric menu tiles use the
-180 by 110pt grayscale ribbon at 0.07 below content. Task Manager Overview,
-detail, Remote, process detail, and menu captions adopt these roles; System
-Care and Portman inherit the shared metric style. All four focused package
-checks pass in Light and Dark, including variable font weight, caption
-contrast, texture extent, and content layering. The single app/test-bundle
-compile gate passes. Signed installed-build capture and interaction checks
-remain with the orchestrator. Report: `tmp/redesign/logs/w4-traits-cards.md`.
-
-Scroll edges, 2026-10-01: OnePlusPage no longer subtracts an outer bottom
-gutter from fixed bodies. Task Manager Overview and other page-owned scrollers
-reach the real window bottom and keep 24pt end padding inside their content.
-Input Devices Scrolling uses the shared scroll host and overlaid fixed footer.
-System Care status notices use page footer slots, with no separate outer gutter
-(source `e25d7c99`, included in the authorized traits-tables shared commit).
-All 15 focused package checks pass, covering all 13 shared canvases, footer
-clearance, and applet gear states. Four regressions fail on the old source.
-Signed populated-page scrolling, footers, and applet controls remain with the
-orchestrator. Report: `tmp/redesign/logs/w4-scroll-edges.md`.
-
-Round 48 header picks, 2026-10-01: `bd2e0963` implements Inset B
-(close x13, title 14pt after zoom) and Top B (title caps, icons, and action
-tops at y20). Applet and sheet header rows are 44pt; applet lights use C=27.
-The row amendment centers switch paint in its unchanged 24pt hit frame.
-The body moves down 4pt with its existing gaps. Offscreen render and native
-geometry checks pass (42 checks) in both appearances at 1x/2x. One
-app/test compile gate passes. Cap strokes allow one physical pixel for
-antialiasing; action frames are exact. Signed pixel captures
-and real light hover remain with the orchestrator after installation.
-Report: `tmp/redesign/logs/w4-chrome.md`.
-
-Menu-panel radius, 2026-10-01: all production status panels use the shared
-borderless nonactivating presenter and the 8pt shell token. Hosts stay cached
-on warm open. All ten package radius/sizing checks pass in Light and Dark;
-the single shared tests-mode gate compiles the Debug app and both bundles.
-Signed shadow, placement, dismissal, controls, saved tabs and <100ms warm
-open checks remain with the orchestrator. Report: `tmp/redesign/logs/w4-panel-radius.md`.
-
-Round 11 status readings, 2026-10-01: T050 checkpoints `4612187d`,
-`4f12d6e7`, `8e5ff726`, `c707a43f`, and `d761b625` reserve metric widths
-with native monospaced digits. Native title padding keeps grouped glyphs
-in place.
-Text attachment glyphs use native appearance colors on each draw.
-Each retained reading keeps its last successful timestamp. After three
-effective sampling intervals, help, accessibility, and panel detail show
-stale status. A source-derived check covers 6,804 configurations and unit
-boundaries. The widest seven-metric group is 803pt in the 1280pt display
-model. The real service deadline marks a stalled sample stale and cancels
-when the last owner closes. The shared app and test-bundle compilation gate
-passes at `f52c553b`. Hosted tests, native menu crowding, and signed
-installation remain with the orchestrator.
-Report: `tmp/redesign/logs/w3-glyphs-status.md`.
-
-Round 11 shared focus, 2026-10-01: native tables keep keyboard focus after
-row clicks without focus paint when accessibility modes are off. Key-window
-reactivation preserves valid responders and active text selection. Detached,
-hidden, disabled, or fully clipped responders are cleared. All six focus
-package checks and all 17 focused chrome checks pass. Signed Tab, Shift-Tab,
-arrows, Space, Return, VoiceOver, and scroll/tab checks remain with the
-orchestrator. Report: `tmp/redesign/logs/w3-chrome.md`.
-
-Production glyph pass, 2026-10-01: `91d9a538` gives Input Devices, System
-Care, Diskman, and Task Manager distinct shared tool glyphs. Status images
-use a 14pt template canvas with 11.2pt maximum ink. A sole enabled Task
-Manager metric uses the tool glyph; multiple metrics keep saved symbols.
-Headless checks pass for 36 images at 1x, 2x, and 4x and all seven metric
-selectors. Both shared compile gates pass. Hosted tests and signed
-installation remain with the orchestrator.
-Report: `tmp/redesign/logs/w1-glyphs-status.md`.
-
-Reviewed against current source on 2026-09-24. Update this list when a direct
-user correction or verified result changes a status.
-
-Hosted redesign run `36741797887` at `b3d55c3c` passed `InputDevicesTests`,
-`SystemCareTests`, and `SystemMonitorTests`. All 995 executed unit tests passed,
-with five skips and no failures. The unit suite passed the panel sizing and
-native-table regressions. Tray Fan and Portman UI passed in `36741797887`
-at `b3d55c3c`, including saved CPU reopen, empty servers, and SSH validation.
-The orchestrator owns signed installation and final interaction review.
-
-Production window performance, 2026-10-01: Input Devices, System Care, and
-Task Manager use the shared window and page timing ledger. All saved fixed
-workspaces now restore position once, on attachment, and keep their current
-size. The source restoration check passes; two timing package checks pass.
-Signed `198055e4` Task Manager pages measured 215-287ms in the orchestrator
-replay and 248-482ms in the focused profile. `da3146a3` removes unrelated
-launcher preference refreshes and puts its Login Items query off the main
-thread. `8adbcc30` caches NetToys helper status outside rendering. The actual
-observer/cache check and both compile gates pass; hosted tests were not run.
-tm-window owns the first sample and visibility fixes. P2, P3, and P5 stay open
-until signed after timings, sampling, idle CPU, and complete-frame checks.
-See `tmp/redesign/perf/w1-windows.md` for evidence and exact commands.
-
-Round 49 performance, 2026-10-01: signed `38158c11` warm replay records
-Mac Tweaks Dock 111.5ms, NetToys Settings 111.5ms, Diskman Settings 81.9ms,
-Task Manager Overview 110.9ms, and System Care Overview 57.1ms. Same-page
-raises are 1.3-62.6ms in that batch. Unprofiled panel tab maxima are Main
-137.4ms, Task Manager 244.5ms, and Portman 106.0ms; all panel opens stay below
-250ms. All open records are warm and the endpoint remains display submission.
-The Task Manager panel trace finds 36-56ms in native scene-root updates and
-only 2-5ms in natural-height work. The full scene-environment bridge is removed
-in `00227de5`; `ff74d88b` routes Main Open App without that bridge. The focused
-invalidation and router checks pass, and the single app/test compile gate
-passes. Signed timing, complete frames, cold Processes preparation, and native
-interaction remain open. The orchestrator owns the clean installed handoff.
-Evidence and exact commands: `tmp/redesign/logs/w4-perf-windows.md`.
-
-Round 56 Task Manager panel performance, 2026-10-01: content now has an
-equality boundary inside the shared retained native hosts. Visibility and
-sampling stay outside that boundary; metric-specific observation and the
-off-main projection remain in place. Tab descriptors are static. The
-offscreen retention check passes, including live child updates and profile
-invalidation; its equality mutation fails. Signed `76ed9b89` records one
-complete pass before the foreground guard stops: metric tabs 237-290ms,
-Home 220.3ms, Processes 508.7ms, and panel open 78.5ms. The endpoint is
-display submission. The <=100ms complete-frame gate stays open until the
-orchestrator installs and measures source `b3e5a71e`. The final app and desktop
-test-bundle compile gate passes. Evidence and exact rerun commands:
-`tmp/redesign/logs/w4-perf-tmpanel.md`.
-
-Round 11 T014-T016: both current-source visibility package checks pass.
-Presented covered windows can sample; hidden and minimized policy inputs stop.
-The selected Task Manager body stays mounted. Signed native close/minimize,
-inactive Space, detailed redraw, menu-metric independence, quiet CPU, wakeup,
-energy, App Nap and physical-footprint checks remain. The installed source
-is still `198055e4`; its old wait sample does not prove current retention.
-No new cache, pressure callback or visibility gate was added without a
-current-build failure. Matrix: `tmp/redesign/perf/w1-windows.md`.
-
-Production pass, 2026-10-01: menu-panel types now live in
-`powertoys/Views/MenuPanels/`, one cohesive file per panel part. This is a pure
-move with only the required cross-file access changes. Debug compilation and
-the complete type-body comparison pass. Test execution and signed installation
-remain with the orchestrator. File map: `tmp/redesign/logs/w1-split-tray.md`.
-
-Foundation round 10 gives the Task Manager panel a synchronous shared height
-callback. Its native opener owns the remember-page reset; the view no longer
-replaces an explicit diagnostic page on appear. Hidden layout stays mounted.
-All 72 package tests, Debug, and desktop build-for-testing pass. App-hosted
-routing tests compile. Signed short/tall tab frames and latency remain open.
-Report: `tmp/redesign/logs/02f-fix10-report.md`.
-
-Foundation round 11 forwards diagnostics consumed by native scene URL
-callbacks. Panel routes bypass the window-action gate. The Task Manager
-background host now receives the same resize callback as its production
-popover. Signed `db471735` reproduced the missing-window defect. The updated
-route test and Debug app compile. Hosted test execution and signed panel
-comparison remain with the orchestrator, who owns installation. Report:
-`tmp/redesign/logs/02f-fix11-report.md`.
+Open: install a clean signed build, run the full route matrix, close all
+surfaces, wait 30 seconds, then record heap, footprint, and reopen timing.
+Goal: under 250 MB after close, with fast reopen. Reports:
+`tmp/redesign/logs/w4-memory.md`, `w5-memory3.md`, `w6-memory4.md`,
+`w7-memory5.md`.
 
 ## NetToys
 
-Round 18 permission actions, run 73, 2026-10-02: NetToys `7c2a619`
-applies `OnePlusButtonStyle(.neutral)` to the Permissions card at inherited
-density. Coverage is Wi-Fi Allow access/Settings, Local network Settings/Try
-Again, and MAC addresses Settings/Enable. The 44pt rows, status/action layout,
-gaps, help and accessibility names remain. All 100 package tests pass.
-The orchestrator owns publication, dependency adoption, signed installation,
-and both-appearance visual and interaction checks for every action state.
-Report: `tmp/redesign/logs/w13-fix18-nettoys.md`.
+Open verification:
 
-Run 69 Scanner correction, 2026-10-01: NetToys `746abf9` gives stale results
-one quiet toolbar note and preserves "Last scan: <target>" in the footer.
-Current-target all-down scans use the same inline text style. The padded
-no-hosts card and duplicate empty-table warning are removed. All 100 package
-tests pass, including the focused target, filter, scanning, and reset check.
-The orchestrator owns publication, dependency adoption, signed installation,
-and both-appearance review. Report: `tmp/redesign/logs/w11-nettoys-stale.md`.
-
-Production panel correction, 2026-10-01: `f9622ca5` replaces one-value tiles
-and disclosure cards with direct shared rows. Metadata stays on the trailing
-side. Helper update status is behind an info glyph with help. Blue identity,
-Location recovery, refresh, Scan network, Copy IP, switches, saved disclosures,
-and durable page routes remain. `9d10953e` uses the shared edit merge so
-panel switches preserve sibling settings. Source checks and gated app/test
-compilation pass. Hosted tests and signed interaction remain. Report: `tmp/redesign/logs/w1-panel-main.md`.
+- Permissions card buttons (`7c2a619`, neutral style at inherited density) and
+  the Scanner stale-result note (`746abf9`): publish, adopt the dependency,
+  and check every action state in both appearances.
+- Production panel (`f9622ca5`, `9d10953e`): signed check of Scan network,
+  Copy IP, switches, saved disclosures, and page routes.
 
 | Status | Request | Evidence | Remaining work |
 |---|---|---|---|
-| Build verified; signed review pending | Round 11 T089-T091: align Scanner cells and remove standalone row chrome. | `7ae93446` reuses shared table-cell geometry in all 15 Scanner columns. Actual IP, hostname and MAC cell origins match 16pt/12pt headings in both appearances; the shared package geometry test passes. `ed44cc0d` removes inherited card padding from four standalone rows. `3145a948` makes empty scans one open 44pt row with trailing period copy and unboxes the manual permission action row. All twelve round 10 captures were reviewed; no further demonstrated defect was found. The final shared gate compiles the Debug app and both test bundles at `168eae83`, with all five changed views matching that source stamp. | Run hosted checks and signed interaction. The orchestrator owns installation. Report: `tmp/redesign/logs/w3-audit-nettoys.md`. |
-| Build verified; signed review pending | Audit every NetToys feature and apply the horizontal density and instant-motion correction. | `c125c479` protects independent settings edits and bounds Wi-Fi subprocesses. `f7294b61` fixes scanner sorting, all-down rows, duplicate import/restore, comments, archive loading and history clearing, with focused regressions. It removes toolbar and single-control cards, places metadata on the same row, and uses shared row hover. `5d5b5bca` splits toolbar expressions after the compiler timeout; `b9220f87` uses explicit optional-aware numeric table comparators, which pass a native table type-check. Actual Swift 6 fixtures pass; the shared gate compiles the Debug app and desktop-test bundles at `b4fd441d`, with all owned source/test files matching; six installed baseline pages were captured. One permitted /24 scan returned 254 unique rows and one local host. | Execute hosted tests, install a clean signed commit, and verify both appearances and all changed controls. The unsigned probe returned EHOSTUNREACH for the reachable gateway; a fresh signed scan remains required. Panel-main adopted the edit-baseline `saveChanges` API in `9d10953e`. Report: `tmp/redesign/logs/w1-audit-nettoys.md`. |
-| Local extraction compiled; publication and signed review pending | Run NetToys as a standalone app and as the MacPowerToys package, with tagged OnePlusUI shared by both. | OnePlusUI `3d0b643` preserves the complete package and passes 145 tests plus the showcase build. NetToys `8ed9d38` moves core, views, menu, resources, and regression tests. Its 99 tests pass, including synthetic lock races, crash release, owner checks, host requests, handoff expiry, preference migration, standalone routes, scanner prefill, and concurrent store edits. `50a0025` retains scan-link fields before the scanner page opens. Clean packaging from that commit passes ad hoc signatures, signed entitlements, source stamps, and resource lookup. Final HEAD `104224c` pins the remote OnePlusUI 1.0.0 dependency. MacPowerToys and both desktop test bundles compile with temporary sibling dependencies. The host retains fan writes and its own daemon. | Publish both 1.0.0 tags, generate package lockfiles, apply `tmp/redesign/nettoys-final.patch`, and remove the unused in-tree OnePlusUI after remote integration builds. Verify clean independent clones, signed helper migration, both hosts, permissions, UI, and installed source stamps. The orchestrator owns publication and installation. Report: `tmp/redesign/logs/w9-nettoys-extract.md`. |
-| Build verified; signed review pending | Show current network data and quick actions in the main panel. | The tab uses one current route, permitted SSID, local IPv4 address, and bounded gateway probe. Existing parser and cancellable subprocess code are reused. Scan network and Copy IP are direct actions. Configuration disclosures remain. No poller was added. | Check Wi-Fi, wired, missing permission, no route, and gateway timeout in the signed build. Verify both actions, first frames, and idle work. Report: `tmp/redesign/logs/24-panels-tabs.md`. |
-| Build verified; signed review pending | Add current-network tiles to the main menu panel and prepare its data off the main thread. | The panel retains configuration, helper status, five recent anchors, and five recent failures across tab changes. Full-page routes, persistent disclosures, and feature switches remain. | Check loaded, empty, error, and expanded states in both appearances on the signed build. Report: `tmp/redesign/logs/21-menus-r8.md`. |
-| Capture review complete; empty-period fix compiled | Resolve the NetToys capture findings through round 6. | All twelve signed `3e33de2` NetToys captures were inspected. T=16, the 24pt bottom bound, trailing-chevron triggers, 16pt Scanner header inset, readable permissions, Automatic alignment, natural short lists, and History row allocation retain their corrections. `60a0890` uses "No scans in this period" when saved runs exist outside the range and reserves "No saved scans" for an empty archive. Its regression covers range changes and archive clearing. Debug and the desktop-test scheme build-for-testing pass. | Hosted regression execution, signed empty-period copy, opened popups, focus modes, populated Scanner cells and recent scans, active scrollers, quiet-machine latency, and a current live scan remain unverified. See `tmp/redesign/logs/25r9-nettoys.md`. |
-| Build verified; signed review pending | Correct the NetToys round 3 owned screenshot findings. | `61c1a0a` keeps permission actions readable in the 180pt column with full accessibility names. `6dfebb2` aligns Automatic enrollment with the form's first control edge and text baseline. `371941d` fixes the uptime chart and axis outside the outage scroller, gives outages one 56pt viewport, reduces scan rows to two, and reserves three complete transition rows. Debug and desktop build-for-testing pass. | Signed dark/light review and row scrolling checks remain. Foundation owns the page bottom bound, reserved scroller strip, menu trigger, table inset, and ghost padding. |
-| Build verified; fresh signed scan pending | Keep automatic scans on the active subnet and identify retained results by their completed target. | `d3e2397` resolves the active CIDR again when Scan starts. The round 7 capture still shows the old 11.8-second archive from `192.168.0.255/24`, dated September 29, while the input reads `192.168.1.0/24`. No current-subnet run exists in the read-only archive. A standalone sweep using the current scanner actor and probes with saved 200ms timeout and concurrency 64 found three hosts in 11.3 seconds, including gateway ports 80 and 443. `7131746` retains the completed target and shows it in the fixed footer; its restoration regression covers network changes without relabeling retained results. Debug and desktop build-for-testing pass. | Run the hosted regression and a fresh signed app scan. Confirm the new archive date, target, gateway row, and open ports. Shell probes do not prove the signed app privacy context. See `tmp/redesign/logs/26-nettoys-scan.md`. |
-| Build verified; signed review pending | Correct the NetToys round 2 signed-review findings. | `af4bb86d` makes uptime cover the selected range and count gateway or internet outages, with regressions for both outage agreement and the unsampled prefix. `136ba287` makes Wi-Fi and SSH Anchor lists fit their rows and corrects the Anchor header, switch, and form grid. `ae2d282c` follows the active subnet for the default Scanner target while preserving explicit targets and gives an all-down scan a clear empty result. `70c9b132` aligns status cells, permission actions, timeline legend color, row pitch, indexes, and page copy. A clean current-commit copy passes Debug and desktop build-for-testing. | The orchestrator must capture the signed dark and light pages and run the focused tests. Shared table, menu, scroller, ghost-button, header-gap, and tab-line defects remain with foundation. |
-| Code complete; visual timing check pending | Keep NetToys headers, controls, and status areas fixed while only list rows scroll, and keep page changes within 100 ms. | SSH Anchor, Wi-Fi Priority, and Network History use non-scrolling pages with card-owned row scrolling. SSH config, helper state, history archives, timeline summaries, scan summaries, and display labels load or build on utility tasks. List rows use stable IDs and no per-row tooltips. IP Scanner already owns its table scrolling; separate commit `95077be` caches its table presentation. | Measure page switches, profile Scanner scrolling, and inspect every fixed region in the signed build. |
-| Build verified; integration pending | Embed shared NetToys settings cards without a second page or gutter. | `725b398` keeps Background helper, Permissions, and Data in the `NetToysSettingsView()` 16pt card stack. Loading now stays inside the first card. The NetToys window retains its `OnePlusPage` and Scanner tab. Density remains inherited, with regular as the package default. Debug and desktop test compilation passed. | Foundation must remove the dispatcher's `OnePlusPage` wrapper. Signed review remains. |
-| Code complete; visual checks pending | Apply round 2 screenshot corrections to NetToys. | `36f710c` bounds the seven default scanner columns within 1192pt and adds value tooltips plus a hosted native-column layout check. `fa73849` aligns Add Anchor with the trailing control edge. `0992a44` combines permissions into one card with a 40pt header and three 56pt rows, preserving the permission actions. Debug and desktop test compilation passed. | New signed dark/light captures and hosted execution of the layout check remain. Shared window, table, tint, focus, density, and contrast fixes belong to the foundation. |
-| Code complete; visual checks pending | Rebuild all NetToys pages with DESIGN.md v14 at 1440 by 900 points and a 200-point sidebar. | `6abfe1d` covers Scanner, SSH Anchor, Wi-Fi Priority, Network History, Settings, How to use, and every scanner and Anchor sheet. Shared cards, native table behavior, neutral online states, and a Canvas timeline replace earlier size, color, sheet, and sidebar styling requirements. Debug compilation passed. Scanner persistence, permission gates, host-key identity, SSID identity, and recovery paths remain. | Foundation fixed the shared scrollbar test import. Lead-agent dark/light captures and installed interaction checks remain. |
-| Verify | Audit NetToys logic and keep idle and import work light. | The signed installed `e1b9384` app and helper source stamps match. With no transfer or NetToys probe pending, the app, rclone, login helper, and neighbor daemon each sampled at 0.0% CPU; the warm-minute helper average was about 0.17% of one CPU. NetToys retains its required heartbeat and network-history cadence. The probe tick now updates in-memory status while the existing heartbeat publishes it, avoiding a second atomic file write every two seconds; recovery scans still publish progress immediately. Hosted run `36108595241` passed 861 tests with five skips and zero failures. Scanner imports have byte and entry limits, parse selected files off the main actor, ignore full-line comments, and preserve address-limit errors. The Wi-Fi page checks cancellation after its sleep, so closing it performs no final status-file read. | Exercise a selected-file import in the physical signed app. |
-| Verify | Keep large NetToys exports responsive and saved scans importable. | Scanner export and append, plus archived-scan CSV export, format and write on utility tasks. Scanner export shows progress and prevents overlapping writes. The saved-results encoder rejects output larger than its 32 MiB importer limit with a recovery message. The boundary regression passes in hosted run `36096121530`. | Exercise a large export, append, and saved-file round trip in the signed app. |
-| Done | Add persistent, expandable NetToys tray activity. | `d06c96c` adds independent AppStorage-backed SSH Anchor, Wi-Fi Priority, and Network History disclosures, bounds every preview to five items, and routes each footer to its complete NetToys page without adding a poller. Focused layout and rendered expanded-state tests pass, and the exact signed installed `d06c96c` build matches clean HEAD. | None. |
-| Verify | Make NetToys useful from the tray and add page-level SSH Anchor and Wi-Fi Priority switches beside Refresh. | `7504bc2` gives the tray current-network status plus persisted SSH Anchor, Wi-Fi Priority, and Network History controls without another poller. It adds one backward-compatible global SSH Anchor gate that preserves per-anchor choices but skips all anchor probes while off. SSH Anchor and Wi-Fi Priority pages place their switch immediately before Refresh. The configuration regression and rendered dark tray pass. | Inspect both page switches and the tray controls in the exact signed installed build, then confirm the helper stops the corresponding request class while each switch is off. |
-| Done | Clear Network History from both Network History and NetToys Settings. | Both surfaces use `NetToysHistoryViewModel.clear()`, show the same destructive confirmation, clear uptime, transitions, and recent IP scans, and leave recording enabled for a fresh history. The signed installed `3c20d0a` build cleared all three stores, disabled both reset actions, reset IP Scanner results to zero, and showed the empty uptime, recent scans, and transitions states. The complete test suite passes. | None. |
-| Superseded | Replace the current NetToys icon with a clearer product icon. | The earlier SV02 pixel monitor was replaced by the 2026-09-25 icon refresh request. | The new icon row below owns the current result. |
-| Verify | Use the new NetToys network-module icon. | `NetToysLogo` is a 512px RGBA asset with three connected ports and one coral cable. Focused icon and Raycast checks pass. | Inspect launcher and Dock in the final signed app. |
-| Done | Use IP Scanner, SSH Anchor, Network History, and Wi-Fi Priority destinations. | `6b837a6` adds the first three compact destinations. `552f4e8` adds Wi-Fi Priority for ordered saved-network failover and the system Instant Hotspot fallback. | None. |
-| Done | Keep the NetToys sidebar, scanner controls, and SSH Anchor form compact and aligned. | `362597b` removes the redundant sidebar section label, places the first destination directly below the shared title strip, uses a native small `NSSearchField` beside the result filters, and changes SSH Anchor to one label column plus one stable content column. `9cc115d` pins the host menu to the same control edge as Identity and Device. Computer confirmed the scanner and SSH Anchor pages in the signed installed build. | None. |
-| Verify | Keep the Tailscale device chooser compact and easy to scan. | The chooser uses a 360-point width, a 44-point title row, 40-point peer rows, quiet separators, online status dots, the shared hover and pressed style, and a content-based height capped at 260 points. The deterministic layout regression proves 93 points for one peer, 257 for five peers, and the 260-point scrolling cap from six peers. The exact installed `a39cc93` build showed five real peers at the intended 257-point height with complete rows and no clipping. | Verify the six-or-more-peer scrolling cap and peer hover and pressed feedback in the latest exact installed build. |
-| Verify | Put the shared visible Close control in both SSH Anchor sheets. | The deterministic sheet-structure regression proves that the Tailscale chooser and Key Access sheet each use `UtilityModalCloseButton`. In the exact installed `a39cc93` build, the Tailscale sheet kept Close in its fixed header; Close dismissed the sheet and left the anchor unchanged. | Open the Key Access sheet in the latest exact installed build. Confirm Close stays visible with loading and error content. |
-| Done | Make every NetToys stepper change once per press. | `8eee13e` gives scanner settings and random target count one shared native small AppKit stepper with press-and-hold autorepeat disabled. The native-control regression test passes. In the signed installed `f861879` build, one up click changed TCP timeout from 200 to 300 ms, and one down click restored 200 ms. | None. |
-| Verify | Fill IP Scanner rows as each field arrives and give the table more window space. | The scanner publishes liveness and port results first, then protocol and hostname enrichment as each resolves, followed by MAC/vendor data. Protocol fetches start alongside a PTR lookup capped at 1.5 seconds. Hosted run `36096121530` passes the streaming and bounded-wire-data checks; the one-host local fixture fell from 35.1 to 1.57 seconds. The view model merges by IP, rejects stale scan callbacks, and preserves unrelated rows during selected-host rescans. Comments are sortable and part of full-detail exports. NetBIOS reports available workgroup, user, computer, and MAC details. NetToys defaults to 1,280 by 800 points with a 1,100 by 700 point minimum. In the earlier exact installed `c797014` build, a live `192.168.31.0/24` scan streamed progress, completed 254 addresses in 6.2 seconds, and enriched four live devices. | Repeat the signed scan at the minimum window size and confirm names on the real network. |
-| Done | Reimplement the useful Angry IP Scanner workflow without copying GPL source, text, or art. | `13be002`, `6b837a6`, `77e683d`, and `84a8533` add bounded native IPv4 scanning; single, range, CIDR, list, random, hostname, and file targets; global and per-target ports; progress; sorting; filters; search; cancellation; details; comments; favorites; history; and six export formats. CIDR and random inputs omit network and broadcast addresses. | None for the requested native workflow. |
-| Done | Keep scanner work persistent across destination changes and app relaunches. | `4dbe863` moves scanner ownership to the NetToys window, restores the latest completed archive when the model is recreated, and persists target, ports, filter, and search. `a6eb399` also persists the table sort field and direction. Existing scanner preferences, columns, openers, favorites, annotations, and scan archives remain durable. All 49 focused NetToys tests pass, including recreation with a reversed hostname sort, and the signed app restored the completed gateway scan after replacement and relaunch. | Transient scan progress, errors, and open sheets intentionally reset. |
-| Done | Populate neighboring MAC addresses and explain permission failures. | `e1f5f2b` requests Local Network access on use. `fe89b72` and `c3763b7` reject scrubbed route replies and parse the native neighbor cache. `1f7c394` adds the macOS-approved fallback for signed apps: an on-demand launch daemon, enabled at first scan with visible Background Item approval state, returns a zero-argument raw snapshot over mutually code-signing-restricted XPC. The app keeps only requested addresses on the active interface and accepts that signed daemon across app updates instead of rejecting it for an obsolete build stamp. Incomplete, zero, and privacy-placeholder values remain rejected, and the focused regression passes. | macOS requires the user to approve the helper once in Login Items; the app opens that exact pane. |
-| Done | Keep NetToys background-approval recovery usable while the tool is off. | `73c6042` keeps NetToys Settings interactive while the tool is disabled, so Open Login Items can restore the login helper and MAC-address daemon approvals. The recovery message identifies every MacPowerToys entry under Background App Activity, and the regression plus complete test suites pass. In the signed installed build, both entries were enabled, NetToys stayed on, the helper heartbeat matched `73c6042`, MAC Address Access changed to Allowed, and a fresh gateway scan returned its canonical non-placeholder MAC instead of `macOS restricted`. | None. |
-| Done | Complete the native scanner controls, fetchers, result actions, persistence, and automation inventory. | `ad49590` through `f2ad983` add optional ICMP details, MAC vendors from the bundled IEEE registry, HTTP server and proxy detection, NetBIOS, a custom text and regular-expression fetcher, safe editable URL openers with previews, append-safe exports, native column order and visibility, saved-result import and deletion, next and previous result navigation, copy actions, scan statistics, combined ICMP and TCP liveness, separate timeouts, adaptive TCP timeout, and validated deep-link prefills. The 34 focused NetToys tests and focused routing tests pass. | None. The native app is IPv4-only and gives an explicit error for IPv6. It does not load Angry IP Scanner Java plugins. It uses native configurable fetchers and openers. It uses validated GUI prefills instead of a separate headless scan and export program. |
-| Done | Show every literal SSH alias and create an SSH Anchor draft from a scan result. | `d346c89` expands each literal alias from a multi-alias Host block, keeps hostname and IPv4 HostName values, and uses the SSH default port 22 when Port is absent. Wildcard and negated Host patterns stay excluded because they do not name one editable host. The scanner More menu and row menu open SSH Anchor with the address, MAC, hostname, and matching alias filled. The signed app showed all 23 literal aliases in the current config. A live scan of `192.168.1.18` selected `jet` and filled its address, port, and detected hostname. | None. |
-| Verify | Add SSH Anchor for local devices whose IP address changes. | `362cc86`, `8e648a7`, and `6fedddd` check the selected TCP port every 2 to 3 seconds in the helper. `180d425` adds one-click automatic enrollment, enables the helper, and scans the subnet of the current default connection when recovery is needed. A unique match gets pre-write and post-write port verification. The current source gives every new and existing anchor a stable OpenSSH host-key identity, accepts its first key without a Yes prompt, ignores address reuse, and still blocks a real key change. Scanner-driven enrollment now uses the selected scan address instead of the stale SSH address and writes that address with the managed host-key policy in one atomic edit. Focused parser, selected-address, atomic-write, idempotence, and recovery tests pass. | Verify the signed login helper across two connections with an enrolled local device, then confirm SSH needs no host-key confirmation after the address changes. |
-| Verify | Keep SSH key-only after an anchored device changes address. | Automatic enrollment now checks `BatchMode=yes`, requests the SSH password once in a secure app sheet only when the public key is rejected, installs the selected key through system OpenSSH, and records success only after a key-only recheck. The password uses a private one-use FIFO and is never placed in arguments, environment, configuration, or logs. Windows standard-user and administrator key files are supported with SID-based administrator ACLs; Unix uses `ssh-copy-id`. Dismissing the sheet leaves a compact inline Retry action while the existing key button remains available. Public-key, alias, command, Windows encoding, askpass, dismissal-retry, and legacy configuration regressions pass. With exact installed `77dc585`, the helper reports the anchor healthy at its local address. `ssh -G win1` reports its stable host-key alias, `accept-new`, and `CheckHostIP no`, and key-only SSH passes. | Change the anchored local address for `win1` and confirm key-only access still passes. |
-| Verify | Prefer a local SSH Anchor, fall back through Tailscale, and switch back without flapping. | `4e9df5f` adds an opt-in per-anchor checkbox and chooser, pins the selected node ID, refreshes its current Tailscale IPv4 endpoint, falls back after two local failures, and returns after three verified local successes plus a 30-second dwell. `800bdd0` gates cached local-hostname recovery. `5a1fd89` also gates newly discovered local candidates and permits a switch only when the route monitor returns `useLocal`. Cached private addresses must belong to the active subnet. Scanner-driven setup keeps the selected local endpoint. The Tailscale child uses `TERM=dumb` so `status --json` stays in CLI mode. The 61-test NetToys recovery class and the combined 543-test suite pass. | Exercise one signed installed anchor across a real local outage and recovery using a disposable SSH host. |
-| Verify | Keep SSH Anchor compact and stable while helper, inspection, identity, and anchor state changes. | `5ec34ce` gives helper status, labels, inputs, metadata, progress, status, and actions stable columns or reserved widths. Inspect keeps its label while only its icon changes. Configured anchor rows now use the same 6pt vertical inset as adjacent compact NetToys lists. The normal signed installed build kept every row aligned before and after a live inspection. | Inspect the configured-anchor spacing and minimum 1,100pt window width in the latest exact installed build. |
-| Done | Support stable and randomized MAC address identity. | `6b0ffc4` and `362cc86` use exact canonical MAC matching in stable mode. `180d425` lets automatic setup retain both learned MAC evidence and the hostname's first label, so DNS suffix changes across connections do not break identity. Missing or ambiguous evidence never matches. All 48 focused NetToys tests pass. | None. |
-| Done | Preserve the SSH config during recovery except for the selected `HostName` token. | `bc5e6e7` splices only the expected token, preserves CRLF, comments, indentation, stanza order, unrelated bytes, permissions, and a config symlink, writes through a same-directory atomic replacement, keeps private backups, detects concurrent change, and verifies the replacement. `6fedddd` restores the original token when post-write port verification fails. Enrollment may prepend one marked, idempotent host-key policy so later address changes do not alter SSH trust. | None. |
-| Done | Track gateway, internet availability, and Wi-Fi SSID by active network. | `5ec34ce` adds a backward-compatible optional SSID to live snapshots and transition history through public CoreWLAN. `a3e85b4` makes SSID the Wi-Fi identity, ignores private gateway changes on the same Wi-Fi network, waits through redacted SSID samples, emits SSID-only network changes, and keeps `interface | gateway` as the route fallback. `2132bc7` shows only the SSID whenever one exists and keeps route details only for the fallback. `1857966` migrates legacy events and transition labels when their exact route pair maps to one unambiguous stored or current SSID; unknown or ambiguous routes keep the fallback. All 45 NetToys tests pass. The signed helper reported `ssid: BatcaveAlt`. | None. |
-| Done | Request the Location permission needed for SSID labels and show its state and recovery actions. | The main app reads the existing Core Location status during refresh and requests authorization only from the visible Allow Location Access action; opening NetToys, refreshing it, and app activation never trigger the macOS prompt. Allowed access needs no action, while denied or restricted access opens System Settings. The helper retains its independent signed background permission path. The focused explicit-action regression and complete suite pass, and repeated switching in the exact signed installed build produces no permission dialog. | None. |
-| Done | Show useful SSID uptime and outage history instead of a generic up-and-down reachability plot. | `0c5aa1d` replaces the global line-and-dot plot with one duration-proportional timeline per SSID, direct uptime percentage, outage count, total downtime, and recent outage sentences with exact or ongoing durations. Unknown and disconnected time is excluded, wired networks retain the `interface | gateway` fallback, legacy recovery repair remains, and a network switch is not counted as an outage. All 44 focused NetToys tests pass. The exact signed installed `cd793b2` build showed a `BatcaveAlt` row plus two historical outages lasting 11 minutes 9 seconds and 1 minute 4 seconds. | None. |
-| Done | Add ordered Wi-Fi failover with an iPhone hotspot fallback. | `552f4e8` adds a Wi-Fi Priority page, saved SSID ordering, a 5 to 60 second threshold with a 10-second default, nearby-network scanning, saved-network joining, a 30-second retry cooldown, helper status, and a final macOS Auto-Join Hotspot row. It stores no Wi-Fi passwords. All 46 focused NetToys tests pass, including backward-compatible configuration, timing, rotation, and cooldown checks. The signed installed `7962d61` build showed all four destinations, current SSID `Batcave2.4G`, failover off, the 10-second threshold, an empty saved-network order, and iPhone Personal Hotspot last. The running helper matched the installed commit and reported allowed SSID access plus reachable Internet. | Instant Hotspot remains system-managed because macOS exposes its Auto-Join setting but no public app API for invoking it. |
-| Done | Require a bundled login helper whenever NetToys is enabled. | `8e648a7` embeds `MacPowerToysNetHelper.app` under `Contents/Library/LoginItems`. `74ecb5f` makes enablement transactional through `SMAppService`, requires enabled status and a fresh helper heartbeat, unregisters on disable, and provides no main-app monitor fallback. `81e7595` adds an exact source-commit handshake and restarts a stale helper after app replacement. In the signed installed build, launchd reported the helper as running. The heartbeat advanced after the main app exited, and the live helper commit matched the installed app and helper bundle. | None. |
-| Done | Integrate NetToys with MacPowerToys. | `6b837a6` adds the launcher, scene, deep link, icon, stable window identifier, and Dock icon. `b61b0b3` adds the built Raycast launcher. `f2ad983` adds validated target and port prefills. `95fc954` registers NetToys with the shared window-state manager, with deterministic position, display, and size persistence coverage. Registry, routing, icon, and window tests pass. In the exact installed `81429c0` build, a background deep link displayed target `127.0.0.1` and ports `22,443`, the saved window frame remained present, and the app plus embedded helper commits matched signed clean HEAD. | None. Visible Raycast rendering and the NetToys cold launch remain in the central Raycast rows. |
-| Done | Open NetToys and System Monitor without blocking the launcher. | Baseline signed full-tree timings were 1,099 ms for Awake, 1,325 ms for System Monitor, and 1,550 ms for NetToys. The launcher yields a cancellable loading shell for both heavy settings destinations, keys that subtree by tool ID so every switch releases the previous page and resets readiness, lazily builds System Monitor rows, and keeps NetToys archive decoding on a utility task. Repeated NetToys/System Monitor switching in the exact signed installed build responds without retaining the previous surface. The identity, off-main loading, lifecycle, rendered tray, and complete suite checks pass. | None. |
+| Verify | Align Scanner cells and remove standalone row chrome (T089-T091). | `7ae93446`, `ed44cc0d`, `3145a948`: shared cell geometry in all 15 columns, empty scan is one open 44pt row. | Hosted checks, signed interaction. Report `w3-audit-nettoys.md`. |
+| Verify | Audit every NetToys feature; apply the horizontal density and instant-motion correction. | `c125c479`, `f7294b61`, `5d5b5bca`, `b9220f87`: settings edits, Wi-Fi subprocess bounds, scanner sort, all-down rows, import, comments, archive, history. A permitted /24 scan returned 254 rows. | Hosted tests, signed install, both appearances. Run a fresh signed scan (the unsigned probe got EHOSTUNREACH for the gateway). Report `w1-audit-nettoys.md`. |
+| Open | Run NetToys standalone and as the MacPowerToys package, with tagged OnePlusUI shared by both. | NetToys `8ed9d38` to `104224c` move core, views, menu, resources and tests; 99 tests pass; OnePlusUI 1.0.0 is pinned. | Publish both 1.0.0 tags, generate lockfiles, apply `tmp/redesign/nettoys-final.patch`, remove the unused in-tree OnePlusUI after remote builds. Verify clean clones, signed helper migration, both hosts, permissions, installed stamps. Report `w9-nettoys-extract.md`. |
+| Verify | Show current network data and quick actions in the main panel (route, SSID, IPv4, bounded gateway probe, Scan network, Copy IP). | Reuses parser and cancellable subprocess code. No poller added. | Check Wi-Fi, wired, missing permission, no route, gateway timeout, both actions, first frames, idle work. |
+| Verify | Add current-network tiles to the main menu panel, prepared off the main thread. | Panel keeps configuration, helper status, five recent anchors and failures across tabs. | Check loaded, empty, error, expanded states in both appearances. |
+| Verify | Resolve the capture findings through round 6 (T=16, 24pt bottom bound, trailing chevrons, Scanner inset, permissions, natural short lists). | `60a0890` shows "No scans in this period" when saved runs exist outside the range. | Hosted regression, signed empty-period copy, popups, focus modes, populated Scanner cells, active scrollers, latency, a live scan. Report `25r9-nettoys.md`. |
+| Verify | Correct round 3 findings (permission actions, Automatic enrollment alignment, uptime chart, outage viewport). | `61c1a0a`, `6dfebb2`, `371941d`. | Signed dark/light review and row scrolling. |
+| Verify | Keep automatic scans on the active subnet; label retained results by their completed target. | `d3e2397`, `7131746`. The round 7 capture still showed an old archive from `192.168.0.255/24`. | Hosted regression and a fresh signed scan: confirm archive date, target, gateway row, open ports. Report `26-nettoys-scan.md`. |
+| Verify | Correct round 2 review findings (uptime counts outages, Anchor lists, subnet default, status cells, row pitch). | `af4bb86d`, `136ba287`, `ae2d282c`, `70c9b132`. | Signed dark and light captures and focused tests. |
+| Verify | Keep headers, controls, and status fixed; only list rows scroll; page changes within 100 ms. | SSH Anchor, Wi-Fi Priority, History use card-owned scrolling; loads run on utility tasks; `95077be` caches the Scanner table. | Measure page switches, profile Scanner scrolling, inspect fixed regions. |
+| Verify | Embed shared settings cards without a second page or gutter. | `725b398`: `NetToysSettingsView()` keeps Background helper, Permissions, Data in one 16pt stack. | Confirm the dispatcher adds no extra `OnePlusPage`; signed review. |
+| Verify | Round 2 screenshot corrections (scanner columns, Add Anchor edge, one permissions card). | `36f710c`, `fa73849`, `0992a44`. | Signed captures and the hosted column-layout check. |
+| Verify | Rebuild all NetToys pages with DESIGN.md v14 at 1440 x 900 with a 200pt sidebar. | `6abfe1d` covers every page and sheet. | Captures and installed interaction. |
+| Verify | Keep NetToys idle and import work light. | Installed `e1b9384` idled at 0.0% CPU; probe tick no longer writes a second file every two seconds; imports have byte and entry limits. | Exercise a selected-file import in the signed app. |
+| Verify | Keep large exports responsive; saved scans stay importable. | Export formats on utility tasks; 32 MiB limit with recovery message. | Large export, append, and round trip in the signed app. |
+| Verify | Make NetToys useful from the tray; add SSH Anchor and Wi-Fi Priority page switches before Refresh. | `7504bc2`: global SSH Anchor gate keeps per-anchor choices and skips probes while off. | Check both page switches and tray controls; confirm the helper stops the request class while a switch is off. |
+| Verify | Use the new NetToys network-module icon. | 512px RGBA asset. | Inspect launcher and Dock in the signed app. |
+| Verify | Keep the Tailscale device chooser compact (360pt, 40pt rows, height cap 260pt). | Layout regression; installed `a39cc93` showed five peers at 257pt. | Six-or-more-peer scrolling cap; hover and pressed feedback. |
+| Verify | Put the shared Close control in both SSH Anchor sheets. | Structure regression; Tailscale sheet verified in `a39cc93`. | Open Key Access sheet; confirm Close stays visible with loading and error content. |
+| Verify | Fill IP Scanner rows as each field arrives; give the table more space. | Streaming merge by IP; one-host fixture 35.1 to 1.57 seconds; default window 1,280 x 800. | Repeat the signed scan at the minimum window size; confirm names on the real network. |
+| Verify | Add SSH Anchor for local devices with changing IPs (2-3 second port checks, one-click enrollment, host-key identity, atomic edit). | `362cc86`, `8e648a7`, `6fedddd`, `180d425`; parser, selected-address, atomic-write, recovery tests pass. | Verify the signed login helper across two connections; confirm SSH needs no host-key confirmation after the address changes. |
+| Verify | Keep SSH key-only after an anchored device changes address (secure one-use password sheet, `ssh-copy-id`, Windows ACLs). | Regressions pass; `77dc585` helper healthy; `ssh -G win1` shows stable alias, `accept-new`, `CheckHostIP no`. | Change the anchored local address for `win1` and confirm key-only access. |
+| Verify | Prefer a local SSH Anchor, fall back through Tailscale, switch back without flapping. | `4e9df5f`, `800bdd0`, `5a1fd89`; 61-test recovery class passes. | Exercise one signed anchor across a real local outage with a disposable SSH host. |
+| Verify | Keep SSH Anchor compact and stable while state changes. | `5ec34ce`: stable columns and reserved widths; 6pt row inset. | Check row spacing and the 1,100pt minimum width. |
+
+Done:
+
+| Request | Evidence |
+|---|---|
+| Persistent, expandable tray activity (SSH Anchor, Wi-Fi Priority, History; five-item previews). | `d06c96c` |
+| Clear Network History from History and Settings with one confirmation. | `3c20d0a` |
+| Destinations: IP Scanner, SSH Anchor, Network History, Wi-Fi Priority. | `6b837a6`, `552f4e8` |
+| Compact sidebar, scanner controls, and SSH Anchor form. | `362597b`, `9cc115d` |
+| Every NetToys stepper changes once per press. | `8eee13e` |
+| Native IPv4 scanner workflow (targets, ports, progress, filters, details, comments, favorites, history, six export formats), written without Angry IP Scanner source. | `13be002`, `6b837a6`, `77e683d`, `84a8533` |
+| Scanner work and sort persist across destinations and relaunch. | `4dbe863`, `a6eb399` |
+| Neighbor MAC addresses with a signed on-demand daemon; permission failures explained. | `e1f5f2b` to `1f7c394` |
+| Background-approval recovery works while the tool is off. | `73c6042` |
+| Scanner fetchers, openers, vendor registry, import, navigation, statistics, deep-link prefills. | `ad49590` to `f2ad983` |
+| Literal SSH aliases; SSH Anchor draft from a scan result. | `d346c89` |
+| Stable and randomized MAC identity. | `6b0ffc4`, `362cc86`, `180d425` |
+| SSH config preserved except the selected `HostName` token. | `bc5e6e7`, `6fedddd` |
+| Gateway, internet, and Wi-Fi tracking by SSID. | `5ec34ce`, `a3e85b4`, `2132bc7`, `1857966` |
+| Location permission requested only from the visible action; state and recovery shown. | Explicit-action regression |
+| SSID uptime and outage timeline. | `0c5aa1d` |
+| Ordered Wi-Fi failover with iPhone hotspot fallback (macOS manages Instant Hotspot; no public API to invoke it). | `552f4e8` |
+| Bundled login helper required while NetToys is enabled, with source-commit handshake. | `8e648a7`, `74ecb5f`, `81e7595` |
+| NetToys integrated with the launcher, scene, deep link, icon, window state, Raycast. Visible Raycast rendering stays in the central Raycast rows. | `6b837a6`, `b61b0b3`, `95fc954` |
+| NetToys and Task Manager open without blocking the launcher. | Loading shell, off-main archive decode |
 
 ## Input Devices
 
-Round 18 tray identities, run 72, 2026-10-02: `cf56cc76` places each glyph
-beside one name/transport stack with a 2pt gap. State and profile stay on
-the trailing side. Actual-source checks fail before the fix and pass after
-it for mouse and trackpad, with and without battery, in both appearances.
-Cards keep their 44pt and 58pt heights. The shared row hover stays. The
-single tests-mode gate passes. Signed hover and visual review remain with
-the orchestrator. Report: `tmp/redesign/logs/w13-fix18-app.md`.
+Open verification:
 
-Scroll reverse, run 52, 2026-10-01: `59122487` fixes the saved 3.0x
-endpoint. The native slider stored `3.0000000000000004`; the strict range
-guard added in `57acd38c` rejected the mouse profile before reversal or
-smoothing. The transform now accepts one floating-point step beyond each
-endpoint and honors the master gate. The source-derived regression fails
-before the fix and passes afterward for both axes, mouse and trackpad,
-smoothing on/off, and master/profile gates. The installed `38158c11` has
-an enabled scroll tap. The one compile gate fails in unowned
-`OnePlusType.swift:6` on `NSFont` concurrency safety. The orchestrator owns
-the shared build repair, hosted tests, signed installation, and real wheel
-verification. Report: `tmp/redesign/logs/w4-scroll-fix.md`.
+- Scroll reverse (`59122487`): the saved 3.0x endpoint stored
+  `3.0000000000000004` and the strict range guard rejected the mouse profile.
+  The transform now accepts one float step beyond each endpoint. Open: real
+  wheel verification on the signed build (installed `38158c11` has an enabled
+  tap), hosted tests. Report `w4-scroll-fix.md`.
+- Tray identities (`cf56cc76`): signed hover and visual review.
+- Accessibility revocation during an active tap or queued smoothing (T083):
+  verify in an isolated session. Revoke trust during wheel smoothing, require
+  zero interception and visible recovery, then regrant by explicit action.
 
 | Status | Request | Evidence | Remaining work |
 |---|---|---|---|
-| Source complete; single compile gate queued | T082: remove direct-row card insets and duplicate Input Devices panel headers. | `fa3c0e3d` applies zero onePlusCardPadding to direct panel rows, collapsible profiles, master/recovery rows, and the selector. True profile/device cards keep their insets. One Devices header has trailing count, Refresh, and chevron; the repeated Connected devices title and rule are removed. Existing saved choices and `d1bea33b` defaults remain. The source-derived header renders at 338 x 40 pt in Light and Dark. All four changed files pass a focused type check with existing dependency modules. Initial full builds fail in unowned concurrent edits. Under the owner batch rule, only `audit-input-r11-tests-retry1.log` remains queued; it also compiles the Debug app. | Review the queued gate result, run hosted InputDevicesTests, then check shell-edge alignment, independent Refresh/disclosure clicks, hover, and keyboard access in the signed build. Report: `tmp/redesign/logs/w3-audit-input.md`. |
-| Verify in isolated session | T083: verify Accessibility revocation and explicit regrant during scroll interception. | Source trace confirms Refresh rereads trust and stops the tap when trust is absent; Grant requests access explicitly and Settings remains visible while permission is absent. This does not prove revocation during an active tap or queued smoothing. No permission or tap was changed on the owner desktop. | Orchestrator: in an isolated session, revoke trust during wheel smoothing, require zero interception and visible recovery, then regrant and retry only by explicit action or confirmed change. audit-applets owns capture preflight and Screen Recording revocation in TextExtractorService. Report: `tmp/redesign/logs/w3-audit-input.md`. |
-| Build verified; signed review pending | B6 and S5: make the panel a complete collapsible control surface and audit every Input Devices feature. | Devices, Mouse, Trackpad, and Scroll device have separate saved disclosures. Both panels use the same seven profile rows and one "Use custom scrolling" switch with a help-glyph explanation. The density correction puts metadata on the trailing side, removes standalone control and disclosure cards, and uses compact switch columns. Hover and page changes are instant. HID refresh runs on a utility task and reuses the tap. Disablement rejects queued smoothing. Override status, missing IDs, reported location and input-report size, unknown keyboard defaults, and invalid saved speed are corrected. Source commits `57acd38c` and `64b510fb`. Debug app and both test bundles compile in the shared gate at `1863f6d7`; compilation covered all six owned files. Log: `tmp/redesign/logs/motion-sweep-debug-retry1.log`. The read-only source probe finds both real pointing devices and passes policy checks. | Run hosted InputDevicesTests, then install and verify every control, disclosure persistence, permission recovery, hardware behavior, first frames, focus, idle CPU, and timing. Report: `tmp/redesign/logs/w1-audit-input.md`. |
-| Build verified; signed review pending | Keep the Input Devices main panel compact on first open. | Review of signed `198055e4` found a 1,146 pt panel with all sections expanded. `d1bea33b` defaults Devices to expanded and Mouse, Trackpad, and Scroll device to collapsed only when their saved keys are unset. Existing choices are preserved. Collapsed profile headers show live direction and speed on the trailing side; Devices keeps its count and Scroll device keeps the selection. A focused header regression covers profile changes and expanded counts. Both gated app/test-bundle builds pass at `d1bea33b`; logs: `tmp/redesign/logs/audit-input-collapse-debug.log` and `tmp/redesign/logs/audit-input-collapse-tests.log`. | Run hosted InputDevicesTests, then verify fresh defaults and saved expand/collapse choices in the signed installed app. Report: `tmp/redesign/logs/w1-audit-input.md`. |
-| Build verified; signed review pending | Put device and battery summaries before the main panel's controls. | Shared menu cards show cached device names, connection, reported battery bars, control state, direction, and speed. Refresh uses the existing manager. Show controls expands `InputDevicesSettingsContent()` without a second gutter. The separate panel reuses the same view. | Check reported and unknown batteries, Refresh, permission actions, the quick switch, and every expanded setting in the signed build. Report: `tmp/redesign/logs/24-panels-tabs.md`. |
-| Captures reviewed; live checks pending | Review Input Devices in the round 6 signed captures. | All six `3e33de2` captures retain readable device rows, both complete profiles, and a fixed Scroll device footer with 24pt bottom clearance. Chrome uses C=27 and shared titles start at T=16 in both appearances. No owned source change was needed in this round. | Live scrolling, keyboard access, hardware behavior, compact panel height and first-frame layout, idle CPU, and latency remain unverified. Core must move synchronous HID enumeration from `refresh()` into a cancellable utility task before the speed gate can pass. See `tmp/redesign/logs/25r9-tweaks.md`. |
-| Build verified; signed review pending | Restore the round 3 Scroll device footer clearance. | `3860c82` moves `InputScrollDeviceBar` from the fixed body stack into the shared page footer slot. The profile scroller stays separate and the compact panel keeps the same settings content. Debug and desktop test compilation pass. | Check the footer at y636 in the signed 1080 x 660 window. Foundation owns the native scroller reservation. See `tmp/redesign/logs/16r6-tweaks.md`. |
-| Build verified; visual checks pending | Correct the Round 5 Input Devices findings. | The regular Scrolling page places Mouse and Trackpad profiles in equal columns while the compact panel keeps the same cards stacked. The system control card is one 56pt row, the device footer stays fixed, device cards use two top-aligned columns, missing values are omitted, and the built-in keyboard has no false battery row. Healthy states use the neutral status style and About uses the app version subtitle. Debug and desktop test compilation pass. | Inspect Devices, Scrolling, About, and the compact panel in the signed build. The 41pt scroll gutter and 28pt header gap belong to the OnePlusUI foundation owner. |
-| Build verified; visual checks pending | Apply the owner's round 3 page inset, fixed-footer, custom-select, and speed rules to Input Devices. | The Scrolling page has one shared page gutter, a card-only row scroller, and a fixed `InputScrollDeviceBar`. The main-window compatibility wrapper no longer adds a page or padding. The duplicate appearance refresh is removed, keyboard preference loading runs on a utility task, and Debug plus desktop test compilation pass. Every value selector is `OnePlusSelect`. | Measure page switching and inspect the full window and compact panel in the exact signed build. The Core-owned HID refresh still needs a utility-task API. |
-| Code complete; foundation integration pending | Expose one Input Devices settings card stack for regular tool pages and the compact menu panel. | `InputDevicesSettingsContent()` contains only the four cards with 16pt gaps. The Scrolling page wraps it in `OnePlusPage`; the existing compact panel wrapper uses the same content. | The foundation must dispatch `InputDevicesSettingsContent()` directly, then the orchestrator must inspect both hosts. |
-| Code complete; visual checks pending | Correct the round 2 Input Devices screenshot findings. | `62ddf9b` uses full-width key-value rows in device cards, top-aligns adaptive grid items, removes non-metric grain, restores the 16pt Scrolling content gap, places Scroll device in a card after the profiles, and removes explicit small button sizes. The Debug app and desktop test bundles compile. | The orchestrator must recapture Devices, Scrolling, About, and the compact menu panel in dark and light. Shared window, scroller, segmented, row, status, tint, and contrast fixes remain with the foundation. |
-| Verify | Redesign Input Devices on the fixed 1080 x 660 OnePlusUI canvas. Keep one adaptive settings implementation for the 338pt panel and full Scrolling page. Add Devices, Scrolling, and About page routes. | The window uses the 200pt shared sidebar, regular page density, mouse, trackpad, and keyboard cards with connection and battery status, and per-device direction, speed, horizontal, Shift, and smoothing controls. The shared panel defaults to compact density and keeps the Scroll device selector at the bottom. The Debug app and desktop-test bundle compile. | Inspect every route in dark and light, then verify real mouse and trackpad behavior in the installed build. |
-| Verify | Align the actual Scroll device picker edge with the shared trailing gutter. | `7504bc2` removes the nested full-width frame and `b88a40b` trailing-aligns the intrinsic native menu inside its 160pt frame. The rendered 360pt tray proves the picker's painted right edge and profile cards both end at x = 340. The shared bar serves both hosts. | Inspect the tray and Input Devices window in the exact signed installed build. |
-| Done | Keep the Input Devices launcher introduction compact at the top. | The shared detail body places the description and menu-bar selector directly below the tabs with no Input Devices-only flexible spacer. The deterministic layout regression proves that the introduction precedes flexible content for every launcher detail. | None. The installed five-detail visual matrix remains in the main request list. |
-| Done | Choose no Input Devices menu item, the combined popover, or a separate icon. | The shared launcher selector stores None, Combined, or Separate. Focused tests cover each mode, the exact `MacPowerToys.input-devices` autosave name, its Open Input Devices route, disabled state, legacy migration, combined-tab support, and no-op item refresh. | None. The shared five-tool physical placement, relaunch, and click matrix remains in the main request list. |
-| Done | Add a macOS tool for mouse and trackpad control. | `cfa8832` added Input Devices as an on-demand tool with a separate window, launcher route, and app icon. | None. |
-| Done | Keep the Scroll device selector at the bottom of the window. | `65f1c0e` moved the selector from the scrolling body to a native bottom inset. The exact installed `4e181f8` build confirmed the bottom position. `52663c4` keeps that position and makes the bar native: one labeled row on the shared 20pt gutter with a quiet hairline above it and a native small Picker, with no duplicate selector inside the Scroll Control card. | None. |
-| Superseded | Lock Input Devices icon OX16. | The earlier Midnight Tether icon was replaced by the 2026-09-25 icon refresh request. | The new icon row below owns the current result. |
-| Verify | Use the new Input Devices mouse icon. | `InputDevicesLogoA` is a 512px RGBA asset with a large ivory mouse and violet scroll wheel. Focused icon and Raycast checks pass. | Inspect launcher and Dock in the final signed app. |
-| Done | Keep separate mouse and trackpad profiles. | `InputDevicesManager` stores separate profiles. The Scrolling page shows both as operational cards in an adaptive two-column grid. | None. |
-| Done | Add reverse vertical, reverse horizontal, horizontal, speed, and smooth-wheel controls. | `e038609` gives both profiles the same six labeled rows: use this profile, scroll speed, reverse vertical, horizontal scrolling, reverse horizontal, and smooth wheel steps. Every row places its label leading and a native switch or slider trailing. The event tap applies the selected profile to scroll events. | None. |
-| Done | Give the mouse profile a horizontal scrolling control that the trackpad already had. | The manager always supported `InputScrollProfile.horizontalEnabled` for both kinds, but the old two-column toggle grid truncated its label at the default width. `e038609` renders it as a full labeled row in both cards. `testMouseHorizontalScrollingPersistsAndBlocksSidewaysMovement` encodes the mouse profile with horizontal scrolling off, decodes it through the exact `InputDevicesSettings.decoded(from:)` path the manager uses, and proves the restored profile zeroes a coarse horizontal delta while the trackpad profile still passes it. | None. |
-| Superseded | Make mouse and trackpad device cards the same size. | The Round 5 owner review requires missing metadata rows to be omitted and short cards to top-align. Mouse and trackpad profile cards remain equal height. | The Round 5 correction row owns the current device-card layout. |
-| Done | Show each device card's live scroll-control state. | Each device card carries a text-plus-icon capsule badge beside its kind: Not controlled, Permission needed, Passthrough, or Controlled. `testControlStateFollowsPermissionAndProfile` covers all four transitions. | None. |
-| Done | Keep one implementation of the Input Devices scroll settings. | `InputDevicesScrollSettings` holds the Scroll Control card and both profile cards. The Scrolling page renders it inside its workspace page and `InputDevicesSettingsView` wraps the same view for the launcher detail page. | None. |
-| Done | Distinguish mouse-like and trackpad-like scroll events. | The manager classifies precise events as trackpad-like and coarse events as mouse-like. It also provides a manual override. | None. |
-| Done | Show useful hardware details for each connected mouse and trackpad. | Device cards show transport, maker, speed, resolution, polling rate, buttons, IDs, firmware, and serial data when macOS reports them. Round 5 removes rows whose values are absent instead of presenting false `Not reported` values. | Inspect sparse USB and built-in devices in the signed build. |
-| Verify | Keep scroll control active after macOS disables its event tap. | `328c336` re-enables the existing tap inside the disabled-tap callback instead of queuing a rebuild on the blocked main queue. The current 543-test suite passes. | Use sustained wheel input, then lock and unlock the session. Confirm the profile remains active without toggling the control or reopening the window. |
-| Verify | Confirm real mouse and trackpad control after Accessibility permission is granted. | Unit seams cover profile selection and event transformation. Source inspection confirms that disabling the tool stops the event tap. | Test vertical, horizontal, reverse, speed, and smooth-wheel behavior with real hardware. |
-| Verify | Redraw the Input Devices workspace so both pages read as one professional native tool. | Offscreen 980 x 700 renders of the real `InputDevicesWindowView` in Light and Dark show Devices with two equal cards and Scrolling with two equal profile cards, the Scroll Control section card, and the native bottom Scroll device bar. Every control is a native switch, slider, picker, or button; no Input Devices view calls `focusEffectDisabled`, so keyboard focus keeps the system ring. The long-label render truncates a 57-character device name and a 51-character maker without moving the state badge or the shared value edge. `testProfileRowsFollowTheirGates` proves the four gated switches disable when their profile switch is off and that only the reverse-horizontal switch disables when horizontal scrolling is off. In the installed signed `e41ef3c` build the Devices page showed two equal 355 x 367pt device cards and Scrolling two equal 354 x 272pt profile cards with matching rows and trailing controls; the menu-bar tab rendered the same shared settings with every switch, slider, and the Scroll device menu. | Confirm hover, keyboard traversal, and the accessibility text sizes in the installed signed build. |
-| Done | Make Shift plus the wheel scroll sideways on a mouse, with a switch. | The event tap had no Shift path, so Shift plus a notch stayed vertical in apps that do not convert it themselves. `d2df0ff` adds `shiftScrollsHorizontally` to each profile (old saved settings decode it as on), moves the vertical deltas to axis 2 and clears the Shift flag so no app converts twice, and adds the `Shift scrolls sideways` switch under `Reverse horizontal`, gated on horizontal scrolling. `testShiftWheelScrollsSidewaysAndClearsWhenDisabled` covers on, off, real sideways input, reverse, and legacy decoding. On the installed signed `d2df0ff` build a synthetic Shift plus wheel notch (`wheel1 = -3`) left the session tap as five horizontal steps (`axis2 = 1`, `point2 = 18`, `axis1 = 0`, Shift cleared) with the mouse profile at 3.00x and Reverse horizontal on, and the same notch without Shift stayed vertical. | None. |
-| Done | Replace the green state capsule with a native state label and show device identity in compact key-value rows. | The status uses the neutral online color. Each card shows only values that macOS reports, plus its scroll profile. Device ID, firmware, connection, battery, buttons, resolution, polling, tracking, and speed retain their domain formats. | Inspect real connected hardware in the signed build. |
-| Done | Keep Input Devices metadata readable at the normal window width. | The 2026-09-23 installed-app audit found values clipped to fragments because each half-width grid cell also put a fixed-width label beside its value. The card now stacks each label above its value in the same two-column grid and gives the complete value as a native tooltip and accessibility label. The signed `cd11057` build shows readable values and equal card heights for the connected mouse and trackpad at the normal 980pt width. The focused Input Devices tests pass. | None at the standard text size. |
-| Done | Stop the About page from repeating every setting of the tool. | `ToolAboutView` rendered `ToolSettingsContent` inside tool windows that already own a settings destination. `d2df0ff` adds `showsSettings`, and Input Devices, System Care, and System Monitor pass `false`, so About shows the intro and How to Use only. The installed `d2df0ff` Input Devices About page exposed one control (the enable switch in its header) and no scroll switches or sliders. | None. |
+| Verify | Remove direct-row card insets and the duplicate Devices header (T082). | `fa3c0e3d`; header renders 338 x 40pt in both appearances. | Hosted `InputDevicesTests`; signed shell-edge alignment, Refresh and disclosure clicks, hover, keyboard. Report `w3-audit-input.md`. |
+| Verify | Complete collapsible control surface and feature audit (B6, S5). | `57acd38c`, `64b510fb`: separate saved disclosures, one "Use custom scrolling" switch, HID refresh on a utility task, queued smoothing rejected on disable. | Hosted tests; every control, disclosure persistence, permission recovery, hardware behavior, first frames, focus, idle CPU, timing. Report `w1-audit-input.md`. |
+| Verify | Compact first open of the main panel. | `d1bea33b`: Devices expanded, Mouse, Trackpad, Scroll device collapsed when keys are unset; saved choices kept. | Hosted tests; fresh defaults and saved choices in the signed app. |
+| Verify | Device and battery summaries before controls in the main panel. | Shared cards show cached names, connection, battery, state, direction, speed. | Reported and unknown batteries, Refresh, permission actions, quick switch, every expanded setting. |
+| Verify | Round 6 capture review (readable rows, both profiles, fixed Scroll device footer with 24pt clearance). | No owned source change needed. | Live scrolling, keyboard, hardware, compact panel height, idle CPU, latency. Report `25r9-tweaks.md`. |
+| Verify | Scroll device footer clearance. | `3860c82`: footer in the page footer slot. | Check the footer at y636 in the signed 1080 x 660 window. |
+| Verify | Round 5 fixes (equal profile columns, 56pt control row, omit missing metadata, neutral healthy state). | Source built. | Inspect Devices, Scrolling, About, compact panel in the signed build. |
+| Verify | Round 3 rules (one page gutter, card-only row scroller, fixed footer, custom selects). | Source built. | Measure page switching; inspect full window and compact panel. |
+| Verify | Round 2 findings (full-width key-value rows, top-aligned grid, picker placement). | `62ddf9b`. | Recapture all pages in dark and light. |
+| Verify | One adaptive settings implementation for the 338pt panel and full Scrolling page. | `InputDevicesSettingsContent()` is shared; panel embeds it directly. | Inspect both hosts. |
+| Verify | Redesign on the fixed 1080 x 660 canvas with Devices, Scrolling, About routes. | Shared sidebar, device cards, per-device controls. | Inspect each route in dark and light; real mouse and trackpad behavior. |
+| Verify | Align the Scroll device picker edge with the shared trailing gutter. | `7504bc2`, `b88a40b`; rendered tray edge at x = 340. | Inspect tray and window in the signed build. |
+| Verify | Use the new Input Devices mouse icon. | 512px RGBA asset. | Inspect launcher and Dock. |
+| Verify | Show useful hardware details per device (transport, maker, speed, resolution, polling, buttons, IDs, firmware, serial); omit absent values. | Source built. | Inspect sparse USB and built-in devices. |
+| Verify | Keep scroll control active after macOS disables the event tap. | `328c336` re-enables the tap inside the callback. | Sustained wheel input, then lock and unlock; confirm the profile stays active. |
+| Verify | Confirm real mouse and trackpad control after Accessibility permission. | Unit seams cover profile selection and transformation. | Test vertical, horizontal, reverse, speed, smooth wheel on real hardware. |
+| Verify | Redraw the workspace as one professional native tool (native controls, system focus ring, truncation, gated switches). | Signed `e41ef3c` showed equal cards and shared settings in the menu-bar tab. | Hover, keyboard traversal, accessibility text sizes. |
+
+Done:
+
+| Request | Evidence |
+|---|---|
+| Add Input Devices as an on-demand tool with its own window, route, icon. | `cfa8832` |
+| Launcher intro sits directly below the tabs. | Layout regression |
+| Menu bar choice None, Combined, or Separate. | Focused tests, autosave `MacPowerToys.input-devices` |
+| Scroll device selector at the bottom, native bar on the 20pt gutter. | `65f1c0e`, `52663c4` |
+| Separate mouse and trackpad profiles in adaptive cards. | `InputDevicesManager` |
+| Six labeled controls per profile (use profile, speed, reverse vertical, horizontal, reverse horizontal, smooth wheel). | `e038609` |
+| Mouse profile has a horizontal scrolling control. | `e038609` |
+| Device card shows live control state (Not controlled, Permission needed, Passthrough, Controlled). | `testControlStateFollowsPermissionAndProfile` |
+| One implementation of the scroll settings. | `InputDevicesScrollSettings` |
+| Distinguish mouse-like from trackpad-like events, with manual override. | Manager classifier |
+| Shift plus wheel scrolls sideways, with a switch. | `d2df0ff` |
+| Neutral state label; compact key-value device identity. | Round 5 |
+| Readable metadata at the normal width. | `cd11057` |
+| About page shows intro and How to Use only. | `d2df0ff` |
 
 ## System Care and Mole
 
-Round 18 Tasks underline, run 72, 2026-10-02: reject the missing-underline
-finding. Both supplied signed Mole PNGs contain 64 opaque coral pixels at
-x224-255, y100-101. Both History PNGs contain 82 at x278-318, y100-101.
-Actual-source checks use the real router, initial state, aliases,
-Maintenance page, Tasks card, and shared strip. Debug and Release paint
-the same underline on initial entry and after History in both appearances.
-No source fix is needed. A failing pre-fix check cannot be claimed because
-the supplied files and source already pass. Live tab actions remain with
-the orchestrator. Report: `tmp/redesign/logs/w13-fix18-app.md`.
+Open verification:
 
-Memory, 2026-10-01: `1529ae52` replaces each 70.52 MiB app-icon TIFF
-with an 80 x 80 CGImage and clears window icon caches on close. Signed
-`e25d7c99` grew from 85 MB at rest to 7,055 MB with 6.5 GB in Foundation.
-The isolated fixed loader holds all 91 icons below 12 MiB and returns to
-8.97 MiB after cache clearing. `1b789232` gives subprocess callers a 4 MiB
-default cap and per-chunk pools. `92e3b394` drains checksum, Git, rsync,
-and fan read pools: the 512 MiB checksum uses 2.47 MiB, down from 516.89.
-`76ed9b89` streams and caps Portman command output at 8 MiB. Four focused
-regressions compile. Each of three batches passes one tests-mode build gate.
-Remaining: hosted execution, clean signed install, the full after matrix,
-and close/reopen recovery below 250 MB. Only the orchestrator can install
-or restart. Report: `tmp/redesign/logs/w4-memory.md`.
+- Maintenance Tasks underline (Round 12, `9631144f`): both supplied signed
+  captures already show the underline (64 opaque coral pixels at x224-255,
+  y100-101), and actual-source checks pass in Debug and Release. No source fix
+  is needed. Verify initial entry and Tasks -> History -> Tasks in both
+  appearances on the signed build. Reports `w3-syscare-ui.md`,
+  `w13-fix18-app.md`.
+- Round 17 panel repair (`53b31541`, `517c5593`, `7c2a8222`, `34c24557`):
+  adopt OnePlusUI 1.0.1, then verify Refresh and disclosure interaction and
+  complete-frame timing. Report `w10-fix17-panels.md`.
+- Memory: see Cross-tool open verification.
 
 | Status | Request | Evidence | Remaining work |
 |---|---|---|---|
-| Source fixed; signed review pending | Round 12: restore the selected Maintenance Tasks underline reported in signed `43ce0eb9`. | `9631144f` moves selected paint into the shared `OnePlusTabStrip`, directly driven by its selection binding and outside the button-style body. It keeps the 36pt strip, 22pt tab gap, 2pt label-width underline, divider, disabled opacity and noninteractive paint. All 20 focused page and row/tab package checks pass. Stateful actual-source route checks pass in both appearances and fail when selected paint is removed. The signed-only failure remains outside the hidden-host reproduction. | One batched `xbuild.sh tests` gate passes at `d9b38c35` for the Debug app and both desktop test bundles. Log: `tmp/redesign/logs/syscare-ui-r12-tests.log`. The orchestrator must check initial Maintenance entry and Tasks -> History -> Tasks in both appearances on the exact signed build. Report: `tmp/redesign/logs/w3-syscare-ui.md`, Round 12. |
-| Compile and geometry verified; signed review pending | T099-T101: compact System Care help and actions, and trace the Tasks underline. T102: adopt readable history columns. | `ca9a17bb` uses Safety/Maintenance help, 44pt rows and intrinsic paired actions. `fb6619b8` uses a shared history cell layout with optional trailing time/result and raw JSON help; window Scan instructions also move to help. The source-derived hidden-host check passes in both appearances: Safety is 36pt shorter, Maintenance is 48pt shorter, Terminal is 112 x 28pt, and history uses matching 34pt rows with 12pt insets. The shared Tasks underline paints y96-97 for all three aliases, so no speculative local paint change is made. | Shared gate `168eae83` compiles the Debug app and both desktop test bundles; the current window/shared views, panel and core manager match its source. Log: `tmp/redesign/logs/audit-nettoys-r11-tests-retry2.log`. An earlier queued Debug retry is left running under the owner's single-gate rule. The orchestrator must check the installed Tasks capture discrepancy, real help, confirmations, disabled actions, and all panel scan states. Report: `tmp/redesign/logs/w3-syscare-ui.md`. |
-| Core compile and source checks pass; hosted tests and signed review pending | T102: show readable Mole history summaries and separate supplied time and result fields. | `7b606373` parses nested session action counts and deletion targets, retains optional supplied timestamps/status, and stores raw record JSON for detail/help. An actual-source fixture fails on the old dictionary output and passes on the new parser. Swift 6 parser/regression typecheck and whitespace checks pass. No cleanup command runs. Mole session JSON has no target paths, so none are invented. | Shared gate `168eae83` compiles the Debug app and both desktop test bundles; the current manager and SystemCareTests.swift match that commit exactly. Log: `tmp/redesign/logs/audit-nettoys-r11-tests-retry2.log`. No hosted tests ran and no further gate is queued. `fb6619b8` supplies matching 34pt header/body columns with 12pt insets and trailing metadata; syscare-ui reports passing both-appearance hidden-host checks. The orchestrator owns hosted regression execution and signed dark/light history interaction. Report: `tmp/redesign/logs/w3-syscare-core.md`. |
-| Design approved; implementation active | S1 phase 1: reassess System Care and propose the full makeover before app implementation. | All 18 r9 window and panel captures and the complete System Care manager/view were reviewed. Research covers six cleaner apps plus Dribbble, Pinterest, and Mobbin access limits. The self-contained dark/light mock proposes Cleanup, Storage, Applications, Maintenance, and Settings with the 356pt panel. It applies the binding horizontal-density and instant-motion correction. Mock: `tmp/redesign/syscare/syscare-mock.html`. Build spec: `tmp/redesign/syscare/syscare-spec.txt`. Report: `tmp/redesign/logs/w1-syscare-research.md`. | The approved spec now drives S1 core, window, and panel work. Signed live verification remains open. |
-| Compile verified; signed review pending | S1 lanes B/C: implement the approved five-destination window and compact cleanup panel. | `7e0404c4` adds Cleanup, Storage, Applications, Maintenance Tasks/History, and Settings General/About with all old route aliases. It uses native tables, real cached icons, paired inspector actions, shared disk/candidate views, coverage and actual Trash failures, and verified Mole action guards. `3e1161c0` shortens builders; `28a94dd8` shares the core allocator and retains exact errors. `26145e12` wires the panel fixed regions and Cleanup/General actions. Debug and desktop-test compilation, parser, route mappings, nested bundle allocation, and whitespace checks pass. | Run hosted tests. The orchestrator must install clean signed source and check all pages and panel states in both appearances, keyboard/VoiceOver, confirmations, controlled Trash, Finder/Quick Look, and exact Terminal actions. Report: `tmp/redesign/logs/w2-syscare-ui.md`. |
-| Build and fixture checks pass; hosted and signed review pending | S1 lane A: fix trusted cleanup paths, frozen Trash IDs, work ownership, coverage, bounded Mole reads, and exact application identity. | `a2962a86` and `7082f3fe` require trusted roots, current file/root identities, and no ancestor symlinks or dot traversal. `13b1701e` freezes Trash IDs and retains actual failures. `65cbbf59` waits for owned work to exit. `366b1eee` reports coverage, truncation, scoped retry, and package sizes. `3ffa6c7a` bounds, cancels, kills, and reaps CLI reads. `15e9a1bb` verifies preview support and refuses ambiguous uninstall names; `198055e4` refuses names that Mole rewrites before matching. Both shared compile gates and disposable source-derived fixture checks pass. Installed Mole 1.54.0 help confirms all four task previews and uninstall preview. | Run focused SystemCareTests on hosted CI. The orchestrator must install clean signed source and verify folder access/denial, cancel, controlled Trash and Finder Put Back, and exact Terminal actions. No cleanup command or installed app change was made by this lane. Report: `tmp/redesign/logs/w2-syscare-core.md`. |
-| Build verified; signed review pending | Show startup-disk usage before a cleanup scan in the main panel. | A utility task reads total, free, and important-usage capacity once and again after a saved scan changes. Used, Purgeable, and Free share one segment bar. The bounded-capacity regression compiles. Scan is the one primary action. Saved results, selection, and confirmed Trash remain. | Run the regression on hosted CI. Check unavailable capacity, unscanned, empty, populated, loading, failure, cancellation, and confirmed Trash states in the signed build. Report: `tmp/redesign/logs/24-panels-tabs.md`. |
-| Build verified; signed review pending | Give the cleanup menu panel a storage bar and prepared category rows. | The panel reuses `SystemCarePresentationRows.cleanup` off the main thread. A retained snapshot holds each row and category total. Analyze, Clear Scan, selection, expansion, confirmation, and recoverable Trash actions remain. A regression checks row identity and totals. | Run hosted checks and signed scan, selection, expansion, and Trash confirmation interactions. Report: `tmp/redesign/logs/21-menus-r8.md`. |
-| Captures reviewed; live checks pending | Review System Care in the round 6 signed captures. | All sixteen `3e33de2` captures were inspected. Overview retains inside activity rules and pre-scan dashes. Applications retains real sizes and icons, unavailable-size guidance, aligned headers, and a fixed full-height inspector. Mole keeps its fixed footer. Chrome uses C=27 and shared titles start at T=16 in both appearances. No owned source change was needed in this round. | Live row scrolling, application size-error selection and Retry Size, native confirmations, focus, idle CPU, and latency remain unverified. See `tmp/redesign/logs/25r9-tweaks.md`. |
-| Build verified; signed review pending | Explain application size errors and correct the round 3 metadata layout. | `285fdf1` preserves the no-symlink scan rule, shows final size errors with a reason and cancellable Retry Size action, uses one header/row column model, returns spare date width to names, and gives Mole rows a 13pt icon slot. Metadata tests cover missing, readable, and linked bundles. Debug and desktop test compilation pass. | Foundation owns fixed-body bottom clearance, native scroller reservation, and the matching shared card-header icon slot. Inspect error recovery and Applications/Mole alignment in the signed build. See `tmp/redesign/logs/16r6-tweaks.md`. |
-| Build verified; visual checks pending | Correct the Round 5 System Care findings. | Application bundles now load recursively allocated sizes and NSWorkspace icons on four utility tasks, cache both, and fill rows as results arrive. Loading cells use a muted dash, final failures use `Unavailable`, and the table header shares the row padding and columns. The inspector fills the table height. Overview pre-scan metrics use dashes. Storage centers its empty body. Cleanup makes the first Scan primary. Mole uses a natural-height command card and a fixed footer. History has a recovery caption, Safety has separators, healthy states are neutral, and About uses the app version subtitle. Debug and desktop test compilation pass. | Capture all eight pages and exercise search, selection, cleanup, storage, and Mole actions in the signed build. The 41pt scroll gutter and 28pt header gap belong to the OnePlusUI foundation owner. |
-| Build verified; visual checks pending | Apply the owner's round 3 fixed-region, one-gutter, custom-select, and speed rules to every System Care page. | Storage, Cleanup, Applications, Mole, and History use fixed `OnePlusPage` hosts. Their lazy rows scroll inside the card while headers, search, inspectors, actions, and the bottom work status stay fixed. Storage, cleanup, and application row strings load on utility tasks; application rows no longer read file metadata or app icons in `body`. Value selectors use `OnePlusSelect`; Storage More remains an action menu. Debug and desktop test compilation pass. | Measure page switching and inspect all eight pages in the exact signed build. |
-| Code complete; foundation integration pending | Keep one System Care settings card stack for the tool window and main window. | `SystemCareSettingsCards(mode:)` contains the Cleanup and Safety cards with a 16pt gap. The System Care Settings page wraps it in `OnePlusPage`. | The foundation must dispatch this type directly and delete its old copy in `Views/Components/ToolPreferences.swift`, then the orchestrator must inspect both hosts. |
-| Code complete; visual checks pending | Correct the round 2 System Care screenshot findings. | `117f6b6` separates metric values from units, keeps the empty Storage action neutral, removes grain from non-metric cards, and removes explicit small button sizes. A focused metric-format regression compiles with the desktop test bundle. | The orchestrator must recapture all eight pages in dark and light. Shared window, scroller, table, row, status, tint, and contrast fixes remain with the foundation. |
-| Superseded by S1 | Redesign System Care on the fixed 1240 x 840 OnePlusUI canvas. The eight old routes remain aliases of five destinations. | Overview uses four metric tiles and recent activity. Storage uses a segment bar, legend, and category table. Cleanup keeps one confirmed primary action. Applications show size, last use, leftovers review, and confirmed Terminal uninstall. Mole commands keep privilege prompts visible in Terminal. The Debug app and desktop-test bundle compile. | Inspect every route in dark and light, then verify cleanup confirmation, storage navigation, application review, and Mole Terminal actions in the installed build. |
-| Verify | Center the pre-scan System Care tray empty state. | `7504bc2` gives both cleanup empty states the full available width. The production-width dark render shows the drive icon and `Analyze cleanup locations` centered below the actions. | Inspect the exact signed installed tray. |
-| Done | Add a large System Care interface for Mole and native cleanup. | `a073a35` added Overview, Storage, Cleanup, Applications, Mole CLI, History, Settings, and About pages. | None. |
-| Done | Add a storage view that supports visual drill-down. | The Storage page has an interactive ring, breadcrumbs, size totals, and folder drill-down. `855a250` keeps folder rows actionable and renders file rows as plain information without false hover or pressed feedback. | None. |
-| Done | Make Mole installation and updates easy. | System Care detects Mole and provides Homebrew install and update actions. | None. |
-| Done | Keep privileged and interactive Mole work visible. | Preview and maintenance actions open Mole in Terminal. The app does not collect a password or bundle Mole. | None. |
-| Done | Keep cleanup safe and recoverable. | Native cleanup rejects paths outside approved roots, does not follow symbolic links, and moves reviewed items to Trash. | None. |
-| Done | Make Scan the primary Cleanup action. | `6fb2d41` made Scan prominent on Overview and Cleanup before results exist. | None. |
-| Done | Keep System Care work status at the bottom and align More, Rescan, and related top actions. | `1666d71` anchors the animated status banner to the bottom. `6247587` preserves the native width and centered 24-point height of every workspace action. The normal signed builds confirmed the bottom banner with a large external-drive scan and confirmed complete Scan, Rescan, More, Refresh, and Mole update controls at the compact limit. | None. |
-| Superseded | Do not add System Care menu-bar controls now. | The owner directly requested a useful System Care menu-bar surface on 2026-09-20. | The focused System Care tray request below owns the replacement. |
-| Done | Build a persistent, selectable System Care tray scan. | `35241ea` and `275d5d5` provide Analyze, Clear Scan, reclaimable totals, a category ring and bars, collapsible category/item checkboxes, Select All/None, and the guarded Move to Trash path. One saved snapshot retains candidates and valid selections across recreation until explicit clearing; failed Trash items stay selected. Scanning stays on a utility task and only tray-owned work cancels when hidden. Focused persistence, path-safety, rendered-state, and interaction tests pass in the complete `519095b` suite, and the final reviewed tray render confirms the populated hierarchy at the production width. | None. |
-| Done | Check System Care and Mole with real data. | The normal signed `631facd` build scanned 100 real cleanup candidates and moved only a controlled cache marker to Trash; Finder restored the exact marker with Put Back. A 361 MB project scan drilled into `docs`, updated its path, count, size, and breadcrumb, then returned to the root. System Care detected Mole 1.52.0. Deep Cleanup and MacPowerToys removal previews each generated and completed the exact `mo … --dry-run` command in Terminal without running a destructive maintenance command. | None. |
-| Superseded | Lock icon S11-08. | The earlier disk-and-eraser icon was replaced by the 2026-09-25 icon refresh request. | The new icon row below owns the current result. |
-| Verify | Use the new System Care cleanup-tray icon. | `SystemCareLogo` is a 512px RGBA asset with one removable coral block. Focused icon and Raycast checks pass. | Inspect launcher and Dock in the final signed app. |
+| Verify | T099-T101: compact System Care help and actions; trace the Tasks underline. T102: readable history columns. | `ca9a17bb`, `fb6619b8`: Safety 36pt and Maintenance 48pt shorter; matching 34pt history rows. | Installed Tasks capture discrepancy, real help, confirmations, disabled actions, all panel scan states. |
+| Verify | T102 core: readable Mole history summaries with separate time and result. | `7b606373` parses session counts and targets; no cleanup command runs. | Hosted regression; signed dark/light history interaction. Report `w3-syscare-core.md`. |
+| Verify | S1 five-destination window (Cleanup, Storage, Applications, Maintenance Tasks/History, Settings) and compact cleanup panel; old routes stay aliases. Approved design: `tmp/redesign/syscare/syscare-mock.html` and `syscare-spec.txt`. | `7e0404c4`, `3e1161c0`, `28a94dd8`, `26145e12`: native tables, cached icons, paired inspector actions, verified Mole guards. | Hosted tests; every page and panel state in both appearances, keyboard, VoiceOver, confirmations, controlled Trash, Finder and Quick Look, exact Terminal actions. Report `w2-syscare-ui.md`. |
+| Verify | S1 lane A: trusted cleanup paths, frozen Trash IDs, work ownership, coverage, bounded Mole reads, exact application identity. | `a2962a86`, `7082f3fe`, `13b1701e`, `65cbbf59`, `366b1eee`, `3ffa6c7a`, `15e9a1bb`, `198055e4`. | Hosted `SystemCareTests`; folder access and denial, cancel, controlled Trash and Finder Put Back, exact Terminal actions. Report `w2-syscare-core.md`. |
+| Verify | Startup-disk usage before a cleanup scan (Used, Purgeable, Free in one bar). | Bounded-capacity regression compiles. | Hosted run; unavailable, unscanned, empty, populated, loading, failure, cancel, confirmed Trash states. |
+| Verify | Cleanup panel with storage bar and prepared category rows. | Rows prepared off the main thread; Analyze, Clear Scan, selection, Trash remain. | Hosted checks; signed scan, selection, expansion, Trash confirmation. |
+| Verify | Round 6 capture review (Overview, Applications, Mole footer). | No owned source change. | Live row scrolling, size-error selection and Retry Size, native confirmations, focus, idle CPU, latency. |
+| Verify | Explain application size errors; correct round 3 metadata layout. | `285fdf1`: reason text, cancellable Retry Size. | Inspect error recovery and Applications/Mole alignment. |
+| Verify | Round 5 fixes (recursive sizes and icons on four utility tasks, inspector fill, neutral healthy states). | Source built. | Capture all pages; exercise search, selection, cleanup, storage, Mole actions. |
+| Verify | Round 3 fixed regions and one gutter on every page. | Lazy rows scroll inside cards; strings load on utility tasks. | Measure page switching; inspect all pages. |
+| Verify | One System Care settings card stack for the window and main window. | `SystemCareSettingsCards(mode:)`. | Confirm the dispatcher uses it directly and the old copy in `ToolPreferences.swift` is gone; inspect both hosts. |
+| Verify | Round 2 corrections (metric value and unit split, neutral Storage action, no grain on non-metric cards). | `117f6b6`. | Recapture all pages. |
+| Verify | Center the pre-scan tray empty state. | `7504bc2`. | Inspect the signed tray. |
+| Verify | New System Care cleanup-tray icon. | 512px RGBA asset. | Inspect launcher and Dock. |
+
+Done:
+
+| Request | Evidence |
+|---|---|
+| Large interface for Mole and native cleanup. | `a073a35` |
+| Storage drill-down (ring, breadcrumbs, folder rows actionable, file rows plain). | `855a250` |
+| Mole install and update actions. | Homebrew detection |
+| Privileged and interactive Mole work stays visible in Terminal; no password collected. | Terminal actions |
+| Native cleanup safe and recoverable (approved roots, no symlinks, Trash). | Path-safety tests |
+| Scan is the primary Cleanup action. | `6fb2d41` |
+| Work status at the bottom; top actions aligned. | `1666d71`, `6247587` |
+| Persistent, selectable tray scan with guarded Move to Trash. | `35241ea`, `275d5d5` |
+| Real-data check: 100 candidates, Put Back restore, Mole 1.52.0 previews. | `631facd` |
 
 ## Task Manager (formerly System Monitor)
 
-Round 18 CPU/Memory capacity, run 72, 2026-10-02: `054a6be7` uses
-"<count> logical CPUs" beside CPU and removes its duplicate count row.
-Memory keeps capacity beside its value and removes the Total detail row.
-Actual-source checks preserve all load, allocation, history, pending, and
-stale readings. Each removed shared detail row measures 28pt. The existing
-regression now covers CPU and Memory; the single tests-mode gate passes.
-Hosted execution, signed heights, and both-appearance review remain with
-the orchestrator. Report: `tmp/redesign/logs/w13-fix18-app.md`.
+Open verification:
 
-Memory5, 2026-10-01: signed `d911b0fa`, PID 86076, remains at
-327.5 MiB after the owner's complete close pass. Its heap has 73 ViewGraphs
-and 29.8 MB of PropertyList elements. `2a036b02` releases the native hosting
-controller of every closed background tool window, keeping its native shell
-and size. Content rebuilds before background and explicit ordering. The
-actual-source factory probe fails on the old retained host and passes three
-controller, host, and model release cycles. Size and foreground identity stay
-unchanged; no window is ordered. The existing routing probe passes all 26
-background paths. The single gate links the app but fails on the test's
-missing Combine import. `e8243b26` fixes it; the final test typecheck passes.
-Hosted XCTest, a complete compile gate, clean signed installation, closed recovery
-below 250 MB, and complete-frame reopen timing remain with the orchestrator.
-Report: `tmp/redesign/logs/w7-memory5.md`.
-
-Memory4, 2026-10-01: signed `e0432849` has zero listed windows and a
-684.2M physical footprint in the first read-only sample. `44d8e12c`
-unmounts all 13 closed scene roots and restores them before native ordering.
-`bc4132ca` releases inactive panel roots on hide and keeps the current
-measured host. `329d6caf` reuses three 128 by 128 template glyph bitmaps.
-Nine offscreen package checks pass. Three close/reopen cycles release all
-three model instances, preserve size, and order no windows. The inactive
-tab view is released; the current tab keeps its value. The glyph probe
-reuses each bitmap for 101 requests. One app/test compile gate passes.
-The orchestrator must commit the other lanes' changes, install clean signed
-source, verify its stamp and path, repeat all windows and panel tabs, close
-all surfaces, wait 30 seconds, and record heap, footprint and reopen timing.
-The under-250 MB and fast-reopen acceptance gates remain open.
-Report: `tmp/redesign/logs/w6-memory4.md`.
-
-Memory follow-up, 2026-10-01: the signed `76ed9b89` route replay has an
-ongoing Diskman scan, so later tool deltas do not isolate their memory.
-After cancelling it through Settings, Cloud Sync All stays at 891 MB.
-Task Manager Overview first reaches 995 MB, then Processes/About return to
-899/897 MB. Warm Overview is 906 MB with the same 983,230 scan nodes.
-Its heap has 50.52 MB of SwiftUI property-list elements, compared with
-51.06 MB on About. Foundation-tagged memory is 16 KB, CG images are
-10.3-12.4 MB, IOSurface is 22.0-22.5 MB, and graphics are about 3.8 MB.
-No retained 550 MB Overview increase or large ribbon cache is demonstrated.
-The orchestrator must rerun the matrix on a clean signed build and measure
-closed-window recovery. The under-250 MB goal stays open.
-Report: `tmp/redesign/logs/w4-memory2.md`.
-
-Memory3, 2026-10-01: the signed `83835ecf` sample is 472.5 MiB with
-all 13 tool windows still visible. The next signed `d40b9397` process starts
-at 90.6 MiB with Main visible. Opening each tool on a page without a scan
-reaches 263.4 MiB. Visiting the 18 panel tabs and closing panels settles at
-305.0 MiB. All 13 tool windows remain open. Malloc allocations are
-198.1 MiB, including 40.8 MiB of SwiftUI property-list elements; the heap
-has no live DiskEntry allocations. These routes preserve the foreground.
-`a6aeff3a` adds `diagnostics/close-window/<tool-id>` through the existing
-scoped close handler. Its exact-path check fails before and passes after;
-one app/test compile gate passes. The orchestrator must install this commit,
-close each tool through the background route, wait 30 seconds, and collect
-heap and vmmap samples. The under-250 MB goal remains open. This route adds
-measurement support; it does not establish a memory reduction.
-Report: `tmp/redesign/logs/w5-memory3.md`.
-
-Process icons, 2026-10-01: `f0eaaacd` uses real cached bundle icons in the
-Processes window and panel. Bundle lookup and CGImage preparation run on a
-utility task. Command-line executables use terminal; unknown paths and app
-icons still loading keep a blank slot. Lock, gear and placeholder fallbacks
-are removed. The native 15pt slot and panel slot stay fixed. Light/Dark
-package renders pass. Actual-source checks pass Finder artwork, bundle
-reuse, eviction, cancellation and off-main work; the old source fails the
-same glyph check. One tests-mode gate compiles the app and both desktop
-test bundles. Hosted app tests and signed window/panel review remain with
-the orchestrator. Report: `tmp/redesign/logs/w4-process-icons.md`.
-
-Round 11 window source fixes are committed. T056, T057, and T061 are fixed
-in `af2303d8`; T058, T059, and the process-menu part of T060 are fixed in
-`602733ff`. The shared resource menu part of T060 belongs to components.
-`cdaee324` fixes T062 wake rate pairs and T063 aggregate network labels
-with separate default-route identity. T106 Find, Inspect, and Settings use
-the native focused command APIs. T105 Fan exit uses awaited, bounded Auto
-in `45faea7d`, `a9673394`, and `fb19e9eb`; failure preserves ownership and
-can cancel quit. Actual-source CLI checks pass for Battery rows, protected
-process menus, Fan exit ordering/failure, and rate reset/identity. All 26
-round 10 window captures were reviewed. The retained app-commands batch
-gate passed at source stamp `99a6a1b2`, compiling the app and both desktop
-test bundles with zero compiler errors. Log:
-`tmp/redesign/logs/app-commands-debug.log`. No second gate is queued.
-Hosted tests, physical Fan writes, sleep/wake, route changes, and the clean
-signed installed-app handoff remain with the orchestrator. Report:
-`tmp/redesign/logs/w3-tm-window.md`.
+- Source fixes committed, signed acceptance open: round 11 window fixes
+  (T056-T063, T105-T106: `af2303d8`, `602733ff`, `cdaee324`, Fan exit
+  `45faea7d`, `a9673394`, `fb19e9eb`). Needs hosted tests, physical Fan
+  writes, sleep/wake, route changes. Report `w3-tm-window.md`.
+- Process icons (`f0eaaacd`): real bundle icons in window and panel, terminal
+  glyph for command-line processes. Hosted app tests and signed review.
+- CPU and Memory capacity (`054a6be7`): hosted run, signed heights, both
+  appearances. Report `w13-fix18-app.md`.
+- Header action rows (run 57), table traits (`e25d7c99`: 33pt headers, 34pt
+  rows, alternating rows), metric traits (`e14b7e38`: 27pt values, caption
+  colors, wave texture), scroll edges, header picks (`bd2e0963`), menu-panel
+  radius (8pt, shared presenter), status readings (T050 stale marks), shared
+  focus policy, and glyph pass (`91d9a538`): signed pixel captures, scrolling,
+  sorting, selection, focus, pointer hover, and menu crowding checks.
+- Retained pages (`58932d0c`, `027ea904`, `e0432849`): signed times for
+  Overview, Settings, and panel tab switches; complete frames. Previous signed
+  maxima: Overview 126ms, Settings 141ms; open items P1, P3, P4, P5.
+- T014-T016: presented covered windows can sample; hidden and minimized stop.
+  Signed native close and minimize, inactive Space, detail redraw, menu-metric
+  independence, quiet CPU, wakeups, energy, App Nap, physical footprint.
+- Panel height callback and diagnostics routes (foundation rounds 10 and 11):
+  signed short and tall tab frames, latency, panel route comparison.
 
 | Status | Request | Evidence | Remaining work |
 |---|---|---|---|
-| Source and compile verified; signed review pending | Round 12, critique items 1-4: restore process sort feedback and app icons, compact Overview text, and unique Disk details. | `23d1a768` paints the native sort indicator without moving labels, caches bundle icons off the main thread in the existing 15pt slot, applies compact 11pt/9.5pt Overview roles, and keeps one 100pt Volume panel with Mount point and Status. All 12 focused package tests pass, including light/dark header paints and icon cell updates. The old header fails the same sort regression. Actual-source icon cache and layout checks pass. The single tests-mode gate compiles the app and both desktop test bundles; log: `tmp/redesign/logs/tm-window-r12-tests.log`. | The orchestrator must run hosted SystemMonitorTests, install the clean signed commit, verify source stamp and running path, and check sort clicks, bundle/fallback icons, Overview inks and bounds, and Disk in both appearances. Report: `tmp/redesign/logs/w3-tm-window.md`. |
-| Signed medians improve; Task Manager tabs remain open | P1, P4, P5 panel presenter, P6 panel: open complete panels within 100ms warm or 250ms cold and switch tabs within 100ms. | Signed `43ce0eb9` records Main/Task Manager/Portman warm open medians 16.1/38.1/79.0ms and tab medians 66.8/128.2/84.4ms at display submission. Maximum opens are 95.5/208.0/112.4ms; maximum tabs are 86.9/134.8/102.9ms. All open samples report warm. Retention fixes `720eba0a`, `0957691b`, and `7a0b9730` remain. The targeted Task Manager trace finds 118-141ms inclusive AttributeGraph CPU in failing CPU/Memory intervals, 24-35ms native scene-root updates, and only 5-7ms natural-height measurement. `547b5586` restricts Task Manager scene matching to native open URLs; its former condition also matched panel diagnostics. Eight native routes remain eligible and eight diagnostic routes are excluded. The expected speed benefit requires a signed rerun. | The single new tests-mode gate fails only in unowned ToolSettingsContent.swift:36; Main/Switch own the caller/API mismatch. The changed app file compiles. No second gate is queued. The orchestrator must install the clean integrated fix, check source stamp/path and unchanged foreground, then run the same collector and require warm opens and tabs <=100ms. Keep cold complete frames, enabled separate items, saved-host edits, closed-panel CPU, and hosted execution open. Report: `tmp/redesign/logs/w3-perf-panels.md`. |
-| Source fixes committed; signed acceptance open | T001-T008, T051, T110: verify panel latency and native behavior; fix originating display sizing and accessible status names. T108 panel Settings hooks. | `b7e222d7`, `8801bfd9`, and `0fa0407d` supply the screen ceiling before measurement and preserve natural shrink. `073f2874` names separate status buttons. Read-only AX exports Main as MacPowerToys with MenuBarIcon. `07728304` and `63daa7e9` expose focused Settings routes. `a5d188f1` splits Processes preparation, saved-profile decode, host construction, and native layout signposts. Current saved-host loading measures 0.0015ms median and 0.117ms maximum; no decode cache is justified. Sizing, retained state, hidden tasks, timing bounds, and inner popup Escape checks pass. The signed `43ce0eb9` timing comparison and Task Manager profile are recorded above. Scene routing fix `547b5586` leaves Main, Portman, content, sampling, and the timing endpoint unchanged. | The latest single batch compile stops at ToolSettingsContent.swift:36; Main/Switch own reconciliation. The orchestrator owns clean installation, actual pointer/keyboard timing and complete frames, Escape chains, foreground preservation, runtime owners, and Control-click parity. A background diagnostic profile unexpectedly changed Chrome to MacPowerToys as foreground; further opens stopped. Recheck this with the scene fix before acceptance. Manager checks stay open; macOS 27.0 and both stacked display ceilings are recorded, with no Ice or Bartender found in /Applications. Report: `tmp/redesign/logs/w3-perf-panels.md`. |
-| Build verified; signed review pending | Round 11 T053, T054, T055: dense remote window controls, stable saved-host and error frames, complete panel readings. | `f44b9584` gives window actions one horizontal 24pt row, merges Configure/Refresh into the host, puts metadata and counts on identity/header rows, and records approved 18pt values in DESIGN. `20cb65c7` reuses the existing saved-profile snapshot after a measured warm empty-state flash. `3dcf0c69` keeps error and offline window cards at 146pt with header reason help. `b22323cb` keeps zero RAM numeric and full panel readings in help, preserving the 556945c9 geometry. Light/Dark actual-source fixtures pass; previous source fails the same action, zero, warm-frame, and error-bound checks. The batch gate compiles the Debug app and both test bundles at `b4a79152`; log: `tmp/redesign/logs/remote-r11-debug.log`. | Run `SystemMonitorRemoteTests` on CI. The orchestrator must inspect cold first/later frames, native help/context menus, all host controls, Terminal, Open App, keyboard behavior, and both signed appearances. Report: `tmp/redesign/logs/w3-remote.md`. |
-| Build verified; signed review pending | B8: repair Remote Stats host editing, SSH sampling, lifecycle, and window and panel actions. | `c0dd4b4b` shares host sessions and validates user, port, and protocol data. `e901bac6` connects both card surfaces, adds validated editing, starts the exact command in Terminal, and selects the host for Open App. `2dc04d43` prevents replay of an old Add host request on page return. The bounded `oci2` probe and two real samples pass for CPU, RAM, network rates, and five disks. The private control socket is removed on close. A malformed-load check fails on previous source and passes on current source. The final shared build-for-testing gate passes. Remote parser and state tests also compile to an object against the actual Debug app module. Tests were not executed here. | Run `SystemMonitorRemoteTests` on CI. The orchestrator must install clean signed source and check host edits, Return, interval changes, Manual refresh, all close paths, shared readings, Terminal, host selection, and dark/light layouts. Live macOS and Windows sampling remains open. Report: `tmp/redesign/logs/w1-remote.md`. |
-| Compile verified; signed acceptance open | B7, A7, P5 panel views, and S5: make all nine Task Manager panel tabs dense, responsive, and complete before presentation. | `4ed82b8f` uses the shared full-tile area history for CPU, GPU, and Memory. Network, Disk, Thermal, and Battery use centered single rows. Metric text is prepared off the main thread and changed tile, hero, chart, and row data is published at most 4 times per second. Processes retains prepared rows, removes the nine-row cap, and gives each row and the footer a full action area. `2ed86dbf` cancels preparation when the panel hides. Metadata uses the same row; static explanations use tooltips. The standalone source check passes value boundaries, equal-data suppression, independent views, burst coalescing, and hide/reopen; a 1 ms cadence mutation fails. The gated Debug app and both test bundles compile at `15e9a1bb`. `556945c9` fixes the signed round 10 Home labels with Title Case, one line, and end truncation; makes the whole-tile history readable at low contrast; and restores remote label/value cells plus the trailing 84pt action column. Connect and Disconnect use the native context menu. Light/Dark source renders pass; the action geometry check fails on signed `198055e4`. The final gated Debug app and both test bundles compile at `556945c9`; all 15 related package checks pass. Round 11 T096 and T097 are fixed in `63daa7e9`: rate ticks use significant digits, MB/s sits above the plot, and RAM shares one unit with full readings in help. T098 source renders prove and fix long Network truncation, retain 34pt rows and full-tile histories, and check 120 prepared samples, complete RAM at the 109.33pt cell token, Disk percentage/free-space help, and both appearances. The focused history pixel check and source logic check pass. T050 stale help remains integrated. Owner review of signed `43ce0eb9` supersedes the former 0.45 history treatment. `5075da8e` uses neutral CPU/GPU and coral Memory ink, a smooth 1pt line at 35 percent opacity, a 7 percent fill, and the lower 60 percent plot band. Three focused package checks and actual-source Light/Dark Home renders pass for paint, bounds, extreme samples, finite curves and cache modes. The single quiet-chart tests-mode gate passes. Round 12 `bb62bd07` removes duplicate GPU and Network detail readings, retains distinct facts and stale rows, and supplies compact card-title headings plus shared 13pt metric/control glyphs. Ten package checks and actual-source Light/Dark renders pass. Detail content shrinks GPU 281pt to 253pt and Network 324pt to 268pt. Control rows stay 30pt; short tiles stay 34pt with complete long rates. | Run the hosted app tests. The orchestrator must install clean signed source, exercise all nine tabs and actions, check remote Connect/Disconnect, Open SSH and Open App, inspect Home labels, chart contrast, natural card height, both appearances and first frames, and record timing and idle work. `tm-window` owns verification of shared Fan availability, prepared text, and real hardware; `perf-panels` owns the native open path. The single round 11 batch gate failed on unrelated Main catalog metrics. The new one-gate-per-batch rule ends retries. The quiet-chart correction batch compiles. The single Round 12 tests-mode gate compiles the Debug app and both desktop test bundles; final installed acceptance remains with the orchestrator. For T098, collect at least 120 real CPU/GPU/Memory samples, check long Network rates, complete RAM and Disk help, and record signed source stamp, running path and both appearances. Report: `tmp/redesign/logs/w3-panel-tm.md`. |
-| Build and source checks pass; signed review pending | Audit the Task Manager window and apply the 2026-10-01 density correction. | `8edb9428` guards process actions, reuses shared menus and the native sheet, shows detail errors, and uses a 30-second endpoint interval. `1840152d` updates report search on content changes, preserves repeated section names, and reports atomic export failures. `6ea5d560` caches bounded chart series and hover/AX text, keeps unknown memory absent, applies full-row hover, limits history to one or two minutes, and puts chart metadata on one line with help in tooltips. `549fb0f4` and `08a8dad2` keep Auto independently available, prepare Fan text outside rendering, and cap equal-suppressed publications at 250 ms. `267d4182` keeps Fan controls in centered single rows. `704dc1fe` mounts the selected page before deferred visibility and gates process sampling and chart text preparation while hidden. `d0a97318` and `4cb36d2a` update hosted selectors for real Fan and process popup buttons and the restored Main Fan row. `90e86b85` starts metric and process sampling in covered windows, keeps pending Battery text unknown, and fixes utility callback isolation. The native startup check completes in 6 ms, retains the latest snapshot on reopen, and fails with a one-second delay. Native process sampling returns rows in 176 ms. Source-derived checks, the isolated actual Fan publisher check, and the package keyboard-availability test pass. Removing the publication limit and swallowing export errors each fail their checks. | Both gated app and desktop-test compilations pass. Run hosted tests, then install the clean signed build and recheck the r10 background-open pending-data failure, warm reopen, close/minimize, every route, helper state, process confirmation, export, Settings control, appearance, and timing. Report: `tmp/redesign/logs/w1-tm-window.md`. |
-| Package verified; signed review pending | Align Task Manager title paint with regular page titles and preserve native traffic-light hover tracking. | `0a034305` aligns the shared header; `e303571b` fixes native tracking; `54720f52` adds the cap token and checks. Shared headers keep T=16, use the regular line box, and apply the 1pt dot cap offset. Native chrome moves the enclosing titlebar container and updates tracking. Eighteen focused package tests pass, including pixels in both appearances at 1x and 2x and exact scene nesting. The installed before table and expected values are in `tmp/redesign/logs/w1-chrome.md`. | The orchestrator must install clean source and verify title paint, launcher and deep-link routes, real close/minimize hover glyphs, key changes, restore, and appearance changes. |
-| Build verified; signed review pending | Correct the round 8 Task Manager card layout, chart guides, and native disk units. | `2f628330` puts the 203pt process lane inside its panel and aligns rows at the top. `bf697770` omits empty hero captions. `ec0aac3c` lets information cards keep their content height. `a6251a74` uses the shared chart grid token and bounded, pixel-aligned 1pt rules. `05f2bfc7` uses decimal disk units in native status items and keeps RAM binary. Debug and desktop build-for-testing pass. The source-derived check passes for native formatting, missing values, clamping, and guide geometry at 1x and 2x. | The orchestrator must verify Overview card tops, Battery with measured and unavailable power, short and extended information cards, and visible guides in both signed appearances. Compare native disk labels with the same window and panel sample. Hosted tests and live focus, first frames, identity colors, idle CPU, and speed remain open. Report: `tmp/redesign/logs/30r11-tm.md`. |
-| Build verified; signed review pending | Center every compact Task Manager chart scale on its grid ticks. | `0b9bd503` uses the window chart's fractional positioning. `29b37b19` matches the shared grid's pixel rounding for CPU, GPU, Memory, Network, Disk, Battery, and Sensors. Plots stay 64pt high. Each endpoint has 6pt of space. Numeric rate ticks, leading legends, and the external time axis remain. The source-derived geometry check passes and rejects the captured spacer-stack baseline. All 18 supplied Task Manager panel captures were reviewed. Debug and desktop build-for-testing pass. | The orchestrator must raise the hosted CPU height cap from 410pt to 422pt for the 12pt endpoint reserve, run that test, and verify tick centers, endpoint clearance, and natural panel heights in both signed appearances. Check focus modes, first frames, identity colors, idle CPU, and speed. The shared grid fix is implemented in `a6251a74` by the `tm` worker. Report: `tmp/redesign/logs/30r11-panels.md`. |
-| Build verified; signed review pending | Use decimal disk units throughout the Task Manager window and keep RAM binary. | `f89207a7` routes Overview disk used, capacity, and free space, the Disk page, cumulative disk reads, and Remote Stats storage through the existing decimal `TrayPopoverLayout.diskBytes`. Disk rates already use `.file` in `SystemMonitorDisplayFormat.byteRate`. System Report retains source values without its own byte formatter. `testDiskByteFormatterUsesDecimalUnits` covers decimal KB through TB. The standalone check passes for decimal disk units, the window adapter, binary RAM, rates, and clamping. An isolated binary-format mutation fails the added test's assertions. Debug and desktop build-for-testing pass. | The orchestrator must run the added unit test on hosted CI and compare the signed window and panels from the same disk sample in both appearances, including measured Remote Stats storage. `05f2bfc7` completes decimal disk used and available values in native status items. Signed native label comparison remains open. Report: `tmp/redesign/logs/29-tm-disk-units.md`. |
-| Build verified; signed review pending | Correct the round 7 Task Manager window and embedded Settings findings. | Reviewed all 26 Task Manager window captures and both Main Settings captures from signed `b3d55c3`. `6931d232` centers scale labels on shared grid fractions and keeps 138pt and 72pt plots. `6d920782` removes only a sole section heading that repeats its category. `b149c41d` retains unavailable CPU, RAM, and Network cells, omits repeated host aliases, and keeps unmeasured storage absent. `dddd2931` gives Format the free width, uses 16pt row and header insets, and displays None while storing `off`. `4e5ebf33` adopts foundation's bordered Export trigger for Text and JSON. Debug and desktop build-for-testing pass. The standalone grid, heading, storage, and saved-placement check passes. | The orchestrator must install a clean signed commit and check both appearances, endpoint clearance, distinct report sections, offline and measured host cards, both Settings widths, details actions, and Text/JSON exports. Run hosted render tests. Focus modes, panel heights, identity colors, first frames, latency, idle CPU, and 1,000-row scrolling remain open. Report: `tmp/redesign/logs/27r10-tm.md`. |
-| Build verified; signed review pending | Correct the round 7 Task Manager panel findings. | Disk and Network use numeric MB/s ticks in the 54pt axis, one unit caption above the 64pt plot, and leading legends. Disk hero, details, and Home free space use the same decimal formatter as System Care. RAM retains binary formatting. Sensors omits its repeated card. Offline remote cells use leading action text and trailing 9pt glyphs. Debug, desktop build-for-testing, and standalone formatting checks pass. | Shared header/metric glyphs and muted offline readings are implemented in `b007df53` and adopted in `965dab8f`. The orchestrator must run hosted geometry tests and verify signed Home, Disk, Network, and Sensors in both appearances, including action cells, natural heights, first frames, focus modes, identity colors, idle CPU, and speed. Report: `tmp/redesign/logs/27r10-panels.md`. |
-| Build verified; signed review pending | Correct the round 6 Main and Task Manager panel critique. | Reviewed all 26 Task Manager window and 30 Main/Task Manager panel captures from signed `3e33de2`. `1973ae7f` keeps all three Fan presets visible and moves setup and Auto recovery behind the warning action. `6000ec26` makes compact plots 64pt. `0d6074b9` removes offline storage placeholders. `78c89171` releases hidden Fan polling. `5dfa42c2` adds its retained-layout regression. Input Devices already embeds cards directly after `b756e373`. Debug and desktop build-for-testing pass. | The Export API and adoption are complete in the round 7 window row. Foundation owns independent Fan choice availability and dark panel verification. Run hosted regressions. The orchestrator must install a clean signed commit and check dark/light geometry, Auto recovery, focus modes, natural heights, first frames, identity colors, idle CPU, and speed. Report: `tmp/redesign/logs/25r9-menus.md`. |
-| Build verified; signed review pending | Make real and diagnostic Task Manager panels follow app Appearance. | `b671917` applies the app's effective appearance in shared window, menu panel, popup, and sheet roots. The regression failed before the fix and now checks rendered pixels, native hosts, and nested body schemes across Dark, Light, and Automatic. All 73 package tests, Debug, and desktop build-for-testing pass. | The orchestrator must review real status-item and diagnostic panels, open popups and sheets, and change appearance while each is visible. Report: `tmp/redesign/logs/24-panels-appearance.md`. |
-| Build verified; signed review pending | Correct the round 5 Task Manager plot bounds and inherited focus policy. | `4acd760` removes the chart's 118pt minimum and clips the plot to the requested height. A bitmap regression covers 72pt, 138pt, and compact 19pt plots in both appearances. `a513f1f` lets the owned controls inherit the shared focus policy. All 26 supplied signed captures were reviewed. Debug and desktop build-for-testing pass without source warnings. | The bordered Export trigger is complete in the round 7 window row. Run the bitmap regression on hosted CI. Verify Fan Auto state, focus modes, panel heights, identity colors, first frames, latency, idle CPU, and 1,000-row scrolling in the signed build. Report: `tmp/redesign/logs/23r8-menus.md`. |
-| Build verified; signed review pending | Finish the Task Manager round 4 critique and remove competing menu height estimates. | Earlier commits supply bottom clearance, full-width overlay scrollers, compact card insets, readable report data, visible selection, reported Fan selection, and compact metrics. `93fd6de3` borders Copy and adds System CPU history. `ecb56a69` deletes height guesses and measures the native host before opening. The shared final-height callback now updates the native host. Debug and desktop build-for-testing pass without source warnings. | Foundation's mounted measurement has landed. Run the native short/tall/async-profile regression and all page renders on hosted CI. Review both appearances and measure intermediate frames and latency in the signed installed build. Fan Auto state remains open in the round 5 row. Report: `tmp/redesign/logs/21b-tm-r4.md`. |
-| Build verified; signed review pending | Correct every round 8 Task Manager panel page against the supplied panel captures. | Detail cards use natural height, scale and time labels, dual-series legends, and page-specific values. Disk capacity and activity have separate cards. Processes keeps its search and rows across tabs, aligns headers with cells, and uses 28pt rows. The shell alone reports measured height. | Foundation's mounted measurement and focus policy have landed. Run all nine page renders in both appearances, then compare the signed build and measure tab latency. Report: `tmp/redesign/logs/21-menus-r8.md`. |
-| Build verified; signed review pending | Correct the round 3 Task Manager capture findings. | `d6f2d38` retains 120 fresh samples per metric and keeps one-second window sampling independent of menu intervals. `0cb5d86` top-aligns paired cards, removes duplicate data, restores chart furniture, and uses shared usage bars. `246f1e2`, `fab56d8`, `3e33086`, `30bf1b2`, `e66fbd9`, and `a8c9215` correct Fan state, remote host layout, process identity and columns, report loading, accessibility names, and About density. Tests cover bounded metric histories and version-only process names. Debug and build-for-testing pass. | Run the signed dark and light review and interaction checks. Foundation owns fixed-page bottom clearance, overlay scrollers, compact card header insets, and bordered icon-button support. See `tmp/redesign/logs/16r6-menus.md` for details. |
-| Build verified; signed timing pending | Apply the profiler's Task Manager round 4 fixes without changing behavior. | `a839811` stores final row identifiers once for Processes, Overview, and Remote Stats. `9638806` removes the full-page identity transition. `36dce94` removes the dedicated 536pt menu cap so `OnePlusMenuPanel` owns its 90 percent visible-screen limit. A clean committed checkout passes Debug and build-for-testing. The sibling scan found no remaining full-page identity resets, page transitions, large eager row loops, or per-row tooltips. | Remeasure page switching and process scrolling in the signed build. |
-| Build verified; visual checks pending | Apply the owner's round 3 fixed-region, one-gutter, custom-select, and speed rules to every Task Manager page and its dedicated panel. | Every window route uses the shared fixed page host. Card pages scroll only their card stack. Processes keeps search and its table header fixed while lazy rows scroll; filtering, sorting, limiting, and row formatting run on a utility task. Remote Stats loads profiles off the main actor and keeps its status fixed. System Report keeps search, actions, category title, and its own sidebar fixed while each row region scrolls; search matching runs on a utility task. Sample observation is below the window and panel chrome, and the Overview process sampler owns its local state. The dedicated panel loads profiles off the main actor and gives Processes a fixed search, header, and footer around its row scroller. Every value selector remains `OnePlusSelect`; native action and context menus remain under the stated exception. Debug and build-for-testing pass. | The redesign orchestrator must measure the 100ms page-switch gate, test 1,000-row scrolling, and inspect every route and panel tab in the exact signed build. |
-| Code complete; integration pending | Expose one Task Manager settings content view for both the tool window and main-window embedding. | `SystemMonitorSettingsContent()` returns only the Display and Menu bar items `OnePlusCard`s in a 16pt `VStack`. The Task Manager Settings route owns the sole `OnePlusPage`; the content inherits regular or caller-selected compact density. The older container and duplicate row helpers are removed. | The foundation must dispatch `system-monitor` directly to `SystemMonitorSettingsContent()` in `ToolSettingsContent`, then run the shared signed visual review. |
-| Code complete; visual checks pending | Correct every round 2 Task Manager screenshot finding in the window and dedicated panel. | The window and panel now follow the app appearance; fixed settings columns use one 34pt row and a details disclosure; Add host is in the page header; compact tables use shared 28pt rows; detail pages use 10pt gaps and 12pt card padding; values and units use separate scales; charts label endpoints and dual series; Fan control uses shared setting, switch, and preset parts. The dedicated panel measures its live content, preserves shell clearance, aligns action tiles and Awake controls, uses equal network columns, and keeps grain only on primary metrics. Debug and desktop-test builds compile. | The redesign orchestrator must recapture every Task Manager page and panel in light and dark, then exercise process, remote, Fan, and menu settings interactions in the signed build. Shared defects A through K remain with the foundation where noted in the round 2 report. |
-| Code complete; visual checks pending | Rebuild Task Manager as the fixed 1080 by 660 OnePlus window and a separate 356pt menu panel. Keep all pages, process actions, Remote Stats, Fan controls, menu metrics, real samplers, and saved navigation. | The window uses the compact 200pt OnePlus sidebar, normal system app title, dot-matrix page headers, 20pt gutter, stable deep-link page IDs, fixed settings columns, drag and keyboard metric reordering, and em dashes for unavailable readings. The dedicated panel uses shared icon tabs, tiles, Fan row, remote instance cards, a 70 by 24 Open App action, body-only scrolling, saved selection, and visibility-owned sampling. The Debug app and all test targets compile. | The redesign orchestrator must install the clean commit and perform the exact-build window, panel, sheet, menu, keyboard, and sampling checks. The foundation diagnostics fix must connect its `tab` query to `systemMonitor.trayPage`. |
-| Done | Correct the latest Task Manager chrome review: widen the sidebar to 220pt; hide the unavailable zoom light and move the app title beside the remaining traffic lights without clipping; keep search text on one vertical baseline before, during, and after focus; add a 16pt body top inset on every page; replace the boxed CPU core tiles with one cohesive grouped activity meter; and paint the complete fixed window without a transparent strip or overflow below the body. | `b872a4b` clips workspace paint to its own pane after exact-build review caught that it covered the trailing 45pt of the correctly sized sidebar; `d288343` makes every navigation group fill the pane. Hosted run [`36355031688`](https://github.com/surajmandalcell/macpowertoys/actions/runs/36355031688) passed 900 tests with five skips and zero failures, plus Task Manager, OnePlusUI, Mac Tweaks, and Portman UI jobs. Its screenshot proves RGB 29/29/29 at x=40 and x=218 in both middle and lower rows, the divider at x=219, and workspace RGB 22/22/22 at x=224. The reviewed exact-build capture is `docs/screenshots/task-manager-window-chrome.png`; the final clean source-stamped HEAD is installed and background-launched after confirming zero active Cloud Sync transfers. | None. |
-| Done | Correct the installed Task Manager chrome and Remote Stats connection actions. Keep the 1080 × 660pt content area fixed after restore and every window lifecycle change; place the native traffic lights and normal app title on the shared 40pt centerline with the standard 84pt title inset; keep Configure and Connect in one compact action cluster with equal internal padding and no trailing dead space. | `4838fb0` adds scene-level content sizing, position-only restoration, repeated AppKit lifecycle enforcement, the shared title geometry, and painted 88 × 36pt Remote Stats actions separated by 8pt. `a07a8d1` measures the actual SwiftUI content view instead of AppKit's titlebar-excluding `contentLayoutRect`. Screenshot review then caught the hidden zoom light; `9e39d61` keeps all three traffic lights visible, disables zoom, and preserves the fixed window. Hosted run [`36338530044`](https://github.com/surajmandalcell/macpowertoys/actions/runs/36338530044) passed 900 of 905 tests with zero failures and five skips. Its Task Manager job measured a 1080 × 692pt physical window, the requested 1080 × 660pt content plus the native 32pt titlebar; a shared 20pt title and traffic-light centerline; equal 36pt action heights; an 8pt action gap; and a 32pt trailing inset. The selected exact-build captures are published under `docs/screenshots/task-manager-*.png`, and the final clean source-stamped app is installed from `/Applications`. | None. |
-| Done | Build a reusable OnePlusUI Swift component package and showcase for the stable Task Manager visual primitives. Keep the package in this repository until it has a separate remote so clean clones and hosted builds remain self-contained. | `0ddbae8` extracts the palette, geometry, panel, static dither, sidebar title, buttons, selects, search, and segmented control into `Packages/OnePlusUI`, adopts them in Task Manager, and adds a fixed showcase executable. `1b04445`, `8b56e7a`, `a07a8d1`, and `9e39d61` make its resource loading, safe-area treatment, first responder, actual content sizing, three-light fixed chrome, and lifecycle behavior match the app. The package and showcase job passed in hosted run [`36338530044`](https://github.com/surajmandalcell/macpowertoys/actions/runs/36338530044); the reviewed capture is `docs/screenshots/oneplus-ui-showcase.png`. The parent folder is not a shared Git repository, so a sibling-only dependency would break clean clones and CI. The package remains ready to move unchanged to its own tagged repository when a second production app adopts it. | None. |
-| Superseded | Confine Processes hover feedback to the process identity cell so CPU, memory, PID, and row actions stay visually still. | `3535d8b` moves the hover surface and pointer tracking from the full row to the flexible identity cell. The exact-build interaction passed in run [`36338530044`](https://github.com/surajmandalcell/macpowertoys/actions/runs/36338530044), and `docs/screenshots/task-manager-process-hover.png` shows CPU, memory, PID, and row actions outside the hover surface. | None. |
-| Done | Finish the supplied `task-manager.html` match: use a normal app-name title on the traffic-light centerline with the correct leading inset; give the workspace header and body one shared leading edge; keep Processes search as the rightmost header control; replace improvised action chrome with native-feeling dark macOS buttons, selects, and menus using San Francisco typography; keep the Process Information header and footer on the body surface; show every Overview remote instance in a horizontal scroller with both Open SSH and Open App actions; restore the reference's dense corner dither, background texture, spacing, and content-sized dedicated menu panel without adding sampling or render overhead; keep the main window fixed at a Retina-aware 1080pt content width instead of allowing resize. | Commits `2c0550d` through `7b28ae0` align the normal app title and body inset, keep search last, add shared dark controls and a labeled native process action menu, render every remote profile in a horizontal strip with both actions, use the reference grain and ribbon assets, size the dedicated panel to its content, and enforce a non-resizable 1080 × 660pt content area. Hosted run [`36329261546`](https://github.com/surajmandalcell/macpowertoys/actions/runs/36329261546) passed 898 tests with five skips and zero failures; its dedicated Task Manager interaction job also passed every window, sheet, menu, popup, and Fan assertion. Exact-build Overview, Processes, System Report, Process Detail, and 356 × 467 popup renders are published under `docs/screenshots/task-manager*.png`. The owner's later identity-cell hover correction is tracked separately above. | None. |
-| Done | Rename System Monitor to Task Manager and reproduce the supplied `task-manager.html` design as the product UI. Keep the existing real samplers and controls, add its missing GPU, Battery, System Report, Settings, process-detail sheet, overview process and memory panels, compact popup Processes page, and remote-instance presentation. | Commits `556751e`, `d6ceb22`, `c0b3dec`, `bc3f2ae`, `82d5ae3`, `03ff908`, `08d2571`, `572a7ae`, `225efa4`, and `3175590` implement the telemetry, exact 1070×654 workspace with a 192pt sidebar, exact 356×536 dedicated menu, saved multi-host Remote Stats, stable readings through sampler resets, deterministic System Report captures, and unified idle-rate labels. Final hosted run [`36299099060`](https://github.com/surajmandalcell/macpowertoys/actions/runs/36299099060) at `f1c8b8b` passed 897 of 902 tests with zero failures and five skips; Mac Tweaks UI, Fan UI, Portman UI, and the installable app archive also passed. The reviewed Overview, dedicated menu, Processes, and System Report captures are published under `docs/screenshots/task-manager*.png`. | None. |
-| Source complete; signed review pending | B3: restore Fan below Awake on combined Home. Keep Task Manager Home and Sensors and window Sensors. | The 2026-10-01 correction supersedes the main-menu exclusion. `42cf6c02` reuses `FanControlView(owner: "main-tray-home", compact: true)` while Task Manager is enabled. All locations share Auto, Cool, Max, setup, and visibility-owned sampling. | Run hosted Fan ownership checks. Verify all locations, hidden polling, disabled tool state, and protected writes on physical fan hardware after macOS approval in an isolated session. Report: `tmp/redesign/logs/w1-panel-main.md`. |
-| Verify | Show a bare Fan warning glyph and keep Auto, Cool, and Max visible even when only Auto can restore automatic control. Release stale keyboard outlines on a click elsewhere throughout the app without breaking text editing or Tab navigation. | The compact Fan shares one three-button preset row across both tray locations and has no warning badge. Hosted light/dark renders and the real `36185053055` tray capture show every preset without overflow. The hosted AppKit regression passed for blank and text-field clicks. The signed app and helper installed from clean source with matching stamps and relaunched in the background. | Verify keyboard and pointer focus in a hosted UI interaction. |
-| Superseded | Give content action buttons even left and right space and a larger, consistent hit area across the app, including Remote Stats Disconnect. Use a cohesive, brighter Coolors-derived palette for Monitor cards and shrink only its sidebar by about 20pt. | Shared content actions retain symmetric insets and practical hit areas. The intermediate 220pt sidebar and multicolor palette were replaced by the exact `task-manager.html` contract: a 192pt sidebar and restrained near-black dithered surfaces. | The current Task Manager redesign row owns visual verification. |
-| Verify | Offer a 5-second Remote Stats refresh, keep menu-bar readings visible when a 10-second interval or placement changes, and stop Off, Combined, and Separate changes from shifting their controls. Apply the same stable-layout rule to comparable settings controls. | Remote Stats offers Manual through 5-minute refresh choices, including 5 seconds; its actions retain their width and order across connection state. The menu controller retains measured values and unaffected native items through cadence or placement changes. The fixed-size title-bar picker and value-retention regressions passed in hosted run `36137140585` (871 tests). | Verify the final signed build, native menu-item position, and live connected Remote Stats layout without taking desktop focus. |
-| Done | Remove graph insets, show a clear 1-minute Load value with the longer averages labeled on the CPU page, and show `...` while Monitor readings are pending. Keep the saved Remote Stats host and install the finished app without taking desktop focus. | Overview, detail charts, and tray sparklines reach their card edges. Hosted run `36129347170` passed the full suite and produced a source-stamped app archive. The app and helper were signed with the configured Apple Development identity, passed strict verification, and installed from a clean source at `dc97280`. Background launch replaced PID `24599` with `75044`; `oci1` remained saved, and Cloud Sync had zero active transfers. | None for this request. Live clicking and the earlier Remote Stats interaction checks remain in their separate rows. |
-| Verify | Make selected process details useful and live: copy the executable path, explain virtual address space, update values with each sample, and show available parent/child and network-port information. Offer a process hierarchy without hiding PIDs or breaking saved column sorts. | Detail resolves from the refreshed process array and shows sample time, Copy Path, virtual-address-space help, and selected-PID-only network endpoints. The persisted hierarchy keeps every PID and sorts siblings. Hosted run `36100785006` passed the hierarchy, endpoint parser, and real two-sample CPU refresh regressions within 851 tests. | Inspect live detail, copy, hierarchy, and endpoints in a signed app when desktop interaction is permitted. |
-| Verify | Name the destination Remote Stats and make SSH connection settings usable with the keyboard and while connected. | Return calls Connect; interval changes restart page-owned polling, Manual stops repeats, Refresh Now is explicit, and Open Terminal passes an SSH URL to Terminal. Connection controls use large native size, and remote reading cards use the Monitor's tinted gradients. Hosted run `36100785006` passed 851 tests and its disconnected-state render was inspected. One read-only, bounded SSH sample to the saved Linux alias returned the expected protocol marker without opening a window. | Verify Return, cadence changes, Terminal handoff, and connected visuals with Linux, macOS, and Windows hosts in an isolated session. |
-| Verify | Make System Monitor an on-demand activity manager with a responsive opening path, a full searchable process list, sortable headers that remember the selected column and direction, rich process details, and guarded Quit actions. | The native sampler runs only on the Processes page. The 25-row cap and picker are removed; a lazy list renders all sampled PIDs, including protected processes with limited data and a `ps` fallback capped at 2 MB and five seconds. Headers sort Process, CPU, Memory, and PID in both directions, persist the choice, and keep unavailable usage last. The detail panel shows identity, parent, user, CPU, resident and virtual memory, threads, start time, and executable path. All System Monitor tests, including subprocess timeout, unavailable-value sorting, and production-size rendering, pass in the complete hosted run `36096121530`. | Verify sorting, large-list scrolling, process details, and guarded actions in the signed app. |
-| In progress | Reach useful Stats breadth without unrelated World Clocks or Bluetooth pages. | Overview and tray show CPU, GPU, memory, disk, network, battery, thermal, load, and fans. World Clocks and Bluetooth were removed at the owner's request. The monitor-specific Plugins page and metric contract were also removed because MacPowerToys plugins are tools, not monitor metrics. | Add first-party temperature sensors where supported and verify the updated visual treatment in light and dark. |
-| Verify | Let users create, install, and share MacPowerToys tools through the existing Marketplace, including tools built in Rust or other languages. | The Marketplace remains the host's language-neutral `.app` plugin system with custom catalog URLs. `docs/MARKETPLACE_TOOLS.md` now explains packaging and sharing; System Monitor no longer owns plugin discovery or execution. | Verify a signed, notarized third-party tool from a custom catalog end to end. |
-| Verify | Monitor Linux, macOS, and Windows hosts only while connected, with easy SSH setup and conservative sampling. | Remote Stats provides an operating-system selector, uses bounded SSH reads only after Connect, defaults to 30 seconds with manual and 5-second to 5-minute options, cancels on Disconnect or page exit, and keeps Open Terminal here. No daemon or continuous sender is installed. The three protocol parsers and disconnected render pass focused tests. | Verify live hosts on all three systems and that sampling stops after disconnect. |
-| Verify | Reuse the Remote Stats SSH connection while sampling and release it on disconnect. | OpenSSH ControlMaster/ControlPersist now uses a private per-user temporary socket, and the page sends an explicit master exit on disconnect, page exit, or sample failure. `ssh -G` resolves the socket options, and a focused test keeps the remote command unchanged. This removes the per-sample handshake ceiling tracked in Ponytail debt. | Run the hosted regression and confirm a live connected host leaves no control socket or SSH master after disconnect. |
-| Verify | Put Combined, Separate, and Off menu-bar placement in the CPU, Memory, Network, and Disk page title bars. | Each metric has its own page, title-bar placement selector, and saved placement backed by the existing menu-bar status-item controller. Network and Disk sample independently when their pages are open. The separate Menu Bar page is removed; advanced item settings remain in the launcher. Tests cover mixed placements, legacy migration, and saved-position preservation on item addition. | Verify icon positions and restoration in the signed app after relaunch. |
-| Done | Remove redundant Overview history cards. | `d06c96c` removes the duplicate Last Two Minutes CPU, memory, and download section while retaining all eight metric-card sparklines and the dedicated detail-page charts. Focused tests pass, and the exact signed installed build visibly shows only the eight Overview cards. | None. |
-| Superseded | Replace System Monitor's hard gradient cards with softly blurred color inspired by Dither Kit, keeping compact metrics readable in light and dark. | The owner rejected the result on 2026-09-26: the supplied current screenshots still show smooth, differently colored washes with barely visible dithering. | The dithered OnePlus-dark redesign below replaces this treatment. |
-| Done | Give System Monitor a visibly dithered, near-black OnePlus-inspired surface with a consistent accent; remove smooth colored gradients from its window and popup cards. | [Dither Kit](https://www.tripwire.sh/dither-kit) uses ordered-dither fills. `80f4b4d` replaces the blurred Canvas with ordered dots and unifies the accent; `3b545e7` keeps dots below most text. Hosted unit run `36217791848` passed and saved dark and light window and popup renders. The reviewed dark captures are `docs/screenshots/system-monitor-dither-overview.png` and `docs/screenshots/system-monitor-dither-popup.png`. The signed app and helper at `/Applications` were source-stamp checked and launched without foreground activation. | None. |
-| Superseded | Remove System Monitor from the MacPowerToys combined menu and give its own menu-bar item a wider Monitor popup with labeled metric tabs and the complete overview. When Monitor menu-bar display is on, keep at least one metric enabled and default to RAM. | `80f4b4d` and `d8482f1` established the separate menu item, RAM default, at-least-one rule, saved navigation, and a 440pt intermediate popup. The exact HTML redesign preserves that behavior in the current 356×536 Task Manager menu. | The current Task Manager redesign row owns the popup size and final screenshot evidence. |
-| Superseded | Give Overview and the tray a darker, bulkier card treatment following the owner's supplied reference, and align the fan with Awake. | The earlier blurred treatment still looked like soft gradients and the owner moved Monitor out of the main menu. | The dedicated dithered popup and Sensors-only Fan request above owns the current design. |
-| Superseded | Align Fan beside Awake on Home and show external installation commands. | The owner rejects the separate package setup and now wants all Monitor content, including Fan, out of the main menu. | The dedicated Monitor popup and bundled-helper request above owns this work. |
-| Superseded | Name the tool System Monitor everywhere and lock icon OSM13. | The naming and migration remain complete. The owner requested ten new icon choices on 2026-09-25. | Replaced by the selected M02 Scope trace below. |
-| Verify | Use M02 Scope trace as the System Monitor icon. | The app and Raycast PNGs match the owner's original M02 file byte for byte. Hosted run `36124794622` passed and shows it at native launcher size in dark and light. | Verify Dock display in the final signed installed app when desktop interaction is available. |
-| Done | Add CPU, memory, GPU, disk, network, battery, thermal, and load data. | `cfa8832` added the native detailed samplers. `b1d532e` added the GPU sampler. | None. |
-| Done | Give the System Monitor tray tab a dense live overview. | `04f5227` and `275d5d5` render CPU, GPU, memory, disk, network, battery, thermal, and load from the existing 120-sample history with muted semantic tints and dedicated background graph bands. `SystemMonitorService` tracks the window and tray as independent detailed-sampling owners. Focused tests cover 25 open/close cycles and overlapping-surface teardown; the final reviewed production-width render passes. In the exact installed signed `519095b` build, the closed tray reports zero System Monitor timers and status items, zero Cloud Sync window/file-watcher/long-task owners, 0.0 percent idle CPU, and 78,784 KiB RSS after launch. | None. |
-| Superseded | Give the combined-menu Monitor a saved Home summary and compact CPU, GPU, RAM, Network, Disk, Battery, and Sensors tabs. Each summary card opens its detail, and each detail samples only its metrics. | The saved pages and detail sampling remain, but the owner moved them into a dedicated wider Monitor popup and removed Fan from the main menu. | Verify the new popup request above. |
-| Superseded | Evaluate safe fan controls without copying the GPL reference. | The first implementation used an external guarded helper. The owner rejected the extra package setup; the current implementation reuses MacPowerToys' signed daemon and checks its source version before fan writes. The installed Mole app was inspected: its bundle declares `SMPrivilegedExecutables`, and a Mole system helper is present under `/Library/PrivilegedHelperTools`; its fan writes do not establish a helper-free alternative. | The current bundled-helper request above owns this work. |
-| Superseded | Add a polished fan card to the window and a Fan row on Monitor Home. | Earlier hosted tests verified live RPM, Auto/Cool/Max state, and a bounded fan poller. The owner moved Fan to Sensors only and replaced external-helper setup with the bundled path. | Covered by the current dedicated-popup and bundled-helper requests above. |
-| Verify | Read fan RPM without another installed app. | The bundled native SMC reader reported two fans at 3,472 RPM average and 60% of maximum on Mac16,7. The first implementation was read-only; the current guarded writer shares the same SMC layout in the signed app helper. | Inspect live RPM and guarded Auto/Max writes after macOS approval in an isolated session. |
-| Done | Collect detailed data only while the System Monitor window is open. | The window starts detailed sampling on appear and stops it on disappear. | None. |
-| Done | Check live values, menu layouts, timing, and shutdown behavior. | The normal signed `29fcbd0` build used the saved one-second rate. Four live samples changed in grouped mode, and individual mode created exactly three items. After the detail window closed, 16 menu-only samples stabilized near 85.3 MB with low CPU use. Disabling the menu removed every System Monitor status item. Eight samples with both surfaces closed showed 0.0 to 0.1 percent CPU, then 0.0 percent with flat CPU time. | None. |
-| Superseded | Animate page and live-value changes without using motion when Reduce Motion is enabled. | The normal signed `d1cf9e2` build exercised Overview, Processor, Memory, Network and Disk, and Menu Bar pages with changing live values. The app-wide motion policy and Reduce Motion regression test pass. | None. |
-| Verify | Let the user enable and reorder CPU, memory, GPU, disk, network, battery, and thermal menu items independently. | `b1d532e` stores all seven metrics as an ordered array. `b53bc23` adds compact enable and reorder controls. The earlier zero-selection allowance is superseded: removing the last metric turns off the Monitor menu, and re-enabling an empty configuration restores RAM. `8acd4ac` resets only saved native positions affected by explicit reordering. | In the signed build, Command-drag individual items, relaunch, confirm positions are preserved, and verify removing the final metric disables the menu. |
-| Verify | Give each menu item its own icon, display style, interval, and metric-specific format. | `79ee403` adds schema version 2, backward-compatible migration, disk percentage, used, or available, network bits or bytes, battery percentage, status, or both, and compact or full thermal values. `74d7335` adds the adaptive native controls and accessibility identifiers. Memory and network-direction formats remain supported. Equal settings do not write or restart sampling. The signed `f0f4ce6` build exposed every control in compact aligned rows at the restored normal width. Focused round-trip tests prove persistence for every metric configuration and cadence. | Check only the minimum-width layout for clipping and readable wrapping. |
-| Done | Use one due-driven sampler and stop all System Monitor work when no surface needs it. | `b1d532e` adds one utility-queue timer, one sampler, a generation guard, and a 120-sample cap. `89db295` stops retries for unavailable menu metrics. `3a76cfe` and `bd746e2` run 25 menu enable and disable cycles plus 25 detail open and close cycles against the actual owner counts. Each active state has one timer. Each stopped state has zero timers and status items. The wake observer stays at its one-owner service baseline. Settled post-stop samples do not change any snapshot or history. Removing the timer release makes the test fail. All 22 focused tests pass. | None. |
-| Superseded | Use an efficient default and saved cadence for each menu metric. | `79ee403` established the old 2-second global default and per-metric floors. Its due-driven scheduler, saved interval choices, and unavailable-metric suspension remain in use. | The owner's newer 10-second default and stable-value request above supersedes the old default. |
-| Done | Update settings and menu-bar controls only when their rendered state changes. | The menu controller in `b1d532e` caches rendered values. `cc5a1ba` compares normalized settings before it writes UserDefaults or restarts sampling. A focused identity test creates one grouped item and all seven individual items with exact stable autosave names. Style and cadence changes preserve every native item identity, and zero selection removes them all. The grouped and individual AppKit write-path regression proves equal rendered content does not enter the status-button setter blocks. | None. Physical dragged-position recovery remains owned by the independent-menu-item row. |
-| Done | Prove System Monitor and whole-app background work returns to its allowed baseline. | Detailed System Monitor sampling follows its window. `3a76cfe` and `bd746e2` prove 25-cycle timer, status-item, wake-observer, stale-sample, and chart-history cleanup. AI History follows its window. Input Devices follows its enabled event tap. `97038e7` proves that the Cloud Sync daemon and 700 ms poll stop after an idle close, and `bba9474` proves its three volume observers also return to zero across 25 lifecycle cycles. `89db295` stops a menu timer whose remaining metrics are unavailable. `75cd9d9` adds a bounded, read-only signed-app snapshot of integer owner counts without retaining a diagnostic owner. The exact installed signed `5a3f745` build completed 25 cycles across all 11 surfaces, for 275 open and Command-W closes with zero route or close errors. All 23 owner counts matched their warmed baseline at five checkpoints and after 30 seconds. Cloud daemon and poll remained at their intentional Start at Launch baseline of one, while Cloud windows, file watchers, long tasks, System Monitor timers and status items, and the Input Devices event tap returned to zero. Awake stayed at its active one-assertion and one-timer baseline. RSS varied within a bounded band, finished below baseline, and showed no cycle-by-cycle growth. Idle CPU time increased by 0.02 seconds per 30 seconds before and after. App, rclone, neighbor, and login-helper PIDs stayed stable, and active transfers remained zero. | None. |
+| Verify | Round 12 critique: process sort feedback, app icons, compact Overview text, unique Disk details. | `23d1a768`: native sort indicator, bundle icons off-main, 11pt/9.5pt roles, one 100pt Volume panel. | Hosted `SystemMonitorTests`; signed sort clicks, icons, Overview inks, Disk in both appearances. |
+| Open | Panel latency: warm open within 100ms, cold within 250ms, tab switch within 100ms (P1, P4, P5, P6). | Signed `43ce0eb9` medians: opens 16.1/38.1/79.0ms (Main, Task Manager, Portman), tabs 66.8/128.2/84.4ms. `547b5586` stops panel diagnostics matching the Task Manager scene. | Install the integrated fix; run the same collector and require warm opens and tabs at most 100ms. Keep open: cold complete frames, enabled separate items, saved-host edits, closed-panel CPU, hosted run. Report `w3-perf-panels.md`. |
+| Open | T001-T008, T051, T110: panel latency and native behavior; display sizing before measurement; accessible status names; T108 Settings hooks. | `b7e222d7`, `8801bfd9`, `0fa0407d`, `073f2874`, `07728304`, `63daa7e9`, `a5d188f1`. | Clean install; pointer and keyboard timing, complete frames, Escape chains, foreground preservation, runtime owners, Control-click parity. A background diagnostic profile once changed Chrome to MacPowerToys as foreground; recheck with the scene fix. |
+| Verify | Remote window controls, stable saved-host and error frames, complete panel readings (T053-T055). | `f44b9584`, `20cb65c7`, `3dcf0c69`, `b22323cb`. | `SystemMonitorRemoteTests`; cold first and later frames, help and context menus, host controls, Terminal, Open App, keyboard, both appearances. |
+| Verify | Repair Remote Stats host editing, SSH sampling, lifecycle, window and panel actions (B8). | `c0dd4b4b`, `e901bac6`, `2dc04d43`; bounded `oci2` probe and two real samples pass. | Hosted `SystemMonitorRemoteTests`; host edits, Return, interval, Manual refresh, all close paths, Terminal, host selection, layouts; live macOS and Windows sampling. Report `w1-remote.md`. |
+| Verify | All nine panel tabs dense, responsive, and complete before presentation (B7, A7, P5, S5, T096-T098). | `4ed82b8f`, `556945c9`, `63daa7e9`, `5075da8e`, `bb62bd07`: full-tile histories, 4 Hz publish limit, prepared text, full Processes list, no duplicate readings. | Hosted app tests; all nine tabs and actions, remote Connect/Disconnect, Open SSH and Open App, Home labels, chart contrast, natural heights, first frames, timing, idle work. For T098 collect at least 120 real samples and check long Network rates, complete RAM, Disk help. `tm-window` owns Fan hardware checks; `perf-panels` owns the open path. Report `w3-panel-tm.md`. |
+| Verify | Audit the window and apply the density correction (guarded process actions, 30-second endpoint interval, cached chart text, independent Auto, hidden-window gating). | `8edb9428`, `1840152d`, `6ea5d560`, `549fb0f4`, `08a8dad2`, `267d4182`, `704dc1fe`, `90e86b85`. | Hosted tests; recheck the r10 background-open pending-data failure, warm reopen, close and minimize, every route, helper state, process confirmation, export, Settings, appearance, timing. Report `w1-tm-window.md`. |
+| Verify | Task Manager title paint matches page titles; native traffic-light hover tracking works. | `0a034305`, `e303571b`, `54720f52`. | Title paint, routes, close and minimize hover glyphs, key changes, restore, appearance changes. |
+| Verify | Round 8 layout: 203pt process lane, no empty hero captions, content-height info cards, 1pt chart rules, decimal disk units in status items. | `2f628330`, `bf697770`, `ec0aac3c`, `a6251a74`, `05f2bfc7`. | Card tops, Battery power states, info cards, guides, native disk labels in both appearances; hosted tests, focus, first frames, identity colors, idle CPU. Report `30r11-tm.md`. |
+| Verify | Center every compact chart scale on its grid ticks. | `0b9bd503`, `29b37b19`; plots 64pt, 6pt endpoint space. | Raise the hosted CPU height cap from 410pt to 422pt and run it; verify tick centers, endpoint clearance, natural heights in both appearances. Report `30r11-panels.md`. |
+| Verify | Decimal disk units throughout the window; RAM stays binary. | `f89207a7`, `testDiskByteFormatterUsesDecimalUnits`. | Hosted test; compare window and panels from one disk sample, including Remote Stats storage and native labels. |
+| Verify | Round 7 window and embedded Settings (grid labels, sole-heading removal, unavailable cells, format picker width, Export trigger). | `6931d232`, `6d920782`, `b149c41d`, `dddd2931`, `4e5ebf33`. | Both appearances, endpoint clearance, report sections, host cards, both Settings widths, Text and JSON exports; hosted render tests; 1,000-row scrolling. Report `27r10-tm.md`. |
+| Verify | Round 7 panel (numeric MB/s ticks, decimal Disk, no repeated Sensors card, offline remote cells). | Source built. | Hosted geometry tests; Home, Disk, Network, Sensors in both appearances. Report `27r10-panels.md`. |
+| Verify | Round 6 panel (all three Fan presets visible, 64pt plots, no offline placeholders, hidden Fan polling released). | `1973ae7f`, `6000ec26`, `0d6074b9`, `78c89171`, `5dfa42c2`. | Dark/light geometry, Auto recovery, focus modes, heights, first frames, hosted regressions. Report `25r9-menus.md`. |
+| Verify | Real and diagnostic panels follow app Appearance. | `b671917`. | Review status-item and diagnostic panels, popups, sheets; change appearance while visible. |
+| Verify | Round 5 plot bounds and inherited focus policy. | `4acd760`, `a513f1f`. | Hosted bitmap regression; Fan Auto state, focus modes, heights, identity colors, latency, 1,000-row scrolling. |
+| Verify | Round 4 critique and no competing menu height estimates. | `93fd6de3`, `ecb56a69`. | Hosted native short, tall, and async-profile regression and page renders; intermediate frames and latency. |
+| Verify | Round 8 panel pages (natural-height cards, scale labels, legends, search kept across tabs, 28pt rows). | Source built. | All nine pages in both appearances; tab latency. |
+| Verify | Round 3 capture findings (120 samples per metric, one-second window sampling, paired cards, Fan state, remote layout). | `d6f2d38`, `0cb5d86`, `246f1e2`, `fab56d8`, `3e33086`, `30bf1b2`, `e66fbd9`, `a8c9215`. | Signed dark and light review and interactions. |
+| Verify | Profiler round 4 fixes without behavior change (final row IDs, no page identity transition, panel height owned by `OnePlusMenuPanel`). | `a839811`, `9638806`, `36dce94`. | Remeasure page switching and process scrolling. |
+| Verify | Round 3 fixed regions and one gutter on every page and the panel. | Shared page host; filter, sort, formatting on utility tasks. | Measure 100ms page switch; 1,000-row scrolling; every route and panel tab. |
+| Verify | One settings content view for the window and main-window embedding (`SystemMonitorSettingsContent()`). | Two cards in a 16pt stack; Settings route owns the sole `OnePlusPage`. | Confirm `ToolSettingsContent` dispatches `system-monitor` to it; shared signed review. |
+| Verify | Round 2 corrections (app appearance, 34pt settings row, header Add host, 28pt tables, 10pt gaps, dual-series labels). | Source built. | Recapture every page and panel in light and dark; exercise process, remote, Fan, and menu settings. |
+| Verify | Rebuild as the fixed 1080 x 660 window and a 356pt panel, keeping all pages, process actions, Remote Stats, Fan, menu metrics, and saved navigation. | Compact 200pt sidebar, stable page IDs, drag and keyboard metric reorder, shared panel parts. | Exact-build window, panel, sheet, menu, keyboard, and sampling checks. Confirm the foundation `tab` query connects to `systemMonitor.trayPage`. |
+| Open | B3: Fan below Awake on combined Home; keep Fan on Task Manager Home and Sensors. | `42cf6c02` reuses `FanControlView(owner: "main-tray-home", compact: true)` while Task Manager is enabled. | Hosted Fan ownership checks; all locations, hidden polling, disabled-tool state; protected writes on physical hardware after macOS approval, in an isolated session. Report `w1-panel-main.md`. |
+| Verify | Bare Fan warning glyph; Auto, Cool, Max stay visible; release stale keyboard outlines on outside click. | Hosted AppKit regression passed; installed from clean source. | Keyboard and pointer focus in a hosted UI interaction. |
+| Verify | Remote Stats refresh from 5 seconds; menu-bar readings stay visible when the interval or placement changes; no control shifts. | Fixed-size picker and value-retention regressions passed. | Final signed build, native item position, live connected layout. |
+| Verify | Useful, live process details (Copy Path, sample time, virtual-address help, ports, hierarchy that keeps every PID). | Hosted hierarchy, endpoint parser, two-sample refresh regressions passed. | Live detail, copy, hierarchy, endpoints in a signed app. |
+| Verify | Remote Stats naming; keyboard-usable SSH settings (Return connects, interval restarts polling, Manual stops, Open Terminal). | Hosted run passed; one bounded SSH sample returned the protocol marker. | Return, cadence, Terminal handoff, connected visuals with Linux, macOS, and Windows hosts in an isolated session. |
+| Verify | On-demand activity manager: full searchable process list, sortable headers that persist, rich details, guarded Quit. | Sampler runs only on Processes; `ps` fallback capped at 2 MB and 5 seconds. | Sorting, large-list scrolling, details, guarded actions in the signed app. |
+| Open | Stats breadth without World Clocks or Bluetooth pages. | Overview and tray show CPU, GPU, memory, disk, network, battery, thermal, load, fans. | Add first-party temperature sensors where supported; verify light and dark. |
+| Verify | Read fan RPM without another installed app. | Bundled native SMC reader showed two fans at 3,472 RPM average on Mac16,7; the signed helper shares the SMC layout for guarded writes. | Inspect live RPM and guarded Auto and Max writes after macOS approval, in an isolated session. |
+| Verify | Tools built in any language install through the Marketplace. | `docs/MARKETPLACE_TOOLS.md`; Monitor no longer owns plugin discovery. | Signed, notarized third-party tool from a custom catalog, end to end. |
+| Verify | Monitor Linux, macOS, and Windows hosts only while connected, with conservative sampling (default 30 seconds). | Bounded SSH reads after Connect; no daemon; three parsers pass. | Live hosts on all three systems; sampling stops after disconnect. |
+| Verify | Reuse the Remote Stats SSH connection (private ControlMaster socket, explicit exit on disconnect). | `ssh -G` resolves the options; regression passes. | Hosted regression; confirm no socket or SSH master remains after disconnect. |
+| Verify | Combined, Separate, Off placement in each metric page title bar. | Per-metric saved placement; legacy migration; saved positions preserved. | Icon positions and restoration in the signed app after relaunch. |
+| Verify | M02 Scope trace as the Task Manager icon. | App and Raycast PNGs match the owner file. | Dock display in the signed app. |
+| Verify | Enable and reorder the seven menu metrics independently. | `b1d532e`, `b53bc23`, `8acd4ac`; removing the last metric turns the menu off, re-enabling restores RAM. | Signed Command-drag, relaunch, position preserved, final-metric disable. |
+| Verify | Per-item icon, style, interval, and metric format (schema version 2). | `79ee403`, `74d7335`. | Check the minimum-width layout for clipping. |
+
+Done:
+
+| Request | Evidence |
+|---|---|
+| Task Manager window chrome: fixed 1080 x 660 content, three traffic lights on the 40pt centerline, 220pt sidebar and clipped workspace paint, Remote Stats actions in one compact cluster. | `4838fb0`, `a07a8d1`, `9e39d61`, `b872a4b`, `d288343` |
+| Reusable OnePlusUI package and showcase. | `0ddbae8` |
+| Rename to Task Manager and reproduce `task-manager.html` (telemetry, 356 x 536 menu, saved Remote Stats hosts, System Report, process sheet, horizontal remote instances, grain assets). | `556751e` to `7b28ae0`; screenshots in `docs/screenshots/task-manager*.png` |
+| Remove graph insets; 1-minute Load value; `...` while readings are pending. | `dc97280` |
+| Remove redundant Overview history cards. | `d06c96c` |
+| CPU, memory, GPU, disk, network, battery, thermal, load data. | `cfa8832`, `b1d532e` |
+| Dense live tray overview from the 120-sample history, independent detailed-sampling owners. | `04f5227`, `275d5d5` |
+| Detailed collection only while the window is open. | Appear and disappear hooks |
+| Live values, menu layouts, timing, and shutdown checked. | `29fcbd0` |
+| One due-driven sampler; zero timers and status items when no surface needs it. | `b1d532e`, `3a76cfe`, `bd746e2` |
+| Update settings and menu items only when rendered state changes. | `cc5a1ba` |
+| Whole-app background work returns to baseline (25 cycles, 11 surfaces, 23 owner counts). | `5a3f745`, `75cd9d9` |
 
 ## Shared window behavior
 
-| Status | Request | Evidence | Remaining work |
-|---|---|---|---|
-| Ongoing | Maintain one global Apple UI quality checklist for recurring review corrections across apps. | `~/.codex/rules/ui-quality-checklist.md` is routed from the global `AGENTS.md` and now covers title and traffic-light centerlines, fixed-window lifecycle enforcement, shared header and body edges, search placement, compact action clusters measured by painted bounds, stable controls, hover scope, themed menus and sheets, native type, field padding, symmetric hit areas, menu-bar spacing, exact-build captures, and focus-safe verification. | Append new recurring owner corrections and apply the list before every UI handoff. |
-| Done | Use the correct shared width and padding family for every system-tool sidebar. | Input Devices and the owner's corrected Task Manager layout use the 220pt compact family. System Care uses the 240pt data family. Each retains the shared aligned top edge and inner padding. | None. |
-| Done | Remember window position, display, and size for the three tools. | Each window uses a stable `WindowAccessor` identifier. `WindowStateManager` stores all three identifiers. | None. |
-| Done | Enforce minimum sizes for the launcher and every workspace sub-app. | `9a390a8` centralizes minimum content sizes in `WindowAccessor` before saved-frame restoration. The launcher and all seven SwiftUI workspaces have regression coverage; compact applets and Ruler keep their existing fixed or overlay minimums. | None. |
-| Done | Keep short metadata inline and use two columns on sparse wide pages. | `f44fc7a` adapts Input Devices profiles. `29fcbd0` adapts every System Monitor metric and chart page. `8f4b6dd` adapts System Care Storage and Applications. The normal signed builds confirmed all three tools at their compact and normal widths. Wide pages use multiple columns. Compact pages stack without clipped values. `631facd` also keeps every shared About header readable at the compact limit. | None. |
-| Done | Confirm restoration with multiple displays. | `cf5c975` prevents SwiftUI's initial frame from replacing saved state before restoration. All 400 unit tests pass. In the normal signed build, Input Devices and System Monitor restored at 1891 × 1065 on the built-in display, and System Care restored at 1078 × 699 on the same display after a full app quit and relaunch. The Window menu and the unchanged saved display identifier confirmed the display. The three windows then returned to their normal 980 × 700, 1080 × 720, and 1180 × 780 frames on the main display. | None. |
-| Done | Use quiet structural dividers and compact aligned top actions in all three workspaces. | `81de8b1` reduces the shared visual divider to 0.22 opacity, or 0.44 with Increased Contrast. `6247587` preserves every action's native width on the centered 24-point row. The normal signed builds confirmed the divider and every System Care action at the compact limit. The shared Increased Contrast and Reduce Motion checks pass. | None. |
-| Done | Give launcher detail tabs more top space and move them 2pt toward the leading edge. | The shared tool detail uses an exact 6pt top inset and 18pt leading inset for Settings and How to Use. One shared implementation covers every launcher detail, and its deterministic regression checks both constants. | None. |
+Open: none beyond the cross-tool list above. The shared UI quality checklist
+(`~/.codex/rules/ui-quality-checklist.md`) stays ongoing: append each new
+recurring owner correction and apply it before every UI handoff.
 
+| Status | Request | Evidence |
+|---|---|---|
+| Done | Correct sidebar width family: 220pt compact for Input Devices and Task Manager, 240pt data for System Care. | Shared top edge and inner padding |
+| Done | Remember window position, display, and size for the three tools. | `WindowAccessor`, `WindowStateManager` |
+| Done | Enforce minimum sizes for the launcher and every workspace. | `9a390a8` |
+| Done | Keep short metadata inline; two columns on sparse wide pages. | `f44fc7a`, `29fcbd0`, `8f4b6dd`, `631facd` |
+| Done | Restore on multiple displays. | `cf5c975` |
+| Done | Quiet structural dividers and compact aligned top actions. | `81de8b1`, `6247587` |
+| Done | Launcher detail tabs: 6pt top inset, 18pt leading inset. | Layout regression |
 
 ## Reference and dependency boundaries
 
 NetToys implements the scanner workflow independently. Do not copy or adapt
-Angry IP Scanner Java/SWT source, tests, strings, translations, layouts,
-artwork, plugin ABI, serialized preferences, or bundled vendor data.
-Use native APIs, system OpenSSH, and MacPowerToys-owned fixtures and formats.
-The reference is behavior only. IPv6 and Java plugins remain outside the
-current native scope. The current four-page contract and verification rows
-above replace the older three-page research plan.
+Angry IP Scanner Java or SWT source, tests, strings, translations, layouts,
+artwork, plugin ABI, serialized preferences, or bundled vendor data. Use
+native APIs, system OpenSSH, and MacPowerToys-owned fixtures and formats. The
+reference is behavior only. IPv6 and Java plugins stay outside the native
+scope. The native app uses configurable fetchers and openers, and validated
+GUI prefills instead of a headless scan program.
 
 Mole is an optional external CLI. Detect its installed binary and use visible
-Terminal actions for interactive or privileged work. Never scrape ANSI/TUI
-output into a native destructive plan or collect a sudo password. Do not
-bundle its GPL payload by default. Packaging a Mole-derived fork needs a
-separate license, trademark, source-distribution, signing, and update review.
-Use System Care as the product name and attribute Mole CLI as the dependency.
+Terminal actions for interactive or privileged work. Never scrape ANSI or TUI
+output into a native destructive plan, and never collect a sudo password. Do
+not bundle its GPL payload by default. A Mole-derived fork needs a separate
+license, trademark, source-distribution, signing, and update review. Use
+System Care as the product name and credit Mole CLI as the dependency.
 
-The earlier research documents are replaced by the current request rows,
-README limits, and `spec/troubleshoot/system-tools.md`. Native input control
-uses event characteristics, not guaranteed per-device scroll provenance.
-Detailed collectors follow their visible owners; opt-in background features
-keep only their required work. Do not restore the old monitor interval,
-three-page NetToys layout, no-Location plan, external fan helper, or material
-styling from those research notes.
+Native input control uses event characteristics, not guaranteed per-device
+scroll provenance. Detailed collectors follow their visible owners; opt-in
+background features keep only their required work. Do not restore the old
+monitor interval, the three-page NetToys layout, the no-Location plan, the
+external fan helper, or material styling.
