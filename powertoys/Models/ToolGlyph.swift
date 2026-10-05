@@ -17,7 +17,7 @@ nonisolated enum ToolGlyph: String, CaseIterable {
     var symbol: String {
         switch self {
         case .cloudSync: "cloud"
-        case .logs: "terminal"
+        case .logs: "EventViewerGlyph"
         case .ruler: "ruler"
         case .awake: "eye"
         case .colorPicker: "eyedropper"
@@ -49,7 +49,7 @@ nonisolated enum ToolGlyph: String, CaseIterable {
         return Image(nsImage: image).renderingMode(.template)
     }
 
-    var isAsset: Bool { [.portman, .systemCare, .netToys].contains(self) }
+    var isAsset: Bool { [.portman, .systemCare, .netToys, .logs].contains(self) }
 
     @MainActor var image: Image { assetImage ?? Image(systemName: symbol) }
 
