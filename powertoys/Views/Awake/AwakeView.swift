@@ -13,7 +13,7 @@ struct AwakeView: View {
     var body: some View {
         OnePlusWindowRoot(canvas: .awake, sidebar: { EmptyView() }) {
             VStack(spacing: 0) {
-                OnePlusAppletTitlebar(title: "Awake") {
+                OnePlusAppletTitlebar(title: "Kwake") {
                     Toggle("Keep Display On", isOn: Binding(
                         get: { service.configuration.keepDisplayOn }, set: service.setKeepDisplayOn
                     ))
@@ -56,13 +56,107 @@ private struct AwakeHomeView: View {
         VStack(alignment: .leading, spacing: OnePlusMetrics.cardGap) {
             AwakeStatusRow()
             ScrollView {
-                AwakeSettingsView(showsDisplayToggle: false)
+                VStack(alignment: .leading, spacing: OnePlusMetrics.cardGap) {
+                    SleepTimerCard()
+                    AwakeSettingsView(showsDisplayToggle: false)
+                }
             }
             .onePlusScrollIndicators()
         }
         .frame(maxHeight: .infinity, alignment: .top)
         .padding(.horizontal, OnePlusMetrics.appletGutter)
         .padding(.top, OnePlusMetrics.contentGap)
+    }
+}
+
+enum SleepTimerPreset: Hashable, CaseIterable {
+    case quarterHour, halfHour, oneHour, twoHours, custom
+
+    var minutes: Int? {
+        switch self {
+        case .quarterHour: 15
+        case .halfHour: 30
+        case .oneHour: 60
+        case .twoHours: 120
+        case .custom: nil
+        }
+    }
+
+    var title: String {
+        switch self {
+        case .quarterHour: "15m"
+        case .halfHour: "30m"
+        case .oneHour: "1h"
+        case .twoHours: "2h"
+        case .custom: "Custom"
+        }
+    }
+}
+
+struct SleepTimerCard: View {
+    var service = SleepTimerService.shared
+    @State private var awake = AwakeService.shared
+    @State private var preset = SleepTimerPreset.halfHour
+    @State private var customMinutes = 45
+
+    private var minutes: Int { preset.minutes ?? customMinutes }
+
+    var body: some View {
+        OnePlusCard {
+            OnePlusCardHeader("Sleep timer", systemImage: "moon.zzz")
+            if let deadline = service.deadline {
+                running(until: deadline)
+            } else {
+                idle
+            }
+        }
+        .buttonStyle(OnePlusButtonStyle())
+        .transaction { $0.disablesAnimations = true }
+    }
+
+    @ViewBuilder
+    private var idle: some View {
+        OnePlusSettingRow("Sleep after", controlWidth: 300, separator: true) {
+            OnePlusSegmented(choices: SleepTimerPreset.allCases.map { ($0, $0.title) },
+                             selection: $preset, accessibilityLabel: "Sleep after", width: 300)
+                .accessibilityIdentifier("awake.sleep-timer.preset")
+        }
+        if preset == .custom {
+            OnePlusSettingRow("Custom time", separator: true) {
+                OnePlusStepperField("Minutes", value: $customMinutes,
+                                    in: 1...SleepTimerService.maximumMinutes, step: 5, unit: "min")
+            }
+        }
+        OnePlusSettingRow("Sleep the Mac",
+                          caption: awake.isActive ? "Starting this turns keep awake off." : "The Mac sleeps when the time ends.",
+                          separator: false) {
+            Button("Start timer") { service.start(minutes: minutes) }
+                .buttonStyle(OnePlusButtonStyle(.primary))
+                .accessibilityIdentifier("awake.sleep-timer.start")
+        }
+    }
+
+    private func running(until deadline: Date) -> some View {
+        VStack(alignment: .leading, spacing: OnePlusMetrics.actionSpacing) {
+            HStack(spacing: OnePlusMetrics.actionSpacing) {
+                VStack(alignment: .leading, spacing: 2) {
+                    TimelineView(.periodic(from: .now, by: 1)) { context in
+                        Text(AwakeService.duration(service.remaining(at: context.date) ?? 0))
+                            .onePlusText(.metric).monospacedDigit()
+                    }
+                    Text("Mac sleeps at \(deadline.formatted(date: .omitted, time: .shortened))")
+                        .onePlusText(.caption)
+                }
+                Spacer(minLength: OnePlusMetrics.actionSpacing)
+                Button("Cancel") { service.cancel() }
+                    .accessibilityIdentifier("awake.sleep-timer.cancel")
+            }
+            OnePlusBanner(awake.isActive
+                          ? "Keep awake is on. The Mac still sleeps when the timer ends."
+                          : "Keep awake is off while the sleep timer runs.",
+                          tone: awake.isActive ? .warning : .information)
+        }
+        .padding(OnePlusMetrics.cardPadding)
     }
 }
 

@@ -1,4 +1,4 @@
-# Awake Request List
+# Kwake Request List
 
 Round 17 applet correction, run 68, 2026-10-01: OnePlusUI `a02d43d`
 restores the 40pt row and C22. The title and display switch share that
@@ -87,6 +87,7 @@ remain with the orchestrator.
 
 | Status | Request | Evidence | Remaining work |
 |---|---|---|---|
+| Source complete; signed review pending | Add a sleep timer to the Awake applet home page only, not to the menu-bar panel or the main-window settings. | `SleepTimerCard` offers 15m, 30m, 1h, 2h, and Custom minutes (1 to 1,440) with one primary Start button. Start ends any keep-awake assertion and the card says so. It shows a live countdown from a `Date` deadline (one-second `TimelineView`, visible window only) and a Cancel button. `SleepTimerService` owns one `DispatchSourceTimer`, so the countdown runs while the window is closed. It posts a notification one minute before sleep when notifications are already allowed, then sleeps through `IOPMSleepSystem` with `pmset sleepnow` as fallback. A deadline missed during system sleep is dropped. Nothing persists across relaunch. `SleepTimerTests` use an injected clock and never call the real sleep API. | Check Start, Cancel, the notice, and the real sleep in the signed app only when the owner allows the Mac to sleep. |
 | Package verified; signed review pending | Keep applet lights at C=27 and close at x13, with title caps and the display switch at y20. | `bd2e0963` applies the shared Top B and Inset B picks. Native geometry, hover tracking, cap pixels, and the switch capsule pass in both appearances at 1x/2x. | The orchestrator must install clean source, recapture both pages, and verify real hover and focus changes. |
 | Verify | Pair embedded session controls with Quick times and process attachment; use a labeled mode select. | Round 3 review uses one adaptive cards-only settings implementation. Keep awake is a 44pt row with a 160pt select, the PID field is 160pt, and hour chips read `1 h` and `2 h`. Narrow applets keep a vertical stack. | Verify all modes, preset editing, attachment, and both host widths in the signed build. |
 | Verify | Remove the duplicate applet display control and align the quick-time row. | The applet passes `showsDisplayToggle: false`; quick times use one leading 8pt-spaced row with the add icon after the presets. Minute labels render as `15 min` and `30 min`. | Verify Home and Settings in both appearances. |
