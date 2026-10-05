@@ -39,7 +39,7 @@ final class MainAppBehaviorUITests: XCTestCase {
     }
 
     @MainActor
-    func testToolLaunchBarKeepsItsGuttersAndDisablementAcrossTabs() throws {
+    func testToolPageHeroFollowsEnablementAndEndsWithTheManual() throws {
         let app = launchApp(additionalArguments: ["-powertoys.disabledTools", "()"])
         let card = app.descendants(matching: .any)["tool.rclone.card"]
         XCTAssertTrue(card.waitForExistence(timeout: 5))
@@ -49,24 +49,16 @@ final class MainAppBehaviorUITests: XCTestCase {
         let launch = app.buttons["tool.rclone.launch"]
         XCTAssertTrue(launch.waitForExistence(timeout: 5))
         XCTAssertEqual(launch.label, "Open RSync UI")
-        XCTAssertEqual(window.frame.maxX - launch.frame.maxX, 24, accuracy: 1)
-        XCTAssertEqual(window.frame.maxY - launch.frame.maxY, 24, accuracy: 1)
-        let actionFrame = launch.frame
-        window.scrollViews.firstMatch.swipeUp()
-        XCTAssertEqual(launch.frame, actionFrame)
 
-        window.buttons["How to use"].click()
-        XCTAssertTrue(window.staticTexts["Connect Cloud Storage"].waitForExistence(timeout: 2))
-        XCTAssertEqual(launch.frame, actionFrame)
         window.scrollViews.firstMatch.swipeUp()
-        XCTAssertEqual(launch.frame, actionFrame)
+        XCTAssertTrue(window.staticTexts["How to use"].waitForExistence(timeout: 2))
+        XCTAssertTrue(window.staticTexts["Connect Cloud Storage"].exists)
+        window.scrollViews.firstMatch.swipeDown()
 
-        window.descendants(matching: .any)["tool.rclone.enabled"].click()
+        let enabled = window.descendants(matching: .any)["tool.rclone.enabled"]
+        enabled.click()
         XCTAssertFalse(launch.isEnabled)
-        window.descendants(matching: .any)["tool.rclone.page"].buttons["Settings"].click()
-        XCTAssertEqual(launch.frame, actionFrame)
-        XCTAssertFalse(launch.isEnabled)
-        window.descendants(matching: .any)["tool.rclone.enabled"].click()
+        enabled.click()
         XCTAssertTrue(launch.isEnabled)
     }
 
