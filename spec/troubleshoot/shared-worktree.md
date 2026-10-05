@@ -38,6 +38,22 @@
 - **Check:** `git diff --cached --name-status`, `git diff --cached`, and
   `git diff --cached --check` show only the current checkpoint.
 
+## Temporary Index Reverts Other Commits
+
+- **Symptom:** A commit for one tool also changes files of another tool. It
+  silently puts back an older version of work that another agent committed
+  a few minutes before.
+- **Cause:** The commit used a temporary `GIT_INDEX_FILE` that was filled from
+  an older tree. Git commits the whole index, so every file that changed in
+  `HEAD` after that tree returns to its old content.
+- **Invariant:** Fill a temporary index with `git read-tree HEAD` immediately
+  before staging, then stage only owned paths. Never reuse a temporary index
+  across another agent's commit.
+- **Check:** Before and after the commit, `git show --stat HEAD` lists only
+  owned paths. For an audit, reverse-apply each earlier commit at `HEAD`
+  (`git show <commit> -- <file> | git apply -R --check -`) and explain every
+  hunk that no longer applies.
+
 ## Stale Installed Build
 
 - **Symptom:** A thread verifies current source but another thread installs an
