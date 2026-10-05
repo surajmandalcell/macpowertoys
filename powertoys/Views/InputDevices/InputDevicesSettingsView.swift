@@ -35,7 +35,6 @@ struct InputScrollDeviceBar: View {
 
 struct InputDevicesSettingsContent: View {
     @State private var manager = InputDevicesManager.shared
-    @Environment(\.onePlusDensity) private var density
     var includesDeviceFooter = true
     var collapsible = false
     @AppStorage("tray.inputDevices.mouse.expanded") private var mouseExpanded = false
@@ -46,15 +45,8 @@ struct InputDevicesSettingsContent: View {
         VStack(alignment: .leading, spacing: OnePlusMetrics.cardGap) {
             scrollControlRows
                 .environment(\.onePlusCardPadding, 0)
-            if density == .regular {
-                HStack(alignment: .top, spacing: OnePlusMetrics.cardGap) {
-                    mouseProfile
-                    trackpadProfile
-                }
-            } else {
-                mouseProfile
-                trackpadProfile
-            }
+            mouseProfile
+            trackpadProfile
             if includesDeviceFooter { InputScrollDeviceBar(isExpanded: collapsible ? $scrollDeviceExpanded : nil) }
         }
     }

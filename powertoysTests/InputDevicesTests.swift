@@ -275,6 +275,50 @@ final class InputDevicesTests: XCTestCase {
         XCTAssertEqual(cardHeight(mouse), cardHeight(trackpad))
     }
 
+    func testScrollSettingsStackInOneColumnAtTheWindowWidth() {
+        let width = OnePlusWindowCanvas.macTweaks.size.width - OnePlusWindowCanvas.macTweaks.sidebarWidth
+            - 2 * OnePlusMetrics.gutter
+        let mouse = InputScrollProfileCard(title: "Mouse", icon: "computermouse", deviceCount: 1,
+                                           profile: .constant(InputScrollProfile()))
+        let trackpad = InputScrollProfileCard(title: "Trackpad", icon: "rectangle.and.hand.point.up.left",
+                                              deviceCount: 1, profile: .constant(InputScrollProfile()))
+        let stacked = cardHeight(InputDevicesSettingsContent(includesDeviceFooter: false), width: width)
+        XCTAssertGreaterThanOrEqual(stacked, cardHeight(mouse, width: width) + cardHeight(trackpad, width: width))
+    }
+
+    func testEveryPageRendersAtTheMacTweaksSizeInBothAppearances() throws {
+        let size = OnePlusWindowCanvas.macTweaks.size
+        let directory = URL(fileURLWithPath: #filePath).deletingLastPathComponent().deletingLastPathComponent()
+            .appendingPathComponent("tmp/redesign/captures")
+        try FileManager.default.createDirectory(at: directory, withIntermediateDirectories: true)
+        for page in [InputDevicesPage.scrolling] + InputDevicesPage.allCases {
+            for (name, appearance) in [("light", NSAppearance.Name.aqua), ("dark", .darkAqua)] {
+                let priorAppearance = NSApp.appearance
+                NSApp.appearance = NSAppearance(named: appearance)
+                RunLoop.current.run(until: Date().addingTimeInterval(0.2))
+                let host = NSHostingView(rootView: InputDevicesWindowView(page: page))
+                let window = NSWindow(contentRect: CGRect(x: -10000, y: -10000, width: size.width, height: size.height),
+                                      styleMask: .borderless, backing: .buffered, defer: false)
+                window.isReleasedWhenClosed = false
+                window.appearance = NSAppearance(named: appearance)
+                host.appearance = NSAppearance(named: appearance)
+                window.contentView = host
+                defer {
+                    NSApp.appearance = priorAppearance
+                    window.close()
+                }
+                host.frame = CGRect(origin: .zero, size: size)
+                host.layoutSubtreeIfNeeded()
+                RunLoop.current.run(until: Date().addingTimeInterval(0.4))
+                host.layoutSubtreeIfNeeded()
+                let bitmap = try XCTUnwrap(host.bitmapImageRepForCachingDisplay(in: host.bounds))
+                host.cacheDisplay(in: host.bounds, to: bitmap)
+                let png = try XCTUnwrap(bitmap.representation(using: .png, properties: [:]))
+                try png.write(to: directory.appendingPathComponent("inputdev-\(page.rawValue)-\(name).png"))
+            }
+        }
+    }
+
     func testCollapsedProfileKeepsAFullWidthHeaderAndExpandsToAllRows() {
         let collapsed = InputScrollProfileCard(title: "Mouse", icon: "computermouse", deviceCount: 1,
                                                profile: .constant(InputScrollProfile()), isExpanded: .constant(false))

@@ -34,7 +34,7 @@ struct InputDevicesWindowView: View {
     }
 
     var body: some View {
-        OnePlusWindowRoot(canvas: .inputDevices) {
+        OnePlusWindowRoot(canvas: .macTweaks) {
             sidebar
         } content: {
             pageContent
@@ -104,14 +104,7 @@ struct InputDevicesWindowView: View {
                     .buttonStyle(OnePlusButtonStyle(.neutral))
             }
         } content: {
-            LazyVGrid(
-                columns: Array(
-                    repeating: GridItem(.flexible(), spacing: OnePlusMetrics.cardGap, alignment: .top),
-                    count: 2
-                ),
-                alignment: .leading,
-                spacing: OnePlusMetrics.cardGap
-            ) {
+            VStack(alignment: .leading, spacing: OnePlusMetrics.cardGap) {
                 ForEach(manager.devices) { device in deviceCard(device) }
                 if !manager.devices.contains(where: { $0.kind == .mouse }) { missingDeviceCard(.mouse) }
                 if !manager.devices.contains(where: { $0.kind == .trackpad }) { missingDeviceCard(.trackpad) }

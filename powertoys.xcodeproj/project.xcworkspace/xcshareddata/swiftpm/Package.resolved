@@ -6,8 +6,8 @@
       "kind" : "remoteSourceControl",
       "location" : "https://github.com/surajmandalcell/nettoys.git",
       "state" : {
-        "revision" : "fc72c42eeb49f79a1abc8ed4901deeba8f8e2b8b",
-        "version" : "1.0.11"
+        "revision" : "d5e04bb5def034f65f249108e5b16c8cc3be3cb5",
+        "version" : "1.0.10"
       }
     },
     {
@@ -15,8 +15,8 @@
       "kind" : "remoteSourceControl",
       "location" : "https://github.com/surajmandalcell/oneplus-ui.git",
       "state" : {
-        "revision" : "e6a1843f138e0373c12d8ea55991dcaf10adc519",
-        "version" : "1.0.3"
+        "revision" : "0516519beae49c7c288dfc4f32a931699ce430a3",
+        "version" : "1.0.2"
       }
     }
   ],
