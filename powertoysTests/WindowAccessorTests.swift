@@ -32,7 +32,7 @@ final class WindowAccessorTests: XCTestCase {
 
     func testWorkspaceSizeLookupUsesEveryRegisteredCanvas() throws {
         let expected: [String: NSSize] = [
-            "main": NSSize(width: 1240, height: 840),
+            "main": NSSize(width: 820, height: 660),
             "rclone": NSSize(width: 1240, height: 840),
             "logs": NSSize(width: 1080, height: 660),
             "input-devices": NSSize(width: 820, height: 660),
