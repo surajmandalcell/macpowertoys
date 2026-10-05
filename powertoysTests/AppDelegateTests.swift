@@ -33,7 +33,7 @@ final class AppDelegateTests: XCTestCase {
         let routing = try String(contentsOf: root.appendingPathComponent("powertoys/Core/ToolPageRouter.swift"), encoding: .utf8)
         let delegate = try String(contentsOf: root.appendingPathComponent("powertoys/AppDelegate.swift"), encoding: .utf8)
         let sceneCount = scenes.components(separatedBy: ".handlesExternalEvents(matching:").count - 1
-        XCTAssertEqual(sceneCount, 13)
+        XCTAssertEqual(sceneCount, 12)
         XCTAssertEqual(scenes.components(separatedBy: ".handlesExternalEvents(matching: [])").count - 1, sceneCount,
                        "All cold tool and page URLs must use the background-aware router.")
         XCTAssertTrue(routing.contains(".handlesExternalEvents(preferring: [], allowing: [])"),
