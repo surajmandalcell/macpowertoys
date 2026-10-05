@@ -1,77 +1,193 @@
+import AppKit
+import Darwin
 import Foundation
 import IOKit
-import Darwin
-import AppKit
 
-nonisolated struct ManagedPartition: Identifiable, Sendable {
-    let id: String
-    let name: String
-    let content: String
-    let size: Int64
-    let mountPoint: String?
-    let uuid: String?
-    let fileSystem: String?
-    let apfsContainer: String?
-    let isAPFSVolume: Bool
+nonisolated enum PartitionFileSystem: String, CaseIterable, Identifiable, Sendable {
+    case apfs = "APFS", hfs = "JHFS+", exfat = "ExFAT", fat32 = "FAT32"
 
-    init(id: String, name: String, content: String, size: Int64,
-         mountPoint: String?, uuid: String?, fileSystem: String? = nil, apfsContainer: String? = nil,
-         isAPFSVolume: Bool = false) {
-        self.id = id
-        self.name = name
-        self.content = content
-        self.size = size
-        self.mountPoint = mountPoint
-        self.uuid = uuid
-        self.fileSystem = fileSystem
-        self.apfsContainer = apfsContainer
-        self.isAPFSVolume = isAPFSVolume
+    var id: String { rawValue }
+    var title: String {
+        switch self {
+        case .apfs: "APFS"
+        case .hfs: "Mac OS Extended (Journaled)"
+        case .exfat: "ExFAT"
+        case .fat32: "MS-DOS (FAT32)"
+        }
     }
-
-    var displayType: String {
-        if isAPFSVolume { return "APFS volume" }
-        if apfsContainer != nil { return "APFS container" }
-        return fileSystem ?? content
+    var maxNameLength: Int {
+        switch self {
+        case .fat32: 11
+        case .exfat: 15
+        case .apfs, .hfs: 63
+        }
     }
 }
 
-nonisolated struct ManagedDisk: Identifiable, Sendable {
+nonisolated enum PartitionScheme: String, CaseIterable, Identifiable, Sendable {
+    case gpt = "GPT", mbr = "MBR"
+    var id: String { rawValue }
+    var title: String { self == .gpt ? "GUID Partition Map (GPT)" : "Master Boot Record (MBR)" }
+}
+
+nonisolated enum DiskKind: String, Sendable {
+    case `internal`, external, removable, image
+    var title: String {
+        switch self {
+        case .internal: "Internal"
+        case .external: "External"
+        case .removable: "Removable"
+        case .image: "Disk images"
+        }
+    }
+}
+
+nonisolated struct ManagedVolume: Identifiable, Sendable, Equatable {
+    let id: String
+    let name: String
+    let usedBytes: Int64
+    let mountPoint: String?
+}
+
+nonisolated struct ManagedPartition: Identifiable, Sendable, Equatable {
+    let id: String
+    let name: String
+    let content: String
+    let offset: Int64
+    let size: Int64
+    let mountPoint: String?
+    let fileSystem: String?
+    let fileSystemType: String?
+    let usedBytes: Int64?
+    let apfsContainer: String?
+    let volumes: [ManagedVolume]
+
+    init(id: String, name: String, content: String, offset: Int64, size: Int64, mountPoint: String? = nil,
+         fileSystem: String? = nil, fileSystemType: String? = nil, usedBytes: Int64? = nil,
+         apfsContainer: String? = nil, volumes: [ManagedVolume] = []) {
+        self.id = id; self.name = name; self.content = content; self.offset = offset; self.size = size
+        self.mountPoint = mountPoint; self.fileSystem = fileSystem; self.fileSystemType = fileSystemType
+        self.usedBytes = usedBytes; self.apfsContainer = apfsContainer; self.volumes = volumes
+    }
+
+    var isEFI: Bool { content == "EFI" }
+    var isAPFS: Bool { apfsContainer != nil }
+    var hasFileSystem: Bool { isAPFS || fileSystemType != nil }
+    var isMounted: Bool { mountPoint != nil || volumes.contains { $0.mountPoint != nil } }
+    var displayName: String {
+        if isEFI { return "EFI" }
+        if isAPFS { return volumes.first?.name ?? "APFS container" }
+        return name.isEmpty ? id : name
+    }
+    var displayFileSystem: String {
+        if isAPFS { return "APFS" }
+        if isEFI { return "EFI system" }
+        return fileSystem ?? (content.isEmpty ? "Unknown" : content)
+    }
+}
+
+nonisolated struct FreeSpace: Identifiable, Sendable, Equatable {
+    let diskID: String
+    let offset: Int64
+    let size: Int64
+    let afterPartition: String?
+    var id: String { "free-\(diskID)-\(afterPartition ?? "start")" }
+}
+
+nonisolated struct ManagedDisk: Identifiable, Sendable, Equatable {
     let id: String
     let name: String
     let size: Int64
     let bus: String
     let scheme: String
-    let devicePath: String
+    let kind: DiskKind
     let writable: Bool
-    let manageable: Bool
+    let smart: String?
+    let imagePath: String?
     let mediaRegistryID: UInt64?
     let partitions: [ManagedPartition]
-    var protectionReason: String? = nil
+    let protectionReason: String?
 
-    var unallocatedBytes: Int64 {
-        max(0, size - partitions.filter { !$0.isAPFSVolume }.reduce(0) { $0 + $1.size })
+    static let minimumFreeSpace: Int64 = 32_000_000
+
+    var schemeTitle: String {
+        switch scheme {
+        case "GUID_partition_scheme": "GPT"
+        case "FDisk_partition_scheme": "MBR"
+        case "Apple_partition_scheme": "APM"
+        default: "No partition map"
+        }
     }
-
-    func nextPhysicalPartition(after id: String) -> ManagedPartition? {
-        let physical = partitions.filter { !$0.isAPFSVolume }
-        guard let index = physical.firstIndex(where: { $0.id == id }),
-              physical.indices.contains(index + 1) else { return nil }
-        return physical[index + 1]
+    var mountPoints: [String] {
+        partitions.flatMap { [$0.mountPoint].compactMap { $0 } + $0.volumes.compactMap(\.mountPoint) }
     }
-
     var identity: String {
-        let layout = partitions.map {
-            "\($0.id):\($0.content):\($0.isAPFSVolume ? 0 : $0.size):\($0.uuid ?? ""):\($0.name):\($0.apfsContainer ?? ""):\($0.isAPFSVolume)"
-        }.joined(separator: ";")
-        return "\(id)|\(size)|\(bus)|\(scheme)|\(devicePath)|\(name)|\(mediaRegistryID.map { String($0) } ?? "missing")|\(layout)"
+        let layout = partitions.map { "\($0.id):\($0.content):\($0.offset):\($0.size):\($0.apfsContainer ?? "")" }
+        return ([id, String(size), mediaRegistryID.map(String.init) ?? "missing"] + layout).joined(separator: "|")
+    }
+    var freeSpaces: [FreeSpace] {
+        var result: [FreeSpace] = []
+        var cursor: Int64 = 0
+        var previous: String?
+        for partition in partitions {
+            if partition.offset - cursor >= Self.minimumFreeSpace {
+                result.append(FreeSpace(diskID: id, offset: cursor, size: partition.offset - cursor, afterPartition: previous))
+            }
+            cursor = max(cursor, partition.offset + partition.size)
+            previous = partition.id
+        }
+        if size - cursor >= Self.minimumFreeSpace {
+            result.append(FreeSpace(diskID: id, offset: cursor, size: size - cursor, afterPartition: previous))
+        }
+        return result
+    }
+    func partition(containing id: String) -> ManagedPartition? {
+        partitions.first { $0.id == id || $0.apfsContainer == id || $0.volumes.contains { $0.id == id } }
+    }
+}
+
+/// Facts that decide whether Partition Manager may change a disk.
+nonisolated struct DiskSafetyFacts: Sendable, Equatable {
+    let diskID: String
+    let isInternal: Bool
+    let isWritable: Bool
+    let protectedReason: String?
+    let mountPoints: [String]
+    let imagePath: String?
+}
+
+nonisolated enum DiskSafety {
+    static let reservedDiskIDs: Set<String> = ["disk6", "disk7"]
+    static let ownerDataVolume = "/Volumes/External1TB"
+
+    /// The one guard for every write. `targets` lists each identifier the command touches.
+    static func blockReason(_ facts: DiskSafetyFacts, targets: [String] = []) -> String? {
+        let ids = ([facts.diskID] + targets).map(wholeDiskID)
+        if ids.contains(where: reservedDiskIDs.contains) {
+            return "disk6 and disk7 are reserved for the External1TB data drive. Partition Manager never changes them."
+        }
+        if facts.mountPoints.contains(where: { $0 == ownerDataVolume || $0.hasPrefix(ownerDataVolume + "/") }) {
+            return "This disk holds External1TB. Partition Manager never changes it."
+        }
+        if let reason = facts.protectedReason { return reason }
+        if facts.isInternal { return "Internal disks are protected. Partition Manager never changes them." }
+        if DiskManagement.isSystemImage(facts.imagePath) {
+            return "This disk image belongs to macOS."
+        }
+        if !facts.isWritable { return "This disk is read-only." }
+        return nil
+    }
+
+    static func wholeDiskID(_ id: String) -> String {
+        guard id.hasPrefix("disk") else { return id }
+        return "disk" + id.dropFirst(4).prefix(while: \.isNumber)
     }
 }
 
 nonisolated enum DiskManagementError: LocalizedError {
     case invalidDevice
     case changedDevice
-    case unsafeDevice
-    case lockedDevice
+    case protected(String)
     case invalidInput(String)
     case command(String)
 
@@ -79,11 +195,158 @@ nonisolated enum DiskManagementError: LocalizedError {
         switch self {
         case .invalidDevice: "The disk identifier is invalid. Refresh and try again."
         case .changedDevice: "The disk or its partitions changed. Refresh before trying again."
-        case .unsafeDevice: "Diskman only modifies physical, writable removable or external disks."
-        case .lockedDevice: "This disk is locked in Diskman. Unlock it before making changes."
+        case .protected(let reason): reason
         case .invalidInput(let message): message
         case .command(let message): message
         }
+    }
+}
+
+nonisolated struct PartitionSplit: Sendable, Equatable {
+    let fileSystem: PartitionFileSystem
+    let name: String
+}
+
+nonisolated enum PartitionOperation: Sendable, Equatable {
+    case mount(target: String)
+    case unmount(target: String)
+    case eject
+    case rename(target: String, name: String)
+    case format(target: String, fileSystem: PartitionFileSystem, name: String)
+    case delete(target: String)
+    case create(after: String?, fileSystem: PartitionFileSystem, name: String, size: Int64?)
+    case resize(target: String, size: Int64, split: PartitionSplit?)
+    case eraseDisk(fileSystem: PartitionFileSystem, name: String, scheme: PartitionScheme)
+    case verify(target: String?)
+    case repair(target: String?)
+
+    var title: String {
+        switch self {
+        case .mount: "Mount"
+        case .unmount: "Unmount"
+        case .eject: "Eject disk"
+        case .rename: "Rename"
+        case .format: "Format"
+        case .delete: "Delete partition"
+        case .create: "Create partition"
+        case .resize(_, _, let split): split == nil ? "Resize" : "Resize and split"
+        case .eraseDisk: "Erase disk"
+        case .verify: "Verify"
+        case .repair: "Repair"
+        }
+    }
+    /// Data loss is possible. These need a confirmation sheet.
+    var isDestructive: Bool {
+        switch self {
+        case .format, .delete, .resize, .eraseDisk: true
+        default: false
+        }
+    }
+    /// Reads and mounts are harmless. Every other operation passes the safety guard.
+    var isWrite: Bool {
+        switch self {
+        case .mount, .verify: false
+        default: true
+        }
+    }
+    var target: String? {
+        switch self {
+        case .mount(let target), .unmount(let target), .rename(let target, _), .format(let target, _, _),
+             .delete(let target), .resize(let target, _, _): target
+        case .create(let after, _, _, _): after
+        case .verify(let target), .repair(let target): target
+        case .eject, .eraseDisk: nil
+        }
+    }
+
+    func arguments(on disk: ManagedDisk) throws -> [String] {
+        guard DiskManagement.validID(disk.id), target.map(DiskManagement.validID) ?? true,
+              target.map({ disk.partition(containing: $0) != nil }) ?? true else {
+            throw DiskManagementError.invalidDevice
+        }
+        switch self {
+        case .mount(let target):
+            return [disk.partitions.contains { $0.apfsContainer == target } ? "mountDisk" : "mount", target]
+        case .unmount(let target):
+            return [disk.partitions.contains { $0.apfsContainer == target } ? "unmountDisk" : "unmount", target]
+        case .eject:
+            return ["eject", disk.id]
+        case .rename(let target, let name):
+            let partition = disk.partition(containing: target)
+            let system: PartitionFileSystem = switch partition?.fileSystemType {
+            case "msdos": .fat32
+            case "exfat": .exfat
+            default: .apfs
+            }
+            return ["renameVolume", target, try Self.validName(name, for: system)]
+        case .format(let target, let system, let name):
+            guard let partition = disk.partitions.first(where: { $0.id == target }), !partition.isEFI else {
+                throw DiskManagementError.invalidInput("Select a data partition to format.")
+            }
+            let validName = try Self.validName(name, for: system)
+            if let container = partition.apfsContainer {
+                return ["apfs", "deleteContainer", container, system.rawValue, validName, "0"]
+            }
+            return ["eraseVolume", system.rawValue, validName, target]
+        case .delete(let target):
+            guard let partition = disk.partitions.first(where: { $0.id == target }), !partition.isEFI else {
+                throw DiskManagementError.invalidInput("Select a data partition to delete.")
+            }
+            if let container = partition.apfsContainer { return ["apfs", "deleteContainer", container] }
+            return ["eraseVolume", "free", "free", target]
+        case .create(let after, let system, let name, let size):
+            if system == .apfs && disk.scheme != "GUID_partition_scheme" {
+                throw DiskManagementError.invalidInput("APFS needs a GUID partition map.")
+            }
+            if let size, size < ManagedDisk.minimumFreeSpace {
+                throw DiskManagementError.invalidInput("A new partition needs at least 32 MB.")
+            }
+            let validName = try Self.validName(name, for: system)
+            guard disk.partitions.isEmpty else {
+                guard disk.scheme == "GUID_partition_scheme" else {
+                    throw DiskManagementError.invalidInput("macOS can add a partition only to a GUID partition map.")
+                }
+                return ["addPartition", after ?? disk.id, system.rawValue, validName, size.map { "\($0)B" } ?? "0"]
+            }
+            let scheme = disk.scheme == "FDisk_partition_scheme" ? "MBR" : "GPT"
+            let first = ["partitionDisk", disk.id, scheme, system.rawValue, validName]
+            return first + (size.map { ["\($0)B", "free", "free", "R"] } ?? ["R"])
+        case .resize(let target, let size, let split):
+            guard let partition = disk.partitions.first(where: { $0.id == target }),
+                  partition.isAPFS || partition.fileSystemType == "hfs" else {
+                throw DiskManagementError.invalidInput("macOS can resize only APFS and Mac OS Extended partitions.")
+            }
+            guard disk.scheme == "GUID_partition_scheme" else {
+                throw DiskManagementError.invalidInput("macOS can resize partitions only on a GUID partition map.")
+            }
+            guard size >= ManagedDisk.minimumFreeSpace else { throw DiskManagementError.invalidInput("The size is too small.") }
+            var arguments = partition.isAPFS ? ["apfs", "resizeContainer", target, "\(size)B"] : ["resizeVolume", target, "\(size)B"]
+            if let split {
+                if split.fileSystem == .apfs && disk.scheme != "GUID_partition_scheme" {
+                    throw DiskManagementError.invalidInput("APFS needs a GUID partition map.")
+                }
+                arguments += [split.fileSystem.rawValue, try Self.validName(split.name, for: split.fileSystem), "0"]
+            }
+            return arguments
+        case .eraseDisk(let system, let name, let scheme):
+            if system == .apfs && scheme != .gpt { throw DiskManagementError.invalidInput("APFS needs a GUID partition map.") }
+            return ["eraseDisk", system.rawValue, try Self.validName(name, for: system), scheme.rawValue, disk.id]
+        case .verify(let target):
+            return target.map { ["verifyVolume", $0] } ?? ["verifyDisk", disk.id]
+        case .repair(let target):
+            // Whole-disk repair can stop at an interactive prompt, so only volumes are repaired.
+            guard let target else { throw DiskManagementError.invalidInput("Repair a partition or volume, not the whole disk.") }
+            return ["repairVolume", target]
+        }
+    }
+
+    static func validName(_ name: String, for system: PartitionFileSystem) throws -> String {
+        let trimmed = name.trimmingCharacters(in: .whitespacesAndNewlines)
+        let value = system == .fat32 ? trimmed.uppercased() : trimmed
+        guard !value.isEmpty, value.count <= system.maxNameLength, !value.contains("/"), !value.contains(":") else {
+            throw DiskManagementError.invalidInput("Use a name of 1 to \(system.maxNameLength) characters without a slash or colon.")
+        }
+        return value
     }
 }
 
@@ -99,349 +362,177 @@ nonisolated struct DiskEjectBlocker: Identifiable, Sendable {
     }
 }
 
-nonisolated enum DiskWriteLock {
-    private static let defaultsKey = "diskman.writeLocks"
-
-    private static func key(for disk: ManagedDisk) -> String {
-        "\(disk.size)|\(disk.bus)|\(disk.devicePath)|\(disk.mediaRegistryID.map(String.init) ?? "missing")"
-    }
-
-    static func isLocked(_ disk: ManagedDisk, defaults: UserDefaults = .standard) -> Bool {
-        let saved = defaults.dictionary(forKey: defaultsKey) as? [String: Bool] ?? [:]
-        return saved[key(for: disk)] ?? true
-    }
-
-    static func setLocked(_ locked: Bool, for disk: ManagedDisk, defaults: UserDefaults = .standard) {
-        var saved = defaults.dictionary(forKey: defaultsKey) as? [String: Bool] ?? [:]
-        saved[key(for: disk)] = locked
-        defaults.set(saved, forKey: defaultsKey)
-    }
-}
-
-nonisolated enum DiskAction: String, CaseIterable, Identifiable, Sendable {
-    case verify = "Verify"
-    case repair = "Repair"
-    case mount = "Mount"
-    case unmount = "Unmount"
-    case eject = "Eject"
-    case rename = "Rename volume"
-    case eraseVolume = "Erase volume"
-    case eraseDisk = "Erase disk"
-    case partitionDisk = "Partition disk"
-    case addPartition = "Add partition"
-    case deletePartition = "Delete partition"
-    case resizePartition = "Resize partition"
-    case mergePartitions = "Merge with next"
-    case addAPFSVolume = "Add APFS volume"
-    case deleteAPFSVolume = "Delete APFS volume"
-    case resizeAPFSContainer = "Resize APFS container"
-    case wipeDisk = "Zero-fill disk"
-
-    var id: String { rawValue }
-    var destroysData: Bool {
-        switch self {
-        case .eraseVolume, .eraseDisk, .partitionDisk, .addPartition, .deletePartition,
-             .resizePartition, .mergePartitions, .deleteAPFSVolume, .resizeAPFSContainer, .wipeDisk: true
-        default: false
-        }
-    }
-    var needsPartition: Bool {
-        switch self {
-        case .repair, .mount, .unmount, .rename, .eraseVolume, .deletePartition,
-             .resizePartition, .mergePartitions, .addAPFSVolume, .deleteAPFSVolume, .resizeAPFSContainer: true
-        default: false
-        }
-    }
-    var needsWholeDisk: Bool {
-        switch self {
-        case .eject, .eraseDisk, .partitionDisk, .addPartition, .wipeDisk: true
-        default: false
-        }
-    }
-}
-
-nonisolated struct DiskRequest: Sendable {
-    let disk: ManagedDisk
-    let partition: ManagedPartition?
-    let action: DiskAction
-    let name: String
-    let format: String
-    let scheme: String
-    let size: String
-
-    var target: String { partition?.id ?? disk.id }
-    var summary: String {
-        "\(action.rawValue) · \(partition?.name ?? disk.name) · /dev/\(target) · " +
-        ByteCountFormatter.string(fromByteCount: partition?.size ?? disk.size, countStyle: .file)
-    }
-
-    func arguments() throws -> [String] {
-        if action.needsPartition && partition == nil || action.needsWholeDisk && partition != nil {
-            throw DiskManagementError.invalidInput("Select the \(action.needsPartition ? "partition" : "whole disk") for this operation.")
-        }
-        let validFormats = ["APFS", "APFSX", "JHFS+", "JHFSX", "HFS+", "HFSX",
-                            "ExFAT", "MS-DOS", "MS-DOS FAT12", "MS-DOS FAT16", "FAT32"]
-        let validSchemes = ["GPT", "MBR", "APM"]
-        let safeName = name.trimmingCharacters(in: .whitespacesAndNewlines)
-        let needsName: Bool = [.rename, .eraseVolume, .eraseDisk, .partitionDisk, .addPartition,
-                               .mergePartitions, .addAPFSVolume].contains(action)
-        let fat = [.eraseVolume, .eraseDisk, .partitionDisk, .addPartition].contains(action) &&
-            ["ExFAT", "MS-DOS", "MS-DOS FAT12", "MS-DOS FAT16", "FAT32"].contains(format) ||
-            action == .rename && partition?.content == "Microsoft Basic Data" ||
-            action == .mergePartitions && partition?.fileSystem == "ExFAT"
-        let maxNameLength = fat ? (action == .partitionDisk ? 9 : 11) : 27
-        if needsName && (safeName.isEmpty || safeName.count > maxNameLength ||
-                         safeName.contains("/") || safeName.contains(":")) {
-            throw DiskManagementError.invalidInput("Use a volume name of 1–\(maxNameLength) characters without a slash or colon.")
-        }
-        if [.eraseVolume, .eraseDisk, .partitionDisk, .addPartition].contains(action) && !validFormats.contains(format) {
-            throw DiskManagementError.invalidInput("Choose a supported file system format.")
-        }
-        if action == .addAPFSVolume && !["APFS", "APFSX"].contains(format) {
-            throw DiskManagementError.invalidInput("Choose APFS or case-sensitive APFS.")
-        }
-        if [.eraseDisk, .partitionDisk].contains(action) && !validSchemes.contains(scheme) {
-            throw DiskManagementError.invalidInput("Choose a supported partition scheme.")
-        }
-        if [.eraseDisk, .partitionDisk].contains(action) && ["APFS", "APFSX"].contains(format) && scheme != "GPT" {
-            throw DiskManagementError.invalidInput("APFS needs a GUID partition map.")
-        }
-        if action == .addPartition && ["APFS", "APFSX"].contains(format) &&
-            disk.scheme != "GUID_partition_scheme" {
-            throw DiskManagementError.invalidInput("APFS needs a GUID partition map.")
-        }
-        if [.partitionDisk, .addPartition, .resizePartition, .resizeAPFSContainer].contains(action) &&
-            size.range(of: "^[1-9][0-9]*(M|G|T)$", options: .regularExpression) == nil &&
-            !([.resizePartition, .resizeAPFSContainer].contains(action) && size == "R") {
-            throw DiskManagementError.invalidInput("Enter a size such as 4G or 800M. Use R to fill available space when resizing.")
-        }
-        if size != "R", [.partitionDisk, .addPartition, .resizePartition, .resizeAPFSContainer].contains(action) {
-            let multiplier: Int64 = switch size.last {
-            case "M": 1_000_000
-            case "G": 1_000_000_000
-            default: 1_000_000_000_000
-            }
-            guard let number = Int64(size.dropLast()) else {
-                throw DiskManagementError.invalidInput("The size is too large.")
-            }
-            let (bytes, overflow) = number.multipliedReportingOverflow(by: multiplier)
-            guard !overflow, bytes <= disk.size else {
-                throw DiskManagementError.invalidInput("The requested size exceeds this disk.")
-            }
-            if action == .partitionDisk && bytes > disk.size - 512_000_000 {
-                throw DiskManagementError.invalidInput("Leave at least 512 MB for the second partition.")
-            }
-            if action == .addPartition && bytes > max(0, disk.unallocatedBytes - 20_000_000) {
-                throw DiskManagementError.invalidInput("The new partition needs more unallocated space.")
-            }
-        }
-        if [.eraseVolume, .deletePartition, .resizePartition].contains(action) && partition?.isAPFSVolume == true {
-            throw DiskManagementError.invalidInput("Select the physical partition for this action.")
-        }
-        if [.repair, .rename, .eraseVolume, .deletePartition, .resizePartition, .mergePartitions].contains(action) &&
-            partition?.content == "EFI" {
-            throw DiskManagementError.invalidInput("The EFI system partition cannot be changed here. Use a whole-disk action to replace the layout.")
-        }
-        if [.addAPFSVolume, .resizeAPFSContainer].contains(action) &&
-            (partition?.apfsContainer == nil || partition?.isAPFSVolume == true) {
-            throw DiskManagementError.invalidInput("Select an APFS container partition.")
-        }
-        if action == .deleteAPFSVolume && partition?.isAPFSVolume != true {
-            throw DiskManagementError.invalidInput("Select an APFS volume.")
-        }
-        if action == .resizePartition && partition?.content != "Apple_HFS" {
-            throw DiskManagementError.invalidInput("macOS can resize only a Journaled HFS+ partition here.")
-        }
-        if action == .mergePartitions {
-            guard let first = partition, let next = disk.nextPhysicalPartition(after: first.id),
-                  first.content != "EFI", next.content != "EFI",
-                  first.apfsContainer == nil, next.apfsContainer == nil else {
-                throw DiskManagementError.invalidInput("Select a data partition followed by another data partition on this disk.")
-            }
-            if first.content == "Apple_HFS" {
-                return ["mergePartitions", "JHFS+", safeName, first.id, next.id]
-            }
-            guard first.fileSystem == "ExFAT" else {
-                throw DiskManagementError.invalidInput("Only Journaled HFS+ can preserve its data during a merge. ExFAT requires erasing both partitions.")
-            }
-            return ["mergePartitions", "force", "ExFAT", safeName, first.id, next.id]
-        }
-        switch action {
-        case .verify: return [partition == nil ? "verifyDisk" : "verifyVolume", target]
-        case .repair: return ["repairVolume", target]
-        case .mount: return ["mount", target]
-        case .unmount: return ["unmount", target]
-        case .eject: return ["eject", target]
-        case .rename: return ["renameVolume", target, safeName]
-        case .eraseVolume: return ["eraseVolume", format, safeName, target]
-        case .eraseDisk: return ["eraseDisk", format, safeName, scheme, target]
-        case .partitionDisk: return ["partitionDisk", target, scheme, format, safeName, size,
-                                     format, "\(safeName) 2", "R"]
-        case .addPartition: return ["addPartition", target, format, safeName, size]
-        case .deletePartition: return ["eraseVolume", "free", "free", target]
-        case .resizePartition: return ["resizeVolume", target, size]
-        case .mergePartitions: throw DiskManagementError.invalidInput("Choose two adjacent partitions.")
-        case .addAPFSVolume:
-            guard let container = partition?.apfsContainer else { throw DiskManagementError.changedDevice }
-            return ["apfs", "addVolume", container, format, safeName]
-        case .deleteAPFSVolume: return ["apfs", "deleteVolume", target]
-        case .resizeAPFSContainer: return ["apfs", "resizeContainer", target, size == "R" ? "0" : size]
-        case .wipeDisk: return ["zeroDisk", target]
-        }
-    }
-}
-
 nonisolated enum DiskManagement {
-    private static let executable = URL(fileURLWithPath: "/usr/sbin/diskutil")
+    private static let diskutil = "/usr/sbin/diskutil"
 
-    static func resizeLimits(for partitionID: String, apfs: Bool) throws -> String {
-        guard validID(partitionID) else { throw DiskManagementError.invalidDevice }
-        let arguments = apfs ? ["apfs", "resizeContainer", partitionID, "limits"] :
-            ["resizeVolume", partitionID, "limits"]
-        let output = String(decoding: try execute(arguments), as: UTF8.self)
-        guard !output.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty else {
-            throw DiskManagementError.command("macOS did not return resize limits for this partition.")
-        }
-        return output
-    }
+    // MARK: Inventory
 
     static func inventory() throws -> [ManagedDisk] {
         let list = try plist(["list", "-plist"])
-        let protected = try protectedDisks()
+        let apfs = (try? plist(["apfs", "list", "-plist"])) ?? [:]
+        let protected = try? protectedDisks()
         let entries = list["AllDisksAndPartitions"] as? [[String: Any]] ?? []
-        let containers = (try? plist(["apfs", "list", "-plist"]))?["Containers"] as? [[String: Any]] ?? []
-        var apfsByStore: [String: (reference: String, volumes: [ManagedPartition])] = [:]
-        for container in containers {
-            guard let reference = container["ContainerReference"] as? String, validID(reference) else { continue }
-            let volumes = (container["Volumes"] as? [[String: Any]] ?? []).compactMap { value -> ManagedPartition? in
-                guard let id = value["DeviceIdentifier"] as? String, validID(id) else { return nil }
-                return ManagedPartition(id: id, name: value["Name"] as? String ?? id,
-                                        content: "APFS Volume",
-                                        size: (value["CapacityInUse"] as? NSNumber)?.int64Value ?? 0,
-                                        mountPoint: value["MountPoint"] as? String,
-                                        uuid: value["APFSVolumeUUID"] as? String,
-                                        apfsContainer: reference, isAPFSVolume: true)
-            }
-            if let storeID = singleAPFSStoreID(container["PhysicalStores"] as? [[String: Any]] ?? []) {
-                apfsByStore[storeID] = (reference, volumes)
+        let ids = entries.flatMap { entry in
+            [entry["DeviceIdentifier"] as? String].compactMap { $0 } +
+                (entry["Partitions"] as? [[String: Any]] ?? []).compactMap { $0["DeviceIdentifier"] as? String }
+        }.filter(validID)
+        let results = ConcurrentResults(count: ids.count)
+        DispatchQueue.concurrentPerform(iterations: ids.count) { index in
+            results.set(index, try? plist(["info", "-plist", ids[index]]))
+        }
+        var infos: [String: [String: Any]] = [:]
+        for (index, id) in ids.enumerated() { infos[id] = results.value(index) }
+        var usage: [String: Int64] = [:]
+        for (id, info) in infos where info["WholeDisk"] as? Bool == false {
+            if let mount = nonEmpty(info["MountPoint"]) { usage[id] = usedBytes(at: mount) }
+        }
+        return parseDisks(list: list, apfs: apfs, infos: infos, imagePaths: imagePaths(), usage: usage, protected: protected)
+    }
+
+    /// Builds the disk list from diskutil plists. `protected` is nil when protected disks could not be resolved.
+    static func parseDisks(list: [String: Any], apfs: [String: Any], infos: [String: [String: Any]],
+                           imagePaths: [String: String], usage: [String: Int64],
+                           protected: [String: String]?, registryID: (String) -> UInt64? = mediaRegistryID) -> [ManagedDisk] {
+        var mounts: [String: String] = [:]
+        for entry in list["AllDisksAndPartitions"] as? [[String: Any]] ?? [] {
+            for volume in (entry["APFSVolumes"] as? [[String: Any]] ?? []) + (entry["Partitions"] as? [[String: Any]] ?? []) {
+                if let id = volume["DeviceIdentifier"] as? String, let mount = nonEmpty(volume["MountPoint"]) { mounts[id] = mount }
             }
         }
-        return entries.compactMap { entry -> ManagedDisk? in
-            guard let id = entry["DeviceIdentifier"] as? String, validID(id),
-                  let info = try? plist(["info", "-plist", id]),
-                  info["WholeDisk"] as? Bool == true,
-                  info["VirtualOrPhysical"] as? String == "Physical" || protected[id] != nil else { return nil }
-            let size = (info["Size"] as? NSNumber)?.int64Value ?? 0
-            let bus = info["BusProtocol"] as? String ?? "Unknown"
-            let scheme = info["Content"] as? String ?? "Unknown"
-            let path = info["DeviceTreePath"] as? String ?? ""
-            let name = info["MediaName"] as? String ?? id
-            let writable = info["Writable"] as? Bool == true
-            let registryID = mediaRegistryID(for: id)
-            let protectionReason = modificationBlockReason(info, protectedReason: protected[id], mediaRegistryID: registryID)
-            let manageable = protectionReason == nil
-            let partitions = (entry["Partitions"] as? [[String: Any]] ?? []).flatMap { part -> [ManagedPartition] in
-                guard let partID = part["DeviceIdentifier"] as? String, validID(partID) else { return [] }
-                let apfs = apfsByStore[partID]
-                let mountPoint = part["MountPoint"] as? String
-                let fileSystem = mountPoint.flatMap {
-                    (try? URL(fileURLWithPath: $0).resourceValues(forKeys: [.volumeLocalizedFormatDescriptionKey]))?
-                        .volumeLocalizedFormatDescription
-                } ?? (try? plist(["info", "-plist", partID]))?["FilesystemUserVisibleName"] as? String
-                let physical = ManagedPartition(
-                    id: partID, name: part["VolumeName"] as? String ?? partID,
-                    content: part["Content"] as? String ?? "Unknown",
-                    size: (part["Size"] as? NSNumber)?.int64Value ?? 0,
-                    mountPoint: mountPoint,
-                    uuid: part["VolumeUUID"] as? String,
-                    fileSystem: fileSystem,
-                    apfsContainer: apfs?.reference
-                )
-                return [physical] + (apfs?.volumes ?? [])
+        func mountPoint(of id: String) -> String? {
+            mounts[id] ?? mounts.first { $0.key.hasPrefix(id + "s") }?.value ?? nonEmpty(infos[id]?["MountPoint"])
+        }
+        var containers: [String: (reference: String, volumes: [ManagedVolume], used: Int64?)] = [:]
+        for container in apfs["Containers"] as? [[String: Any]] ?? [] {
+            guard let reference = container["ContainerReference"] as? String, validID(reference),
+                  let stores = container["PhysicalStores"] as? [[String: Any]], stores.count == 1,
+                  let store = stores[0]["DeviceIdentifier"] as? String else { continue }
+            let volumes = (container["Volumes"] as? [[String: Any]] ?? []).compactMap { value -> ManagedVolume? in
+                guard let id = value["DeviceIdentifier"] as? String, validID(id) else { return nil }
+                return ManagedVolume(id: id, name: value["Name"] as? String ?? id, usedBytes: int(value["CapacityInUse"]) ?? 0,
+                                     mountPoint: mountPoint(of: id))
             }
-            return ManagedDisk(id: id, name: name, size: size, bus: bus, scheme: scheme,
-                               devicePath: path, writable: writable, manageable: manageable,
-                               mediaRegistryID: registryID,
-                               partitions: partitions, protectionReason: protectionReason)
+            let ceiling = int(container["CapacityCeiling"]), free = int(container["CapacityFree"])
+            containers[store] = (reference, volumes, ceiling.flatMap { c in free.map { c - $0 } })
+        }
+        return (list["AllDisksAndPartitions"] as? [[String: Any]] ?? []).compactMap { entry -> ManagedDisk? in
+            guard let id = entry["DeviceIdentifier"] as? String, validID(id),
+                  let info = infos[id], isListedWholeDisk(info), !isSystemImage(imagePaths[id]) else { return nil }
+            let bus = info["BusProtocol"] as? String ?? "Unknown"
+            let removableMedia = info["RemovableMedia"] as? Bool == true
+            let isInternal = (info["Internal"] as? Bool == true || info["OSInternalMedia"] as? Bool == true) &&
+                !(removableMedia && bus == "Secure Digital")
+            let kind: DiskKind = bus == "Disk Image" ? .image : isInternal ? .internal : removableMedia ? .removable : .external
+            let partitions = (entry["Partitions"] as? [[String: Any]] ?? []).compactMap { part -> ManagedPartition? in
+                guard let partID = part["DeviceIdentifier"] as? String, validID(partID) else { return nil }
+                let details = infos[partID] ?? [:]
+                let container = containers[partID]
+                return ManagedPartition(
+                    id: partID, name: part["VolumeName"] as? String ?? "",
+                    content: part["Content"] as? String ?? "",
+                    offset: int(details["PartitionMapPartitionOffset"]) ?? 0,
+                    size: int(part["Size"]) ?? 0,
+                    mountPoint: container == nil ? mountPoint(of: partID) : nil,
+                    fileSystem: nonEmpty(details["FilesystemUserVisibleName"]),
+                    fileSystemType: container == nil ? nonEmpty(details["FilesystemType"]) : "apfs",
+                    usedBytes: container?.used ?? usage[partID],
+                    apfsContainer: container?.reference, volumes: container?.volumes ?? [])
+            }.sorted { $0.offset < $1.offset }
+            let mounts = partitions.flatMap { [$0.mountPoint].compactMap { $0 } + $0.volumes.compactMap(\.mountPoint) }
+            let facts = DiskSafetyFacts(diskID: id, isInternal: isInternal, isWritable: info["Writable"] as? Bool == true,
+                                        protectedReason: protected == nil ?
+                                            "Protected disks could not be verified. Refresh before making changes." : protected?[id],
+                                        mountPoints: mounts, imagePath: imagePaths[id])
+            let imageName = imagePaths[id].map { URL(fileURLWithPath: $0).deletingPathExtension().lastPathComponent }
+            return ManagedDisk(id: id, name: imageName ?? nonEmpty(info["MediaName"]) ?? nonEmpty(info["IORegistryEntryName"]) ?? id,
+                               size: int(info["Size"]) ?? 0, bus: bus, scheme: info["Content"] as? String ?? "",
+                               kind: kind, writable: facts.isWritable, smart: nonEmpty(info["SMARTStatus"]),
+                               imagePath: imagePaths[id], mediaRegistryID: registryID(id), partitions: partitions,
+                               protectionReason: DiskSafety.blockReason(facts, targets: partitions.compactMap(\.apfsContainer)))
         }.sorted { $0.id.localizedStandardCompare($1.id) == .orderedAscending }
     }
 
-    static func run(_ request: DiskRequest) throws -> String {
-        guard validID(request.disk.id), request.partition.map({ validID($0.id) }) ?? true else {
-            throw DiskManagementError.invalidDevice
+    static func safetyFacts(for disk: ManagedDisk, protected: [String: String]?) -> DiskSafetyFacts {
+        DiskSafetyFacts(diskID: disk.id, isInternal: disk.kind == .internal, isWritable: disk.writable,
+                        protectedReason: protected == nil ? "Protected disks could not be verified." : protected?[disk.id],
+                        mountPoints: disk.mountPoints, imagePath: disk.imagePath)
+    }
+
+    /// macOS attaches simulator runtimes and cryptexes as images. They are not user disks.
+    static func isSystemImage(_ path: String?) -> Bool {
+        guard let path else { return false }
+        return path.hasPrefix("/System/") || path.hasPrefix("/Library/")
+    }
+
+    private static func isListedWholeDisk(_ info: [String: Any]) -> Bool {
+        guard info["WholeDisk"] as? Bool == true, info["APFSPhysicalStores"] == nil else { return false }
+        return info["VirtualOrPhysical"] as? String != "Virtual" || info["BusProtocol"] as? String == "Disk Image"
+    }
+
+    static func details(_ id: String) throws -> [(String, String)] {
+        guard validID(id) else { throw DiskManagementError.invalidDevice }
+        let info = try plist(["info", "-plist", id])
+        let keys = ["DeviceIdentifier", "MediaName", "VolumeName", "Content", "FilesystemUserVisibleName",
+                    "BusProtocol", "Size", "PartitionMapPartitionOffset", "MountPoint", "VolumeUUID",
+                    "DiskUUID", "APFSContainerReference", "SMARTStatus", "Writable", "Removable", "Internal",
+                    "SolidState", "DeviceBlockSize"]
+        return keys.compactMap { key in
+            guard let value = info[key] else { return nil }
+            let text = "\(value)"
+            return text.isEmpty ? nil : (key, text)
         }
-        let arguments = try request.arguments()
-        if request.action != .verify, let reason = request.disk.protectionReason {
-            throw DiskManagementError.invalidInput(reason)
-        }
-        if request.action != .verify && DiskWriteLock.isLocked(request.disk) {
-            throw DiskManagementError.lockedDevice
-        }
-        let current = try inventory().first { $0.id == request.disk.id }
-        guard let current, current.identity == request.disk.identity else {
-            throw DiskManagementError.changedDevice
-        }
-        if let partition = request.partition {
-            guard current.partitions.contains(where: {
-                $0.id == partition.id && ($0.isAPFSVolume || $0.size == partition.size) &&
-                    $0.content == partition.content && $0.uuid == partition.uuid &&
-                    $0.apfsContainer == partition.apfsContainer && $0.isAPFSVolume == partition.isAPFSVolume
-            }) else { throw DiskManagementError.changedDevice }
-        }
-        guard request.action == .verify || current.manageable else {
-            throw DiskManagementError.invalidInput(current.protectionReason ?? DiskManagementError.unsafeDevice.localizedDescription)
-        }
-        if request.action != .verify && DiskWriteLock.isLocked(current) {
-            throw DiskManagementError.lockedDevice
-        }
-        if request.action == .mergePartitions, let first = request.partition {
-            if arguments.starts(with: ["mergePartitions", "force"]) {
-                let details = try plist(["info", "-plist", first.id])
-                guard details["FilesystemType"] as? String == "exfat" else {
-                    throw DiskManagementError.changedDevice
-                }
-            } else {
-                _ = try resizeLimits(for: first.id, apfs: false)
-            }
-            guard try inventory().first(where: { $0.id == current.id })?.identity == current.identity else {
+    }
+
+    static func resizeMinimum(for partition: ManagedPartition) throws -> Int64 {
+        guard validID(partition.id) else { throw DiskManagementError.invalidDevice }
+        let limits = try plist(partition.isAPFS ? ["apfs", "resizeContainer", partition.id, "limits", "-plist"] :
+                                    ["resizeVolume", partition.id, "limits", "-plist"])
+        return int(limits["MinimumSizeNoGuard"]) ?? int(limits["MinimumSizePreferred"]) ?? partition.size
+    }
+
+    // MARK: Operations
+
+    static func run(_ operation: PartitionOperation, on disk: ManagedDisk) throws -> String {
+        let arguments = try operation.arguments(on: disk)
+        if operation.isWrite {
+            let protected = try protectedDisks()
+            guard let current = try inventory().first(where: { $0.id == disk.id }), current.identity == disk.identity else {
                 throw DiskManagementError.changedDevice
             }
+            let targets = [operation.target].compactMap { $0 } + current.partitions.compactMap(\.apfsContainer)
+            if let reason = DiskSafety.blockReason(safetyFacts(for: current, protected: protected), targets: targets) {
+                throw DiskManagementError.protected(reason)
+            }
         }
-        if request.action != .verify && DiskWriteLock.isLocked(current) {
-            throw DiskManagementError.lockedDevice
+        if operation == .eject, disk.kind == .image {
+            return String(decoding: try executeProgram("/usr/bin/hdiutil", ["detach", disk.id], failOnError: true), as: UTF8.self)
         }
-        let output = try execute(arguments)
-        return String(decoding: output, as: UTF8.self)
+        return String(decoding: try execute(arguments), as: UTF8.self)
     }
 
     static func ejectBlockers(on disk: ManagedDisk) -> [DiskEjectBlocker] {
         var found: [Int32: DiskEjectBlocker] = [:]
-        for mount in Set(disk.partitions.compactMap(\.mountPoint)) {
-            guard mount.hasPrefix("/Volumes/"),
-                  let output = try? executeProgram("/usr/sbin/lsof", ["-nP", "-Fpc", "+f", "--", mount]) else {
-                continue
-            }
+        for mount in Set(disk.mountPoints) where mount.hasPrefix("/Volumes/") {
+            guard let output = try? executeProgram("/usr/sbin/lsof", ["-nP", "-Fpc", "+f", "--", mount]) else { continue }
             for (pid, name) in parseLsofProcesses(String(decoding: output, as: UTF8.self)) {
                 guard let info = processInfo(pid) else { continue }
-                found[pid] = DiskEjectBlocker(pid: pid, name: name,
-                                              started: info.started, userID: info.userID)
+                found[pid] = DiskEjectBlocker(pid: pid, name: name, started: info.started, userID: info.userID)
             }
         }
         return found.values.sorted { $0.name == $1.name ? $0.pid < $1.pid : $0.name < $1.name }
     }
 
-    static func quitBlockersAndEject(_ blockers: [DiskEjectBlocker], request: DiskRequest,
-                                    force: Bool = false) throws -> String {
-        guard request.action == .eject, blockers.allSatisfy(\.canQuit), !blockers.isEmpty else {
-            throw DiskManagementError.invalidInput("These processes cannot be closed by Diskman.")
+    static func quitBlockersAndEject(_ blockers: [DiskEjectBlocker], disk: ManagedDisk, force: Bool) throws -> String {
+        guard blockers.allSatisfy(\.canQuit), !blockers.isEmpty else {
+            throw DiskManagementError.invalidInput("These processes cannot be closed by Partition Manager.")
         }
-        // Recheck the disk, lock, and live open files before sending any signal.
-        let current = try inventory().first { $0.id == request.disk.id }
-        guard let current, current.identity == request.disk.identity else { throw DiskManagementError.changedDevice }
-        guard current.manageable else {
-            throw DiskManagementError.invalidInput(current.protectionReason ?? DiskManagementError.unsafeDevice.localizedDescription)
+        let protected = try protectedDisks()
+        guard let current = try inventory().first(where: { $0.id == disk.id }), current.identity == disk.identity else {
+            throw DiskManagementError.changedDevice
         }
-        guard !DiskWriteLock.isLocked(current) else { throw DiskManagementError.lockedDevice }
+        if let reason = DiskSafety.blockReason(safetyFacts(for: current, protected: protected)) {
+            throw DiskManagementError.protected(reason)
+        }
         let live = Dictionary(uniqueKeysWithValues: ejectBlockers(on: current).map { ($0.pid, $0) })
         for blocker in blockers {
             guard let now = live[blocker.pid], now.started == blocker.started,
@@ -452,12 +543,10 @@ nonisolated enum DiskManagement {
             } else {
                 closed = kill(blocker.pid, force ? SIGKILL : SIGTERM) == 0
             }
-            guard closed else {
-                throw DiskManagementError.command("Could not close \(blocker.name) (PID \(blocker.pid)).")
-            }
+            guard closed else { throw DiskManagementError.command("Could not close \(blocker.name) (PID \(blocker.pid)).") }
         }
         Thread.sleep(forTimeInterval: 1)
-        return try run(request)
+        return try run(.eject, on: current)
     }
 
     static func parseLsofProcesses(_ output: String) -> [(Int32, String)] {
@@ -470,6 +559,83 @@ nonisolated enum DiskManagement {
         return result
     }
 
+    // MARK: Helpers
+
+    private final class ConcurrentResults: @unchecked Sendable {
+        private var values: [[String: Any]?]
+        private let lock = NSLock()
+        init(count: Int) { values = Array(repeating: nil, count: count) }
+        func set(_ index: Int, _ value: [String: Any]?) { lock.withLock { values[index] = value } }
+        func value(_ index: Int) -> [String: Any]? { lock.withLock { values[index] } }
+    }
+
+    static func validID(_ id: String) -> Bool {
+        id.range(of: "^disk[0-9]+(s[0-9]+)?$", options: .regularExpression) != nil
+    }
+
+    static func physicalDiskIDs(_ info: [String: Any]) -> [String] {
+        let stores = info["APFSPhysicalStores"] as? [[String: Any]] ?? []
+        let ids = stores.isEmpty ? [info["ParentWholeDisk"] as? String ?? info["DeviceIdentifier"] as? String ?? ""] :
+            stores.compactMap { $0["APFSPhysicalStore"] as? String }
+        let physical = ids.compactMap { id -> String? in
+            guard id.range(of: "^disk[0-9]+(s[0-9]+)*$", options: .regularExpression) != nil else { return nil }
+            return DiskSafety.wholeDiskID(id)
+        }
+        return physical.count == max(1, stores.count) ? physical : []
+    }
+
+    /// Whole disks behind the startup volume, the running app, and External1TB.
+    static func protectedDisks() throws -> [String: String] {
+        var paths = [(URL(fileURLWithPath: "/"), "The startup disk is protected. Partition Manager never changes it."),
+                     (Bundle.main.bundleURL, "This disk holds the running app. Partition Manager never changes it.")]
+        if FileManager.default.fileExists(atPath: DiskSafety.ownerDataVolume) {
+            paths.append((URL(fileURLWithPath: DiskSafety.ownerDataVolume), "This disk holds External1TB. Partition Manager never changes it."))
+        }
+        var result: [String: String] = [:]
+        for (path, reason) in paths {
+            guard let volume = try path.resolvingSymlinksInPath().resourceValues(forKeys: [.volumeURLKey]).volume,
+                  case let ids = physicalDiskIDs(try plist(["info", "-plist", volume.path])), !ids.isEmpty else {
+                throw DiskManagementError.protected("Protected disks could not be verified. Refresh before making changes.")
+            }
+            for id in ids where result[id] == nil { result[id] = reason }
+        }
+        return result
+    }
+
+    private static func imagePaths() -> [String: String] {
+        guard let data = try? executeProgram("/usr/bin/hdiutil", ["info", "-plist"]),
+              let value = try? PropertyListSerialization.propertyList(from: data, format: nil) as? [String: Any] else { return [:] }
+        var result: [String: String] = [:]
+        for image in value["images"] as? [[String: Any]] ?? [] {
+            guard let path = image["image-path"] as? String else { continue }
+            for entity in image["system-entities"] as? [[String: Any]] ?? [] {
+                if let entry = entity["dev-entry"] as? String { result[String(entry.dropFirst("/dev/".count))] = path }
+            }
+        }
+        return result
+    }
+
+    private static func usedBytes(at mount: String) -> Int64? {
+        guard let values = try? URL(fileURLWithPath: mount).resourceValues(forKeys: [.volumeTotalCapacityKey, .volumeAvailableCapacityKey]),
+              let total = values.volumeTotalCapacity, let available = values.volumeAvailableCapacity else { return nil }
+        return Int64(max(0, total - available))
+    }
+
+    private static func nonEmpty(_ value: Any?) -> String? {
+        guard let text = value as? String, !text.isEmpty else { return nil }
+        return text
+    }
+    private static func int(_ value: Any?) -> Int64? { (value as? NSNumber)?.int64Value }
+
+    static func mediaRegistryID(for diskID: String) -> UInt64? {
+        guard let matching = IOBSDNameMatching(kIOMainPortDefault, 0, diskID) else { return nil }
+        let media = IOServiceGetMatchingService(kIOMainPortDefault, matching)
+        guard media != 0 else { return nil }
+        defer { IOObjectRelease(media) }
+        var id: UInt64 = 0
+        return IORegistryEntryGetRegistryEntryID(media, &id) == KERN_SUCCESS ? id : nil
+    }
+
     private static func processInfo(_ pid: Int32) -> (started: UInt64, userID: UInt32)? {
         var info = proc_bsdinfo()
         let bytes = withUnsafeMutablePointer(to: &info) {
@@ -477,19 +643,6 @@ nonisolated enum DiskManagement {
         }
         guard bytes == MemoryLayout<proc_bsdinfo>.size else { return nil }
         return (info.pbi_start_tvsec * 1_000_000 + info.pbi_start_tvusec, info.pbi_uid)
-    }
-
-    private static func executeProgram(_ path: String, _ arguments: [String]) throws -> Data {
-        let process = Process()
-        process.executableURL = URL(fileURLWithPath: path)
-        process.arguments = arguments
-        let pipe = Pipe()
-        process.standardOutput = pipe
-        process.standardError = FileHandle.nullDevice
-        try process.run()
-        let output = pipe.fileHandleForReading.readDataToEndOfFile()
-        process.waitUntilExit()
-        return output
     }
 
     private static func plist(_ arguments: [String]) throws -> [String: Any] {
@@ -501,104 +654,25 @@ nonisolated enum DiskManagement {
     }
 
     private static func execute(_ arguments: [String], plistOutput: Bool = false) throws -> Data {
+        try executeProgram(diskutil, arguments, mergeErrors: !plistOutput, failOnError: true)
+    }
+
+    private static func executeProgram(_ path: String, _ arguments: [String], mergeErrors: Bool = true,
+                                       failOnError: Bool = false) throws -> Data {
         let process = Process()
-        process.executableURL = executable
+        process.executableURL = URL(fileURLWithPath: path)
         process.arguments = arguments
         let pipe = Pipe()
         process.standardOutput = pipe
-        process.standardError = plistOutput ? FileHandle.nullDevice : pipe
-        let confirmsForcedMerge = arguments.starts(with: ["mergePartitions", "force"])
-        let confirmation = confirmsForcedMerge ? Pipe() : nil
+        process.standardError = mergeErrors ? pipe : FileHandle.nullDevice
         process.standardInput = FileHandle.nullDevice
-        if let confirmation { process.standardInput = confirmation }
         try process.run()
-        if let confirmation {
-            confirmation.fileHandleForWriting.write(Data("y\n".utf8))
-            try? confirmation.fileHandleForWriting.close()
-        }
         let output = pipe.fileHandleForReading.readDataToEndOfFile()
         process.waitUntilExit()
-        if arguments.first == "mergePartitions", String(decoding: output, as: UTF8.self).contains("Merge canceled") {
-            throw DiskManagementError.command("macOS canceled the partition merge; the disk was not changed.")
-        }
-        guard process.terminationStatus == 0 else {
+        guard !failOnError || process.terminationStatus == 0 else {
             let detail = String(decoding: output, as: UTF8.self).trimmingCharacters(in: .whitespacesAndNewlines)
-            throw DiskManagementError.command(detail.isEmpty ? "Disk Utility could not complete the operation." : detail)
+            throw DiskManagementError.command(detail.isEmpty ? "macOS could not complete the operation." : detail)
         }
         return output
-    }
-
-    private static func validID(_ id: String) -> Bool {
-        id.range(of: "^disk[0-9]+(s[0-9]+)?$", options: .regularExpression) != nil
-    }
-
-    private static func mediaRegistryID(for diskID: String) -> UInt64? {
-        guard let matching = IOBSDNameMatching(kIOMainPortDefault, 0, diskID) else { return nil }
-        let media = IOServiceGetMatchingService(kIOMainPortDefault, matching)
-        guard media != 0 else { return nil }
-        defer { IOObjectRelease(media) }
-        var id: UInt64 = 0
-        return IORegistryEntryGetRegistryEntryID(media, &id) == KERN_SUCCESS ? id : nil
-    }
-
-    static func singleAPFSStoreID(_ stores: [[String: Any]]) -> String? {
-        guard stores.count == 1, let id = stores[0]["DeviceIdentifier"] as? String,
-              validID(id) else { return nil }
-        return id
-    }
-
-    static func physicalDiskIDs(_ info: [String: Any]) -> [String] {
-        let stores = info["APFSPhysicalStores"] as? [[String: Any]] ?? []
-        let ids = stores.isEmpty ? [info["ParentWholeDisk"] as? String ?? info["DeviceIdentifier"] as? String ?? ""] :
-            stores.compactMap { $0["APFSPhysicalStore"] as? String }
-        let physical = ids.compactMap { id -> String? in
-            guard id.range(of: "^disk[0-9]+(s[0-9]+)*$", options: .regularExpression) != nil else { return nil }
-            return "disk" + id.dropFirst(4).prefix(while: { $0.isNumber })
-        }
-        return physical.count == max(1, stores.count) ? physical : []
-    }
-
-    static func modificationBlockReason(_ info: [String: Any], protectedReason: String?, mediaRegistryID: UInt64?) -> String? {
-        if let protectedReason { return protectedReason }
-        if info["OSInternalMedia"] as? Bool == true ||
-            info["Internal"] as? Bool == true && info["BusProtocol"] as? String != "Secure Digital" {
-            return "Internal disks are protected. Diskman cannot change or eject them."
-        }
-        guard info["WholeDisk"] as? Bool == true, info["VirtualOrPhysical"] as? String == "Physical" else {
-            return "Diskman only modifies physical disks."
-        }
-        guard info["Writable"] as? Bool == true else { return "This disk is read-only. Check its physical write lock." }
-        guard info["RemovableMediaOrExternalDevice"] as? Bool == true else {
-            return "Only removable or external disks can be changed."
-        }
-        guard ((info["Size"] as? NSNumber)?.int64Value ?? 0) > 0, mediaRegistryID != nil else {
-            return "The disk identity could not be verified. Reconnect it and refresh."
-        }
-        return nil
-    }
-
-    private static func protectedDisks() throws -> [String: String] {
-        let repository = URL(fileURLWithPath: #filePath).deletingLastPathComponent()
-            .deletingLastPathComponent().deletingLastPathComponent()
-        var paths = [(URL(fileURLWithPath: "/"), "The startup disk is protected. Diskman cannot change or eject it."),
-                     (Bundle.main.bundleURL, "This disk contains the running app. Diskman cannot change or eject it.")]
-        if FileManager.default.fileExists(atPath: repository.appendingPathComponent("powertoys.xcodeproj").path) {
-            paths.append((repository, "This disk contains the MacPowerToys source repository. Diskman cannot change or eject it."))
-        }
-        var result: [String: String] = [:]
-        for (path, reason) in paths {
-            guard let volume = try path.resolvingSymlinksInPath().resourceValues(forKeys: [.volumeURLKey]).volume,
-                  case let ids = physicalDiskIDs(try plist(["info", "-plist", volume.path])), !ids.isEmpty else {
-                throw DiskManagementError.invalidInput("The app's protected disks could not be verified. Refresh before making changes.")
-            }
-            for id in ids where result[id] == nil {
-                let info = try plist(["info", "-plist", id])
-                guard info["WholeDisk"] as? Bool == true, info["VirtualOrPhysical"] as? String != "Virtual" else {
-                    throw DiskManagementError.invalidInput("The app's physical disk could not be verified. Refresh before making changes.")
-                }
-                result[id] = reason
-            }
-        }
-        return result
     }
 }

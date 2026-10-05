@@ -35,7 +35,7 @@ nonisolated struct ToolPageRequest: Equatable, Sendable {
 
     var opensSheet: Bool {
         switch (tool, page) {
-        case ("rclone", "new-transfer"),("disk-explorer", "choose-folder"): true
+        case ("rclone", "new-transfer"): true
         default: false
         }
     }

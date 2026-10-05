@@ -110,7 +110,7 @@ struct ToolPageRouterTests {
 
     @MainActor @Test func backgroundSheetRoutesWaitWithoutLosingTheRequest() {
         let router = ToolPageRouter()
-        for (tool, page) in [("rclone", "new-transfer"),("disk-explorer", "choose-folder")] {
+        for (tool, page) in [("rclone", "new-transfer")] {
             router.post(tool: tool, page: page, recordTiming: false)
             #expect(router.take(tool: tool, allowSheet: false) == nil)
             #expect(router.take(tool: tool, allowSheet: false) == nil)

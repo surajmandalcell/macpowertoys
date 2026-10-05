@@ -1,241 +1,213 @@
 import XCTest
-import Darwin
 @testable import powertoys
 
 final class DiskManagementTests: XCTestCase {
-    private let card = ManagedDisk(
-        id: "disk10", name: "SDXC Reader", size: 15_634_268_160,
-        bus: "Secure Digital", scheme: "GUID_partition_scheme", devicePath: "reader", writable: true,
-        manageable: true, mediaRegistryID: 1, partitions: [
-            ManagedPartition(id: "disk10s1", name: "Data", content: "Microsoft Basic Data",
-                             size: 4_000_000_000, mountPoint: "/Volumes/Data", uuid: "volume-id")
-        ]
-    )
-
-    func testWriteLockDefaultsClosedPersistsAndBlocksCommandBeforeDiskutil() throws {
-        let defaults = try XCTUnwrap(UserDefaults(suiteName: "DiskmanWriteLockTests"))
-        defaults.removePersistentDomain(forName: "DiskmanWriteLockTests")
-        defer { defaults.removePersistentDomain(forName: "DiskmanWriteLockTests") }
-        XCTAssertTrue(DiskWriteLock.isLocked(card, defaults: defaults))
-        DiskWriteLock.setLocked(false, for: card, defaults: defaults)
-        XCTAssertFalse(DiskWriteLock.isLocked(card, defaults: defaults))
-        XCTAssertFalse(DiskWriteLock.isLocked(card, defaults: try XCTUnwrap(UserDefaults(suiteName: "DiskmanWriteLockTests"))))
-        let otherMedia = ManagedDisk(id: card.id, name: card.name, size: card.size, bus: card.bus,
-                                     scheme: card.scheme, devicePath: card.devicePath, writable: true,
-                                     manageable: true, mediaRegistryID: 2, partitions: card.partitions)
-        XCTAssertTrue(DiskWriteLock.isLocked(otherMedia, defaults: defaults))
-
-        let neverConnected = ManagedDisk(id: "disk98", name: "Locked", size: 1_000_000_000_000,
-                                         bus: "USB", scheme: "GUID_partition_scheme", devicePath: "test-lock",
-                                         writable: true, manageable: true, mediaRegistryID: 98, partitions: [])
-        let request = DiskRequest(disk: neverConnected, partition: nil, action: .eraseDisk,
-                                  name: "Locked", format: "ExFAT", scheme: "GPT", size: "")
-        XCTAssertThrowsError(try DiskManagement.run(request)) { error in
-            guard case DiskManagementError.lockedDevice = error else {
-                return XCTFail("Expected the write lock to reject the request before diskutil")
-            }
+    private func list() -> [String: Any] {
+        ["AllDisksAndPartitions": [
+            ["DeviceIdentifier": "disk0", "Content": "GUID_partition_scheme", "Size": 500_277_792_768,
+             "Partitions": [["DeviceIdentifier": "disk0s2", "Content": "Apple_APFS", "Size": 494_384_795_648]]],
+            ["DeviceIdentifier": "disk3", "Content": "", "Size": 494_384_795_648,
+             "APFSVolumes": [["DeviceIdentifier": "disk3s1s1", "MountPoint": "/", "VolumeName": "Macintosh HD"]]],
+            ["DeviceIdentifier": "disk6", "Content": "GUID_partition_scheme", "Size": 1_000_204_886_016,
+             "Partitions": [["DeviceIdentifier": "disk6s1", "Content": "EFI", "Size": 209_715_200, "VolumeName": "EFI"],
+                            ["DeviceIdentifier": "disk6s2", "Content": "Apple_APFS", "Size": 999_995_129_856]]],
+            ["DeviceIdentifier": "disk7", "Content": "", "Size": 999_995_129_856,
+             "APFSVolumes": [["DeviceIdentifier": "disk7s1", "MountPoint": "/Volumes/External1TB", "VolumeName": "External1TB"]]],
+            ["DeviceIdentifier": "disk16", "Content": "GUID_partition_scheme", "Size": 2_147_483_648,
+             "Partitions": [["DeviceIdentifier": "disk16s1", "Content": "Apple_APFS", "Size": 1_000_000_000],
+                            ["DeviceIdentifier": "disk16s2", "Content": "Microsoft Basic Data", "Size": 500_000_000,
+                             "VolumeName": "PMEXFAT", "MountPoint": "/Volumes/PMEXFAT"]]],
+            ["DeviceIdentifier": "disk17", "Content": "", "Size": 1_000_000_000,
+             "APFSVolumes": [["DeviceIdentifier": "disk17s1", "MountPoint": "/Volumes/PMTEST", "VolumeName": "PMTEST"]]]
+        ]]
+    }
+    private func apfs() -> [String: Any] {
+        func container(_ reference: String, store: String, volume: String, name: String) -> [String: Any] {
+            ["ContainerReference": reference, "CapacityCeiling": 1_000_000_000, "CapacityFree": 900_000_000,
+             "PhysicalStores": [["DeviceIdentifier": store]],
+             "Volumes": [["DeviceIdentifier": volume, "Name": name, "CapacityInUse": 100_000_000]]]
         }
+        return ["Containers": [container("disk3", store: "disk0s2", volume: "disk3s1", name: "Macintosh HD"),
+                               container("disk7", store: "disk6s2", volume: "disk7s1", name: "External1TB"),
+                               container("disk17", store: "disk16s1", volume: "disk17s1", name: "PMTEST")]]
+    }
+    private func infos() -> [String: [String: Any]] {
+        func whole(_ bus: String, internal isInternal: Bool, virtual: String, size: Int64, writable: Bool = true) -> [String: Any] {
+            ["WholeDisk": true, "BusProtocol": bus, "Internal": isInternal, "VirtualOrPhysical": virtual, "Writable": writable,
+             "RemovableMedia": bus == "Disk Image", "Content": "GUID_partition_scheme", "MediaName": bus == "Disk Image" ? "Disk Image" : "Drive",
+             "SMARTStatus": bus == "Disk Image" ? "Not Supported" : "Verified", "Size": size]
+        }
+        return [
+            "disk0": whole("Apple Fabric", internal: true, virtual: "Unknown", size: 500_277_792_768),
+            "disk0s2": ["WholeDisk": false, "PartitionMapPartitionOffset": 524_312_576],
+            "disk3": ["WholeDisk": true, "APFSPhysicalStores": [["APFSPhysicalStore": "disk0s2"]], "VirtualOrPhysical": "Virtual"],
+            "disk6": whole("USB", internal: false, virtual: "Physical", size: 1_000_204_886_016),
+            "disk6s1": ["WholeDisk": false, "PartitionMapPartitionOffset": 20480, "FilesystemType": "msdos"],
+            "disk6s2": ["WholeDisk": false, "PartitionMapPartitionOffset": 209_735_680],
+            "disk16": whole("Disk Image", internal: false, virtual: "Virtual", size: 2_147_483_648),
+            "disk16s1": ["WholeDisk": false, "PartitionMapPartitionOffset": 20480],
+            "disk16s2": ["WholeDisk": false, "PartitionMapPartitionOffset": 1_000_341_504, "FilesystemType": "exfat",
+                         "FilesystemUserVisibleName": "ExFAT"],
+            "disk17": ["WholeDisk": true, "APFSPhysicalStores": [["APFSPhysicalStore": "disk16s1"]], "BusProtocol": "Disk Image"]
+        ]
+    }
+    private func parsed(protected: [String: String]? = ["disk0": "The startup disk is protected."]) -> [ManagedDisk] {
+        DiskManagement.parseDisks(list: list(), apfs: apfs(), infos: infos(),
+                                  imagePaths: ["disk16": "/tmp/test.dmg"], usage: ["disk16s2": 1_000_000],
+                                  protected: protected, registryID: { _ in 1 })
+    }
+
+    func testParsingListsWholeDisksWithPartitionsVolumesAndFreeSpace() throws {
+        let disks = parsed()
+        XCTAssertEqual(disks.map(\.id), ["disk0", "disk6", "disk16"], "Synthesized APFS disks are not listed")
+        let image = try XCTUnwrap(disks.last)
+        XCTAssertEqual(image.kind, .image)
+        XCTAssertEqual(image.schemeTitle, "GPT")
+        XCTAssertEqual(image.imagePath, "/tmp/test.dmg")
+        XCTAssertEqual(image.name, "test", "An image is named after its file")
+        XCTAssertEqual(image.partitions.map(\.id), ["disk16s1", "disk16s2"])
+        let container = image.partitions[0]
+        XCTAssertEqual(container.apfsContainer, "disk17")
+        XCTAssertEqual(container.volumes.map(\.name), ["PMTEST"])
+        XCTAssertEqual(container.volumes.first?.mountPoint, "/Volumes/PMTEST")
+        XCTAssertEqual(container.usedBytes, 100_000_000)
+        let exfat = image.partitions[1]
+        XCTAssertEqual(exfat.fileSystemType, "exfat")
+        XCTAssertEqual(exfat.mountPoint, "/Volumes/PMEXFAT")
+        XCTAssertEqual(exfat.usedBytes, 1_000_000)
+        XCTAssertEqual(image.freeSpaces.count, 1)
+        XCTAssertEqual(image.freeSpaces.first?.afterPartition, "disk16s2")
+        XCTAssertEqual(image.freeSpaces.first?.offset, 1_500_341_504)
+        XCTAssertNil(image.protectionReason)
+        XCTAssertEqual(disks[0].partitions.first?.volumes.first?.mountPoint, "/", "A volume reports its mounted snapshot")
+    }
+
+    func testGuardProtectsStartupInternalReservedAndExternal1TBDisks() {
+        let disks = parsed()
+        XCTAssertNotNil(disks.first { $0.id == "disk0" }?.protectionReason)
+        XCTAssertNotNil(disks.first { $0.id == "disk6" }?.protectionReason)
+        let safe = DiskSafetyFacts(diskID: "disk16", isInternal: false, isWritable: true, protectedReason: nil,
+                                   mountPoints: ["/Volumes/PMTEST"], imagePath: "/tmp/test.dmg")
+        XCTAssertNil(DiskSafety.blockReason(safe))
+        func facts(_ id: String = "disk16", internal isInternal: Bool = false, writable: Bool = true, reason: String? = nil,
+                   mounts: [String] = [], image: String? = nil) -> DiskSafetyFacts {
+            DiskSafetyFacts(diskID: id, isInternal: isInternal, isWritable: writable, protectedReason: reason,
+                            mountPoints: mounts, imagePath: image)
+        }
+        XCTAssertNotNil(DiskSafety.blockReason(facts("disk6")))
+        XCTAssertNotNil(DiskSafety.blockReason(facts("disk7")))
+        XCTAssertNotNil(DiskSafety.blockReason(facts(), targets: ["disk7s1"]), "A target on disk7 is refused")
+        XCTAssertNotNil(DiskSafety.blockReason(facts(), targets: ["disk6s2"]))
+        XCTAssertNil(DiskSafety.blockReason(facts(), targets: ["disk60s1", "disk17"]), "disk60 is not disk6")
+        XCTAssertNotNil(DiskSafety.blockReason(facts(mounts: ["/Volumes/External1TB"])))
+        XCTAssertNotNil(DiskSafety.blockReason(facts(mounts: ["/Volumes/External1TB/dev"])))
+        XCTAssertNil(DiskSafety.blockReason(facts(mounts: ["/Volumes/External1TB2"])))
+        XCTAssertNotNil(DiskSafety.blockReason(facts(reason: "The startup disk is protected.")))
+        XCTAssertNotNil(DiskSafety.blockReason(facts(internal: true)))
+        XCTAssertNotNil(DiskSafety.blockReason(facts(writable: false)))
+        XCTAssertNotNil(DiskSafety.blockReason(facts(image: "/System/Library/AssetsV2/runtime.dmg")))
+        XCTAssertTrue(DiskManagement.isSystemImage("/Library/Developer/CoreSimulator/runtime.dmg"))
+        XCTAssertFalse(DiskManagement.isSystemImage("/Users/me/Library/test.dmg"))
+        XCTAssertNotNil(parsed(protected: nil).first { $0.id == "disk16" }?.protectionReason,
+                        "Every disk is protected when protected disks cannot be resolved")
+    }
+
+    func testOperationsBuildExactDiskutilArguments() throws {
+        let disk = try XCTUnwrap(parsed().last)
+        XCTAssertEqual(try PartitionOperation.mount(target: "disk17").arguments(on: disk), ["mountDisk", "disk17"])
+        XCTAssertEqual(try PartitionOperation.unmount(target: "disk16s2").arguments(on: disk), ["unmount", "disk16s2"])
+        XCTAssertEqual(try PartitionOperation.rename(target: "disk16s2", name: "Photos").arguments(on: disk),
+                       ["renameVolume", "disk16s2", "Photos"])
+        XCTAssertEqual(try PartitionOperation.format(target: "disk16s2", fileSystem: .fat32, name: "card").arguments(on: disk),
+                       ["eraseVolume", "FAT32", "CARD", "disk16s2"])
+        XCTAssertEqual(try PartitionOperation.format(target: "disk16s1", fileSystem: .hfs, name: "Mac").arguments(on: disk),
+                       ["apfs", "deleteContainer", "disk17", "JHFS+", "Mac", "0"])
+        XCTAssertEqual(try PartitionOperation.delete(target: "disk16s2").arguments(on: disk), ["eraseVolume", "free", "free", "disk16s2"])
+        XCTAssertEqual(try PartitionOperation.delete(target: "disk16s1").arguments(on: disk), ["apfs", "deleteContainer", "disk17"])
+        XCTAssertEqual(try PartitionOperation.create(after: "disk16s2", fileSystem: .exfat, name: "New", size: nil).arguments(on: disk),
+                       ["addPartition", "disk16s2", "ExFAT", "New", "0"])
+        XCTAssertEqual(try PartitionOperation.resize(target: "disk16s1", size: 800_000_000,
+                                                     split: PartitionSplit(fileSystem: .hfs, name: "Split")).arguments(on: disk),
+                       ["apfs", "resizeContainer", "disk16s1", "800000000B", "JHFS+", "Split", "0"])
+        XCTAssertEqual(try PartitionOperation.eraseDisk(fileSystem: .exfat, name: "Card", scheme: .mbr).arguments(on: disk),
+                       ["eraseDisk", "ExFAT", "Card", "MBR", "disk16"])
+        XCTAssertEqual(try PartitionOperation.verify(target: nil).arguments(on: disk), ["verifyDisk", "disk16"])
+        XCTAssertThrowsError(try PartitionOperation.eraseDisk(fileSystem: .apfs, name: "Card", scheme: .mbr).arguments(on: disk))
+        XCTAssertThrowsError(try PartitionOperation.repair(target: nil).arguments(on: disk), "Whole-disk repair can prompt")
+        XCTAssertThrowsError(try PartitionOperation.resize(target: "disk16s2", size: 400_000_000, split: nil).arguments(on: disk),
+                             "ExFAT cannot be resized")
+        XCTAssertThrowsError(try PartitionOperation.rename(target: "disk6s2", name: "X").arguments(on: disk), "Targets stay on this disk")
+        XCTAssertThrowsError(try PartitionOperation.format(target: "disk16s2", fileSystem: .fat32, name: "TWELVECHARSX").arguments(on: disk))
+        XCTAssertThrowsError(try PartitionOperation.rename(target: "disk16s2", name: "a/b").arguments(on: disk))
+        XCTAssertTrue(PartitionOperation.delete(target: "disk16s2").isDestructive)
+        XCTAssertFalse(PartitionOperation.mount(target: "disk17").isWrite)
+        XCTAssertTrue(PartitionOperation.eject.isWrite)
+    }
+
+    func testMapLayoutKeepsSmallBlocksVisibleAndPreviewsChanges() throws {
+        let widths = PartitionMapLayout.widths([200_000_000, 999_000_000_000, 1_000_000_000], available: 600, minimum: 56, spacing: 4)
+        XCTAssertEqual(widths.reduce(0, +), 592, accuracy: 0.01)
+        XCTAssertEqual(widths[0], 56, accuracy: 0.01)
+        XCTAssertEqual(widths[2], 56, accuracy: 0.01)
+        XCTAssertGreaterThan(widths[1], 400)
+        XCTAssertEqual(PartitionMapLayout.widths([1, 1], available: .nan, minimum: 56, spacing: 4), [0, 0])
+
+        let disk = try XCTUnwrap(parsed().last)
+        XCTAssertEqual(PartitionMapLayout.segments(for: disk).map(\.id), ["disk16s1", "disk16s2", "free-disk16-disk16s2"])
+        let created = PartitionMapLayout.segments(for: disk, preview: .create(free: "free-disk16-disk16s2", size: 200_000_000))
+        XCTAssertEqual(created.map(\.id), ["disk16s1", "disk16s2", "pending", "free-disk16-disk16s2"])
+        XCTAssertEqual(created.map(\.bytes).reduce(0, +), PartitionMapLayout.segments(for: disk).map(\.bytes).reduce(0, +))
+        let shrunk = PartitionMapLayout.segments(for: disk, preview: .resize(partition: "disk16s1", size: 600_000_000, split: false))
+        XCTAssertEqual(shrunk.map(\.id), ["disk16s1", "free-disk16-disk16s1", "disk16s2", "free-disk16-disk16s2"])
+        XCTAssertEqual(shrunk[0].bytes, 600_000_000)
+        XCTAssertEqual(shrunk[1].bytes, 400_000_000)
+        let split = PartitionMapLayout.segments(for: disk, preview: .resize(partition: "disk16s1", size: 600_000_000, split: true))
+        XCTAssertEqual(split[1].id, "pending")
+    }
+
+    func testActionsExplainWhyTheyAreUnavailable() throws {
+        let disks = parsed()
+        let image = try XCTUnwrap(disks.last)
+        let startup = try XCTUnwrap(disks.first)
+        func reason(_ action: PartitionAction, _ selection: PartitionSelection, _ disk: ManagedDisk) -> String? {
+            PartitionAction.unavailableReason(action, selection: selection, disk: disk)
+        }
+        XCTAssertNotNil(reason(.eraseDisk, .disk("disk0"), startup))
+        XCTAssertNotNil(reason(.format, .partition(disk: "disk0", id: "disk0s2"), startup))
+        XCTAssertNil(reason(.info, .disk("disk0"), startup))
+        XCTAssertNil(reason(.eraseDisk, .disk("disk16"), image))
+        XCTAssertNil(reason(.format, .partition(disk: "disk16", id: "disk16s2"), image))
+        XCTAssertNotNil(reason(.resize, .partition(disk: "disk16", id: "disk16s2"), image), "ExFAT cannot be resized")
+        XCTAssertNil(reason(.resize, .partition(disk: "disk16", id: "disk16s1"), image))
+        XCTAssertNil(reason(.create, .free(disk: "disk16", id: "free-disk16-disk16s2"), image))
+        XCTAssertNotNil(reason(.create, .partition(disk: "disk16", id: "disk16s2"), image))
+        XCTAssertNotNil(reason(.mount, .partition(disk: "disk16", id: "disk16s2"), image), "Already mounted")
+        XCTAssertNil(reason(.unmount, .partition(disk: "disk16", id: "disk16s2"), image))
+        XCTAssertNil(reason(.rename, .partition(disk: "disk16", id: "disk16s1"), image), "A one-volume container renames its volume")
+        XCTAssertNotNil(reason(.format, .volume(disk: "disk16", partition: "disk16s1", id: "disk17s1"), image))
+        XCTAssertNotNil(reason(.firstAid, .disk("disk16"), image), "macOS refuses a GPT disk without EFI")
+        let efi = try XCTUnwrap(disks.first { $0.id == "disk6" })
+        XCTAssertNotNil(reason(.delete, .partition(disk: "disk6", id: "disk6s1"), efi))
+    }
+
+    @MainActor func testSelectionFollowsAPartitionWhoseIdentifierChanged() throws {
+        let disk = try XCTUnwrap(parsed().last)
+        let model = DiskManagementModel(disks: [disk], selection: .partition(disk: "disk16", id: "disk16s2"), isPreview: true)
+        let moved = ManagedPartition(id: "disk16s3", name: "PMFAT", content: "Microsoft Basic Data", offset: 1_000_341_504,
+                                     size: 500_000_000, fileSystemType: "msdos")
+        let renumbered = ManagedDisk(id: disk.id, name: disk.name, size: disk.size, bus: disk.bus, scheme: disk.scheme, kind: disk.kind,
+                                     writable: true, smart: nil, imagePath: nil, mediaRegistryID: 1,
+                                     partitions: [disk.partitions[0], moved], protectionReason: nil)
+        model.update([renumbered], keepingOffset: 1_000_341_504)
+        XCTAssertEqual(model.selection, .partition(disk: "disk16", id: "disk16s3"))
+        model.update([])
+        XCTAssertNil(model.selection)
     }
 
     func testBlockedEjectParsesProcessesAndRejectsProtectedQuit() {
-        let parsed = DiskManagement.parseLsofProcesses("p123\ncEditor\nf1\np456\ncFinder\nf2\n")
-        XCTAssertEqual(parsed.map(\.0), [123, 456])
-        XCTAssertEqual(parsed.map(\.1), ["Editor", "Finder"])
-        let protected = DiskEjectBlocker(pid: 456, name: "Finder", started: 1, userID: geteuid())
-        XCTAssertFalse(protected.canQuit)
-        let request = DiskRequest(disk: card, partition: nil, action: .eject,
-                                  name: "", format: "", scheme: "", size: "")
-        XCTAssertThrowsError(try DiskManagement.quitBlockersAndEject([protected], request: request))
-    }
-
-    func testProtectedPhysicalDisksStayBlockedAndExplainWhy() throws {
-        let info: [String: Any] = ["WholeDisk": true, "VirtualOrPhysical": "Physical", "Size": card.size,
-                                   "Writable": true, "RemovableMediaOrExternalDevice": true,
-                                   "Internal": true, "BusProtocol": "Secure Digital"]
-        XCTAssertNil(DiskManagement.modificationBlockReason(info, protectedReason: nil, mediaRegistryID: 1))
-        for reason in ["Startup disk", "Running app", "Source repository"] {
-            XCTAssertEqual(DiskManagement.modificationBlockReason(info, protectedReason: reason, mediaRegistryID: 1), reason)
-            var protected = card
-            protected.protectionReason = reason
-            for action in DiskAction.allCases where action != .verify && !action.needsPartition {
-                let request = DiskRequest(disk: protected, partition: nil, action: action,
-                                          name: "Data", format: "ExFAT", scheme: "GPT", size: "4G")
-                XCTAssertThrowsError(try DiskManagement.run(request)) { error in
-                    XCTAssertEqual(error.localizedDescription, reason)
-                }
-            }
-        }
-        var internalDisk = info
-        internalDisk["BusProtocol"] = "Apple Fabric"
-        XCTAssertTrue(try XCTUnwrap(DiskManagement.modificationBlockReason(internalDisk, protectedReason: nil, mediaRegistryID: 1)).contains("Internal"))
-        var image = info
-        image["VirtualOrPhysical"] = "Virtual"
-        XCTAssertNotNil(DiskManagement.modificationBlockReason(image, protectedReason: nil, mediaRegistryID: 1))
-        XCTAssertNotNil(DiskManagement.modificationBlockReason(info, protectedReason: nil, mediaRegistryID: nil))
-        XCTAssertEqual(DiskManagement.physicalDiskIDs(["APFSPhysicalStores": [["APFSPhysicalStore": "disk6s2"]]]), ["disk6"])
-        XCTAssertEqual(DiskManagement.physicalDiskIDs(["DeviceIdentifier": "disk3s1s1", "ParentWholeDisk": "disk3"]), ["disk3"])
-        XCTAssertEqual(DiskManagement.physicalDiskIDs(["APFSPhysicalStores": [["APFSPhysicalStore": "disk0s2"], ["APFSPhysicalStore": "disk2s2"]]]), ["disk0", "disk2"])
-        XCTAssertTrue(DiskManagement.physicalDiskIDs(["DeviceIdentifier": "disk10;erase"]).isEmpty)
-        XCTAssertTrue(DiskManagement.physicalDiskIDs(["APFSPhysicalStores": [["APFSPhysicalStore": "disk6s2"], [:]]]).isEmpty)
-    }
-
-    @MainActor func testPreviewCannotExecuteARequestOutsideTheView() async {
-        let model = DiskManagementModel(disks: [card], isPreview: true)
-        let request = DiskRequest(disk: card, partition: nil, action: .eraseDisk,
-                                  name: "Data", format: "ExFAT", scheme: "GPT", size: "")
-        await model.run(request)
-        XCTAssertFalse(model.isBusy)
-        XCTAssertNil(model.message)
-        XCTAssertNil(model.error)
-    }
-
-    @MainActor func testInventorySelectsFirstDiskAndClearsRemovedTargets() {
-        let model = DiskManagementModel()
-        model.updateDisks([card])
-        XCTAssertEqual(model.selectedDiskID, card.id)
-        model.selectedPartitionID = card.partitions[0].id
-
-        let changed = ManagedDisk(id: card.id, name: card.name, size: card.size, bus: card.bus,
-                                  scheme: card.scheme, devicePath: card.devicePath, writable: true,
-                                  manageable: true, mediaRegistryID: card.mediaRegistryID, partitions: [])
-        model.updateDisks([changed])
-        XCTAssertNil(model.selectedPartitionID)
-        model.updateDisks([])
-        XCTAssertNil(model.selectedDiskID)
-    }
-
-    func testDestructiveCommandsTargetOnlyTheReviewedDevice() throws {
-        let erase = DiskRequest(disk: card, partition: nil, action: .eraseDisk,
-                                name: "Diskman", format: "ExFAT", scheme: "GPT", size: "4G")
-        XCTAssertEqual(try erase.arguments(), ["eraseDisk", "ExFAT", "Diskman", "GPT", "disk10"])
-
-        let partition = DiskRequest(disk: card, partition: card.partitions[0], action: .deletePartition,
-                                    name: "", format: "", scheme: "", size: "")
-        XCTAssertEqual(try partition.arguments(), ["eraseVolume", "free", "free", "disk10s1"])
-
-        let wrongTarget = DiskRequest(disk: card, partition: nil, action: .eraseVolume,
-                                      name: "Data", format: "ExFAT", scheme: "GPT", size: "4G")
-        XCTAssertThrowsError(try wrongTarget.arguments())
-    }
-
-    func testPartitionInputRejectsMalformedSizesAndNames() throws {
-        let malformed = DiskRequest(disk: card, partition: nil, action: .partitionDisk,
-                                    name: "Data", format: "ExFAT", scheme: "GPT", size: "4G;eraseDisk")
-        XCTAssertThrowsError(try malformed.arguments())
-
-        let invalidName = DiskRequest(disk: card, partition: nil, action: .eraseDisk,
-                                      name: "Other/Device", format: "ExFAT", scheme: "GPT", size: "4G")
-        XCTAssertThrowsError(try invalidName.arguments())
-
-        let longFATName = DiskRequest(disk: card, partition: nil, action: .addPartition,
-                                      name: "DiskmanAdded", format: "ExFAT", scheme: "GPT", size: "2G")
-        XCTAssertThrowsError(try longFATName.arguments())
-
-        let tooLarge = DiskRequest(disk: card, partition: nil, action: .addPartition,
-                                   name: "Small", format: "ExFAT", scheme: "GPT", size: "15G")
-        XCTAssertThrowsError(try tooLarge.arguments())
-
-        let wrongAPFSMap = DiskRequest(disk: card, partition: nil, action: .eraseDisk,
-                                       name: "APFSTest", format: "APFS", scheme: "MBR", size: "")
-        XCTAssertThrowsError(try wrongAPFSMap.arguments())
-
-        let wholeDiskRepair = DiskRequest(disk: card, partition: nil, action: .repair,
-                                          name: "", format: "", scheme: "", size: "")
-        XCTAssertThrowsError(try wholeDiskRepair.arguments())
-
-        let unsupportedResize = DiskRequest(disk: card, partition: card.partitions[0], action: .resizePartition,
-                                            name: "", format: "", scheme: "", size: "R")
-        XCTAssertThrowsError(try unsupportedResize.arguments())
-        XCTAssertThrowsError(try DiskManagement.resizeLimits(for: "disk10;erase", apfs: false))
-    }
-
-    func testAPFSOperationsUseContainerAndVolumeIdentifiers() throws {
-        let store = ManagedPartition(id: "disk10s2", name: "APFS", content: "Apple_APFS",
-                                     size: 8_000_000_000, mountPoint: nil, uuid: nil,
-                                     apfsContainer: "disk13")
-        let volume = ManagedPartition(id: "disk13s2", name: "Extra", content: "APFS Volume",
-                                      size: 20_000_000, mountPoint: "/Volumes/Extra", uuid: "volume-id",
-                                      apfsContainer: "disk13", isAPFSVolume: true)
-        let add = DiskRequest(disk: card, partition: store, action: .addAPFSVolume,
-                              name: "Extra", format: "APFS", scheme: "GPT", size: "")
-        XCTAssertEqual(try add.arguments(), ["apfs", "addVolume", "disk13", "APFS", "Extra"])
-        let delete = DiskRequest(disk: card, partition: volume, action: .deleteAPFSVolume,
-                                 name: "", format: "", scheme: "", size: "")
-        XCTAssertEqual(try delete.arguments(), ["apfs", "deleteVolume", "disk13s2"])
-    }
-
-    func testAPFSOperationsRejectSharedOrChangedContainers() {
-        XCTAssertEqual(DiskManagement.singleAPFSStoreID([["DeviceIdentifier": "disk10s2"]]), "disk10s2")
-        XCTAssertNil(DiskManagement.singleAPFSStoreID([
-            ["DeviceIdentifier": "disk10s2"], ["DeviceIdentifier": "disk0s2"]
-        ]))
-
-        func disk(container: String) -> ManagedDisk {
-            ManagedDisk(id: card.id, name: card.name, size: card.size, bus: card.bus,
-                        scheme: card.scheme, devicePath: card.devicePath, writable: true,
-                        manageable: true, mediaRegistryID: card.mediaRegistryID, partitions: [
-                            ManagedPartition(id: "disk10s2", name: "APFS", content: "Apple_APFS",
-                                             size: 8_000_000_000, mountPoint: nil, uuid: nil,
-                                             apfsContainer: container)
-                        ])
-        }
-        XCTAssertNotEqual(disk(container: "disk13").identity, disk(container: "disk0").identity)
-    }
-
-    func testReplacingMediaInvalidatesReviewedDiskIdentity() {
-        let replacement = ManagedDisk(
-            id: card.id, name: card.name, size: card.size, bus: card.bus,
-            scheme: card.scheme, devicePath: card.devicePath, writable: card.writable,
-            manageable: true, mediaRegistryID: 2, partitions: card.partitions
-        )
-        XCTAssertNotEqual(card.identity, replacement.identity)
-    }
-
-    func testMergeOnlyTargetsTheNextDataPartitionAndStatesWhetherItErases() throws {
-        let first = ManagedPartition(id: "disk10s2", name: "Keep", content: "Apple_HFS",
-                                     size: 4_000_000_000, mountPoint: "/Volumes/Keep", uuid: "keep",
-                                     fileSystem: "Mac OS Extended (Journaled)")
-        let next = ManagedPartition(id: "disk10s3", name: "Remove", content: "Microsoft Basic Data",
-                                    size: 4_000_000_000, mountPoint: "/Volumes/Remove", uuid: "remove",
-                                    fileSystem: "ExFAT")
-        let disk = ManagedDisk(id: card.id, name: card.name, size: card.size, bus: card.bus,
-                               scheme: card.scheme, devicePath: card.devicePath, writable: true,
-                               manageable: true, mediaRegistryID: card.mediaRegistryID,
-                               partitions: [card.partitions[0], first, next])
-        let preserve = DiskRequest(disk: disk, partition: first, action: .mergePartitions,
-                                   name: "Keep", format: "JHFS+", scheme: "", size: "")
-        XCTAssertEqual(try preserve.arguments(),
-                       ["mergePartitions", "JHFS+", "Keep", "disk10s2", "disk10s3"])
-
-        let exfatDisk = ManagedDisk(id: disk.id, name: disk.name, size: disk.size, bus: disk.bus,
-                                    scheme: disk.scheme, devicePath: disk.devicePath, writable: true,
-                                    manageable: true, mediaRegistryID: disk.mediaRegistryID,
-                                    partitions: [card.partitions[0], next,
-                                                 ManagedPartition(id: "disk10s4", name: "Third",
-                                                                  content: "Microsoft Basic Data", size: 2_000_000_000,
-                                                                  mountPoint: "/Volumes/Third", uuid: "third",
-                                                                  fileSystem: "ExFAT")])
-        let destructive = DiskRequest(disk: exfatDisk, partition: next, action: .mergePartitions,
-                                      name: "Combined", format: "ExFAT", scheme: "", size: "")
-        XCTAssertEqual(try destructive.arguments(),
-                       ["mergePartitions", "force", "ExFAT", "Combined", "disk10s3", "disk10s4"])
-        let efi = ManagedPartition(id: "disk10s1", name: "EFI", content: "EFI",
-                                   size: 209_715_200, mountPoint: nil, uuid: nil)
-        let efiDisk = ManagedDisk(id: disk.id, name: disk.name, size: disk.size, bus: disk.bus,
-                                  scheme: disk.scheme, devicePath: disk.devicePath, writable: true,
-                                  manageable: true, mediaRegistryID: disk.mediaRegistryID,
-                                  partitions: [efi, first, next])
-        XCTAssertThrowsError(try DiskRequest(disk: efiDisk, partition: efi,
-                                              action: .mergePartitions, name: "EFI", format: "ExFAT",
-                                              scheme: "", size: "").arguments())
-        XCTAssertThrowsError(try DiskRequest(disk: efiDisk, partition: efi,
-                                              action: .eraseVolume, name: "EFI", format: "ExFAT",
-                                              scheme: "", size: "").arguments())
-        XCTAssertThrowsError(try DiskRequest(disk: efiDisk, partition: efi,
-                                              action: .repair, name: "", format: "",
-                                              scheme: "", size: "").arguments())
-        XCTAssertThrowsError(try DiskRequest(disk: exfatDisk, partition: exfatDisk.partitions[2],
-                                              action: .mergePartitions, name: "Last", format: "ExFAT",
-                                              scheme: "", size: "").arguments())
+        XCTAssertEqual(DiskManagement.parseLsofProcesses("p42\ncPreview\np7\ncFinder\n").map(\.0), [42, 7])
+        XCTAssertFalse(DiskEjectBlocker(pid: 7, name: "Finder", started: 1, userID: geteuid()).canQuit)
+        XCTAssertFalse(DiskEjectBlocker(pid: getpid(), name: "Tool", started: 1, userID: geteuid()).canQuit)
+        XCTAssertTrue(DiskEjectBlocker(pid: 42, name: "Preview", started: 1, userID: geteuid()).canQuit)
     }
 }
