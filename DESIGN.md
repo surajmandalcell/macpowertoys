@@ -81,7 +81,7 @@ windows:
   mac-tweaks: { size: [820, 660], sidebar: 200, density: regular, resizable: false }
   system-monitor: { size: [1080, 660], sidebar: 200, density: compact, resizable: false }
   logs: { size: [1080, 660], sidebar: 200, density: regular, resizable: false }
-  input-devices: { size: [1080, 660], sidebar: 200, density: regular, resizable: false }
+  input-devices: { size: [820, 660], sidebar: 200, density: regular, resizable: false }
   awake: { size: [560, 500], applet: true }
   color-picker: { width: 420, height: [250, 460], applet: true }
   text-extractor: { width: 480, height: [270, 462], applet: true }
@@ -526,10 +526,9 @@ apps felt like a Tailwind web app, not a Mac app.
   clearance are padding inside the scroll content, so the last row still
   ends 24 pt above the edge when scrolled to the end, while rows above it
   scroll under the edge.
-- No control floats over scrolling content. A compact applet keeps its
-  settings gear in the titlebar. Content in a scrolling applet page ends
-  24 pt above the window bottom when scrolled to the end, and a card that
-  holds scrolling rows ends 24 pt above the window bottom.
+- Floating controls (the applet settings gear) overlay the content and
+  never take a row of their own. Content scrolls under them and reserves
+  only end padding so the last item clears the control.
 
 ## Native behavior contract
 
@@ -664,13 +663,9 @@ tokens, fixed sizes, and components.
   traffic lights (close, minimize, disabled zoom) centered on `C = 22`, the
   text title at 12.5 semibold 14 pt after the zoom button, and persistent page
   actions trailing 16 pt from the edge.
-- The settings gear is `OnePlusAppletSettingsButton`: a ghost 24 pt icon
-  button (`gearshape`, help "Settings", accessibility label) in the titlebar
-  action row, directly left of the primary action. It toggles Home and
-  Settings, shows the selected fill while Settings is open, and answers
-  Command-comma. Settings replaces the body. No button floats over content.
 - Body gutter 16 pt. Sections use `OnePlusCard` and `OnePlusSettingRow`.
-  Bottom gutter 24 pt, as padding inside scroll content.
+- The floating 24 pt round settings button 8 pt from the bottom-right corner
+  stays. It toggles Home and Settings. Settings replaces the body.
 
 ## Surface recipes
 
@@ -785,9 +780,17 @@ including search results. It has no preview artwork, mock desktops, or
 decorative textures (owner correction 2026-10-01). Card headers keep their
 SF Symbol glyphs.
 
+### Input Devices
+
+Input Devices uses the Mac Tweaks window: 820 x 660, the 200 pt sidebar, and
+one full-width column of cards on the Devices, Scrolling, and About pages.
+Device cards and the Mouse and Trackpad profile cards stack, never pair. The
+Scroll device footer stays fixed below the scrolling cards. The menu panel
+embeds the same stacked cards.
+
 ### Other workspaces
 
-RSync UI, Event Viewer, Input Devices, System Cleaner, and NetToys use the
+RSync UI, Event Viewer, System Cleaner, and NetToys use the
 same sidebar, page, card, row, and table anatomy with no tool-specific
 chrome. Operational rows (transfers, scan results, log lines) use
 `OnePlusTable` or dense cards with the same radii and lines. Settings are a

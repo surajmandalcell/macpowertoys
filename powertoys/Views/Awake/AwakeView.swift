@@ -8,19 +8,12 @@ enum AwakeLayout {
 
 struct AwakeView: View {
     @State private var service = AwakeService.shared
-    @State private var settings: Bool
-
-    init(settings: Bool = false) {
-        _settings = State(initialValue: settings)
-    }
+    @State private var settings = false
 
     var body: some View {
         OnePlusWindowRoot(canvas: .awake, sidebar: { EmptyView() }) {
             VStack(spacing: 0) {
                 OnePlusAppletTitlebar(title: "Kwake") {
-                    OnePlusAppletSettingsButton(isActive: settings) { settings.toggle() }
-                        .keyboardShortcut(",")
-                        .accessibilityIdentifier("awake.settings")
                     Toggle("Keep Display On", isOn: Binding(
                         get: { service.configuration.keepDisplayOn }, set: service.setKeepDisplayOn
                     ))
@@ -36,6 +29,13 @@ struct AwakeView: View {
                     } else {
                         AwakeHomeView()
                     }
+                }
+                .onePlusFloatingSettingsInset()
+                .overlay(alignment: .bottomTrailing) {
+                    OnePlusFloatingSettingsButton(isActive: settings) { settings.toggle() }
+                        .keyboardShortcut(",")
+                        .accessibilityIdentifier("awake.settings")
+                        .padding(OnePlusMetrics.actionSpacing)
                 }
             }
         }
@@ -60,7 +60,6 @@ private struct AwakeHomeView: View {
                     SleepTimerCard()
                     AwakeSettingsView(showsDisplayToggle: false)
                 }
-                .padding(.bottom, OnePlusMetrics.gutter)
             }
             .onePlusScrollIndicators()
         }

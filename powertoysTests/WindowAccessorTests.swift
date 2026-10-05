@@ -35,7 +35,7 @@ final class WindowAccessorTests: XCTestCase {
             "main": NSSize(width: 1240, height: 840),
             "rclone": NSSize(width: 1240, height: 840),
             "logs": NSSize(width: 1080, height: 660),
-            "input-devices": NSSize(width: 1080, height: 660),
+            "input-devices": NSSize(width: 820, height: 660),
             "system-care": NSSize(width: 1240, height: 840),
             "system-monitor": NSSize(width: 1080, height: 660),
             "nettoys": NSSize(width: 1440, height: 900),
@@ -46,13 +46,13 @@ final class WindowAccessorTests: XCTestCase {
             "text-extractor": NSSize(width: 480, height: 270),
         ]
         for (identifier, size) in expected {
-            XCTAssertEqual(try XCTUnwrap(OnePlusWindowCanvas.tool(identifier)?.size), size, identifier)
+            XCTAssertEqual(try XCTUnwrap(OnePlusWindowCanvas.appTool(identifier)?.size), size, identifier)
         }
-        XCTAssertNil(OnePlusWindowCanvas.tool("unknown"))
+        XCTAssertNil(OnePlusWindowCanvas.appTool("unknown"))
     }
 
     func testLauncherRestoresPositionOnlySoAnOldSavedSizeCannotReturn() {
-        for tool in ToolRegistry.builtInTools where OnePlusWindowCanvas.tool(tool.id) != nil {
+        for tool in ToolRegistry.builtInTools where OnePlusWindowCanvas.appTool(tool.id) != nil {
             XCTAssertTrue(WindowStateManager.restoresPositionOnly(tool.id), tool.id)
         }
         XCTAssertTrue(WindowStateManager.restoresPositionOnly("main"))

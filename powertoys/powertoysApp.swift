@@ -68,7 +68,7 @@ struct MacPowerToysApp: App {
 
     @MainActor
     static func makeBackgroundWindow(id: String) -> NSWindow? {
-        guard let canvas = OnePlusWindowCanvas.tool(id) else { return nil }
+        guard let canvas = OnePlusWindowCanvas.appTool(id) else { return nil }
         let window = BackgroundToolWindow(contentRect: .init(origin: .zero, size: canvas.size),
                               styleMask: [.titled, .closable, .miniaturizable, .fullSizeContentView],
                               backing: .buffered, defer: false)
@@ -255,7 +255,7 @@ struct MacPowerToysApp: App {
         Window("Input Devices", id: "input-devices") {
             Self.windowContent(id: "input-devices")
         }
-        .defaultSize(OnePlusWindowCanvas.inputDevices.size)
+        .defaultSize(OnePlusWindowCanvas.macTweaks.size)
         .windowResizability(.contentSize)
         .windowStyle(.hiddenTitleBar)
         .handlesExternalEvents(matching: [])
@@ -318,7 +318,7 @@ final class BackgroundToolWindow: NSWindow {
     }
 
     private static func mountContent(id: String, in window: BackgroundToolWindow) {
-        guard let canvas = OnePlusWindowCanvas.tool(id) else { return }
+        guard let canvas = OnePlusWindowCanvas.appTool(id) else { return }
         let topLeft = NSPoint(x: window.frame.minX, y: window.frame.maxY)
         window.styleMask = window.styleMask.union(.fullSizeContentView).subtracting(.resizable)
         window.titleVisibility = .hidden

@@ -116,7 +116,7 @@ final class DeepLinkHandler {
     }
 
     static func nativeCloseWindow(id: String, windows: [NSWindow]) {
-        guard OnePlusWindowCanvas.tool(id) != nil,
+        guard OnePlusWindowCanvas.appTool(id) != nil,
               let window = windows.first(where: {
                   AppDelegate.window($0, belongsTo: id) && ($0.isVisible || $0.isMiniaturized)
               }) else { return }

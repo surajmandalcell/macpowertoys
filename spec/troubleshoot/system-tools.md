@@ -599,17 +599,17 @@ Report: `tmp/redesign/logs/w8-tests-quiet.md`.
 - **Symptom:** Device cards show false `Not reported` values, long names clip,
   or one scrolling profile stays below the fixed-height window.
 - **Cause:** A fixed eleven-row device anatomy treated absent HID data as useful
-  content, while three narrow device columns and stacked profile cards used the
-  available space poorly.
+  content.
 - **Invariant:** Omit every device metadata row whose value is absent. Do not
-  show a battery row for the built-in keyboard. Use two top-aligned device-card
-  columns so long titles remain readable. In regular density, show Mouse and
-  Trackpad profile cards in equal columns. In compact density, stack the same
-  cards. Both profiles keep the same seven labeled setting rows.
+  show a battery row for the built-in keyboard. The 820 x 660 window shows
+  device cards and the Mouse and Trackpad profile cards in one full-width
+  column, in every density. Both profiles keep the same seven labeled setting
+  rows.
 - **Check:** `testDeviceCardsOmitUnavailableValues` covers sparse and detailed
   devices. `testMouseAndTrackpadProfileCardsShareOneHeight` compares both
-  profile cards at 340pt. Inspect both profiles and the fixed Scroll device
-  footer in the signed full window and compact panel.
+  profile cards at 340pt. `testScrollSettingsStackInOneColumnAtTheWindowWidth`
+  checks the stack. Inspect both profiles and the fixed Scroll device footer in
+  the signed full window and compact panel.
 
 ## Input Devices Metadata Clipping
 
@@ -617,12 +617,11 @@ Report: `tmp/redesign/logs/w8-tests-quiet.md`.
   `3...×` at the normal Input Devices window width.
 - **Cause:** Each metadata item occupied half a card while its fixed-width label
   and value also sat side by side, leaving too little width for the value.
-- **Invariant:** Keep two equal, top-aligned card columns. Use full-width
-  key-value rows and omit absent fields. Keep the complete value in its
-  accessibility label and native tooltip when a long identifier is truncated.
+- **Invariant:** Keep one full-width card column. Use full-width key-value rows
+  and omit absent fields. Keep the complete value in its accessibility label and
+  native tooltip when a long identifier is truncated.
 - **Check:** Inspect the cards in the current signed app. Values such as Vendor,
-  Device ID, Firmware, and Scroll speed remain readable, and short cards begin
-  on the same top edge as detailed cards.
+  Device ID, Firmware, and Scroll speed remain readable.
 
 ## Input Devices Scroll Settings Ownership
 

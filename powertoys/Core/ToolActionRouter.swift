@@ -230,7 +230,7 @@ final class ToolActionRouter {
         window.onePlusPrepareForOpening()
         window.contentView?.needsLayout = true
         window.contentView?.layoutSubtreeIfNeeded()
-        if !window.isVisible, !(window is BackgroundToolWindow), let canvas = OnePlusWindowCanvas.tool(id),
+        if !window.isVisible, !(window is BackgroundToolWindow), let canvas = OnePlusWindowCanvas.appTool(id),
            let content = window.contentView {
             var size = canvas.size
             if let range = canvas.heightRange {

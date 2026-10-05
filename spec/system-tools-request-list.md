@@ -139,12 +139,12 @@ Open verification:
 | Verify | Compact first open of the main panel. | `d1bea33b`: Devices expanded, Mouse, Trackpad, Scroll device collapsed when keys are unset; saved choices kept. | Hosted tests; fresh defaults and saved choices in the signed app. |
 | Verify | Device and battery summaries before controls in the main panel. | Shared cards show cached names, connection, battery, state, direction, speed. | Reported and unknown batteries, Refresh, permission actions, quick switch, every expanded setting. |
 | Verify | Round 6 capture review (readable rows, both profiles, fixed Scroll device footer with 24pt clearance). | No owned source change needed. | Live scrolling, keyboard, hardware, compact panel height, idle CPU, latency. Report `25r9-tweaks.md`. |
-| Verify | Scroll device footer clearance. | `3860c82`: footer in the page footer slot. | Check the footer at y636 in the signed 1080 x 660 window. |
-| Verify | Round 5 fixes (equal profile columns, 56pt control row, omit missing metadata, neutral healthy state). | Source built. | Inspect Devices, Scrolling, About, compact panel in the signed build. |
+| Verify | Scroll device footer clearance. | `3860c82`: footer in the page footer slot. | Check the footer at y636 in the signed 820 x 660 window. |
+| Verify | Round 5 fixes (56pt control row, omit missing metadata, neutral healthy state). | Source built. | Inspect Devices, Scrolling, About, compact panel in the signed build. |
 | Verify | Round 3 rules (one page gutter, card-only row scroller, fixed footer, custom selects). | Source built. | Measure page switching; inspect full window and compact panel. |
-| Verify | Round 2 findings (full-width key-value rows, top-aligned grid, picker placement). | `62ddf9b`. | Recapture all pages in dark and light. |
+| Verify | Round 2 findings (full-width key-value rows, picker placement). | `62ddf9b`. | Recapture all pages in dark and light. |
 | Verify | One adaptive settings implementation for the 338pt panel and full Scrolling page. | `InputDevicesSettingsContent()` is shared; panel embeds it directly. | Inspect both hosts. |
-| Verify | Redesign on the fixed 1080 x 660 canvas with Devices, Scrolling, About routes. | Shared sidebar, device cards, per-device controls. | Inspect each route in dark and light; real mouse and trackpad behavior. |
+| Verify | Mac Tweaks window: 820 x 660, 200pt sidebar, one full-width column of cards on Devices, Scrolling, and About; Mouse and Trackpad profile cards stack. | `Window` canvas follows `.macTweaks` through `OnePlusWindowCanvas.appTool`; offscreen renders of all three pages in both appearances show no clipping or empty column. | Adopt OnePlusUI with an 820 x 660 `input-devices` canvas, then delete `ToolWindowCanvas.swift`. Inspect each route in the signed build; real mouse and trackpad behavior. |
 | Verify | Align the Scroll device picker edge with the shared trailing gutter. | `7504bc2`, `b88a40b`; rendered tray edge at x = 340. | Inspect tray and window in the signed build. |
 | Verify | Use the new Input Devices mouse icon. | 512px RGBA asset. | Inspect launcher and Dock. |
 | Verify | Show useful hardware details per device (transport, maker, speed, resolution, polling, buttons, IDs, firmware, serial); omit absent values. | Source built. | Inspect sparse USB and built-in devices. |

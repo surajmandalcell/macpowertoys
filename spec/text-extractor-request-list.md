@@ -8,11 +8,12 @@ The app and test bundles compile. The orchestrator must tag and adopt
 OnePlusUI, then verify signed History, Settings, and action states.
 Report: `tmp/redesign/logs/w10-fix17-applets.md`.
 
-Settings gear and scroll end: the gear is the titlebar ghost icon button
-`OnePlusAppletSettingsButton`, left of Extract Text, selected while Settings is
-open. Nothing floats over content. The History card and Settings scroll content
-end 24pt above the window bottom. Signed scrolling and gear interaction
-remain with the orchestrator.
+Scroll edges, 2026-10-01: the shared floating gear overlays the full body.
+Its 52pt reserve is inside scroll content. History reaches the card's bottom;
+Settings reaches the window bottom. All 15 focused package checks pass,
+including both gear states at the applet's minimum and maximum heights.
+The four old-source regressions fail. Signed scrolling and gear interaction
+remain with the orchestrator. Report: `tmp/redesign/logs/w4-scroll-edges.md`.
 
 Round 48 header picks, 2026-10-01: `bd2e0963` implements Inset B
 (close x13, title 14pt after zoom) and Top B (title caps, icons, and action
@@ -76,7 +77,7 @@ are nonisolated, so cached row preparation stays off the main actor without
 concurrency warnings.
 
 Round 2 requires neutral shortcut hints, equal 16pt Settings gutters,
-and a 24pt bottom gutter on both pages.
+and a protected floating settings area on both pages.
 
 Round 2 verification: Debug and build-for-testing pass with shared fixes B
 and I. Tests were compiled, not executed. Signed screenshot review remains.
@@ -87,7 +88,7 @@ and I. Tests were compiled, not executed. Signed screenshot review remains.
 | Verify | Use one history list card and keep destructive clearing in Settings. | History rows share one `OnePlusCard` and stable ids. Settings owns the Clear history row and confirmation. | Verify row alignment, scrolling, and clearing in the signed build. |
 | Verify | Keep Text Extractor status and the History heading fixed while rows scroll. | The history page owns one row-only `ScrollView`. Lightweight rows receive prepared timestamps and links instead of observing the complete service. | Verify smooth scrolling and page switches within 100ms in the signed build. |
 | Verify | Embed one shared settings view without nested scrolling or gutters. | `TextExtractorSettingsView()` owns a direct shortcut row, the multi-row Recognition card including languages, and a direct Clear history action. The applet supplies OnePlusPage with 16pt gutters. The permission notice remains visible when needed. Build verification is recorded per round above. | Verify embedded and applet Settings in the signed build. |
-| Verify | Put the settings gear in the titlebar and keep History and Settings clear of the window bottom. | `OnePlusAppletSettingsButton` sits left of Extract Text, keeps Command-comma, and shows a selected fill on Settings. Both pages end 24pt above the window bottom. | Verify both pages and their scroll limits in the signed build. |
+| Verify | Keep the floating settings button clear of History and Settings. | Round 2 applies the shared 52pt body inset before the gear overlay and removes the old inner 44pt padding. The gear keeps its 8pt edge inset and Command-comma action. | Verify both pages and their scroll limits in the next signed capture. |
 | Verify | Keep Settings cards full width inside equal 16pt gutters. | Round 2 explicitly expands the settings stack before the body insets. Shared fix B removes the scroller gutter. Both compile checks pass. | Inspect both appearances in the next signed capture. |
 | Verify | Use the 480pt applet with 270 to 462pt height, persistent Extract Text, history preview/time/copy, and replacing Settings with shortcut and language rows. | Debug build passes. DESIGN.md v14 supersedes the older material and two-light rules below. Routes are `history` and `settings`. | Review both appearances, capture states, and recognition controls in the orchestrator's installed build. |
 
@@ -108,8 +109,8 @@ and I. Tests were compiled, not executed. Signed screenshot review remains.
 | Done | Use History as the default body and show `Select text anywhere` only when history is empty. | The history page is the initial state, and `capturePrompt` renders only inside `service.history.isEmpty`. | None. |
 | Done | Remove the redundant `Ready` status. | The status banner renders only recognizing and failure states. | None. |
 | Done | Open large extracted text in a separate selectable detail view. | `needsExpandedView` routes large rows to `TextExtractionDetailView`, whose text selection is enabled. | None. |
-| Done | Move recognition options to their own page. | The titlebar settings gear replaces History with the recognition settings page. | None. |
-| Done | Put the small settings control in the titlebar, left of the primary action, in every applicable applet. | Text Extractor, Color Picker, and Awake use the shared ghost `OnePlusAppletSettingsButton`. | None. |
+| Done | Move recognition options to their own page. | The floating settings control replaces History with the recognition settings page. | None. |
+| Done | Put the small settings control at the bottom-right edge in every applicable applet. | Text Extractor and Color Picker use the shared 24pt `FloatingSettingsButton` with an 8pt bottom-right inset. Awake has no separate settings page. | None. |
 | Done | Omit seconds from detection timestamps. | `relativeTimestamp` returns `Just now` below one minute and abbreviated coarser units afterward; `CoreModelTests` rejects second-based output. | None. |
 | Done | Show exactly one preview line in each history row. | `TextExtractionRow.summary` uses `.lineLimit(1)`. | None. |
 | Done | Show a large crosshair while selecting text and restore normal input when selection ends or is cancelled. | The overlay owns the crosshair cursor, draws a 36pt high-contrast crosshair, and closes all selection panels on finish or cancel. | None. |
