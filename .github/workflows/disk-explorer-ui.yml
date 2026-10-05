@@ -1,4 +1,4 @@
-name: Diskman UI navigation
+name: Partition Manager UI navigation
 
 on:
   # Manual only: the owner runs builds and tests locally (2026-10-01).

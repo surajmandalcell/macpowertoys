@@ -26,7 +26,7 @@ final class BackgroundToolWindowTests: XCTestCase {
             override func deminiaturize(_ sender: Any?) { deminiaturizations += 1 }
         }
         let tools = ["main", "rclone", "logs", "awake", "color-picker", "text-extractor",
-                     "input-devices", "system-care", "disk-explorer", "system-monitor", "nettoys", "switch", "mac-tweaks"]
+                     "input-devices", "system-care", "disk-explorer", "system-monitor", "nettoys", "mac-tweaks"]
         XCTAssertFalse(NSApp.isActive, "The guarded unit host must stay inactive")
         for tool in tools {
             for visible in [false, true] {

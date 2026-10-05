@@ -82,7 +82,7 @@ struct AwakeTrayRow: View {
 
     var body: some View {
         VStack(alignment: .leading, spacing: 2) {
-            OnePlusMenuControlRow("Awake", systemImage: ToolGlyph.awake.symbol, status: status) {
+            OnePlusMenuControlRow("Kwake",systemImage: ToolGlyph.awake.symbol, status: status) {
                 OnePlusSegmented(
                     choices: [
                         (AwakeQuickMode?.some(.off), "Off"),
@@ -92,7 +92,7 @@ struct AwakeTrayRow: View {
                     ],
                     selection: quickMode
                 )
-                .accessibilityLabel("Awake duration")
+                .accessibilityLabel("Kwake duration")
             }
             OnePlusMenuControlRow("Keep display on", systemImage: "display") {
                 Toggle("Keep display on", isOn: Binding(

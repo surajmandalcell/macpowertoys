@@ -19,7 +19,6 @@ final class UtilityToolsTests: XCTestCase {
         "SystemCareLogo",
         "DiskExplorerLogo",
         "SystemMonitorLogo",
-        "SwitchLogo",
         "NetToysLogo",
         "MacTweaksLogo"
     ]
@@ -326,7 +325,7 @@ final class UtilityToolsTests: XCTestCase {
         for forbidden in ["OnePlusPage(", "ScrollView", ".padding(", "Spacer(", "maxHeight:"] {
             XCTAssertFalse(source.contains(forbidden), forbidden)
         }
-        for content in ["RcloneSettingsView()", "AwakeSettingsView()", "SwitchSettingsContent(showsEnableControl: false)",
+        for content in ["RcloneSettingsView()", "AwakeSettingsView()",
                         "MacTweaksSettingsContent()", "InputDevicesSettingsContent()",
                         "SystemMonitorSettingsContent()", "SystemCareSettingsCards(mode:",
                         "MacPowerToysNetToysSettingsView()", "PortmanSettingsView()", "DiskExplorerSettingsView(showsEnableControl: false)",

@@ -956,7 +956,7 @@ nonisolated enum DevFilePolicyReason: String, Codable, CaseIterable, Sendable {
     var displayName: String {
         switch self {
         case .unsupportedObjectType: return "Unsupported object type"
-        case .cloudSyncInternalPath: return "Cloud Sync system path"
+        case .cloudSyncInternalPath: return "RSync UI system path"
         case .managedLink: return "Managed link"
         case .separateProject: return "Separate project"
         case .explicitUserInclude: return "Included by rule"

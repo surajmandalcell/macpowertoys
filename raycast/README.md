@@ -14,12 +14,12 @@ Each command opens the matching utility or menu-bar panel through the local
 
 ## Commands
 
-| Group             | Commands                                              |
-| ----------------- | ----------------------------------------------------- |
-| App               | MacPowerToys                                          |
-| Screen            | Ruler, Color Picker, Text Extractor                   |
-| System            | Awake, Input Devices, System Care, Task Manager, Logs |
-| Files and network | Cloud Sync, Diskman, NetToys, Portman                 |
+| Group             | Commands                                                         |
+| ----------------- | ---------------------------------------------------------------- |
+| App               | MacPowerToys                                                     |
+| Screen            | Ruler, Color Picker, Text Extractor                              |
+| System            | Kwake, Input Devices, System Cleaner, Task Manager, Event Viewer |
+| Files and network | RSync UI, Partition Manager, NetToys, Portman                    |
 
 ## Local installation
 

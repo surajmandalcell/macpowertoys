@@ -182,7 +182,7 @@ private struct MainAboutSettings: View {
                 OnePlusCard {
                     VStack(spacing: 0) {
                         OnePlusCardHeader("Acknowledgements", systemImage: "book")
-                        linkRow("Cloud Sync engine", help: "By Nick Craig-Wood and contributors",
+                        linkRow("RSync UI engine", help: "By Nick Craig-Wood and contributors",
                                 title: "Powered by rclone", url: "https://rclone.org/")
                         linkRow("rclone license", title: "MIT license", url: "https://rclone.org/licence/", separator: false)
                     }

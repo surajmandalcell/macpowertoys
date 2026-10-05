@@ -3,7 +3,7 @@
 ## Build
 
 You need macOS 26.2 or later, Xcode 26.2 or later, and
-[rclone](https://rclone.org/install/) for Cloud Sync.
+[rclone](https://rclone.org/install/) for RSync UI.
 
 ```bash
 brew install rclone
@@ -26,25 +26,11 @@ distribution needs Developer ID signing and Apple notarization.
 | --- | --- | --- |
 | OnePlusUI | [surajmandalcell/oneplus-ui](https://github.com/surajmandalcell/oneplus-ui) | Every window, page, card, control, and menu panel |
 | NetToys | [surajmandalcell/nettoys](https://github.com/surajmandalcell/nettoys) | The NetToys tool, shared with the standalone app |
-| Switch Core | [surajmandalcell/switch](https://github.com/surajmandalcell/switch) | Account switching and usage for the Switch tool |
 
 Each package is pinned to an exact version tag in
 `powertoys.xcodeproj/project.pbxproj`. To update one, tag a new version in its
 repository, change the exact version here, resolve, review
 `Package.resolved`, and run the tests.
-
-## Switch integration
-
-MacPowerToys uses `AIManagerCore` from the Switch repository. The two apps
-have separate interfaces and share Core's data paths and its cross-process
-operation lock. Conversation browsing and cleanup stay in standalone Switch.
-The menu panel supports quick switching and on-demand usage refresh without
-background polling.
-
-Existing `~/Library/Application Support/AI Manager` data keeps its path for
-compatibility. Updating Switch.app does not update Core inside MacPowerToys.
-Tests use a disposable `AI_MANAGER_ROOT` and never read real auth files or the
-Keychain.
 
 ## Tool lifetime
 
@@ -53,7 +39,7 @@ and position before they appear. Heavy work runs only while a window or panel
 needs it. Optional menu bar summaries and enabled background features keep
 their own lifetimes.
 
-## Cloud Sync and rclone
+## RSync UI and rclone
 
 Provider credentials and remote configuration stay under rclone's control.
 Every transfer is planned with a dry run before data moves. Completed progress

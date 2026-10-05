@@ -27,7 +27,7 @@ final class AppCommandTests: XCTestCase {
                                    carbonModifiers: UInt32(controlKey | optionKey | cmdKey), keyLabel: "A")
         XCTAssertEqual(GlobalShortcutManager.conflictMessage(
             for: awake, action: .mainPanel, shortcuts: [:], enabled: [], awakeEnabled: true
-        ), "Already used for Awake.")
+        ), "Already used for Kwake.")
     }
 
     func testRecorderRejectsOtherWindowEvents() throws {
@@ -42,7 +42,7 @@ final class AppCommandTests: XCTestCase {
     }
 
     func testQuitMenuDescribesExistingScope() {
-        XCTAssertEqual(AppCommands.quitMenuTitle(toolID: "rclone"), "Close Cloud Sync")
+        XCTAssertEqual(AppCommands.quitMenuTitle(toolID: "rclone"), "Close RSync UI")
         XCTAssertEqual(AppCommands.quitMenuTitle(toolID: "ruler"), "Close Ruler")
         XCTAssertEqual(AppCommands.quitMenuTitle(toolID: nil), "Press ⌘Q again to quit")
     }

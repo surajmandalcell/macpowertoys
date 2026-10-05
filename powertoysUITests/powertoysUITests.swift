@@ -176,7 +176,7 @@ final class powertoysUITests: XCTestCase {
         XCTAssertTrue(launch.waitForExistence(timeout: 2))
         launch.click()
 
-        let window = app.windows["Awake"]
+        let window = app.windows["Kwake"]
         XCTAssertTrue(window.waitForExistence(timeout: 5))
 
         let toggle = window.switches["awake.keep-display-on"]

@@ -173,13 +173,6 @@ struct MacPowerToysApp: App {
                     .onePlusFixedCanvas(.netToys)
                     .onToolWindowURL("nettoys")
             }
-        case "switch":
-            OnePlusWindowContent {
-                SwitchWindowView()
-                    .utilityMotionPolicy()
-                    .onePlusFixedCanvas(.switchAccounts)
-                    .onToolWindowURL("switch")
-            }
         case "mac-tweaks":
             OnePlusWindowContent {
                 MacTweaksWindowView()
@@ -208,7 +201,7 @@ struct MacPowerToysApp: App {
             FreeRulerCommands()
         }
 
-        Window("Cloud Sync", id: "rclone") {
+        Window("RSync UI", id: "rclone") {
             Self.windowContent(id: "rclone")
         }
         .defaultSize(OnePlusWindowCanvas.rclone.size)
@@ -217,7 +210,7 @@ struct MacPowerToysApp: App {
         .handlesExternalEvents(matching: [])
         .restorationBehavior(.disabled)
 
-        Window("Logs", id: "logs") {
+        Window("Event Viewer", id: "logs") {
             Self.windowContent(id: "logs")
         }
         .defaultSize(OnePlusWindowCanvas.logs.size)
@@ -226,7 +219,7 @@ struct MacPowerToysApp: App {
         .handlesExternalEvents(matching: [])
         .restorationBehavior(.disabled)
 
-        Window("Awake", id: "awake") {
+        Window("Kwake", id: "awake") {
             Self.windowContent(id: "awake")
         }
         .defaultSize(OnePlusWindowCanvas.awake.size)
@@ -268,7 +261,7 @@ struct MacPowerToysApp: App {
         .handlesExternalEvents(matching: [])
         .restorationBehavior(.disabled)
 
-        Window("System Care", id: "system-care") {
+        Window("System Cleaner", id: "system-care") {
             Self.windowContent(id: "system-care")
         }
         .defaultSize(OnePlusWindowCanvas.systemCare.size)
@@ -277,7 +270,7 @@ struct MacPowerToysApp: App {
         .handlesExternalEvents(matching: [])
         .restorationBehavior(.disabled)
 
-        Window("Diskman", id: "disk-explorer") {
+        Window("Partition Manager", id: "disk-explorer") {
             Self.windowContent(id: "disk-explorer")
         }
         .defaultSize(OnePlusWindowCanvas.diskExplorer.size)
@@ -299,15 +292,6 @@ struct MacPowerToysApp: App {
             Self.windowContent(id: "nettoys")
         }
         .defaultSize(OnePlusWindowCanvas.netToys.size)
-        .windowResizability(.contentSize)
-        .windowStyle(.hiddenTitleBar)
-        .handlesExternalEvents(matching: [])
-        .restorationBehavior(.disabled)
-
-        Window("Switch", id: "switch") {
-            Self.windowContent(id: "switch")
-        }
-        .defaultSize(OnePlusWindowCanvas.switchAccounts.size)
         .windowResizability(.contentSize)
         .windowStyle(.hiddenTitleBar)
         .handlesExternalEvents(matching: [])

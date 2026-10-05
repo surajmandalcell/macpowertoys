@@ -66,7 +66,7 @@ enum ToolCategory: String, CaseIterable, Identifiable {
 
 struct RcloneTool: Tool {
     let id = "rclone"
-    let name = "Cloud Sync"
+    let name = "RSync UI"
     let summary = "Copy, sync, and move files across cloud storage."
     let description = "Move files between your Mac and cloud storage with live progress, automatic retries, and ignore rules."
     let icon = ToolGlyph.cloudSync.symbol
@@ -76,7 +76,7 @@ struct RcloneTool: Tool {
 
     let manual: [ToolManualSection] = [
         ToolManualSection(title: "Connect Cloud Storage", points: [
-            "Click + next to Remotes in the Cloud Sync sidebar.",
+            "Click + next to Remotes in the RSync UI sidebar.",
             "Choose any connector offered by your installed rclone version, enter its required settings, and press Connect.",
             "For OAuth connectors, complete the provider's browser sign-in. rclone stores and refreshes the resulting credentials."
         ]),
@@ -114,7 +114,7 @@ struct RcloneTool: Tool {
 
 struct LogsTool: Tool {
     let id = "logs"
-    let name = "Logs"
+    let name = "Event Viewer"
     let summary = "Read app activity and recent macOS errors."
     let description = "Inspect MacPowerToys activity and recent macOS errors and faults in clearly separated views."
     let icon = ToolGlyph.logs.symbol
@@ -169,7 +169,7 @@ struct RulerTool: Tool {
 
 struct AwakeTool: Tool {
     let id = "awake"
-    let name = "Awake"
+    let name = "Kwake"
     let summary = "Keep your Mac awake for as long as you need."
     let description = "Keep your Mac awake indefinitely, for a duration, or until a chosen time without changing Energy settings."
     let icon = ToolGlyph.awake.symbol
@@ -181,10 +181,10 @@ struct AwakeTool: Tool {
         ToolManualSection(title: "Modes", points: [
             "Off uses normal macOS power settings. Indefinite remains active until disabled.",
             "Timed mode counts down for a duration. Until mode expires at a specific date and time.",
-            "Keep Display On is independent and only applies while an active Awake mode is selected."
+            "Keep Display On is independent and only applies while an active Kwake mode is selected."
         ]),
         ToolManualSection(title: "System Behavior", points: [
-            "Awake uses macOS power assertions and never edits your Energy settings.",
+            "Kwake uses macOS power assertions and never edits your Energy settings.",
             "Manual sleep, closing a MacBook lid, low power, and thermal protection still take precedence."
         ])
     ]
@@ -269,7 +269,7 @@ struct InputDevicesTool: Tool {
 
 struct SystemCareTool: Tool {
     let id = "system-care"
-    let name = "System Care"
+    let name = "System Cleaner"
     let summary = "Review storage, clean up files, and remove apps."
     let description = "Understand storage, preview safe cleanup, remove apps, and use advanced Mole maintenance."
     let icon = ToolGlyph.systemCare.symbol
@@ -295,7 +295,7 @@ struct SystemCareTool: Tool {
 
 struct DiskExplorerTool: Tool {
     let id = "disk-explorer"
-    let name = "Diskman"
+    let name = "Partition Manager"
     let summary = "Map disk usage and manage removable drives."
     let description = "Analyze storage with live treemaps and rings, then manage removable disks and partitions."
     let icon = ToolGlyph.diskman.symbol
@@ -319,7 +319,7 @@ struct DiskExplorerTool: Tool {
         ]),
         ToolManualSection(title: "Modify", points: [
             "Select a physical disk or partition in Modify to verify, repair, mount, eject, format, or change its partition map.",
-            "Diskman allows changes only on writable removable or external media and checks the device again before every operation.",
+            "Partition Manager allows changes only on writable removable or external media and checks the device again before every operation.",
             "Review data-loss actions carefully and type the disk identifier to confirm them."
         ])
     ]
@@ -443,37 +443,11 @@ struct MacTweaksTool: Tool {
         ]),
         ToolManualSection(title: "Power", points: [
             "Turn on Keep this Mac awake and choose a duration. Keep display on controls display sleep separately.",
-            "Read Status to check whether the Mac stays awake and how much time remains. These controls use the same Awake state as the Awake tool."
+            "Read Status to check whether the Mac stays awake and how much time remains. These controls use the same Kwake state as the Kwake tool."
         ])
     ]
 
     static let shared = MacTweaksTool()
-}
-
-struct SwitchTool: Tool {
-    let id = "switch"
-    let name = "Switch"
-    let summary = "Switch CLI accounts and review their usage."
-    let description = "Keep CLI accounts together, switch identities, and review usage."
-    let icon = ToolGlyph.switchAccounts.symbol
-    let logoAsset = "SwitchLogo"
-    let category = ToolCategory.dev
-    let hasTrayTab = true
-    let searchKeywords = ["account", "codex", "grok", "usage"]
-
-    let manual = [
-        ToolManualSection(title: "Accounts", points: [
-            "Sign in to Codex CLI or Grok Build, or import an existing account folder.",
-            "Choose Use as default to switch the account used by the corresponding CLI.",
-            "Verify access, open the selected CLI, and refresh usage from the account detail view."
-        ]),
-        ToolManualSection(title: "Shared Store", points: [
-            "Switch.app is optional. This applet and Switch.app use the same account store when both are installed.",
-            "Backup shows interrupted operations and linked settings that need repair."
-        ])
-    ]
-
-    static let shared = SwitchTool()
 }
 
 // MARK: - Marketplace Tool
@@ -509,8 +483,7 @@ struct ToolRegistry {
         SystemMonitorTool.shared,
         NetToysTool.shared,
         PortmanTool.shared,
-        MacTweaksTool.shared,
-        SwitchTool.shared
+        MacTweaksTool.shared
     ]
 
     static var allTools: [any Tool] {

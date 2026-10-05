@@ -7,7 +7,7 @@ final class DiskExplorerUITests: XCTestCase {
         app.launch()
         defer { app.terminate() }
 
-        let window = app.windows["Diskman"]
+        let window = app.windows["Partition Manager"]
         XCTAssertTrue(window.waitForExistence(timeout: 30))
         XCTAssertTrue(window.descendants(matching: .any)["diskExplorer.scan"].waitForExistence(timeout: 10))
         attach(window.screenshot(), named: "Diskman Normal Launch")
@@ -30,7 +30,7 @@ final class DiskExplorerUITests: XCTestCase {
         app.launch()
         defer { app.terminate() }
 
-        let window = app.windows["Diskman"]
+        let window = app.windows["Partition Manager"]
         XCTAssertTrue(window.waitForExistence(timeout: 30))
         window.buttons["Home Folder"].click()
         let completed = XCTNSPredicateExpectation(predicate: NSPredicate(format: "exists == true AND enabled == true"), object: window.buttons["Rescan"])
@@ -70,7 +70,7 @@ final class DiskExplorerUITests: XCTestCase {
         app.launch()
         defer { app.terminate() }
 
-        let window = app.windows["Diskman"]
+        let window = app.windows["Partition Manager"]
         XCTAssertTrue(window.waitForExistence(timeout: 15))
         let diskRow = window.buttons["diskman.disk.disk91"]
         XCTAssertTrue(diskRow.waitForExistence(timeout: 10))
@@ -145,7 +145,7 @@ final class DiskExplorerUITests: XCTestCase {
         app.launch()
         defer { app.terminate() }
 
-        let window = app.windows["Diskman"]
+        let window = app.windows["Partition Manager"]
         XCTAssertTrue(window.waitForExistence(timeout: 15))
         XCTAssertTrue(window.descendants(matching: .any)["diskExplorer.scan"].waitForExistence(timeout: 5))
         XCTAssertTrue(window.staticTexts["Choose a location"].exists)

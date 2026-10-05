@@ -11,7 +11,7 @@ final class MainAppBehaviorUITests: XCTestCase {
         openLogs(in: app)
 
         XCTAssertTrue(app.windows["MacPowerToys"].waitForExistence(timeout: 2))
-        XCTAssertTrue(app.windows["Logs"].waitForExistence(timeout: 2))
+        XCTAssertTrue(app.windows["Event Viewer"].waitForExistence(timeout: 2))
     }
 
     @MainActor
@@ -22,7 +22,7 @@ final class MainAppBehaviorUITests: XCTestCase {
         openLogs(in: app)
 
         XCTAssertFalse(app.windows["MacPowerToys"].waitForExistence(timeout: 2))
-        XCTAssertTrue(app.windows["Logs"].waitForExistence(timeout: 2))
+        XCTAssertTrue(app.windows["Event Viewer"].waitForExistence(timeout: 2))
     }
 
     @MainActor
@@ -48,7 +48,7 @@ final class MainAppBehaviorUITests: XCTestCase {
         let window = app.windows["MacPowerToys"]
         let launch = app.buttons["tool.rclone.launch"]
         XCTAssertTrue(launch.waitForExistence(timeout: 5))
-        XCTAssertEqual(launch.label, "Open Cloud Sync")
+        XCTAssertEqual(launch.label, "Open RSync UI")
         XCTAssertEqual(window.frame.maxX - launch.frame.maxX, 24, accuracy: 1)
         XCTAssertEqual(window.frame.maxY - launch.frame.maxY, 24, accuracy: 1)
         let actionFrame = launch.frame

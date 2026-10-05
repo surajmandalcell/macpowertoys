@@ -23,15 +23,15 @@
     },
     {
       "name": "cloud-sync",
-      "title": "Cloud Sync",
-      "description": "Open Cloud Sync",
+      "title": "RSync UI",
+      "description": "Open RSync UI",
       "icon": "cloud-sync.png",
       "mode": "no-view"
     },
     {
       "name": "logs",
-      "title": "Logs",
-      "description": "Open activity logs",
+      "title": "Event Viewer",
+      "description": "Open Event Viewer",
       "icon": "logs.png",
       "mode": "no-view"
     },
@@ -44,8 +44,8 @@
     },
     {
       "name": "awake",
-      "title": "Awake",
-      "description": "Open Awake controls",
+      "title": "Kwake",
+      "description": "Open Kwake controls",
       "icon": "awake.png",
       "mode": "no-view"
     },
@@ -72,8 +72,8 @@
     },
     {
       "name": "system-care",
-      "title": "System Care",
-      "description": "Open System Care",
+      "title": "System Cleaner",
+      "description": "Open System Cleaner",
       "icon": "system-care.png",
       "mode": "no-view"
     },
@@ -86,8 +86,8 @@
     },
     {
       "name": "disk-explorer",
-      "title": "Diskman",
-      "description": "Open Diskman",
+      "title": "Partition Manager",
+      "description": "Open Partition Manager",
       "icon": "disk-explorer.png",
       "mode": "no-view"
     },
@@ -103,13 +103,6 @@
       "title": "Portman",
       "description": "Open Portman in the menu bar",
       "icon": "portman.png",
-      "mode": "no-view"
-    },
-    {
-      "name": "switch",
-      "title": "Switch",
-      "description": "Open Switch accounts",
-      "icon": "switch.png",
       "mode": "no-view"
     }
   ],

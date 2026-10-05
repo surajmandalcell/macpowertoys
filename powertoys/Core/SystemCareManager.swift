@@ -1018,7 +1018,7 @@ nonisolated enum SystemCareCommandError: LocalizedError, Equatable {
     var errorDescription: String? {
         switch self {
         case .timeout: "The command timed out. Try again."
-        case .outputLimit: "The command returned more data than System Care can read."
+        case .outputLimit: "The command returned more data than System Cleaner can read."
         case .failed(let reason): reason
         }
     }

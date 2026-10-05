@@ -8,7 +8,7 @@ struct RcloneSettingsPage: View {
         Group {
             if showsHeader {
                 OnePlusPage {
-                    OnePlusPageHeader(title: "Settings", subtitle: "Cloud Sync engine and transfer preferences")
+                    OnePlusPageHeader(title: "Settings", subtitle: "RSync UI engine and transfer preferences")
                 } content: { RcloneSettingsView() }
             } else {
                 RcloneSettingsView()

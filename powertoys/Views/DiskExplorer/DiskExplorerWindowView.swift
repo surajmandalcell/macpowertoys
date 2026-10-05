@@ -61,7 +61,7 @@ struct DiskExplorerWindowView: View {
     private var chart: DiskChartStyle { DiskChartStyle(rawValue: chartStyle) ?? .treemap }
     private var measure: DiskChartMeasure { DiskChartMeasure(rawValue: chartMeasure) ?? .space }
     private var sourceName: String {
-        guard let url = model.sourceURL else { return "Diskman" }
+        guard let url = model.sourceURL else { return "Partition Manager" }
         if url == FileManager.default.homeDirectoryForCurrentUser { return "Home Folder" }
         return model.volumes.first { $0.url == url }?.name ?? url.lastPathComponent
     }
@@ -141,7 +141,7 @@ struct DiskExplorerWindowView: View {
     }
 
     private var sidebar: some View {
-        OnePlusSidebar(title: "Diskman") {
+        OnePlusSidebar(title: "Partition Manager") {
             OnePlusNavCaption("Analyze")
             OnePlusNavRow("Home Folder", systemImage: "house", selected: page == .explore && model.sourceURL == FileManager.default.homeDirectoryForCurrentUser) {
                 startScan(FileManager.default.homeDirectoryForCurrentUser)
@@ -201,7 +201,7 @@ struct DiskExplorerWindowView: View {
         case .explore: explorerPage
         case .modify: DiskModifyView(model: diskManagement)
         case .settings:
-            OnePlusPage { OnePlusPageHeader(title: "Settings", subtitle: "Diskman display and scan preferences") }
+            OnePlusPage { OnePlusPageHeader(title: "Settings", subtitle: "Partition Manager display and scan preferences") }
                 content: { DiskExplorerSettingsView(unreadableCount: model.result?.unreadableCount) }
         case .about: DiskmanAboutPage()
         }
@@ -546,7 +546,7 @@ struct DiskExplorerWindowView: View {
             Button("Back") { traverse(-1) }.keyboardShortcut("[").disabled(page != .explore || historyIndex <= 0)
             Button("Forward") { traverse(1) }.keyboardShortcut("]").disabled(page != .explore || historyIndex + 1 >= history.count)
             Button("Search Results") { page = .explore; resultTab = .results; searchFocus += 1 }.keyboardShortcut("f")
-            Button("Diskman Settings") { page = .settings }.keyboardShortcut(",")
+            Button("Partition Manager Settings") { page = .settings }.keyboardShortcut(",")
             ForEach(0..<9, id: \.self) { index in
                 Button("Navigate \(index + 1)") { sidebarShortcut(index) }.keyboardShortcut(KeyEquivalent(Character(String(index + 1))))
             }

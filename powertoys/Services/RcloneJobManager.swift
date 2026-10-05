@@ -325,7 +325,7 @@ final class RcloneJobManager {
         do {
             try await shutdownForTermination()
         } catch {
-            LogManager.shared.error("Cloud Sync shutdown failed: \(error.localizedDescription)", source: "RcloneJobManager")
+            LogManager.shared.error("RSync UI shutdown failed: \(error.localizedDescription)", source: "RcloneJobManager")
         }
     }
 
@@ -361,7 +361,7 @@ final class RcloneJobManager {
             }
         } catch {
             if !(error is CancellationError) {
-                let message = "Cloud Sync could not save \(saveStage): \(error.localizedDescription)"
+                let message = "RSync UI could not save \(saveStage): \(error.localizedDescription)"
                 errorBanner = message
                 throw NSError(domain: "RcloneJobManager", code: 1, userInfo: [
                     NSLocalizedDescriptionKey: message, NSUnderlyingErrorKey: error
@@ -427,7 +427,7 @@ final class RcloneJobManager {
     func loadProviders() async {
         guard providers.isEmpty, !isLoadingProviders else { return }
         guard let client else {
-            providerLoadError = "Cloud Sync engine is not running."
+            providerLoadError = "RSync UI engine is not running."
             return
         }
         isLoadingProviders = true
@@ -464,7 +464,7 @@ final class RcloneJobManager {
         guard let remote = websiteRemote(for: fs),
               let folderPath = Self.remoteFolderPath(fromFs: fs, transferKind: transferKind) else { return }
         guard let client else {
-            errorBanner = "Cloud Sync engine is not running."
+            errorBanner = "RSync UI engine is not running."
             return
         }
         let provider = remote.websiteName ?? "cloud provider"
@@ -701,7 +701,7 @@ final class RcloneJobManager {
     ) async {
         guard let client else {
             remoteBeingCreated = nil
-            finishAuth(generation: generation, state: .failed("Cloud Sync engine is not running."))
+            finishAuth(generation: generation, state: .failed("RSync UI engine is not running."))
             return
         }
 
@@ -794,7 +794,7 @@ final class RcloneJobManager {
     ) async {
         guard let client else {
             remoteBeingCreated = nil
-            finishAuth(generation: generation, state: .failed("Cloud Sync engine is not running."))
+            finishAuth(generation: generation, state: .failed("RSync UI engine is not running."))
             return
         }
         do {
@@ -1498,7 +1498,7 @@ final class RcloneJobManager {
             do {
                 try await self.persistJobsNow()
             } catch {
-                self.errorBanner = "Cloud Sync could not save transfers: \(error.localizedDescription)"
+                self.errorBanner = "RSync UI could not save transfers: \(error.localizedDescription)"
                 LogManager.shared.error(self.errorBanner ?? "Transfer save failed", source: "RcloneJobManager")
             }
         }

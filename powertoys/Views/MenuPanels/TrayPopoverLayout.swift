@@ -12,7 +12,6 @@ enum TrayPopoverLayout {
     static let homeToolIDs = ["color-picker", "text-extractor", "awake", "ruler"]
     static let defaultComplexTabs: [TrayTab] = [
         .cloudSync, .inputDevices, .systemCare, .netToys,
-        .switchAccounts,
     ]
 
     static func maximumBodyHeight(screenHeight: CGFloat) -> CGFloat {

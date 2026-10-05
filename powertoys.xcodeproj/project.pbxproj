@@ -7,7 +7,6 @@
 	objects = {
 
 /* Begin PBXBuildFile section */
-		A20000000000000000000001 /* AIManagerCore in Frameworks */ = {isa = PBXBuildFile; productRef = A20000000000000000000003 /* AIManagerCore */; };
 		B30000000000000000000001 /* OnePlusUI in Frameworks */ = {isa = PBXBuildFile; productRef = B30000000000000000000003 /* OnePlusUI */; };
 		C40000000000000000000001 /* NetToysCore in Frameworks */ = {isa = PBXBuildFile; productRef = C40000000000000000000011 /* NetToysCore */; };
 		C40000000000000000000002 /* NetToysKit in Frameworks */ = {isa = PBXBuildFile; productRef = C40000000000000000000012 /* NetToysKit */; };
@@ -111,7 +110,6 @@
 			isa = PBXFrameworksBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
-				A20000000000000000000001 /* AIManagerCore in Frameworks */,
 				B30000000000000000000001 /* OnePlusUI in Frameworks */,
 				C40000000000000000000001 /* NetToysCore in Frameworks */,
 				C40000000000000000000002 /* NetToysKit in Frameworks */,
@@ -212,7 +210,6 @@
 			);
 			name = powertoys;
 			packageProductDependencies = (
-				A20000000000000000000003 /* AIManagerCore */,
 				B30000000000000000000003 /* OnePlusUI */,
 				C40000000000000000000011 /* NetToysCore */,
 				C40000000000000000000012 /* NetToysKit */,
@@ -303,7 +300,6 @@
 			mainGroup = 1BDFA9452F08A44C009A9009;
 			minimizedProjectReferenceProxies = 1;
 			packageReferences = (
-				A20000000000000000000002 /* XCRemoteSwiftPackageReference "ai-manager" */,
 				B30000000000000000000002 /* XCRemoteSwiftPackageReference "OnePlusUI" */,
 				C40000000000000000000010 /* XCRemoteSwiftPackageReference "NetToys" */,
 			);
@@ -793,14 +789,6 @@
 /* End XCConfigurationList section */
 
 /* Begin XCRemoteSwiftPackageReference section */
-		A20000000000000000000002 /* XCRemoteSwiftPackageReference "ai-manager" */ = {
-			isa = XCRemoteSwiftPackageReference;
-			repositoryURL = "https://github.com/surajmandalcell/switch.git";
-			requirement = {
-				kind = exactVersion;
-				version = 3.3.0;
-			};
-		};
 		B30000000000000000000002 /* XCRemoteSwiftPackageReference "OnePlusUI" */ = {
 			isa = XCRemoteSwiftPackageReference;
 			repositoryURL = "https://github.com/surajmandalcell/oneplus-ui.git";
@@ -834,11 +822,6 @@
 			isa = XCSwiftPackageProductDependency;
 			package = C40000000000000000000010 /* XCRemoteSwiftPackageReference "NetToys" */;
 			productName = NetToysCore;
-		};
-		A20000000000000000000003 /* AIManagerCore */ = {
-			isa = XCSwiftPackageProductDependency;
-			package = A20000000000000000000002 /* XCRemoteSwiftPackageReference "ai-manager" */;
-			productName = AIManagerCore;
 		};
 		B30000000000000000000003 /* OnePlusUI */ = {
 			isa = XCSwiftPackageProductDependency;

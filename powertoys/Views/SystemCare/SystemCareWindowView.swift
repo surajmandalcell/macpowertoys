@@ -342,7 +342,7 @@ struct SystemCareWindowView: View {
     }
 
     private var sidebar: some View {
-        OnePlusSidebar(title: "System Care") {
+        OnePlusSidebar(title: "System Cleaner") {
             ForEach(SystemCarePage.allCases.filter { !$0.isBottom }) { destination in
                 OnePlusNavRow(
                     destination.title,
@@ -992,7 +992,7 @@ struct SystemCareWindowView: View {
 
     private var aboutCard: some View {
         OnePlusCard {
-            OnePlusCardHeader("System Care", image: ToolGlyph.systemCare.assetImage)
+            OnePlusCardHeader("System Cleaner",image: ToolGlyph.systemCare.assetImage)
             OnePlusSettingRow("App version") { Text(appVersion).onePlusText(.control) }
             OnePlusSettingRow("Native cleanup") { Text("Included").onePlusText(.control) }
             OnePlusSettingRow("Mole", separator: false) {

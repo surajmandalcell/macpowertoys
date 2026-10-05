@@ -88,7 +88,6 @@ final class WindowStateManager {
         "system-monitor",
         "nettoys",
         "portman",
-        "switch",
         "mac-tweaks"
     ]
 

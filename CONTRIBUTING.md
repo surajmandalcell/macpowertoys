@@ -10,7 +10,7 @@ Thanks for helping improve MacPowerToys.
 
 ## Local setup
 
-Requirements are macOS 26.2, Xcode 26.2, and rclone for Cloud Sync integration tests.
+Requirements are macOS 26.2, Xcode 26.2, and rclone for RSync UI integration tests.
 
 ```bash
 brew install rclone
@@ -31,7 +31,7 @@ TEST_SESSION=isolated make test DERIVED_DATA=/tmp/macpowertoys-tests
 make build ADHOC=1 DERIVED_DATA=/tmp/macpowertoys-release
 ```
 
-`make build-for-testing` compiles the app and all test targets without launching the app. `make test` runs the macOS unit and integration target. Do not run tests during an important Cloud Sync transfer.
+`make build-for-testing` compiles the app and all test targets without launching the app. `make test` runs the macOS unit and integration target. Do not run tests during an important RSync UI transfer.
 
 For UI changes, open a signed current build and test each affected flow. Never launch an unsigned UI test runner.
 
@@ -58,7 +58,7 @@ checks, Developer ID packaging, notarization, and public release gates.
 - Add or update tests for behavior changes.
 - Do not include real user paths, credentials, logs, conversation content, or cloud data.
 - Update `CHANGELOG.md` for user-visible changes.
-- Keep user-facing names as `MacPowerToys` and `Cloud Sync`; internal compatibility identifiers may remain unchanged.
-- Confirm that no running Cloud Sync transfer is interrupted during manual testing.
+- Keep user-facing names as `MacPowerToys` and `RSync UI`; internal compatibility identifiers may remain unchanged.
+- Confirm that no running RSync UI transfer is interrupted during manual testing.
 
 By contributing, you agree that your contribution is licensed under the MIT License.

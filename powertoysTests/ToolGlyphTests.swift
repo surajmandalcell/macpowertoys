@@ -14,7 +14,7 @@ final class ToolGlyphTests: XCTestCase {
 
     func testToolGlyphsAndStatusImagesShareTheApprovedGeometry() throws {
         let tools = ToolRegistry.builtInTools
-        XCTAssertEqual(tools.count, 14)
+        XCTAssertEqual(tools.count, 13)
         XCTAssertEqual(Set(tools.map(\.icon)).count, tools.count)
         XCTAssertEqual(Set(tools.map(\.id)), Set(ToolGlyph.allCases.map(\.rawValue)))
         for tool in tools {
