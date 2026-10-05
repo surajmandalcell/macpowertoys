@@ -1,5 +1,18 @@
 # UI Chrome Troubleshooting
 
+## Scene Canvas Overrides The View Canvas
+
+- **Symptom:** The installed main window opens at 1240 x 840 and Input
+  Devices at 1080 x 660, although both views ask for 820 x 660.
+- **Cause:** `MacPowerToysApp.windowContent(id:)` applies its own
+  `onePlusFixedCanvas`. The outer canvas wins, and every inner canvas
+  modifier is skipped. Offscreen view renders do not use this wrapper.
+- **Invariant:** The scene wrapper, the scene `defaultSize`, and
+  `OnePlusWindowCanvas.appTool(_:)` name the same canvas for each window.
+- **Check:** `WindowAccessorTests.testSceneContentUsesTheSameCanvasAsTheWindowLookup`
+  measures the wrapped content for main and Input Devices. It fails on the
+  old wrapper. Capture the installed windows with `winlist` and compare sizes.
+
 ## Stat Cell Height Check, Run 74, 2026-10-02
 
 - **Symptom:** Compact StatCell measures 46pt against a 44pt test ceiling.
