@@ -107,12 +107,11 @@ Update this list whenever Ruler requirements or verification results change.
 Both shared build modes pass for the Debug app and both desktop test bundles.
 The new regression tests compile. Hosted tests and signed checks remain open.
 
-Main launcher, `4ab747b9`: Settings and Defaults are two related native
-actions directly on one row. Single-action card wrappers are removed under
-the horizontal-density correction. The Settings button keeps the shared
-slanted Ruler glyph. Both actions follow tool enablement. `11388f43` uses this
-shared body and puts the separate "Open Ruler" action in the fixed footer.
-Both shared compile modes pass. Hosted checks and signed interaction remain.
+Main window: the Ruler page uses the System Settings structure in
+`DESIGN.md`. One grouped section has two rows, "Settings for the active
+rulers" with Open Ruler Settings and "Defaults for new rulers" with Open
+Defaults. Both follow tool enablement. "Open Ruler" sits in the hero block.
+Signed interaction remains.
 
 | Status | Request | Evidence | Remaining work |
 |---|---|---|---|

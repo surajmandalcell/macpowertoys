@@ -351,34 +351,27 @@
   and tall pages and compare with native status-item panels. The installed
   process was preserved; updated-build checks remain with the orchestrator.
 
-## Launcher Actions On Short Displays
+## Main Window Settings Structure
 
-- **Symptom:** In a 1024pt hosted display, selecting Switch showed its detail
-  body but the header enable switch and Open button were beyond the right edge.
-- **Cause:** The launcher forced 1200pt content and a 1200pt minimum even when
-  the visible screen was narrower.
-- **Invariant:** Use 1200×720 when it fits. Clamp the fixed launcher to the
-  visible display and reduce grid columns before card actions become cramped.
-  Keep the detail header controls inside the window.
-- **Check:** Hosted [run 36137254239](https://github.com/surajmandalcell/macpowertoys/actions/runs/36137254239)
-  passed the Switch launcher route on a 1024pt display. Its capture shows both
-  header controls in bounds, and the UI test clicked Open to show Switch.
-
-## Launcher Card Description Height
-
-- **Symptom:** Catalog summaries end in an ellipsis or compete with the title.
-- **Cause:** Cards used the full tool-page description or a text modifier that
-  overrode the caller's secondary foreground color.
-- **Invariant:** The 2026-10-01 owner rule requires two-line catalog summaries
-  in secondary ink. Keep full descriptions on tool pages and in help. Use the
-  color parameter of `onePlusText` when a role needs a different ink.
-  Catalog-specific fonts live in OnePlusCatalogMetrics. Its 11pt summary
-  uses 2pt native line spacing for a measured 16pt baseline pitch. Category
-  text is 9.5pt; identity gaps are 9pt. Keep 40pt grid/header icons and
-  29pt list icons. Reserve only the 24pt favorite target, without another
-  spacer. A 133.94pt name fits the resulting 138pt identity width.
-- **Check:** Inspect all 14 summaries at four columns in both appearances.
-  Each summary fits two lines; tool pages retain their full descriptions.
+- **Symptom:** The main window used a catalog grid, page tabs, and a fixed
+  footer that did not match the System Settings structure the owner chose.
+- **Cause:** The older launcher recipe predates the owner's 2026-10-05
+  decision in `DESIGN.md` (Main window).
+- **Invariant:** The fixed 820 x 660 canvas comes from
+  `OnePlusWindowCanvas.mainWindow` through `appTool("main")` until the next
+  OnePlusUI tag owns it. `MainWindowShell` draws no texture. The sidebar
+  groups tools with `MainCatalog.groups`; Command-2 to Command-9 use
+  `MainCatalog.shortcutTools`, so shortcuts follow the visual order.
+  `MainPaneToolbar` sits outside page content, so the retained Task Manager
+  page gets back and forward too. `MainPageHistory` records every page change
+  except its own traversal. Overview summaries fit one row line. A
+  `manual/<id>` route stores a one-shot `guide` request; the tool page
+  scrolls to How to use and resets the request. Full descriptions stay on
+  tool pages and in help.
+- **Check:** `LauncherGridTests` renders All tools, Ruler, and Settings in
+  both appearances to `tmp/redesign/captures/mainwin-*.png`. Compare them
+  with a System Settings capture at the same scale. `MainCatalogTests` covers
+  groups, shortcut order, and history.
 
 ## Launcher Page IDs And Manual Updates, 2026-10-01
 
@@ -387,7 +380,7 @@
 - **Cause:** Main tabs were transient and host help had no update result.
 - **Invariant:** Store validated page and tab raw IDs. Main uses a non-optional
   stored page and an optional selection binding. Removed or disabled saved
-  tools fall back to All tools. Each tool detail tab has its own key. Explicit
+  tools fall back to All tools. A manual request scrolls the tool page. Explicit
   Settings and manual requests override saved tabs. Search stays in memory;
   saved pages never open tool windows. Ordinary Settings restores its tab.
   Keep the app menu-bar switch distinct from macOS Menu Bar permission and
@@ -404,43 +397,6 @@
   light/dark, relaunch, update success/failure/retry, shortcut registration,
   launch alert, and live timing checks stay open. The main handoff lists the
   exact remaining task flows in `tmp/redesign/logs/w3-main.md`.
-
-## Launcher Adaptive Grid Falls To Three Columns
-
-- **Symptom:** The 1,200pt launcher shows three cards per row although its
-  specification and width-only test expect four.
-- **Cause:** Four 220pt adaptive cards, gaps, and padding need 976pt of the
-  nominal 980pt pane. The scroll view can reserve about 16pt for its scroller.
-  At the resulting 916pt grid width, an offscreen SwiftUI repro places four
-  sample cards on two rows instead of one.
-- **Invariant:** Use four flexible columns at the standard launcher width, so
-  the cards share the available grid width even with the scroller reservation.
-  Keep two-line summaries and the aligned enable/Open row.
-- **Check:** `LauncherGridTests` places four cards in one row at 916pt. Hosted
-  [run 36101318344](https://github.com/surajmandalcell/macpowertoys/actions/runs/36101318344)
-  passed and saved a 980×676 native capture with four columns, complete
-  descriptions, and aligned controls. Inspect the exact signed app only when
-  desktop interaction is allowed.
-
-## Two-Row Launcher Card Density
-
-- **Symptom:** Tall cards clipped the last tool row. The later 151pt cards
-  still left an empty band between each description and its controls in
-  the signed `198055e4` capture.
-- **Cause:** A fixed card height and an expanding spacer separated the
-  description from the enable/Open row.
-- **Invariant:** The 2026-10-01 owner correction requires four flexible
-  columns and content-sized cards with equal heights in each grid row.
-  Keep a 40pt icon beside the name and quiet category caption. Reserve two
-  summary lines and put the enable/Open row 12pt below them. Cards have no
-  grain. Keep the card, favorite, switch, and Open actions separate.
-- **Check:** Hosted [run 36124794622](https://github.com/surajmandalcell/macpowertoys/actions/runs/36124794622)
-  passed and saved 980×676 dark and light native captures. All 13 cards are
-  fully visible with complete descriptions and visible controls. Live action
-  checks await a focus-safe signed app session. `8dda22b4` replaces the
-  fixed height with content sizing. `LauncherGridTests` measures real cards
-  and checks equal heights below the old 151pt height, plus a four-card row.
-  Both compile gates pass; hosted execution and signed recapture remain.
 
 ## Embedded Enablement And Unboxed Group Insets, 2026-10-01
 
@@ -468,16 +424,14 @@
   and another on an oversized custom Open button.
 - **Cause:** Enablement and launch were styled as separate form sections instead
   of related actions for one tool.
-- **Invariant:** Catalog cards and list rows pair an unlabeled switch with a
-  ghost Open text button without an arrow. Tool pages keep the switch in the
-  header and put "Open <Tool>" in the fixed bottom action bar on the 24pt
-  gutter, with white accent-button text and no divider line above it
-  (owner correction 2026-10-01). Keep accessible names and disabled
-  launch behavior. Ruler keeps both native settings actions in its body.
-- **Check:** Inspect grid, list, and all 14 tool pages. No enable caption or
-  catalog Open arrow remains. Scroll and switch tabs; the page action stays
-  fixed. Disable a tool and require every launch route to stop. Run the hosted
-  footer regression and inspect the accent action in both appearances.
+- **Invariant:** Overview rows carry an unlabeled switch and a chevron; Open
+  stays in the row context menu and Command-O. Tool pages put the switch
+  and the accent `Open <Tool>` button side by side in the hero block. Keep
+  accessible names and disabled launch behavior. Ruler keeps both native
+  settings actions in its body.
+- **Check:** Inspect the overview and every tool page. No enable caption
+  remains. Disable a tool and require every launch route to stop. Inspect
+  the accent action in both appearances.
 
 ## Menu-Bar Window Radius And Native Presentation, 2026-10-01
 

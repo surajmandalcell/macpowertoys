@@ -938,18 +938,19 @@ latency benefit still needs measurement. See `tmp/redesign/logs/w4-perf-windows.
 
 ## Applet Settings Placement
 
-- **Symptom:** A compact applet wastes titlebar space on a settings gear or
-  restores settings to the top-right after it was moved.
-- **Cause:** An older titlebar rule or shared icon component was treated as the
-  source of truth after the product requirement changed.
-- **Invariant:** Compact applet titlebars contain the text title and primary
-  actions only. A 24pt circular `gearshape` settings button floats 8pt from the
-  bottom-right window edges, remains visible on the settings page, and toggles
-  back to the applet's home content.
-- **Check:** Inventory compact titlebar actions with `rg`, then open every applet
-  that owns settings. Confirm no titlebar gear exists and the floating gear is
-  visible, clickable, and 8pt from the bottom-right window edges on home and
-  settings pages.
+- **Symptom:** A compact applet shows a round settings button floating over
+  its content, and the last card touches the window bottom.
+- **Cause:** An older rule kept the gear at the bottom-right and reserved 52pt
+  of scroll space for it. The owner then moved the gear into the titlebar.
+- **Invariant:** The settings gear is the `OnePlusAppletSettingsButton` ghost
+  icon button in the titlebar action row, left of the primary action. It stays
+  visible on the settings page with a selected fill, toggles back to home, and
+  answers Command-comma. Nothing floats over content. Scrolling applet content
+  ends 24pt above the window bottom as padding inside the scroll content.
+- **Check:** Inventory compact titlebar actions with `rg` and confirm no
+  `onePlusFloatingSettings` call remains. Open every applet that owns settings
+  and confirm the gear sits left of the primary action on home and settings
+  pages, and the last card clears the window bottom when scrolled to the end.
 
 ## Compact Titlebar Structure
 

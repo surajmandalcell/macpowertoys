@@ -1,6 +1,7 @@
 import SwiftUI
 import OnePlusUI
 
+/// `guide` is a one-shot request to scroll a tool page to How to use.
 enum MainToolTab: String {
     case settings, guide
     static func storageKey(for toolID: String) -> String { "main.tool.\(toolID).tab" }
@@ -9,88 +10,75 @@ enum MainToolTab: String {
     }
 }
 
+/// A Settings-style tool pane: identity block, then grouped settings and manual sections.
 struct ToolAboutView: View {
     let toolId: String
-    var showsModalCloseButton = false
-    var showsSettings = true
-    @Environment(\.dismiss) private var dismiss
     @AppStorage private var storedTab: String
+    private static let guideAnchor = "guide"
 
-    init(toolId: String, showsModalCloseButton: Bool = false, showsSettings: Bool = true) {
+    init(toolId: String) {
         self.toolId = toolId
-        self.showsModalCloseButton = showsModalCloseButton
-        self.showsSettings = showsSettings
         _storedTab = AppStorage(wrappedValue: MainToolTab.settings.rawValue, MainToolTab.storageKey(for: toolId))
-    }
-
-    private var tab: Binding<MainToolTab> {
-        Binding(get: { MainToolTab(rawValue: storedTab) ?? .settings }, set: { storedTab = $0.rawValue })
     }
 
     var body: some View {
         if let tool = ToolRegistry.tool(for: toolId) {
-            OnePlusPage {
-                header(tool)
-            } tabs: {
-                if showsSettings { tabs(tool) }
-            } footer: {
-                if showsSettings && !showsModalCloseButton {
-                    HStack {
-                        Spacer(minLength: 0)
-                        MainOpenToolButton(toolID: tool.id, toolName: tool.name,
-                                           title: "Open \(tool.name)", primary: true)
+            ScrollViewReader { proxy in
+                MainPaneScroll {
+                    hero(tool)
+                    if let menuTool = IndividualMenuBarTool(rawValue: tool.id) {
+                        MainSection { MainMenuBarPlacement(tool: menuTool) }
                     }
-                }
-            } content: {
-                if !showsSettings || tab.wrappedValue == .guide {
-                    ForEach(tool.manual) { section in manualCard(section) }
-                } else {
                     ToolSettingsContent(toolID: tool.id)
                         .frame(maxWidth: .infinity, alignment: .topLeading)
+                    Text("How to use").onePlusText(.sectionTitle).accessibilityAddTraits(.isHeader)
+                        .padding(.leading, MainPaneMetrics.sectionTitleInset)
+                        .padding(.top, MainPaneMetrics.gutter)
+                        .id(Self.guideAnchor)
+                    ForEach(tool.manual) { section in manualSection(section) }
+                }
+                .onChange(of: storedTab, initial: true) { _, value in
+                    guard MainToolTab(rawValue: value) != .settings else { return }
+                    if MainToolTab(rawValue: value) == .guide {
+                        DispatchQueue.main.async { proxy.scrollTo(Self.guideAnchor, anchor: .top) }
+                    }
+                    storedTab = MainToolTab.settings.rawValue
                 }
             }
-            .clipped()
-            .onChange(of: toolId, initial: true) { _, _ in
-                if MainToolTab(rawValue: storedTab) == nil { storedTab = MainToolTab.settings.rawValue }
-            }
+            .accessibilityIdentifier("tool.\(tool.id).page")
         } else {
             OnePlusEmptyState("Unknown tool", systemImage: "questionmark.circle",
                               caption: "This tool is no longer installed.")
         }
     }
 
-    private func header(_ tool: any Tool) -> some View {
-        OnePlusToolPageHeader(title: tool.name, subtitle: tool.id == "mac-tweaks" ? tool.summary : tool.description) {
-            ToolIconView(tool: tool, size: OnePlusCatalogMetrics.iconSize)
-        } actions: {
-            if showsSettings { MainToolEnableSwitch(tool: tool) }
-            if showsModalCloseButton {
-                Button { dismiss() } label: { Image(systemName: "xmark") }
-                    .buttonStyle(OnePlusButtonStyle(.icon))
-                    .help("Close").accessibilityLabel("Close")
+    private func hero(_ tool: any Tool) -> some View {
+        MainHero(title: tool.name, subtitle: tool.id == "mac-tweaks" ? tool.summary : tool.description) {
+            ToolIconView(tool: tool, size: MainPaneMetrics.heroIcon)
+        } controls: {
+            HStack(spacing: OnePlusMetrics.cardGap) {
+                MainToolEnableSwitch(tool: tool)
+                MainOpenToolButton(toolID: tool.id, toolName: tool.name, title: "Open \(tool.name)", primary: true)
             }
         }
     }
 
-    private func tabs(_ tool: any Tool) -> some View {
-        OnePlusTabStrip(tabs: [OnePlusTab(.settings, "Settings"), OnePlusTab(.guide, "How to use")], selection: tab) {
-            if let menuTool = IndividualMenuBarTool(rawValue: tool.id) { MainMenuBarPlacement(tool: menuTool) }
-        }
-        .accessibilityIdentifier("tool.\(tool.id).page")
-    }
-
-    private func manualCard(_ section: ToolManualSection) -> some View {
-        OnePlusCard {
-            OnePlusCardHeader(section.title)
-            VStack(alignment: .leading, spacing: OnePlusCatalogMetrics.gap) {
-                ForEach(section.points.indices, id: \.self) { index in
-                    HStack(alignment: .firstTextBaseline, spacing: OnePlusCatalogMetrics.gap) {
-                        Text(String(index + 1) + ".").onePlusText(.mono)
-                        Text(section.points[index]).onePlusText(.row).textSelection(.enabled)
-                            .frame(maxWidth: .infinity, alignment: .leading)
+    private func manualSection(_ section: ToolManualSection) -> some View {
+        MainSection(title: section.title) {
+            ForEach(section.points.indices, id: \.self) { index in
+                HStack(alignment: .firstTextBaseline, spacing: OnePlusCatalogMetrics.gap) {
+                    Text(String(index + 1) + ".").onePlusText(.mono)
+                    Text(section.points[index]).onePlusText(.row).textSelection(.enabled)
+                        .frame(maxWidth: .infinity, alignment: .leading)
+                }
+                .padding(.horizontal, OnePlusMetrics.cardPadding)
+                .padding(.vertical, OnePlusCatalogMetrics.gap)
+                .overlay(alignment: .bottom) {
+                    if index != section.points.count - 1 {
+                        OnePlusColor.lineSoft.frame(height: 1).padding(.horizontal, OnePlusCatalogMetrics.cardInset)
                     }
                 }
-            }.padding(OnePlusMetrics.cardPadding)
+            }
         }
     }
 }
@@ -105,11 +93,9 @@ private struct MainMenuBarPlacement: View {
     }
 
     var body: some View {
-        HStack(spacing: OnePlusMetrics.actionSpacing) {
-            Text("Menu bar").onePlusText(.caption)
+        OnePlusSettingRow("Menu bar icon", controlWidth: OnePlusCatalogMetrics.placementWidth, separator: false) {
             OnePlusSegmented(choices: MenuBarDisplayMode.allCases.map { ($0, $0.title) },
                              selection: $mode, accessibilityLabel: "Menu bar placement")
-                .fixedSize(horizontal: true, vertical: false)
                 .accessibilityIdentifier("tool.\(tool.id).menu-bar-icon")
         }
         .onChange(of: mode) { _, _ in IndividualMenuBarController.shared.refresh() }

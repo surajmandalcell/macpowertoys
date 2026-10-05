@@ -19,19 +19,25 @@ struct HomeView: View {
     @AppStorage("main.settingsTab") private var storedSettingsTab = MainSettingsTab.general.rawValue
     @State private var focusedToolID: String?
     @State private var shortcutTools: [any Tool] = []
+    @State private var history = MainPageHistory()
+    @State private var traversingHistory = false
 
     var body: some View {
-        OnePlusWindowRoot(canvas: .main) {
+        MainWindowShell {
             ToolSidebarView(selectedTool: selectedToolBinding, searchText: $query,
                             searchFocusTrigger: searchFocusTrigger)
         } content: {
-            ZStack {
-                content
-                OnePlusRetainedPage(isSelected: selectedTool == "system-monitor", revision: "system-monitor") {
-                    ToolAboutView(toolId: "system-monitor")
+            VStack(spacing: 0) {
+                MainPaneToolbar(title: pageTitle, canGoBack: !history.back.isEmpty,
+                                canGoForward: !history.forward.isEmpty, back: goBack, forward: goForward)
+                ZStack {
+                    content
+                    OnePlusRetainedPage(isSelected: selectedTool == "system-monitor", revision: "system-monitor") {
+                        ToolAboutView(toolId: "system-monitor")
+                    }
+                    .allowsHitTesting(selectedTool == "system-monitor")
+                    .accessibilityHidden(selectedTool != "system-monitor")
                 }
-                .allowsHitTesting(selectedTool == "system-monitor")
-                .accessibilityHidden(selectedTool != "system-monitor")
             }
         }
         .modifier(MainPageStorage(save: saveSelectedPage))
@@ -68,9 +74,11 @@ struct HomeView: View {
         .onChange(of: query) { _, value in
             if !value.isEmpty { selectedTool = "all-tools" }
         }
-        .onChange(of: selectedTool) { _, value in
+        .onChange(of: selectedTool) { old, value in
             if value != "all-tools" { query = "" }
             focusedToolID = nil
+            if traversingHistory { traversingHistory = false }
+            else { history.record(from: old ?? "all-tools", to: value ?? "all-tools") }
         }
         .onReceive(NotificationCenter.default.publisher(for: .marketplaceReceiptsChanged)) { _ in
             refreshShortcutTools()
@@ -109,6 +117,8 @@ struct HomeView: View {
             }
             MainOpenToolButton(toolID: selectedLaunchToolID, title: "Open selected tool")
                 .keyboardShortcut("o")
+            Button("Back", action: goBack).keyboardShortcut("[")
+            Button("Forward", action: goForward).keyboardShortcut("]")
         }.hidden().accessibilityHidden(true)
     }
 
@@ -134,12 +144,33 @@ struct HomeView: View {
                 set: { storedSettingsTab = $0.rawValue })
     }
 
+    private var pageTitle: String {
+        switch selectedTool {
+        case "all-tools": "All tools"
+        case "settings": "Settings"
+        case let id?: ToolRegistry.tool(for: id)?.name ?? ""
+        default: ""
+        }
+    }
+
+    private func goBack() {
+        guard let page = history.goBack(from: selectedTool ?? "all-tools") else { return }
+        traversingHistory = true
+        selectedTool = page
+    }
+
+    private func goForward() {
+        guard let page = history.goForward(from: selectedTool ?? "all-tools") else { return }
+        traversingHistory = true
+        selectedTool = page
+    }
+
     private func focusSearch() {
         searchFocusTrigger &+= 1
     }
 
     private func refreshShortcutTools() {
-        shortcutTools = Array(ToolRegistry.allTools.prefix(8))
+        shortcutTools = MainCatalog.shortcutTools(ToolRegistry.allTools)
     }
 
     private func saveSelectedPage() {

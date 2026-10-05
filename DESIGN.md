@@ -72,7 +72,7 @@ geometry:
   control: { height: 28, compact-height: 24, column: 160, wide-column: 180 }
   tab-strip: { height: 36, gap: 22, underline: 2 }
 windows:
-  main: { size: [1240, 840], sidebar: 216, density: regular, resizable: false }
+  main: { size: [820, 660], sidebar: 215, density: regular, resizable: false, texture: none, sidebar-icon: 20, row-icon: 24, hero-icon: 48, pane-gutter: 20, section-gap: 10, section-title-gap: 6, sidebar-group-gap: 12 }
   disk-explorer: { size: [1440, 900], sidebar: 216, density: regular, resizable: false }
   nettoys: { size: [1440, 900], sidebar: 200, density: regular, resizable: false }
   rclone: { size: [1240, 840], sidebar: 216, density: regular, resizable: false }
@@ -132,7 +132,7 @@ Resolve conflicts in this order:
    the package instead.
 4. The HTML references (kept outside the repository): `task-manager.html`
    (Task Manager window and the menu-bar panel pattern),
-   `macpowertoys-repaired.html` (main window), `mac-tweaks-design.html`
+   the macOS System Settings app (main window structure), `mac-tweaks-design.html`
    (settings rows and controls), and `diskman-fixed.html` (storage charts).
 5. Current screenshots in `docs/screenshots/`.
 
@@ -671,38 +671,48 @@ tokens, fixed sizes, and components.
 
 ### Main window
 
-Follows `macpowertoys-repaired.html` and its handoff comment.
+The main window uses the structure of the macOS System Settings app (owner
+decision 2026-10-05). It keeps OnePlusUI colors and type, with no
+translucency and no window texture. Apple colors are not copied.
 
-- Sidebar: the `MacPowerToys` title, search (`Search`, hint `cmd K`), `All
-  tools`, the caption `YOUR TOOLS`, one row per registered tool in registry
-  order, and bottom nav `Settings` and `Exit`. There is no main-level
-  Modified page (owner correction 2026-10-01); resetting changed settings
-  belongs to each tool, such as the Mac Tweaks Modified destination.
-- All tools: the title `All tools`, the subtitle `Your Mac, a little more
-  capable.`, tabs `All tools N`, `Enabled N`, and `Favorites N`, a trailing
-  sort select (Default order, Name, Category), and a grid or list toggle.
-  Grid: four columns and 12 pt gaps. Card height follows content, with
-  equal heights in each grid row. Keep a 40 pt tool icon and a 9 pt gap
-  before the identity. Use a 9.5 pt category and an 11 pt secondary summary
-  with 16 pt between baselines. Reserve two summary lines. The favorite
-  star is visible on hover or when set and keeps its 24 pt hit target.
-  Reserve that target without an extra identity spacer. Put the footer
-  row 12 pt below the description,
-  with an unlabeled enable switch and a ghost `Open` text button
-  without an arrow. Catalog cards have no grain texture (owner correction
-  2026-10-01: the page looked too busy). List: 52 pt rows with the same
-  parts, with a 29 pt icon. Grid and page-header icons stay 40 pt.
-- Tool page: a header with the 40 pt icon, tool name, description, and a
-  trailing enable switch. `Open <Tool>` is the primary action: a primary
-  button with white text in a fixed action bar at the bottom of the page,
-  right-aligned on the 24 pt gutter, with no divider line above it (owner
-  correction 2026-10-01). Tabs `Settings`
-  and `How to use`, with a trailing `Menu bar` segmented control (None,
-  Combined, Separate) for tools that support placement. Settings renders the
-  tool's shared settings view built from OnePlusUI cards. How to use renders
-  the manual as cards.
-- Settings: tabs General, Marketplace, and About. General holds Appearance,
-  Windows, Launch, and iCloud.
+- Window: a fixed 820 x 660 canvas with a 215 pt sidebar. It keeps the
+  centerline rule, zoom disabled, and saved position only.
+- Sidebar: no title. The traffic lights sit in the empty 54 pt top row,
+  which drags the window. Search (`Search`, hint `cmd K`) follows, 10 pt
+  from the sidebar edges. Rows are 32 pt high, with a 20 pt rounded-square
+  icon, an 8 pt gap, and the name in `ink`. A disabled tool name uses
+  `muted`. Selection is a `selection` fill with an 8 pt radius. Groups have
+  no captions and are 12 pt apart: `All tools` (app icon), then one group
+  per tool category in category order (registry order inside), then
+  `Settings` and `Exit` fixed at the bottom on neutral icon tiles. There is
+  no main-level Modified page; each tool owns its own reset.
+- Command-1 selects All tools. Command-2 to Command-9 follow the sidebar
+  order. Command-[ and Command-] go back and forward.
+- Pane toolbar: a 54 pt row that drags the window. Back and forward
+  chevron buttons sit in one capsule 12 pt from the pane edge, then the
+  page title in the section-title role.
+- Pane body: one scroll view with a 20 pt gutter. Sections are 10 pt apart.
+  A section title sits outside its rounded group, 10 pt from its edge,
+  6 pt above it. Groups are `OnePlusCard`s with hairline row separators.
+- Hero block: a centered card with a 48 pt icon, the name in the page-title
+  role, a one- or two-line description, and the page controls below.
+- All tools: the hero shows the app icon, `MacPowerToys`, `Your Mac, a
+  little more capable.`, and a segmented filter `All N`, `Enabled N`,
+  `Favorites N`. One section per category follows. Each 52 pt row has a
+  24 pt icon, the name, a one-line summary, the favorite star (shown on
+  hover, focus, or when set), an unlabeled enable switch, and a chevron.
+  A row opens the tool page. Its context menu has Settings, Open, Enable,
+  and Favorite.
+- Tool page: the hero shows the tool icon, name, description, the enable
+  switch, and the primary `Open <Tool>` button. A `Menu bar icon` row
+  (None, Combined, Separate) follows for tools that support placement.
+  The tool's shared settings cards follow. `How to use` closes the page:
+  one titled section per manual section, with one numbered row per point.
+  A manual route scrolls to `How to use`.
+- Settings: a centered segmented control for General, Marketplace, and
+  About, then stacked sections. General holds Appearance and windows,
+  Launch and iCloud, and the Quick Access shortcut. About uses a hero with
+  the update check, then details, links, acknowledgements, and manuals.
 - Enablement, menu-bar placement, runtime state, and window visibility stay
   separate states.
 - Settings embedding contract: each tool exposes one settings content view
