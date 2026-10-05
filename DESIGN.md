@@ -580,6 +580,8 @@ controls do not move on hover.
   only during real work and stop on completion, error, cancel, or dismissal.
 - No scale, bounce, slide, shimmer, parallax, or lifted hover panels.
 - Reduce Motion removes nonessential animation and keeps layout identical.
+- The one exception is the Partition Manager partition map. Its recipe
+  defines its spring motion.
 
 ## Menu-bar panels
 
@@ -751,27 +753,46 @@ trailing action column.
 
 ### Partition Manager
 
-Uses `diskman-fixed.html` for content, normalized to this file so it feels
-native: 1440 x 900, a 216 pt sidebar with ANALYZE (locations and Choose
-Folder) and DEVICES sections, the location name as the page title on `C` with
-its path as a mono subtitle, header actions (Rescan as primary, a more menu),
-a plain horizontal 28 pt stats row (Space used in accent, Files, Folders,
-Last scan), tabs
-Visualization, Largest files N, and Results with a trailing Treemap or Rings
-segmented control and a measure select, a map card with a 260 pt inspector card,
-and a plain unreadable row with its trailing count and action. Treemap tiles use
-the storage series `#66504A #4C6272 #6C5A43 #48645E #68546C #745047 #455D70
-#706048 #435E60 #5B4E67 #536149`, radius 4, a 1 pt translucent line, and
-grain 0.17 (0.22 selected). Native behaviors: double-click drills in, the
-breadcrumb and Command-[ go back, Space shows Quick Look, context menus,
-drag-out, and Command-R rescans. Modify keeps its write lock and staged
-review in the same card and row language. Destructive steps use a native
-confirmation.
+Partition Manager is a dedicated partition tool, modeled on the EaseUS
+Partition Manager page but native: 1440 x 900 and a 216 pt sidebar.
 
-Partition Manager Size cells keep their exact mono byte values beside a neutral 55 x 3 pt
-usage bar. Normalize bars to the largest item in the current filtered table.
-Use the shared 8 pt action gap and a 180 pt Size column. Sorting and native
-selection retain their existing behavior.
+- Sidebar: disks grouped under INTERNAL, EXTERNAL, REMOVABLE, and DISK IMAGES.
+  Each row shows the name and `diskN · size`, plus a lock when the disk is
+  protected. A disk image takes its file name. macOS-owned images (simulator
+  runtimes, cryptexes) are not listed. About sits at the bottom.
+- Page: the title `Partition Manager`, a count subtitle, and a Refresh icon
+  action. One scrolling column holds a card per disk. A fixed 260 pt
+  inspector card sits on the trailing side. Errors and results show as a
+  banner in the page footer.
+- Disk card: a 56 pt header button (kind glyph, name in the section role,
+  mono `diskN · scheme · size · connection`, SMART status, and a Protected
+  label with the reason in help). Below it, a 72 pt partition map.
+- Partition map: one block per partition in disk order, width proportional
+  to bytes, at least 56 pt, 4 pt gaps, radius 4. A block uses its storage
+  series color at full strength for used space and darkened for free
+  space, with white name, mono `file system · size`, and a mount or lock
+  badge. Unallocated space is a hatched `track` block. A previewed new
+  partition is a dashed accent outline. Storage series:
+  `#66504A #4C6272 #6C5A43 #48645E #68546C #745047 #455D70 #706048 #435E60
+  #5B4E67 #536149`.
+- Selection: a 2 pt accent outline on the selected block, or around the
+  whole map for the disk. APFS volumes are selected in the inspector.
+- Inspector: facts for the selection, the APFS volume list, an inline
+  Resize or Create Partition editor, then actions in three groups: VOLUME
+  (Mount or Unmount, Rename, Format, First Aid, Info), PARTITION (Create
+  Partition, Resize, Delete Partition), and DISK (Eject Disk, Erase Disk).
+  Destructive actions use the destructive button style. An unavailable
+  action is disabled and its help names the reason.
+- Confirmation: every write that can lose data opens a native sheet that
+  names the disk, `/dev/diskN`, its size in bytes, and the target. Erase Disk
+  asks the owner to type the disk name.
+- Motion (owner exception, Partition Manager only): this surface uses
+  purposeful motion instead of the instant rule. Use one spring (response
+  0.22 s, damping 0.86). Block widths animate when a resize or create
+  preview changes or a real change lands. The selection outline moves
+  between blocks with a matched geometry effect. A new block grows in from
+  its leading edge; a deleted block collapses. The affected block shows
+  operation progress inline. Reduce Motion makes every change instant.
 
 ### Mac Tweaks
 

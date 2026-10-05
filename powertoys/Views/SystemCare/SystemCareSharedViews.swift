@@ -1,6 +1,7 @@
 import AppKit
 import OnePlusUI
 import QuickLook
+import UniformTypeIdentifiers
 import SwiftUI
 
 struct SystemCareInfo: View {
@@ -91,10 +92,20 @@ struct SystemCareFileActions: View {
     @Binding var previewURL: URL?
     var body: some View {
         Button("Reveal in Finder") { NSWorkspace.shared.activateFileViewerSelecting([url]) }
-        Button("Copy Path") { DiskEntryPresentation.copy([url.path]) }
+        Button("Copy Path") { NSPasteboard.general.clearContents(); NSPasteboard.general.setString(url.path, forType: .string) }
         Button("Open") { NSWorkspace.shared.open(url) }
-        Button("Open With…") { DiskEntryPresentation.openWith([url]) }
+        Button("Open With…") { openWith() }
         Button("Quick Look") { previewURL = url }
+    }
+
+    private func openWith() {
+        let panel = NSOpenPanel()
+        panel.directoryURL = URL(fileURLWithPath: "/Applications")
+        panel.allowedContentTypes = [.applicationBundle]; panel.prompt = "Open"
+        panel.begin { response in
+            guard response == .OK, let application = panel.url else { return }
+            NSWorkspace.shared.open([url], withApplicationAt: application, configuration: NSWorkspace.OpenConfiguration())
+        }
     }
 }
 

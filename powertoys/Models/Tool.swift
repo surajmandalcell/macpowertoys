@@ -296,31 +296,26 @@ struct SystemCareTool: Tool {
 struct DiskExplorerTool: Tool {
     let id = "disk-explorer"
     let name = "Partition Manager"
-    let summary = "Map disk usage and manage removable drives."
-    let description = "Analyze storage with live treemaps and rings, then manage removable disks and partitions."
+    let summary = "Mount, format, resize, and partition disks."
+    let description = "See every disk as a partition map, then mount, format, resize, create, or delete partitions with the macOS disk tools."
     let icon = ToolGlyph.diskman.symbol
     let logoAsset = "DiskExplorerLogo"
     let category = ToolCategory.files
 
     let manual = [
-        ToolManualSection(title: "Scan", points: [
-            "Choose Home Folder, a mounted volume, or another folder to start a scan.",
-            "The scan counts space used on disk, includes hidden files, and reports locations it could not read.",
-            "Stop or rescan from the top bar. Scanning stops when the window closes."
+        ToolManualSection(title: "Disks", points: [
+            "The sidebar lists internal, external, and removable disks and attached disk images.",
+            "Each disk shows a partition map. Block width follows partition size, and the darker fill shows used space.",
+            "Click a block to select a partition or unallocated space. Click the disk header to select the whole disk."
         ]),
-        ToolManualSection(title: "Explore", points: [
-            "Choose Treemap or Rings, then measure space, file counts, or the age of recent changes. Your choices are remembered.",
-            "Click an item to select it. Double-click a folder to explore it. Use the breadcrumb to go back.",
-            "Search the current folder, change the sort order, or use Quick Look and Show in Finder for a file."
+        ToolManualSection(title: "Actions", points: [
+            "The inspector lists every action. An unavailable action shows why when you point to it.",
+            "Resize and Create Partition preview the new layout on the map before you review them.",
+            "Format, Delete, Resize, and Erase Disk open a confirmation that names the exact disk. Erase Disk asks you to type the disk name."
         ]),
-        ToolManualSection(title: "Remove", points: [
-            "Mark files or folders, then open Review to check the exact list and total size.",
-            "Move to Trash is recoverable until you empty Trash. Permanent deletion asks again and cannot be undone."
-        ]),
-        ToolManualSection(title: "Modify", points: [
-            "Select a physical disk or partition in Modify to verify, repair, mount, eject, format, or change its partition map.",
-            "Partition Manager allows changes only on writable removable or external media and checks the device again before every operation.",
-            "Review data-loss actions carefully and type the disk identifier to confirm them."
+        ToolManualSection(title: "Protection", points: [
+            "Partition Manager never changes the startup disk, the disk with this app, internal disks, or the External1TB drive.",
+            "It reads each disk again before every change and stops if the layout changed."
         ])
     ]
 
