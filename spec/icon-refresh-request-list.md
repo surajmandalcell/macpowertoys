@@ -1,5 +1,13 @@
 # Tool icon refresh request list
 
+Mac Tweaks MS7, 2026-10-05: the owner picked MS7, a tweak wand with a
+lavender tip and sparkles. `MacTweaksLogo` is one universal 512px PNG in the
+bitmap family; the 01 Faders SVG is removed. Raycast has no Mac Tweaks
+command, so it has no copy. `MacTweaksGlyph` (wand with three sparkles, 2.5 strokes,
+ink 25.6 of 32 units, centered) replaces `slider.vertical.3` on sidebar,
+panel, and status surfaces. Signed catalog, Dock, and glyph review remain
+with the orchestrator.
+
 Event Viewer EV1, 2026-10-05: the owner picked EV1, a ceramic log tablet
 with a coral warning badge. `LogsLogo` is one universal 512px PNG in the
 bitmap family; the Midnight and Porcelain SVGs are removed. Raycast
