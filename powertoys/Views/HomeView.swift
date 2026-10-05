@@ -46,7 +46,7 @@ struct HomeView: View {
             set: { if !$0 && appearsActive && NSApp.isActive { toolRouter.launchFailure = nil } }
         ), presenting: toolRouter.launchFailure) { failure in
             Button("Retry") { toolRouter.open(toolID: failure.toolID) }
-            Button("Open Logs") { toolRouter.open(toolID: "logs") }
+            Button("Open Event Viewer") { toolRouter.open(toolID: "logs") }
                 .disabled(!SettingsManager.shared.isToolEnabled("logs"))
             Button("Cancel", role: .cancel) {}
         } message: { failure in

@@ -47,9 +47,9 @@ describes.
 | Applet UI, titlebars, settings placement, gutters, tabs | [UI chrome](ui-chrome.md) |
 | Ruler behavior, windows, settings, or FreeRuler parity | [Ruler](ruler.md) |
 | Text Extractor UI or behavior | [Text Extractor](text-extractor.md) |
-| Diskman scanning, charts, result navigation, or disk actions | [Diskman](disk-explorer.md) |
-| NetToys, Input Devices, System Care, Mole, or System Monitor | [System tools](system-tools.md) |
-| Internal logs or macOS system diagnostics | [Logs](logs.md) |
+| Partition Manager scanning, charts, result navigation, or disk actions | [Partition Manager](disk-explorer.md) |
+| NetToys, Input Devices, System Cleaner, Mole, or Task Manager | [System tools](system-tools.md) |
+| Internal logs or macOS system diagnostics | [Event Viewer](logs.md) |
 | Concurrent edits, staging, overwritten work | [Shared worktree](shared-worktree.md) |
 | Builds, UI checks, installation, handoff | [Verification](verification.md) |
 

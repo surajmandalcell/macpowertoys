@@ -70,8 +70,8 @@ enum IndividualMenuBarTool: String, CaseIterable, Identifiable {
 
     var title: String {
         switch self {
-        case .cloudSync: "Cloud Sync"
-        case .awake: "Awake"
+        case .cloudSync: "RSync UI"
+        case .awake: "Kwake"
         case .colorPicker: "Color Picker"
         case .textExtractor: "Text Extractor"
         case .inputDevices: "Input Devices"

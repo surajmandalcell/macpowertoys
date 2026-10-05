@@ -45,9 +45,9 @@ final class TrayPopoverLayoutTests: XCTestCase {
 
     func testDiagnosticsTabIDsMapToStoredTabs() {
         XCTAssertEqual(
-            ["home", "cloud-sync", "input-devices", "system-care", "nettoys", "switch"]
+            ["home", "cloud-sync", "input-devices", "system-care", "nettoys"]
                 .compactMap(TrayTab.init(panelID:)),
-            [.home, .cloudSync, .inputDevices, .systemCare, .netToys, .switchAccounts]
+            [.home, .cloudSync, .inputDevices, .systemCare, .netToys]
         )
     }
 
@@ -190,7 +190,7 @@ final class TrayPopoverLayoutTests: XCTestCase {
         XCTAssertFalse(source.contains("ToolSettingsContent"))
         XCTAssertFalse(source.contains("ToolIconColor.major"))
         XCTAssertFalse(source.contains("accessibilityReduceTransparency"))
-        XCTAssertTrue(source.contains("OnePlusMenuControlRow(\"Awake\""))
+        XCTAssertTrue(source.contains("OnePlusMenuControlRow(\"Kwake\""))
         XCTAssertTrue(source.contains("OnePlusMenuControlRow(\"Keep display on\""))
     }
 
@@ -246,12 +246,12 @@ final class TrayPopoverLayoutTests: XCTestCase {
         for (tab, scheme, name) in [
             (TrayTab.home, ColorScheme.light, "Home — Light"),
             (.home, .dark, "Home — Dark"),
-            (.cloudSync, .dark, "Cloud Sync — Dark"),
-            (.cloudSync, .light, "Cloud Sync — Light"),
+            (.cloudSync, .dark, "RSync UI — Dark"),
+            (.cloudSync, .light, "RSync UI — Light"),
             (.inputDevices, .dark, "Input Devices — Dark"),
             (.inputDevices, .light, "Input Devices — Light"),
-            (.systemCare, .dark, "System Care — Dark"),
-            (.systemCare, .light, "System Care — Light"),
+            (.systemCare, .dark, "System Cleaner — Dark"),
+            (.systemCare, .light, "System Cleaner — Light"),
             (.netToys, .dark, "NetToys — Dark"),
             (.netToys, .light, "NetToys — Light"),
         ] {

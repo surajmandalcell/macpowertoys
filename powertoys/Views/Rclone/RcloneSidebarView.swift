@@ -10,7 +10,7 @@ struct RcloneSidebarView: View {
     private var devSyncManager: DevSyncManager { .shared }
 
     var body: some View {
-        OnePlusSidebar(title: "Cloud Sync") {
+        OnePlusSidebar(title: "RSync UI") {
             Button {
                 manager.isPresentingNewTransfer = true
             } label: {

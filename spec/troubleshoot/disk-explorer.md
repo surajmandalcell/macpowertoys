@@ -1,4 +1,4 @@
-# Diskman Troubleshooting
+# Partition Manager Troubleshooting
 
 ## Device Caption Units And Entity Height, Run 68, 2026-10-01
 

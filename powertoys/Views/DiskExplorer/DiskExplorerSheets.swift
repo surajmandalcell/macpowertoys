@@ -50,7 +50,7 @@ struct DiskExplorerReviewSheet: View {
         .confirmationDialog("Move \(count) to Trash?", isPresented: $confirmTrash) {
             Button("Move to Trash", role: .destructive) { remove(permanently: false) }
             Button("Cancel", role: .cancel) { }
-        } message: { Text("Diskman checks the location and file identities again before removal.") }
+        } message: { Text("Partition Manager checks the location and file identities again before removal.") }
     }
     private func remove(permanently: Bool) { model.removeMarked(permanently: permanently, includeHidden: includeHidden); dismiss() }
 }
@@ -75,7 +75,7 @@ struct DiskBlockedEjectSheet: View {
                 }.thinScrollIndicators().frame(maxHeight: OnePlusMetrics.wideControlColumn)
                 Text(blocked.reason).onePlusText(.caption).textSelection(.enabled)
                 if blocked.blockers.contains(where: { !$0.canQuit }) {
-                    OnePlusBanner("A protected or other-user process must be closed outside Diskman.", tone: .warning)
+                    OnePlusBanner("A protected or other-user process must be closed outside Partition Manager.", tone: .warning)
                 }
             }
         } footer: {
@@ -88,7 +88,7 @@ struct DiskBlockedEjectSheet: View {
         .confirmationDialog("Force quit these processes?", isPresented: $confirmForce) {
             Button("Force Quit and Eject", role: .destructive) { close(force: true) }
             Button("Cancel", role: .cancel) { }
-        } message: { Text("Unsaved work can be lost. Diskman will recheck each process and the disk before continuing.") }
+        } message: { Text("Unsaved work can be lost. Partition Manager will recheck each process and the disk before continuing.") }
     }
     private func close(force: Bool) {
         guard canQuit else { return }

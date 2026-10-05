@@ -44,7 +44,7 @@ raycast-install: raycast
 	sh raycast/reload-local.sh
 
 install-preflight:
-	@test "$(ALLOW_INSTALL)" = "1" || (echo "Refusing to install. Re-run with ALLOW_INSTALL=1 after all Cloud Sync transfers finish." && exit 1)
+	@test "$(ALLOW_INSTALL)" = "1" || (echo "Refusing to install. Re-run with ALLOW_INSTALL=1 after all RSync UI transfers finish." && exit 1)
 	@test -z "$$(git status --porcelain)" || (echo "Refusing to install from a dirty worktree. Commit the complete source state first." && exit 1)
 
 install: raycast-assets install-preflight raycast-install $(INSTALL_BUILD)

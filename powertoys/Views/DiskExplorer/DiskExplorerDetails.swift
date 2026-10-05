@@ -414,12 +414,12 @@ struct DiskExplorerSettingsView: View {
     var body: some View {
         VStack(spacing: OnePlusMetrics.cardGap) {
             if showsEnableControl {
-                OnePlusSettingRow("Enable Diskman", separator: false) {
-                    Toggle("Enable Diskman", isOn: Binding(get: { settings.isToolEnabled("disk-explorer") },
+                OnePlusSettingRow("Enable Partition Manager", separator: false) {
+                    Toggle("Enable Partition Manager",isOn: Binding(get: { settings.isToolEnabled("disk-explorer") },
                         set: { settings.setToolEnabled($0, for: "disk-explorer") }))
                         .labelsHidden().toggleStyle(OnePlusSwitchStyle())
                         .disabled(settings.isToolTransitioning("disk-explorer"))
-                }.environment(\.onePlusCardPadding, 0).help("Show Diskman in the launcher")
+                }.environment(\.onePlusCardPadding, 0).help("Show Partition Manager in the launcher")
             }
             HStack(alignment: .top, spacing: OnePlusMetrics.cardGap) {
                 OnePlusCard {
@@ -446,7 +446,7 @@ struct DiskExplorerSettingsView: View {
                             Button("Open Settings") { DiskEntryPresentation.openFullDiskAccess() }
                                 .buttonStyle(OnePlusButtonStyle(.link, horizontalPadding: 0))
                         }
-                    }.help("A scan reports folders that macOS did not let Diskman read.")
+                    }.help("A scan reports folders that macOS did not let Partition Manager read.")
                 }
             }
         }
@@ -455,9 +455,9 @@ struct DiskExplorerSettingsView: View {
 
 struct DiskmanAboutPage: View {
     var body: some View {
-        OnePlusPage { OnePlusPageHeader(title: "About Diskman", subtitle: "Storage analysis and native disk tools") } content: {
+        OnePlusPage { OnePlusPageHeader(title: "About Partition Manager", subtitle: "Storage analysis and native disk tools") } content: {
             OnePlusCard {
-                OnePlusCardHeader("Diskman")
+                OnePlusCardHeader("Partition Manager")
                 VStack(alignment: .leading, spacing: OnePlusMetrics.cardGap) {
                     Text("Find large folders and files, review removals, and manage physical disks with macOS tools.").onePlusText(.row)
                         .help("Space used counts allocated blocks once per hard-linked file. APFS clones can share blocks, so removed size may differ from recovered space.")

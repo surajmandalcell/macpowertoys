@@ -777,50 +777,6 @@ latency benefit still needs measurement. See `tmp/redesign/logs/w4-perf-windows.
   Menus and buttons share one centerline. Start System Care work on every page
   and confirm the status stays at the bottom without unused space below it.
 
-## Switch Applet Hierarchy
-
-- **Symptom:** The applet showed an unrelated two-person icon, a forced-dark
-  icon rail with unlabeled destinations, and large empty areas in Accounts and
-  Recovery. The rail appeared nonfunctional beside the saved-account list.
-- **Cause:** The first integration invented an icon and added a second sidebar
-  for a two-destination workflow. Its custom dark surface did not follow the
-  applet's native light and dark appearances.
-- **Correction:** The next header-tab revision still diverged from standalone
-  Switch: it hid the account list when empty, moved navigation into pills, and
-  presented identity and usage as loose rows with a large blank lower pane.
-  The owner rejected that flow after seeing the running app. The approved
-  reference is `switch/docs/screenshots/accounts-dark.png` and the source
-  `AccountWindow.swift` in the standalone Switch repository.
-- **Invariant:** Keep the approved Switch icon and copy the standalone window's
-  working structure: a narrow functional rail, page title and refresh strip,
-  persistent account list with Add at its foot, and adjacent Identity, Usage,
-  activity, and account-detail panels. Accounts, Backup, and relevant Settings
-  are reachable; Chat History and Cleanup remain in standalone Switch. Match
-  the original compact rows, pane spacing, and light/dark palette.
-- **Check:** Compare the populated 1120×740 dark render against the approved
-  screenshot. Inspect empty and populated Accounts, Backup, and Settings at
-  880pt and 1120pt in both appearances. Exercise every visible rail action and
-  account action in hosted UI tests without activating the owner's desktop.
-
-## Switch Account Controls
-
-- **Symptom:** The top-left 48-point rail cell contained an off-center native
-  close button. Add was a menu instead of the provider flow, the rail repeated
-  it as a plus icon, and provider rows used generic symbols. An idle Backup page
-  ended in a large disabled recovery button.
-- **Cause:** The applet copied the panel layout but left native window controls
-  and generic host actions in place. The recovery button was shown even when
-  Core reported no pending operation.
-- **Invariant:** Hide only Switch's native traffic lights and center its custom
-  close control in the rail cell. Keep Add at the account-list foot, present
-  the original provider selection with original provider art, and expose
-  recovery actions only when an operation exists. Modal About pages omit the
-  self-Open action. Format usage durations compactly and keep period selection
-  within the usage panel at the minimum window width.
-- **Check:** In hosted and permitted installed-app checks, open Add and About,
-  inspect the 880-point Accounts and Backup pages, toggle Menubar state, and
-  verify close and recovery controls perform their named actions.
-
 ## Workspace Minimum Window Sizes
 
 - **Symptom:** A newly added workspace can be resized until its sidebar,
@@ -883,7 +839,7 @@ latency benefit still needs measurement. See `tmp/redesign/logs/w4-perf-windows.
   hides at once. Signed hover, press, navigation, progress, and presentation
   checks remain with the orchestrator. See tmp/redesign/logs/w1-motion-sweep.md.
 
-## Cloud Sync Connector Labels
+## RSync UI Connector Labels
 
 - **Symptom:** Long connector names scroll continuously while Add Remote is
   open and idle.
@@ -938,8 +894,9 @@ latency benefit still needs measurement. See `tmp/redesign/logs/w4-perf-windows.
   edge, or one app invents different title, control, and content offsets.
 - **Cause:** A workspace chose local width or padding literals instead of its
   shared sidebar family and layout metrics.
-- **Invariant:** Launcher, Logs, Input Devices, and Task Manager use the 220pt
-  compact family; Cloud Sync and System Care use
+- **Invariant:** The main window uses its own 215pt System Settings sidebar
+  (`DESIGN.md`, Main window). Logs, Input Devices, and Task Manager use the
+  220pt compact family; Cloud Sync and System Care use
   the 240pt data family.
   Navigation groups have 12pt horizontal
   pane padding. All workspace titles and first controls use the shared 84pt and
@@ -969,15 +926,15 @@ latency benefit still needs measurement. See `tmp/redesign/logs/w4-perf-windows.
   selects a tool.
 - **Cause:** Launcher detail controls used compact defaults and empty settings
   content was allowed to choose its own vertical placement.
-- **Invariant:** Launcher detail names are 17pt medium, Open uses regular native
-  control size, and the first detail tab uses an 18pt leading inset and a 6pt
-  top inset. Every settings introduction begins directly below the tabs with
-  compact shared padding; an empty settings body may expand only below it. A
-  double-click on an enabled launcher tool row opens that tool; one click only
+- **Invariant:** Tool pages follow the System Settings hero in `DESIGN.md`
+  (Main window): a centered 48pt icon, the page-title name, the description,
+  then the switch and the regular-size Open button. Settings sections begin
+  directly below the hero; an empty settings body adds no space. A
+  double-click on an enabled sidebar tool row opens that tool; one click only
   selects it.
-- **Check:** Inspect every built-in detail page, then single- and double-click
-  launcher rows. Confirm Input Devices keeps its description and menu-bar
-  selector at the top with no large unused space above it.
+- **Check:** Inspect every built-in tool page, then single- and double-click
+  sidebar rows. Confirm Input Devices keeps its settings directly below the
+  hero with no large unused space.
 
 ## Applet Settings Placement
 
@@ -1131,54 +1088,6 @@ latency benefit still needs measurement. See `tmp/redesign/logs/w4-perf-windows.
 - **Check:** Inspect the Tailscale chooser, System Care overview and lists,
   Color Picker tabs and projects, Awake modes, transfer-detail tabs, and AI
   History bookmark chips. Every enabled item shows hover and pressed feedback.
-
-## Switch Daily Activity Preparation, 2026-09-30
-
-- **Symptom:** One appearance shows an empty chart and zero totals while the
-  other shows populated activity. The card grows after preparation finishes.
-- **Cause:** An empty initial presentation collapsed the chart and supplied
-  zero totals before the detached preparation task returned.
-- **Invariant:** Reserve all seven chart rows and 16pt inner padding. Show
-  dashes and a named loading state until grid and totals are ready together.
-  Keep the last prepared data during refresh. Reset the cache when the
-  account changes. Empty and failed states keep the same card bounds.
-- **Check:** Run the hosted Daily activity bounds regression. Capture pending,
-  loaded, refreshing, empty, and failed states in both appearances. Change
-  periods and accounts. No pending state may report measured zero usage.
-
-## Switch Usage Facts And UTC Activity, 2026-10-01
-
-- **Symptom:** Seven usage columns truncate short labels and values. Activity
-  labels can show the prior day in negative UTC offsets and always start Sunday.
-- **Cause:** Each stat pair receives one seventh of the content width. Date-only
-  UTC keys use the default display zone, and week alignment ignores firstWeekday.
-- **Invariant:** Use two top-aligned stat rows, four then three columns. Keep the
-  264pt Usage card and inner quota scrolling. Parse and format usage days in UTC.
-  Align weeks with the user firstWeekday. Include the shared formatting revision
-  and fresh locale, calendar, and time zone in the cached preparation request.
-- **Check:** `f1092120` passes exact source layout and calendar regressions.
-  Offscreen light/dark renders show all seven facts. Los Angeles, Monday/Sunday
-  starts, year boundaries, invalid dates and German labels pass. Isolated copies
-  with the former layout and date logic fail. Shared app and test-bundle
-  compilation passes. Hosted execution and signed live acceptance remain.
-  See `tmp/redesign/logs/w3-switch.md`.
-
-## Switch Short Cards And About Identity, 2026-10-01
-
-- **Symptom:** Two short Settings cards occupy separate full-width tiers.
-  About gives a small logo its own row and pushes the manual down.
-- **Cause:** The page stacks compact peer cards and identity elements
-  vertically instead of using their available width.
-- **Invariant:** Pair standalone App behavior and Menu bar defaults in
-  equal columns with a 16pt gap. Keep natural 128pt heights and the full-width
-  Data locations card below. About uses a 48pt logo beside its text with a
-  16pt gap. Headline and mono version share a baseline. Keep all information.
-- **Check:** `9eb32937` passes source renders in both appearances. Settings
-  has 488pt columns and Data locations starts at window y=222. About intro
-  is 132pt tall and Accounts follows after 16pt. Main's `5ef050e8` retains
-  this standalone layout while removing the embedded enable row. Shared
-  compilation after that API patch and signed capture review remain.
-  See `tmp/redesign/logs/w3-switch.md`.
 
 ## NetToys Round 3 Screenshot Review, 2026-09-30
 
@@ -1555,7 +1464,7 @@ latency benefit still needs measurement. See `tmp/redesign/logs/w4-perf-windows.
   prompt; run `36171513372` passed and its normal-launch capture showed the
   scanning visualization without a permission dialog.
 
-## Awake Healthy Status Ink, 2026-10-01
+## Kwake Healthy Status Ink, 2026-10-01
 
 - **Symptom:** Signed `43ce0eb9` shows the steady running sentence in green
   in both appearances.
@@ -1567,7 +1476,7 @@ latency benefit still needs measurement. See `tmp/redesign/logs/w4-perf-windows.
   Parsing and the single combined gate pass at `7a8a6c41`. Updated signed
   active/off/error recapture remains with the orchestrator.
 
-## Awake Window Controls
+## Kwake Window Controls
 
 - **Symptom:** The Awake window can be enlarged, the off state is exposed as
   `Passive`, or `Keep Display On` cannot be changed while Awake is off.
@@ -1584,7 +1493,7 @@ latency benefit still needs measurement. See `tmp/redesign/logs/w4-perf-windows.
   four tray segments share the available width, then drag a
   window edge and confirm the content size remains unchanged.
 
-## Awake Titlebar Appearance
+## Kwake Titlebar Appearance
 
 - **Symptom:** Awake opens with a large focus outline around `Keep Display On`,
   a bottom titlebar rule, or a title that lacks the requested emphasis.

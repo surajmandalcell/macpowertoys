@@ -1,4 +1,4 @@
-# Logs Troubleshooting
+# Event Viewer Troubleshooting
 
 ## Internal and System Log Boundaries
 

@@ -344,7 +344,7 @@ struct AppCommands: Commands {
         }
 
         CommandMenu("Utilities") {
-            Toggle("Awake", isOn: Binding(
+            Toggle("Kwake", isOn: Binding(
                 get: { SettingsManager.shared.isToolEnabled("awake") && AwakeService.shared.isActive },
                 set: { _ in ToolActionRouter.shared.execute(ToolActionRequest(action: .awakeToggle)) }
             ))

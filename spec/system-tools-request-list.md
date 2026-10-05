@@ -171,7 +171,7 @@ Done:
 | Readable metadata at the normal width. | `cd11057` |
 | About page shows intro and How to Use only. | `d2df0ff` |
 
-## System Care and Mole
+## System Cleaner and Mole
 
 Open verification:
 

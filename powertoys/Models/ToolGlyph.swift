@@ -13,7 +13,6 @@ nonisolated enum ToolGlyph: String, CaseIterable {
     case netToys = "nettoys"
     case portman
     case macTweaks = "mac-tweaks"
-    case switchAccounts = "switch"
 
     var symbol: String {
         switch self {
@@ -30,7 +29,6 @@ nonisolated enum ToolGlyph: String, CaseIterable {
         case .netToys: "NetToysGlyph"
         case .portman: "PortmanStatusGlyph"
         case .macTweaks: "slider.vertical.3"
-        case .switchAccounts: "SwitchGlyph"
         }
     }
 
@@ -51,7 +49,7 @@ nonisolated enum ToolGlyph: String, CaseIterable {
         return Image(nsImage: image).renderingMode(.template)
     }
 
-    var isAsset: Bool { [.portman, .systemCare, .netToys, .switchAccounts].contains(self) }
+    var isAsset: Bool { [.portman, .systemCare, .netToys].contains(self) }
 
     @MainActor var image: Image { assetImage ?? Image(systemName: symbol) }
 

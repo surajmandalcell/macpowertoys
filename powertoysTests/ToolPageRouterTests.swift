@@ -8,7 +8,7 @@ struct ToolPageRouterTests {
     @Test func closeWindowDiagnosticsRequireOneBoundedToolID() throws {
         for scheme in ["macpowertoys", "powertoys"] {
             for tool in ["main", "rclone", "logs", "awake", "color-picker", "text-extractor",
-                         "input-devices", "system-care", "disk-explorer", "system-monitor", "nettoys", "switch", "mac-tweaks"] {
+                         "input-devices", "system-care", "disk-explorer", "system-monitor", "nettoys", "mac-tweaks"] {
                 #expect(DiagnosticsRoute.parse(try #require(URL(string: "\(scheme)://diagnostics/close-window/\(tool)")))
                     == .closeWindow(tool))
                 #expect(DiagnosticsRoute.parse(try #require(URL(string: "\(scheme)://diagnostics/native-close/\(tool)")))
@@ -65,7 +65,6 @@ struct ToolPageRouterTests {
 
     @Test func parsesCaseSensitiveMultiSegmentPages() throws {
         let routes = [
-            ("switch/account/01234567-89AB-CDEF-0123-456789ABCDEF", "switch", "account/01234567-89AB-CDEF-0123-456789ABCDEF"),
             ("disk-explorer/device/disk4s2", "disk-explorer", "device/disk4s2"),
             ("main/tool/color-picker", "main", "tool/color-picker"),
             ("rclone/remote/My%20Drive", "rclone", "remote/My Drive"),
@@ -111,7 +110,7 @@ struct ToolPageRouterTests {
 
     @MainActor @Test func backgroundSheetRoutesWaitWithoutLosingTheRequest() {
         let router = ToolPageRouter()
-        for (tool, page) in [("rclone", "new-transfer"), ("switch", "add"), ("disk-explorer", "choose-folder")] {
+        for (tool, page) in [("rclone", "new-transfer"),("disk-explorer", "choose-folder")] {
             router.post(tool: tool, page: page, recordTiming: false)
             #expect(router.take(tool: tool, allowSheet: false) == nil)
             #expect(router.take(tool: tool, allowSheet: false) == nil)
@@ -200,7 +199,7 @@ struct ToolPageRouterTests {
         let panels: [(DiagnosticsPanel, String, [(String, String)])] = [
             (.main, "tray.selectedTab.v2", [("home", "home"), ("cloud-sync", "rclone"),
                 ("input-devices", "input-devices"), ("system-care", "system-care"),
-                ("nettoys", "nettoys"), ("switch", "switch")]),
+                ("nettoys", "nettoys")]),
             (.systemMonitor, "systemMonitor.trayPage", ["home", "cpu", "gpu", "memory", "network",
                 "disk", "battery", "sensors", "processes"].map { ($0, $0) }),
             (.portman, "portman.selectedPage", [("servers", "Servers"), ("forward", "Forward"), ("settings", "Settings")])

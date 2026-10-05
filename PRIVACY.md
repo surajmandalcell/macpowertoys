@@ -8,7 +8,7 @@ MacPowerToys stores settings, utility history, logs, and transfer state under th
 
 ## Network access
 
-Cloud Sync uses rclone. rclone and the configured storage provider may make network requests for OAuth, directory listings, and file transfers. Provider credentials are stored in rclone's local configuration according to rclone's behavior.
+RSync UI uses rclone. rclone and the configured storage provider may make network requests for OAuth, directory listings, and file transfers. Provider credentials are stored in rclone's local configuration according to rclone's behavior.
 
 The optional Raycast extension sends only local `macpowertoys://` commands to the app.
 

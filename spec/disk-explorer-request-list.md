@@ -1,4 +1,4 @@
-# Diskman request list
+# Partition Manager request list
 
 Round 17 sidebar repair, run 68, 2026-10-01: app `53b31541` shows compact
 device capacities such as `disk0 · 500 GB` in the existing 106pt lane.
@@ -200,7 +200,7 @@ APFS clones may share physical blocks, so a marked item's size is not a promise
 of space recovered after removal. Startup-disk results are incomplete when macOS
 denies access to protected locations; the app displays that condition.
 
-## Diskman Analyze and Modify expansion
+## Partition Manager Analyze and Modify expansion
 
 Requested on 2026-09-25. The internal `disk-explorer` route and saved chart
 preferences remain compatible with existing launchers and user settings; the

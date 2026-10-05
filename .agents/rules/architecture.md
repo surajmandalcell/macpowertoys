@@ -13,7 +13,7 @@
   imported with `import OnePlusUI`. Change components there, tag a new
   version, then bump the exact version in this project.
 - NetToys lives in `surajmandalcell/nettoys` (`../nettoys`) as its own app
-  and package; MacPowerToys consumes it by version tag, like Switch.
+  and package; MacPowerToys consumes it by version tag, like OnePlusUI.
 - Each component should do ONE thing well
 - Prefer composition over duplication - if pattern appears twice, extract it
 - A surface needs a different look: add a named variant to OnePlusUI, never a

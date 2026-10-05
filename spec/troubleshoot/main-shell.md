@@ -25,8 +25,8 @@
   This invokes its existing close delegate. It does not end sheets, activate,
   order windows, replace the delegate, or send synthetic close notifications.
   Keep the older close-window route for its separate close-all behavior.
-- **Scope:** Main, Rclone, Logs, Awake, Color Picker, Text Extractor,
-  Input Devices, System Care, Disk Explorer, System Monitor, NetToys, Switch
+- **Scope:** Main, RSync UI, Event Viewer, Kwake, Color Picker, Text Extractor,
+  Input Devices, System Cleaner, Partition Manager, Task Manager, NetToys,
   and Mac Tweaks. Ruler and Portman have no SwiftUI Window scene.
 - **Check:** The single test build and 31 guarded tests pass. A real AppKit
   close delegate runs for every scene ID, without ordering. The source probe
@@ -312,10 +312,9 @@
 - **Cause:** Tool symbols were copied across enums. Native SF images kept
   intrinsic bounds, and equal point sizes did not give equal painted sizes.
   Treating every glyph as an SF Symbol replaced Portman's original SVG.
-- **Invariant:** `ToolGlyph` owns 14 unique glyphs and Ruler angle. Glyphs
-  come from each tool's own icon. System Care uses `SystemCareGlyph` (tray
-  with a lifted block) and Switch uses `SwitchGlyph` (emergency-stop
-  button); both are 32pt-viewBox template SVGs fitted to the 11.2pt span,
+- **Invariant:** `ToolGlyph` owns 13 unique glyphs and Ruler angle. Glyphs
+  come from each tool's own icon. System Cleaner uses `SystemCareGlyph` (tray
+  with a lifted block); it is a 32pt-viewBox template SVG fitted to the 11.2pt span,
   marked by `ToolGlyph.isAsset`, and drawn through `assetImage` or
   `ToolGlyphImage`, never `Image(systemName:)`. Portman uses the original
   `PortmanStatusGlyph` asset
@@ -331,21 +330,6 @@
   comparison and 36 image geometries. Inspect the 16pt Switch/artwork contact
   sheets in both appearances. After signed installation, capture only the
   menu bar with `screencapture -R` and inspect all separate/grouped styles.
-
-## Switch Icon Top Looks Clipped, 2026-10-01
-
-- **Symptom:** On the Switch tool page the 40pt icon looked cut at the top.
-- **Cause:** The standalone 1024px master has a non-square 907 x 881 tile,
-  inset and high in the canvas. The button cap sits about 2pt below the
-  tile top while the bottom margin is twice that, and the tile is smaller
-  than every full-bleed tool icon.
-- **Invariant:** `SwitchLogo` is one universal 512px full-bleed square. It
-  is made from the master by masking off the master tile edge, filling the
-  ivory gradient, cropping 907 x 907 at (59, 44), and cutting the shared
-  112 radius corners. Do not copy the master tile unchanged again.
-- **Check:** Render the asset at 40pt beside another tool icon. The tile
-  fills the frame and the button has even top and bottom margins.
-  `UtilityToolsTests` corner, size, and optical-bounds checks pass.
 
 ## Diagnostic Panel URLs Consumed By Native Scenes, 2026-09-30
 
@@ -533,9 +517,9 @@
   scrollable body. Let the strip use its intrinsic width while it fits; cap it
   at the available width and scroll only after overflow. Home places Pick
   Color, Extract Text, and Ruler in one direct-action row, followed by one
-  compact Awake row. Complex tray-capable built-ins own focused tabs in this
-  default order: Cloud Sync, Input Devices, System Care, NetToys, and Switch.
-  Task Manager owns a separate menu-bar popup. App-only tools such as Logs never
+  compact Kwake row. Complex tray-capable built-ins own focused tabs in this
+  default order: RSync UI, Input Devices, System Cleaner, and NetToys.
+  Task Manager owns a separate menu-bar popup. App-only tools such as Event Viewer never
   appear. Keep separate Open
   MacPowerToys, Settings, and Quit controls and no divider below the strip. Pin
   the tab group to the leading edge and those three app controls to one fixed
@@ -680,21 +664,6 @@ identity colors. Hover, press, tab, and content changes are instant. Check
 unloaded and loaded limits, account switching, nested row controls, and both
 appearances in the signed build. Report: `tmp/redesign/logs/w1-panel-main.md`.
 
-## Switch panel account errors, 2026-10-01
-
-- **Symptom:** Signed `198055e4` shows a coral account error sentence below
-  the first Codex quota bar in the r10 main Switch capture.
-- **Cause:** `accountContent` appends `Text(error)` below the usage bars.
-- **Invariant:** Keep account identity on one line. Provider names stay in
-  help and accessibility text. Account errors use one small trailing orange
-  exclamation glyph with the complete error as help and accessibility text.
-  Keep the shared header missing-limit warning, usage bars, token totals,
-  default marker, and full-row switching action.
-- **Check:** In the updated signed build, compare failed and successful
-  accounts in both appearances. An error adds no text row or height. Hover
-  the glyph and require the full message. Check long names, retained quotas,
-  both usage windows, default actions, and VoiceOver. Fix: `47e98b79`.
-
 ## Combined Menu Icon And Tab Outline
 
 - **Symptom:** The MacPowerToys status glyph looks slightly too large, and an
@@ -726,7 +695,7 @@ appearances in the signed build. Report: `tmp/redesign/logs/w1-panel-main.md`.
   the menu to verify the saved selection without using the owner's desktop.
   Run `36159003700` passed both tray UI cases and captured live CPU details.
 
-## Fan And Awake Tray Alignment
+## Fan And Kwake Tray Alignment
 
 - **Symptom:** Fan looks like a separate badge or Fan and RPM split into two
   lines at tray width.

@@ -50,7 +50,6 @@ render DiskExplorerLogo disk-explorer
 render SystemMonitorLogo system-monitor
 render NetToysLogo nettoys
 render PortmanLogo portman
-render SwitchLogo switch
 
 extension_source="$repo_dir/raycast/assets/extension-icon.svg"
 extension_target="$repo_dir/raycast/assets/extension-icon.png"

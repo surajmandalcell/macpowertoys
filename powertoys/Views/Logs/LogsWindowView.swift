@@ -347,7 +347,7 @@ private struct LogsSidebar: View {
     }
 
     var body: some View {
-        OnePlusSidebar(title: "Logs") {
+        OnePlusSidebar(title: "Event Viewer") {
             OnePlusSearchField(
                 prompt: "Search logs",
                 text: $search,
@@ -798,7 +798,7 @@ struct LogsSettingsView: View {
     var body: some View {
         VStack(spacing: OnePlusMetrics.cardGap) {
             OnePlusCard {
-                OnePlusCardHeader("Logs")
+                OnePlusCardHeader("Event Viewer")
                 OnePlusSettingRow("Font size", help: "Used for selectable log detail text.") {
                     OnePlusSelect(
                         choices: [(10, "Small"), (11, "Medium"), (12, "Default"), (14, "Large")],

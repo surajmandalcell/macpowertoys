@@ -345,7 +345,6 @@ API/status: `tmp/redesign/logs/app-lifecycle-routes.txt`.
 - Text Extractor: `spec/text-extractor-request-list.md`
 - Ruler: `spec/ruler-request-list.md`
 - Input Devices, System Care, Task Manager, and NetToys: `spec/system-tools-request-list.md`
-- Switch: `spec/switch-request-list.md`
 
 The dedicated lists do not override newer cross-app requirements recorded in
 this main list or in the troubleshooting index.

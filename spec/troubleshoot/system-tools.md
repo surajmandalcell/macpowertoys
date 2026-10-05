@@ -695,7 +695,7 @@ Report: `tmp/redesign/logs/w8-tests-quiet.md`.
   then regrant and retry only on explicit action or confirmed permission change.
   A source trace is not this live acceptance. Preserve the owner's scroll preferences.
 
-## System Care And Mole
+## System Cleaner And Mole
 
 - **Symptom:** Safety and Maintenance use 56pt helper rows. Terminal labels
   truncate while unused width remains. The initial panel adds an instruction row.

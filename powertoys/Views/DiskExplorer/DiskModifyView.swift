@@ -236,7 +236,7 @@ struct DiskModifyView: View {
             Text(target).onePlusText(.sectionTitle).accessibilityElement(children: .ignore)
                 .accessibilityLabel(target).accessibilityIdentifier("diskman.selectedTarget")
             if partition?.content == "EFI" {
-                OnePlusBanner("EFI is a protected system partition. Diskman cannot delete or resize it.", tone: .warning)
+                OnePlusBanner("EFI is a protected system partition. Partition Manager cannot delete or resize it.", tone: .warning)
                     .accessibilityIdentifier("diskman.protectedEFI")
             }
             HStack(alignment: .top, spacing: OnePlusMetrics.cardGap) {
@@ -406,7 +406,7 @@ struct DiskModifyView: View {
                     .frame(width: OnePlusDiskmanMetrics.inspectorWidth)
             }
             HStack {
-                Text("Diskman checks the device identity again before execution.").onePlusText(.caption)
+                Text("Partition Manager checks the device identity again before execution.").onePlusText(.caption)
                 Spacer()
                 Button("Discard") { self.pending = nil }.buttonStyle(OnePlusButtonStyle(.ghost))
                 Button(request.action.rawValue) {

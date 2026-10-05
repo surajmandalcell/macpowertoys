@@ -26,7 +26,7 @@ colors:
   metric-caption: { dark: "#A0A0A0", light: "#5B5B5B" }
   control-ink: { dark: "#DEDEDE", light: "#343434" }
   accent: { dark: "#EE5B50", light: "#D94F45" }
-  data-blue: { dark: "#8AAEEA", light: "#3564A4" } # Cloud Sync progress and network data
+  data-blue: { dark: "#8AAEEA", light: "#3564A4" } # RSync UI progress and network data
   accent-primary-ink: { dark: "#FFFFFF", light: "#FFFFFF" }
   accent-primary-hover: { dark: "#E65A4F", light: "#D34E44" }
   accent-primary-pressed: { dark: "#DE584E", light: "#CD4D43" }
@@ -157,8 +157,8 @@ Color rules:
 - Connected or healthy states stay neutral. Offline uses a hollow dot and
   muted text, never red.
 - Chart series: neutral steps `#BCBCBC`, `#8A8A8A`, `#626262`, `#454545`;
-  gray line `#BEBEBE`; accent line uses `accent`; grid `#343434`. Diskman keeps
-  its storage series (see the Diskman recipe).
+  gray line `#BEBEBE`; accent line uses `accent`; grid `#343434`. Partition Manager
+  keeps its storage series (see the Partition Manager recipe).
 - Text selection uses accent at 28% with primary text.
 - Measure text contrast with APCA (the WCAG 3 candidate method), not the
   WCAG 2 ratio. The WCAG 2 ratio misjudges text on saturated fills and in
@@ -202,8 +202,8 @@ everywhere.
 | Metric value | 27 | 27 | 550, line 30.24 | -1 | `ink` |
 | Metric unit | 12 | 10 | regular | 0 | `secondary` |
 
-- Regular density: main window, Mac Tweaks, Diskman, Cloud Sync, Logs, Input
-  Devices, System Care, NetToys, Switch, compact applets, and sheets.
+- Regular density: main window, Mac Tweaks, Partition Manager, RSync UI, Event
+  Viewer, Input Devices, System Cleaner, NetToys, compact applets, and sheets.
 - Compact density: the Task Manager window and every menu-bar panel.
 - Descriptions and metric units use `secondary`. Supporting captions and metadata use
   `muted`; metric captions use `metricCaption`. These roles stay separate
@@ -303,7 +303,7 @@ clipped to a header, tab strip, or scroll view.
   fade (0%, 26%, 82%, 100%).
 - Metric wave: cards and menu tiles marked `textured` draw the cached
   grayscale ribbon at 180 x 110 pt in their top-right corner, opacity 0.07,
-  clipped to the card. Diskman keeps its explicit grain texture.
+  clipped to the card. Partition Manager keeps its explicit grain texture.
 - Texture stays above the fill and below all content. Text, icons, controls,
   rows, and list views never carry texture.
 - Chart dither: ordered 4 x 4 pt dots under area charts, masked to the chart,
@@ -604,7 +604,7 @@ separate tool panel.
 - Identity and flair (owner correction: panels must not look stale): each
   panel keeps its tool's identity color for its key data, for example
   Portman's blue port numbers and memory bar, Task Manager's coral alert and
-  chart line, Cloud Sync's blue transfer progress. Live values use
+  chart line, RSync UI's blue transfer progress. Live values use
   sparklines and bars, not only text. Neutral chrome stays neutral.
   Only the body scrolls. One opaque `sidebar` surface. No blur, glass, or
   stacked shells.
@@ -633,14 +633,14 @@ separate tool panel.
   glyph, not the metric glyph.
 - Sidebar and panel glyphs are drawn from each tool's own icon, not picked
   from a loose SF Symbol (owner correction 2026-10-01). Examples: a slanted
-  ruler; `SystemCareGlyph`, a tray with one block lifted out; `SwitchGlyph`,
-  an emergency-stop button on its base. No two tools share a glyph.
+  ruler; `SystemCareGlyph`, a tray with one block lifted out. No two tools
+  share a glyph.
   Portman retains its original `PortmanStatusGlyph` socket asset on every
   glyph surface. Its status image is an unmodified 14 pt template copy;
   its 11.2 pt maximum ink span remains the reference for other status items.
   Custom glyph assets are 32 x 32 template SVGs with 2.5 strokes, and their
   ink fits that same 11.2 pt span.
-- Control rows (Fan, Awake): 30 pt, a leading 13 pt glyph, 10.5 pt label, and
+- Control rows (Fan, Kwake): 30 pt, a leading 13 pt glyph, 10.5 pt label, and
   SF Mono status, with a trailing 24 pt segmented control.
 - Section header: a 1 pt `line` divider, 7 pt top padding, a 9.5 pt section
   title, and a trailing link action.
@@ -656,7 +656,7 @@ separate tool panel.
 
 ## Compact applets
 
-Awake, Color Picker, and Text Extractor stay compact applets with the same
+Kwake, Color Picker, and Text Extractor stay compact applets with the same
 tokens, fixed sizes, and components.
 
 - One `window` surface with the ribbon texture, and a 40 pt custom titlebar:
@@ -738,7 +738,7 @@ buttons with compact control type. The connected/host count sits beside
 Add host. The menu panel keeps its 20 pt header, shared 27 pt metrics, and 84 pt
 trailing action column.
 
-### Diskman
+### Partition Manager
 
 Uses `diskman-fixed.html` for content, normalized to this file so it feels
 native: 1440 x 900, a 216 pt sidebar with ANALYZE (locations and Choose
@@ -757,7 +757,7 @@ drag-out, and Command-R rescans. Modify keeps its write lock and staged
 review in the same card and row language. Destructive steps use a native
 confirmation.
 
-Diskman Size cells keep their exact mono byte values beside a neutral 55 x 3 pt
+Partition Manager Size cells keep their exact mono byte values beside a neutral 55 x 3 pt
 usage bar. Normalize bars to the largest item in the current filtered table.
 Use the shared 8 pt action gap and a 180 pt Size column. Sorting and native
 selection retain their existing behavior.
@@ -772,7 +772,7 @@ SF Symbol glyphs.
 
 ### Other workspaces
 
-Cloud Sync, Logs, Input Devices, System Care, NetToys, and Switch use the
+RSync UI, Event Viewer, Input Devices, System Cleaner, and NetToys use the
 same sidebar, page, card, row, and table anatomy with no tool-specific
 chrome. Operational rows (transfers, scan results, log lines) use
 `OnePlusTable` or dense cards with the same radii and lines. Settings are a
@@ -875,28 +875,19 @@ variant weakens the deliberate temperature and contrast difference.
 
 | Tool | Light appearance | Dark appearance | Decision |
 |---|---|---|---|
-| Cloud Sync | Midnight | Chosen Color | Preserve the blue cloud echo in dark mode |
-| Logs | Midnight | Porcelain | Use the neutral contrast inversion without an exception |
+| RSync UI | Midnight | Chosen Color | Preserve the blue cloud echo in dark mode |
+| Event Viewer | Midnight | Porcelain | Use the neutral contrast inversion without an exception |
 | Ruler | Chosen Color | Chosen Color | Orange identity is fixed in both appearances |
-| Awake | Chosen Color | Chosen Color | Yellow eye identity is fixed in both appearances |
+| Kwake | Chosen Color | Chosen Color | Yellow eye identity is fixed in both appearances |
 | Color Picker | Chosen Color | Chosen Color | Eyedropper with attached color samples |
 | Text Extractor | Chosen Color | Chosen Color | Capture card with a selected text strip |
 | Input Devices | Chosen Color | Chosen Color | Ivory mouse with a violet scroll wheel |
-| System Care | Chosen Color | Chosen Color | Cleanup tray with one removable block |
-| Disk Explorer | Chosen Color | Chosen Color | Owner-selected Sector platter |
+| System Cleaner | Chosen Color | Chosen Color | Cleanup tray with one removable block |
+| Partition Manager | Chosen Color | Chosen Color | Owner-selected Sector platter |
 | Task Manager | Chosen Color | Chosen Color | Midnight-blue display-and-metrics identity is fixed |
 | NetToys | Chosen Color | Chosen Color | Network module with a connected coral port |
 | Portman | Midnight | Porcelain | Neutral network-port glyph in both appearances |
-| Switch | Chosen Color | Chosen Color | Owner-selected 01-refined emergency-stop switch on an ivory tile |
 | Mac Tweaks | Chosen Color | Chosen Color | Owner-selected 01 Faders in both appearances |
-
-Switch uses the same emergency-stop artwork in both appearances and in the
-standalone app. The standalone 1024px master has a non-square, inset tile with
-the button high in it. The MacPowerToys copy is one universal 512px
-full-bleed square: the master tile edge is removed, the button is centered,
-and the shared 112 radius cuts the corners (owner correction 2026-10-01:
-the top looked clipped). The original mark remains available for the tiny
-menu-bar template, where the physical switch would lose detail.
 
 The 2026-09-25 owner request in `spec/icon-refresh-request-list.md` replaces
 the prior identities for these six tools. They use 512px PNG image sets with
@@ -940,7 +931,7 @@ palette or reuse another tool's semantic hue.
   physical cutout. Never use one for a catchlight or decorative control.
 - New Chosen Color icons use warm off-white `#F7F5F0` and charcoal `#23272E`,
   never pure white or black. The Chosen Color palette table is the binding
-  legacy exception: Cloud Sync and Logs retain their listed
+  legacy exception: RSync UI and Event Viewer retain their listed
   `#FFFFFF` foregrounds. Neutral Midnight/Porcelain assets always use their own
   closed glyph tokens rather than either white.
 - SVG icons use no decorative outline, gloss, blur, rim light, or soft drop
@@ -989,10 +980,10 @@ has been changed.
 
 | Tool | Ground | Foreground | Semantic accent |
 |---|---|---|---|
-| Cloud Sync | `#1C1D22` | `#FFFFFF` at `.92` | `#5B8DEF` cloud echo at `.30` |
-| Logs | `#475569` to `#0F172A` | `#FFFFFF` | Terminal prompt |
+| RSync UI | `#1C1D22` | `#FFFFFF` at `.92` | `#5B8DEF` cloud echo at `.30` |
+| Event Viewer | `#475569` to `#0F172A` | `#FFFFFF` | Terminal prompt |
 | Ruler | `#F04E23` | `#23272E` | Cream graduation cutouts |
-| Awake | `#F5B71E` | `#23272E`, `#F7F5F0` | Cream eye catchlight |
+| Kwake | `#F5B71E` | `#23272E`, `#F7F5F0` | Cream eye catchlight |
 | Task Manager | `#002B26` | `#E0FFF8` | M02 Scope trace identity |
 | Mac Tweaks | `#25262B` and `#32333A` panel | `#F7F5F0` faders | `#AC86E8` center handle |
 

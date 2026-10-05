@@ -9,19 +9,17 @@ enum TrayTab: String, CaseIterable, Identifiable {
     case systemCare = "system-care"
     case systemMonitor = "system-monitor"
     case netToys = "nettoys"
-    case switchAccounts = "switch"
 
     var id: String { rawValue }
 
     var title: String {
         switch self {
         case .home: "Home"
-        case .cloudSync: "Cloud Sync"
+        case .cloudSync: "RSync UI"
         case .inputDevices: "Input Devices"
-        case .systemCare: "System Care"
+        case .systemCare: "System Cleaner"
         case .systemMonitor: "Task Manager"
         case .netToys: "NetToys"
-        case .switchAccounts: "Switch"
         }
     }
 
@@ -44,7 +42,6 @@ struct TrayPopoverView: View {
     private let diagnostic: Bool
     @AppStorage("tray.selectedTab.v2") private var selectedTabID = TrayTab.home.rawValue
     @AppStorage("tray.tabOrder.v2") private var storedTabOrder = ""
-    @State private var switchModel = SwitchWorkspaceModel.shared
     @State private var netToysSnapshot = NetToysTraySnapshot()
     @State private var careSnapshot = SystemCareTraySnapshot()
     @State private var startupDisk: SystemCareStartupDiskSnapshot?
@@ -175,8 +172,6 @@ struct TrayPopoverView: View {
             EmptyView()
         case .netToys:
             NetToysTrayView(snapshot: $netToysSnapshot)
-        case .switchAccounts:
-            SwitchTrayView(model: switchModel)
         }
     }
 

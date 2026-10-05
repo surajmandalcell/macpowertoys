@@ -132,7 +132,7 @@ final class AppInitializer {
                     throw NSError(domain: "LogManager", code: 1, userInfo: [NSLocalizedDescriptionKey: failure])
                 }
             }
-            try await cloudShutdown.run(name: "Saving Cloud Sync and stopping its engine", timeout: .seconds(30)) {
+            try await cloudShutdown.run(name: "Saving RSync UI and stopping its engine", timeout: .seconds(30)) {
                 try await RcloneJobManager.shared.shutdownForTermination()
             }
         } catch {

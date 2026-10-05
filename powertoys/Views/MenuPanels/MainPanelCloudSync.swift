@@ -27,7 +27,7 @@ struct CloudSyncTrayView: View {
                 ToolActionRouter.shared.open(toolID: "rclone", page: "new-transfer")
             }
             if manager.remotes.isEmpty {
-                Text(manager.daemonIsHealthy ? "No remotes loaded" : "Open Cloud Sync to load remotes")
+                Text(manager.daemonIsHealthy ? "No remotes loaded" : "Open RSync UI to load remotes")
                     .onePlusText(.caption)
             } else {
                 ForEach(manager.remotes) { remote in remoteRow(remote) }

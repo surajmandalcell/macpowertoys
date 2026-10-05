@@ -107,14 +107,11 @@
   UI action.
 - **Invariant:** `.github/workflows/macos-tests.yml` runs the unit suite in a
   hosted Xcode 27 Mac on code pushes or manual dispatch. It uses ad hoc signing,
-  the `TEST_SESSION=isolated` gate, installs rclone for Cloud Sync integration
+  the `TEST_SESSION=isolated` gate, installs rclone for RSync UI integration
   tests, and saves PNG XCTest attachments as `tray-renders` for offscreen review.
-  The unit command skips UI tests; a separate hosted step runs Switch
-  navigation in test mode and Portman menu-bar navigation after a normal app
-  launch. It exports screenshots for both. Local owner-session checks remain
-  compile-only.
-  `.github/workflows/switch-ui.yml` can be dispatched manually for a focused
-  Switch check when frequent pushes supersede the longer shared workflow.
+  The unit command skips UI tests; a separate hosted step runs Portman
+  menu-bar navigation after a normal app launch and exports screenshots.
+  Local owner-session checks remain compile-only.
 - **Check:** Match the successful workflow run to the tested commit and inspect
   its XCTest result and tray renders. Run `36097325950` at `fbe1721` passed 842
   tests, with five skips and zero failures, and saved 13 PNG attachments. Its
@@ -328,7 +325,7 @@
 - **Check:** Run the icon sync check, compare the imported manifest and assets,
   and inspect representative launchers in the running Raycast build.
 
-## Cloud Sync Pause Test Ends Before Interaction
+## RSync UI Pause Test Ends Before Interaction
 
 - **Symptom:** A disposable local transfer finishes before the menu-bar Pause
   control can be used, even when the engine reports a low bandwidth limit.
@@ -349,7 +346,7 @@ Reference: rclone documents both the optional
 [`Copy` feature](https://rclone.org/overview/#optional-features) and the
 [`--disable copy` control](https://rclone.org/docs/#disable-string).
 
-## Cloud Sync Shutdown Loses Retry State
+## RSync UI Shutdown Loses Retry State
 
 - **Symptom:** A transfer save failure is silent, retrying the same revision
   writes nothing, and early quit can race startup or replace new history.
