@@ -51,6 +51,14 @@ final class WindowAccessorTests: XCTestCase {
         XCTAssertNil(OnePlusWindowCanvas.appTool("unknown"))
     }
 
+    func testSceneContentUsesTheSameCanvasAsTheWindowLookup() throws {
+        for id in ["main", "input-devices"] {
+            let host = NSHostingView(rootView: MacPowerToysApp.windowContent(id: id))
+            host.layoutSubtreeIfNeeded()
+            XCTAssertEqual(host.fittingSize, try XCTUnwrap(OnePlusWindowCanvas.appTool(id)).size, id)
+        }
+    }
+
     func testLauncherRestoresPositionOnlySoAnOldSavedSizeCannotReturn() {
         for tool in ToolRegistry.builtInTools where OnePlusWindowCanvas.appTool(tool.id) != nil {
             XCTAssertTrue(WindowStateManager.restoresPositionOnly(tool.id), tool.id)

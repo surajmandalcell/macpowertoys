@@ -96,7 +96,7 @@ struct MacPowerToysApp: App {
                     .modifier(AppStorageRecovery())
                     .utilityMotionPolicy()
                     .environment(\.toolWindowID, "main")
-                    .onePlusFixedCanvas(.main)
+                    .onePlusFixedCanvas(.mainWindow)
                     .onToolWindowURL("main")
             }
         case "rclone":
@@ -142,7 +142,7 @@ struct MacPowerToysApp: App {
             OnePlusWindowContent {
                 InputDevicesWindowView()
                     .utilityMotionPolicy()
-                    .onePlusFixedCanvas(.inputDevices)
+                    .onePlusFixedCanvas(.macTweaks)
                     .onToolWindowURL("input-devices")
             }
         case "system-care":
