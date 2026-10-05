@@ -89,13 +89,12 @@ The one tests gate failed on a removed Command-Q ID list, now restored.
 Hosted execution and clean signed foreground checks remain with the
 orchestrator. Report: `tmp/redesign/logs/w4-focus-fix.md`.
 
-Scroll edges, 2026-10-01: the shared gear reserve is now scroll-content end
-padding. It does not reduce the applet body height. Projects includes that
-reserve in its natural scroll-height cap. All 15 focused package checks pass,
-including all 13 shared window canvases and both applet gear states at their
-minimum and maximum heights. The four regressions fail on the old source.
-Signed History, Projects, Settings, scrolling, and gear checks remain with the
-orchestrator. Report: `tmp/redesign/logs/w4-scroll-edges.md`.
+Settings gear and scroll end: the gear is the titlebar ghost icon button
+`OnePlusAppletSettingsButton`, left of Pick Color, selected while Settings is
+open. Nothing floats over content. History and Projects end 24pt above the
+window bottom; Settings scroll content ends 24pt above it.
+Signed History, Projects, Settings, and gear checks remain with the
+orchestrator.
 
 Round 48 header picks, 2026-10-01: `bd2e0963` implements Inset B
 (close x13, title 14pt after zoom) and Top B (title caps, icons, and action
@@ -144,7 +143,7 @@ and 100ms page limits stay open. Commands: `tmp/redesign/perf/w1-windows.md`.
 
 | Status | Task | Evidence | Remaining work |
 |---|---|---|---|
-| Source fixed | T076: Remove the empty Projects card tail. | `df0a2f5a` shows natural-height 44pt destinations directly below actions. Only longer lists use the capped scroller. Full-row hover, counts, minimum canvas, and gear reserve remain. | Signed short/long list and project-creation checks in both appearances. |
+| Source fixed | T076: Remove the empty Projects card tail. | `df0a2f5a` shows natural-height 44pt destinations directly below actions. Only longer lists use the capped scroller. Full-row hover, counts, and minimum canvas remain. | Signed short/long list and project-creation checks in both appearances. |
 | Source fixed | T077: Keep history separators inside each row. | `8fa61fbd` puts 1pt lines in bottom overlays; separators add no height to the 44pt pitch. | Signed row/action alignment and hover. |
 | Measured; source fixed | T078: Save growing pinned/project history off-main. | The actual 10,000-color, 100-project pin/save callback took 25ms. `66d13874` orders background encoding and writes; the callback is below 0.1ms and a drained reload equals memory. No pins are trimmed. `5ed9cbf0` adds `async throws`, encodes both arrays before writes, and preserves retryable current state. Native failure/retry/recovery checks pass. | Hosted regression and signed interaction. Lifecycle integration uses `try await ColorPickerService.shared.flushPersistence()` in a critical 10s stage before logs and Cloud Sync. |
 | Source fixed | T080: Undo reversible history and project actions. | `b8fc89fa` uses the owning window UndoManager for pin, delete, clear, project creation, and selection. Native fixture checks pass undo/redo, order, IDs, persistence, and unrelated changes. Colors from an undone project remain in Unfiled until redo. | Hosted AppletHistoryUndoTests and signed native Edit menu/confirmation checks. |
@@ -198,7 +197,7 @@ color formatting is nonisolated, so cached row preparation stays off the main
 actor without concurrency warnings.
 
 Round 2 requires full-width Settings cards inside 16pt body gutters,
-neutral copy controls, and a protected floating settings area on every page.
+neutral copy controls, and a 24pt bottom gutter on every page.
 
 Round 2 verification: Debug and build-for-testing pass with shared fixes B
 and I. Tests were compiled, not executed. Signed screenshot review remains.
@@ -209,13 +208,13 @@ remain with the orchestrator.
 
 | Status | Request | Evidence | Remaining work |
 |---|---|---|---|
-| Verify | Size the applet Settings page to its cards within 250 to 460pt. | Round 6 shows a blank tail because Settings always requested the maximum height. Round 17 uses measured card height plus the shared 40pt titlebar, 16pt top gap, and 52pt gear reserve. The 296pt content fixture gives 404pt; the two-card source budget gives 380pt. A height regression covers short content and the upper cap. | Adopt the new OnePlusUI tag and rerun CompactAppletRedesignTests. Recapture both appearances. Check the permission notice, scrolling at the cap, gear edge inset, and Settings-to-History return in the signed build. |
+| Verify | Size the applet Settings page to its cards within 250 to 460pt. | Round 6 shows a blank tail because Settings always requested the maximum height. Height is the measured card height plus the shared 40pt titlebar, 16pt top gap, and 24pt bottom gutter. The 296pt content fixture gives 376pt; the two-card source budget gives 352pt. A height regression covers short content and the upper cap. | Check the permission notice, scrolling at the cap, and Settings-to-History return through the titlebar gear in the signed build. |
 | Verify | Fill the shortcut control column and use the control text role. | Signed `8cf8c02` round 4 captures confirm the full Settings gutters, complete minimum Projects row, Clear all copy, and aligned History rows. The shared recorder still paints a 116pt bezel inside the 160pt column and uses mono type. | Foundation must expose a fill-width recorder with control text and controlInk. Adopt it in the shared settings card and verify idle, recording, disabled, and cancel states. |
 | Verify | Pair the short embedded settings cards and use sentence case for clearing. | Round 3 review reuses the Global shortcut and Saved colors cards in equal columns when both fit; the applet keeps full-width stacked cards. The action and confirmation use `Clear all`. | Verify both hosts and clear confirmation in the signed build. |
 | Verify | Show complete project rows and use native list anatomy for history. | `projectsHeight` includes each project row and the 60pt project editor before the 460pt cap. History uses one card with stable row ids and `lineSoft` separators. | Verify the minimum and maximum window heights in the signed build. |
 | Verify | Keep Color Picker controls fixed and scroll only the rows. | History scrolls below fixed tabs, search, and format controls. Projects scrolls only its rows below the fixed card header and new-project field. Row presentation is cached by the current history request. | Verify smooth scrolling and page switches within 100ms in the signed build. |
 | Verify | Embed one cards-only settings view without nested scrolling or gutters. | `ColorPickerSettingsView()` owns only its shortcut and saved-colors cards. The applet supplies OnePlusPage with 16pt gutters. Permission and clear-history paths remain in the shared cards. Debug and build-for-testing pass. | Verify embedded and applet Settings in the signed build. |
-| Verify | Keep the floating settings button clear of History, Projects, and Settings. | Round 2 applies the shared 52pt body inset before the gear overlay and removes the old inner 44pt padding. The gear keeps its 8pt edge inset and Command-comma action. | Verify all three pages and their scroll limits in the next signed capture. |
+| Verify | Put the settings gear in the titlebar left of Pick Color and keep the last card off the window bottom. | `OnePlusAppletSettingsButton` (OnePlusUI 1.0.3) toggles History and Settings, keeps Command-comma, and shows a selected fill on Settings. No gear reserve remains. History and Projects pad 24pt below their content; Settings scroll content ends 24pt above the bottom. A render test writes both appearances to `tmp/redesign/captures/applet-color-*.png`. | Verify all three pages, the gear selected state, and scroll limits in the signed build. |
 | Verify | Keep Settings cards full width inside equal 16pt gutters. | Round 2 explicitly expands the settings stack before the body insets. Shared fix B removes the scroller gutter. Both compile checks pass. | Inspect both appearances in the next signed capture. |
 | Verify | Use the 420pt applet with 250 to 460pt height, three native lights, persistent Pick Color, 16pt gutters, underline tabs, equal-height search and format controls, history actions, project export, and replacing Settings. | Debug build passes. DESIGN.md v14 supersedes the older material, gutters, and two-light rules below. Routes are `history`, `projects`, and `settings`. | Review both appearances, copying, projects, and export in the orchestrator's installed build. |
 

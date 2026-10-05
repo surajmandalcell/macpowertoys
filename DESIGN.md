@@ -526,9 +526,10 @@ apps felt like a Tailwind web app, not a Mac app.
   clearance are padding inside the scroll content, so the last row still
   ends 24 pt above the edge when scrolled to the end, while rows above it
   scroll under the edge.
-- Floating controls (the applet settings gear) overlay the content and
-  never take a row of their own. Content scrolls under them and reserves
-  only end padding so the last item clears the control.
+- No control floats over scrolling content. A compact applet keeps its
+  settings gear in the titlebar. Content in a scrolling applet page ends
+  24 pt above the window bottom when scrolled to the end, and a card that
+  holds scrolling rows ends 24 pt above the window bottom.
 
 ## Native behavior contract
 
@@ -663,9 +664,13 @@ tokens, fixed sizes, and components.
   traffic lights (close, minimize, disabled zoom) centered on `C = 22`, the
   text title at 12.5 semibold 14 pt after the zoom button, and persistent page
   actions trailing 16 pt from the edge.
+- The settings gear is `OnePlusAppletSettingsButton`: a ghost 24 pt icon
+  button (`gearshape`, help "Settings", accessibility label) in the titlebar
+  action row, directly left of the primary action. It toggles Home and
+  Settings, shows the selected fill while Settings is open, and answers
+  Command-comma. Settings replaces the body. No button floats over content.
 - Body gutter 16 pt. Sections use `OnePlusCard` and `OnePlusSettingRow`.
-- The floating 24 pt round settings button 8 pt from the bottom-right corner
-  stays. It toggles Home and Settings. Settings replaces the body.
+  Bottom gutter 24 pt, as padding inside scroll content.
 
 ## Surface recipes
 

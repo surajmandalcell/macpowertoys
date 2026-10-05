@@ -20,7 +20,7 @@ enum ColorPickerLayout {
         let range = OnePlusWindowCanvas.colorPicker.heightRange!
         return min(range.upperBound, max(range.lowerBound, contentHeight
             + OnePlusMetrics.appletTitlebar + OnePlusMetrics.contentGap
-            + OnePlusMetrics.floatingSettingsInset))
+            + OnePlusMetrics.gutter))
     }
 
     static func projectsHeight(projectCount: Int, isCreating: Bool) -> CGFloat {
@@ -89,8 +89,8 @@ nonisolated func colorPickerPresentation(
 
 struct ColorHistoryView: View {
     @Environment(\.undoManager) private var undoManager
-    @State private var service = ColorPickerService.shared
-    @State private var page = ColorPickerPage.history
+    @State private var service: ColorPickerService
+    @State private var page: ColorPickerPage
     @State private var search = ""
     @State private var focusSearch = 0
     @State private var settingsContentHeight = ColorPickerLayout.settingsContentHeight
@@ -99,6 +99,11 @@ struct ColorHistoryView: View {
     @State private var sampleRows: [ColorSamplePresentation] = []
     @State private var projectCounts: [UUID: Int] = [:]
     @State private var unfiledCount = 0
+
+    init(service: ColorPickerService = .shared, page: ColorPickerPage = .history) {
+        _service = State(initialValue: service)
+        _page = State(initialValue: page)
+    }
 
     private var historyRequest: ColorPickerHistoryRequest {
         ColorPickerHistoryRequest(
@@ -128,6 +133,12 @@ struct ColorHistoryView: View {
         OnePlusWindowRoot(canvas: .colorPicker, sidebar: { EmptyView() }) {
             VStack(spacing: 0) {
                 OnePlusAppletTitlebar(title: "Color Picker") {
+                    OnePlusAppletSettingsButton(isActive: page == .settings,
+                                                help: page == .settings ? "Back to History" : "Settings") {
+                        page = page == .settings ? .history : .settings
+                    }
+                    .keyboardShortcut(",")
+                    .accessibilityIdentifier("color-picker.settings")
                     Button("Pick Color") { service.pick() }
                         .buttonStyle(OnePlusButtonStyle(.primary, size: .small))
                         .disabled(service.isPicking)
@@ -149,15 +160,6 @@ struct ColorHistoryView: View {
                     }
                 }
                 .frame(maxHeight: .infinity, alignment: .top)
-                .onePlusFloatingSettingsInset()
-                .overlay(alignment: .bottomTrailing) {
-                    OnePlusFloatingSettingsButton(isActive: page == .settings, help: page == .settings ? "Back to History" : "Settings") {
-                        page = page == .settings ? .history : .settings
-                    }
-                    .keyboardShortcut(",")
-                    .accessibilityIdentifier("color-picker.settings")
-                    .padding(OnePlusMetrics.actionSpacing)
-                }
             }
         }
         .frame(height: windowHeight)
@@ -244,7 +246,9 @@ struct ColorHistoryView: View {
                 .frame(maxHeight: .infinity)
                 .padding(.horizontal, OnePlusMetrics.appletGutter)
             }
-        }.padding(.top, OnePlusMetrics.contentGap)
+        }
+        .padding(.top, OnePlusMetrics.contentGap)
+        .padding(.bottom, OnePlusMetrics.gutter)
     }
 
     private var projects: some View {
@@ -264,12 +268,12 @@ struct ColorHistoryView: View {
                 }
             }
             .onePlusScrollIndicators()
-            .frame(maxHeight: CGFloat(service.projects.count + 1) * OnePlusMetrics.settingRow
-                + OnePlusMetrics.floatingSettingsInset)
+            .frame(maxHeight: CGFloat(service.projects.count + 1) * OnePlusMetrics.settingRow)
         }
         .frame(maxHeight: .infinity, alignment: .top)
         .padding(.horizontal, OnePlusMetrics.appletGutter)
         .padding(.top, OnePlusMetrics.contentGap)
+        .padding(.bottom, OnePlusMetrics.gutter)
     }
 
     private var newProjectField: some View {
@@ -387,7 +391,7 @@ struct ColorPickerSettingsView: View {
     }
 }
 
-private enum ColorPickerPage: String { case history, projects, settings }
+enum ColorPickerPage: String { case history, projects, settings }
 
 private struct ColorSampleRow: View {
     let row: ColorSamplePresentation
