@@ -24,22 +24,20 @@ struct ToolSidebarView: View {
                     ForEach(groups) { group in
                         VStack(spacing: 0) { ForEach(group.tools, id: \.id) { toolRow($0) } }
                     }
+                    VStack(spacing: 0) {
+                        MainSidebarRow(title: "Settings", selected: selectedTool == "settings") {
+                            MainSymbolTile(systemImage: "gearshape")
+                        } action: { selectedTool = "settings" }
+                        MainSidebarRow(title: "Exit") {
+                            MainSymbolTile(systemImage: "power")
+                        } action: { NSApp.terminate(nil) }
+                    }
                 }
                 .padding(.horizontal, OnePlusMetrics.navContainerInset)
+                .padding(.bottom, MainPaneMetrics.sidebarGroupGap)
                 .frame(maxWidth: .infinity, alignment: .leading)
             }
             .onePlusScrollIndicators(axes: .vertical)
-            VStack(spacing: 0) {
-                MainSidebarRow(title: "Settings", selected: selectedTool == "settings") {
-                    MainSymbolTile(systemImage: "gearshape")
-                } action: { selectedTool = "settings" }
-                MainSidebarRow(title: "Exit") {
-                    MainSymbolTile(systemImage: "power")
-                } action: { NSApp.terminate(nil) }
-            }
-            .padding(.horizontal, OnePlusMetrics.navContainerInset)
-            .padding(.vertical, MainPaneMetrics.sectionGap)
-            .overlay(alignment: .top) { OnePlusColor.lineSoft.frame(height: 1) }
         }
         .accessibilityElement(children: .contain)
         .onChange(of: searchText, initial: true) { _, _ in refreshVisibleTools() }

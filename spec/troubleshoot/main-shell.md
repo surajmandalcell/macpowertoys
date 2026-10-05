@@ -1,5 +1,21 @@
 # Main Shell Troubleshooting
 
+## Sidebar Last Row Hidden Behind Fixed Settings Group, 2026-10-05
+
+- **Symptom:** In the installed 820 x 660 main window, the last tool row
+  (Mac Tweaks) is half hidden behind the Settings and Exit group.
+- **Cause:** `ToolSidebarView` drew Settings and Exit as a fixed group under
+  the scroll view. The tool list scrolled under that group and had no end
+  padding to clear it.
+- **Invariant:** Settings and Exit are the last group inside the same
+  scrolling list, after the normal 12 pt group gap. No fixed bottom group
+  and no divider exist. The scroll content has 12 pt of bottom padding.
+  Both rows stay visible while searching. Command shortcuts and keyboard
+  order are unchanged.
+- **Check:** On the installed build, capture the main window at rest and
+  scrolled to the end. Every row must be fully visible and the last row must
+  end above the window edge.
+
 ## Real Scene Close and Blank Reopen, Run 80, 2026-10-02
 
 - **Evidence:** The owner closed Main with the red button on signed
@@ -779,7 +795,7 @@ appearances in the signed build. Report: `tmp/redesign/logs/w1-panel-main.md`.
   `SettingsRegistry`, `ToolSettingsPreferenceObserver`, and `changed`
   callbacks instead of living in the tools that own the settings.
 - **Invariant:** The owner removed the main Modified page and all of its
-  logic. The main sidebar bottom has only Settings and Exit. Per-tool reset
+  logic. The main sidebar ends with only Settings and Exit. Per-tool reset
   stays inside the tool, such as the Mac Tweaks Modified destination. Do
   not reintroduce a cross-tool preference registry or a launcher revision
   counter.

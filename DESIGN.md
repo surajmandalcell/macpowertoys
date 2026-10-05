@@ -693,8 +693,11 @@ translucency and no window texture. Apple colors are not copied.
   `muted`. Selection is a `selection` fill with an 8 pt radius. Groups have
   no captions and are 12 pt apart: `All tools` (app icon), then one group
   per tool category in category order (registry order inside), then
-  `Settings` and `Exit` fixed at the bottom on neutral icon tiles. There is
-  no main-level Modified page; each tool owns its own reset.
+  `Settings` and `Exit` on neutral icon tiles as the last group of the same
+  scrolling list, like macOS System Settings. There is no fixed bottom group
+  and no divider above it. The scroll content ends with 12 pt of padding, so
+  the last row clears the window edge when scrolled to the end. There is no
+  main-level Modified page; each tool owns its own reset.
 - Command-1 selects All tools. Command-2 to Command-9 follow the sidebar
   order. Command-[ and Command-] go back and forward.
 - Pane toolbar: a 54 pt row that drags the window. Back and forward
