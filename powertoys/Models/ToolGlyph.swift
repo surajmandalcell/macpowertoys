@@ -28,7 +28,7 @@ nonisolated enum ToolGlyph: String, CaseIterable {
         case .taskManager: "waveform.path.ecg.rectangle"
         case .netToys: "NetToysGlyph"
         case .portman: "PortmanStatusGlyph"
-        case .macTweaks: "slider.vertical.3"
+        case .macTweaks: "MacTweaksGlyph"
         }
     }
 
@@ -49,7 +49,7 @@ nonisolated enum ToolGlyph: String, CaseIterable {
         return Image(nsImage: image).renderingMode(.template)
     }
 
-    var isAsset: Bool { [.portman, .systemCare, .netToys, .logs].contains(self) }
+    var isAsset: Bool { [.portman, .systemCare, .netToys, .logs, .macTweaks].contains(self) }
 
     @MainActor var image: Image { assetImage ?? Image(systemName: symbol) }
 
