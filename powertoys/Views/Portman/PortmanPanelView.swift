@@ -1841,6 +1841,7 @@ final class PortmanMenuController: NSObject {
         let ceiling = (button.window?.screen?.visibleFrame.height ?? 800) * OnePlusMenuMetrics.heightFraction
         let content = AnyView(PortmanPanelView(initialPage: initialPage).utilityMotionPolicy()
             .environment(\.onePlusMenuMaximumHeight, ceiling))
+        MenuPanelRelease.shared.cancel("portman")
         let hosting: NSHostingController<AnyView>
         if let existing = cachedHosting {
             hosting = existing
@@ -1875,6 +1876,10 @@ final class PortmanMenuController: NSObject {
     private func panelDidClose() {
         OnePlusPanelTimings.shared.cancel(panel: "portman")
         popover.contentViewController = nil
+        MenuPanelRelease.shared.schedule("portman") { [weak self] in
+            guard let self, !self.popover.isShown else { return }
+            self.cachedHosting = nil
+        }
     }
 
     func setHeight(_ height: CGFloat) {

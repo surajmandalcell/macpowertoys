@@ -179,30 +179,13 @@ enum SystemMonitorRemoteTerminal {
     }
 }
 
-private struct SystemMonitorRemoteWindowOwner: NSViewRepresentable {
-    let profileID: String
-    func makeNSView(context: Context) -> OwnerView { OwnerView(profileID: profileID) }
-    func updateNSView(_ view: OwnerView, context: Context) {
-        view.profileID = profileID
-        if let window = view.window { SystemMonitorRemoteSessions.shared.register(profileID, window: window) }
-    }
-    final class OwnerView: NSView {
-        var profileID: String
-        init(profileID: String) { self.profileID = profileID; super.init(frame: .zero) }
-        required init?(coder: NSCoder) { return nil }
-        override func viewDidMoveToWindow() {
-            super.viewDidMoveToWindow()
-            if let window { SystemMonitorRemoteSessions.shared.register(profileID, window: window) }
-        }
-    }
-}
-
 struct TaskManagerRemoteCard: View {
     let profile: SystemMonitorRemoteProfile
     private let fallbackReading: SystemMonitorRemoteReading?
     private let fallbackState: String
     private let fallbackHistory: [SystemMonitorRemoteReading]
     @ObservedObject private var sessions = SystemMonitorRemoteSessions.shared
+    @State private var owner = UUID().uuidString
     private var reading: SystemMonitorRemoteReading? {
         if let state = sessions.states[profile.id] { return state.reading }
         return fallbackReading
@@ -251,7 +234,10 @@ struct TaskManagerRemoteCard: View {
                     .padding(.vertical, OnePlusMetrics.actionSpacing)
             }
         }
-        .background(SystemMonitorRemoteWindowOwner(profileID: profile.id).frame(width: 0, height: 0))
+        // The card owns its host's polling only while its page shows it, not for the window's lifetime.
+        .onAppear { sessions.setVisible([profile.id], owner: owner) }
+        .onChange(of: profile.id) { _, id in sessions.setVisible([id], owner: owner) }
+        .onDisappear { sessions.setVisible([], owner: owner) }
     }
 
     private var header: some View {

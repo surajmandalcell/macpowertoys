@@ -621,6 +621,11 @@ nonisolated struct SystemMonitorSample: Identifiable, Sendable {
 }
 
 nonisolated enum SystemMonitorDelta {
+    /// Mach tick counters are unsigned 32-bit values exposed as `integer_t`; a wrap makes the next delta nil.
+    static func tickCounter(_ value: integer_t) -> UInt64 {
+        UInt64(UInt32(bitPattern: value))
+    }
+
     static func cpuUsage(previous: (total: UInt64, idle: UInt64), current: (total: UInt64, idle: UInt64)) -> Double? {
         guard current.total >= previous.total, current.idle >= previous.idle else { return nil }
         let total = current.total - previous.total
@@ -652,6 +657,15 @@ nonisolated enum SystemMonitorMenuSchedule {
                 .map { $0.effectiveInterval(global: settings.interval) }
             : []
         return intervals.min()
+    }
+    /// Status items hidden with the menu bar (full-screen app in front) sample nothing.
+    static func samplingSettings(_ settings: SystemMonitorMenuSettings, hiddenKeys: Set<String>) -> SystemMonitorMenuSettings {
+        var result = settings
+        for index in result.items.indices {
+            let key = result.items[index].placement == .combined ? "group" : result.items[index].metric.rawValue
+            if hiddenKeys.contains(key) { result.items[index].enabled = false }
+        }
+        return result
     }
     static func dueMetrics(
         settings: SystemMonitorMenuSettings,
@@ -1105,10 +1119,10 @@ nonisolated private final class SystemMonitorSampler: @unchecked Sendable {
         return (0..<Int(cpuCount)).map { index in
             let offset = index * stride
             return CPUCounters(
-                user: UInt64(cpuInfo[offset + Int(CPU_STATE_USER)]),
-                system: UInt64(cpuInfo[offset + Int(CPU_STATE_SYSTEM)]),
-                idle: UInt64(cpuInfo[offset + Int(CPU_STATE_IDLE)]),
-                nice: UInt64(cpuInfo[offset + Int(CPU_STATE_NICE)])
+                user: SystemMonitorDelta.tickCounter(cpuInfo[offset + Int(CPU_STATE_USER)]),
+                system: SystemMonitorDelta.tickCounter(cpuInfo[offset + Int(CPU_STATE_SYSTEM)]),
+                idle: SystemMonitorDelta.tickCounter(cpuInfo[offset + Int(CPU_STATE_IDLE)]),
+                nice: SystemMonitorDelta.tickCounter(cpuInfo[offset + Int(CPU_STATE_NICE)])
             )
         }
     }
@@ -1428,6 +1442,7 @@ final class SystemMonitorService {
             }
         }
         Self.current = self
+        menuController.onVisibilityChange = { [weak self] in self?.reconfigure() }
     }
 
     var timerOwnerCount: Int { timer == nil ? 0 : 1 }
@@ -1506,6 +1521,7 @@ final class SystemMonitorService {
         settings.enabled = menuActive
         menuController.configure(settings: settings)
         updateFreshness()
+        settings = SystemMonitorMenuSchedule.samplingSettings(settings, hiddenKeys: menuController.hiddenKeys)
         guard toolEnabled,
               SystemMonitorMenuSchedule.timerInterval(
                 settings: settings,
@@ -1533,7 +1549,7 @@ final class SystemMonitorService {
         samplingQueue.async { [sampler] in sampler.reset() }
         let source = DispatchSource.makeTimerSource(queue: samplingQueue)
         source.schedule(deadline: .now())
-        source.setEventHandler { @Sendable [weak self, sampler, settings] in
+        source.setEventHandler { @Sendable [weak self, sampler, settings] in autoreleasepool {
             let now = Date()
             let due = dueTracker.dueMetrics(
                 settings: settings,
@@ -1558,7 +1574,7 @@ final class SystemMonitorService {
                     leeway: .milliseconds(min(Int(interval * 150), 150))
                 )
             }
-        }
+        } }
         timer = source
         source.resume()
     }
@@ -1663,9 +1679,42 @@ final class SystemMonitorMenuController: NSObject {
     private var lastDirectOrder: [SystemMonitorMenuMetric]?
     private let defaults: UserDefaults
     private(set) var renderedWriteCount = 0
+    private(set) var hiddenKeys = Set<String>()
+    var onVisibilityChange: (() -> Void)?
+    private var visibilityTask: Task<Void, Never>?
 
     init(defaults: UserDefaults) {
         self.defaults = defaults
+        super.init()
+        popover.onClose = { [weak self] in self?.panelDidClose() }
+        NotificationCenter.default.addObserver(self, selector: #selector(windowOcclusionChanged(_:)),
+                                               name: NSWindow.didChangeOcclusionStateNotification, object: nil)
+    }
+
+    @objc private func windowOcclusionChanged(_ notification: Notification) {
+        guard let window = notification.object as? NSWindow,
+              let key = statusItems.first(where: { $0.value.button?.window === window })?.key else { return }
+        let hidden = !window.occlusionState.contains(.visible)
+        guard hiddenKeys.contains(key) != hidden else { return }
+        if hidden { hiddenKeys.insert(key) } else {
+            hiddenKeys.remove(key)
+            update(sample: nil, dueMetrics: [])
+        }
+        // Deferred and coalesced: occlusion can post while configure() is still creating items.
+        visibilityTask?.cancel()
+        visibilityTask = Task { [weak self] in
+            guard !Task.isCancelled else { return }
+            self?.onVisibilityChange?()
+        }
+    }
+
+    private func panelDidClose() {
+        TaskManagerMenuProcessModel.shared.scheduleRelease()
+        MenuPanelRelease.shared.schedule("system-monitor") { [weak self] in
+            guard let self, !self.popover.isShown, self.presentationTask == nil else { return }
+            self.popover.contentViewController = nil
+            self.presentedProfiles = nil
+        }
     }
 
     var statusItemCount: Int { statusItems.count }
@@ -1711,6 +1760,7 @@ final class SystemMonitorMenuController: NSObject {
             popover.performClose(nil)
         }
         for key in obsoleteKeys {
+            hiddenKeys.remove(key)
             if let item = statusItems.removeValue(forKey: key) {
                 NSStatusBar.system.removeStatusItem(item)
             }
@@ -1748,7 +1798,7 @@ final class SystemMonitorMenuController: NSObject {
                 latestValues[item.metric] = value
             }
         }
-        if !settings.combinedItems.isEmpty {
+        if !settings.combinedItems.isEmpty, !hiddenKeys.contains("group") {
             let state = settings.combinedItems.map(renderedItem)
             if renderedStateCache.shouldApply(state, for: "group"),
                let button = statusItems["group"]?.button {
@@ -1762,7 +1812,7 @@ final class SystemMonitorMenuController: NSObject {
         for item in settings.separateItems {
             let state = [renderedItem(item)]
             let key = item.metric.rawValue
-            guard renderedStateCache.shouldApply(state, for: key),
+            guard !hiddenKeys.contains(key), renderedStateCache.shouldApply(state, for: key),
                   let button = statusItems[key]?.button else { continue }
             apply(state[0], to: button)
         }
@@ -1843,6 +1893,7 @@ final class SystemMonitorMenuController: NSObject {
            !defaults.bool(forKey: "systemMonitor.rememberTrayPage") {
             defaults.set(SystemMonitorTrayPage.home.rawValue, forKey: "systemMonitor.trayPage")
         }
+        MenuPanelRelease.shared.cancel("system-monitor")
         OnePlusPanelTimings.shared.beginOpenIfNeeded(panel: "system-monitor")
         let preparesProcesses = defaults.string(forKey: "systemMonitor.trayPage") == SystemMonitorTrayPage.processes.rawValue
         let defaults = defaults

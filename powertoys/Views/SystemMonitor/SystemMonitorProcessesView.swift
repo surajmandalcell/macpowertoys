@@ -144,12 +144,17 @@ nonisolated enum SystemMonitorProcessRows {
                 || $0.executablePath.localizedCaseInsensitiveContains(search)
                 || names[$0.parentPID]?.localizedCaseInsensitiveContains(search) == true
         }
-        let prepared = hierarchy
-            ? SystemMonitorProcessHierarchy.rows(filtered, by: column, descending: descending)
-            : SystemMonitorProcessSorting.sorted(filtered, by: column, descending: descending)
+        let prepared: [SystemMonitorProcessHierarchy.Row]
+        if hierarchy {
+            let rows = SystemMonitorProcessHierarchy.rows(filtered, by: column, descending: descending)
+            prepared = limit.map { Array(rows.prefix($0)) } ?? rows
+        } else {
+            let sorted = SystemMonitorProcessSorting.sorted(filtered, by: column, descending: descending)
+            prepared = (limit.map { Array(sorted.prefix($0)) } ?? sorted)
                 .map { SystemMonitorProcessHierarchy.Row(process: $0, depth: 0, parentName: names[$0.parentPID]) }
+        }
         return Result(
-            rows: limit.map { Array(prepared.prefix($0)) } ?? prepared,
+            rows: prepared,
             matchingCount: filtered.count
         )
     }
@@ -206,23 +211,34 @@ final class SystemMonitorProcessIcons {
     private(set) var images: [String: NSImage] = [:]
     private var loaded = Set<String>()
 
-    func load(for rows: [SystemMonitorProcessHierarchy.Row]) async {
-        await load(bundlePaths: Set(rows.compactMap(\.appBundlePath)))
+    /// With `live`, cached icons stay while any live process runs from their bundle, not only while shown.
+    func load(for rows: [SystemMonitorProcessHierarchy.Row], live: [SystemMonitorProcess]? = nil) async {
+        let paths = Set(rows.compactMap(\.appBundlePath))
+        let retained = live.map { processes in
+            paths.union(images.keys.filter { path in
+                let prefix = path + "/"
+                return processes.contains { $0.executablePath.hasPrefix(prefix) }
+            })
+        }
+        await load(bundlePaths: paths, retaining: retained)
     }
 
-    func load(bundlePaths paths: Set<String>) async {
-        for path in images.keys where !paths.contains(path) { images[path] = nil }
-        loaded.formIntersection(paths)
+    func load(bundlePaths paths: Set<String>, retaining retained: Set<String>? = nil) async {
+        let kept = retained ?? paths
+        for path in images.keys where !kept.contains(path) { images[path] = nil }
+        loaded.formIntersection(kept)
         let missing = paths.subtracting(loaded)
         guard !missing.isEmpty else { return }
         let worker = Task.detached(priority: .utility) {
             var images: [String: CGImage] = [:]
             for path in missing {
                 guard !Task.isCancelled else { break }
-                var isDirectory: ObjCBool = false
-                if FileManager.default.fileExists(atPath: path, isDirectory: &isDirectory), isDirectory.boolValue {
-                    images[path] = NSWorkspace.shared.icon(forFile: path)
-                        .cgImage(forProposedRect: nil, context: nil, hints: nil)
+                autoreleasepool {
+                    var isDirectory: ObjCBool = false
+                    if FileManager.default.fileExists(atPath: path, isDirectory: &isDirectory), isDirectory.boolValue {
+                        images[path] = NSWorkspace.shared.icon(forFile: path)
+                            .cgImage(forProposedRect: nil, context: nil, hints: nil)
+                    }
                 }
             }
             return images
@@ -332,7 +348,7 @@ struct SystemMonitorOverviewProcessesView: View {
             )
             guard !Task.isCancelled else { return }
             rows = result.rows
-            await processIcons.load(for: result.rows)
+            await processIcons.load(for: result.rows, live: processes)
             try? await Task.sleep(for: .seconds(3))
         }
     }
@@ -562,7 +578,7 @@ struct SystemMonitorProcessesView: View {
         updateTableRows(result.rows)
         selectedProcessIDs.formIntersection(result.rows.map(\.id))
         if request.generation > 0 { didLoad = true }
-        await processIcons.load(for: result.rows)
+        await processIcons.load(for: result.rows, live: processes)
         guard !Task.isCancelled, rowsRequest == request else { return }
         updateTableRows(result.rows)
     }

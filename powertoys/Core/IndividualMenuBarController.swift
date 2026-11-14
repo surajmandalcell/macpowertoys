@@ -216,6 +216,7 @@ final class IndividualMenuBarController: NSObject {
 
     func show(tool: IndividualMenuBarTool, diagnostic: Bool = false) {
         guard let button = statusItems[tool]?.button else { return }
+        MenuPanelRelease.shared.cancel(tool.id)
         if diagnostic {
             OnePlusPanelTimings.shared.begin(panel: tool.id, tab: tool.id, input: "diagnostics")
         } else { OnePlusPanelTimings.shared.beginOpenIfNeeded(panel: tool.id) }
@@ -239,6 +240,12 @@ final class IndividualMenuBarController: NSObject {
     private func makePopover(for tool: IndividualMenuBarTool, maximumHeight: CGFloat) -> OnePlusMenuPresenter {
         let popover = OnePlusMenuPresenter()
         popover.contentViewController = NSHostingController(rootView: content(for: tool, maximumHeight: maximumHeight, popover: popover))
+        popover.onClose = { [weak self, weak popover] in
+            MenuPanelRelease.shared.schedule(tool.id) { [weak self, weak popover] in
+                guard let self, let popover, !popover.isShown, self.popovers[tool] === popover else { return }
+                self.popovers[tool] = nil
+            }
+        }
         return popover
     }
 
