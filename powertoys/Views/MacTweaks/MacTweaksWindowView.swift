@@ -189,6 +189,7 @@ struct MacTweaksWindowView: View {
     @State private var awake = AwakeService.shared
     @State private var opensAtLogin = false
     @State private var audioRevive = AudioReviveService()
+    @State private var isWindowVisible = false
 
     private var trimmedSearch: String { search.trimmingCharacters(in: .whitespacesAndNewlines) }
     private var isSearching: Bool { !trimmedSearch.isEmpty }
@@ -218,6 +219,8 @@ struct MacTweaksWindowView: View {
             }
         }
         .background(WindowAccessor(identifier: "mac-tweaks"))
+        .background(MacTweaksVisibilityBinding(isVisible: $isWindowVisible))
+        .onePlusLiveUpdates()
         .buttonStyle(OnePlusButtonStyle())
         .task {
             await Task.yield()
@@ -233,12 +236,12 @@ struct MacTweaksWindowView: View {
         .onReceive(NotificationCenter.default.publisher(for: NSApplication.didBecomeActiveNotification)) { _ in
             opensAtLogin = SMAppService.mainApp.status == .enabled
             preferenceRevision &+= 1
-            if selectedPage == "input" { meter.refreshPermission() }
+            if selectedPage == "input" && isWindowVisible { meter.refreshPermission() }
         }
         .task(id: inputMonitoringID) {
             await Task.yield()
             syncInputMonitoring()
-            guard selectedPage == "input", !isSearching else { return }
+            guard selectedPage == "input", !isSearching, isWindowVisible else { return }
             while !Task.isCancelled {
                 micLock.refreshControls()
                 do { try await Task.sleep(for: .milliseconds(500)) } catch { return }
@@ -837,7 +840,7 @@ struct MacTweaksWindowView: View {
     }
 
     private var inputMonitoringID: String {
-        "\(selectedPage)|\(isSearching)|\(micLock.currentUID ?? "")"
+        "\(selectedPage)|\(isSearching)|\(isWindowVisible)|\(micLock.currentUID ?? "")"
     }
 
     private func microphoneMenu(index: Int) -> some View {
@@ -950,7 +953,7 @@ struct MacTweaksWindowView: View {
 
     private func syncInputMonitoring() {
         meter.stop()
-        guard selectedPage == "input", !isSearching else { return }
+        guard selectedPage == "input", !isSearching, isWindowVisible else { return }
         meter.refreshPermission()
         if meter.permission == .authorized { meter.start() }
     }
@@ -987,6 +990,17 @@ struct MacTweaksWindowView: View {
         NSPasteboard.general.clearContents()
         NSPasteboard.general.setString("Mac Tweaks \(appVersion)\nmacOS \(ProcessInfo.processInfo.operatingSystemVersionString)", forType: .string)
         showNotice(.init(message: "App details copied."))
+    }
+}
+
+private struct MacTweaksVisibilityBinding: View {
+    @Environment(\.onePlusIsVisible) private var sharedVisibility
+    @Binding var isVisible: Bool
+
+    var body: some View {
+        Color.clear
+            .onAppear { isVisible = sharedVisibility }
+            .onChange(of: sharedVisibility) { _, visible in isVisible = visible }
     }
 }
 
