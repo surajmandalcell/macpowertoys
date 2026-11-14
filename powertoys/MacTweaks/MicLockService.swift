@@ -15,6 +15,20 @@ struct SavedMicInput: Codable, Equatable {
     let name: String
 }
 
+nonisolated private enum MicLockEnforcement: Sendable {
+    case noTarget, alreadySelected, recentlyWritten
+    case wrote(uid: String, date: Date)
+    case failed(name: String)
+}
+
+nonisolated private struct MicLockSnapshot: Sendable {
+    var devices: [MicInputDevice] = []
+    var currentUID: String?
+    var volume: Float?
+    var muted: Bool?
+    var enforcement: MicLockEnforcement?
+}
+
 @Observable
 @MainActor
 final class MicLockService {
@@ -23,10 +37,13 @@ final class MicLockService {
     private static let enabledKey = "macTweaks.micLock.enabled"
     private static let savedKey = "macTweaks.micLock.savedInputs"
     private let systemID = AudioObjectID(kAudioObjectSystemObject)
-    private let listenerQueue = DispatchQueue.main
+    nonisolated static let reenforceInterval: TimeInterval = 2
+    private let listenerQueue = DispatchQueue(label: "com.surajmandal.macpowertoys.mic-lock")
     private var systemListener: AudioObjectPropertyListenerBlock?
     private var wakeObserver: NSObjectProtocol?
     private var refreshTask: Task<Void, Never>?
+    private var controlsTask: Task<Void, Never>?
+    @ObservationIgnored private var lastEnforcedWrite: (uid: String, date: Date)?
     private var windowIsOpen = false
 
     private(set) var devices: [MicInputDevice] = []
@@ -47,7 +64,7 @@ final class MicLockService {
     func startIfNeeded() {
         guard SettingsManager.shared.isToolEnabled("mac-tweaks"), isEnabled || windowIsOpen else { return }
         if systemListener == nil {
-            let listener: AudioObjectPropertyListenerBlock = { [weak self] _, _ in
+            let listener: AudioObjectPropertyListenerBlock = { @Sendable [weak self] _, _ in
                 Task { @MainActor [weak self] in self?.scheduleRefresh() }
             }
             systemListener = listener
@@ -79,6 +96,8 @@ final class MicLockService {
     func stop() {
         refreshTask?.cancel()
         refreshTask = nil
+        controlsTask?.cancel()
+        controlsTask = nil
         if let listener = systemListener {
             for selector in [kAudioHardwarePropertyDevices, kAudioHardwarePropertyDefaultInputDevice] {
                 var address = Self.address(selector)
@@ -108,46 +127,53 @@ final class MicLockService {
 
     func refresh(onComplete: ((Int) -> Void)? = nil) {
         refreshTask?.cancel()
+        controlsTask?.cancel()
+        let enforce = isEnabled && SettingsManager.shared.isToolEnabled("mac-tweaks")
+        let savedUIDs = savedInputs.compactMap(\.?.uid)
+        let lastWrite = lastEnforcedWrite
         refreshTask = Task { [weak self] in
             let snapshot = await Task.detached(priority: .utility) {
-                let devices = Self.availableInputs()
-                let activeID = Self.read(
-                    AudioObjectID(kAudioObjectSystemObject),
-                    selector: kAudioHardwarePropertyDefaultInputDevice
-                ) as AudioDeviceID?
-                return (devices, activeID)
+                Self.loadSnapshot(enforce: enforce, savedUIDs: savedUIDs, lastWrite: lastWrite)
             }.value
-            guard let self, !Task.isCancelled else { return }
-            devices = snapshot.0
-            currentUID = devices.first(where: { $0.audioID == snapshot.1 })?.id
-            if isEnabled && SettingsManager.shared.isToolEnabled("mac-tweaks") {
-                enforceSelection()
+            guard let self else { return }
+            // Record the write even when cancelled: its own listener echo cancels this task.
+            if case .wrote(let uid, let date)? = snapshot.enforcement { lastEnforcedWrite = (uid, date) }
+            guard !Task.isCancelled else { return }
+            devices = snapshot.devices
+            currentUID = snapshot.currentUID
+            applyControls(volume: snapshot.volume, muted: snapshot.muted)
+            switch snapshot.enforcement {
+            case .noTarget?: message = "No safe microphone is available. Connect one or turn off Mic Lock."
+            case .alreadySelected?, .wrote?: message = nil
+            case .recentlyWritten?: message = "Another app keeps changing the microphone."
+            case .failed(let name)?: message = "Could not select \(name). Refresh devices and try again."
+            case nil: break
             }
-            refreshControls()
             onComplete?(devices.count)
         }
     }
 
     func refreshControls() {
-        guard let device = devices.first(where: { $0.id == currentUID }) else {
-            volume = nil
-            muted = nil
-            return
+        let deviceID = devices.first(where: { $0.id == currentUID })?.audioID
+        controlsTask?.cancel()
+        controlsTask = Task { [weak self] in
+            let controls = await Task.detached(priority: .utility) { Self.readControls(deviceID) }.value
+            guard let self, !Task.isCancelled else { return }
+            applyControls(volume: controls.volume, muted: controls.muted)
         }
-        let elements = [kAudioObjectPropertyElementMain, 1, 2]
-        volume = elements.lazy.compactMap {
-            Self.read(device.audioID, selector: kAudioDevicePropertyVolumeScalar, scope: kAudioObjectPropertyScopeInput, element: $0) as Float?
-        }.first
-        muted = elements.lazy.compactMap {
-            (Self.read(device.audioID, selector: kAudioDevicePropertyMute, scope: kAudioObjectPropertyScopeInput, element: $0) as UInt32?).map { $0 != 0 }
-        }.first
+    }
+
+    private func applyControls(volume: Float?, muted: Bool?) {
+        if self.volume != volume { self.volume = volume }
+        if self.muted != muted { self.muted = muted }
     }
 
     func setVolume(_ value: Float) {
         guard let device = devices.first(where: { $0.id == currentUID }) else { return }
         for element in [kAudioObjectPropertyElementMain, 1, 2] {
             if Self.write(device.audioID, selector: kAudioDevicePropertyVolumeScalar, scope: kAudioObjectPropertyScopeInput, element: element, value: value) {
-                refreshControls()
+                controlsTask?.cancel()
+                applyControls(volume: value, muted: muted)
                 return
             }
         }
@@ -158,7 +184,8 @@ final class MicLockService {
         guard let device = devices.first(where: { $0.id == currentUID }) else { return }
         for element in [kAudioObjectPropertyElementMain, 1, 2] {
             if Self.write(device.audioID, selector: kAudioDevicePropertyMute, scope: kAudioObjectPropertyScopeInput, element: element, value: UInt32(value ? 1 : 0)) {
-                refreshControls()
+                controlsTask?.cancel()
+                applyControls(volume: volume, muted: value)
                 return
             }
         }
@@ -174,22 +201,55 @@ final class MicLockService {
         }
     }
 
-    private func enforceSelection() {
-        let target = Self.resolvedInput(savedUIDs: savedInputs.compactMap(\.?.uid), devices: devices)
-        guard let target else {
-            message = "No safe microphone is available. Connect one or turn off Mic Lock."
-            return
+    nonisolated private static func loadSnapshot(
+        enforce: Bool, savedUIDs: [String], lastWrite: (uid: String, date: Date)?
+    ) -> MicLockSnapshot {
+        let systemID = AudioObjectID(kAudioObjectSystemObject)
+        var snapshot = MicLockSnapshot(devices: availableInputs())
+        let activeID = read(systemID, selector: kAudioHardwarePropertyDefaultInputDevice) as AudioDeviceID?
+        var current = snapshot.devices.first(where: { $0.audioID == activeID })
+        if enforce {
+            if let target = resolvedInput(savedUIDs: savedUIDs, devices: snapshot.devices) {
+                if current?.id == target.id {
+                    snapshot.enforcement = .alreadySelected
+                } else if isRecentWrite(of: target.id, lastWrite: lastWrite, now: Date()) {
+                    snapshot.enforcement = .recentlyWritten
+                } else if write(systemID, selector: kAudioHardwarePropertyDefaultInputDevice, value: target.audioID) {
+                    current = target
+                    snapshot.enforcement = .wrote(uid: target.id, date: Date())
+                } else {
+                    snapshot.enforcement = .failed(name: target.name)
+                }
+            } else {
+                snapshot.enforcement = .noTarget
+            }
         }
-        guard currentUID != target.id else { message = nil; return }
-        if Self.write(systemID, selector: kAudioHardwarePropertyDefaultInputDevice, value: target.audioID) {
-            currentUID = target.id
-            message = nil
-        } else {
-            message = "Could not select \(target.name). Refresh devices and try again."
-        }
+        snapshot.currentUID = current?.id
+        let controls = readControls(current?.audioID)
+        snapshot.volume = controls.volume
+        snapshot.muted = controls.muted
+        return snapshot
     }
 
-    static func resolvedInput(savedUIDs: [String], devices: [MicInputDevice]) -> MicInputDevice? {
+    /// True when Mic Lock wrote this target recently, so another writer is fighting it.
+    nonisolated static func isRecentWrite(of uid: String, lastWrite: (uid: String, date: Date)?, now: Date) -> Bool {
+        guard let lastWrite, lastWrite.uid == uid else { return false }
+        return now.timeIntervalSince(lastWrite.date) < reenforceInterval
+    }
+
+    nonisolated private static func readControls(_ deviceID: AudioDeviceID?) -> (volume: Float?, muted: Bool?) {
+        guard let deviceID else { return (nil, nil) }
+        let elements = [kAudioObjectPropertyElementMain, 1, 2]
+        let volume = elements.lazy.compactMap {
+            Self.read(deviceID, selector: kAudioDevicePropertyVolumeScalar, scope: kAudioObjectPropertyScopeInput, element: $0) as Float?
+        }.first
+        let muted = elements.lazy.compactMap {
+            (Self.read(deviceID, selector: kAudioDevicePropertyMute, scope: kAudioObjectPropertyScopeInput, element: $0) as UInt32?).map { $0 != 0 }
+        }.first
+        return (volume, muted)
+    }
+
+    nonisolated static func resolvedInput(savedUIDs: [String], devices: [MicInputDevice]) -> MicInputDevice? {
         for uid in savedUIDs {
             if let device = devices.first(where: { $0.id == uid }) { return device }
         }
@@ -262,7 +322,7 @@ final class MicLockService {
         return value?.takeRetainedValue() as String?
     }
 
-    private static func write<T>(
+    nonisolated private static func write<T>(
         _ id: AudioObjectID, selector: AudioObjectPropertySelector,
         scope: AudioObjectPropertyScope = kAudioObjectPropertyScopeGlobal,
         element: AudioObjectPropertyElement = kAudioObjectPropertyElementMain,
