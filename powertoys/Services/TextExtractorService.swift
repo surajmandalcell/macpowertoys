@@ -29,6 +29,7 @@ final class TextExtractorService {
     private let playCompletionCue: () -> Void
     private let screenCapturePermission: () -> ScreenCapturePermissionDecision
     private let openTextExtractor: () -> Void
+    private let selectionScreens: () -> [NSScreen]
     private var selector: TextRegionSelector?
     private var shareableContentTask: Task<SCShareableContent, Error>?
     private var recognitionWarmupTask: Task<Void, Never>?
@@ -41,11 +42,13 @@ final class TextExtractorService {
             NSSound(contentsOfFile: "/System/Library/Sounds/Tink.aiff", byReference: true)?.play()
         },
         screenCapturePermission: (() -> ScreenCapturePermissionDecision)? = nil,
-        openTextExtractor: (() -> Void)? = nil
+        openTextExtractor: (() -> Void)? = nil,
+        selectionScreens: @escaping () -> [NSScreen] = { NSScreen.screens }
     ) {
         self.defaults = defaults
         self.pasteboard = pasteboard
         self.playCompletionCue = playCompletionCue
+        self.selectionScreens = selectionScreens
         self.screenCapturePermission = screenCapturePermission ?? Self.requestScreenCapturePermission
         self.openTextExtractor = openTextExtractor ?? {
             ToolActionRouter.shared.execute(ToolActionRequest(action: .textExtractorOpen))
@@ -64,7 +67,12 @@ final class TextExtractorService {
     }
 
     func begin() {
-        guard state != .selecting, state != .recognizing else { return }
+        // A second hotkey press is the keyboard exit when the overlay could not take key focus for Escape.
+        if state == .selecting {
+            selector?.cancel()
+            return
+        }
+        guard state != .recognizing else { return }
         switch screenCapturePermission() {
         case .granted:
             break
@@ -79,10 +87,10 @@ final class TextExtractorService {
             return
         }
         state = .selecting
-        if shareableContentTask == nil { prepareShareableContent() }
+        if shareableContentTask == nil, CGPreflightScreenCaptureAccess() { prepareShareableContent() }
         let selector = TextRegionSelector()
         self.selector = selector
-        selector.begin { [weak self] selection, screen in
+        selector.begin(screens: selectionScreens()) { [weak self] selection, screen in
             guard let self else { return }
             self.selector = nil
             Task { await self.captureAndRecognize(selection: selection, screen: screen) }
@@ -104,7 +112,9 @@ final class TextExtractorService {
         if CGPreflightScreenCaptureAccess() { prepareShareableContent() }
     }
 
-    func reset() { state = .idle }
+    func reset() {
+        if let selector { selector.cancel() } else { state = .idle }
+    }
 
     func record(_ text: String, createdAt: Date = Date()) {
         let extraction = TextExtraction(text: text, createdAt: createdAt)
@@ -401,11 +411,18 @@ private final class TextRegionSelector {
     private var panels: [NSPanel] = []
     private var completion: ((CGRect, NSScreen) -> Void)?
     private var cancellation: (() -> Void)?
+    private var observers: [NSObjectProtocol] = []
 
-    func begin(completion: @escaping (CGRect, NSScreen) -> Void, cancellation: @escaping () -> Void) {
+    func begin(screens: [NSScreen], completion: @escaping (CGRect, NSScreen) -> Void, cancellation: @escaping () -> Void) {
         self.completion = completion
         self.cancellation = cancellation
-        panels = NSScreen.screens.map { screen in
+        // AppKit hides these panels on deactivation without ending the session, and a display change leaves stale frames.
+        observers = [NSApplication.didResignActiveNotification, NSApplication.didChangeScreenParametersNotification].map { name in
+            NotificationCenter.default.addObserver(forName: name, object: NSApp, queue: nil) { [weak self] _ in
+                MainActor.assumeIsolated { self?.cancel() }
+            }
+        }
+        panels = screens.map { screen in
             let panel = TextRegionSelectionPanel(contentRect: screen.frame, styleMask: [.borderless], backing: .buffered, defer: false)
             panel.level = .screenSaver
             panel.backgroundColor = .clear
@@ -422,8 +439,9 @@ private final class TextRegionSelector {
             panel.makeFirstResponder(panel.contentView)
             return panel
         }
+        guard !panels.isEmpty else { return }
         let pointer = NSEvent.mouseLocation
-        let activeIndex = NSScreen.screens.firstIndex { $0.frame.contains(pointer) } ?? 0
+        let activeIndex = screens.firstIndex { $0.frame.contains(pointer) } ?? 0
         if panels.indices.contains(activeIndex) { panels[activeIndex].makeKey() }
         NSApp.activate(ignoringOtherApps: true)
     }
@@ -435,7 +453,7 @@ private final class TextRegionSelector {
         cancellation = nil
     }
 
-    private func cancel() {
+    func cancel() {
         close()
         cancellation?()
         completion = nil
@@ -443,6 +461,8 @@ private final class TextRegionSelector {
     }
 
     private func close() {
+        for observer in observers { NotificationCenter.default.removeObserver(observer) }
+        observers.removeAll()
         panels.forEach { $0.close() }
         panels.removeAll()
     }
