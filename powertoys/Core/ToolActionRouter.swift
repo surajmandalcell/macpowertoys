@@ -321,8 +321,6 @@ extension OnePlusMenuPresenter {
             show(relativeTo: rect, of: view, preferredEdge: .minY, takesFocus: false)
         } else {
             // Diagnostic panels use the measured production host without its front-ordering show path.
-            // ponytail: skips private dismissal monitors; add a dependency background-show API
-            // if diagnostics need click dismissal.
             guard let owner = view.window, let screen = owner.screen else { return }
             appearance = NSApp.appearance
             let anchor = owner.convertToScreen(view.convert(rect, to: nil))
@@ -336,6 +334,8 @@ extension OnePlusMenuPresenter {
             window.contentView?.layoutSubtreeIfNeeded()
             window.displayIfNeeded()
             window.invalidateShadow()
+            // Arms click-away and Space-change dismissal without ordering front.
+            armDismissal(anchoredTo: view)
             window.orderFrontInBackground()
             NotificationCenter.default.post(name: Self.didShowNotification, object: self)
         }

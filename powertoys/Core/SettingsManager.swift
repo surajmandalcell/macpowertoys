@@ -137,7 +137,12 @@ final class SettingsManager {
     func reconcileNetToysLifecycle() async {
         guard !AppRuntime.isRunningTests else { return }
         let requested = isToolEnabled("nettoys")
-        let succeeded = await MacPowerToysNetToys.host.loginItems.setEnabled(requested)
+        let loginItems = MacPowerToysNetToys.host.loginItems
+        // A disabled tool with no request and no registered helper has nothing to reconcile.
+        if !requested {
+            guard await loginItems.hasBackgroundWork() else { return }
+        }
+        let succeeded = await loginItems.setEnabled(requested)
         if requested, !succeeded { persistToolEnabled(false, toolID: "nettoys") }
     }
 
