@@ -53,6 +53,52 @@ nonisolated struct FanSnapshot: Sendable {
     }
 }
 
+// Helper-side owner of Cool or Max: when that client's connection ends (crash, force quit,
+// SIGKILL), the helper returns the fans to macOS. It never writes a manual mode by itself.
+nonisolated final class FanManualLease: @unchecked Sendable {
+    private let lock = NSLock()
+    private let write: @Sendable (FanPreset) throws -> Void
+    private var owner: ObjectIdentifier?
+
+    init(write: @escaping @Sendable (FanPreset) throws -> Void = { try NativeFanReader.apply($0) }) {
+        self.write = write
+    }
+
+    func apply(_ preset: FanPreset, client: ObjectIdentifier) throws {
+        lock.lock()
+        defer { lock.unlock() }
+        do {
+            try write(preset)
+            owner = preset == .auto ? nil : client
+        } catch {
+            // A failed manual write already rolled back to Auto; a failed Auto keeps the owner for a later retry.
+            if preset != .auto { owner = nil }
+            throw error
+        }
+    }
+
+    func clientEnded(_ client: ObjectIdentifier) {
+        lock.lock()
+        defer { lock.unlock() }
+        guard owner == client else { return }
+        owner = nil
+        for attempt in 0..<3 {
+            if (try? write(.auto)) != nil { return }
+            if attempt < 2 { Thread.sleep(forTimeInterval: 0.5) }
+        }
+    }
+
+    func track(_ connection: NSXPCConnection) {
+        let client = ObjectIdentifier(connection)
+        let previousInvalidation = connection.invalidationHandler
+        connection.interruptionHandler = { @Sendable [weak self] in self?.clientEnded(client) }
+        connection.invalidationHandler = { @Sendable [weak self] in
+            self?.clientEnded(client)
+            previousInvalidation?()
+        }
+    }
+}
+
 // Adapted from smctl's MIT-licensed SMCCore at ca68174f8cdafc53778908c67d77117cb754e9ef.
 // SMC writes run only inside the signed, privileged MacPowerToys helper.
 nonisolated enum NativeFanReader {

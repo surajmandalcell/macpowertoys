@@ -22,24 +22,27 @@ final class NetToysNeighborDaemon: NSObject, NSXPCListenerDelegate, @unchecked S
         connection.exportedInterface = NSXPCInterface(with: MacPowerToysHelperXPCProtocol.self)
         connection.exportedObject = service
         idleExit.track(connection)
+        service.fanLease.track(connection)
         connection.resume()
         return true
     }
 }
 
 final class NetToysNeighborService: NSObject, MacPowerToysHelperXPCProtocol, @unchecked Sendable {
+    let fanLease = FanManualLease()
+
     func neighborSnapshot(reply: @escaping (Data?, String) -> Void) {
         let sourceCommit = Bundle.main.object(forInfoDictionaryKey: "MPTSourceCommit") as? String ?? ""
         reply(ARPTable.neighborCacheData(), sourceCommit)
     }
 
     func applyFanPreset(_ preset: String, reply: @escaping (String) -> Void) {
-        guard let mode = FanPreset(rawValue: preset) else {
+        guard let mode = FanPreset(rawValue: preset), let client = NSXPCConnection.current() else {
             reply("Unsupported fan preset.")
             return
         }
         do {
-            try NativeFanReader.apply(mode)
+            try fanLease.apply(mode, client: ObjectIdentifier(client))
             reply("")
         } catch {
             reply(error.localizedDescription)

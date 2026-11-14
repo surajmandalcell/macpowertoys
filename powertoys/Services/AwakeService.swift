@@ -228,7 +228,9 @@ final class AwakeService {
         UserDefaults.standard.set(try? JSONEncoder().encode(configuration), forKey: key)
     }
 
-    private func handle(_ action: ToolActionID, parameters: [String: String]) {
+    func handle(_ action: ToolActionID, parameters: [String: String], toolEnabled: Bool? = nil) {
+        // A disabled Kwake must never hold a power assertion, whatever URL or Raycast asks.
+        guard toolEnabled ?? SettingsManager.shared.isToolEnabled("awake") else { return }
         switch action {
         case .awakeToggle: toggle()
         case .awakeIndefinite: setMode(.indefinite)

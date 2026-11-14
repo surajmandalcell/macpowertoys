@@ -128,9 +128,20 @@ nonisolated enum FanCommand {
         proxy?.applyFanPreset(preset.rawValue) { reply.finish($0) }
         if proxy == nil { reply.finish("The built-in fan helper is unavailable.") }
         let message = reply.wait()
-        connection.invalidate()
+        // The helper restores Auto when the connection that set Cool or Max closes, so hold it while manual.
+        let previous = manualConnection
+        if message.isEmpty && preset != .auto {
+            manualConnection = connection
+        } else {
+            manualConnection = nil
+            connection.invalidate()
+        }
+        if previous !== manualConnection { previous?.invalidate() }
         if !message.isEmpty { throw FanError(message) }
     }
+
+    // Touched only on controlQueue.
+    nonisolated(unsafe) private static var manualConnection: NSXPCConnection?
 
     static func helperSourceCommit() -> String? {
         let reply = HelperReply()
@@ -315,6 +326,8 @@ final class FanControlService {
     private var isRestoringOnExit = false
     private var commandRevision = 0
     private var helperCommit: String?
+    private var helperCommitRetryDelay: Duration = .zero
+    private var helperCommitRetryAt: ContinuousClock.Instant?
     private var revision = 0
 
     private convenience init() {
@@ -348,6 +361,7 @@ final class FanControlService {
             catch { errorMessage = error.localizedDescription; return }
             helperCommit = nil
         }
+        helperCommitRetryAt = nil
         guard manager.enable(openSettings: false) else {
             errorMessage = needsApproval
                 ? "Allow MacPowerToys under Background App Activity in Login Items."
@@ -383,8 +397,13 @@ final class FanControlService {
         let readSnapshot = readSnapshot
         let result = await Task.detached(priority: .utility) { readSnapshot() }.value
         guard currentRevision == revision, !owners.isEmpty, !isRestoringOnExit else { return }
-        if result?.canControl != true, MacPowerToysNetToys.host.neighborService.isEnabled, helperCommit == nil {
+        if result?.canControl != true, MacPowerToysNetToys.host.neighborService.isEnabled, helperCommit == nil,
+           helperCommitRetryAt.map({ ContinuousClock.now >= $0 }) ?? true {
             helperCommit = await Task.detached(priority: .utility) { FanCommand.helperSourceCommit() }.value
+            // Back off from 10 s to 5 min while the helper commit cannot be read; Enable retries at once.
+            helperCommitRetryDelay = helperCommit == nil
+                ? min(max(helperCommitRetryDelay * 2, .seconds(10)), .seconds(300)) : .zero
+            helperCommitRetryAt = helperCommit == nil ? ContinuousClock.now.advanced(by: helperCommitRetryDelay) : nil
         }
         guard currentRevision == revision, !owners.isEmpty, !isRestoringOnExit else { return }
         hasCompletedRead = true
@@ -406,6 +425,10 @@ final class FanControlService {
         guard !isRestoringOnExit else { return }
         guard FanControlPresentation.canSelect(preset, canControl: canControl,
                                               canRestoreAutomatic: canRestoreAutomatic, isChanging: isChanging) else { return }
+        send(preset)
+    }
+
+    private func send(_ preset: FanPreset, done: CheckedContinuation<Bool, Never>? = nil) {
         isChanging = true
         hasPendingManualCommand = preset != .auto
         errorMessage = nil
@@ -413,7 +436,7 @@ final class FanControlService {
         let currentCommand = commandRevision
         applyPreset(preset) { [weak self] commandError in
             Task { @MainActor [weak self] in
-                guard let self, currentCommand == self.commandRevision else { return }
+                guard let self, currentCommand == self.commandRevision else { done?.resume(returning: false); return }
                 self.hasPendingManualCommand = false
                 if let commandError {
                     self.errorMessage = commandError
@@ -425,16 +448,28 @@ final class FanControlService {
                     if preset == .cool {
                         self.coolResetTask = Task { [weak self] in
                             try? await Task.sleep(for: .seconds(600))
-                            guard !Task.isCancelled else { return }
-                            self?.select(.auto)
+                            await self?.revertCoolToAutomatic()
                         }
                     }
                 }
+                done?.resume(returning: commandError == nil)
                 await self.refresh()
                 guard currentCommand == self.commandRevision else { return }
                 self.isChanging = false
             }
         }
+    }
+
+    // Skips the UI gate and retries, so a failed revert shows an error instead of a stale Cool countdown.
+    private func revertCoolToAutomatic() async {
+        for delay in [0, 30, 120] {
+            if delay > 0 { try? await Task.sleep(for: .seconds(delay)) }
+            guard !Task.isCancelled, !isRestoringOnExit, selectedPreset == .cool else { return }
+            if isChanging { continue }
+            if await withCheckedContinuation({ send(.auto, done: $0) }) { return }
+        }
+        guard !Task.isCancelled, selectedPreset == .cool else { return }
+        errorMessage = "Cool could not return to Auto. Select Auto to retry."
     }
 
     func restoreAutomaticOnExit() async throws {
