@@ -243,7 +243,12 @@ nonisolated enum PortmanScanner {
         }
     }
 
-    static func run(_ executable: String, _ arguments: [String], emptyExitIsSuccess: Bool = false) throws -> String {
+    static func run(
+        _ executable: String, _ arguments: [String], emptyExitIsSuccess: Bool = false, timeout: TimeInterval = 5
+    ) throws -> String {
+        let deadline = Date().addingTimeInterval(timeout)
+        let timedOut = NSError(domain: "Portman", code: Int(ETIMEDOUT),
+                               userInfo: [NSLocalizedDescriptionKey: "The port scan timed out."])
         let process = Process()
         process.executableURL = URL(fileURLWithPath: executable)
         process.arguments = arguments
@@ -253,21 +258,33 @@ nonisolated enum PortmanScanner {
         process.standardError = output
         try process.run()
         defer {
+            // Foundation reaps the killed child; waiting here could block on a child stuck in the kernel.
             if process.isRunning { Darwin.kill(process.processIdentifier, SIGKILL) }
-            process.waitUntilExit()
             try? output.fileHandleForReading.close()
         }
+        let descriptor = output.fileHandleForReading.fileDescriptor
+        var buffer = [UInt8](repeating: 0, count: 65_536)
         var data = Data()
         while true {
-            let chunk = autoreleasepool { output.fileHandleForReading.readData(ofLength: 65_536) }
-            guard !chunk.isEmpty else { break }
-            guard chunk.count <= 8 * 1_024 * 1_024 - data.count else {
+            let remaining = deadline.timeIntervalSinceNow
+            guard remaining > 0 else { throw timedOut }
+            var ready = pollfd(fd: descriptor, events: Int16(POLLIN), revents: 0)
+            let polled = Darwin.poll(&ready, 1, Int32(min(remaining, 1) * 1_000) + 1)
+            if polled < 0, errno != EINTR { throw timedOut }
+            guard polled > 0 else { continue }
+            let count = buffer.withUnsafeMutableBytes { Darwin.read(descriptor, $0.baseAddress, $0.count) }
+            if count < 0, errno == EINTR || errno == EAGAIN { continue }
+            guard count > 0 else { break }
+            guard count <= 8 * 1_024 * 1_024 - data.count else {
                 throw NSError(domain: "Portman", code: 1,
                               userInfo: [NSLocalizedDescriptionKey: "The port scan returned too much output."])
             }
-            data.append(chunk)
+            data.append(contentsOf: buffer[..<count])
         }
-        process.waitUntilExit()
+        while process.isRunning {
+            guard deadline.timeIntervalSinceNow > 0 else { throw timedOut }
+            usleep(10_000)
+        }
         if emptyExitIsSuccess && process.terminationStatus == 1 && data.isEmpty { return "" }
         guard process.terminationStatus == 0 else {
             let message = String(decoding: data.prefix(512), as: UTF8.self)
@@ -687,6 +704,7 @@ final class PortmanService {
     private var monitoringCount = 0
     private var monitoringTask: Task<Void, Never>?
     private var lastScanAt = Date.distantPast
+    private var isScanningLocal = false
     private var processes: [UUID: Process] = [:]
     private var authentication: [UUID: (SSHAskpassChannel, Task<Void, Never>)] = [:]
     private var remoteRequestID = UUID()
@@ -739,6 +757,12 @@ final class PortmanService {
     }
 
     func refreshLocal() async {
+        while isScanningLocal {
+            guard !Task.isCancelled else { return }
+            try? await Task.sleep(for: .milliseconds(50))
+        }
+        isScanningLocal = true
+        defer { isScanningLocal = false }
         lastScanAt = Date()
         do {
             let range = PortmanPreferences.scanRange

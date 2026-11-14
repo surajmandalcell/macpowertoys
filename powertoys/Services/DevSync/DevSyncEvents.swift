@@ -91,11 +91,19 @@ nonisolated final class DevEventStream: @unchecked Sendable {
 
         guard !running else { return true }
 
+        // The stream retains self until FSEventStreamRelease, so a late callback never sees a freed object.
         var context = FSEventStreamContext(
             version: 0,
             info: Unmanaged.passUnretained(self).toOpaque(),
-            retain: nil,
-            release: nil,
+            retain: { info in
+                guard let info else { return nil }
+                _ = Unmanaged<DevEventStream>.fromOpaque(info).retain()
+                return info
+            },
+            release: { info in
+                guard let info else { return }
+                Unmanaged<DevEventStream>.fromOpaque(info).release()
+            },
             copyDescription: nil
         )
         let flags = FSEventStreamCreateFlags(
@@ -148,14 +156,16 @@ nonisolated final class DevEventStream: @unchecked Sendable {
 
     func stop() {
         lock.lock()
-        defer { lock.unlock() }
-
-        guard running, let stream else { return }
-        FSEventStreamStop(stream)
-        FSEventStreamInvalidate(stream)
-        FSEventStreamRelease(stream)
-        self.stream = nil
+        let stopped = running ? stream : nil
+        stream = nil
         running = false
+        lock.unlock()
+
+        // Released outside the lock: the release callback can drop the last reference and run deinit.
+        guard let stopped else { return }
+        FSEventStreamStop(stopped)
+        FSEventStreamInvalidate(stopped)
+        FSEventStreamRelease(stopped)
     }
 
     static func currentEventID(forDeviceOf url: URL) -> UInt64 {

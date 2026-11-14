@@ -94,6 +94,7 @@ nonisolated enum PortmanRestart {
             .appendingPathComponent("Library/Logs/MacPowerToys/Portman")
         try FileManager.default.createDirectory(at: logs, withIntermediateDirectories: true)
         let log = logs.appendingPathComponent("port-\(port.port).log")
+        boundLogs(in: logs, current: log)
         if !FileManager.default.fileExists(atPath: log.path) {
             FileManager.default.createFile(atPath: log.path, contents: nil)
         }
@@ -119,6 +120,37 @@ nonisolated enum PortmanRestart {
         process.standardOutput = handle
         process.standardError = handle
         try process.run()
+    }
+
+    static let logByteLimit: UInt64 = 5 * 1_024 * 1_024
+    static let logMaximumAge: TimeInterval = 14 * 24 * 60 * 60
+
+    // shortcut: the cap applies at each relaunch, not while the server writes; pipe output through a bounded pump if one run must stay capped.
+    static func boundLogs(in folder: URL, current: URL, now: Date = Date()) {
+        let fileManager = FileManager.default
+        let keys: Set<URLResourceKey> = [.contentModificationDateKey]
+        let files = (try? fileManager.contentsOfDirectory(at: folder, includingPropertiesForKeys: Array(keys))) ?? []
+        for file in files where file.pathExtension == "log" && file.lastPathComponent != current.lastPathComponent {
+            guard let modified = try? file.resourceValues(forKeys: keys).contentModificationDate,
+                  now.timeIntervalSince(modified) > logMaximumAge else { continue }
+            try? fileManager.removeItem(at: file)
+        }
+        keepNewestBytes(of: current, limit: logByteLimit)
+    }
+
+    // Keeps the newest half of an over-limit log so the oldest output goes first.
+    static func keepNewestBytes(of file: URL, limit: UInt64) {
+        guard let reader = try? FileHandle(forReadingFrom: file) else { return }
+        defer { try? reader.close() }
+        do {
+            let size = try reader.seekToEnd()
+            guard size > limit else { return }
+            try reader.seek(toOffset: size - limit / 2)
+            let tail = try reader.readToEnd() ?? Data()
+            try tail.write(to: file, options: .atomic)
+        } catch {
+            return
+        }
     }
 
     private static func isListening(_ port: UInt16) -> Bool {

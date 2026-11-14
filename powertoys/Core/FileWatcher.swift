@@ -6,7 +6,7 @@
 import Foundation
 import CoreServices
 
-enum FileChangeKind: String, Codable, Sendable, CaseIterable {
+nonisolated enum FileChangeKind: String, Codable, Sendable, CaseIterable {
     case created
     case modified
     case removed
@@ -31,17 +31,25 @@ enum FileChangeKind: String, Codable, Sendable, CaseIterable {
     }
 }
 
-struct FileChangeEvent: Sendable, Hashable {
+nonisolated struct FileChangeEvent: Sendable, Hashable {
     let path: String
     let kind: FileChangeKind
 }
 
-final class FileWatcher: @unchecked Sendable {
+nonisolated struct RelativeFileChange: Sendable, Hashable {
+    let relativePath: String
+    let name: String
+    let isDirectory: Bool
+    let kind: FileChangeKind
+}
+
+/// Delivers coalesced FSEvents batches on a private serial queue, never on main.
+nonisolated final class FileWatcher: @unchecked Sendable {
     private var stream: FSEventStreamRef?
     private let path: String
     private let callback: @Sendable ([FileChangeEvent]) -> Void
     private let latency: CFTimeInterval
-    private var isRunning = false
+    private let queue = DispatchQueue(label: "MacPowerToys.FileWatcher", qos: .utility)
     private let lock = NSLock()
 
     init(path: String, latency: CFTimeInterval = 0.5, callback: @escaping @Sendable ([FileChangeEvent]) -> Void) {
@@ -51,18 +59,27 @@ final class FileWatcher: @unchecked Sendable {
     }
 
     deinit {
-        stopSync()
+        stop()
     }
 
-    @MainActor
     func start() {
-        guard !isRunning else { return }
+        lock.lock()
+        defer { lock.unlock() }
+        guard stream == nil else { return }
 
+        // The stream retains self until FSEventStreamRelease, so a late callback never sees a freed object.
         var context = FSEventStreamContext(
             version: 0,
             info: Unmanaged.passUnretained(self).toOpaque(),
-            retain: nil,
-            release: nil,
+            retain: { info in
+                guard let info else { return nil }
+                _ = Unmanaged<FileWatcher>.fromOpaque(info).retain()
+                return info
+            },
+            release: { info in
+                guard let info else { return }
+                Unmanaged<FileWatcher>.fromOpaque(info).release()
+            },
             copyDescription: nil
         )
 
@@ -72,7 +89,8 @@ final class FileWatcher: @unchecked Sendable {
             kFSEventStreamCreateFlagNoDefer
         )
 
-        guard let stream = FSEventStreamCreate(
+        let watchedPath = path
+        guard let created = FSEventStreamCreate(
             nil,
             { _, info, numEvents, eventPaths, eventFlags, _ in
                 guard let info = info else { return }
@@ -83,10 +101,7 @@ final class FileWatcher: @unchecked Sendable {
                     let change = FileChangeEvent(path: path, kind: FileChangeKind.resolve(eventFlags[index]))
                     return seen.insert(change).inserted ? change : nil
                 }
-
-                Task { @MainActor in
-                    watcher.callback(changes)
-                }
+                watcher.callback(changes)
             },
             &context,
             [path] as CFArray,
@@ -94,35 +109,58 @@ final class FileWatcher: @unchecked Sendable {
             latency,
             FSEventStreamCreateFlags(flags)
         ) else {
-            LogManager.shared.error("Failed to create FSEvent stream for: \(path)", source: "FileWatcher")
+            Task { @MainActor in
+                LogManager.shared.error("Failed to create FSEvent stream for: \(watchedPath)", source: "FileWatcher")
+            }
             return
         }
 
-        self.stream = stream
+        FSEventStreamSetDispatchQueue(created, queue)
+        guard FSEventStreamStart(created) else {
+            FSEventStreamInvalidate(created)
+            FSEventStreamRelease(created)
+            Task { @MainActor in
+                LogManager.shared.error("Failed to start FSEvent stream for: \(watchedPath)", source: "FileWatcher")
+            }
+            return
+        }
+        stream = created
 
-        FSEventStreamSetDispatchQueue(stream, DispatchQueue.main)
-        FSEventStreamStart(stream)
-        isRunning = true
-
-        LogManager.shared.debug("FileWatcher started for: \(path)", source: "FileWatcher")
+        Task { @MainActor in
+            LogManager.shared.debug("FileWatcher started for: \(watchedPath)", source: "FileWatcher")
+        }
     }
 
-    @MainActor
     func stop() {
-        stopSync()
+        lock.lock()
+        let stopped = stream
+        stream = nil
+        lock.unlock()
+
+        // Released outside the lock: the release callback can drop the last reference and run deinit.
+        guard let stopped else { return }
+        FSEventStreamStop(stopped)
+        FSEventStreamInvalidate(stopped)
+        FSEventStreamRelease(stopped)
     }
 
-    private func stopSync() {
-        lock.lock()
-        defer { lock.unlock() }
-
-        guard isRunning, let stream = stream else { return }
-
-        FSEventStreamStop(stream)
-        FSEventStreamInvalidate(stream)
-        FSEventStreamRelease(stream)
-
-        self.stream = nil
-        isRunning = false
+    /// Maps events to paths relative to `rootPath` and stats each one; call it on the watcher queue, not main.
+    static func relativeChanges(_ changes: [FileChangeEvent], under rootPath: String) -> [RelativeFileChange] {
+        let root = URL(fileURLWithPath: rootPath).standardizedFileURL.path
+        let prefix = root.hasSuffix("/") ? root : root + "/"
+        return changes.compactMap { change in
+            let path = URL(fileURLWithPath: change.path).standardizedFileURL.path
+            guard path.hasPrefix(prefix) else { return nil }
+            let relativePath = String(path.dropFirst(prefix.count))
+            guard !relativePath.isEmpty else { return nil }
+            var isDirectory: ObjCBool = false
+            let exists = FileManager.default.fileExists(atPath: path, isDirectory: &isDirectory)
+            return RelativeFileChange(
+                relativePath: relativePath,
+                name: (relativePath as NSString).lastPathComponent,
+                isDirectory: exists && isDirectory.boolValue,
+                kind: change.kind
+            )
+        }
     }
 }

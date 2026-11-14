@@ -505,9 +505,10 @@ nonisolated enum DiskManagement {
             }
         }
         if operation == .eject, disk.kind == .image {
-            return String(decoding: try executeProgram("/usr/bin/hdiutil", ["detach", disk.id], failOnError: true), as: UTF8.self)
+            return String(decoding: try executeProgram("/usr/bin/hdiutil", ["detach", disk.id],
+                                                       timeout: timeout(for: operation)), as: UTF8.self)
         }
-        return String(decoding: try execute(arguments), as: UTF8.self)
+        return String(decoding: try execute(arguments, timeout: timeout(for: operation)), as: UTF8.self)
     }
 
     static func ejectBlockers(on disk: ManagedDisk) -> [DiskEjectBlocker] {
@@ -646,33 +647,43 @@ nonisolated enum DiskManagement {
     }
 
     private static func plist(_ arguments: [String]) throws -> [String: Any] {
-        let data = try execute(arguments, plistOutput: true)
+        let data = try execute(arguments)
         guard let value = try? PropertyListSerialization.propertyList(from: data, format: nil) as? [String: Any] else {
             throw DiskManagementError.command("Could not read disk details from macOS.")
         }
         return value
     }
 
-    private static func execute(_ arguments: [String], plistOutput: Bool = false) throws -> Data {
-        try executeProgram(diskutil, arguments, mergeErrors: !plistOutput, failOnError: true)
+    private static let readTimeout: TimeInterval = 30
+
+    // Data-moving writes can run for a long time; killing them early is worse than waiting.
+    static func timeout(for operation: PartitionOperation) -> TimeInterval {
+        switch operation {
+        case .mount, .unmount, .eject, .rename: 120
+        default: 2 * 60 * 60
+        }
     }
 
-    private static func executeProgram(_ path: String, _ arguments: [String], mergeErrors: Bool = true,
-                                       failOnError: Bool = false) throws -> Data {
-        let process = Process()
-        process.executableURL = URL(fileURLWithPath: path)
-        process.arguments = arguments
-        let pipe = Pipe()
-        process.standardOutput = pipe
-        process.standardError = mergeErrors ? pipe : FileHandle.nullDevice
-        process.standardInput = FileHandle.nullDevice
-        try process.run()
-        let output = pipe.fileHandleForReading.readDataToEndOfFile()
-        process.waitUntilExit()
-        guard !failOnError || process.terminationStatus == 0 else {
-            let detail = String(decoding: output, as: UTF8.self).trimmingCharacters(in: .whitespacesAndNewlines)
-            throw DiskManagementError.command(detail.isEmpty ? "macOS could not complete the operation." : detail)
+    private static func execute(_ arguments: [String], timeout: TimeInterval = readTimeout) throws -> Data {
+        try executeProgram(diskutil, arguments, timeout: timeout)
+    }
+
+    // A timeout or failure always throws, so a stuck command never reads as success.
+    private static func executeProgram(_ path: String, _ arguments: [String],
+                                       timeout: TimeInterval = readTimeout) throws -> Data {
+        do {
+            return try SystemCareManager.run(
+                executable: URL(fileURLWithPath: path), arguments: arguments, timeout: timeout
+            )
+        } catch SystemCareCommandError.timeout {
+            throw DiskManagementError.command(
+                "macOS did not finish in time. Refresh to see the current state of the disk."
+            )
+        } catch SystemCareCommandError.failed(let detail) {
+            let text = detail.trimmingCharacters(in: .whitespacesAndNewlines)
+            throw DiskManagementError.command(text.isEmpty ? "macOS could not complete the operation." : text)
+        } catch SystemCareCommandError.outputLimit {
+            throw DiskManagementError.command("macOS returned more disk details than Partition Manager can read.")
         }
-        return output
     }
 }
