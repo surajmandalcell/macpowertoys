@@ -50,7 +50,8 @@ final class AppInitializer {
 
         state = .initializing
 
-        LogManager.shared.info("App initializing...", source: "AppInitializer")
+        let info = Bundle.main.infoDictionary
+        LogManager.shared.info("App launched (version \(info?["CFBundleShortVersionString"] as? String ?? "unknown"), commit \(info?["MPTSourceCommit"] as? String ?? "unknown"))", source: "AppInitializer")
 
         let started = ContinuousClock.now
         if isShuttingDown {
@@ -113,30 +114,33 @@ final class AppInitializer {
         await LogManager.shared.pruneOldLogs()
     }
 
-    func shutdown() async throws {
+    func shutdown(systemQuit: Bool = false) async throws {
         guard !isShuttingDown else { throw CocoaError(.userCancelled) }
         isShuttingDown = true
         let restoration = restorationTask
         restoration?.cancel()
-        LogManager.shared.info("App shutting down...", source: "AppInitializer")
+        let reason = systemQuit ? "logout, restart, or shutdown" : "user quit"
+        LogManager.shared.info("App shutting down (\(reason))...", source: "AppInitializer")
+        InputDevicesManager.disableScrollTap()
         do {
-            try await fanShutdown.run(name: "Fan Auto restoration", timeout: .seconds(20)) {
+            try await runShutdownStep(.fan, on: fanShutdown, timeout: .seconds(20), systemQuit: systemQuit) {
                 try await FanControlService.current?.restoreAutomaticOnExit()
             }
-            try await colorShutdown.run(name: "Saving Color Picker history and projects", timeout: .seconds(10)) {
+            try await runShutdownStep(.colorPicker, on: colorShutdown, timeout: .seconds(10), systemQuit: systemQuit) {
                 try await ColorPickerService.shared.flushPersistence()
             }
-            try await logShutdown.run(name: "Saving logs", timeout: .seconds(10)) {
-                await LogManager.shared.flushPending()
-                if let failure = LogManager.shared.persistenceError {
-                    throw NSError(domain: "LogManager", code: 1, userInfo: [NSLocalizedDescriptionKey: failure])
-                }
-            }
-            try await cloudShutdown.run(name: "Saving RSync UI and stopping its engine", timeout: .seconds(30)) {
+            try await runShutdownStep(.rsync, on: cloudShutdown, timeout: .seconds(30), systemQuit: systemQuit) {
                 try await RcloneJobManager.shared.shutdownForTermination()
+            }
+            LogManager.shared.info("Quit finished (\(reason))", source: "AppInitializer")
+            // Logs are not user data: a failed or slow log save never blocks quit.
+            try await runShutdownStep(.logs, on: logShutdown, timeout: .seconds(10), systemQuit: systemQuit) {
+                await LogManager.shared.flushPending()
             }
         } catch {
             isShuttingDown = false
+            // Restarts the scroll tap that shutdown stopped.
+            if SettingsManager.shared.isToolEnabled("input-devices") { InputDevicesManager.shared.refresh() }
             initializationWaiter?.resume()
             initializationWaiter = nil
             restorationTask = Task {
@@ -152,6 +156,26 @@ final class AppInitializer {
         MicLockService.shared.stop()
     }
 
+    private func runShutdownStep(
+        _ step: AppShutdownStep,
+        on stage: AppShutdownStage,
+        timeout: Duration,
+        systemQuit: Bool,
+        operation: @escaping @MainActor () async throws -> Void
+    ) async throws {
+        do {
+            try await stage.run(name: step.rawValue, timeout: timeout, operation: operation)
+        } catch {
+            let decision = QuitDecision.after(failed: step, systemQuit: systemQuit, appIsActive: NSApp.isActive)
+            guard decision != .terminate else {
+                LogManager.shared.error("Quit continues after a failed stage: \(error.localizedDescription)", source: "AppInitializer")
+                return
+            }
+            LogManager.shared.error("Quit refused: \(error.localizedDescription)", source: "AppInitializer")
+            throw QuitRefusal(decision: decision, underlying: error)
+        }
+    }
+
     private func applyStoredTheme() {
         let storedTheme = UserDefaults.standard.string(forKey: "appTheme") ?? "Automatic"
         switch storedTheme {
@@ -164,6 +188,32 @@ final class AppInitializer {
         }
         LogManager.shared.debug("Applied theme: \(storedTheme)", source: "AppInitializer")
     }
+}
+
+nonisolated enum AppShutdownStep: String {
+    case fan = "Fan Auto restoration"
+    case colorPicker = "Saving Color Picker history and projects"
+    case rsync = "Saving RSync UI and stopping its engine"
+    case logs = "Saving logs"
+
+    // Fan state, Color Picker colors, and RSync transfers are lost or left forced if quit continues; logs are not.
+    var holdsUserState: Bool { self != .logs }
+}
+
+nonisolated enum QuitDecision: Equatable {
+    case terminate, ask, cancel
+
+    static func after(failed step: AppShutdownStep, systemQuit: Bool, appIsActive: Bool) -> QuitDecision {
+        guard step.holdsUserState, !systemQuit else { return .terminate }
+        return appIsActive ? .ask : .cancel
+    }
+}
+
+nonisolated struct QuitRefusal: LocalizedError {
+    let decision: QuitDecision
+    let underlying: any Error
+
+    var errorDescription: String? { underlying.localizedDescription }
 }
 
 @MainActor

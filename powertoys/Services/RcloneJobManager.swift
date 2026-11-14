@@ -331,11 +331,10 @@ final class RcloneJobManager {
 
     func shutdownForTermination() async throws {
         try Task.checkCancellation()
-        guard !isShuttingDown else {
-            throw CocoaError(.userCancelled)
-        }
+        // An idle or tool-off shutdown can still be running or stuck; quit must still save and stop the engine.
+        let ownsShutdownFlag = !isShuttingDown
         isShuttingDown = true
-        defer { isShuttingDown = false }
+        defer { if ownsShutdownFlag { isShuttingDown = false } }
         persistJobsTask?.cancel()
         persistJobsTask = nil
         var saveStage = "transfers"
@@ -353,8 +352,6 @@ final class RcloneJobManager {
             try await LocalChangeHistory.shared.flushReportingErrors()
             try modelContext?.save()
             try Task.checkCancellation()
-            await DevSyncService.shared.stop()
-            try Task.checkCancellation()
             if let name = remoteBeingCreated, let client {
                 try? await client.deleteRemoteConfig(name: name)
                 try Task.checkCancellation()
@@ -368,6 +365,15 @@ final class RcloneJobManager {
                 ])
             }
             throw error
+        }
+        // Stop nothing before the saves succeed, so a refused quit leaves RSync UI running.
+        // DevSync stop can hang on a busy engine; bound it so the rclone engine still stops.
+        do {
+            try await AppShutdownStage().run(name: "Stopping DevSync", timeout: .seconds(10)) {
+                await DevSyncService.shared.stop()
+            }
+        } catch {
+            LogManager.shared.error("Quit continues: \(error.localizedDescription)", source: "RcloneJobManager")
         }
         engineRetryTask?.cancel()
         engineRetryTask = nil
@@ -965,8 +971,11 @@ final class RcloneJobManager {
         var isDirectory: ObjCBool = false
         guard FileManager.default.fileExists(atPath: job.sourceFs, isDirectory: &isDirectory), isDirectory.boolValue else { return }
 
-        let watcher = FileWatcher(path: job.sourceFs, latency: 1) { [weak self, weak job] changes in
-            guard let self, let job else { return }
+        let root = job.sourceFs
+        let watcher = FileWatcher(path: root, latency: 1) { [weak self, weak job] events in
+            // Runs on the watcher queue: path math and stat stay off main; only the batch hops.
+            let changes = FileWatcher.relativeChanges(events, under: root)
+            guard !changes.isEmpty, let self, let job else { return }
             Task { @MainActor in
                 self.handleSourceChanges(changes, for: job)
             }
@@ -983,23 +992,14 @@ final class RcloneJobManager {
         }
     }
 
-    private func handleSourceChanges(_ changes: [FileChangeEvent], for job: TransferJob) {
+    private func handleSourceChanges(_ changes: [RelativeFileChange], for job: TransferJob) {
         guard jobs.contains(where: { $0.id == job.id }), !job.state.isTerminal || job.continuousSync else { return }
-        let root = URL(fileURLWithPath: job.sourceFs).standardizedFileURL.path
-        let prefix = root.hasSuffix("/") ? root : root + "/"
+        // Patterns stay on main because retry and ignoreFile change them at run time; matching is string-only.
         let records = changes.compactMap { change -> LocalChangeRecord? in
-            let path = URL(fileURLWithPath: change.path).standardizedFileURL.path
-            guard path.hasPrefix(prefix) else { return nil }
-            let relativePath = String(path.dropFirst(prefix.count))
-            guard !relativePath.isEmpty else { return nil }
-
-            var isDirectory: ObjCBool = false
-            let exists = FileManager.default.fileExists(atPath: path, isDirectory: &isDirectory)
-            let name = (relativePath as NSString).lastPathComponent
             guard !IgnoreMatcher.matches(
-                path: relativePath,
-                name: name,
-                isDir: exists && isDirectory.boolValue,
+                path: change.relativePath,
+                name: change.name,
+                isDir: change.isDirectory,
                 patterns: job.excludePatterns
             ) else { return nil }
 
@@ -1007,7 +1007,7 @@ final class RcloneJobManager {
                 jobID: job.id,
                 operation: job.operation,
                 sourceDisplay: job.sourceDisplay,
-                relativePath: relativePath,
+                relativePath: change.relativePath,
                 kind: change.kind
             )
         }

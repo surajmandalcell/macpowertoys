@@ -19,6 +19,8 @@ struct MacPowerToysApp: App {
         if AppRuntime.isRunningUnitTests {
             NSApplication.shared.setActivationPolicy(.prohibited)
         }
+        // A second copy quits at launch; it must not start work first.
+        guard AppInstanceCoordinator.shared.ownsInstance else { return }
         if !AppRuntime.isRunningTests {
             let started = ContinuousClock.now
             AppIdentity.migrateLegacyPreferences()
@@ -29,6 +31,7 @@ struct MacPowerToysApp: App {
 
     @MainActor
     private func configureApplication() {
+        guard AppInstanceCoordinator.shared.ownsInstance else { return }
         if !AppRuntime.isRunningTests || AppRuntime.isUITesting {
             MainMenuBarController.shared.configure(isInserted: showTray) {
                 AnyView(TrayPopoverView().modifier(AppStorageRecovery()).utilityMotionPolicy())

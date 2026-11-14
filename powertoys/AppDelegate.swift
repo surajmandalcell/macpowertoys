@@ -5,8 +5,10 @@
 
 import Foundation
 import AppKit
+import CoreServices
 import OnePlusUI
 import Darwin
+import UserNotifications
 
 class AppDelegate: NSObject, NSApplicationDelegate {
     static let openMainWindowSymbol = "arrow.up.forward.square"
@@ -431,6 +433,10 @@ class AppDelegate: NSObject, NSApplicationDelegate {
 
     func applicationDidBecomeActive(_ notification: Notification) {
         updateFreeRulerForApplicationActivation(true)
+        if let message = pendingQuitRefusal {
+            pendingQuitRefusal = nil
+            showQuitRefusedAlert(message)
+        }
     }
 
     func applicationDidResignActive(_ notification: Notification) {
@@ -442,9 +448,10 @@ class AppDelegate: NSObject, NSApplicationDelegate {
     func applicationShouldTerminate(_ sender: NSApplication) -> NSApplication.TerminateReply {
         guard ownsInstance else { return .terminateNow }
         guard terminationTask == nil else { return .terminateLater }
+        let systemQuit = Self.isSystemQuit(NSAppleEventManager.shared().currentAppleEvent)
         terminationTask = Task { @MainActor in
             do {
-                try await AppInitializer.shared.shutdown()
+                try await AppInitializer.shared.shutdown(systemQuit: systemQuit)
                 prepareFreeRulerForTermination()
                 AwakeService.shared.shutdown()
                 GlobalShortcutManager.shared.shutdown()
@@ -453,25 +460,56 @@ class AppDelegate: NSObject, NSApplicationDelegate {
             } catch {
                 terminationTask = nil
                 sender.reply(toApplicationShouldTerminate: false)
-                let alert = NSAlert()
-                alert.messageText = "MacPowerToys could not quit"
-                alert.informativeText = error.localizedDescription
-                alert.alertStyle = .warning
-                alert.addButton(withTitle: "Retry")
-                alert.addButton(withTitle: "Keep Open")
-                alert.buttons.last?.keyEquivalent = "\u{1b}"
-                let completion: (NSApplication.ModalResponse) -> Void = { response in
-                    if response == .alertFirstButtonReturn { sender.terminate(nil) }
+                // A modal behind a game or another app is never seen; notify without taking focus instead.
+                let decision: QuitDecision = (error as? QuitRefusal)?.decision ?? (sender.isActive ? .ask : .cancel)
+                guard decision == .ask else {
+                    await reportBackgroundQuitRefusal(error.localizedDescription)
+                    return
                 }
-                if let window = sender.keyWindow ?? sender.mainWindow,
-                   window.sheetParent == nil, window.attachedSheet == nil {
-                    alert.beginSheetModal(for: window, completionHandler: completion)
-                } else {
-                    completion(alert.runModal())
-                }
+                showQuitRefusedAlert(error.localizedDescription)
             }
         }
         return .terminateLater
+    }
+
+    private var pendingQuitRefusal: String?
+
+    private func reportBackgroundQuitRefusal(_ message: String) async {
+        let center = UNUserNotificationCenter.current()
+        let status = await center.notificationSettings().authorizationStatus
+        guard status == .authorized || status == .provisional else {
+            pendingQuitRefusal = message
+            return
+        }
+        let content = UNMutableNotificationContent()
+        content.title = "MacPowerToys could not quit"
+        content.body = message
+        try? await center.add(UNNotificationRequest(identifier: "app.quit-refused", content: content, trigger: nil))
+    }
+
+    private func showQuitRefusedAlert(_ message: String) {
+        let alert = NSAlert()
+        alert.messageText = "MacPowerToys could not quit"
+        alert.informativeText = message
+        alert.alertStyle = .warning
+        alert.addButton(withTitle: "Retry")
+        alert.addButton(withTitle: "Keep Open")
+        alert.buttons.last?.keyEquivalent = "\u{1b}"
+        let completion: (NSApplication.ModalResponse) -> Void = { response in
+            if response == .alertFirstButtonReturn { NSApp.terminate(nil) }
+        }
+        if let window = NSApp.keyWindow ?? NSApp.mainWindow,
+           window.sheetParent == nil, window.attachedSheet == nil {
+            alert.beginSheetModal(for: window, completionHandler: completion)
+        } else {
+            completion(alert.runModal())
+        }
+    }
+
+    private static func isSystemQuit(_ event: NSAppleEventDescriptor?) -> Bool {
+        guard let reason = event?.attributeDescriptor(forKeyword: AEKeyword(kAEQuitReason))?.enumCodeValue else { return false }
+        return [OSType(kAELogOut), OSType(kAEReallyLogOut), OSType(kAEShowRestartDialog),
+                OSType(kAEShowShutdownDialog), OSType(kAERestart), OSType(kAEShutDown)].contains(reason)
     }
 }
 
@@ -548,7 +586,10 @@ final class AppInstanceCoordinator {
 
         let supportedBundleIDs = [AppIdentity.bundleIdentifier, AppIdentity.legacyBundleIdentifier]
         let runningApps = supportedBundleIDs.flatMap(NSRunningApplication.runningApplications(withBundleIdentifier:))
-        if runningApps.contains(where: { $0 != NSRunningApplication.current }) {
+        // Only an earlier copy wins, so two copies that start together never both quit.
+        let current = NSRunningApplication.current
+        let currentOrder = (current.launchDate ?? .distantPast, current.processIdentifier)
+        if runningApps.contains(where: { $0 != current && ($0.launchDate ?? .distantPast, $0.processIdentifier) < currentOrder }) {
             ownsInstance = false
             return
         }
