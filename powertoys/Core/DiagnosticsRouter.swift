@@ -53,6 +53,8 @@ final class DiagnosticsMenuPanels: NSObject {
     private var cachedTabs: [DiagnosticsPanel: String] = [:]
     private var cachedProfiles: [SystemMonitorRemoteProfile]?
     private var presentationTask: Task<Void, Never>?
+    private var releaseTask: Task<Void, Never>?
+    private static let captureLifetime: Duration = .seconds(30)
     var makeCaptureContent: ((DiagnosticsPanel, [SystemMonitorRemoteProfile]?, @escaping (CGFloat) -> Void) -> AnyView?)?
     private let defaults: UserDefaults
 
@@ -74,18 +76,38 @@ final class DiagnosticsMenuPanels: NSObject {
         presentationTask = nil
         for panel in DiagnosticsPanel.allCases { OnePlusPanelTimings.shared.cancel(panel: panel.rawValue) }
         for tool in IndividualMenuBarTool.allCases { OnePlusPanelTimings.shared.cancel(panel: tool.id) }
-        captureWindow?.orderOut(nil)
-        captureWindow = nil
         if clearCache {
-            cachedWindows.removeAll()
-            cachedTabs.removeAll()
-            cachedProfiles = nil
+            releaseCapturePanels()
+        } else {
+            captureWindow?.orderOut(nil)
+            captureWindow = nil
         }
         // The native menu controllers own their popovers. Keep only weak references.
         for popover in popovers.allObjects where popover.isShown {
             popover.performClose(nil)
         }
         if let mainWindow, mainWindow.isVisible { mainWindow.close() }
+    }
+
+    // Capture panels float at popUpMenu level over full-screen apps, so they never outlive a short capture.
+    private func scheduleCaptureRelease() {
+        releaseTask?.cancel()
+        releaseTask = Task { [weak self] in
+            try? await Task.sleep(for: Self.captureLifetime)
+            guard !Task.isCancelled else { return }
+            self?.releaseCapturePanels()
+        }
+    }
+
+    private func releaseCapturePanels() {
+        releaseTask?.cancel()
+        releaseTask = nil
+        captureWindow?.orderOut(nil)
+        captureWindow = nil
+        for window in cachedWindows.values { window.orderOut(nil) }
+        cachedWindows.removeAll()
+        cachedTabs.removeAll()
+        cachedProfiles = nil
     }
 
     func open(_ panel: DiagnosticsPanel, tab: String?) {
@@ -143,6 +165,7 @@ final class DiagnosticsMenuPanels: NSObject {
             captureWindow = window
             window.contentView?.layoutSubtreeIfNeeded()
             window.orderFrontInBackground()
+            scheduleCaptureRelease()
             return
         }
         let window = DiagnosticsCapturePanel(contentRect: CGRect(x: 0, y: 0, width: OnePlusMenuMetrics.width, height: 80),
@@ -187,6 +210,7 @@ final class DiagnosticsMenuPanels: NSObject {
         cachedTabs[panel] = tab ?? ""
         if panel == .systemMonitor { cachedProfiles = profiles }
         window.orderFrontInBackground()
+        scheduleCaptureRelease()
     }
 }
 

@@ -85,6 +85,29 @@ final class CoreModelTests: XCTestCase {
         XCTAssertEqual(openCount, 0)
     }
 
+    func testDeactivationDuringSelectionReturnsToIdleAndAllowsNewSelection() {
+        let suiteName = "TextExtractorSelectionTests.\(UUID().uuidString)"
+        let defaults = UserDefaults(suiteName: suiteName)!
+        defer { defaults.removePersistentDomain(forName: suiteName) }
+        let service = TextExtractorService(
+            defaults: defaults,
+            playCompletionCue: {},
+            screenCapturePermission: { .granted },
+            openTextExtractor: {},
+            selectionScreens: { [] }
+        )
+
+        service.begin()
+        XCTAssertEqual(service.state, .selecting)
+        NotificationCenter.default.post(name: NSApplication.didResignActiveNotification, object: NSApp)
+        XCTAssertEqual(service.state, .idle)
+
+        service.begin()
+        XCTAssertEqual(service.state, .selecting)
+        service.begin()
+        XCTAssertEqual(service.state, .idle)
+    }
+
     func testRecognitionCopiesOnlyTextBeforePlayingCompletionCue() {
         let suiteName = "TextExtractorCompletionTests.\(UUID().uuidString)"
         let defaults = UserDefaults(suiteName: suiteName)!
