@@ -57,6 +57,30 @@ final class AppLifecycleTests: XCTestCase {
         XCTAssertEqual(attempts, 3)
     }
 
+    func testQuitDecisionNeverBlocksSystemQuitOrHidesAModal() {
+        for step in [AppShutdownStep.fan, .colorPicker, .rsync, .logs] {
+            XCTAssertEqual(QuitDecision.after(failed: step, systemQuit: true, appIsActive: true), .terminate)
+            XCTAssertEqual(QuitDecision.after(failed: step, systemQuit: true, appIsActive: false), .terminate)
+        }
+        XCTAssertEqual(QuitDecision.after(failed: .logs, systemQuit: false, appIsActive: true), .terminate)
+        XCTAssertEqual(QuitDecision.after(failed: .logs, systemQuit: false, appIsActive: false), .terminate)
+        for step in [AppShutdownStep.fan, .colorPicker, .rsync] {
+            XCTAssertEqual(QuitDecision.after(failed: step, systemQuit: false, appIsActive: true), .ask)
+            XCTAssertEqual(QuitDecision.after(failed: step, systemQuit: false, appIsActive: false), .cancel)
+        }
+    }
+
+    func testPendingLogBatchKeepsOnlyTheNewestEntries() {
+        let entries = (0..<(LogManager.maxMemoryEntries + 5)).map {
+            LogEntryData(level: .info, source: "test", message: "\($0)")
+        }
+        let capped = LogManager.cappedPending(entries)
+        XCTAssertEqual(capped.count, LogManager.maxMemoryEntries)
+        XCTAssertEqual(capped.first?.message, "5")
+        XCTAssertEqual(capped.last?.message, "\(LogManager.maxMemoryEntries + 4)")
+        XCTAssertEqual(LogManager.cappedPending(Array(entries.prefix(3))).count, 3)
+    }
+
     func testFailedStoreOpenPreservesFilesAndRetryUsesExistingData() async throws {
         let directory = FileManager.default.temporaryDirectory.appendingPathComponent(UUID().uuidString)
         try FileManager.default.createDirectory(at: directory, withIntermediateDirectories: true)

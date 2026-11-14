@@ -96,6 +96,7 @@ final class LogManager {
         }
 
         pendingPersist.append(entry)
+        pendingPersist = Self.cappedPending(pendingPersist)
         scheduleFlush()
 
         #if DEBUG
@@ -124,9 +125,13 @@ final class LogManager {
             persistenceError = nil
             await pruneOldLogs()
         } catch {
-            pendingPersist.insert(contentsOf: batch, at: 0)
+            pendingPersist = Self.cappedPending(batch + pendingPersist)
             persistenceError = error.localizedDescription
         }
+    }
+
+    nonisolated static func cappedPending(_ pending: [LogEntryData]) -> [LogEntryData] {
+        pending.count > maxMemoryEntries ? Array(pending.suffix(maxMemoryEntries)) : pending
     }
 
     func error(_ message: String, source: String = "App") {

@@ -25,6 +25,12 @@ actor LogPersistence {
     func prune(before date: Date) throws {
         try modelContext.delete(model: LogEntry.self, where: #Predicate { $0.timestamp < date })
         try modelContext.save()
+        // Every insert and prune adds persistent-history rows that nothing reads; without this the store grows forever.
+        do {
+            try modelContext.deleteHistory(HistoryDescriptor<DefaultHistoryTransaction>(predicate: #Predicate { $0.timestamp < date }))
+        } catch {
+            NSLog("Log store history purge failed: %@", error.localizedDescription)
+        }
     }
 
     func load(since date: Date, limit: Int) throws -> [LogEntryData] {
