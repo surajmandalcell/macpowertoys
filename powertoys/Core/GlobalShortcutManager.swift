@@ -4,6 +4,7 @@ import Carbon.HIToolbox
 import Foundation
 import Observation
 import OnePlusUI
+import os
 
 enum GlobalShortcutKey: String, CaseIterable, Identifiable {
     case a, b, c, d, e, f, g, h, i, j, k, l, m
@@ -44,7 +45,7 @@ enum GlobalShortcutKey: String, CaseIterable, Identifiable {
     }
 }
 
-struct GlobalShortcut: Equatable {
+nonisolated struct GlobalShortcut: Equatable, Sendable {
     var keyCode: UInt32
     var carbonModifiers: UInt32
     var keyLabel: String
@@ -155,6 +156,12 @@ final class GlobalShortcutManager {
     private var reservedShortcutTap: CFMachPort?
     private var reservedShortcutTapSource: CFRunLoopSource?
     private var registeredReservedActions: Set<GlobalShortcutAction> = []
+    /// What the key tap thread may read: the live tap and the reserved chords with their action ids.
+    nonisolated struct ReservedShortcutSnapshot {
+        var tap: CFMachPort?
+        var shortcuts: [(shortcut: GlobalShortcut, actionID: UInt32)] = []
+    }
+    nonisolated let reservedSnapshot = OSAllocatedUnfairLock(uncheckedState: ReservedShortcutSnapshot())
     private var shortcuts: [GlobalShortcutAction: GlobalShortcut]
     private var enabledActions: Set<GlobalShortcutAction>
     private(set) var registrationStatus: [GlobalShortcutAction: RegistrationStatus] = [:]
@@ -200,6 +207,19 @@ final class GlobalShortcutManager {
             guard let self, let toolID = note.object as? String else { return }
             Task { @MainActor in self.refreshToolAvailability(toolID) }
         }
+        NotificationCenter.default.addObserver(
+            forName: NSApplication.didBecomeActiveNotification,
+            object: nil,
+            queue: .main
+        ) { [weak self] _ in
+            Task { @MainActor in self?.recheckReservedShortcutTrust() }
+        }
+    }
+
+    private func recheckReservedShortcutTrust() {
+        guard reservedShortcutTap != nil, !AXIsProcessTrusted() else { return }
+        stopReservedShortcutTap()
+        refreshReservedShortcutTap()
     }
 
     private static func storedShortcut(for action: GlobalShortcutAction) -> GlobalShortcut {
@@ -377,6 +397,7 @@ final class GlobalShortcutManager {
     }
 
     private func refreshReservedShortcutTap() {
+        defer { publishReservedShortcuts() }
         let reservedActions = enabledActions.filter {
             isToolAvailable($0) && shortcut(for: $0).overridesSystemScreenshotShortcut
         }
@@ -410,31 +431,37 @@ final class GlobalShortcutManager {
             callback: Self.handleReservedShortcutEvent,
             userInfo: Unmanaged.passUnretained(self).toOpaque()
         ) else { return false }
-        let source = CFMachPortCreateRunLoopSource(kCFAllocatorDefault, tap, 0)
+        let source: CFRunLoopSource = CFMachPortCreateRunLoopSource(kCFAllocatorDefault, tap, 0)
         reservedShortcutTap = tap
         reservedShortcutTapSource = source
-        CFRunLoopAddSource(CFRunLoopGetMain(), source, .commonModes)
+        reservedSnapshot.withLockUnchecked { $0.tap = tap }
+        EventTapThread.shared.add(source)
         CGEvent.tapEnable(tap: tap, enable: true)
         return true
     }
 
     private func stopReservedShortcutTap() {
-        if let source = reservedShortcutTapSource {
-            CFRunLoopRemoveSource(CFRunLoopGetMain(), source, .commonModes)
-        }
+        if let source = reservedShortcutTapSource { EventTapThread.shared.remove(source) }
         if let tap = reservedShortcutTap { CFMachPortInvalidate(tap) }
         reservedShortcutTapSource = nil
         reservedShortcutTap = nil
         registeredReservedActions.removeAll()
+        publishReservedShortcuts()
     }
 
-    private func reservedAction(keyCode: UInt32, flags: CGEventFlags) -> GlobalShortcutAction? {
-        registeredReservedActions.first {
-            let shortcut = shortcut(for: $0)
-            return isToolAvailable($0)
-                && shortcut.overridesSystemScreenshotShortcut
-                && shortcut.matches(keyCode: keyCode, flags: flags)
-        }
+    private func publishReservedShortcuts() {
+        let entries = registeredReservedActions
+            .filter { isToolAvailable($0) && shortcut(for: $0).overridesSystemScreenshotShortcut }
+            .map { (shortcut: shortcut(for: $0), actionID: $0.rawValue) }
+        let tap = reservedShortcutTap
+        reservedSnapshot.withLockUnchecked { $0 = ReservedShortcutSnapshot(tap: tap, shortcuts: entries) }
+    }
+
+    private func reservedTapWasDisabled(timeout: Bool, trusted: Bool) {
+        EventTapThread.logDisabled(source: "Global Shortcuts", timeout: timeout, trusted: trusted)
+        guard !trusted else { return }
+        stopReservedShortcutTap()
+        refreshReservedShortcutTap()
     }
 
     private func isToolAvailable(_ action: GlobalShortcutAction) -> Bool {
@@ -503,30 +530,38 @@ final class GlobalShortcutManager {
         _, type, event, userData in
         guard let userData else { return Unmanaged.passUnretained(event) }
         let manager = Unmanaged<GlobalShortcutManager>.fromOpaque(userData).takeUnretainedValue()
-        return MainActor.assumeIsolated {
-            manager.processReservedShortcutEvent(
-                type: type,
-                event: event,
-                eventTap: manager.reservedShortcutTap
-            )
-        }
+        return manager.processReservedShortcutEvent(
+            type: type,
+            event: event,
+            eventTap: manager.reservedSnapshot.withLockUnchecked { $0.tap }
+        )
     }
 
-    func processReservedShortcutEvent(
+    /// Runs on the event tap thread; it reads only `reservedSnapshot` and hops to the main actor to act.
+    nonisolated func processReservedShortcutEvent(
         type: CGEventType,
         event: CGEvent,
         eventTap: CFMachPort?,
-        enableTap: (CFMachPort) -> Void = { CGEvent.tapEnable(tap: $0, enable: true) }
+        enableTap: (CFMachPort) -> Void = { CGEvent.tapEnable(tap: $0, enable: true) },
+        isTrusted: () -> Bool = { AXIsProcessTrusted() }
     ) -> Unmanaged<CGEvent>? {
         if type == .tapDisabledByTimeout || type == .tapDisabledByUserInput {
-            if let eventTap { enableTap(eventTap) }
+            let trusted = isTrusted()
+            if trusted, let eventTap { enableTap(eventTap) }
+            let timeout = type == .tapDisabledByTimeout
+            Task { @MainActor in reservedTapWasDisabled(timeout: timeout, trusted: trusted) }
             return Unmanaged.passUnretained(event)
         }
         guard type == .keyDown else { return Unmanaged.passUnretained(event) }
         let keyCode = UInt32(event.getIntegerValueField(.keyboardEventKeycode))
-        let action = reservedAction(keyCode: keyCode, flags: event.flags)
-        guard let action else { return Unmanaged.passUnretained(event) }
-        Task { @MainActor in run(id: action.rawValue) }
+        let flags = event.flags
+        let actionID = reservedSnapshot.withLockUnchecked { state in
+            state.shortcuts.first { $0.shortcut.matches(keyCode: keyCode, flags: flags) }?.actionID
+        }
+        guard let actionID else { return Unmanaged.passUnretained(event) }
+        // A held chord still hides the system screenshot but runs the action once.
+        guard event.getIntegerValueField(.keyboardEventAutorepeat) == 0 else { return nil }
+        Task { @MainActor in run(id: actionID) }
         return nil
     }
 }

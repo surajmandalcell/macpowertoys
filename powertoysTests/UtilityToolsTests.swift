@@ -273,11 +273,13 @@ final class UtilityToolsTests: XCTestCase {
             _ = GlobalShortcutManager.shared.processReservedShortcutEvent(
                 type: type,
                 event: event,
-                eventTap: eventTap
-            ) { recoveredTap in
-                XCTAssertTrue(recoveredTap === eventTap)
-                recoveredTypes.append(type)
-            }
+                eventTap: eventTap,
+                enableTap: { recoveredTap in
+                    XCTAssertTrue(recoveredTap === eventTap)
+                    recoveredTypes.append(type)
+                },
+                isTrusted: { true }
+            )
         }
 
         XCTAssertEqual(recoveredTypes, disabledTypes)

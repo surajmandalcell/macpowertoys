@@ -3,8 +3,9 @@ import ApplicationServices
 import Foundation
 import IOKit
 import IOKit.hid
+import os
 
-enum InputEventOverride: String, Codable, CaseIterable, Identifiable {
+nonisolated enum InputEventOverride: String, Codable, CaseIterable, Identifiable, Sendable {
     case automatic
     case mouse
     case trackpad
@@ -20,7 +21,7 @@ enum InputEventOverride: String, Codable, CaseIterable, Identifiable {
     }
 }
 
-struct InputScrollProfile: Codable, Equatable {
+nonisolated struct InputScrollProfile: Codable, Equatable, Sendable {
     var enabled = true
     var reverseVertical = false
     var reverseHorizontal = false
@@ -59,7 +60,7 @@ struct InputScrollProfile: Codable, Equatable {
     }
 }
 
-struct InputDevicesSettings: Codable, Equatable {
+nonisolated struct InputDevicesSettings: Codable, Equatable, Sendable {
     var scrollControlEnabled = false
     var eventOverride = InputEventOverride.automatic
     var mouse = InputScrollProfile(smooth: true)
@@ -75,14 +76,81 @@ struct InputDevicesSettings: Codable, Equatable {
     var encoded: Data? { try? JSONEncoder().encode(self) }
 }
 
-struct InputScrollResult: Equatable {
+nonisolated struct InputScrollResult: Equatable, Sendable {
     let vertical: Double
     let horizontal: Double
     let shouldSmooth: Bool
     var shiftConverted = false
 }
 
-enum InputScrollPolicy {
+/// One scroll delta: pixels on both axes plus whole wheel lines on both axes.
+nonisolated struct InputScrollStep: Equatable, Sendable {
+    var vertical = 0.0
+    var horizontal = 0.0
+    var lineVertical = 0.0
+    var lineHorizontal = 0.0
+
+    var isZero: Bool { vertical == 0 && horizontal == 0 && lineVertical == 0 && lineHorizontal == 0 }
+
+    static func + (lhs: Self, rhs: Self) -> Self {
+        Self(vertical: lhs.vertical + rhs.vertical, horizontal: lhs.horizontal + rhs.horizontal,
+             lineVertical: lhs.lineVertical + rhs.lineVertical, lineHorizontal: lhs.lineHorizontal + rhs.lineHorizontal)
+    }
+
+    static func - (lhs: Self, rhs: Self) -> Self {
+        Self(vertical: lhs.vertical - rhs.vertical, horizontal: lhs.horizontal - rhs.horizontal,
+             lineVertical: lhs.lineVertical - rhs.lineVertical, lineHorizontal: lhs.lineHorizontal - rhs.lineHorizontal)
+    }
+
+    func share(of steps: Int) -> Self {
+        let count = Double(steps)
+        return Self(vertical: (vertical / count).rounded(), horizontal: (horizontal / count).rounded(),
+                    lineVertical: (lineVertical / count).rounded(), lineHorizontal: (lineHorizontal / count).rounded())
+    }
+}
+
+/// Splits a smoothed wheel notch: the first step rewrites the real event, the rest are posted later.
+/// Whole lines are split too, so line-based readers see the same line total as without smoothing.
+nonisolated struct InputScrollSmoother: Equatable, Sendable {
+    static let steps = 5
+    static let interval = 0.018
+
+    private(set) var pending = InputScrollStep()
+    private(set) var stepsLeft = 0
+
+    mutating func begin(_ total: InputScrollStep) -> InputScrollStep {
+        let first = total.share(of: Self.steps)
+        pending = pending + total - first
+        stepsLeft = Self.steps - 1
+        return first
+    }
+
+    mutating func next() -> InputScrollStep? {
+        while stepsLeft > 0 {
+            let step = pending.share(of: stepsLeft)
+            pending = pending - step
+            stepsLeft -= 1
+            if !step.isZero { return step }
+        }
+        return nil
+    }
+}
+
+/// Carries the fraction of a scaled wheel line, so slow speeds still move by whole lines over time.
+nonisolated struct InputScrollLineCarry: Equatable, Sendable {
+    private(set) var remainder = 0.0
+
+    mutating func take(_ lines: Double) -> Double {
+        guard lines != 0 else { return 0 }
+        if remainder != 0, (remainder < 0) != (lines < 0) { remainder = 0 }
+        let total = remainder + lines
+        let whole = total.rounded(.towardZero)
+        remainder = total - whole
+        return whole
+    }
+}
+
+nonisolated enum InputScrollPolicy {
     static func profile(for kind: InputDeviceDescriptor.Kind, settings: InputDevicesSettings) -> InputScrollProfile {
         switch settings.eventOverride {
         case .automatic: kind == .mouse ? settings.mouse : settings.trackpad
@@ -95,12 +163,15 @@ enum InputScrollPolicy {
         vertical: Double,
         horizontal: Double,
         isContinuous: Bool,
+        isPhased: Bool = true,
         shiftHeld: Bool = false,
         settings: InputDevicesSettings
     ) -> InputScrollResult? {
-        let profile = profile(for: isContinuous ? .trackpad : .mouse, settings: settings)
+        // Trackpads always send a scroll or momentum phase; phase-less continuous events come from smooth wheels.
+        let profile = profile(for: isContinuous && isPhased ? .trackpad : .mouse, settings: settings)
         // Native stepped sliders can save one ULP beyond their endpoints.
-        guard settings.scrollControlEnabled, profile.enabled, profile.speed.isFinite,
+        guard vertical != 0 || horizontal != 0,
+              settings.scrollControlEnabled, profile.enabled, profile.speed.isFinite,
               ((0.35).nextDown...(3.0).nextUp).contains(profile.speed) else { return nil }
         let convert = shiftHeld && profile.shiftScrollsHorizontally && profile.horizontalEnabled
             && horizontal == 0 && vertical != 0
@@ -206,7 +277,6 @@ final class InputDevicesManager {
     static weak var current: InputDevicesManager?
 
     private static let settingsKey = "inputDevices.settings"
-    private static let syntheticEventTag: Int64 = 0x4D_50_54_49_4E_50_55_54
 
     private(set) var settings: InputDevicesSettings
     private(set) var devices: [InputDeviceDescriptor] = []
@@ -217,7 +287,8 @@ final class InputDevicesManager {
     private var eventTap: CFMachPort?
     private var runLoopSource: CFRunLoopSource?
     private var refreshTask: Task<Void, Never>?
-    private var interceptionGeneration = 0
+    nonisolated private static let scrollTap = ScrollEventTap()
+    private var scrollTap: ScrollEventTap { Self.scrollTap }
 
     private init() {
         settings = .decoded(from: UserDefaults.standard.data(forKey: Self.settingsKey))
@@ -226,8 +297,9 @@ final class InputDevicesManager {
 
     var eventTapOwnerCount: Int { eventTap == nil ? 0 : 1 }
 
-    deinit {
-        MainActor.assumeIsolated { stopInterception() }
+    /// Disables the scroll tap at once from any thread; `stop()` later releases it on the main actor.
+    nonisolated static func disableScrollTap() {
+        scrollTap.disable()
     }
 
     func refresh() {
@@ -243,14 +315,11 @@ final class InputDevicesManager {
     }
 
     func update(_ change: (inout InputDevicesSettings) -> Void) {
-        let wasEnabled = settings.scrollControlEnabled
         change(&settings)
         if let data = settings.encoded {
             UserDefaults.standard.set(data, forKey: Self.settingsKey)
         }
-        if wasEnabled != settings.scrollControlEnabled {
-            applyInterceptionState()
-        }
+        applyInterceptionState()
     }
 
     func requestPermission() {
@@ -273,8 +342,13 @@ final class InputDevicesManager {
     }
 
     private func applyInterceptionState() {
-        guard settings.scrollControlEnabled, SettingsManager.shared.isToolEnabled("input-devices"),
-              permissionGranted else {
+        let current = settings
+        scrollTap.snapshot.withLockUnchecked { $0.settings = current }
+        let anyProfileEnabled = [InputDeviceDescriptor.Kind.mouse, .trackpad].contains {
+            InputScrollPolicy.profile(for: $0, settings: current).enabled
+        }
+        guard current.scrollControlEnabled, anyProfileEnabled,
+              SettingsManager.shared.isToolEnabled("input-devices"), permissionGranted else {
             stopInterception()
             errorMessage = nil
             return
@@ -292,15 +366,16 @@ final class InputDevicesManager {
             place: .headInsertEventTap,
             options: .defaultTap,
             eventsOfInterest: mask,
-            callback: Self.eventCallback,
-            userInfo: Unmanaged.passUnretained(self).toOpaque()
+            callback: ScrollEventTap.callback,
+            userInfo: Unmanaged.passUnretained(scrollTap).toOpaque()
         ) else {
             errorMessage = "macOS did not allow scroll control. Re-enable Accessibility permission, then try again."
             return
         }
 
-        let source = CFMachPortCreateRunLoopSource(kCFAllocatorDefault, tap, 0)
-        CFRunLoopAddSource(CFRunLoopGetMain(), source, .commonModes)
+        let source: CFRunLoopSource = CFMachPortCreateRunLoopSource(kCFAllocatorDefault, tap, 0)
+        scrollTap.snapshot.withLockUnchecked { $0.tap = tap }
+        EventTapThread.shared.add(source)
         CGEvent.tapEnable(tap: tap, enable: true)
         eventTap = tap
         runLoopSource = source
@@ -308,128 +383,25 @@ final class InputDevicesManager {
     }
 
     private func stopInterception() {
-        interceptionGeneration &+= 1
-        if let eventTap { CGEvent.tapEnable(tap: eventTap, enable: false) }
-        if let runLoopSource { CFRunLoopRemoveSource(CFRunLoopGetMain(), runLoopSource, .commonModes) }
+        scrollTap.snapshot.withLockUnchecked {
+            $0.tap = nil
+            $0.generation &+= 1
+        }
+        if let runLoopSource { EventTapThread.shared.remove(runLoopSource) }
+        if let eventTap {
+            CGEvent.tapEnable(tap: eventTap, enable: false)
+            CFMachPortInvalidate(eventTap)
+        }
         eventTap = nil
         runLoopSource = nil
         interceptionActive = false
     }
 
-    private static let eventCallback: CGEventTapCallBack = { _, type, event, userInfo in
-        guard let userInfo else { return Unmanaged.passUnretained(event) }
-        let manager = Unmanaged<InputDevicesManager>.fromOpaque(userInfo).takeUnretainedValue()
-
-        if type == .tapDisabledByTimeout || type == .tapDisabledByUserInput {
-            return MainActor.assumeIsolated {
-                if let eventTap = manager.eventTap { CGEvent.tapEnable(tap: eventTap, enable: true) }
-                return Unmanaged.passUnretained(event)
-            }
-        }
-        guard type == .scrollWheel,
-              event.getIntegerValueField(.eventSourceUserData) != syntheticEventTag else {
-            return Unmanaged.passUnretained(event)
-        }
-
-        return MainActor.assumeIsolated {
-            manager.processScroll(event)
-        }
-    }
-
-    private func processScroll(_ event: CGEvent) -> Unmanaged<CGEvent>? {
-        let continuous = event.getIntegerValueField(.scrollWheelEventIsContinuous) != 0
-        let pointVertical = event.getDoubleValueField(.scrollWheelEventPointDeltaAxis1)
-        let pointHorizontal = event.getDoubleValueField(.scrollWheelEventPointDeltaAxis2)
-        let vertical = pointVertical == 0
-            ? Double(event.getIntegerValueField(.scrollWheelEventDeltaAxis1)) * 10
-            : pointVertical
-        let horizontal = pointHorizontal == 0
-            ? Double(event.getIntegerValueField(.scrollWheelEventDeltaAxis2)) * 10
-            : pointHorizontal
-        guard let result = InputScrollPolicy.transform(
-            vertical: vertical,
-            horizontal: horizontal,
-            isContinuous: continuous,
-            shiftHeld: event.flags.contains(.maskShift),
-            settings: settings
-        ) else { return Unmanaged.passUnretained(event) }
-
-        if result.shiftConverted { event.flags.remove(.maskShift) }
-        if result.shouldSmooth {
-            postSmoothed(vertical: result.vertical, horizontal: result.horizontal)
-            return nil
-        }
-        if result.shiftConverted {
-            moveVerticalToHorizontal(on: event, scale: result.horizontal / vertical)
-            return Unmanaged.passUnretained(event)
-        }
-
-        setScrollFields(
-            on: event,
-            verticalScale: vertical == 0 ? 0 : result.vertical / vertical,
-            horizontalScale: horizontal == 0 ? 0 : result.horizontal / horizontal
-        )
-        return Unmanaged.passUnretained(event)
-    }
-
-    private func setScrollFields(on event: CGEvent, verticalScale: Double, horizontalScale: Double) {
-        event.setDoubleValueField(
-            .scrollWheelEventPointDeltaAxis1,
-            value: event.getDoubleValueField(.scrollWheelEventPointDeltaAxis1) * verticalScale
-        )
-        event.setDoubleValueField(
-            .scrollWheelEventPointDeltaAxis2,
-            value: event.getDoubleValueField(.scrollWheelEventPointDeltaAxis2) * horizontalScale
-        )
-        for (field, scale) in [
-            (CGEventField.scrollWheelEventDeltaAxis1, verticalScale),
-            (.scrollWheelEventDeltaAxis2, horizontalScale),
-            (.scrollWheelEventFixedPtDeltaAxis1, verticalScale),
-            (.scrollWheelEventFixedPtDeltaAxis2, horizontalScale)
-        ] {
-            let value = Double(event.getIntegerValueField(field)) * scale
-            event.setIntegerValueField(field, value: Int64(value.rounded()))
-        }
-    }
-
-    private func moveVerticalToHorizontal(on event: CGEvent, scale: Double) {
-        event.setDoubleValueField(
-            .scrollWheelEventPointDeltaAxis2,
-            value: event.getDoubleValueField(.scrollWheelEventPointDeltaAxis1) * scale
-        )
-        event.setDoubleValueField(.scrollWheelEventPointDeltaAxis1, value: 0)
-        for (from, to) in [
-            (CGEventField.scrollWheelEventDeltaAxis1, CGEventField.scrollWheelEventDeltaAxis2),
-            (.scrollWheelEventFixedPtDeltaAxis1, .scrollWheelEventFixedPtDeltaAxis2)
-        ] {
-            let value = Double(event.getIntegerValueField(from)) * scale
-            event.setIntegerValueField(to, value: Int64(value.rounded()))
-            event.setIntegerValueField(from, value: 0)
-        }
-    }
-
-    private func postSmoothed(vertical: Double, horizontal: Double) {
-        let steps = 5
-        let generation = interceptionGeneration
-        for index in 0..<steps {
-            DispatchQueue.main.asyncAfter(deadline: .now() + Double(index) * 0.018) {
-                let start = Double(index) / Double(steps)
-                let end = Double(index + 1) / Double(steps)
-                guard self.interceptionActive, self.interceptionGeneration == generation,
-                      self.settings.scrollControlEnabled,
-                      let event = CGEvent(
-                        scrollWheelEvent2Source: nil,
-                        units: .pixel,
-                        wheelCount: 2,
-                        wheel1: Int32((vertical * end).rounded() - (vertical * start).rounded()),
-                        wheel2: Int32((horizontal * end).rounded() - (horizontal * start).rounded()),
-                        wheel3: 0
-                      ) else { return }
-                event.setIntegerValueField(.eventSourceUserData, value: Self.syntheticEventTag)
-                event.setIntegerValueField(.scrollWheelEventIsContinuous, value: 1)
-                event.post(tap: .cgSessionEventTap)
-            }
-        }
+    fileprivate func scrollTapWasDisabled(timeout: Bool, trusted: Bool) {
+        EventTapThread.logDisabled(source: "Input Devices", timeout: timeout, trusted: trusted)
+        guard !trusted else { return }
+        permissionGranted = false
+        applyInterceptionState()
     }
 
     nonisolated private static func connectedDevices() -> [InputDeviceDescriptor] {
@@ -505,4 +477,178 @@ final class InputDevicesManager {
             IOOptionBits(kIORegistryIterateRecursively)
         )
     }
+}
+
+/// Runs the scroll tap on `EventTapThread`. The main actor writes `snapshot`; everything else is tap-thread state.
+nonisolated final class ScrollEventTap: @unchecked Sendable {
+    nonisolated struct Snapshot {
+        var settings = InputDevicesSettings()
+        var tap: CFMachPort?
+        var generation = 0
+    }
+
+    static let syntheticEventTag: Int64 = 0x4D_50_54_49_4E_50_55_54
+    private static let idleFireDate = Date.distantFuture.timeIntervalSinceReferenceDate
+    private static let lateStepLimit = 0.1
+    private static let ownPID = Int64(getpid())
+
+    let snapshot = OSAllocatedUnfairLock(uncheckedState: Snapshot())
+
+    private var verticalLines = InputScrollLineCarry()
+    private var horizontalLines = InputScrollLineCarry()
+    private var smoother = InputScrollSmoother()
+    private var smoothingGeneration = 0
+    private var stepping = false
+    private var nextStepDeadline: CFAbsoluteTime = 0
+    private var syntheticFlags: CGEventFlags = []
+    private var syntheticLocation = CGPoint.zero
+    private lazy var stepTimer: CFRunLoopTimer = makeStepTimer()
+
+    static let callback: CGEventTapCallBack = { _, type, event, userInfo in
+        guard let userInfo else { return Unmanaged.passUnretained(event) }
+        return Unmanaged<ScrollEventTap>.fromOpaque(userInfo).takeUnretainedValue().handle(type: type, event: event)
+    }
+
+    func handle(type: CGEventType, event: CGEvent) -> Unmanaged<CGEvent>? {
+        let state = snapshot.withLockUnchecked { $0 }
+        if type == .tapDisabledByTimeout || type == .tapDisabledByUserInput {
+            let trusted = AXIsProcessTrusted()
+            if trusted, let tap = state.tap { CGEvent.tapEnable(tap: tap, enable: true) }
+            let timeout = type == .tapDisabledByTimeout
+            Task { @MainActor in
+                InputDevicesManager.current?.scrollTapWasDisabled(timeout: timeout, trusted: trusted)
+            }
+            return Unmanaged.passUnretained(event)
+        }
+        guard type == .scrollWheel,
+              event.getIntegerValueField(.eventSourceUserData) != Self.syntheticEventTag else {
+            return Unmanaged.passUnretained(event)
+        }
+        // An event another process posted was already shaped by that tool; transforming it again would stack.
+        let sourcePID = event.getIntegerValueField(.eventSourceUnixProcessID)
+        if sourcePID == 0 || sourcePID == Self.ownPID {
+            processScroll(event, settings: state.settings, generation: state.generation)
+        }
+        return Unmanaged.passUnretained(event)
+    }
+
+    /// Stops interception at once from any thread, for example at the start of app termination.
+    func disable() {
+        snapshot.withLockUnchecked { state in
+            state.generation &+= 1
+            if let tap = state.tap { CGEvent.tapEnable(tap: tap, enable: false) }
+        }
+    }
+
+    private func processScroll(_ event: CGEvent, settings: InputDevicesSettings, generation: Int) {
+        let continuous = event.getIntegerValueField(.scrollWheelEventIsContinuous) != 0
+        let phased = event.getIntegerValueField(.scrollWheelEventScrollPhase) != 0
+            || event.getIntegerValueField(.scrollWheelEventMomentumPhase) != 0
+        let pointVertical = event.getDoubleValueField(.scrollWheelEventPointDeltaAxis1)
+        let pointHorizontal = event.getDoubleValueField(.scrollWheelEventPointDeltaAxis2)
+        let lineVertical = Double(event.getIntegerValueField(.scrollWheelEventDeltaAxis1))
+        let lineHorizontal = Double(event.getIntegerValueField(.scrollWheelEventDeltaAxis2))
+        let vertical = pointVertical == 0 ? lineVertical * 10 : pointVertical
+        let horizontal = pointHorizontal == 0 ? lineHorizontal * 10 : pointHorizontal
+        guard let result = InputScrollPolicy.transform(
+            vertical: vertical,
+            horizontal: horizontal,
+            isContinuous: continuous,
+            isPhased: phased,
+            shiftHeld: event.flags.contains(.maskShift),
+            settings: settings
+        ) else { return }
+
+        if result.shiftConverted { event.flags.remove(.maskShift) }
+        let horizontalSource = result.shiftConverted ? vertical : horizontal
+        let horizontalLineSource = result.shiftConverted ? lineVertical : lineHorizontal
+        let verticalScale = vertical == 0 ? 0 : result.vertical / vertical
+        let horizontalScale = horizontalSource == 0 ? 0 : result.horizontal / horizontalSource
+        let full = InputScrollStep(
+            vertical: result.vertical,
+            horizontal: result.horizontal,
+            lineVertical: verticalLines.take(lineVertical * verticalScale),
+            lineHorizontal: horizontalLines.take(horizontalLineSource * horizontalScale)
+        )
+        let target = result.shouldSmooth ? beginSmoothing(full, from: event, generation: generation) : full
+        Self.write(target, to: event, vertical: vertical, horizontal: horizontalSource,
+                   shiftConverted: result.shiftConverted)
+    }
+
+    /// Scales the real event to `target`; a Shift conversion moves the vertical source onto the horizontal axis.
+    static func write(_ target: InputScrollStep, to event: CGEvent, vertical: Double, horizontal: Double,
+                      shiftConverted: Bool) {
+        let verticalScale = vertical == 0 ? 0 : target.vertical / vertical
+        let horizontalScale = horizontal == 0 ? 0 : target.horizontal / horizontal
+        let pointVertical = event.getDoubleValueField(.scrollWheelEventPointDeltaAxis1)
+        let fixedVertical = event.getDoubleValueField(.scrollWheelEventFixedPtDeltaAxis1)
+        let pointHorizontal = shiftConverted
+            ? pointVertical : event.getDoubleValueField(.scrollWheelEventPointDeltaAxis2)
+        let fixedHorizontal = shiftConverted
+            ? fixedVertical : event.getDoubleValueField(.scrollWheelEventFixedPtDeltaAxis2)
+        // Line deltas first: setting them makes CoreGraphics recompute the point and fixed-point deltas.
+        event.setIntegerValueField(.scrollWheelEventDeltaAxis1, value: Int64(target.lineVertical))
+        event.setIntegerValueField(.scrollWheelEventDeltaAxis2, value: Int64(target.lineHorizontal))
+        event.setDoubleValueField(.scrollWheelEventPointDeltaAxis1, value: pointVertical * verticalScale)
+        event.setDoubleValueField(.scrollWheelEventPointDeltaAxis2, value: pointHorizontal * horizontalScale)
+        event.setDoubleValueField(.scrollWheelEventFixedPtDeltaAxis1, value: fixedVertical * verticalScale)
+        event.setDoubleValueField(.scrollWheelEventFixedPtDeltaAxis2, value: fixedHorizontal * horizontalScale)
+    }
+
+    private func beginSmoothing(_ total: InputScrollStep, from event: CGEvent, generation: Int) -> InputScrollStep {
+        if smoothingGeneration != generation {
+            smoother = InputScrollSmoother()
+            smoothingGeneration = generation
+        }
+        let first = smoother.begin(total)
+        syntheticFlags = event.flags
+        syntheticLocation = event.location
+        if !stepping {
+            stepping = true
+            nextStepDeadline = CFAbsoluteTimeGetCurrent() + InputScrollSmoother.interval
+            CFRunLoopTimerSetNextFireDate(stepTimer, nextStepDeadline)
+        }
+        return first
+    }
+
+    private func postNextStep() {
+        let state = snapshot.withLockUnchecked { $0 }
+        let now = CFAbsoluteTimeGetCurrent()
+        let late = now - nextStepDeadline > Self.lateStepLimit
+        nextStepDeadline = now + InputScrollSmoother.interval
+        let live = state.tap != nil && state.generation == smoothingGeneration && state.settings.scrollControlEnabled
+        if !live || late { smoother = InputScrollSmoother() }
+        guard let step = smoother.next() else {
+            stepping = false
+            CFRunLoopTimerSetNextFireDate(stepTimer, Self.idleFireDate)
+            return
+        }
+        guard let synthetic = CGEvent(
+            scrollWheelEvent2Source: nil,
+            units: .pixel,
+            wheelCount: 2,
+            wheel1: Int32(step.vertical),
+            wheel2: Int32(step.horizontal),
+            wheel3: 0
+        ) else { return }
+        synthetic.flags = syntheticFlags
+        synthetic.location = syntheticLocation
+        synthetic.setIntegerValueField(.eventSourceUserData, value: Self.syntheticEventTag)
+        synthetic.setIntegerValueField(.scrollWheelEventIsContinuous, value: 1)
+        synthetic.setIntegerValueField(.scrollWheelEventDeltaAxis1, value: Int64(step.lineVertical))
+        synthetic.setIntegerValueField(.scrollWheelEventDeltaAxis2, value: Int64(step.lineHorizontal))
+        synthetic.post(tap: .cgSessionEventTap)
+    }
+
+    private func makeStepTimer() -> CFRunLoopTimer {
+        let timer: CFRunLoopTimer = CFRunLoopTimerCreateWithHandler(
+            kCFAllocatorDefault, Self.idleFireDate, InputScrollSmoother.interval, 0, 0
+        ) { [weak self] timer in
+            guard let self else { return CFRunLoopTimerInvalidate(timer) }
+            self.postNextStep()
+        }
+        EventTapThread.shared.add(timer)
+        return timer
+    }
+
 }
