@@ -209,3 +209,11 @@
   identical event, the key-window transition leaves the host open, and a
   deallocated delegate returns the event. In the signed UI build, confirm the
   ruler disappears while MacPowerToys remains running with its host window.
+
+## Tick Timer Runs While Hidden
+
+- **Symptom:** A 30 Hz main-thread timer runs while the ruler is hidden.
+- **Cause:** The timer policy looked only at `isVisible`.
+- **Invariant:** The timer runs only while a ruler is visible, on the active
+  Space, and not occluded. Occlusion and Space changes re-check it.
+- **Check:** CPU stays near 0 % with the ruler behind a full-screen app.

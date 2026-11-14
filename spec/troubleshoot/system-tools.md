@@ -94,6 +94,19 @@ Report: `tmp/redesign/logs/w8-tests-quiet.md`.
   bounded preset/encoding tests, then test approval, maximum, and Auto on an
   isolated Mac. Never approve a system prompt on the owner's desktop.
 
+## Fan Stays Forced After The App Dies
+
+- **Symptom:** Cool or Max stayed forced after a crash, force quit, or SIGKILL.
+  A failed Cool revert still showed "Auto in 10 minutes".
+- **Cause:** The helper did not track clients, and the in-process revert
+  ignored its result.
+- **Invariant:** The helper writes Auto when the connection that set a manual
+  mode ends (`FanManualLease`). The app holds that connection only while the
+  mode is manual. A failed revert retries 3 times, then shows an error. The
+  helper-commit poll backs off. A disabled Kwake refuses external actions.
+- **Check:** `FanControlTests` lease test. Then, with the new helper approved,
+  set Max, send SIGKILL, and confirm Auto returns on real hardware.
+
 ## NetToys
 
 ### Scanner Reverse DNS Deadline
@@ -491,17 +504,35 @@ Report: `tmp/redesign/logs/w8-tests-quiet.md`.
   configuration or switching policy.
 - **Invariant:** Wi-Fi Priority stores an ordered list of saved SSIDs without
   passwords. Automatic failover is off until at least two SSIDs are configured.
-  The helper checks Internet access every 2 to 3 seconds while enabled. After a
-  continuous failure reaches the selected 5 to 60 second threshold, 10 seconds
-  by default, scan nearby SSIDs and join the next saved network in order. Wait
-  30 seconds before another attempt. Keep Instant Hotspot as the final
+  Failover needs Internet access AND the gateway to fail for at least 30
+  seconds. Then scan nearby SSIDs and join the next saved network in order,
+  trying each saved network once (see "NetToys Helper And Pages"). Keep
+  Instant Hotspot as the final
   system-managed fallback and open Wi-Fi Settings for its Auto-Join setting.
   Do not claim that the app can invoke Instant Hotspot through a public API.
 - **Check:** Confirm legacy configuration decodes with failover off. Confirm the
-  timing test stays idle through 9 seconds, attempts at 10 seconds, rotates to
-  the next nearby SSID, wraps the order, and applies the 30-second cooldown.
+  failover tests stay idle before 30 seconds of combined failure, attempt after
+  it, and try each saved network once.
   In the signed installed app, confirm the page lists saved SSIDs, keeps the
   switch disabled with fewer than two rows, and shows Instant Hotspot last.
+
+## NetToys Helper And Pages
+
+- **Symptom:** Wi-Fi Priority left a working network after a few failed HTTPS
+  checks and kept rotating. The helper and pages polled files and processes
+  every 2 to 3 seconds. The helper exited when it had no work.
+- **Cause:** One HTTPS probe was the only failure test. Rotation had no limit.
+  Blocking subprocesses ran on the Swift cooperative pool. Polling had no
+  visibility gate.
+- **Invariant:** Failover needs Internet access AND the gateway to fail for at
+  least 30 seconds, and tries each saved network once. Subprocesses run on
+  dispatch threads with a kill deadline. At most 16 pings run at once. The
+  status file is written only on change or every 20 seconds. Pages poll only
+  while visible. The helper idles instead of exiting. Launch reconcile runs off
+  the main thread and is skipped when NetToys is off.
+- **Check:** `NetToysCoreTests` failover and ping tests. On the signed build,
+  take the gateway down for 30 seconds, run a /24 scan, and check the helper
+  under launchd.
 
 ## Network History Identity
 
@@ -651,6 +682,38 @@ Report: `tmp/redesign/logs/w8-tests-quiet.md`.
 - **Check:** Use sustained wheel input, then lock and unlock the session. Confirm
   the selected profile continues without toggling Input control or reopening the
   window.
+
+## Event Taps Off The Main Thread
+
+- **Symptom:** Scrolling and key presses freeze in every app while
+  MacPowerToys is busy.
+- **Cause:** Both active CGEventTaps were served on the main run loop.
+  Smoothing dropped each real notch and posted 5 synthetic events from the
+  main queue.
+- **Invariant:** Every CGEventTap runs on `EventTapThread`. Callbacks read only
+  lock-protected copies of settings and chords. They touch the main actor only
+  to run an action, log, or stop. A real wheel event is never dropped. A
+  disabled tap is re-enabled before the callback returns, and only while
+  Accessibility is trusted.
+- **Check:** `rg "CFRunLoopGetMain|assumeIsolated"` in
+  `Core/InputDevicesManager.swift` and `Core/GlobalShortcutManager.swift` finds
+  nothing. The smoothing unit test passes. With a real wheel during a forced
+  main-thread stall, scrolling and typing stay smooth.
+
+## Input Devices Scroll Field Fidelity
+
+- **Symptom:** Slow speeds do not move. Games see zero or 5x deltas. Smooth
+  mice get the trackpad profile. Events from other tools are transformed twice.
+  Rewritten events lose their pixel scroll.
+- **Cause:** Fixed-point fields went through integer accessors. Line deltas had
+  no carry. Device type came only from `isContinuous`. No source-pid check
+  existed. The line delta was written after the point delta, and CoreGraphics
+  then recomputed the point delta from the line count.
+- **Invariant:** Write line deltas first, then point and fixed-point deltas as
+  doubles. Carry whole lines per axis. Zero events pass. A continuous event
+  needs a phase to count as a trackpad. An event posted by another pid passes
+  untouched.
+- **Check:** `InputDevicesTests`, plus a real wheel at 0.35x and in a game.
 
 ## Input Devices Panel And Scroll Ownership, 2026-10-01
 
@@ -927,12 +990,14 @@ Report: `tmp/redesign/logs/w8-tests-quiet.md`.
 
 - **Symptom:** The signed window keeps CPU, GPU, Network, Disk, Thermal, Load,
   and Top processes pending. Battery claims absence before it is sampled.
-- **Cause:** The native visibility gate rejects a presented but covered window.
-  Detailed and process samplers never start there. Battery text treats a
-  missing percentage as proof of absent hardware. A Swift 6 startup check also
-  catches actor inheritance in the utility timer callback.
-- **Invariant:** Task Manager opts into presented-window updates while covered.
-  Closed and minimized windows stop. The first utility timer deadline is now,
+- **Cause:** Detailed and process samplers never start while the window is
+  hidden or minimized, so its readings stay pending until it is shown. Battery
+  text treats a missing percentage as proof of absent hardware. A Swift 6
+  startup check also catches actor inheritance in the utility timer callback.
+- **Invariant:** Task Manager follows the occlusion-aware visibility gate: a
+  covered or off-Space window stops sampling and shows its last snapshot, then
+  samples again when shown. Closed and minimized windows stop.
+  The first utility timer deadline is now,
   and its Sendable callback captures immutable settings. Keep the service's
   latest snapshot on reopen. Process sampling runs before its interval sleep.
   Pending or unrequested Battery data stays a dash; only a completed
@@ -943,7 +1008,9 @@ Report: `tmp/redesign/logs/w8-tests-quiet.md`.
   retains it on reopen. Delaying that first deadline by one second fails.
   The actual process sampler returns 1,135 rows in 176 ms. Recheck the signed
   window opened behind the owner's foreground app, warm reopen, and close
-  and minimize. Cold CPU and network rates require a second counter read.
+  and minimize. Cover the window with a full-screen app and confirm that
+  sampling stops and CPU stays near 0 %. Cold CPU and network rates require a
+  second counter read.
 
 - **Symptom:** Unknown RAM shows zero allocation, a report save silently fails,
   or hover and accessibility labels format again during chart rendering.
@@ -1549,3 +1616,34 @@ Report: `tmp/redesign/logs/w8-tests-quiet.md`.
   Fixed probes use below 12 MiB for 91 icons, 8.97 MiB after cache clearing,
   and 2.47 MiB for that checksum. Run hosted regressions, then record
   footprint and vmmap per installed page, panel tab, and close.
+
+## Mic Lock Stalls And Input Fights
+
+- **Symptom:** Main-thread stalls and endless input switching while Mic Lock
+  is on.
+- **Cause:** Synchronous CoreAudio calls ran on main. Re-enforcement ran from
+  its own listener with no limit.
+- **Invariant:** Mic Lock does all HAL reads and writes off main. It never
+  rewrites the same target within 2 seconds. The level meter runs only while
+  its page is visible and sends at most 10 updates per second.
+- **Check:** `MicLockResolverTests`. `rg "DispatchQueue.main"` in
+  `MacTweaks/MicLockService.swift` finds nothing.
+
+## Unbounded Subprocesses
+
+- **Symptom:** Portman data goes stale or Cloud Sync stalls after a long run.
+  A disk command hangs.
+- **Cause:** `lsof`, `ps`, `diskutil`, and `hdiutil` ran with no deadline.
+  rclone wrote stdout into a pipe nobody read.
+- **Invariant:** Every background subprocess has a deadline, a size cap, and no
+  unread pipe. A timeout is an error, never a success.
+- **Check:** `PortmanTests` deadline test. `rg "standardOutput = Pipe()"` shows
+  a reader beside each match.
+
+## Remote Stats Polling
+
+- **Symptom:** Remote Stats polled for the whole window lifetime.
+- **Cause:** A window-close event owned the polling.
+- **Invariant:** Each host card owns its polling from appear to disappear.
+- **Check:** On the signed build, switch pages. A connected host must survive a
+  Remote to Overview switch.

@@ -50,6 +50,7 @@ describes.
 | Partition Manager disks, partition map, actions, or safety guard | [Partition Manager](disk-explorer.md) |
 | NetToys, Input Devices, System Cleaner, Mole, or Task Manager | [System tools](system-tools.md) |
 | Internal logs or macOS system diagnostics | [Event Viewer](logs.md) |
+| RSync UI, Cloud Sync, Dev Sync, file watching | [Cloud Sync](cloud-sync.md) |
 | Concurrent edits, staging, overwritten work | [Shared worktree](shared-worktree.md) |
 | Builds, UI checks, installation, handoff | [Verification](verification.md) |
 

@@ -84,6 +84,15 @@ no folder scan, treemap, rings, or file removal. The core is
   matrix only on exactly one removable 14-17 GB SD or USB disk. It erases the
   card and ends with one ExFAT volume named PMDONE.
 
+## Disk command hangs
+
+- **Symptom:** A hung `diskutil` or `hdiutil` call blocks the tool.
+- **Cause:** The calls had no deadline.
+- **Invariant:** Reads time out at 30 seconds. Mount, unmount, eject, and rename
+  time out at 120 seconds. Data-moving writes time out at 2 hours. A timeout is
+  an error.
+- **Check:** Run Partition Manager actions in the signed build.
+
 ## Blocked eject
 
 - **Invariant:** On a failed eject, list the processes with open files.

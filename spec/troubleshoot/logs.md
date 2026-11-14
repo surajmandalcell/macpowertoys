@@ -106,3 +106,13 @@
   Compile `SystemLogReaderTests` through the shared build gate. Hosted CI
   and the orchestrator must verify preference restoration, route precedence,
   live locale changes, and both appearances on the signed installed app.
+
+## Activation log
+
+- **Symptom:** The activation log could crash the app and blocked main.
+- **Cause:** A throwing legacy write API and stack symbol lookup ran on main.
+- **Invariant:** Write safely and atomically on a utility queue. Cap the log at
+  256 KB and 14 days, oldest first. Store no URL query, fragment, or user info.
+  The app log buffer keeps at most 1000 pending entries. Log pruning also
+  deletes old SwiftData history.
+- **Check:** `ResourceDiagnosticsTests` activation-log tests.

@@ -306,10 +306,11 @@
 - **Cause:** Fan reset ran in applicationWillTerminate. Other cleanup stages
   had no failure result or bounded wait.
 - **Invariant:** Use terminateLater. Await the existing Fan Auto operation and
-  throwing Color Picker and Cloud Sync drains. Check LogManager.persistenceError
-  after its flush. Deadlines are 20s for Fan, 10s for Color Picker, 10s for logs,
-  and 30s for Cloud Sync. A deadline cancels its cleanup task and quit, then
-  shows Retry and Keep Open. Retain unfinished work so Retry waits for it.
+  throwing Color Picker and Cloud Sync drains. Logs flush but never block quit.
+  Deadlines are 20s for Fan, 10s for Color Picker, and 30s for Cloud Sync. A
+  deadline cancels its cleanup task and quit, then shows Retry and Keep Open
+  (see "Quit Refused With A Hidden Alert" for when the alert may show). Retain
+  unfinished work so Retry waits for it.
   Save paused transfer snapshots before engine teardown. Stop UI owners after
   critical success. Never force exit from a timeout. Keep late startup work
   from publishing or resuming jobs after successful shutdown.
@@ -1056,3 +1057,54 @@ and
   timing rerun. Require Task Manager tabs <=100ms and preserve other panels.
   Commit: `547b5586`. Profile: `tmp/redesign/perf/r11-tm-interval-costs.json`.
   Matching semantics: [Apple scene routing](https://developer.apple.com/documentation/swiftui/scene/handlesexternalevents(matching:)).
+
+## Quit Refused With A Hidden Alert
+
+- **Symptom:** Quit showed an alert the owner never saw. The app stayed half
+  shut down and had to be killed.
+- **Cause:** The RSync quit stage threw when an earlier RSync shutdown was still
+  running. The alert opened as a hidden modal while the app was in the
+  background.
+- **Invariant:** Logs never block quit. Logout, restart, and shutdown always
+  finish. The alert shows only for a user quit while the app is active and a
+  user-data stage (fan restore, Color Picker save, RSync save) fails. A
+  refused quit in the background posts a notification or shows the alert at the
+  next activation. It never activates the app. Dev Sync stop is bounded at 10
+  seconds.
+- **Check:** `AppLifecycleTests` quit decision test. Then quit an idle app and
+  confirm the rclone marker file is removed.
+
+## Two Copies At Launch
+
+- **Symptom:** Two copies started together and both quit. A second copy started
+  work before it quit.
+- **Cause:** The instance check counted later copies as owners and ran after
+  startup work.
+- **Invariant:** Only the earlier copy (launch date, then lower pid) survives. A
+  losing copy starts no service.
+- **Check:** Start two copies at once. One stays, and the other quits without
+  starting any service.
+
+## Closed Menu Panels Keep Memory And Work
+
+- **Symptom:** Closed menu panels kept their view trees and process lists for
+  the whole session. Menu metrics sampled while the menu bar was hidden.
+- **Cause:** Presenters and controllers held the outer hosting controller. The
+  sampling timer had no visibility check.
+- **Invariant:** On close, sampling stops at once. `MenuPanelRelease` frees the
+  root and the snapshot after 60 seconds, and a reopen cancels that. Status
+  items whose window is not visible are not sampled or redrawn. A panel shown
+  while the app is inactive arms its dismissal monitors and closes on the next
+  outside click or Space change.
+- **Check:** A reopen within 60 seconds is warm. In a full-screen Space, the
+  System Monitor timer owner count is 0.
+
+## Window State Saves
+
+- **Symptom:** A UserDefaults write on every move. Bad saved frames after a
+  game changed the display mode.
+- **Cause:** One save per move and resize event, including system moves after a
+  display change.
+- **Invariant:** Save 0.5 seconds after movement stops and on close. Make no
+  saves for 2 seconds after a screen-parameter change.
+- **Check:** `WindowStateManagerTests`.

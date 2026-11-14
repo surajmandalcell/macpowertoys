@@ -123,3 +123,15 @@
   Escape closes dismissible detail and sheet views.
 - **Check:** Open short and large detections, copy text, inspect timestamps, and
   dismiss the detail view with Escape.
+
+## Selection Stuck After A Focus Change
+
+- **Symptom:** After a focus change during selection, the hotkey stops working
+  and the dim overlay comes back later.
+- **Cause:** The panel hides on deactivation, but the session stays in the
+  selecting state.
+- **Invariant:** Losing app focus, a display change, or a second hotkey press
+  cancels the selection and closes every panel. Diagnostics capture panels are
+  released 30 seconds after their last present.
+- **Check:** The `CoreModelTests` selection test. Then press Command-Tab during
+  a selection in the installed build and confirm the hotkey works again.

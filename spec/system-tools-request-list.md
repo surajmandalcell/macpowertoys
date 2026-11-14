@@ -32,10 +32,10 @@ verified result changes a status.
   (`da3146a3`, `8adbcc30`, `027ea904`, `e0432849`, `58932d0c`, `00227de5`,
   `ff74d88b`) need a signed rerun. Cold Processes preparation is open.
   Evidence: `tmp/redesign/perf/w1-windows.md`.
-- Shared OnePlusUI: adopt the next tag with `7dbcb3f`, `10b09f5`, `68c91bf`,
-  `716ad8b`, and `a02d43d`. The app pins 1.0.0, so two corrected applet
-  Settings height assertions wait for the tag. Then verify Task Manager card
-  headers, System Care panel glyphs, and Disk geometry in both appearances.
+- Shared OnePlusUI and NetToys: the app pins OnePlusUI 1.0.4 and NetToys
+  1.0.12. On the signed build, verify the corrected applet Settings heights,
+  Task Manager card headers, System Care panel glyphs, and Disk geometry in
+  both appearances.
 - Both appearances: every row marked Verify needs a Light and Dark capture of
   the signed build, including focus modes (Full Keyboard Access, VoiceOver).
 
@@ -49,10 +49,15 @@ Signed `d911b0fa` stayed at 327.5 MiB after all windows closed. Fixes:
 roots), `329d6caf` (reuse glyph bitmaps), `2a036b02` (release closed
 hosting controllers), and `a6aeff3a` (diagnostic `close-window/<tool-id>`
 route). A follow-up sample found no retained 550 MB Overview increase.
+Closed menu panels (combined, Task Manager, per-tool, Portman) free their
+view tree and process snapshot 60 seconds after close. A reopen before that
+cancels the release (`MenuPanelRelease`).
 
 Open: install a clean signed build, run the full route matrix, close all
 surfaces, wait 30 seconds, then record heap, footprint, and reopen timing.
-Goal: under 250 MB after close, with fast reopen. Reports:
+Goal: under 250 MB after close, with fast reopen. Also check that a panel
+reopens within 100 ms inside the 60 second window, and that a cold open after
+the roots are freed stays within 250 ms. Reports:
 `tmp/redesign/logs/w4-memory.md`, `w5-memory3.md`, `w6-memory4.md`,
 `w7-memory5.md`.
 
@@ -70,7 +75,7 @@ Open verification:
 |---|---|---|---|
 | Verify | Align Scanner cells and remove standalone row chrome (T089-T091). | `7ae93446`, `ed44cc0d`, `3145a948`: shared cell geometry in all 15 columns, empty scan is one open 44pt row. | Hosted checks, signed interaction. Report `w3-audit-nettoys.md`. |
 | Verify | Audit every NetToys feature; apply the horizontal density and instant-motion correction. | `c125c479`, `f7294b61`, `5d5b5bca`, `b9220f87`: settings edits, Wi-Fi subprocess bounds, scanner sort, all-down rows, import, comments, archive, history. A permitted /24 scan returned 254 rows. | Hosted tests, signed install, both appearances. Run a fresh signed scan (the unsigned probe got EHOSTUNREACH for the gateway). Report `w1-audit-nettoys.md`. |
-| Open | Run NetToys standalone and as the MacPowerToys package, with tagged OnePlusUI shared by both. | NetToys `8ed9d38` to `104224c` move core, views, menu, resources and tests; 99 tests pass; OnePlusUI 1.0.0 is pinned. | Publish both 1.0.0 tags, generate lockfiles, apply `tmp/redesign/nettoys-final.patch`, remove the unused in-tree OnePlusUI after remote builds. Verify clean clones, signed helper migration, both hosts, permissions, installed stamps. Report `w9-nettoys-extract.md`. |
+| Open | Run NetToys standalone and as the MacPowerToys package, with tagged OnePlusUI shared by both. | NetToys `8ed9d38` to `104224c` move core, views, menu, resources and tests; 99 tests pass; OnePlusUI 1.0.4 and NetToys 1.0.12 are pinned. | Publish both 1.0.0 tags, generate lockfiles, apply `tmp/redesign/nettoys-final.patch`, remove the unused in-tree OnePlusUI after remote builds. Verify clean clones, signed helper migration, both hosts, permissions, installed stamps. Report `w9-nettoys-extract.md`. |
 | Verify | Show current network data and quick actions in the main panel (route, SSID, IPv4, bounded gateway probe, Scan network, Copy IP). | Reuses parser and cancellable subprocess code. No poller added. | Check Wi-Fi, wired, missing permission, no route, gateway timeout, both actions, first frames, idle work. |
 | Verify | Add current-network tiles to the main menu panel, prepared off the main thread. | Panel keeps configuration, helper status, five recent anchors and failures across tabs. | Check loaded, empty, error, expanded states in both appearances. |
 | Verify | Resolve the capture findings through round 6 (T=16, 24pt bottom bound, trailing chevrons, Scanner inset, permissions, natural short lists). | `60a0890` shows "No scans in this period" when saved runs exist outside the range. | Hosted regression, signed empty-period copy, popups, focus modes, populated Scanner cells, active scrollers, latency, a live scan. Report `25r9-nettoys.md`. |
@@ -92,6 +97,7 @@ Open verification:
 | Verify | Keep SSH key-only after an anchored device changes address (secure one-use password sheet, `ssh-copy-id`, Windows ACLs). | Regressions pass; `77dc585` helper healthy; `ssh -G win1` shows stable alias, `accept-new`, `CheckHostIP no`. | Change the anchored local address for `win1` and confirm key-only access. |
 | Verify | Prefer a local SSH Anchor, fall back through Tailscale, switch back without flapping. | `4e9df5f`, `800bdd0`, `5a1fd89`; 61-test recovery class passes. | Exercise one signed anchor across a real local outage with a disposable SSH host. |
 | Verify | Keep SSH Anchor compact and stable while state changes. | `5ec34ce`: stable columns and reserved widths; 6pt row inset. | Check row spacing and the 1,100pt minimum width. |
+| Verify | Make Wi-Fi failover strict and cut helper load. | Failover needs internet AND gateway down for 30 s and tries each saved network once. Subprocesses run on dispatch threads with a kill deadline. At most 16 pings run at once. The status file is written only on change or every 20 s. Pages poll only while visible. The helper idles and does not exit. Launch reconcile runs off main and is skipped when NetToys is off. | Real network checks: gateway down for 30 s, a /24 scan, and the helper under launchd. |
 
 Done:
 
@@ -129,8 +135,10 @@ Open verification:
   tap), hosted tests. Report `w4-scroll-fix.md`.
 - Tray identities (`cf56cc76`): signed hover and visual review.
 - Accessibility revocation during an active tap or queued smoothing (T083):
-  verify in an isolated session. Revoke trust during wheel smoothing, require
-  zero interception and visible recovery, then regrant by explicit action.
+  the code path exists (a tap disabled by macOS is re-enabled only while
+  Accessibility is trusted). Open: verify in an isolated session. Revoke trust
+  during wheel smoothing, require zero interception and visible recovery, then
+  regrant by explicit action.
 
 | Status | Request | Evidence | Remaining work |
 |---|---|---|---|
@@ -151,6 +159,8 @@ Open verification:
 | Verify | Keep scroll control active after macOS disables the event tap. | `328c336` re-enables the tap inside the callback. | Sustained wheel input, then lock and unlock; confirm the profile stays active. |
 | Verify | Confirm real mouse and trackpad control after Accessibility permission. | Unit seams cover profile selection and transformation. | Test vertical, horizontal, reverse, speed, smooth wheel on real hardware. |
 | Verify | Redraw the workspace as one professional native tool (native controls, system focus ring, truncation, gated switches). | Signed `e41ef3c` showed equal cards and shared settings in the menu-bar tab. | Hover, keyboard traversal, accessibility text sizes. |
+| Verify | Serve the scroll and reserved-shortcut taps off the main thread; smoothing never swallows the wheel event. | `EventTapThread` hosts both taps. Callbacks read lock-protected copies of settings and chords. The first smoothing step is written into the real event; the rest go through one tap-thread timer (zero steps skipped, steps over 100 ms late dropped). No tap exists when both profiles are off. A tap disabled by macOS is re-enabled only while Accessibility is trusted. Quit calls `InputDevicesManager.disableScrollTap()`. | Real wheel feel with smoothing, modifier scrolling, Command-Shift-3 suppression, scrolling during a main-thread stall, Accessibility revoke (T083). |
+| Verify | Keep scroll fields exact. | Fixed-point fields keep fractions. Slow speeds carry lines per axis. Empty events pass. A continuous event with no phase uses the mouse profile. Events posted by another process pass untouched. Smoothed steps keep the line total. Line deltas are written before point deltas. No per-event allocation. | Real wheel at 0.35x and in a game. Confirm hardware events report source pid 0. Run Scroll Reverser together with the tool: it edits the hardware event in place, so two reverse settings on one axis cancel. Set reverse in one app only. |
 
 Done:
 
@@ -238,14 +248,18 @@ Open verification:
 - Retained pages (`58932d0c`, `027ea904`, `e0432849`): signed times for
   Overview, Settings, and panel tab switches; complete frames. Previous signed
   maxima: Overview 126ms, Settings 141ms; open items P1, P3, P4, P5.
-- T014-T016: presented covered windows can sample; hidden and minimized stop.
-  Signed native close and minimize, inactive Space, detail redraw, menu-metric
-  independence, quiet CPU, wakeups, energy, App Nap, physical footprint.
+- T014-T016: covered, off-Space, hidden, and minimized windows stop detailed
+  sampling, process sampling, and live redraws; they resume when the window is
+  shown again (DESIGN.md gate 9). Signed check: a full-screen app covering the
+  window, inactive Space, native close and minimize, menu-metric independence,
+  quiet CPU, wakeups, energy, App Nap, physical footprint.
 - Panel height callback and diagnostics routes (foundation rounds 10 and 11):
   signed short and tall tab frames, latency, panel route comparison.
 
 | Status | Request | Evidence | Remaining work |
 |---|---|---|---|
+| Verify | Cut Task Manager background cost. | The `ps -A` result is cached for 15 s. Per-core tick counters are wrap-safe above 2^31. Process icons are kept while their app runs. Menu-bar metrics stop sampling while every status item is hidden. Remote Stats polls only while its card is visible. | Cover the window with a full-screen app and confirm near 0 % CPU. Confirm that a Remote to Overview page switch keeps a connected host. |
+| Verify | Restore Auto when the app that set Cool or Max dies. | The helper writes Auto when the connection that set a manual mode ends (`FanManualLease`, keyed to the XPC connection). A failed Cool revert retries 3 times and then shows an error. The helper-commit poll backs off. A disabled Kwake refuses external actions. | Install the new helper (macOS approval prompt). Then set Max, send SIGKILL, and confirm Auto returns on real hardware. |
 | Verify | Round 12 critique: process sort feedback, app icons, compact Overview text, unique Disk details. | `23d1a768`: native sort indicator, bundle icons off-main, 11pt/9.5pt roles, one 100pt Volume panel. | Hosted `SystemMonitorTests`; signed sort clicks, icons, Overview inks, Disk in both appearances. |
 | Open | Panel latency: warm open within 100ms, cold within 250ms, tab switch within 100ms (P1, P4, P5, P6). | Signed `43ce0eb9` medians: opens 16.1/38.1/79.0ms (Main, Task Manager, Portman), tabs 66.8/128.2/84.4ms. `547b5586` stops panel diagnostics matching the Task Manager scene. | Install the integrated fix; run the same collector and require warm opens and tabs at most 100ms. Keep open: cold complete frames, enabled separate items, saved-host edits, closed-panel CPU, hosted run. Report `w3-perf-panels.md`. |
 | Open | T001-T008, T051, T110: panel latency and native behavior; display sizing before measurement; accessible status names; T108 Settings hooks. | `b7e222d7`, `8801bfd9`, `0fa0407d`, `073f2874`, `07728304`, `63daa7e9`, `a5d188f1`. | Clean install; pointer and keyboard timing, complete frames, Escape chains, foreground preservation, runtime owners, Control-click parity. A background diagnostic profile once changed Chrome to MacPowerToys as foreground; recheck with the scene fix. |
