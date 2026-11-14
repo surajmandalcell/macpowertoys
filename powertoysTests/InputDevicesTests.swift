@@ -1,6 +1,7 @@
 import SwiftUI
 import XCTest
 import OnePlusUI
+import os
 @testable import powertoys
 
 @MainActor
@@ -81,6 +82,62 @@ final class InputDevicesTests: XCTestCase {
         let restored = InputDevicesSettings.decoded(from: try JSONSerialization.data(withJSONObject: legacy))
         XCTAssertTrue(restored.mouse.shiftScrollsHorizontally, "a saved profile without the key keeps shift scrolling on")
         XCTAssertEqual(restored.mouse.speed, 2.5)
+    }
+
+    func testSmoothingRewritesTheRealEventAndPostsOnlyTheRemainder() throws {
+        var smoother = InputScrollSmoother()
+        let first = smoother.begin(InputScrollStep(vertical: -10.5, horizontal: 7, lineVertical: -1))
+        XCTAssertEqual(first.vertical, -2)
+        XCTAssertEqual(first.horizontal, 1)
+        var steps: [InputScrollStep] = []
+        while let step = smoother.next() { steps.append(step) }
+        XCTAssertEqual(steps.count, InputScrollSmoother.steps - 1)
+        let total = steps.reduce(first, +)
+        XCTAssertEqual(total.vertical + smoother.pending.vertical, -10.5, accuracy: 1e-9)
+        XCTAssertEqual(total.horizontal + smoother.pending.horizontal, 7, accuracy: 1e-9)
+        XCTAssertLessThanOrEqual(abs(smoother.pending.vertical), 0.5)
+        XCTAssertEqual(total.lineVertical, -1, "line readers get the unsmoothed line total")
+
+        var small = InputScrollSmoother()
+        let smallFirst = small.begin(InputScrollStep(vertical: 3))
+        var smallSteps: [InputScrollStep] = []
+        while let step = small.next() { smallSteps.append(step) }
+        XCTAssertFalse(smallSteps.contains { $0.isZero }, "a step with no movement is skipped")
+        XCTAssertLessThan(smallSteps.count, InputScrollSmoother.steps - 1)
+        XCTAssertEqual(smallSteps.reduce(smallFirst, +).vertical, 3)
+
+        let tap = ScrollEventTap()
+        tap.snapshot.withLockUnchecked { $0.settings = InputDevicesSettings(scrollControlEnabled: true) }
+        let event = try XCTUnwrap(CGEvent(scrollWheelEvent2Source: nil, units: .line, wheelCount: 1,
+                                          wheel1: 1, wheel2: 0, wheel3: 0))
+        let returned = try XCTUnwrap(tap.handle(type: .scrollWheel, event: event), "a smoothed notch is never swallowed")
+        XCTAssertTrue(returned.takeUnretainedValue() === event)
+    }
+
+    func testScrollFieldsKeepFractionsCarryLinesAndPassEmptyEvents() throws {
+        let event = try XCTUnwrap(CGEvent(scrollWheelEvent2Source: nil, units: .line, wheelCount: 1,
+                                          wheel1: 1, wheel2: 0, wheel3: 0))
+        event.setDoubleValueField(.scrollWheelEventPointDeltaAxis1, value: 10)
+        event.setDoubleValueField(.scrollWheelEventFixedPtDeltaAxis1, value: 1.5)
+        ScrollEventTap.write(InputScrollStep(vertical: 3), to: event, vertical: 10, horizontal: 0, shiftConverted: false)
+        XCTAssertEqual(event.getDoubleValueField(.scrollWheelEventPointDeltaAxis1), 3, accuracy: 1e-3)
+        XCTAssertEqual(event.getDoubleValueField(.scrollWheelEventFixedPtDeltaAxis1), 0.45, accuracy: 1e-3,
+                       "fixed-point lines keep their fraction")
+
+        var carry = InputScrollLineCarry()
+        XCTAssertEqual([carry.take(0.35), carry.take(0.35), carry.take(0.35)], [0, 0, 1], "slow speeds still move")
+        XCTAssertEqual(carry.take(-1), -1, "a direction change drops the old remainder")
+
+        let settings = InputDevicesSettings(scrollControlEnabled: true)
+        XCTAssertNil(InputScrollPolicy.transform(vertical: 0, horizontal: 0, isContinuous: false, settings: settings))
+        var phaseless = settings
+        phaseless.mouse.speed = 2
+        XCTAssertEqual(
+            InputScrollPolicy.transform(vertical: 10, horizontal: 0, isContinuous: true, isPhased: false,
+                                        settings: phaseless)?.vertical,
+            20,
+            "a continuous event without a phase uses the mouse profile"
+        )
     }
 
     func testDeviceIdentityFormatsFirmwareVendorAndConnection() {
