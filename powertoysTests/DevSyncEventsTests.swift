@@ -48,6 +48,27 @@ final class DevSyncEventsTests: XCTestCase {
         XCTAssertTrue(zip(fileEvents, fileEvents.dropFirst()).allSatisfy { $0.eventID < $1.eventID })
     }
 
+    func testRunningStreamOwnsItselfUntilStopped() throws {
+        let root = try makeTemporaryDirectory()
+        weak var weakStream: DevEventStream?
+        var stream: DevEventStream? = DevEventStream(
+            rootURL: root,
+            sinceEventID: nil,
+            latencySeconds: 0.05,
+            queue: DispatchQueue(label: "DevSyncEventsTests.retain"),
+            handler: { _ in }
+        )
+        weakStream = stream
+        XCTAssertTrue(stream?.start() ?? false)
+        stream = nil
+        XCTAssertNotNil(weakStream, "FSEvents must keep a running stream alive")
+        weakStream?.stop()
+        // FSEvents drops its context reference on its own queue after FSEventStreamRelease.
+        let released = expectation(for: NSPredicate { _, _ in weakStream == nil }, evaluatedWith: nil)
+        wait(for: [released], timeout: 2)
+        XCTAssertNil(weakStream, "Stop must release the stream's own reference")
+    }
+
     func testScenario22EditorSavesFiftyTimesProducesOneDueGeneration() async throws {
         let projectID = UUID()
         let start = Date(timeIntervalSince1970: 1_000)

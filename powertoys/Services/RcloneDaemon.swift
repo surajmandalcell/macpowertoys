@@ -53,15 +53,19 @@ final class RcloneDaemon {
         proc.executableURL = URL(fileURLWithPath: shell)
         proc.arguments = ["-lc", "command -v rclone"]
         let pipe = Pipe()
+        proc.standardInput = FileHandle.nullDevice
         proc.standardOutput = pipe
-        proc.standardError = Pipe()
+        proc.standardError = FileHandle.nullDevice
         do {
             try proc.run()
-            proc.waitUntilExit()
         } catch {
             return nil
         }
+        DispatchQueue.global(qos: .utility).asyncAfter(deadline: .now() + 5) {
+            if proc.isRunning { proc.terminate() }
+        }
         let data = pipe.fileHandleForReading.readDataToEndOfFile()
+        proc.waitUntilExit()
         let path = String(data: data, encoding: .utf8)?
             .trimmingCharacters(in: .whitespacesAndNewlines) ?? ""
         return FileManager.default.isExecutableFile(atPath: path) ? path : nil
@@ -77,8 +81,17 @@ final class RcloneDaemon {
         let fm = FileManager.default
         try? fm.createDirectory(at: registryDirectory, withIntermediateDirectories: true)
         let marker = registryDirectory.appendingPathComponent(String(daemonPid))
-        let owner = String(ProcessInfo.processInfo.processIdentifier)
+        let pid = ProcessInfo.processInfo.processIdentifier
+        let owner = ownerIdentity(pid) ?? String(pid)
         try? owner.data(using: .utf8)?.write(to: marker)
+    }
+
+    // The start time keeps a reused owner pid from protecting an orphaned daemon.
+    private nonisolated static func ownerIdentity(_ pid: pid_t) -> String? {
+        var info = proc_bsdinfo()
+        let size = Int32(MemoryLayout<proc_bsdinfo>.size)
+        let bytes = withUnsafeMutablePointer(to: &info) { proc_pidinfo(pid, PROC_PIDTBSDINFO, 0, $0, size) }
+        return bytes == size ? "\(pid) \(info.pbi_start_tvsec)" : nil
     }
 
     private static func unregister(daemonPid: pid_t) {
@@ -95,9 +108,10 @@ final class RcloneDaemon {
                 try? fm.removeItem(at: marker)
                 continue
             }
-            let ownerPid = (try? String(contentsOf: marker, encoding: .utf8))
-                .flatMap { pid_t($0.trimmingCharacters(in: .whitespacesAndNewlines)) }
-            if let ownerPid, ownerPid > 0, kill(ownerPid, 0) == 0 {
+            let owner = (try? String(contentsOf: marker, encoding: .utf8))?
+                .trimmingCharacters(in: .whitespacesAndNewlines)
+            if let ownerPid = owner?.split(separator: " ").first.flatMap({ pid_t($0) }), ownerPid > 0,
+               ownerIdentity(ownerPid) == owner {
                 continue
             }
             defer { try? fm.removeItem(at: marker) }
@@ -165,7 +179,7 @@ final class RcloneDaemon {
             proc.environment = environment
             let errPipe = Pipe()
             proc.standardError = errPipe
-            proc.standardOutput = Pipe()
+            proc.standardOutput = FileHandle.nullDevice
             errPipe.fileHandleForReading.readabilityHandler = { handle in
                 let data = handle.availableData
                 guard !data.isEmpty else {

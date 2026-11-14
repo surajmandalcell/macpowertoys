@@ -21,6 +21,27 @@ final class PortmanTests: XCTestCase {
         }
     }
 
+    func testPortScanCommandStopsTheChildAtItsDeadline() async throws {
+        let start = Date()
+        do {
+            _ = try await Task.detached {
+                try PortmanScanner.run("/bin/sleep", ["30.25"], timeout: 0.5)
+            }.value
+            XCTFail("Port scan waited past its deadline")
+        } catch let error as NSError {
+            XCTAssertEqual(error.domain, "Portman")
+            XCTAssertEqual(error.code, Int(ETIMEDOUT))
+        }
+        XCTAssertLessThan(Date().timeIntervalSince(start), 3)
+        var childAlive = true
+        for _ in 0..<20 where childAlive {
+            let table = try PortmanScanner.run("/bin/ps", ["-A", "-o", "args="])
+            childAlive = table.split(whereSeparator: \.isNewline).contains { $0 == "/bin/sleep 30.25" }
+            if childAlive { try await Task.sleep(for: .milliseconds(50)) }
+        }
+        XCTAssertFalse(childAlive)
+    }
+
     func testClaudeSessionIDReadsOnlyEnvironmentAfterArguments() {
         let id = UUID(uuidString: "12345678-1234-1234-1234-123456789abc")!
         let bytes: [UInt8] = [2, 0, 0, 0] + Array(
@@ -1057,5 +1078,17 @@ final class PortmanTests: XCTestCase {
             try await Task.sleep(for: .milliseconds(250))
         }
         XCTAssertNotNil(restarted, "Restart must create a new listener on the same port.")
+    }
+
+    func testRelaunchLogKeepsOnlyTheNewestBytesOverTheLimit() throws {
+        let file = FileManager.default.temporaryDirectory.appendingPathComponent("portman-log-\(UUID().uuidString).log")
+        defer { try? FileManager.default.removeItem(at: file) }
+        try Data("0123456789".utf8).write(to: file)
+
+        PortmanRestart.keepNewestBytes(of: file, limit: 20)
+        XCTAssertEqual(try String(contentsOf: file, encoding: .utf8), "0123456789")
+
+        PortmanRestart.keepNewestBytes(of: file, limit: 8)
+        XCTAssertEqual(try String(contentsOf: file, encoding: .utf8), "6789")
     }
 }

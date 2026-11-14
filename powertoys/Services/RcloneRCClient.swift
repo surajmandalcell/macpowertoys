@@ -89,13 +89,17 @@ actor RcloneRCClient {
     private let credentials: RcloneRCCredentials?
     private let session: URLSession
 
-    init(port: Int, credentials: RcloneRCCredentials? = nil) {
-        self.baseURL = URL(string: "http://127.0.0.1:\(port)")!
-        self.credentials = credentials
+    private nonisolated static let localSession: URLSession = {
         let config = URLSessionConfiguration.ephemeral
         config.timeoutIntervalForRequest = 12
         config.waitsForConnectivity = false
-        self.session = URLSession(configuration: config)
+        return URLSession(configuration: config)
+    }()
+
+    init(port: Int, credentials: RcloneRCCredentials? = nil) {
+        self.baseURL = URL(string: "http://127.0.0.1:\(port)")!
+        self.credentials = credentials
+        self.session = Self.localSession
     }
 
     init(baseURL: URL, credentials: RcloneRCCredentials? = nil, session: URLSession) {

@@ -138,6 +138,8 @@ nonisolated enum DevGit {
                     process.terminate()
                 }
                 if let input, let inputPipe {
+                    // EPIPE instead of SIGPIPE when git exits before reading its input.
+                    _ = fcntl(inputPipe.fileHandleForWriting.fileDescriptor, F_SETNOSIGPIPE, 1)
                     try inputPipe.fileHandleForWriting.write(contentsOf: input)
                     try inputPipe.fileHandleForWriting.close()
                 }

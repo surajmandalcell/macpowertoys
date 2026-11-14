@@ -59,6 +59,11 @@ actor DevSyncPairEngine {
     private var scheduler: DevDirtyScheduler
     private var internalStream: DevEventStream?
     private var externalStream: DevEventStream?
+    private var eventContinuation: AsyncStream<(DevSyncSide, DevEventBatch)>.Continuation?
+    private var eventConsumer: Task<Void, Never>?
+    private var unsavedCursors: [DevSyncSide: DevEventCursor] = [:]
+    private var cursorsSavedAt = Date.distantPast
+    private static let cursorSaveIntervalSeconds: TimeInterval = 5
     private var schedulerLoop: Task<Void, Never>?
     private var schedulerSleepTask: Task<Void, Never>?
     private var schedulerWakeVersion = 0
@@ -134,10 +139,7 @@ actor DevSyncPairEngine {
         schedulerSleepTask?.cancel()
         schedulerLoop = nil
         schedulerSleepTask = nil
-        internalStream?.stop()
-        externalStream?.stop()
-        internalStream = nil
-        externalStream = nil
+        stopEventStreams()
         await activeRunner?.cancel()
         try? await persistSchedulerState()
         setPairState(.disabled)
@@ -189,8 +191,8 @@ actor DevSyncPairEngine {
     func volumeWillUnmount(_ url: URL) async {
         guard isExternalVolume(url) else { return }
         unmounting = true
-        internalStream?.stop()
-        externalStream?.stop()
+        // Clearing the streams lets volumeDidMount start fresh ones when the drive returns.
+        stopEventStreams()
         await activeRunner?.cancel()
         let deadline = ContinuousClock.now.advanced(by: .seconds(2))
         while (activeRunner != nil || activeGeneration != nil), ContinuousClock.now < deadline {
@@ -768,31 +770,53 @@ actor DevSyncPairEngine {
     }
 
     private func startEventStreams() {
-        guard running, volumeOnline, internalStream == nil, externalStream == nil,
+        guard running, volumeOnline, !unmounting, internalStream == nil, externalStream == nil,
               let internalRoot, let externalRoot else { return }
         let cursors = Task { await stateStore.loadCursors(pairID: pair.id) }
         Task { [self] in
             let stored = await cursors.value
+            // State can change during the await; stop() and volumeWillUnmount() run on this same actor.
+            guard self.running, self.volumeOnline, !self.unmounting, self.internalStream == nil, self.externalStream == nil else { return }
             let internalCursor = stored.first { $0.side == .internal && $0.volumeIdentifier == self.pair.internalRoot.volumeIdentifier }
             let externalCursor = stored.first { $0.side == .external && $0.volumeIdentifier == self.pair.externalRoot.volumeIdentifier }
             let queue = DispatchQueue(label: "DevSync.Events.\(self.pair.id.uuidString)")
-            self.internalStream = DevEventStream(rootURL: internalRoot, sinceEventID: internalCursor?.lastEventID, latencySeconds: self.pair.configuration.timing.fseventsLatencySeconds, queue: queue) { [weak self] batch in
-                Task { await self?.handle(batch: batch, side: .internal, root: internalRoot) }
+            // One ordered channel: both streams yield from one serial queue and one consumer applies batches in order.
+            let (batches, continuation) = AsyncStream.makeStream(of: (DevSyncSide, DevEventBatch).self)
+            self.eventContinuation = continuation
+            self.eventConsumer = Task { [weak self] in
+                for await (side, batch) in batches {
+                    guard let self else { return }
+                    await self.handle(batch: batch, side: side, root: side == .internal ? internalRoot : externalRoot)
+                }
             }
-            self.externalStream = DevEventStream(rootURL: externalRoot, sinceEventID: externalCursor?.lastEventID, latencySeconds: self.pair.configuration.timing.fseventsLatencySeconds, queue: queue) { [weak self] batch in
-                Task { await self?.handle(batch: batch, side: .external, root: externalRoot) }
+            self.internalStream = DevEventStream(rootURL: internalRoot, sinceEventID: internalCursor?.lastEventID, latencySeconds: self.pair.configuration.timing.fseventsLatencySeconds, queue: queue) { batch in
+                _ = continuation.yield((DevSyncSide.internal, batch))
+            }
+            self.externalStream = DevEventStream(rootURL: externalRoot, sinceEventID: externalCursor?.lastEventID, latencySeconds: self.pair.configuration.timing.fseventsLatencySeconds, queue: queue) { batch in
+                _ = continuation.yield((DevSyncSide.external, batch))
             }
             _ = self.internalStream?.start()
             _ = self.externalStream?.start()
         }
     }
 
+    private func stopEventStreams() {
+        internalStream?.stop()
+        externalStream?.stop()
+        internalStream = nil
+        externalStream = nil
+        eventContinuation?.finish()
+        eventContinuation = nil
+        eventConsumer?.cancel()
+        eventConsumer = nil
+    }
+
     private func handle(batch: DevEventBatch, side: DevSyncSide, root: URL) async {
         guard running else { return }
-        let cursor = DevEventCursor(pairID: pair.id, side: side, volumeIdentifier: pair.root(for: side).volumeIdentifier, lastEventID: batch.lastEventID, updatedAt: now())
-        var cursors = await stateStore.loadCursors(pairID: pair.id).filter { $0.side != side }
-        cursors.append(cursor)
-        try? await stateStore.saveCursors(cursors, pairID: pair.id)
+        unsavedCursors[side] = DevEventCursor(pairID: pair.id, side: side, volumeIdentifier: pair.root(for: side).volumeIdentifier, lastEventID: batch.lastEventID, updatedAt: now())
+        if now().timeIntervalSince(cursorsSavedAt) >= Self.cursorSaveIntervalSeconds {
+            await saveCursors()
+        }
         if batch.mustRescanRoot {
             await scheduler.noteFullRescan(side: side, projectID: nil, reason: .droppedEvents)
             startSchedulerLoop()
@@ -1262,7 +1286,20 @@ actor DevSyncPairEngine {
         DevPlannerOutput(plan: plan, newConflicts: [], newTombstones: [], driftPaths: [], externalOnlyPaths: [], needsHashes: [], projectState: state, warnings: [])
     }
 
+    private func saveCursors() async {
+        guard !unsavedCursors.isEmpty else { return }
+        let pending = unsavedCursors
+        var cursors = await stateStore.loadCursors(pairID: pair.id).filter { pending[$0.side] == nil }
+        cursors.append(contentsOf: pending.values.sorted { $0.side.rawValue < $1.side.rawValue })
+        guard (try? await stateStore.saveCursors(cursors, pairID: pair.id)) != nil else { return }
+        cursorsSavedAt = now()
+        for (side, cursor) in pending where unsavedCursors[side] == cursor {
+            unsavedCursors[side] = nil
+        }
+    }
+
     private func persistSchedulerState() async throws {
+        await saveCursors()
         let entries = await scheduler.exportEntries()
         try await stateStore.saveDirty(entries, pairID: pair.id)
         statusValue.pendingProjectCount = Set(entries.compactMap(\.projectID)).count
