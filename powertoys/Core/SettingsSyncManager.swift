@@ -57,6 +57,7 @@ final class SettingsSyncManager {
     private(set) var lastSyncDescription: String?
     private var isApplyingRemote = false
     private var observers: [NSObjectProtocol] = []
+    @ObservationIgnored private var lastPushedDefaults: NSDictionary?
 
     var observerOwnerCount: Int { observers.count }
 
@@ -125,6 +126,7 @@ final class SettingsSyncManager {
         observers.forEach(NotificationCenter.default.removeObserver)
         observers.removeAll()
         isActive = false
+        lastPushedDefaults = nil
     }
 
     private func setEnabled(_ enabled: Bool) {
@@ -171,7 +173,7 @@ final class SettingsSyncManager {
     // MARK: - Push
 
     private func pushAll(includeSourceList: Bool = true) {
-        pushLocalDefaults()
+        pushLocalDefaults(force: true)
         if includeSourceList {
             pushSourceList()
         }
@@ -180,41 +182,58 @@ final class SettingsSyncManager {
         cloud.synchronize()
     }
 
-    private func pushLocalDefaults() {
-        guard isActive, !isApplyingRemote else { return }
-        for key in Self.syncedDefaultsKeys {
-            compareAndSet(defaults.object(forKey: key), cloudKey: Self.defaultsKeyPrefix + key)
+    private static func syncedDefaultsSnapshot(_ defaults: UserDefaults) -> NSDictionary {
+        var snapshot: [String: Any] = [:]
+        for key in syncedDefaultsKeys {
+            snapshot[key] = defaults.object(forKey: key)
         }
-        cloud.synchronize()
+        return snapshot as NSDictionary
+    }
+
+    // UserDefaults posts one change notification for every write in the process; skip the ones that leave the synced keys unchanged.
+    private func pushLocalDefaults(force: Bool = false) {
+        guard isActive, !isApplyingRemote else { return }
+        let snapshot = Self.syncedDefaultsSnapshot(defaults)
+        if !force, let lastPushedDefaults, lastPushedDefaults.isEqual(snapshot) { return }
+        lastPushedDefaults = snapshot
+        var wrote = false
+        for key in Self.syncedDefaultsKeys {
+            wrote = compareAndSet(defaults.object(forKey: key), cloudKey: Self.defaultsKeyPrefix + key) || wrote
+        }
+        if wrote { cloud.synchronize() }
     }
 
     private func pushSourceList() {
         guard isActive, !isApplyingRemote else { return }
-        compareAndSet(currentSourceURLs(), cloudKey: Self.sourceListKey)
-        cloud.synchronize()
+        if compareAndSet(currentSourceURLs(), cloudKey: Self.sourceListKey) {
+            cloud.synchronize()
+        }
     }
 
     private func pushToolContracts() {
         guard isActive, !isApplyingRemote else { return }
+        var wrote = false
         for receipt in receiptsProvider() {
             guard let contract = receipt.settingsSync else { continue }
             for key in contract.keys {
                 guard let value = readToolPreference(receipt.bundleID, key) else { continue }
-                compareAndSet(value, cloudKey: "\(Self.toolKeyPrefix)\(receipt.bundleID)/\(key)")
+                wrote = compareAndSet(value, cloudKey: "\(Self.toolKeyPrefix)\(receipt.bundleID)/\(key)") || wrote
             }
         }
-        cloud.synchronize()
+        if wrote { cloud.synchronize() }
     }
 
-    private func compareAndSet(_ value: Any?, cloudKey: String, onlyIfAbsent: Bool = false) {
+    @discardableResult
+    private func compareAndSet(_ value: Any?, cloudKey: String, onlyIfAbsent: Bool = false) -> Bool {
         let existing = cloud.object(forKey: cloudKey)
-        if onlyIfAbsent, existing != nil { return }
-        guard !Self.plistEqual(existing, value) else { return }
+        if onlyIfAbsent, existing != nil { return false }
+        guard !Self.plistEqual(existing, value) else { return false }
         if let value {
             cloud.set(value, forKey: cloudKey)
         } else {
             cloud.removeObject(forKey: cloudKey)
         }
+        return true
     }
 
     // MARK: - Apply

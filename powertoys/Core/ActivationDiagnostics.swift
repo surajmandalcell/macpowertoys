@@ -4,6 +4,7 @@ import AppKit
 @MainActor
 enum ActivationDiagnostics {
     nonisolated private static let maximumBytes = 256 * 1024
+    nonisolated private static let maximumAge: TimeInterval = 14 * 24 * 60 * 60
     private static var lastURL = ""
     private static var lastURLTime = Date.distantPast
     private static var routeWasActive = false
@@ -48,7 +49,7 @@ enum ActivationDiagnostics {
     }
 
     static func noteURL(_ url: URL) {
-        lastURL = url.absoluteString
+        lastURL = redacted(url)
         lastURLTime = Date()
         routeWasActive = NSApp.isActive
         routeFrontmost = noteFrontmost()
@@ -88,30 +89,64 @@ enum ActivationDiagnostics {
         let orderingText = orderings.map {
             "\($0.method)[window=\($0.window) age=\(String(format: "%.3f", now - $0.time))s active=\($0.active) front=\($0.frontmost)]"
         }.joined(separator: "; ")
-        let stack = Thread.callStackSymbols.prefix(14).joined(separator: "\n")
-        let line = """
+        // Raw return addresses are cheap; symbol lookup runs on the writer queue.
+        let addresses = Thread.callStackReturnAddresses.prefix(14).map(\.uintValue)
+        let header = """
         \(Date().timeIntervalSince1970) event[\(eventText)] key=\(key) lastURL=\(lastURL) sinceURL=\(sinceURL)s
         routeActive=\(routeWasActive) routeFront=\(routeFrontmost) willActivateFront=\(beforeActivation) lastExternalFront=\(lastExternalFrontmost) active=\(NSApp.isActive) policy=\(NSApp.activationPolicy().rawValue)
         orders3s=\(orderings.count) \(orderingText)
-        stack:\n\(stack)
-
         """
         let url = fileURL
-        writer.async { write(line, to: url) }
+        writer.async {
+            write(header + "\nstack:\n" + symbolicate(addresses) + "\n\n", to: url)
+        }
     }
 
-    nonisolated private static func write(_ line: String, to url: URL) {
-        try? FileManager.default.createDirectory(at: url.deletingLastPathComponent(), withIntermediateDirectories: true)
-        if let size = try? url.resourceValues(forKeys: [.fileSizeKey]).fileSize, size > maximumBytes {
-            try? FileManager.default.removeItem(at: url)
+    // Query, fragment, and credentials can carry tokens; the route path is enough to diagnose.
+    nonisolated static func redacted(_ url: URL) -> String {
+        guard var components = URLComponents(url: url, resolvingAgainstBaseURL: false) else { return "-" }
+        components.user = nil
+        components.password = nil
+        components.query = nil
+        components.fragment = nil
+        return components.string ?? "-"
+    }
+
+    nonisolated private static func symbolicate(_ addresses: [UInt]) -> String {
+        addresses.enumerated().map { index, address in
+            var info = Dl_info()
+            guard let pointer = UnsafeRawPointer(bitPattern: address), dladdr(pointer, &info) != 0 else {
+                return "\(index) 0x\(String(address, radix: 16))"
+            }
+            let image = info.dli_fname.map { URL(fileURLWithPath: String(cString: $0)).lastPathComponent } ?? "?"
+            let symbol = info.dli_sname.map { String(cString: $0) } ?? "?"
+            let offset = info.dli_saddr.map { address &- UInt(bitPattern: $0) } ?? 0
+            return "\(index) \(image) \(symbol) + \(offset)"
+        }.joined(separator: "\n")
+    }
+
+    // Entries end with a blank line and start with their Unix time; drop expired, then oldest, entries.
+    nonisolated static func bounded(_ log: String, now: TimeInterval, maximumBytes: Int, maximumAge: TimeInterval) -> String {
+        var entries = log.components(separatedBy: "\n\n").filter { entry in
+            guard let stamp = entry.split(separator: " ", maxSplits: 1).first.flatMap({ Double($0) }) else { return false }
+            return now - stamp <= maximumAge
         }
-        guard let data = line.data(using: .utf8) else { return }
-        if let handle = try? FileHandle(forWritingTo: url) {
-            handle.seekToEndOfFile()
-            handle.write(data)
-            try? handle.close()
-        } else {
-            try? data.write(to: url)
+        var size = entries.reduce(0) { $0 + $1.utf8.count + 2 }
+        while size > maximumBytes, !entries.isEmpty {
+            size -= entries.removeFirst().utf8.count + 2
+        }
+        return entries.map { $0 + "\n\n" }.joined()
+    }
+
+    nonisolated private static func write(_ entry: String, to url: URL) {
+        do {
+            try FileManager.default.createDirectory(at: url.deletingLastPathComponent(), withIntermediateDirectories: true)
+            let existing = (try? String(contentsOf: url, encoding: .utf8)) ?? ""
+            let log = bounded(existing + entry, now: Date().timeIntervalSince1970,
+                              maximumBytes: maximumBytes, maximumAge: maximumAge)
+            try Data(log.utf8).write(to: url, options: .atomic)
+        } catch {
+            NSLog("ActivationDiagnostics write failed: %@", error.localizedDescription)
         }
     }
 }

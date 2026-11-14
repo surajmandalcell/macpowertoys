@@ -31,6 +31,40 @@ final class WindowStateManager {
         }
     }
 
+    nonisolated static let saveDelay: TimeInterval = 0.5
+    nonisolated static let screenChangeQuietPeriod: TimeInterval = 2
+    @ObservationIgnored private var pendingSaves: [ObjectIdentifier: Task<Void, Never>] = [:]
+    @ObservationIgnored private var lastScreenChange: TimeInterval?
+
+    // A frame moved by a display-mode change (a game, a monitor unplug) is not the owner's choice.
+    nonisolated static func shouldSaveFrame(now: TimeInterval, lastScreenChange: TimeInterval?) -> Bool {
+        guard let lastScreenChange else { return true }
+        return now - lastScreenChange >= screenChangeQuietPeriod
+    }
+
+    private var screenChangeAllowsSave: Bool {
+        Self.shouldSaveFrame(now: ProcessInfo.processInfo.systemUptime, lastScreenChange: lastScreenChange)
+    }
+
+    private func scheduleSave(for window: NSWindow) {
+        let id = ObjectIdentifier(window)
+        pendingSaves.removeValue(forKey: id)?.cancel()
+        guard restoredWindows.contains(window), screenChangeAllowsSave else { return }
+        pendingSaves[id] = Task { [weak self, weak window] in
+            try? await Task.sleep(nanoseconds: UInt64(Self.saveDelay * 1_000_000_000))
+            guard !Task.isCancelled, let self else { return }
+            self.pendingSaves[id] = nil
+            guard let window, self.screenChangeAllowsSave else { return }
+            self.saveState(for: window)
+        }
+    }
+
+    private func flushPendingSave(for window: NSWindow) {
+        guard let task = pendingSaves.removeValue(forKey: ObjectIdentifier(window)) else { return }
+        task.cancel()
+        if screenChangeAllowsSave { saveState(for: window) }
+    }
+
     private func setupObservers() {
         let moveObserver = NotificationCenter.default.addObserver(
             forName: NSWindow.didMoveNotification,
@@ -39,7 +73,7 @@ final class WindowStateManager {
         ) { [weak self] notification in
             MainActor.assumeIsolated {
                 guard let self, let window = notification.object as? NSWindow else { return }
-                self.saveState(for: window)
+                self.scheduleSave(for: window)
             }
         }
 
@@ -50,7 +84,20 @@ final class WindowStateManager {
         ) { [weak self] notification in
             MainActor.assumeIsolated {
                 guard let self, let window = notification.object as? NSWindow else { return }
-                self.saveState(for: window)
+                self.scheduleSave(for: window)
+            }
+        }
+
+        let screenObserver = NotificationCenter.default.addObserver(
+            forName: NSApplication.didChangeScreenParametersNotification,
+            object: nil,
+            queue: .main
+        ) { [weak self] _ in
+            MainActor.assumeIsolated {
+                guard let self else { return }
+                self.lastScreenChange = ProcessInfo.processInfo.systemUptime
+                self.pendingSaves.values.forEach { $0.cancel() }
+                self.pendingSaves.removeAll()
             }
         }
 
@@ -60,15 +107,16 @@ final class WindowStateManager {
             queue: .main
         ) { [weak self] notification in
             MainActor.assumeIsolated {
-                guard let self, let window = notification.object as? NSWindow,
-                      !(window is BackgroundToolWindow),
+                guard let self, let window = notification.object as? NSWindow else { return }
+                self.flushPendingSave(for: window)
+                guard !(window is BackgroundToolWindow),
                       let identifier = window.identifier?.rawValue,
                       let id = Self.storageIdentifier(for: identifier), id != "portman" else { return }
                 self.closedSceneWindows.add(window)
             }
         }
 
-        observers = [moveObserver, resizeObserver, closeObserver]
+        observers = [moveObserver, resizeObserver, screenObserver, closeObserver]
     }
 
     func isClosedSceneWindow(_ window: NSWindow) -> Bool {
