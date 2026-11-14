@@ -28,4 +28,15 @@ final class AwakeProcessTests: XCTestCase {
         process.waitUntilExit()
         XCTAssertFalse(AwakeService.processIsRunning(process.processIdentifier))
     }
+
+    func testDisabledKwakeRefusesExternalActions() {
+        let service = AwakeService.shared
+        let mode = service.configuration.mode
+        let assertions = service.assertionOwnerCount
+        for action in [ToolActionID.awakeToggle, .awakeIndefinite, .awakeTimed, .awakeUntil] {
+            service.handle(action, parameters: ["seconds": "60"], toolEnabled: false)
+        }
+        XCTAssertEqual(service.configuration.mode, mode)
+        XCTAssertEqual(service.assertionOwnerCount, assertions)
+    }
 }

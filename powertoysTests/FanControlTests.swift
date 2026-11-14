@@ -19,6 +19,24 @@ final class FanControlTests: XCTestCase {
         XCTAssertNil(protocol_getMethodDescription(NetToysNeighborXPCProtocol.self, selector, true, true).name)
     }
 
+    func testHelperRestoresAutoOnlyWhenTheManualClientIsLost() throws {
+        let writes = Mutex<[FanPreset]>([])
+        let lease = FanManualLease(write: { preset in writes.withLock { $0.append(preset) } })
+        let app = NSObject()
+        let probe = NSObject()
+
+        try lease.apply(.auto, client: ObjectIdentifier(app))
+        lease.clientEnded(ObjectIdentifier(app))
+        XCTAssertEqual(writes.withLock { $0 }, [.auto], "A client lost while Auto must cause no write")
+
+        try lease.apply(.max, client: ObjectIdentifier(app))
+        lease.clientEnded(ObjectIdentifier(probe))
+        XCTAssertEqual(writes.withLock { $0 }, [.auto, .max], "Another client ending must not touch the fans")
+        lease.clientEnded(ObjectIdentifier(app))
+        lease.clientEnded(ObjectIdentifier(app))
+        XCTAssertEqual(writes.withLock { $0 }, [.auto, .max, .auto], "Losing the manual client restores Auto once")
+    }
+
     @MainActor
     func testPendingManualCommandIsQueuedBeforeExitAuto() async throws {
         let requests = Mutex<[(FanPreset, @Sendable (String?) -> Void)]>([])
