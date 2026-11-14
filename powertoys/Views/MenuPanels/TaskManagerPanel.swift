@@ -531,7 +531,7 @@ private struct TaskManagerMenuSampling: ViewModifier {
 final class TaskManagerMenuProcessModel {
     static let shared = TaskManagerMenuProcessModel()
     @ObservationIgnored let sampler = SystemMonitorProcessSampler()
-    let icons = SystemMonitorProcessIcons()
+    private(set) var icons = SystemMonitorProcessIcons()
     @ObservationIgnored private var initialPreparation: Task<Void, Never>?
     private(set) var hasPreparedSnapshot = false
     var processes: [SystemMonitorProcess] = []
@@ -542,6 +542,7 @@ final class TaskManagerMenuProcessModel {
     var search = ""
 
     func prepareForPresentation() async {
+        MenuPanelRelease.shared.cancel(Self.releaseKey)
         guard !hasPreparedSnapshot else { return }
         if let initialPreparation { await initialPreparation.value; return }
         let task = Task {
@@ -549,7 +550,7 @@ final class TaskManagerMenuProcessModel {
             let result = await SystemMonitorProcessRows.prepareOffMain(
                 processes, search: search, hierarchy: false, column: .cpu, descending: true
             )
-            await icons.load(for: result.rows)
+            await icons.load(for: result.rows, live: processes)
             self.processes = processes
             rows = result.rows
             footerTitle = "All " + String(processes.count) + " processes →"
@@ -560,6 +561,23 @@ final class TaskManagerMenuProcessModel {
         initialPreparation = task
         await task.value
         initialPreparation = nil
+    }
+
+    private static let releaseKey = "task-manager-processes"
+
+    /// A panel closed for the release delay keeps no process list or icons; a later open prepares a fresh snapshot.
+    func scheduleRelease() {
+        MenuPanelRelease.shared.schedule(Self.releaseKey) { [weak self] in self?.releaseSnapshot() }
+    }
+
+    private func releaseSnapshot() {
+        guard initialPreparation == nil else { return }
+        processes = []
+        rows = []
+        footerTitle = "All processes →"
+        lastPublication = nil
+        hasPreparedSnapshot = false
+        icons = SystemMonitorProcessIcons()
     }
 }
 
@@ -645,7 +663,7 @@ private struct TaskManagerMenuProcessesView: View {
         )
         guard !Task.isCancelled, self.request == request else { return }
         if model.rows != result.rows { model.rows = result.rows }
-        await model.icons.load(for: result.rows)
+        await model.icons.load(for: result.rows, live: processes)
         guard !Task.isCancelled, self.request == request else { return }
         let footer = "All " + String(processes.count) + " processes →"
         if model.footerTitle != footer { model.footerTitle = footer }

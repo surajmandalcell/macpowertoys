@@ -867,6 +867,31 @@ final class SystemMonitorTests: XCTestCase {
         XCTAssertNil(SystemMonitorDelta.rate(previous: 3_000, current: 1_000, seconds: 2))
     }
 
+    func testTickCountersReadAsUnsigned32BitValues() {
+        XCTAssertEqual(SystemMonitorDelta.tickCounter(Int32.max), 2_147_483_647)
+        XCTAssertEqual(SystemMonitorDelta.tickCounter(Int32.min), 2_147_483_648)
+        XCTAssertEqual(SystemMonitorDelta.tickCounter(-1), 4_294_967_295)
+        let beforeWrap = SystemMonitorDelta.tickCounter(-1)
+        let afterWrap = SystemMonitorDelta.tickCounter(10)
+        XCTAssertNil(SystemMonitorDelta.cpuUsage(previous: (beforeWrap, beforeWrap), current: (afterWrap, afterWrap)))
+    }
+
+    func testProtectedProcessInfoRefreshesOnAgeOrRestrictedSetChange() {
+        let start = Date(timeIntervalSince1970: 1_000)
+        let pids: Set<Int32> = [1, 42]
+        let maximumAge = SystemMonitorProcessSampler.publicInfoMaximumAge
+        XCTAssertTrue(SystemMonitorProcessSampler.needsPublicRefresh(
+            cachedAt: nil, cachedPIDs: [], restrictedPIDs: pids, now: start))
+        XCTAssertFalse(SystemMonitorProcessSampler.needsPublicRefresh(
+            cachedAt: start, cachedPIDs: pids, restrictedPIDs: pids, now: start.addingTimeInterval(maximumAge - 1)))
+        XCTAssertTrue(SystemMonitorProcessSampler.needsPublicRefresh(
+            cachedAt: start, cachedPIDs: pids, restrictedPIDs: pids, now: start.addingTimeInterval(maximumAge)))
+        XCTAssertTrue(SystemMonitorProcessSampler.needsPublicRefresh(
+            cachedAt: start, cachedPIDs: pids, restrictedPIDs: [1, 43], now: start.addingTimeInterval(1)))
+        XCTAssertFalse(SystemMonitorProcessSampler.needsPublicRefresh(
+            cachedAt: start, cachedPIDs: pids, restrictedPIDs: [1], now: start.addingTimeInterval(1)))
+    }
+
     func testDetailedHistoryHasABoundedCeiling() {
         var history = SystemMonitorHistory()
         for index in 0..<150 { history.append(sample(cpuUsage: Double(index)), metrics: [.cpu]) }

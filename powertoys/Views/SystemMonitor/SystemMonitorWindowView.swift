@@ -189,7 +189,7 @@ struct SystemMonitorWindowView: View {
                 .frame(maxWidth: .infinity, maxHeight: .infinity)
             }
             .background(TaskManagerVisibilityBinding(isVisible: $isWindowActive))
-            .onePlusLiveUpdates(includeOccluded: true)
+            .onePlusLiveUpdates()
         }
         .onePlusDensity(.compact)
         .background(WindowAccessor(identifier: "system-monitor"))

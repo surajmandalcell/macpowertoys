@@ -21,6 +21,33 @@ final class SystemMonitorStatusTests: XCTestCase {
         XCTAssertFalse(pages[.memory]?.rows.contains { $0.value == "Stale" } ?? true)
     }
 
+    func testHiddenStatusItemsSampleNothing() {
+        let settings = SystemMonitorMenuSettings(enabled: true, items: [
+            .init(metric: .cpu, enabled: true, placement: .combined),
+            .init(metric: .memory, enabled: true, placement: .separate)
+        ])
+        XCTAssertEqual(SystemMonitorMenuSchedule.samplingSettings(settings, hiddenKeys: []), settings)
+        let groupHidden = SystemMonitorMenuSchedule.samplingSettings(settings, hiddenKeys: ["group"])
+        XCTAssertEqual(groupHidden.enabledItems.map(\.metric), [.memory])
+        let allHidden = SystemMonitorMenuSchedule.samplingSettings(settings, hiddenKeys: ["group", "memory"])
+        XCTAssertNil(SystemMonitorMenuSchedule.timerInterval(settings: allHidden, detailed: false))
+        XCTAssertEqual(SystemMonitorMenuSchedule.timerInterval(settings: allHidden, detailed: true), 1)
+    }
+
+    func testMenuPanelReleaseWaitsAndReopenCancels() async throws {
+        XCTAssertEqual(MenuPanelRelease.standardDelay, .seconds(60))
+        let release = MenuPanelRelease(delay: .milliseconds(20))
+        var released = 0
+        release.schedule("panel") { released += 1 }
+        release.cancel("panel")
+        release.schedule("panel") { released += 10 }
+        release.schedule("panel") { released += 100 }
+        XCTAssertEqual(released, 0)
+        try await Task.sleep(for: .milliseconds(300))
+        XCTAssertEqual(released, 100)
+        XCTAssertEqual(release.pendingCount, 0)
+    }
+
     func testStatusFontAndConfiguredEnvelopeStayBounded() {
         XCTAssertEqual(SystemMonitorStatusText.width(of: "11%"), SystemMonitorStatusText.width(of: "88%"), accuracy: 0.01)
         let items = SystemMonitorMenuMetric.allCases.map {

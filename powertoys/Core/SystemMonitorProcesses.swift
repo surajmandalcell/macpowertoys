@@ -55,7 +55,18 @@ actor SystemMonitorProcessSampler {
     }
     private var previous: [String: UInt64] = [:]
     private var previousTime: Date?
+    private var publicInfoCache: [Int32: PublicProcessInfo] = [:]
+    private var publicInfoTime: Date?
+    private var publicInfoPIDs = Set<Int32>()
     private let nanosecondsPerTick: Double
+    nonisolated static let publicInfoMaximumAge: TimeInterval = 15
+
+    nonisolated static func needsPublicRefresh(cachedAt: Date?, cachedPIDs: Set<Int32>,
+                                               restrictedPIDs: Set<Int32>, now: Date) -> Bool {
+        guard let cachedAt else { return true }
+        // An exited protected process needs no new ps run; only a new one does.
+        return !restrictedPIDs.isSubset(of: cachedPIDs) || now.timeIntervalSince(cachedAt) >= publicInfoMaximumAge
+    }
 
     init() {
         var timebase = mach_timebase_info_data_t()
@@ -119,7 +130,16 @@ actor SystemMonitorProcessSampler {
             ))
         }
         if previousTime == nil || !restrictedPIDs.isEmpty {
-            let publicInfo = await Self.publicProcessInfo()
+            let publicInfo: [Int32: PublicProcessInfo]
+            if Self.needsPublicRefresh(cachedAt: publicInfoTime, cachedPIDs: publicInfoPIDs,
+                                       restrictedPIDs: restrictedPIDs, now: now) {
+                publicInfo = await Self.publicProcessInfo()
+                publicInfoCache = publicInfo
+                publicInfoTime = now
+                publicInfoPIDs = restrictedPIDs
+            } else {
+                publicInfo = publicInfoCache
+            }
             processes = processes.map { process in
                 guard let info = publicInfo[process.pid] else {
                     return process
