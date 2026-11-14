@@ -89,6 +89,18 @@ extension AppDelegate {
             name: NSWindow.didResignKeyNotification,
             object: nil
         )
+        NotificationCenter.default.addObserver(
+            self,
+            selector: #selector(freeRulerVisibilityDidChange(_:)),
+            name: NSWindow.didChangeOcclusionStateNotification,
+            object: nil
+        )
+        NSWorkspace.shared.notificationCenter.addObserver(
+            self,
+            selector: #selector(freeRulerVisibilityDidChange(_:)),
+            name: NSWorkspace.activeSpaceDidChangeNotification,
+            object: nil
+        )
         freeRulerKeyMonitor = NSEvent.addLocalMonitorForEvents(
             matching: .keyDown,
             handler: makeFreeRulerKeyMonitorHandler()
@@ -404,8 +416,18 @@ extension AppDelegate {
         updateMouseTickTimer()
     }
 
+    // The tick timer runs only for a ruler the owner can see: on screen, on this Space, not occluded.
     private var hasVisibleRuler: Bool {
-        return rulerManager.hasVisibleRulers
+        rulerManager.controllers.contains {
+            $0.isVisible && $0.rulerWindow.isOnActiveSpace
+                && $0.rulerWindow.occlusionState.contains(.visible)
+        }
+    }
+
+    @objc func freeRulerVisibilityDidChange(_ notification: Notification) {
+        guard freeRulerDidInitialize else { return }
+        if let window = notification.object as? NSWindow, !(window is RulerWindow) { return }
+        updateMouseTickTimer()
     }
 
     @IBAction func setUnitPixels(_ sender: Any) {

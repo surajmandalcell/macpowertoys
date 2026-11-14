@@ -188,6 +188,17 @@ final class SettingsSyncManagerTests: XCTestCase {
         XCTAssertEqual(cloud.synchronizeCount, writesBefore)
     }
 
+    func testUnrelatedDefaultsWriteDoesNotTouchTheCloud() {
+        let manager = makeManager()
+        XCTAssertEqual(manager.enable(), .enabled)
+        let writesBefore = cloud.synchronizeCount
+
+        defaults.set("session-junk", forKey: "rclone.lastContent")
+        NotificationCenter.default.post(name: UserDefaults.didChangeNotification, object: defaults)
+
+        XCTAssertEqual(cloud.synchronizeCount, writesBefore)
+    }
+
     func testDisableStopsObserving() {
         let manager = makeManager()
         XCTAssertEqual(manager.enable(), .enabled)

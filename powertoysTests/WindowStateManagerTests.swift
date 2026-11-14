@@ -73,6 +73,14 @@ final class WindowStateManagerTests: XCTestCase {
         )
     }
 
+    func testFrameChangesRightAfterAScreenChangeAreNotSaved() {
+        XCTAssertTrue(WindowStateManager.shouldSaveFrame(now: 100, lastScreenChange: nil))
+        XCTAssertFalse(WindowStateManager.shouldSaveFrame(now: 100.5, lastScreenChange: 100))
+        XCTAssertTrue(WindowStateManager.shouldSaveFrame(
+            now: 100 + WindowStateManager.screenChangeQuietPeriod, lastScreenChange: 100
+        ))
+    }
+
     func testRestoredWorkspaceFrameIsClampedToItsRememberedMonitor() {
         let screen = NSRect(x: -1440, y: 0, width: 1440, height: 900)
         let restored = WindowStateManager.clamped(

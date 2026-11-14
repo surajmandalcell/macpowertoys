@@ -2,6 +2,24 @@ import XCTest
 @testable import powertoys
 
 final class ResourceDiagnosticsTests: XCTestCase {
+    func testActivationLogDropsExpiredThenOldestEntries() {
+        let log = "100 old\nstack:\n0 a\n\n900 mid\n\n950 new\n\n"
+        XCTAssertEqual(
+            ActivationDiagnostics.bounded(log, now: 1000, maximumBytes: 1024, maximumAge: 500),
+            "900 mid\n\n950 new\n\n"
+        )
+        XCTAssertEqual(
+            ActivationDiagnostics.bounded(log, now: 1000, maximumBytes: 12, maximumAge: 500),
+            "950 new\n\n"
+        )
+    }
+
+    func testActivationLogRedactsURLSecrets() {
+        XCTAssertEqual(
+            ActivationDiagnostics.redacted(URL(string: "macpowertoys://user:pw@open/ruler?token=abc#x")!),
+            "macpowertoys://open/ruler"
+        )
+    }
     func testResourceCountsRouteIsExactAndHasNoQueryControlledSurface() {
         XCTAssertTrue(DeepLinkHandler.isResourceCountsDiagnosticsURL(
             URL(string: "macpowertoys://diagnostics/resource-counts")!
