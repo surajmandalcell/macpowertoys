@@ -52,6 +52,8 @@ nonisolated enum SystemMonitorProcessHierarchy {
     struct Row: Equatable, Identifiable, Sendable {
         let process: SystemMonitorProcess
         let cpuText: String
+        /// The CPU number without its percent sign, for rows that draw the sign separately.
+        let cpuValueText: String
         let memoryText: String
         let displayName: String
         let symbol: String
@@ -60,9 +62,8 @@ nonisolated enum SystemMonitorProcessHierarchy {
 
         init(process: SystemMonitorProcess, parentName: String? = nil) {
             self.process = process
-            cpuText = process.cpuPercent.map {
-                "\($0.formatted(.number.precision(.fractionLength(1))))%"
-            } ?? "—"
+            cpuValueText = process.cpuPercent.map { $0.formatted(.number.precision(.fractionLength(1))) } ?? "—"
+            cpuText = process.cpuPercent == nil ? cpuValueText : cpuValueText + "%"
             memoryText = process.residentBytes == 0 && process.started == 0
                 ? "—"
                 : ByteCountFormatter.string(

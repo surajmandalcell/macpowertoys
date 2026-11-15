@@ -62,8 +62,10 @@ final class MainMenuBarController: NSObject {
         OnePlusPanelTimings.shared.beginOpenIfNeeded(panel: "main")
         let ceiling = (button.window?.screen?.visibleFrame.height ?? 800) * OnePlusMenuMetrics.heightFraction
         if hosting == nil || maximumHeight != ceiling {
+            // The panel root has a fixed natural height, so its geometry is the panel's content height.
             let root = AnyView(content().environment(\.onePlusMenuMaximumHeight, ceiling)
-                .onOnePlusMenuHeightChange { [weak panel] height in
+                .onGeometryChange(for: CGFloat.self, of: { $0.size.height }) { [weak panel] height in
+                    guard height > 0 else { return }
                     panel?.contentSize = NSSize(width: OnePlusMenuMetrics.width, height: height)
                 })
             if let hosting { hosting.rootView = root }

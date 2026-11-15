@@ -215,6 +215,9 @@ nonisolated private struct FanError: LocalizedError {
 
 nonisolated struct FanControlPresentation: Equatable, Sendable {
     var status = "— RPM · —%"
+    var rpm = "— RPM"
+    /// A completed read found no fans, so the panel hides the Fan row.
+    var hasNoFans = false
     var detail = "Fan data unavailable"
     var activePreset: FanPreset?
     var selectedPreset: FanPreset?
@@ -229,9 +232,10 @@ nonisolated struct FanControlPresentation: Equatable, Sendable {
     init(snapshot: FanSnapshot? = nil, selectedPreset: FanPreset? = nil, errorMessage: String? = nil,
          canRestoreAutomatic: Bool = false, needsApproval: Bool = false, needsHelperUpdate: Bool = false,
          isChanging: Bool = false, hasCompletedRead: Bool = false) {
-        let rpm = snapshot?.averageRPM.map { $0.formatted() + " RPM" } ?? "— RPM"
+        rpm = snapshot?.averageRPM.map { $0.formatted() + " RPM" } ?? "— RPM"
         let utilization = snapshot?.utilization.map { "\($0)%" } ?? "—%"
         status = "\(rpm) · \(utilization)"
+        hasNoFans = snapshot?.fans.isEmpty == true
         self.selectedPreset = selectedPreset
         activePreset = Self.reportedPreset(snapshot, selectedPreset: selectedPreset)
         canControl = snapshot?.canControl == true
