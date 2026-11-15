@@ -214,10 +214,37 @@ class AppDelegate: NSObject, NSApplicationDelegate {
             NSLog("Monitor UI test status items: \(SystemMonitorService.shared.statusItemOwnerCount)")
         }
         startApplicationIfReady()
-        if !AppRuntime.isUITesting && !CommandLine.arguments.contains("--open")
-            && Self.shouldOpenMainWindowAfterLaunch(userInfo: notification.userInfo) {
-            ToolActionRouter.shared.open(toolID: "main")
+        if !AppRuntime.isUITesting && !CommandLine.arguments.contains("--open") {
+            beginLaunchMainWindow(userInfo: notification.userInfo, isActive: NSApp.isActive)
         }
+    }
+
+    static let launchActivationWindow: TimeInterval = 3
+    var openMainWindowAfterLaunch: @MainActor () -> Void = { ToolActionRouter.shared.open(toolID: "main") }
+    private(set) var opensMainWindowOnLaunchActivation = false
+
+    // `open -g` and login items are default launches too; only a launch macOS activates may open Main.
+    @MainActor
+    func beginLaunchMainWindow(userInfo: [AnyHashable: Any]?, isActive: Bool,
+                               isRunningUnitTests: Bool = AppRuntime.isRunningUnitTests) {
+        guard Self.shouldOpenMainWindowAfterLaunch(userInfo: userInfo, isRunningUnitTests: isRunningUnitTests) else { return }
+        guard !isActive else { openMainWindowAfterLaunch(); return }
+        opensMainWindowOnLaunchActivation = true
+        DispatchQueue.main.asyncAfter(deadline: .now() + Self.launchActivationWindow) { [weak self] in
+            self?.endLaunchActivationWindow()
+        }
+    }
+
+    @MainActor
+    func endLaunchActivationWindow() {
+        opensMainWindowOnLaunchActivation = false
+    }
+
+    @MainActor
+    func openMainWindowIfLaunchActivated() {
+        guard opensMainWindowOnLaunchActivation else { return }
+        opensMainWindowOnLaunchActivation = false
+        openMainWindowAfterLaunch()
     }
 
     func applicationWillTerminate(_ notification: Notification) {
@@ -432,6 +459,7 @@ class AppDelegate: NSObject, NSApplicationDelegate {
     }
 
     func applicationDidBecomeActive(_ notification: Notification) {
+        openMainWindowIfLaunchActivated()
         updateFreeRulerForApplicationActivation(true)
         if let message = pendingQuitRefusal {
             pendingQuitRefusal = nil
