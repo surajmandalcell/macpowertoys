@@ -1,59 +1,32 @@
 import SwiftUI
 import OnePlusUI
 
-/// One Settings-style overview row: icon, name and summary, then favorite, enable, and a chevron.
+/// One overview row: the package tool row plus the app's routing, keyboard, and context menu.
 struct MainToolRow: View {
     let tool: any Tool
     @Binding var favorite: Bool
-    @Binding var focusedToolID: String?
-    let bodyFocus: FocusState<String?>.Binding
-    var separator = true
+    let focus: FocusState<String?>.Binding
     let move: (MoveCommandDirection) -> Void
     let typeSelect: (String) -> Void
-    let select: () -> Void
-    @State private var hovering = false
-    @FocusState private var focusedPart: String?
+    let open: () -> Void
+    @State private var settings = SettingsManager.shared
 
     var body: some View {
-        HStack(spacing: OnePlusCatalogMetrics.gap) {
-            Button(action: select) {
-                HStack(spacing: OnePlusCatalogMetrics.gap) {
-                    ToolIconView(tool: tool, size: MainPaneMetrics.rowIcon)
-                    VStack(alignment: .leading, spacing: OnePlusCatalogMetrics.titleGap) {
-                        Text(tool.name).onePlusText(.row).lineLimit(1)
-                        Text(tool.summary).onePlusText(.caption).lineLimit(1).help(tool.description)
-                    }
-                    .frame(maxWidth: .infinity, alignment: .leading)
-                }
-                .frame(maxWidth: .infinity, minHeight: OnePlusCatalogMetrics.rowHeight, alignment: .leading)
-                .contentShape(Rectangle())
-            }
-            .buttonStyle(.plain).focused(bodyFocus, equals: tool.id)
-            .onKeyPress(.return) { select(); return .handled }
+        OnePlusLinearToolRow(tool.name, summary: tool.summary, icon: MainToolIcon.image(for: tool),
+                             isEnabled: MainToolEnablement.binding(for: tool.id, settings: settings),
+                             isFavorite: $favorite, open: open)
+            .focused(focus, equals: tool.id)
+            .onKeyPress(.return) { open(); return .handled }
             .onMoveCommand(perform: move)
             .onKeyPress(characters: .alphanumerics) { press in
                 guard press.modifiers.intersection([.command, .control, .option]).isEmpty else { return .ignored }
                 typeSelect(press.characters); return .handled
             }
-            .accessibilityLabel("\(tool.name) settings")
+            .help(tool.description)
+            .contextMenu { MainToolContextMenu(tool: tool, select: open) }
+            .accessibilityValue(settings.isToolEnabled(tool.id) ? "Enabled" : "Disabled")
+            // shortcut: the package star leaves the accessibility tree at opacity 0; drop this once OnePlusUI keeps it.
+            .accessibilityAction(named: favorite ? "Remove from Favorites" : "Add to Favorites") { favorite.toggle() }
             .accessibilityIdentifier("tool.\(tool.id).card")
-            MainFavoriteButton(toolName: tool.name, isFavorite: $favorite)
-                .focused($focusedPart, equals: "favorite")
-                .opacity(hovering || favorite || focusedPart != nil || bodyFocus.wrappedValue == tool.id ? 1 : 0)
-            MainToolEnableSwitch(tool: tool, catalog: true)
-                .focused($focusedPart, equals: "enable")
-            Image(systemName: "chevron.right").onePlusText(.caption).accessibilityHidden(true)
-        }
-        .padding(.horizontal, OnePlusCatalogMetrics.cardInset)
-        .frame(height: OnePlusCatalogMetrics.rowHeight)
-        .onePlusRowHover(selected: bodyFocus.wrappedValue == tool.id && OnePlusFocusPolicy.shared.showsFocus)
-        .overlay(alignment: .bottom) {
-            if separator { OnePlusColor.lineSoft.frame(height: 1).padding(.horizontal, OnePlusCatalogMetrics.cardInset) }
-        }
-        .onHover { hovering = $0 }
-        .onChange(of: focusedPart) { _, value in if value != nil { focusedToolID = tool.id } }
-        .contextMenu { MainToolContextMenu(tool: tool, select: select) }
-        .accessibilityElement(children: .contain)
-        .accessibilityIdentifier("tool.\(tool.id).row")
     }
 }

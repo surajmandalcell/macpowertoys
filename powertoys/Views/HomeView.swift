@@ -28,8 +28,11 @@ struct HomeView: View {
                             searchFocusTrigger: searchFocusTrigger)
         } content: {
             VStack(spacing: 0) {
-                MainPaneToolbar(title: pageTitle, canGoBack: !history.back.isEmpty,
-                                canGoForward: !history.forward.isEmpty, back: goBack, forward: goForward)
+                OnePlusLinearPaneToolbar(title: pageTitle, canGoBack: !history.back.isEmpty,
+                                         canGoForward: !history.forward.isEmpty, back: goBack, forward: goForward) {
+                    toolbarTabs
+                }
+                .accessibilityIdentifier("main.toolbar")
                 content
             }
         }
@@ -100,6 +103,16 @@ struct HomeView: View {
         }
     }
 
+    @ViewBuilder private var toolbarTabs: some View {
+        switch selectedTool {
+        case "all-tools": MainCatalogTabs(filter: $filter)
+        case "settings":
+            OnePlusLinearTextTabs(tabs: MainSettingsView.tabs, selection: settingsTab)
+                .accessibilityLabel("Settings page")
+        default: EmptyView()
+        }
+    }
+
     private var keyboardActions: some View {
         Group {
             Button("All tools") { openPage("all-tools") }.keyboardShortcut("1")
@@ -109,8 +122,6 @@ struct HomeView: View {
             }
             MainOpenToolButton(toolID: selectedLaunchToolID, title: "Open selected tool")
                 .keyboardShortcut("o")
-            Button("Back", action: goBack).keyboardShortcut("[")
-            Button("Forward", action: goForward).keyboardShortcut("]")
         }.hidden().accessibilityHidden(true)
     }
 

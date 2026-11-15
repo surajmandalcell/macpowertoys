@@ -1,7 +1,7 @@
 import SwiftUI
 import OnePlusUI
 
-/// The Settings-style overview: an identity block, a filter, and one grouped section per category.
+/// The v15 overview: one captioned section per category, one row per tool. The filter tabs sit in the pane toolbar.
 struct AllToolsGridView: View {
     @Binding var selectedTool: String?
     var query: String
@@ -15,9 +15,6 @@ struct AllToolsGridView: View {
     @State private var favoriteIDs: Set<String> = []
     @State private var groups: [MainToolGroup] = []
     @State private(set) var visibleTools: [any Tool] = []
-    @State private var toolCount = 0
-    @State private var enabledCount = 0
-    @State private var favoriteCount = 0
 
     init(selectedTool: Binding<String?>, query: String = "",
          filter: Binding<MainCatalogFilter> = .constant(.all),
@@ -29,28 +26,15 @@ struct AllToolsGridView: View {
         _favoriteIDs = State(initialValue: favorites)
         _groups = State(initialValue: rows.groups)
         _visibleTools = State(initialValue: rows.visible)
-        _toolCount = State(initialValue: rows.total)
-        _enabledCount = State(initialValue: rows.enabled)
-        _favoriteCount = State(initialValue: rows.favorites)
     }
 
     var body: some View {
-        MainPaneScroll {
-            MainHero(title: "MacPowerToys", subtitle: "Your Mac, a little more capable.") {
-                MainAppIconTile(size: MainPaneMetrics.heroIcon)
-            } controls: {
-                OnePlusSegmented(choices: [(MainCatalogFilter.all, "All \(toolCount)"),
-                                           (.enabled, "Enabled \(enabledCount)"),
-                                           (.favorites, "Favorites \(favoriteCount)")],
-                                 selection: $filter, accessibilityLabel: "Show tools",
-                                 width: MainPaneMetrics.segmentedWidth)
-            }
+        OnePlusLinearPaneBody {
             if groups.isEmpty { emptyState }
             ForEach(groups) { group in
-                MainSection(title: group.category.rawValue) {
+                OnePlusLinearSection(group.category.rawValue, count: group.tools.count) {
                     ForEach(group.tools, id: \.id) { tool in
-                        MainToolRow(tool: tool, favorite: favoriteBinding(tool.id), focusedToolID: $focusedToolID,
-                                    bodyFocus: $focusedRow, separator: tool.id != group.tools.last?.id,
+                        MainToolRow(tool: tool, favorite: favoriteBinding(tool.id), focus: $focusedRow,
                                     move: { moveFocus(from: tool.id, direction: $0) }, typeSelect: typeSelect) {
                             selectSettings(tool.id)
                         }
@@ -81,10 +65,8 @@ struct AllToolsGridView: View {
 
     private func favoriteBinding(_ id: String) -> Binding<Bool> {
         Binding(get: { favoriteIDs.contains(id) }, set: { value in
-            var updated = favoriteIDs
-            if value { updated.insert(id) } else { updated.remove(id) }
-            favoriteIDs = updated
-            storedFavorites = MainCatalog.storing(favorites: updated)
+            favoriteIDs = MainCatalog.setting(favorite: value, for: id, in: favoriteIDs)
+            storedFavorites = MainCatalog.storing(favorites: favoriteIDs)
             refreshCatalog()
         })
     }
@@ -118,10 +100,39 @@ struct AllToolsGridView: View {
     private func refreshCatalog() {
         let rows = MainCatalog.preparedRows(ToolRegistry.allTools, query: query, filter: filter,
                                             favorites: favoriteIDs, disabled: settings.disabledToolIDs)
-        toolCount = rows.total
-        enabledCount = rows.enabled
-        favoriteCount = rows.favorites
         groups = rows.groups
         visibleTools = rows.visible
+    }
+}
+
+/// All, Enabled, and Favorites with live counts, for the pane toolbar. Counts refresh on change, never in `body`.
+struct MainCatalogTabs: View {
+    @Binding var filter: MainCatalogFilter
+    @AppStorage("main.favorites") private var storedFavorites = "[]"
+    @State private var settings = SettingsManager.shared
+    @State private var tabs: [OnePlusTab<MainCatalogFilter>] = []
+
+    init(filter: Binding<MainCatalogFilter>) {
+        _filter = filter
+        _tabs = State(initialValue: Self.currentTabs(favorites: MainCatalog.favorites(from: storedFavorites)))
+    }
+
+    var body: some View {
+        OnePlusLinearTextTabs(tabs: tabs, selection: $filter)
+            .accessibilityLabel("Show tools")
+            .accessibilityIdentifier("main.catalog.filter")
+            .onChange(of: storedFavorites) { _, _ in refresh() }
+            .onChange(of: settings.disabledToolIDs) { _, _ in refresh() }
+            .onReceive(NotificationCenter.default.publisher(for: .marketplaceReceiptsChanged)) { _ in refresh() }
+    }
+
+    private func refresh() {
+        tabs = Self.currentTabs(favorites: MainCatalog.favorites(from: storedFavorites))
+    }
+
+    private static func currentTabs(favorites: Set<String>) -> [OnePlusTab<MainCatalogFilter>] {
+        let rows = MainCatalog.preparedRows(ToolRegistry.allTools, query: "", filter: .all, favorites: favorites,
+                                            disabled: SettingsManager.shared.disabledToolIDs)
+        return MainCatalog.tabs(total: rows.total, enabled: rows.enabled, favorites: rows.favorites)
     }
 }

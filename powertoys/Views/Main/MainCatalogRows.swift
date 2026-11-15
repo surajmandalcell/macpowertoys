@@ -1,4 +1,5 @@
 import Foundation
+import OnePlusUI
 
 extension MainCatalog {
     static func preparedRows(
@@ -14,5 +15,14 @@ extension MainCatalog {
         return (groups, groups.flatMap(\.tools), tools.count,
                 tools.lazy.filter { !disabled.contains($0.id) }.count,
                 tools.lazy.filter { favorites.contains($0.id) }.count)
+    }
+
+    static func tabs(total: Int, enabled: Int, favorites: Int) -> [OnePlusTab<MainCatalogFilter>] {
+        [OnePlusTab(.all, "All", count: total), OnePlusTab(.enabled, "Enabled", count: enabled),
+         OnePlusTab(.favorites, "Favorites", count: favorites)]
+    }
+
+    static func setting(favorite: Bool, for id: String, in favorites: Set<String>) -> Set<String> {
+        favorite ? favorites.union([id]) : favorites.subtracting([id])
     }
 }

@@ -10,7 +10,7 @@ enum MainToolTab: String {
     }
 }
 
-/// A Settings-style tool pane: identity block, then grouped settings and manual sections.
+/// A tool pane: the compact identity row, the menu-bar placement, the shared settings cards, then How to use.
 struct ToolAboutView: View {
     let toolId: String
     @AppStorage private var storedTab: String
@@ -24,18 +24,20 @@ struct ToolAboutView: View {
     var body: some View {
         if let tool = ToolRegistry.tool(for: toolId) {
             ScrollViewReader { proxy in
-                MainPaneScroll {
-                    hero(tool)
+                OnePlusLinearPaneBody {
+                    header(tool)
                     if let menuTool = IndividualMenuBarTool(rawValue: tool.id) {
                         MainSection { MainMenuBarPlacement(tool: menuTool) }
                     }
                     ToolSettingsContent(toolID: tool.id)
                         .frame(maxWidth: .infinity, alignment: .topLeading)
-                    Text("How to use").onePlusText(.sectionTitle).accessibilityAddTraits(.isHeader)
-                        .padding(.leading, MainPaneMetrics.sectionTitleInset)
-                        .padding(.top, MainPaneMetrics.gutter)
-                        .id(Self.guideAnchor)
-                    ForEach(tool.manual) { section in manualSection(section) }
+                    VStack(alignment: .leading, spacing: OnePlusLinearMetrics.sectionCaptionBelow) {
+                        OnePlusLinearSectionCaption("How to use")
+                        VStack(alignment: .leading, spacing: OnePlusLinearMetrics.sectionGap) {
+                            ForEach(tool.manual) { section in manualSection(section) }
+                        }
+                    }
+                    .id(Self.guideAnchor)
                 }
                 .onChange(of: storedTab, initial: true) { _, value in
                     guard MainToolTab(rawValue: value) != .settings else { return }
@@ -52,19 +54,18 @@ struct ToolAboutView: View {
         }
     }
 
-    private func hero(_ tool: any Tool) -> some View {
-        MainHero(title: tool.name, subtitle: tool.id == "mac-tweaks" ? tool.summary : tool.description) {
-            ToolIconView(tool: tool, size: MainPaneMetrics.heroIcon)
+    private func header(_ tool: any Tool) -> some View {
+        MainPageHeader(title: tool.name, subtitle: tool.description) {
+            ToolIconView(tool: tool, size: MainPaneMetrics.headerIcon)
         } controls: {
-            HStack(spacing: OnePlusMetrics.cardGap) {
-                MainToolEnableSwitch(tool: tool)
-                MainOpenToolButton(toolID: tool.id, toolName: tool.name, title: "Open \(tool.name)", primary: true)
-            }
+            MainToolEnableSwitch(tool: tool)
+            MainOpenToolButton(toolID: tool.id, toolName: tool.name, title: "Open \(tool.name)")
         }
     }
 
     private func manualSection(_ section: ToolManualSection) -> some View {
-        MainSection(title: section.title) {
+        OnePlusCard {
+            OnePlusCardHeader(section.title)
             ForEach(section.points.indices, id: \.self) { index in
                 HStack(alignment: .firstTextBaseline, spacing: OnePlusCatalogMetrics.gap) {
                     Text(String(index + 1) + ".").onePlusText(.mono)
