@@ -25,8 +25,6 @@ struct MainToolRow: View {
             .help(tool.description)
             .contextMenu { MainToolContextMenu(tool: tool, select: open) }
             .accessibilityValue(settings.isToolEnabled(tool.id) ? "Enabled" : "Disabled")
-            // shortcut: the package star leaves the accessibility tree at opacity 0; drop this once OnePlusUI keeps it.
-            .accessibilityAction(named: favorite ? "Remove from Favorites" : "Add to Favorites") { favorite.toggle() }
             .accessibilityIdentifier("tool.\(tool.id).card")
     }
 }

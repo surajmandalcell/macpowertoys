@@ -15,7 +15,7 @@ struct FanControlView: View {
 
     var body: some View {
         MainPanelFanRow(status: display.rpm, selection: presetBinding,
-                        isEnabled: !display.isChanging && FanPreset.allCases.contains { display.canSelect($0) }) {
+                                isChoiceEnabled: { !display.isChanging && display.canSelect($0) }) {
             if display.hasError || (display.hasCompletedRead && !display.canControl) {
                 setupButton
             }
@@ -113,17 +113,15 @@ struct MainPanelFanRow<Setup: View>: View {
     private static var choices: [(FanPreset?, String)] { FanPreset.allCases.map { (Optional($0), $0.rawValue) } }
     let status: String
     @Binding var selection: FanPreset?
-    let isEnabled: Bool
+    let isChoiceEnabled: (FanPreset) -> Bool
     @ViewBuilder let setup: Setup
 
     var body: some View {
         OnePlusLinearControlRow("Fan", systemImage: "fanblades", status: status) {
             HStack(spacing: 4) {
                 setup
-                // shortcut: OnePlusLinearSegmented 1.1.0 has no per-choice enable state, so the whole control dims
-                // when no choice can apply; adopt the package's per-choice flag when it ships.
-                OnePlusLinearSegmented(choices: Self.choices, selection: $selection, accessibilityLabel: "Fan preset")
-                    .disabled(!isEnabled)
+                OnePlusLinearSegmented(choices: Self.choices, selection: $selection, accessibilityLabel: "Fan preset",
+                                       isChoiceEnabled: { $0.map(isChoiceEnabled) ?? false })
                     .help("Auto follows macOS. Cool boosts cooling for 10 minutes. Max runs fans at their hardware maximum.")
             }
         }

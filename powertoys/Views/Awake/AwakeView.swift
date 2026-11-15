@@ -4,6 +4,8 @@ import OnePlusUI
 enum AwakeLayout {
     static let windowWidth = OnePlusWindowCanvas.awake.size.width
     static let windowHeight = OnePlusWindowCanvas.awake.size.height
+    static let selectWidth: CGFloat = 140
+    static let processFieldWidth: CGFloat = 100
 }
 
 struct AwakeView: View {
@@ -15,31 +17,34 @@ struct AwakeView: View {
     }
 
     var body: some View {
-        OnePlusWindowRoot(canvas: .awake, sidebar: { EmptyView() }) {
-            VStack(spacing: 0) {
-                OnePlusAppletTitlebar(title: "Kwake") {
-                    OnePlusAppletSettingsButton(isActive: settings) { settings.toggle() }
-                        .keyboardShortcut(",")
-                        .accessibilityIdentifier("awake.settings")
-                    Toggle("Keep Display On", isOn: Binding(
-                        get: { service.configuration.keepDisplayOn }, set: service.setKeepDisplayOn
-                    ))
-                    .toggleStyle(OnePlusSwitchStyle())
-                    .fixedSize()
-                    .accessibilityIdentifier("awake.keep-display-on")
-                }
-                Group {
+        OnePlusLinearApplet("Kwake", canvas: .awake) {
+            OnePlusLinearAppletSettingsButton(isActive: settings) { settings.toggle() }
+                .accessibilityIdentifier("awake.settings")
+            HStack(spacing: OnePlusLinearMetrics.appletActionGap) {
+                Text("Keep display on")
+                    .font(.system(size: OnePlusLinearMetrics.body))
+                    .foregroundStyle(OnePlusLinearColor.appletSecondary)
+                    .accessibilityHidden(true)
+                Toggle("Keep Display On", isOn: Binding(
+                    get: { service.configuration.keepDisplayOn }, set: service.setKeepDisplayOn
+                ))
+                .toggleStyle(OnePlusLinearSwitchStyle())
+                .accessibilityIdentifier("awake.keep-display-on")
+            }
+            .fixedSize()
+        } content: {
+            OnePlusLinearContentSwitch(settings) {
+                OnePlusLinearAppletForm {
                     if settings {
-                        OnePlusPage(layout: .applet, header: { EmptyView() }) {
-                            AwakeSettingsView(showsDisplayToggle: false)
-                        }
+                        AwakeSettingsView(showsDisplayToggle: false)
                     } else {
                         AwakeHomeView()
                     }
                 }
             }
         }
-        .transaction { $0.disablesAnimations = true }
+        .onePlusLinearMotion(.quiet)
+        .onePlusNeutralControls()
         .onOpenToolPage("awake") { page in
             if page == "home" { settings = false }
             if page == "settings" { settings = true }
@@ -53,20 +58,11 @@ struct AwakeView: View {
 
 private struct AwakeHomeView: View {
     var body: some View {
-        VStack(alignment: .leading, spacing: OnePlusMetrics.cardGap) {
+        VStack(alignment: .leading, spacing: OnePlusLinearMetrics.appletSectionGap) {
             AwakeStatusRow()
-            ScrollView {
-                VStack(alignment: .leading, spacing: OnePlusMetrics.cardGap) {
-                    SleepTimerCard()
-                    AwakeSettingsView(showsDisplayToggle: false)
-                }
-                .padding(.bottom, OnePlusMetrics.gutter)
-            }
-            .onePlusScrollIndicators()
+            SleepTimerCard()
+            AwakeSettingsView(showsDisplayToggle: false)
         }
-        .frame(maxHeight: .infinity, alignment: .top)
-        .padding(.horizontal, OnePlusMetrics.appletGutter)
-        .padding(.top, OnePlusMetrics.contentGap)
     }
 }
 
@@ -103,61 +99,53 @@ struct SleepTimerCard: View {
     private var minutes: Int { preset.minutes ?? customMinutes }
 
     var body: some View {
-        OnePlusCard {
-            OnePlusCardHeader("Sleep timer", systemImage: "moon.zzz")
-            if let deadline = service.deadline {
-                running(until: deadline)
-            } else {
-                idle
+        VStack(alignment: .leading, spacing: OnePlusLinearMetrics.appletCaptionBelow) {
+            OnePlusLinearAppletSection("Sleep timer") {
+                if let deadline = service.deadline {
+                    running(until: deadline)
+                } else {
+                    idle
+                }
+            }
+            if service.deadline != nil {
+                OnePlusBanner(awake.isActive
+                              ? "Keep awake is on. The Mac still sleeps when the timer ends."
+                              : "Keep awake is off while the sleep timer runs.",
+                              tone: awake.isActive ? .warning : .information)
             }
         }
-        .buttonStyle(OnePlusButtonStyle())
-        .transaction { $0.disablesAnimations = true }
+        .buttonStyle(OnePlusLinearButtonStyle(.soft))
+        .environment(\.onePlusLinearControlLook, .depth)
     }
 
     @ViewBuilder
     private var idle: some View {
-        OnePlusSettingRow("Sleep after", controlWidth: 300, separator: true) {
-            OnePlusSegmented(choices: SleepTimerPreset.allCases.map { ($0, $0.title) },
-                             selection: $preset, accessibilityLabel: "Sleep after", width: 300)
+        OnePlusLinearAppletRow("Sleep after") {
+            OnePlusLinearSelect(choices: SleepTimerPreset.allCases.map { ($0, $0.title) },
+                                selection: $preset, accessibilityLabel: "Sleep after", width: AwakeLayout.selectWidth)
                 .accessibilityIdentifier("awake.sleep-timer.preset")
         }
         if preset == .custom {
-            OnePlusSettingRow("Custom time", separator: true) {
+            OnePlusLinearAppletRow("Custom time") {
                 OnePlusStepperField("Minutes", value: $customMinutes,
                                     in: 1...SleepTimerService.maximumMinutes, step: 5, unit: "min")
             }
         }
-        OnePlusSettingRow("Sleep the Mac",
-                          caption: awake.isActive ? "Starting this turns keep awake off." : "The Mac sleeps when the time ends.",
-                          separator: false) {
-            Button("Start timer") { service.start(minutes: minutes) }
-                .buttonStyle(OnePlusButtonStyle(.primary))
+        OnePlusLinearAppletRow("Sleep the Mac",
+                               detail: awake.isActive ? "Starting this turns keep awake off." : "The Mac sleeps when the time ends.") {
+            Button("Start Timer") { service.start(minutes: minutes) }
                 .accessibilityIdentifier("awake.sleep-timer.start")
         }
     }
 
     private func running(until deadline: Date) -> some View {
-        VStack(alignment: .leading, spacing: OnePlusMetrics.actionSpacing) {
-            HStack(spacing: OnePlusMetrics.actionSpacing) {
-                VStack(alignment: .leading, spacing: 2) {
-                    TimelineView(.periodic(from: .now, by: 1)) { context in
-                        Text(AwakeService.duration(service.remaining(at: context.date) ?? 0))
-                            .onePlusText(.metric).monospacedDigit()
-                    }
-                    Text("Mac sleeps at \(deadline.formatted(date: .omitted, time: .shortened))")
-                        .onePlusText(.caption)
-                }
-                Spacer(minLength: OnePlusMetrics.actionSpacing)
+        TimelineView(.periodic(from: .now, by: 1)) { context in
+            OnePlusLinearAppletRow(AwakeService.duration(service.remaining(at: context.date) ?? 0),
+                                   detail: "Mac sleeps at \(deadline.formatted(date: .omitted, time: .shortened))") {
                 Button("Cancel") { service.cancel() }
                     .accessibilityIdentifier("awake.sleep-timer.cancel")
             }
-            OnePlusBanner(awake.isActive
-                          ? "Keep awake is on. The Mac still sleeps when the timer ends."
-                          : "Keep awake is off while the sleep timer runs.",
-                          tone: awake.isActive ? .warning : .information)
         }
-        .padding(OnePlusMetrics.cardPadding)
     }
 }
 
@@ -165,17 +153,22 @@ private struct AwakeStatusRow: View {
     @State private var service = AwakeService.shared
 
     var body: some View {
-        VStack(alignment: .leading, spacing: OnePlusMetrics.actionSpacing) {
-            HStack(spacing: OnePlusMetrics.actionSpacing) {
-                OnePlusStatus(service.statusText, state: service.isActive ? .online : .offline, textRole: .row)
-                    .monospacedDigit()
-                    .frame(maxWidth: .infinity, alignment: .leading)
-                Button("Turn Off") { service.setMode(.passive) }
-                    .disabled(service.configuration.mode == .passive)
-            }.frame(minHeight: OnePlusMetrics.settingRow)
+        VStack(alignment: .leading, spacing: OnePlusLinearMetrics.appletCaptionBelow) {
+            OnePlusLinearAppletSection("Status") {
+                // shortcut: OnePlusLinearAppletRow 1.2.0 has a String label only; use it once it takes a status dot.
+                HStack(spacing: OnePlusLinearMetrics.appletRowGap) {
+                    OnePlusStatus(service.statusText, state: service.isActive ? .online : .offline, textRole: .row)
+                        .monospacedDigit()
+                        .frame(maxWidth: .infinity, alignment: .leading)
+                    Button("Turn Off") { service.setMode(.passive) }
+                        .disabled(service.configuration.mode == .passive)
+                }
+                .padding(.horizontal, OnePlusLinearMetrics.appletRowPadding)
+                .frame(minHeight: OnePlusLinearMetrics.appletRow)
+            }
             if let error = service.assertionError { OnePlusBanner(error, tone: .error) }
         }
-        .buttonStyle(OnePlusButtonStyle())
+        .buttonStyle(OnePlusLinearButtonStyle(.soft))
     }
 }
 
@@ -193,22 +186,13 @@ struct AwakeSettingsView: View {
     private var duration: TimeInterval { TimeInterval(hours * 3600 + minutes * 60) }
 
     var body: some View {
-        VStack(alignment: .leading, spacing: OnePlusMetrics.cardGap) {
-            ViewThatFits(in: .horizontal) {
-                HStack(alignment: .top, spacing: OnePlusMetrics.cardGap) {
-                    modes
-                    sessionActions
-                }
-                .frame(minWidth: 2 * OnePlusWindowCanvas.colorPicker.size.width + OnePlusMetrics.cardGap)
-                VStack(alignment: .leading, spacing: OnePlusMetrics.cardGap) {
-                    modes
-                    sessionActions
-                }
-            }
+        VStack(alignment: .leading, spacing: OnePlusLinearMetrics.appletSectionGap) {
+            modes
+            quickTimes
+            process
         }
-        .buttonStyle(OnePlusButtonStyle())
-        .environment(\.onePlusCardPadding, 0)
-        .transaction { $0.disablesAnimations = true }
+        .buttonStyle(OnePlusLinearButtonStyle(.soft))
+        .environment(\.onePlusLinearControlLook, .depth)
         .onAppear {
             let seconds = max(60, Int(service.configuration.intervalSeconds))
             hours = min(168, seconds / 3600)
@@ -225,81 +209,67 @@ struct AwakeSettingsView: View {
         }
     }
 
-    private var sessionActions: some View {
-        VStack(alignment: .leading, spacing: OnePlusMetrics.cardGap) {
-            quickTimes
-            process
-        }
-    }
-
     private var modes: some View {
-        VStack(alignment: .leading, spacing: OnePlusMetrics.actionSpacing) {
-            OnePlusSectionTitle("Session")
-            VStack(spacing: 0) {
-                OnePlusSettingRow("Keep awake", separator: showsDisplayToggle || service.configuration.mode == .timed || service.configuration.mode == .until || duration == 0) {
-                    OnePlusSelect(choices: [(AwakeMode.passive, "Off"), (.indefinite, "Indefinitely"),
-                                            (.timed, "For a duration"), (.until, "Until a time")],
-                                  selection: Binding(get: { service.configuration.mode }, set: selectMode),
-                                  accessibilityLabel: "Keep awake")
-                        .accessibilityIdentifier("awake.mode")
+        OnePlusLinearAppletSection("Session") {
+            OnePlusLinearAppletRow("Keep awake") {
+                OnePlusLinearSelect(choices: [(AwakeMode.passive, "Off"), (.indefinite, "Indefinitely"),
+                                              (.timed, "For a duration"), (.until, "Until a time")],
+                                    selection: Binding(get: { service.configuration.mode }, set: selectMode),
+                                    accessibilityLabel: "Keep awake", width: AwakeLayout.selectWidth)
+                    .accessibilityIdentifier("awake.mode")
+            }
+            if showsDisplayToggle {
+                OnePlusLinearAppletRow("Keep display on") {
+                    Toggle("Keep Display On", isOn: Binding(
+                        get: { service.configuration.keepDisplayOn }, set: service.setKeepDisplayOn
+                    )).toggleStyle(OnePlusLinearSwitchStyle())
                 }
-                if showsDisplayToggle {
-                    OnePlusSettingRow("Keep display on", separator: service.configuration.mode == .timed || service.configuration.mode == .until || duration == 0) {
-                        Toggle("Keep Display On", isOn: Binding(
-                            get: { service.configuration.keepDisplayOn }, set: service.setKeepDisplayOn
-                        )).labelsHidden().toggleStyle(OnePlusSwitchStyle())
+            }
+            if service.configuration.mode == .timed || duration == 0 {
+                OnePlusLinearAppletRow("Duration") {
+                    HStack(spacing: OnePlusLinearMetrics.appletActionGap) {
+                        OnePlusStepperField("Hours", value: $hours, in: 0...168, unit: "h")
+                        OnePlusStepperField("Minutes", value: $minutes, in: 0...59, step: 5, unit: "min")
+                        Button("Start") { selectMode(.timed) }.disabled(duration == 0)
                     }
                 }
-                if service.configuration.mode == .timed || service.configuration.mode == .until || duration == 0 {
-                    VStack(spacing: OnePlusMetrics.actionSpacing) {
-                        if service.configuration.mode == .timed || duration == 0 {
-                            HStack(spacing: OnePlusMetrics.actionSpacing) {
-                                OnePlusStepperField("Hours", value: $hours, in: 0...168, unit: "h")
-                                OnePlusStepperField("Minutes", value: $minutes, in: 0...59, step: 5, unit: "min")
-                                Button("Start") { selectMode(.timed) }.disabled(duration == 0)
-                            }
-                        }
-                        if service.configuration.mode == .until {
-                            HStack(spacing: OnePlusMetrics.actionSpacing) {
-                                DatePicker("End time", selection: $expiration, in: Date()...)
-                                    .labelsHidden().datePickerStyle(.field).controlSize(.small)
-                                    .frame(maxWidth: .infinity, alignment: .leading)
-                                Button("Start") { selectMode(.until) }
-                            }
-                        }
-                    }.frame(minHeight: OnePlusMetrics.settingRow)
+            }
+            if service.configuration.mode == .until {
+                OnePlusLinearAppletRow("End time") {
+                    HStack(spacing: OnePlusLinearMetrics.appletActionGap) {
+                        DatePicker("End time", selection: $expiration, in: Date()...)
+                            .labelsHidden().datePickerStyle(.field).controlSize(.small)
+                        Button("Start") { selectMode(.until) }
+                    }
                 }
             }
         }
     }
 
-    private var quickTimes: some View {
-        VStack(alignment: .leading, spacing: OnePlusMetrics.actionSpacing) {
-            OnePlusSectionTitle("Quick times")
+    @ViewBuilder private var quickTimes: some View {
+        OnePlusLinearAppletSection("Quick times") {
             ScrollView(.horizontal) {
-                HStack(spacing: OnePlusMetrics.actionSpacing) {
+                HStack(spacing: OnePlusLinearMetrics.appletActionGap) {
                     ForEach(service.configuration.presets, id: \.self) { seconds in
                         Button(quickTimeLabel(seconds)) { service.setMode(.timed, duration: seconds) }
                             .fixedSize()
                             .contextMenu { Button("Remove Preset", role: .destructive) { presetToRemove = seconds } }
                     }
                     if !showsDisplayToggle {
-                        Button { service.setPresets(service.configuration.presets + [duration]) } label: {
-                            Image(systemName: "plus")
+                        OnePlusLinearIconButton(systemImage: "plus", help: "Add the current interval as a quick time") {
+                            service.setPresets(service.configuration.presets + [duration])
                         }
-                        .buttonStyle(OnePlusButtonStyle(.icon))
-                        .help("Add the current interval as a preset").accessibilityLabel("Add quick time")
                         .disabled(duration == 0 || service.configuration.presets.count >= 8
                                   || service.configuration.presets.contains(duration))
                     }
                 }
+                .padding(.horizontal, OnePlusLinearMetrics.appletRowPadding)
+                .frame(minHeight: OnePlusLinearMetrics.appletRow)
             }
             .onePlusScrollIndicators()
-            .fixedSize(horizontal: false, vertical: true)
-            .frame(maxWidth: .infinity, alignment: .leading)
             if showsDisplayToggle {
-                OnePlusSettingRow("New preset", help: "Save up to eight durations.", separator: false) {
-                    HStack(spacing: OnePlusMetrics.actionSpacing) {
+                OnePlusLinearAppletRow("New preset", detail: "Save up to eight durations.") {
+                    HStack(spacing: OnePlusLinearMetrics.appletActionGap) {
                         OnePlusStepperField("Preset minutes", value: $presetMinutes, in: 1...10_080, unit: "min")
                         Button("Add") {
                             service.setPresets(service.configuration.presets + [TimeInterval(presetMinutes * 60)])
@@ -313,20 +283,19 @@ struct AwakeSettingsView: View {
     }
 
     private var process: some View {
-        VStack(alignment: .leading, spacing: OnePlusMetrics.actionSpacing) {
-            OnePlusSectionTitle("Attach to a process")
-            HStack(spacing: OnePlusMetrics.actionSpacing) {
-                Text("Process ID").onePlusText(.row)
-                    .help(processHelp).accessibilityHint(processHelp)
-                Spacer(minLength: OnePlusMetrics.actionSpacing)
-                OnePlusTextField("Process ID", text: $processID, onSubmit: attach)
-                    .frame(width: OnePlusMetrics.controlColumn)
-                Button("Attach", action: attach).fixedSize()
-                if service.configuration.attachedProcessID != nil {
-                    Button("Detach") { service.attach(to: nil) }.fixedSize()
+        VStack(alignment: .leading, spacing: OnePlusLinearMetrics.appletCaptionBelow) {
+            OnePlusLinearAppletSection("Attach to a process") {
+                OnePlusLinearAppletRow("Process ID", detail: processHelp) {
+                    HStack(spacing: OnePlusLinearMetrics.appletActionGap) {
+                        OnePlusTextField("Process ID", text: $processID, onSubmit: attach)
+                            .frame(width: AwakeLayout.processFieldWidth)
+                        Button("Attach", action: attach).fixedSize()
+                        if service.configuration.attachedProcessID != nil {
+                            Button("Detach") { service.attach(to: nil) }.fixedSize()
+                        }
+                    }
                 }
             }
-            .frame(height: OnePlusMetrics.settingRow)
             if let processError { OnePlusBanner(processError, tone: .error) }
         }
     }

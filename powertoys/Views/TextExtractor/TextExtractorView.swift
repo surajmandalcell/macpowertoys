@@ -5,12 +5,25 @@ enum TextExtractorLayout {
     static let windowWidth = OnePlusWindowCanvas.textExtractor.size.width
     static let historyBaseHeight = OnePlusWindowCanvas.textExtractor.size.height - OnePlusMetrics.appletTitlebar
     static let maximumWindowHeight = OnePlusWindowCanvas.textExtractor.heightRange!.upperBound
-    static let settingsHeight = maximumWindowHeight - OnePlusMetrics.appletTitlebar
-    static let historyRowHeight = OnePlusMetrics.settingRow
+    static let settingsContentEstimate = maximumWindowHeight - OnePlusLinearMetrics.appletTitlebar
+        - OnePlusLinearMetrics.appletBottom
+    static let historyRowHeight = OnePlusLinearMetrics.appletRow
+    static let selectWidth: CGFloat = 110
+    /// Title area and the History caption above the rows; the bottom gutter below them.
+    static let historyChrome = OnePlusLinearMetrics.appletTitlebar + OnePlusLinearMetrics.appletCaptionHeight
+        + OnePlusLinearMetrics.appletCaptionBelow + OnePlusLinearMetrics.appletBottom
+
+    static func clamped(_ height: CGFloat) -> CGFloat {
+        let range = OnePlusWindowCanvas.textExtractor.heightRange!
+        return min(range.upperBound, max(range.lowerBound, height))
+    }
 
     static func historyHeight(count: Int) -> CGFloat {
-        min(maximumWindowHeight, historyBaseHeight + OnePlusMetrics.appletTitlebar
-            + CGFloat(max(0, min(count, 5) - 1)) * historyRowHeight)
+        clamped(historyChrome + CGFloat(max(0, count)) * historyRowHeight)
+    }
+
+    static func settingsHeight(contentHeight: CGFloat) -> CGFloat {
+        clamped(contentHeight + OnePlusLinearMetrics.appletTitlebar + OnePlusLinearMetrics.appletBottom)
     }
 }
 
@@ -40,31 +53,40 @@ struct TextExtractorView: View {
     @State private var page: TextExtractorPage
     @State private var selectedExtraction: TextExtraction?
     @State private var historyRows: [TextExtractionPresentation] = []
+    @State private var settingsContentHeight = TextExtractorLayout.settingsContentEstimate
 
     init(page: TextExtractorPage = .history) {
         _page = State(initialValue: page)
     }
 
     var body: some View {
-        OnePlusWindowRoot(canvas: .textExtractor, sidebar: { EmptyView() }) {
-            VStack(spacing: 0) {
-                titlebar
-                Group {
-                    switch page {
-                    case .history: history
-                    case .settings:
-                        OnePlusPage(layout: .applet, header: { EmptyView() }) {
-                            TextExtractorSettingsView()
-                        }
+        OnePlusLinearApplet("Text Extractor", canvas: .textExtractor) {
+            OnePlusLinearAppletSettingsButton(isActive: page == .settings) {
+                page = page == .settings ? .history : .settings
+            }
+            .accessibilityIdentifier("text-extractor.settings")
+            Button { service.begin() } label: { Label("Extract Text", systemImage: "text.viewfinder") }
+                .buttonStyle(OnePlusLinearButtonStyle(.soft))
+                .disabled(isExtracting)
+                .help("Select text anywhere on screen (\(shortcuts.shortcut(for: .textExtractor).display))")
+                .accessibilityIdentifier("text-extractor.extract")
+        } content: {
+            OnePlusLinearContentSwitch(page) {
+                switch page {
+                case .history: history
+                case .settings:
+                    OnePlusLinearAppletForm {
+                        TextExtractorSettingsView()
+                            .onGeometryChange(for: CGFloat.self) { $0.size.height } action: { settingsContentHeight = $0 }
                     }
                 }
-                .frame(maxHeight: .infinity, alignment: .top)
             }
         }
-        .frame(height: page == .settings ? TextExtractorLayout.maximumWindowHeight
+        .onePlusLinearMotion(.quiet)
+        .onePlusNeutralControls()
+        .frame(height: page == .settings ? TextExtractorLayout.settingsHeight(contentHeight: settingsContentHeight)
                : TextExtractorLayout.historyHeight(count: service.history.count))
         .sheet(item: $selectedExtraction) { TextExtractionDetailView(extraction: $0) }
-        .transaction { $0.disablesAnimations = true }
         .onOpenToolPage("text-extractor") { id in
             if let destination = TextExtractorPage(rawValue: id) { page = destination }
         }
@@ -87,72 +109,43 @@ struct TextExtractorView: View {
         }
     }
 
-    private var titlebar: some View {
-        OnePlusAppletTitlebar(title: "Text Extractor") {
-            OnePlusAppletSettingsButton(isActive: page == .settings,
-                                        help: page == .settings ? "Back to History" : "Recognition Settings") {
-                page = page == .settings ? .history : .settings
-            }
-            .keyboardShortcut(",")
-            .accessibilityIdentifier("text-extractor.settings")
-            Button("Extract Text") { service.begin() }
-                .buttonStyle(OnePlusButtonStyle(.primary, size: .small))
-                .disabled(isExtracting)
-                .help("Select text anywhere on screen (\(shortcuts.shortcut(for: .textExtractor).display))")
-                .accessibilityIdentifier("text-extractor.extract")
-        }
-    }
-
     private var history: some View {
-        VStack(alignment: .leading, spacing: OnePlusMetrics.cardGap) {
+        VStack(alignment: .leading, spacing: 0) {
             statusBanner
             if service.history.isEmpty {
                 OnePlusEmptyState("Select text anywhere", systemImage: "viewfinder")
                     .help("Drag a region. Recognized text is copied automatically.")
+                    .frame(maxHeight: .infinity)
             } else {
-                OnePlusSectionTitle("History")
-                OnePlusCard {
-                    ScrollView {
-                        LazyVStack(spacing: 0) {
-                            ForEach(historyRows) { row in
-                                TextExtractionRow(
-                                    row: row,
-                                    onOpen: { selectedExtraction = row.extraction },
-                                    onCopy: { service.copy(row.extraction) },
-                                    onDelete: { service.remove(row.id, undoManager: undoManager) }
-                                )
-                                .overlay(alignment: .bottom) {
-                                    if row.id != historyRows.last?.id {
-                                        OnePlusColor.lineSoft.frame(height: 1)
-                                    }
-                                }
-                            }
+                OnePlusLinearAppletForm {
+                    OnePlusLinearAppletSection("History") {
+                        ForEach(historyRows) { row in
+                            TextExtractionRow(
+                                row: row,
+                                onOpen: { selectedExtraction = row.extraction },
+                                onCopy: { service.copy(row.extraction) },
+                                onDelete: { service.remove(row.id, undoManager: undoManager) }
+                            )
                         }
                     }
-                    .onePlusScrollIndicators()
                 }
-                .frame(maxHeight: .infinity)
             }
         }
-        .frame(maxHeight: .infinity, alignment: .top)
-        .padding(.horizontal, OnePlusMetrics.appletGutter)
-        .padding(.top, OnePlusMetrics.contentGap)
-        .padding(.bottom, OnePlusMetrics.gutter)
     }
 
     @ViewBuilder private var statusBanner: some View {
         switch service.state {
         case .selecting:
-            OnePlusBanner("Drag to select text. Press Escape to cancel.")
+            OnePlusBanner("Drag to select text. Press Escape to cancel.").modifier(AppletBannerInset())
         case .recognizing:
             OnePlusBanner("Recognizing text on this Mac…") {
                 ProgressView().controlSize(.small).accessibilityLabel("Recognizing text")
-            }
+            }.modifier(AppletBannerInset())
         case .permissionDenied(let message):
             OnePlusBanner(message, tone: .warning) {
                 Button("Privacy Settings", action: openPrivacySettings)
-            }
-        case .failed(let message): OnePlusBanner(message, tone: .error)
+            }.modifier(AppletBannerInset())
+        case .failed(let message): OnePlusBanner(message, tone: .error).modifier(AppletBannerInset())
         default: EmptyView()
         }
     }
@@ -178,17 +171,18 @@ struct TextExtractorSettingsView: View {
     @State private var confirmingClear = false
 
     var body: some View {
-        VStack(alignment: .leading, spacing: OnePlusMetrics.cardGap) {
-            shortcutSettings
-            VStack(alignment: .leading, spacing: OnePlusMetrics.actionSpacing) {
+        VStack(alignment: .leading, spacing: 0) {
+            VStack(alignment: .leading, spacing: OnePlusLinearMetrics.appletSectionGap) {
+                shortcutSettings
                 recognitionSettings
-                Button("Clear history", role: .destructive) { confirmingClear = true }
-                    .buttonStyle(OnePlusButtonStyle(.destructive))
-                    .disabled(service.history.isEmpty).help("Removes saved extracted text.")
-                    .accessibilityIdentifier("text-extractor.clear-history")
             }
+            Button("Clear History", role: .destructive) { confirmingClear = true }
+                .buttonStyle(OnePlusLinearButtonStyle(.destructive))
+                .disabled(service.history.isEmpty).help("Removes saved extracted text.")
+                .accessibilityIdentifier("text-extractor.clear-history")
+                .padding(.top, OnePlusLinearMetrics.appletFooterGap)
         }
-        .transaction { $0.disablesAnimations = true }
+        .environment(\.onePlusLinearControlLook, .depth)
         .confirmationDialog("Clear text extraction history?", isPresented: $confirmingClear) {
             Button("Clear History", role: .destructive) { service.clearHistory(undoManager: undoManager) }
             Button("Cancel", role: .cancel) {}
@@ -203,41 +197,40 @@ struct TextExtractorSettingsView: View {
         }
     }
 
-    private var shortcutSettings: some View {
-        VStack(alignment: .leading, spacing: OnePlusMetrics.actionSpacing) {
-            OnePlusSectionTitle("Global shortcut")
-            HStack(spacing: OnePlusMetrics.actionSpacing) {
-                Text("Shortcut").onePlusText(.row).help("Works in every app.")
-                Spacer(minLength: OnePlusMetrics.actionSpacing)
+    @ViewBuilder private var shortcutSettings: some View {
+        OnePlusLinearAppletSection("Global shortcut") {
+            OnePlusLinearAppletRow("Enable shortcut") {
                 Toggle("Enable Extract Text shortcut", isOn: Binding(
                     get: { shortcuts.isEnabled(.textExtractor) }, set: { shortcuts.setEnabled($0, for: .textExtractor) }
-                )).labelsHidden().toggleStyle(OnePlusSwitchStyle())
+                )).toggleStyle(OnePlusLinearSwitchStyle())
+            }
+            OnePlusLinearAppletRow("Keyboard shortcut", detail: "Works in every app.") {
                 ShortcutRecorderField(action: .textExtractor)
                     .disabled(!shortcuts.isEnabled(.textExtractor))
             }
-            .frame(height: OnePlusMetrics.settingRow)
-            ShortcutPermissionNotice(action: .textExtractor)
         }
+        ShortcutPermissionNotice(action: .textExtractor)
+            .padding(.horizontal, OnePlusLinearMetrics.appletRowPadding)
     }
 
     private var recognitionSettings: some View {
-        OnePlusCard {
-            OnePlusCardHeader("Recognition", systemImage: "text.viewfinder")
-            OnePlusSettingRow("Recognition quality") {
-                OnePlusSegmented(choices: TextRecognitionSpeed.allCases.map { ($0, $0.title) },
-                                 selection: $service.settings.speed, accessibilityLabel: "Recognition quality",
-                                 width: OnePlusMetrics.controlColumn)
+        OnePlusLinearAppletSection("Recognition") {
+            OnePlusLinearAppletRow("Recognition quality") {
+                OnePlusLinearSelect(choices: TextRecognitionSpeed.allCases.map { ($0, $0.title) },
+                                    selection: $service.settings.speed, accessibilityLabel: "Recognition quality",
+                                    width: TextExtractorLayout.selectWidth)
             }
-            OnePlusSettingRow("Language correction") {
+            OnePlusLinearAppletRow("Language correction") {
                 Toggle("Use language correction", isOn: $service.settings.languageCorrection)
-                    .labelsHidden().toggleStyle(OnePlusSwitchStyle())
+                    .toggleStyle(OnePlusLinearSwitchStyle())
             }
-            OnePlusSettingRow("QR codes and barcodes") {
+            OnePlusLinearAppletRow("QR codes and barcodes") {
                 Toggle("Detect QR codes and barcodes", isOn: $service.settings.detectCodes)
-                    .labelsHidden().toggleStyle(OnePlusSwitchStyle())
+                    .toggleStyle(OnePlusLinearSwitchStyle())
             }
-            OnePlusSettingRow("Preferred languages", help: "Empty means automatic.", separator: false) {
+            OnePlusLinearAppletRow("Preferred languages", detail: "Empty means automatic.") {
                 OnePlusTextField("en-US, fr-FR", text: $languages, onSubmit: applyLanguages)
+                    .frame(width: OnePlusMetrics.controlColumn)
                     .accessibilityLabel("Preferred languages")
                     .onChange(of: languages) { applyLanguages() }
             }
@@ -252,6 +245,13 @@ struct TextExtractorSettingsView: View {
 
 enum TextExtractorPage: String { case history, settings }
 
+/// A banner above an applet body sits on the 16 pt gutter, one section gap above the first group.
+struct AppletBannerInset: ViewModifier {
+    func body(content: Content) -> some View {
+        content.padding(.horizontal, OnePlusLinearMetrics.appletGutter).padding(.bottom, OnePlusLinearMetrics.appletSectionGap)
+    }
+}
+
 private struct TextExtractionRow: View {
     let row: TextExtractionPresentation
     let onOpen: () -> Void
@@ -261,30 +261,22 @@ private struct TextExtractionRow: View {
 
     var body: some View {
         let extraction = row.extraction
-        HStack(spacing: OnePlusMetrics.actionSpacing) {
-            Button(action: onOpen) {
-                HStack(spacing: OnePlusMetrics.actionSpacing) {
-                    Text(extraction.text).onePlusText(.row).lineLimit(1)
-                    Spacer(minLength: 0)
-                    Text(row.timestamp).onePlusText(.caption).fixedSize()
-                }
-                .frame(maxWidth: .infinity, minHeight: TextExtractorLayout.historyRowHeight, alignment: .leading)
-                .contentShape(Rectangle())
-            }
-            .buttonStyle(.plain)
-            .accessibilityLabel("Open full text")
-            Button(action: onCopy) { Image(systemName: "doc.on.doc") }
-                .accessibilityLabel("Copy text")
-            if let url = row.openableURL {
-                Button { NSWorkspace.shared.open(url) } label: { Image(systemName: "arrow.up.right.square") }
-                    .accessibilityLabel("Open link")
-            }
-            Button { confirmingDelete = true } label: { Image(systemName: "trash") }
-                .accessibilityLabel("Delete extraction")
+        var actions = [OnePlusLinearAction("Copy text", systemImage: "doc.on.doc", id: "copy", action: onCopy)]
+        if let url = row.openableURL {
+            actions.append(OnePlusLinearAction("Open link", systemImage: "arrow.up.right.square", id: "link") {
+                NSWorkspace.shared.open(url)
+            })
         }
-        .padding(.horizontal, OnePlusMetrics.actionSpacing)
-        .onePlusRowHover()
-        .buttonStyle(OnePlusButtonStyle(.icon, size: .small))
+        actions.append(OnePlusLinearAction("Delete extraction", systemImage: "trash", id: "delete") { confirmingDelete = true })
+        return OnePlusLinearAppletListRow(extraction.text, metadata: row.timestamp, actions: actions) {
+            Image(systemName: "text.alignleft")
+                .font(.system(size: OnePlusLinearMetrics.body))
+                .foregroundStyle(OnePlusLinearColor.appletSecondary)
+                .frame(width: OnePlusLinearMetrics.appletSwatch)
+        }
+        .contentShape(Rectangle())
+        .onTapGesture(perform: onOpen)
+        .accessibilityAction(named: "Open full text", onOpen)
         .contextMenu {
             Button("Open full text", action: onOpen)
             Button("Copy text", action: onCopy)

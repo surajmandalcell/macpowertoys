@@ -10,6 +10,7 @@ struct ShortcutRecorderField: View {
     @State private var isRecording = false
     @State private var monitor: Any?
     @State private var recordingWindowNumber: Int?
+    @Environment(\.onePlusLinearControlLook) private var look
 
     private var registrationError: String? {
         if case .failed(let message) = shortcuts.registrationStatus[action] { return message }
@@ -17,21 +18,7 @@ struct ShortcutRecorderField: View {
     }
 
     var body: some View {
-        Button {
-            isRecording ? stopRecording() : startRecording()
-        } label: {
-            Group {
-                if isRecording { Text("Type shortcut…") }
-                else if registrationError != nil {
-                    Label("Change Shortcut", systemImage: "exclamationmark.triangle")
-                } else { Text(shortcuts.shortcut(for: action).display) }
-            }
-                .onePlusText(.control)
-                .foregroundStyle(OnePlusColor.controlInk)
-                .lineLimit(1)
-                .frame(width: max(0, width - 2 * OnePlusMetrics.controlHorizontalPadding))
-        }
-        .buttonStyle(OnePlusButtonStyle())
+        recorderButton
         .onePlusNeutralControls()
         .environment(\.onePlusControlState, isRecording ? .focus : .rest)
         .help(registrationError ?? (isRecording ? "Press the new keys, or Escape to cancel" : "Click, then press the new shortcut"))
@@ -45,6 +32,34 @@ struct ShortcutRecorderField: View {
         }
         .onDisappear { stopRecording() }
     }
+
+    /// Inside a v15 applet (a control look is set) the recorder is a soft applet button; elsewhere the v14 field.
+    @ViewBuilder private var recorderButton: some View {
+        if look == nil {
+            Button { isRecording ? stopRecording() : startRecording() } label: {
+                recorderLabel.onePlusText(.control).foregroundStyle(OnePlusColor.controlInk)
+                    .frame(width: max(0, width - 2 * OnePlusMetrics.controlHorizontalPadding))
+            }
+            .buttonStyle(OnePlusButtonStyle())
+        } else {
+            Button { isRecording ? stopRecording() : startRecording() } label: {
+                recorderLabel.frame(width: Self.appletLabelWidth)
+            }
+            .buttonStyle(OnePlusLinearButtonStyle(.soft))
+        }
+    }
+
+    private var recorderLabel: some View {
+        Group {
+            if isRecording { Text("Type shortcut…") }
+            else if registrationError != nil {
+                Label("Change Shortcut", systemImage: "exclamationmark.triangle")
+            } else { Text(shortcuts.shortcut(for: action).display) }
+        }
+        .lineLimit(1)
+    }
+
+    private static let appletLabelWidth: CGFloat = 100
 
     private func startRecording() {
         guard let window = NSApp.keyWindow else { return }

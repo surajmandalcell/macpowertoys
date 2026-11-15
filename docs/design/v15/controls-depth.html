@@ -1,0 +1,185 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>MacPowerToys > applet controls</title>
+<!-- Design reference for the version 15 applet controls, option "Depth" (owner pick, 2026-11-16).
+     Recessed tracks, gently raised knobs and segment caps, a fine top-edge highlight, Quiet motion.
+     The Ruler Defaults applet is shown in Light and Dark at 1:1 (one CSS px = one pt). -->
+<style>
+html,body{margin:0;background:#E9E9EC;}
+.refs{display:flex;flex-wrap:wrap;gap:0;}
+.refs>div{padding:0;}
+.refs>[data-theme="dark"]{background:#0B0B0C;}
+
+.lk-app-ctl2-depth{--win:#FCFCFD;--group:rgba(0,0,0,.035);--line-soft:rgba(0,0,0,.06);--line-strong:rgba(0,0,0,.16);
+--ink:#1B1B1F;--sec:#55555C;--muted:#6F6F77;--hover:rgba(0,0,0,.04);--press:rgba(0,0,0,.08);
+--danger-ink:#B02D24;--danger-tint:rgba(224,73,62,.12);--danger-tint-hover:rgba(224,73,62,.16);--danger-tint-press:rgba(224,73,62,.21);
+--tl-z:#D9D9DD;--tl-edge:rgba(0,0,0,.12);--win-shadow:0 0 0 .5px rgba(0,0,0,.2),0 8px 22px rgba(0,0,0,.10),0 1px 3px rgba(0,0,0,.06);
+--well:#FFD60A;--ring:rgba(0,0,0,.3);
+--rec:#E7E7EA;--rec-sh:inset 0 1px 2px rgba(0,0,0,.2),inset 0 0 0 .5px rgba(0,0,0,.12),0 1px 0 rgba(255,255,255,.9);
+--cap:linear-gradient(#FFFFFF,#EFEFF2);--cap-p:linear-gradient(#F2F2F4,#E6E6EA);
+--cap-sh:0 0 0 .5px rgba(0,0,0,.2),0 1px 2px rgba(0,0,0,.16),0 2px 6px rgba(0,0,0,.08),inset 0 1px 0 #FFFFFF;
+--cap-sh-h:0 0 0 .5px rgba(0,0,0,.28),0 1px 2px rgba(0,0,0,.2),0 3px 8px rgba(0,0,0,.1),inset 0 1px 0 #FFFFFF;
+--rod:linear-gradient(#45464D,#1C1D22);--rod-sh:inset 0 1px 0 rgba(255,255,255,.14);
+--d:140ms;--e:cubic-bezier(.25,1,.5,1);}
+[data-theme="dark"] .lk-app-ctl2-depth{--win:#141416;--group:rgba(255,255,255,.045);--line-soft:rgba(255,255,255,.06);--line-strong:rgba(255,255,255,.16);
+--ink:#EDEDEF;--sec:#B4B4BB;--muted:#9A9AA3;--hover:rgba(255,255,255,.05);--press:rgba(255,255,255,.09);
+--danger-ink:#FFA8A0;--danger-tint:rgba(238,91,80,.14);--danger-tint-hover:rgba(238,91,80,.2);--danger-tint-press:rgba(238,91,80,.27);
+--tl-z:#3A3A3F;--tl-edge:rgba(0,0,0,.3);--win-shadow:0 0 0 .5px rgba(255,255,255,.12),0 0 0 1px rgba(0,0,0,.6),0 8px 22px rgba(0,0,0,.4);
+--ring:rgba(255,255,255,.36);
+--rec:#0E0E10;--rec-sh:inset 0 1px 2px rgba(0,0,0,.7),inset 0 0 0 .5px rgba(255,255,255,.05),0 1px 0 rgba(255,255,255,.06);
+--cap:linear-gradient(#606067,#46464C);--cap-p:linear-gradient(#55555C,#3E3E44);
+--cap-sh:0 0 0 .5px rgba(0,0,0,.7),0 1px 2px rgba(0,0,0,.55),0 2px 6px rgba(0,0,0,.35),inset 0 1px 0 rgba(255,255,255,.24);
+--cap-sh-h:0 0 0 .5px rgba(0,0,0,.7),0 1px 2px rgba(0,0,0,.6),0 3px 8px rgba(0,0,0,.45),inset 0 1px 0 rgba(255,255,255,.32);
+--rod:linear-gradient(#F4F4F6,#C9C9CE);--rod-sh:inset 0 1px 0 rgba(255,255,255,.6);}
+
+.lk-app-ctl2-depth{font-family:-apple-system,"SF Pro Text",system-ui,sans-serif;font-size:13px;line-height:16px;letter-spacing:-.08px;color:var(--ink);-webkit-font-smoothing:antialiased;font-variant-numeric:tabular-nums;}
+.lk-app-ctl2-depth *,.lk-app-ctl2-depth *::before,.lk-app-ctl2-depth *::after{box-sizing:border-box;}
+.lk-app-ctl2-depth i{font-style:normal;}
+.lk-app-ctl2-depth button,.lk-app-ctl2-depth input{font:inherit;color:inherit;letter-spacing:inherit;margin:0;}
+.lk-app-ctl2-depth button{cursor:default;}
+.lk-app-ctl2-depth .lk-shot{margin:0;padding:16px;width:452px;}
+
+/* Shell: Filled groups */
+.lk-app-ctl2-depth .ap{position:relative;display:flex;flex-direction:column;background:var(--win);border-radius:12px;box-shadow:var(--win-shadow);overflow:hidden;}
+.lk-app-ctl2-depth .ap-bar{flex:none;position:relative;display:flex;align-items:center;gap:8px;height:44px;padding:0 12px 0 80px;}
+.lk-app-ctl2-depth .ap-lights{position:absolute;left:14px;top:16px;display:flex;gap:8px;}
+.lk-app-ctl2-depth .ap-tl{display:block;width:12px;height:12px;border-radius:50%;box-shadow:inset 0 0 0 .5px var(--tl-edge);}
+.lk-app-ctl2-depth .ap-tl.c{background:#FF5F57;} .lk-app-ctl2-depth .ap-tl.m{background:#FEBC2E;} .lk-app-ctl2-depth .ap-tl.z{background:var(--tl-z);}
+.lk-app-ctl2-depth .ap-title{flex:1;min-width:0;font-weight:600;white-space:nowrap;}
+.lk-app-ctl2-depth .ap-body{flex:1;display:flex;flex-direction:column;padding:4px 16px 16px;}
+.lk-app-ctl2-depth .ap-sec+.ap-sec{margin-top:16px;}
+.lk-app-ctl2-depth .ap-cap{display:flex;align-items:center;height:16px;margin-bottom:6px;padding-left:12px;color:var(--muted);font-size:12px;font-weight:500;letter-spacing:0;}
+.lk-app-ctl2-depth .ap-grp{background:var(--group);border-radius:10px;overflow:hidden;}
+.lk-app-ctl2-depth .ap-row{position:relative;display:flex;align-items:center;gap:12px;height:36px;padding:0 12px;}
+.lk-app-ctl2-depth .ap-row+.ap-row::before{content:"";position:absolute;top:0;left:12px;right:12px;height:1px;background:var(--line-soft);}
+.lk-app-ctl2-depth .ap-lab{flex:1;min-width:0;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
+.lk-app-ctl2-depth .ap-ctl{flex:none;display:flex;align-items:center;justify-content:flex-end;gap:6px;}
+.lk-app-ctl2-depth .x{color:var(--muted);font-size:12px;}
+
+/* Slider: 140 pt, recessed 6 pt track, rod fill, 16 pt raised knob */
+.lk-app-ctl2-depth .sl{display:inline-flex;align-items:center;gap:8px;--kw:16px;}
+.lk-app-ctl2-depth .sl-a{position:relative;display:block;width:140px;height:22px;}
+.lk-app-ctl2-depth .sl-a input{position:absolute;inset:0;z-index:3;width:100%;height:100%;margin:0;opacity:0;-webkit-appearance:none;appearance:none;background:none;}
+.lk-app-ctl2-depth .sl-a input::-webkit-slider-runnable-track{height:22px;}
+.lk-app-ctl2-depth .sl-a input::-webkit-slider-thumb{-webkit-appearance:none;width:16px;height:22px;}
+.lk-app-ctl2-depth .sl-tr{position:absolute;left:0;right:0;top:50%;height:6px;margin-top:-3px;border-radius:3px;background:var(--rec);box-shadow:var(--rec-sh);overflow:hidden;}
+.lk-app-ctl2-depth .sl-fi{position:absolute;left:0;top:0;bottom:0;width:calc(var(--kw) / 2 + (100% - var(--kw)) * var(--v) / 100);background:var(--rod);box-shadow:var(--rod-sh);}
+.lk-app-ctl2-depth .sl-kn{position:absolute;z-index:2;top:50%;left:calc((100% - var(--kw)) * var(--v) / 100);width:16px;height:16px;margin-top:-8px;border-radius:50%;background:var(--cap);box-shadow:var(--cap-sh);pointer-events:none;}
+.lk-app-ctl2-depth .sl-a input:hover~.sl-kn{box-shadow:var(--cap-sh-h);}
+.lk-app-ctl2-depth .sl-a input:active~.sl-kn{background:var(--cap-p);}
+.lk-app-ctl2-depth .sl-a input:focus-visible~.sl-kn{box-shadow:var(--cap-sh),0 0 0 5px var(--ring);}
+.lk-app-ctl2-depth .sl output{width:36px;text-align:right;color:var(--sec);}
+
+/* Segmented control: recessed track, raised cap thumb */
+.lk-app-ctl2-depth .sg{position:relative;display:inline-grid;grid-auto-flow:column;grid-auto-columns:36px;padding:2px;border-radius:7px;background:var(--rec);box-shadow:var(--rec-sh);}
+.lk-app-ctl2-depth .sg label{position:relative;z-index:1;display:flex;}
+.lk-app-ctl2-depth .sg input{position:absolute;inset:0;width:100%;height:100%;margin:0;opacity:0;}
+.lk-app-ctl2-depth .sg span{flex:1;display:flex;align-items:center;justify-content:center;height:20px;border-radius:5px;color:var(--sec);font-size:12px;}
+.lk-app-ctl2-depth .sg label:hover span{color:var(--ink);}
+.lk-app-ctl2-depth .sg input:active+span{background:var(--press);}
+.lk-app-ctl2-depth .sg input:checked+span{color:var(--ink);font-weight:500;background:none;}
+.lk-app-ctl2-depth .sg-th{position:absolute;top:2px;bottom:2px;left:calc(2px + var(--i) * 36px);width:36px;border-radius:5px;background:var(--cap);box-shadow:var(--cap-sh);pointer-events:none;}
+.lk-app-ctl2-depth .sg:has(input:focus-visible) .sg-th{box-shadow:var(--cap-sh),0 0 0 3px var(--ring);}
+
+/* Stepper: recessed field with raised minus and plus caps */
+.lk-app-ctl2-depth .st{display:inline-flex;align-items:center;height:24px;padding:0 2px;border-radius:6px;background:var(--rec);box-shadow:var(--rec-sh);}
+.lk-app-ctl2-depth .st input{width:38px;padding:0;border:0;outline:0;background:none;text-align:right;}
+.lk-app-ctl2-depth .st-u{margin:0 2px 0 3px;color:var(--muted);font-size:12px;}
+.lk-app-ctl2-depth .st-b{position:relative;flex:none;width:20px;height:20px;padding:0;border:0;border-radius:5px;background:var(--cap);box-shadow:var(--cap-sh);color:var(--ink);}
+.lk-app-ctl2-depth .st-b::before,.lk-app-ctl2-depth .st-b[data-d="1"]::after{content:"";position:absolute;left:50%;top:50%;width:8px;height:1.5px;margin:-.75px 0 0 -4px;border-radius:1px;background:currentColor;}
+.lk-app-ctl2-depth .st-b[data-d="1"]::after{transform:rotate(90deg);}
+.lk-app-ctl2-depth .st-b:hover{box-shadow:var(--cap-sh-h);}
+.lk-app-ctl2-depth .st-b:active{background:var(--cap-p);}
+.lk-app-ctl2-depth .st-b:focus-visible{outline:0;box-shadow:var(--cap-sh),0 0 0 3px var(--ring);}
+.lk-app-ctl2-depth .st:hover{box-shadow:var(--rec-sh),0 0 0 1px var(--line-strong);}
+
+/* Switch: 30 x 18 recessed track (rod when on), 14 pt raised knob */
+.lk-app-ctl2-depth .sw2{position:relative;display:inline-flex;align-items:center;justify-content:flex-end;width:40px;height:24px;}
+.lk-app-ctl2-depth .sw2 input{position:absolute;inset:0;width:100%;height:100%;margin:0;opacity:0;}
+.lk-app-ctl2-depth .sw2 i{position:relative;width:30px;height:18px;border-radius:9px;background:var(--rec);box-shadow:var(--rec-sh);pointer-events:none;}
+.lk-app-ctl2-depth .sw2 i::after{content:"";position:absolute;top:2px;left:2px;width:14px;height:14px;border-radius:7px;background:var(--cap);box-shadow:var(--cap-sh);}
+.lk-app-ctl2-depth .sw2 input:checked+i{background:var(--rod);box-shadow:var(--rec-sh);}
+.lk-app-ctl2-depth .sw2 input:checked+i::after{transform:translateX(12px);}
+.lk-app-ctl2-depth .sw2:hover i{filter:brightness(.97);}
+.lk-app-ctl2-depth .sw2 input:active+i::after{background:var(--cap-p);}
+.lk-app-ctl2-depth .sw2 input:focus-visible+i{outline:3px solid var(--ring);outline-offset:1px;}
+
+/* Color well: recessed frame, swatch with a top highlight */
+.lk-app-ctl2-depth .wl{display:inline-flex;align-items:center;height:24px;padding:3px;border:0;border-radius:6px;background:var(--rec);box-shadow:var(--rec-sh);}
+.lk-app-ctl2-depth .wl i{width:38px;align-self:stretch;border-radius:3px;background:var(--well);box-shadow:inset 0 0 0 .5px rgba(0,0,0,.2),inset 0 1px 0 rgba(255,255,255,.5);}
+.lk-app-ctl2-depth .wl:hover{box-shadow:var(--rec-sh),0 0 0 1px var(--line-strong);}
+.lk-app-ctl2-depth .wl:focus-visible{outline:0;box-shadow:var(--rec-sh),0 0 0 3px var(--ring);}
+
+/* Reset: red tint */
+.lk-app-ctl2-depth .rst{display:flex;align-items:center;justify-content:center;width:100%;height:30px;margin-top:20px;border:0;border-radius:8px;font-weight:500;background:var(--danger-tint);color:var(--danger-ink);}
+.lk-app-ctl2-depth .rst:hover{background:var(--danger-tint-hover);}
+.lk-app-ctl2-depth .rst:active{background:var(--danger-tint-press);}
+
+/* Quiet motion: only state changes move, 140 ms ease-out (160 ms on reset); none while dragging or under Reduce Motion */
+.lk-app-ctl2-depth .sl-kn,.lk-app-ctl2-depth .sl-fi{transition:left var(--d) var(--e),width var(--d) var(--e);}
+.lk-app-ctl2-depth.is-reset{--d:160ms;}
+.lk-app-ctl2-depth .sg-th{transition:left var(--d) var(--e);}
+.lk-app-ctl2-depth .sg span{transition:color var(--d) var(--e);}
+.lk-app-ctl2-depth .sw2 i,.lk-app-ctl2-depth .sw2 i::after{transition:transform var(--d) var(--e),background-color var(--d) var(--e);}
+.lk-app-ctl2-depth .sl.is-drag .sl-kn,.lk-app-ctl2-depth .sl.is-drag .sl-fi{transition:none;}
+@media (prefers-reduced-motion:reduce){.lk-app-ctl2-depth *,.lk-app-ctl2-depth *::before,.lk-app-ctl2-depth *::after{transition:none!important;}}
+</style>
+</head>
+<body>
+<div class="refs">
+<div data-theme="light"><div class="lk-app-ctl2-depth" data-applet></div></div>
+<div data-theme="dark"><div class="lk-app-ctl2-depth" data-applet></div></div>
+</div>
+<template id="applet">
+<figure class="lk-shot"><div class="ap" role="group" aria-label="Ruler Defaults"><div class="ap-bar"><div class="ap-lights" aria-hidden="true"><i class="ap-tl c"></i><i class="ap-tl m"></i><i class="ap-tl z"></i></div><span class="ap-title">Ruler Defaults</span></div>
+<div class="ap-body">
+<section class="ap-sec"><div class="ap-cap">Measurement</div><div class="ap-grp">
+<div class="ap-row"><span class="ap-lab">Unit</span><span class="ap-ctl"><span class="sg" role="radiogroup" aria-label="Unit" style="--i:0"><i class="sg-th" aria-hidden="true"></i><label><input type="radio" name="unit" value="0" checked aria-label="px"><span>px</span></label><label><input type="radio" name="unit" value="1" aria-label="mm"><span>mm</span></label><label><input type="radio" name="unit" value="2" aria-label="in"><span>in</span></label></span></span></div>
+<div class="ap-row"><span class="ap-lab">Dimensions</span><span class="ap-ctl"><span class="st"><button type="button" class="st-b" data-d="-1" aria-label="Decrease width"></button><input value="1920" inputmode="numeric" aria-label="Width"><span class="st-u">px</span><button type="button" class="st-b" data-d="1" aria-label="Increase width"></button></span><span class="x">×</span><span class="st"><button type="button" class="st-b" data-d="-1" aria-label="Decrease height"></button><input value="1080" inputmode="numeric" aria-label="Height"><span class="st-u">px</span><button type="button" class="st-b" data-d="1" aria-label="Increase height"></button></span></span></div>
+</div></section>
+<section class="ap-sec"><div class="ap-cap">Appearance</div><div class="ap-grp">
+<div class="ap-row"><span class="ap-lab">Ruler color</span><span class="ap-ctl"><button type="button" class="wl" aria-label="Ruler color, yellow"><i></i></button></span></div>
+<div class="ap-row"><span class="ap-lab">Foreground opacity</span><span class="ap-ctl"><span class="sl" style="--v:100"><span class="sl-a"><input type="range" min="0" max="100" value="100" aria-label="Foreground opacity"><span class="sl-tr" aria-hidden="true"><i class="sl-fi"></i></span><i class="sl-kn" aria-hidden="true"></i></span><output data-out>100%</output></span></span></div>
+<div class="ap-row"><span class="ap-lab">Background opacity</span><span class="ap-ctl"><span class="sl" style="--v:50"><span class="sl-a"><input type="range" min="0" max="100" value="50" aria-label="Background opacity"><span class="sl-tr" aria-hidden="true"><i class="sl-fi"></i></span><i class="sl-kn" aria-hidden="true"></i></span><output data-out>50%</output></span></span></div>
+<div class="ap-row"><span class="ap-lab">Border opacity</span><span class="ap-ctl"><span class="sl" style="--v:25"><span class="sl-a"><input type="range" min="0" max="100" value="25" aria-label="Border opacity"><span class="sl-tr" aria-hidden="true"><i class="sl-fi"></i></span><i class="sl-kn" aria-hidden="true"></i></span><output data-out>25%</output></span></span></div>
+</div></section>
+<section class="ap-sec"><div class="ap-cap">Window</div><div class="ap-grp">
+<div class="ap-row"><span class="ap-lab">Float ruler above other applications</span><span class="ap-ctl"><label class="sw2"><input type="checkbox" role="switch" checked aria-label="Float ruler above other applications"><i></i></label></span></div>
+<div class="ap-row"><span class="ap-lab">Show ruler shadow</span><span class="ap-ctl"><label class="sw2"><input type="checkbox" role="switch" aria-label="Show ruler shadow"><i></i></label></span></div>
+</div></section>
+<button type="button" class="rst">Reset to Factory Defaults</button>
+</div></div></figure>
+</template>
+<script>(() => {
+const tpl = document.getElementById('applet');
+document.querySelectorAll('[data-applet]').forEach((R, n) => {
+  R.append(tpl.content.cloneNode(true));
+  R.querySelectorAll('input[name="unit"]').forEach(i => { i.name = 'unit' + n; });
+  const sync = s => { const i = s.querySelector('input'); s.style.setProperty('--v', i.value); s.querySelector('[data-out]').textContent = i.value + '%'; };
+  R.querySelectorAll('.sl').forEach(s => {
+    const i = s.querySelector('input'); let down = false;
+    const up = () => { down = false; s.classList.remove('is-drag'); };
+    i.addEventListener('input', () => sync(s));
+    i.addEventListener('pointerdown', () => { down = true; });
+    i.addEventListener('pointermove', () => { if (down) s.classList.add('is-drag'); });
+    for (const t of ['pointerup', 'pointercancel', 'lostpointercapture', 'blur']) i.addEventListener(t, up);
+  });
+  const seg = g => { const c = g.querySelector('input:checked'); g.style.setProperty('--i', c ? c.value : 0); };
+  R.querySelectorAll('.sg').forEach(g => g.addEventListener('change', () => seg(g)));
+  R.querySelectorAll('.st').forEach(t => {
+    const f = t.querySelector('input'), add = d => { f.value = Math.max(1, (parseInt(f.value, 10) || 0) + d); };
+    t.querySelectorAll('[data-d]').forEach(b => b.addEventListener('click', () => add(+b.dataset.d)));
+  });
+  R.querySelector('.rst').addEventListener('click', () => {
+    R.classList.add('is-reset');
+    R.querySelectorAll('input').forEach(i => { if (i.type === 'checkbox' || i.type === 'radio') i.checked = i.defaultChecked; else i.value = i.defaultValue; });
+    R.querySelectorAll('.sl').forEach(sync); R.querySelectorAll('.sg').forEach(seg);
+    setTimeout(() => R.classList.remove('is-reset'), 200);
+  });
+});
+})();</script>
+</body>
+</html>
