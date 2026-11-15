@@ -129,6 +129,14 @@ mockups are in `docs/design/v15/`.
   panel keeps the metric tiles, the top processes, and the Fan row on a
   small sampler that runs only while the panel is open. The product
   continues as Task Manager X (`../task_manager_x`).
+- Applets (owner, 2026-11-16): the small tool and settings windows are
+  called applets. The large tools will leave the app; which ones is open.
+  Every applet gets the version 15 look. Settled: the title area has the
+  body color with no separator or border under it, and a destructive
+  action such as "Reset to Factory Defaults" is a full-width red button
+  at the bottom. Open: the applet shell, the control look, and motion.
+  The owner wants premium motion; the pick will replace the "Motion"
+  section below, which still binds every shipped surface until then.
 - Rejected: the first round of ten look mockups (placeholder icons).
 
 ## Overview
