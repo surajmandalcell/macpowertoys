@@ -6,7 +6,8 @@ final class MainCatalogTests: XCTestCase {
     func testMainNavigationKeepsToolPagesStable() throws {
         let home = try sourceFile("powertoys/Views/HomeView.swift")
         XCTAssertFalse(home.contains("publisher(for: UserDefaults.didChangeNotification)"))
-        XCTAssertFalse(home.contains(".id(toolID)"))
+        // Each tool pane needs its own scroll offset and guide key, or a manual route lands where the last tool was.
+        XCTAssertTrue(home.contains("ToolAboutView(toolId: toolID).id(toolID)"))
 
         let tool = try sourceFile("powertoys/Views/ToolAboutView.swift")
         XCTAssertFalse(tool.contains(".id(tool.id)"))
