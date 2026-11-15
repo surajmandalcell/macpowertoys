@@ -270,7 +270,7 @@ struct LogsWindowView: View {
     @State private var searchFocus = 0
 
     var body: some View {
-        OnePlusWindowRoot(canvas: .logs) {
+        LinearToolWindow(canvas: .logs) {
             LogsSidebar(
                 page: Binding(get: { page }, set: { page = $0 }),
                 selectedLevels: $selectedLevels,
@@ -279,10 +279,13 @@ struct LogsWindowView: View {
                 searchFocus: searchFocus
             )
         } content: {
-            content
+            LinearToolPane(page: Binding(get: { page }, set: { page = $0 }), title: page.title) {
+                EmptyView()
+            } content: {
+                content
+            }
         }
             .background(WindowAccessor(identifier: "logs"))
-            .buttonStyle(OnePlusButtonStyle())
             .onAppear {
                 storedPage = page.rawValue
                 if page == .systemIssues && systemLogs.entries.isEmpty && !systemLogs.isLoading {
@@ -347,45 +350,40 @@ private struct LogsSidebar: View {
     }
 
     var body: some View {
-        OnePlusSidebar(title: "Event Viewer") {
-            OnePlusSearchField(
-                prompt: "Search logs",
-                text: $search,
-                width: nil,
-                focusTrigger: searchFocus,
-                accessibilityIdentifier: "logs.search",
-                height: OnePlusMetrics.searchHeight,
-                shortcutHint: "⌘F"
-            )
+        // shortcut: the Linear glyph row has no count in 1.2.0; counts ride in its trailing hint slot.
+        OnePlusLinearSidebar {
+            OnePlusLinearSearchField("Search logs", text: $search, accessibilityIdentifier: "logs.search",
+                                     focusTrigger: searchFocus)
         } navigation: {
-            OnePlusNavCaption("Sources")
-            OnePlusNavRow(
+            OnePlusLinearNavCaption("Sources")
+            OnePlusLinearNavRow(
                 "Internal",
                 systemImage: LogsPage.internalLogs.icon,
                 selected: page == .internalLogs,
-                count: logManager.logs.count
+                shortcut: "\(logManager.logs.count)"
             ) { page = .internalLogs }
                 .keyboardShortcut("1")
-            OnePlusNavRow(
+            OnePlusLinearNavRow(
                 "System issues",
                 systemImage: LogsPage.systemIssues.icon,
                 selected: page == .systemIssues,
-                count: systemLogs.entries.count
+                shortcut: "\(systemLogs.entries.count)"
             ) { page = .systemIssues }
                 .keyboardShortcut("2")
 
-            OnePlusNavCaption("Levels")
+            OnePlusLinearNavCaption("Levels")
             ForEach(LogLevel.allCases, id: \.self) { level in
-                OnePlusNavRow(
+                OnePlusLinearNavRow(
                     level.name,
                     systemImage: selectedLevels.contains(level) ? level.icon : "circle",
-                    selected: false,
-                    count: count(for: level)
+                    shortcut: "\(count(for: level))"
                 ) { toggle(level) }
                     .accessibilityValue(selectedLevels.contains(level) ? "Included" : "Excluded")
             }
         } bottom: {
-            OnePlusNavRow("Settings", systemImage: "gearshape", selected: page == .settings) { page = .settings }
+            OnePlusLinearNavRow("Settings", systemImage: "gearshape", selected: page == .settings, shortcut: "⌘,") {
+                page = .settings
+            }
                 .keyboardShortcut(",")
         }
         .task { rebuildCounts() }
@@ -465,45 +463,36 @@ private struct LogsPageView: View {
     }
 
     var body: some View {
-        OnePlusPage(scrolls: false) {
-            OnePlusPageHeader(title: page.title) {
+        VStack(alignment: .leading, spacing: OnePlusLinearMetrics.sectionGap) {
+            HStack(spacing: OnePlusLinearMetrics.appletActionGap) {
                 if page == .systemIssues {
-                    OnePlusSelect(
+                    OnePlusLinearSelect(
                         choices: SystemLogRange.allCases.map { ($0, $0.title) },
                         selection: $systemRange,
-                        width: OnePlusMetrics.controlColumn,
-                        accessibilityLabel: "System log time range"
+                        accessibilityLabel: "System log time range",
+                        width: OnePlusMetrics.controlColumn
                     )
-                    Button { systemLogs.refresh(range: systemRange) } label: { Image(systemName: "arrow.clockwise") }
-                        .buttonStyle(OnePlusButtonStyle(.icon))
+                    OnePlusLinearIconButton(systemImage: "arrow.clockwise", help: "Refresh system issues",
+                                            size: OnePlusLinearMetrics.toolbarButton) { systemLogs.refresh(range: systemRange) }
                         .disabled(systemLogs.isLoading)
-                        .help("Refresh system issues")
-                        .accessibilityLabel("Refresh system issues")
                 }
-                Button("Copy") { copyRows() }.buttonStyle(OnePlusButtonStyle(.ghost)).disabled(visibleRows.isEmpty)
-                Button("Export") { exportRows() }.buttonStyle(OnePlusButtonStyle(.ghost)).disabled(visibleRows.isEmpty || isExporting)
-                if page == .internalLogs {
-                    Button("Clear") { confirmClear = true }.buttonStyle(OnePlusButtonStyle(.ghost)).disabled(logManager.logs.isEmpty)
-                }
-            }
-        } toolbar: {
-            OnePlusHeaderActions {
-                OnePlusSelect(
+                OnePlusLinearSelect(
                     choices: [(String?.none, "All sources")] + sources.map { (Optional($0), $0) },
                     selection: $sourceFilter,
-                    width: OnePlusMetrics.controlColumn,
-                    accessibilityLabel: "Log source"
+                    accessibilityLabel: "Log source",
+                    width: OnePlusMetrics.controlColumn
                 )
                 Spacer(minLength: 0)
-                Text(summary).onePlusText(.caption).lineLimit(1).truncationMode(.middle).help(summary)
+                LinearCaption(summary)
                 if page == .systemIssues {
                     Image(systemName: "info.circle")
-                        .foregroundStyle(OnePlusColor.muted)
+                        .foregroundStyle(OnePlusLinearColor.muted)
                         .help("Reads macOS errors and faults on demand, up to \(SystemLogReader.maximumEntries) entries. System issues are not stored.")
                         .accessibilityLabel("System issues are read on demand, limited to \(SystemLogReader.maximumEntries) entries, and not stored.")
                 }
+                Button("Copy") { copyRows() }.buttonStyle(OnePlusLinearButtonStyle(.soft)).disabled(visibleRows.isEmpty)
+                Button("Export") { exportRows() }.buttonStyle(OnePlusLinearButtonStyle(.soft)).disabled(visibleRows.isEmpty || isExporting)
             }
-        } content: {
             if let error = logManager.persistenceError, page == .internalLogs {
                 OnePlusBanner("Internal log storage is unavailable: \(error)", tone: .error)
             }
@@ -522,7 +511,7 @@ private struct LogsPageView: View {
                 )
                     .frame(maxHeight: .infinity)
             } else {
-                OnePlusCard {
+                OnePlusLinearAppletGroup {
                     Table(visibleRows, selection: $selection, sortOrder: sortBinding) {
                         TableColumn("Time", value: \LogsRow.timestamp) { row in
                             Text(row.time)
@@ -569,7 +558,16 @@ private struct LogsPageView: View {
                 }
                 .frame(maxHeight: .infinity)
             }
+            if page == .internalLogs {
+                Button("Clear Logs", role: .destructive) { confirmClear = true }
+                    .buttonStyle(OnePlusLinearButtonStyle(.destructive))
+                    .disabled(logManager.logs.isEmpty)
+            }
         }
+        .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topLeading)
+        .padding(.top, OnePlusLinearMetrics.bodyTop)
+        .padding(.horizontal, OnePlusLinearMetrics.gutter)
+        .padding(.bottom, OnePlusLinearMetrics.gutter)
         .accessibilityIdentifier("logs.\(page.rawValue)")
         .task {
             sortOrder = LogsPresentation.sortOrder(column: sortColumn, direction: sortDirection)
@@ -773,19 +771,17 @@ private struct LogDetailSheet: View {
                 NSPasteboard.general.clearContents()
                 NSPasteboard.general.setString(row.message, forType: .string)
             }
-            .buttonStyle(OnePlusButtonStyle(.neutral))
+            .buttonStyle(OnePlusLinearButtonStyle(.soft))
             Button("Done", action: close)
                 .keyboardShortcut(.defaultAction)
-                .buttonStyle(OnePlusButtonStyle(.primary))
+                .buttonStyle(OnePlusLinearButtonStyle(.soft))
         }
     }
 }
 
 struct LogsSettingsPage: View {
     var body: some View {
-        OnePlusPage {
-            OnePlusPageHeader(title: "Settings")
-        } content: {
+        OnePlusLinearPaneBody {
             LogsSettingsView()
         }
         .accessibilityIdentifier("logs.settings")
@@ -796,23 +792,20 @@ struct LogsSettingsView: View {
     @AppStorage("logs.fontSize") private var fontSize = 11
 
     var body: some View {
-        VStack(spacing: OnePlusMetrics.cardGap) {
-            OnePlusCard {
-                OnePlusCardHeader("Event Viewer")
-                OnePlusSettingRow("Font size", help: "Used for selectable log detail text.") {
-                    OnePlusSelect(
-                        choices: [(10, "Small"), (11, "Medium"), (12, "Default"), (14, "Large")],
-                        selection: $fontSize,
-                        accessibilityLabel: "Log font size"
-                    )
-                }
-                OnePlusSettingRow("Retention", help: "Fixed policy for internal logs.") {
-                    Text("\(LogManager.retentionDays) days").onePlusText(.row)
-                }
-                OnePlusSettingRow("System issues", help: "Read from macOS only when requested.", separator: false) {
-                    Text("Not stored").onePlusText(.row)
-                }
+        OnePlusLinearAppletSection("Event Viewer") {
+            OnePlusLinearAppletRow("Font size") {
+                OnePlusLinearSelect(
+                    choices: [(10, "Small"), (11, "Medium"), (12, "Default"), (14, "Large")],
+                    selection: $fontSize,
+                    accessibilityLabel: "Log font size",
+                    width: OnePlusMetrics.controlColumn
+                )
             }
+            .help("Used for selectable log detail text.")
+            OnePlusLinearAppletRow("Retention", value: "\(LogManager.retentionDays) days")
+                .help("Fixed policy for internal logs.")
+            OnePlusLinearAppletRow("System issues", value: "Not stored")
+                .help("Read from macOS only when requested.")
         }
     }
 }

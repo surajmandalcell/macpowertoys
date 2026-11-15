@@ -112,40 +112,33 @@ struct TransferFileTreeView: View {
     private var controls: some View {
         VStack(spacing: 8) {
             HStack(spacing: 6) {
-                NativeSearchField(text: $searchText, placeholder: "Filter files...")
+                OnePlusLinearSearchField("Filter files", text: $searchText, style: .applet)
                 if isIndexing {
                     ProgressView().controlSize(.mini)
                 }
             }
             .frame(height: UtilityLayout.workspaceActionHeight)
 
-            HStack(spacing: 6) {
+            HStack(spacing: OnePlusLinearMetrics.appletRowGap) {
+                LinearCaption("List uploaded")
                 Toggle("List uploaded", isOn: $splitByUploadStatus)
-                    .toggleStyle(.checkbox)
-                    .controlSize(.small)
-                    .onePlusText(.caption)
+                    .labelsHidden()
+                    .toggleStyle(OnePlusLinearSwitchStyle())
 
+                LinearCaption("Hide ignored")
                 Toggle("Hide ignored", isOn: $hideIgnored)
-                    .toggleStyle(.checkbox)
-                    .controlSize(.small)
-                    .onePlusText(.caption)
+                    .labelsHidden()
+                    .toggleStyle(OnePlusLinearSwitchStyle())
 
                 Spacer()
-                Text("\(patterns.count) patterns active")
-                    .onePlusText(.caption)
-                    .foregroundStyle(OnePlusColor.secondary)
-                Button {
+                LinearCaption("\(patterns.count) patterns active")
+                OnePlusLinearIconButton(
+                    systemImage: showPatternEditor ? "chevron.down" : "chevron.right",
+                    help: "Edit ignore patterns",
+                    size: OnePlusLinearMetrics.toolbarButton
+                ) {
                     showPatternEditor.toggle()
-                } label: {
-                    Image(systemName: "chevron.right")
-                        .onePlusText(.caption)
-                        .foregroundStyle(OnePlusColor.secondary)
-                        .rotationEffect(.degrees(showPatternEditor ? 90 : 0))
-                        .contentShape(Rectangle())
                 }
-                .buttonStyle(.plain)
-                .focusEffectDisabled(!OnePlusFocusPolicy.shared.showsFocus)
-                .help("Edit ignore patterns")
             }
 
             if showPatternEditor {
@@ -636,13 +629,8 @@ private struct FileTreeRowView: View {
                     .foregroundStyle(OnePlusColor.muted)
 
             } else {
-                Button(action: onIgnore) {
-                    Image(systemName: "eye.slash")
-                        .onePlusText(.caption)
-                        .foregroundStyle(OnePlusColor.secondary)
-                        .contentShape(Rectangle())
-                }
-                .buttonStyle(OnePlusButtonStyle(.icon, size: .small))
+                OnePlusLinearIconButton(systemImage: "eye.slash", help: "Add to ignore patterns",
+                                        size: OnePlusLinearMetrics.toolbarButton, action: onIgnore)
                 .opacity(isHovering || OnePlusFocusPolicy.shared.showsFocus ? 1 : 0)
                 .allowsHitTesting(isHovering || OnePlusFocusPolicy.shared.showsFocus)
                 .accessibilityHidden(!isHovering && !OnePlusFocusPolicy.shared.showsFocus)

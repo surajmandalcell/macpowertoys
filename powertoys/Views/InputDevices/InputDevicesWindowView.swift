@@ -34,13 +34,12 @@ struct InputDevicesWindowView: View {
     }
 
     var body: some View {
-        OnePlusWindowRoot(canvas: .macTweaks) {
+        LinearToolWindow(canvas: .macTweaks) {
             sidebar
         } content: {
-            pageContent
+            LinearToolPane(page: $page, title: page.title) { toolbarActions } content: { pageContent }
         }
         .background(WindowAccessor(identifier: "input-devices"))
-        .buttonStyle(OnePlusButtonStyle())
         .task {
             await Task.yield()
             manager.refresh()
@@ -64,23 +63,35 @@ struct InputDevicesWindowView: View {
     }
 
     private var sidebar: some View {
-        OnePlusSidebar(title: "Input Devices") {
-            OnePlusNavRow(
-                InputDevicesPage.devices.title,
-                systemImage: InputDevicesPage.devices.icon,
-                selected: page == .devices
-            ) { page = .devices }
-            OnePlusNavRow(
-                InputDevicesPage.scrolling.title,
-                systemImage: InputDevicesPage.scrolling.icon,
-                selected: page == .scrolling
-            ) { page = .scrolling }
+        OnePlusLinearSidebar {
+            EmptyView()
+        } navigation: {
+            OnePlusLinearNavCaption("Input Devices")
+            navRow(.devices)
+            navRow(.scrolling)
         } bottom: {
-            OnePlusNavRow(
-                InputDevicesPage.about.title,
-                systemImage: InputDevicesPage.about.icon,
-                selected: page == .about
-            ) { page = .about }
+            navRow(.about)
+        }
+    }
+
+    private func navRow(_ destination: InputDevicesPage) -> some View {
+        OnePlusLinearNavRow(destination.title, systemImage: destination.icon, selected: page == destination) {
+            page = destination
+        }
+    }
+
+    @ViewBuilder
+    private var toolbarActions: some View {
+        switch page {
+        case .devices:
+            LinearCaption(deviceSubtitle)
+            Button("Refresh", systemImage: "arrow.clockwise") { manager.refresh() }
+                .buttonStyle(OnePlusLinearButtonStyle(.soft))
+        case .scrolling:
+            OnePlusStatus(manager.interceptionActive ? "Control active" : "Control inactive",
+                          state: manager.interceptionActive ? .online : .offline)
+        case .about:
+            LinearCaption(appVersion)
         }
     }
 
@@ -97,19 +108,11 @@ struct InputDevicesWindowView: View {
     }
 
     private var devicesPage: some View {
-        OnePlusPage {
-            OnePlusPageHeader(title: "Devices") {
-                Text(deviceSubtitle).onePlusText(.caption)
-                Button("Refresh", systemImage: "arrow.clockwise") { manager.refresh() }
-                    .buttonStyle(OnePlusButtonStyle(.neutral))
-            }
-        } content: {
-            VStack(alignment: .leading, spacing: OnePlusMetrics.cardGap) {
-                ForEach(manager.devices) { device in deviceCard(device) }
-                if !manager.devices.contains(where: { $0.kind == .mouse }) { missingDeviceCard(.mouse) }
-                if !manager.devices.contains(where: { $0.kind == .trackpad }) { missingDeviceCard(.trackpad) }
-                InputKeyboardCard()
-            }
+        OnePlusLinearPaneBody {
+            ForEach(manager.devices) { device in deviceCard(device) }
+            if !manager.devices.contains(where: { $0.kind == .mouse }) { missingDeviceCard(.mouse) }
+            if !manager.devices.contains(where: { $0.kind == .trackpad }) { missingDeviceCard(.trackpad) }
+            InputKeyboardCard()
         }
     }
 
@@ -119,37 +122,27 @@ struct InputDevicesWindowView: View {
     }
 
     private var scrollingPage: some View {
-        OnePlusPage {
-            OnePlusPageHeader(title: "Scrolling") {
-                OnePlusStatus(manager.interceptionActive ? "Control active" : "Control inactive",
-                              state: manager.interceptionActive ? .online : .offline)
+        VStack(spacing: 0) {
+            OnePlusLinearPaneBody {
+                InputDevicesSettingsContent(includesDeviceFooter: false)
             }
-        } footer: {
-            InputScrollDeviceBar()
-        } content: {
-            InputDevicesSettingsContent(includesDeviceFooter: false)
+            LinearPaneFooter { InputScrollDeviceBar() }
         }
     }
 
     private var aboutPage: some View {
-        OnePlusPage {
-            OnePlusPageHeader(title: "About") { Text(appVersion).onePlusText(.caption) }
-        } content: {
-            OnePlusCard {
-                OnePlusCardHeader("Input Devices", systemImage: ToolGlyph.inputDevices.symbol)
-                OnePlusSettingRow("Profiles", help: "Mouse and trackpad settings stay independent.") {
+        OnePlusLinearPaneBody {
+            OnePlusLinearAppletSection("Input Devices") {
+                OnePlusLinearAppletRow("Profiles", detail: "Mouse and trackpad settings stay independent.") {
                     OnePlusStatus("Saved locally")
                 }
-                .onePlusRowHover()
-                OnePlusSettingRow(
+                OnePlusLinearAppletRow(
                     "System control",
-                    help: "Accessibility permission is required only for system-wide scrolling.",
-                    separator: false
+                    detail: "Accessibility permission is required only for system-wide scrolling."
                 ) {
                     OnePlusStatus(manager.permissionGranted ? "Allowed" : "Permission needed",
                                   state: manager.permissionGranted ? .online : .warning)
                 }
-                .onePlusRowHover()
             }
         }
     }

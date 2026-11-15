@@ -32,7 +32,7 @@ struct NewTransferSheet: View {
     var body: some View {
         OnePlusSheet("New Transfer", width: .medium, close: { dismiss() }) {
             ScrollView {
-                VStack(alignment: .leading, spacing: 20) {
+                VStack(alignment: .leading, spacing: OnePlusLinearMetrics.appletSectionGap) {
                     operationSection
                     EndpointCard(title: "Source", config: $source, remotes: manager.remotes, chooseDirectoriesOnly: false)
 
@@ -45,10 +45,10 @@ struct NewTransferSheet: View {
         } footer: {
             Button("Cancel") { dismiss() }
                 .keyboardShortcut(.cancelAction)
-                .buttonStyle(OnePlusButtonStyle(.ghost))
+                .buttonStyle(OnePlusLinearButtonStyle(.soft))
             Button("Start Transfer") { start() }
                 .keyboardShortcut(.defaultAction)
-                .buttonStyle(OnePlusButtonStyle(.primary))
+                .buttonStyle(OnePlusLinearButtonStyle(.soft))
                 .disabled(!canStart)
         }
         .onAppear {
@@ -67,20 +67,17 @@ struct NewTransferSheet: View {
 
     private var operationSection: some View {
         VStack(alignment: .leading, spacing: 8) {
-            HStack {
-                SectionLabel(title: "Operation")
-                Image(systemName: "info.circle")
-                    .foregroundStyle(OnePlusColor.secondary)
-                    .help("The exact size is calculated by comparing both sides before files move.")
-                    .accessibilityLabel("The exact size is calculated before files move")
-            }
-
-            OnePlusSegmented(choices: RcloneOperation.allCases.map { ($0, $0.displayName) },
-                             selection: $operation, accessibilityLabel: "Operation")
-
-            if source.isFile && operation == .sync {
-                Text("Sync needs a source folder. Choose Copy or Move for a file.")
-                    .onePlusText(.caption)
+            OnePlusLinearAppletGroup {
+                OnePlusLinearAppletRow(
+                    "Operation",
+                    detail: source.isFile && operation == .sync
+                        ? "Sync needs a source folder. Choose Copy or Move for a file."
+                        : "The exact size is calculated by comparing both sides before files move."
+                ) {
+                    OnePlusLinearSelect(choices: RcloneOperation.allCases.map { ($0, $0.displayName) },
+                                        selection: $operation, accessibilityLabel: "Operation",
+                                        width: OnePlusMetrics.wideControlColumn)
+                }
             }
 
             if operation.isDestructive {
@@ -109,27 +106,19 @@ struct NewTransferSheet: View {
     // MARK: Excludes
 
     private var excludesSection: some View {
-        VStack(alignment: .leading, spacing: 8) {
-            SectionLabel(title: "Ignore Patterns")
-
-            if manager.settings.ignorePatterns.isEmpty {
-                Text("No global ignore patterns configured.")
-                    .onePlusText(.caption)
-                    .foregroundStyle(OnePlusColor.muted)
-            } else {
-                Text(manager.settings.ignorePatterns.joined(separator: ", "))
-                    .onePlusText(.mono).lineLimit(2)
-                    .help(manager.settings.ignorePatterns.joined(separator: "\n"))
+        OnePlusLinearAppletSection("Ignore patterns") {
+            OnePlusLinearAppletRow("Global patterns") {
+                LinearCaption(
+                    manager.settings.ignorePatterns.isEmpty ? "None configured" : manager.settings.ignorePatterns.joined(separator: ", "),
+                    monospaced: !manager.settings.ignorePatterns.isEmpty
+                )
             }
-
-            Text("Additional excludes for this transfer")
-                .onePlusText(.caption)
-                .foregroundStyle(OnePlusColor.secondary)
-                .padding(.top, 2)
-
+            OnePlusLinearAppletRow("Additional excludes for this transfer", detail: "One glob per line. Used as an exclude rule for this transfer.") {
+                EmptyView()
+            }
             OnePlusTextEditor("Additional ignore patterns", text: $extraExcludesText)
                 .frame(height: 76)
-                .help("One glob per line. Used as an exclude rule for this transfer.")
+                .padding(OnePlusLinearMetrics.appletRowPadding)
         }
     }
 
@@ -208,64 +197,40 @@ private struct EndpointCard: View {
     let chooseDirectoriesOnly: Bool
 
     var body: some View {
-        OnePlusCard {
-            VStack(alignment: .leading, spacing: 10) {
-            HStack {
-                SectionLabel(title: title)
-                Spacer()
-                OnePlusSegmented(choices: [(EndpointKind.local, "Local"), (.remote, "Remote")],
-                                 selection: $config.kind, accessibilityLabel: "Endpoint kind",
-                                 width: OnePlusMetrics.wideControlColumn)
+        OnePlusLinearAppletSection(title) {
+            OnePlusLinearAppletRow("Location") {
+                // shortcut: a Select until the applet segmented control fits "Remote"; switch back when it sizes segments to labels.
+                OnePlusLinearSelect(choices: [(EndpointKind.local, "Local"), (.remote, "Remote")],
+                                    selection: $config.kind, accessibilityLabel: "\(title) location",
+                                    width: OnePlusMetrics.wideControlColumn)
             }
-
             switch config.kind {
-            case .local: localSelector
-            case .remote: remoteSelector
+            case .local:
+                OnePlusLinearAppletRow("Path") {
+                    LinearCaption(config.localPath.isEmpty ? "No path selected" : config.localPath, monospaced: !config.localPath.isEmpty)
+                    Button("Choose…") { chooseLocalPath() }
+                        .buttonStyle(OnePlusLinearButtonStyle(.soft))
+                }
+            case .remote:
+                if remotes.isEmpty {
+                    OnePlusLinearAppletRow("Remote", value: "No remotes configured. Add one from the sidebar.")
+                } else {
+                    OnePlusLinearAppletRow("Remote") {
+                        OnePlusLinearSelect(
+                            choices: remotes.map { ($0.name, "\($0.name) · \($0.typeLabel)") },
+                            selection: $config.remoteName,
+                            accessibilityLabel: "Remote",
+                            width: OnePlusMetrics.wideControlColumn
+                        )
+                    }
+                    OnePlusLinearAppletRow("Path within remote") {
+                        OnePlusTextField("Optional", text: $config.remotePath)
+                            .frame(width: OnePlusMetrics.wideControlColumn)
+                    }
+                }
             }
-
-            HStack(spacing: 6) {
-                Image(systemName: "terminal")
-                    .onePlusText(.caption)
-                    .foregroundStyle(OnePlusColor.muted)
-                Text(config.fs.isEmpty ? "Not selected" : config.fs)
-                    .onePlusText(.mono)
-                    .foregroundStyle(config.isValid ? .secondary : .tertiary)
-                    .lineLimit(1)
-                    .truncationMode(.middle)
-            }
-            }
-            .padding(OnePlusMetrics.cardPadding)
-        }
-    }
-
-    private var localSelector: some View {
-        HStack(spacing: 10) {
-            Text(config.localPath.isEmpty ? "No path selected" : config.localPath)
-                .onePlusText(.mono)
-                .foregroundStyle(config.localPath.isEmpty ? .tertiary : .primary)
-                .lineLimit(1)
-                .truncationMode(.middle)
-                .frame(maxWidth: .infinity, alignment: .leading)
-
-            Button("Choose…") { chooseLocalPath() }
-        }
-    }
-
-    private var remoteSelector: some View {
-        VStack(alignment: .leading, spacing: 8) {
-            if remotes.isEmpty {
-                Text("No remotes configured. Add one from the sidebar.")
-                    .onePlusText(.caption)
-                    .foregroundStyle(OnePlusColor.muted)
-            } else {
-                OnePlusSelect(
-                    choices: remotes.map { ($0.name, "\($0.name) · \($0.typeLabel)") },
-                    selection: $config.remoteName,
-                    width: OnePlusMetrics.wideControlColumn,
-                    accessibilityLabel: "Remote"
-                )
-
-                OnePlusTextField("Path within remote (optional)", text: $config.remotePath)
+            OnePlusLinearAppletRow("rclone path") {
+                LinearCaption(config.fs.isEmpty ? "Not selected" : config.fs, monospaced: true)
             }
         }
     }
@@ -280,17 +245,5 @@ private struct EndpointCard: View {
             config.localPath = url.path
             config.localIsFile = (try? url.resourceValues(forKeys: [.isDirectoryKey]).isDirectory) == false
         }
-    }
-}
-
-// MARK: - Section Label
-
-private struct SectionLabel: View {
-    let title: String
-
-    var body: some View {
-        Text(title.uppercased())
-            .onePlusText(.caption)
-            .foregroundStyle(OnePlusColor.secondary)
     }
 }

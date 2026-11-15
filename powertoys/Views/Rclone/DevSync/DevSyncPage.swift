@@ -33,7 +33,7 @@ struct DevSyncSectionHeader: View {
     let title: String
 
     var body: some View {
-        OnePlusSectionTitle(title)
+        OnePlusLinearSectionCaption(title)
     }
 }
 
@@ -63,10 +63,15 @@ struct DevSyncIconButton: View {
     let action: () -> Void
 
     var body: some View {
-        Button(action: action) { Image(systemName: icon).foregroundStyle(tint) }
-            .buttonStyle(OnePlusButtonStyle(.icon, size: .small))
-            .accessibilityLabel(label)
-            .help(label)
+        Button(action: action) {
+            Image(systemName: icon)
+                .font(.system(size: OnePlusLinearMetrics.control))
+                .foregroundStyle(tint)
+                .frame(width: OnePlusLinearMetrics.appletRowAction, height: OnePlusLinearMetrics.appletRowAction)
+        }
+        .buttonStyle(OnePlusLinearButtonStyle())
+        .accessibilityLabel(label)
+        .help(label)
     }
 }
 
@@ -105,6 +110,11 @@ struct DevSyncValueRow: View {
 struct DevSyncPage: View {
     var manager: DevSyncManager = .shared
 
+    static func title(for manager: DevSyncManager) -> String {
+        guard let pair = manager.selectedPair else { return "Dev Sync" }
+        return manager.isShowingPairSettings ? "\(pair.displayName) Settings" : pair.displayName
+    }
+
     var body: some View {
         @Bindable var manager = manager
 
@@ -124,7 +134,9 @@ struct DevSyncPage: View {
         }
         .sheet(item: $manager.previewPlan) { plan in
             OnePlusSheet("Pending Changes", width: .medium, close: { manager.previewPlan = nil }) {
-                Text(plan.summary.primaryActionTitle).onePlusText(.cardTitle)
+                Text(plan.summary.primaryActionTitle)
+                    .font(.system(size: OnePlusLinearMetrics.body, weight: .semibold))
+                    .foregroundStyle(OnePlusLinearColor.ink)
                 if !plan.scanComplete {
                     Text("The scan is incomplete. Deletions are blocked.").onePlusText(.caption, color: OnePlusColor.warn)
                 }
@@ -147,7 +159,7 @@ struct DevSyncPage: View {
                 .frame(height: OnePlusMetrics.spacing[8] * 12)
             } footer: {
                 Button("Done") { manager.previewPlan = nil }
-                    .buttonStyle(OnePlusButtonStyle(.primary))
+                    .buttonStyle(OnePlusLinearButtonStyle(.soft))
                     .keyboardShortcut(.defaultAction)
             }
         }
@@ -155,16 +167,14 @@ struct DevSyncPage: View {
     }
 
     private var emptyState: some View {
-        OnePlusPage(scrolls: false) {
-            OnePlusPageHeader(title: "Dev Sync", subtitle: "Review every change before files move")
-        } content: {
-            OnePlusEmptyState("No Dev Sync pair yet", systemImage: "externaldrive.badge.plus", caption: "Pair an internal development folder with an external drive.") {
+        RSyncFixedPane {
+            OnePlusEmptyState("No Dev Sync pair yet", systemImage: "externaldrive.badge.plus", caption: "Pair an internal development folder with an external drive. Review every change before files move.") {
                 Button {
                     manager.isPresentingSetup = true
                 } label: {
                     Label("Set Up Dev Sync", systemImage: "plus")
                 }
-                .buttonStyle(OnePlusButtonStyle(.neutral))
+                .buttonStyle(OnePlusLinearButtonStyle(.soft))
             }
             .frame(maxWidth: .infinity, maxHeight: .infinity)
         }
@@ -189,12 +199,13 @@ private struct DevSyncPairPage: View {
     }
 
     var body: some View {
-        OnePlusPage(scrolls: false) {
-            OnePlusPageHeader(title: pair.displayName) {
-                Text(subtitle).onePlusText(.caption).lineLimit(1).help(subtitle)
+        RSyncFixedPane {
+            RSyncPageToolbar {
+                LinearCaption(subtitle)
+            } trailing: {
                 DevSyncPairActions(pair: pair, manager: manager, isConfirmingRemoval: $isConfirmingRemoval)
             }
-        } content: {
+
             if let banner = manager.errorBanner {
                 DevSyncErrorBanner(message: banner) { manager.errorBanner = nil }
             }
@@ -204,7 +215,6 @@ private struct DevSyncPairPage: View {
             DevSyncProjectsList(pair: pair, manager: manager)
                 .frame(maxHeight: .infinity)
 
-            DevSyncSectionHeader(title: "Safety")
             safetyCard
         }
         .confirmationDialog("Remove \"\(pair.displayName)\"?", isPresented: $isConfirmingRemoval) {
@@ -221,16 +231,14 @@ private struct DevSyncPairPage: View {
     }
 
     private var safetyCard: some View {
-        HStack(spacing: OnePlusMetrics.spacing[3]) {
-            Text(manager.safetyStoreURL(for: pair).path)
-                .onePlusText(.mono).lineLimit(1).truncationMode(.middle)
-                .help(manager.safetyStoreURL(for: pair).path)
-            Spacer(minLength: OnePlusMetrics.spacing[3])
-            Text(RcloneFormat.bytes(status.safetyStoreBytes)).onePlusText(.mono)
-            Button("Open Safety Store") { manager.reveal(manager.safetyStoreURL(for: pair)) }
-                .buttonStyle(OnePlusButtonStyle(.neutral, size: .small))
+        OnePlusLinearAppletSection("Safety") {
+            OnePlusLinearAppletRow(manager.safetyStoreURL(for: pair).path) {
+                LinearCaption(RcloneFormat.bytes(status.safetyStoreBytes), monospaced: true)
+                Button("Open Safety Store") { manager.reveal(manager.safetyStoreURL(for: pair)) }
+                    .buttonStyle(OnePlusLinearButtonStyle(.soft))
+            }
+            .help(manager.safetyStoreURL(for: pair).path)
         }
-        .frame(height: OnePlusMetrics.settingRow)
     }
 }
 
@@ -313,28 +321,12 @@ private struct DevSyncPairActions: View {
         @Bindable var manager = manager
 
         if manager.pairs.count > 1 {
-            OnePlusSelect(
+            OnePlusLinearSelect(
                 choices: manager.pairs.map { (Optional($0.id), $0.displayName) },
                 selection: $manager.selectedPairID,
-                width: OnePlusMetrics.wideControlColumn,
-                accessibilityLabel: "Selected pair"
+                accessibilityLabel: "Selected pair",
+                width: OnePlusMetrics.wideControlColumn
             )
-        }
-
-        Button("Sync Now") {
-            Task { await manager.syncNow(pairID: pair.id) }
-        }
-        .buttonStyle(OnePlusButtonStyle(.primary))
-        .disabled(!status.volumeOnline)
-
-        Button(isPaused ? "Resume" : "Pause") {
-            Task {
-                if isPaused {
-                    await manager.resume(pairID: pair.id)
-                } else {
-                    await manager.pause(pairID: pair.id)
-                }
-            }
         }
 
         OnePlusMenuButton("More Dev Sync actions", variant: .borderedIcon, items: [
@@ -348,6 +340,23 @@ private struct DevSyncPairActions: View {
             .item(.init("Pair Settings") { manager.isShowingPairSettings = true }),
             .item(.init("Remove Pair…", role: .destructive) { isConfirmingRemoval = true })
         ])
+
+        Button(isPaused ? "Resume" : "Pause") {
+            Task {
+                if isPaused {
+                    await manager.resume(pairID: pair.id)
+                } else {
+                    await manager.pause(pairID: pair.id)
+                }
+            }
+        }
+        .buttonStyle(OnePlusLinearButtonStyle(.soft))
+
+        Button("Sync Now") {
+            Task { await manager.syncNow(pairID: pair.id) }
+        }
+        .buttonStyle(OnePlusLinearButtonStyle(.soft))
+        .disabled(!status.volumeOnline)
     }
 }
 
@@ -363,7 +372,7 @@ private struct DevSyncStatusCard: View {
     ]
 
     var body: some View {
-        OnePlusCard {
+        OnePlusLinearAppletGroup {
             VStack(alignment: .leading, spacing: OnePlusMetrics.spacing[3]) {
             LazyVGrid(columns: columns, alignment: .leading, spacing: 8) {
                 DevSyncValueRow(
@@ -415,7 +424,7 @@ private struct DevSyncStatusCard: View {
                     .textSelection(.enabled)
             }
             }
-            .padding(OnePlusMetrics.cardPadding)
+            .padding(OnePlusLinearMetrics.appletRowPadding)
         }
     }
 }

@@ -20,18 +20,18 @@ struct RemoteSettingsSheet: View {
 
     var body: some View {
         OnePlusSheet("\(remote.displayName) Settings", width: .small, close: { dismiss() }) {
-            OnePlusCard {
-                OnePlusSettingRow("Parallel transfers", help: helpText(transfers, global: globalTransfers)) {
+            OnePlusLinearAppletGroup {
+                OnePlusLinearAppletRow("Parallel transfers", detail: helpText(transfers, global: globalTransfers)) {
                     OnePlusStepperField("Parallel transfers", value: $transfers, in: 0...64)
                 }
-                OnePlusSettingRow("Checkers", help: helpText(checkers, global: globalCheckers), separator: false) {
+                OnePlusLinearAppletRow("Checkers", detail: helpText(checkers, global: globalCheckers)) {
                     OnePlusStepperField("Checkers", value: $checkers, in: 0...128)
                 }
             }
         } footer: {
             Button("Done") { dismiss() }
                 .keyboardShortcut(.defaultAction)
-                .buttonStyle(OnePlusButtonStyle(.primary))
+                .buttonStyle(OnePlusLinearButtonStyle(.soft))
         }
         .onAppear {
             transfers = UserDefaults.standard.integer(forKey: RcloneDefaults.remoteTransfersKey(remote.name))

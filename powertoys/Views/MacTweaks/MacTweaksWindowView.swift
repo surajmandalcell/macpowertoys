@@ -85,10 +85,9 @@ struct MacTweaksSettingsContent: View {
     @State private var notice: MacTweaksNotice?
 
     var body: some View {
-        VStack(spacing: OnePlusMetrics.cardGap) {
-            HStack(alignment: .top, spacing: OnePlusMetrics.cardGap) {
-                OnePlusCard {
-                    OnePlusCardHeader("Window", systemImage: "macwindow.on.rectangle")
+        VStack(spacing: OnePlusLinearMetrics.appletSectionGap) {
+            VStack(spacing: OnePlusLinearMetrics.appletSectionGap) {
+                OnePlusLinearAppletSection("Window") {
                     ForEach(Self.preferences, id: \.item.id) { preference in
                         if isLoaded {
                             MacTweaksPreferenceRows(
@@ -109,35 +108,21 @@ struct MacTweaksSettingsContent: View {
                             )
                         } else {
                             ForEach(preference.fields, id: \.identity) { field in
-                                OnePlusSettingRow(
-                                    field.label,
-                                    controlWidth: OnePlusMetrics.wideControlColumn,
-                                    separator: field.identity != Self.fields.last?.identity
-                                ) {
-                                    Text("Loading…").onePlusText(.caption)
-                                }
+                                OnePlusLinearAppletRow(field.label, value: "Loading…")
                             }
                         }
                     }
                 }
-                OnePlusCard {
-                    OnePlusCardHeader("Safety", systemImage: "lock.shield")
-                    OnePlusSettingRow("Keep original values") {
-                        Text("On").onePlusText(.control)
-                    }
-                    OnePlusSettingRow("Managed preferences") {
-                        Text("Protected").onePlusText(.control)
-                    }
-                    OnePlusSettingRow("Changes made elsewhere", separator: false) {
-                        Text("Protected").onePlusText(.control)
-                    }
+                OnePlusLinearAppletSection("Safety") {
+                    OnePlusLinearAppletRow("Keep original values", value: "On")
+                    OnePlusLinearAppletRow("Managed preferences", value: "Protected")
+                    OnePlusLinearAppletRow("Changes made elsewhere", value: "Protected")
                 }
             }
-            .fixedSize(horizontal: false, vertical: true)
             Button("Review changes") {
                 ToolActionRouter.shared.open(toolID: "mac-tweaks", page: "modified")
             }
-            .buttonStyle(OnePlusButtonStyle(.neutral))
+            .buttonStyle(OnePlusLinearButtonStyle(.soft))
             .frame(maxWidth: .infinity, alignment: .trailing)
             if let notice {
                 OnePlusBanner(notice.message, tone: notice.isError ? .error : .information)
@@ -212,16 +197,15 @@ struct MacTweaksWindowView: View {
     }
     var body: some View {
         ZStack(alignment: .bottomTrailing) {
-            OnePlusWindowRoot(canvas: .macTweaks) { sidebar } content: { workspace }
+            LinearToolWindow(canvas: .macTweaks) { sidebar } content: { workspace }
             if let notice {
                 noticeView(notice)
-                    .padding(OnePlusMetrics.gutter)
+                    .padding(OnePlusLinearMetrics.gutter)
             }
         }
         .background(WindowAccessor(identifier: "mac-tweaks"))
         .background(MacTweaksVisibilityBinding(isVisible: $isWindowVisible))
         .onePlusLiveUpdates()
-        .buttonStyle(OnePlusButtonStyle())
         .task {
             await Task.yield()
             micLock.setWindowOpen(true)
@@ -277,25 +261,25 @@ struct MacTweaksWindowView: View {
     }
 
     private var sidebar: some View {
-        OnePlusSidebar(title: "Mac Tweaks") {
-            OnePlusSidebarSearch("Search tweaks", text: $search,
-                                 accessibilityIdentifier: "mac-tweaks.search")
+        OnePlusLinearSidebar {
+            OnePlusLinearSearchField("Search tweaks", text: $search)
+                .accessibilityIdentifier("mac-tweaks.search")
         } navigation: {
-            OnePlusNavCaption("Everyday")
+            OnePlusLinearNavCaption("Everyday")
             sidebarGroup("Everyday")
-            OnePlusNavCaption("System", spacing: .sectionStart)
+            OnePlusLinearNavCaption("System")
             sidebarGroup("System")
         } bottom: {
-            OnePlusNavRow(
+            // shortcut: the Linear glyph row has no count or muted state in 1.2.0; the count rides in the trailing hint slot.
+            OnePlusLinearNavRow(
                 "Modified",
                 systemImage: "arrow.counterclockwise",
                 selected: !isSearching && selectedPage == "modified",
-                count: modifiedEntries.count,
-                muted: modifiedEntries.isEmpty
+                shortcut: modifiedEntries.isEmpty ? nil : "\(modifiedEntries.count)"
             ) {
                 if !modifiedEntries.isEmpty { navigate(to: "modified") }
             }
-            OnePlusNavRow(
+            OnePlusLinearNavRow(
                 "About",
                 systemImage: "info.circle",
                 selected: !isSearching && selectedPage == "about"
@@ -307,7 +291,7 @@ struct MacTweaksWindowView: View {
     private func sidebarGroup(_ name: String) -> some View {
         Group {
             ForEach(MacTweaksCategory.all.filter { $0.group == name }) { category in
-                OnePlusNavRow(
+                OnePlusLinearNavRow(
                     category.title,
                     systemImage: category.systemImage,
                     selected: !isSearching && selectedPage == category.id
@@ -320,24 +304,29 @@ struct MacTweaksWindowView: View {
     }
 
     private var workspace: some View {
-        OnePlusPage(scrolls: isSearching || selectedPage != "modified") {
-            OnePlusPageHeader(title: pageTitle) {
-                if !isSearching && selectedPage == "modified" {
-                    Button("Reset all", systemImage: "arrow.counterclockwise") {
-                        showsResetAllConfirmation = true
-                    }
-                    .buttonStyle(OnePlusButtonStyle(.neutral))
-                    .disabled(modifiedEntries.isEmpty)
-                }
+        LinearToolPane(page: $selectedPage, title: pageTitle) {
+            if !isSearching && selectedPage == "input" {
+                OnePlusLinearIconButton(systemImage: "arrow.clockwise", help: "Refresh devices",
+                                        size: OnePlusLinearMetrics.toolbarButton) { refreshMicrophones() }
+                    .disabled(!micLock.isEnabled)
+                    .accessibilityIdentifier("mac-tweaks.mic-lock.refresh")
             }
         } content: {
-            Group {
-                if isSearching { searchPage }
-                else if selectedPage == "modified" { modifiedPage }
-                else if selectedPage == "about" { aboutPage }
-                else { categoryPage }
+            if !isSearching && selectedPage == "modified" {
+                modifiedPage
+                    .padding(.top, OnePlusLinearMetrics.bodyTop)
+                    .padding(.horizontal, OnePlusLinearMetrics.gutter)
+                    .padding(.bottom, OnePlusLinearMetrics.gutter)
+            } else {
+                OnePlusLinearPaneBody {
+                    Group {
+                        if isSearching { searchPage }
+                        else if selectedPage == "about" { aboutPage }
+                        else { categoryPage }
+                    }
+                    .frame(maxWidth: .infinity, alignment: .topLeading)
+                }
             }
-            .frame(maxWidth: .infinity, alignment: .topLeading)
         }
     }
 
@@ -364,11 +353,13 @@ struct MacTweaksWindowView: View {
 
     private var inputPage: some View {
         VStack(spacing: MacTweaksLayout.panelGap) {
-            MacTweaksInlineRow("Mic Lock") {
-                Toggle("Mic Lock", isOn: Binding(get: { micLock.isEnabled }, set: micLock.setEnabled))
-                    .labelsHidden().toggleStyle(OnePlusSwitchStyle())
-                    .accessibilityLabel("Mic Lock")
-                    .accessibilityIdentifier("mac-tweaks.mic-lock.enabled")
+            OnePlusLinearAppletGroup {
+                MacTweaksInlineRow("Mic Lock") {
+                    Toggle("Mic Lock", isOn: Binding(get: { micLock.isEnabled }, set: micLock.setEnabled))
+                        .labelsHidden().toggleStyle(OnePlusLinearSwitchStyle())
+                        .accessibilityLabel("Mic Lock")
+                        .accessibilityIdentifier("mac-tweaks.mic-lock.enabled")
+                }
             }
             VStack(spacing: MacTweaksLayout.panelGap) {
                 MacTweaksPanel("Input priority", glyph: .priority) {
@@ -382,21 +373,6 @@ struct MacTweaksWindowView: View {
                         }
                     }
                 }
-                .overlay(alignment: .topTrailing) {
-                    Button { refreshMicrophones() } label: {
-                        Image(systemName: "arrow.clockwise")
-                            .onePlusText(.caption)
-                            .frame(width: OnePlusMetrics.controlHeight, height: OnePlusMetrics.controlHeight)
-                    }
-                    .buttonStyle(OnePlusButtonStyle(.icon))
-                    .foregroundStyle(MacTweaksPalette.secondary)
-                    .disabled(!micLock.isEnabled)
-                    .help("Refresh devices")
-                    .accessibilityLabel("Refresh devices")
-                    .accessibilityIdentifier("mac-tweaks.mic-lock.refresh")
-                    .padding(.top, OnePlusMetrics.spacing[2])
-                    .padding(.trailing, OnePlusMetrics.spacing[4])
-                }
                 MacTweaksPanel("Current input", glyph: .microphone) {
                     MacTweaksInlineRow("Microphone", separator: true) {
                         Text(currentMicrophoneName).lineLimit(1)
@@ -408,17 +384,17 @@ struct MacTweaksWindowView: View {
                     if micLock.muted != nil {
                         MacTweaksInlineRow("Mute microphone", separator: true) {
                             Toggle("Mute microphone", isOn: Binding(get: { micLock.muted ?? false }, set: micLock.setMuted))
-                                .labelsHidden().toggleStyle(OnePlusSwitchStyle())
+                                .labelsHidden().toggleStyle(OnePlusLinearSwitchStyle())
                                 .accessibilityLabel("Mute microphone")
                         }
                     }
                     MacTweaksInlineRow("Input level", controlWidth: OnePlusMetrics.wideControlColumn) { inputLevelControl }
                 }
             }
-            VStack(spacing: 0) {
+            OnePlusLinearAppletGroup {
                 MacTweaksInlineRow("Open at login", separator: true) {
                     Toggle("Open at login", isOn: Binding(get: { opensAtLogin }, set: setOpenAtLogin))
-                        .labelsHidden().toggleStyle(OnePlusSwitchStyle())
+                        .labelsHidden().toggleStyle(OnePlusLinearSwitchStyle())
                         .accessibilityLabel("Open at login")
                 }
                 MacTweaksInlineRow("Audio service") {
@@ -441,13 +417,13 @@ struct MacTweaksWindowView: View {
                     set: { enabled in
                         setAwakeMode(enabled ? .indefinite : .passive)
                     }
-                )).labelsHidden().toggleStyle(OnePlusSwitchStyle())
+                )).labelsHidden().toggleStyle(OnePlusLinearSwitchStyle())
                     .accessibilityLabel("Keep this Mac awake")
             }
             MacTweaksInlineRow("Duration", separator: true) { awakeDurationMenu }
             MacTweaksInlineRow("Keep display on", separator: true) {
                 Toggle("Keep display on", isOn: Binding(get: { awake.configuration.keepDisplayOn }, set: awake.setKeepDisplayOn))
-                    .labelsHidden().toggleStyle(OnePlusSwitchStyle())
+                    .labelsHidden().toggleStyle(OnePlusLinearSwitchStyle())
                     .accessibilityLabel("Keep display on")
             }
             MacTweaksInlineRow("Status") {
@@ -471,7 +447,7 @@ struct MacTweaksWindowView: View {
                     systemImage: "magnifyingglass"
                 ) {
                     Button("Clear search") { search = "" }
-                        .buttonStyle(OnePlusButtonStyle(.neutral))
+                        .buttonStyle(OnePlusLinearButtonStyle(.soft))
                 }
                 .frame(maxWidth: .infinity, minHeight: 410)
             } else {
@@ -489,7 +465,7 @@ struct MacTweaksWindowView: View {
             if item.id == "mic-lock" {
                 MacTweaksInlineRow("Enabled") {
                     Toggle("Mic Lock", isOn: Binding(get: { micLock.isEnabled }, set: micLock.setEnabled))
-                        .labelsHidden().toggleStyle(OnePlusSwitchStyle())
+                        .labelsHidden().toggleStyle(OnePlusLinearSwitchStyle())
                         .accessibilityLabel("Mic Lock")
                 }
             } else if item.id == "helper.keep-awake" {
@@ -497,7 +473,7 @@ struct MacTweaksWindowView: View {
                     Toggle("Keep this Mac awake", isOn: Binding(
                         get: { awake.configuration.mode != .passive },
                         set: { setAwakeMode($0 ? .indefinite : .passive) }
-                    )).labelsHidden().toggleStyle(OnePlusSwitchStyle())
+                    )).labelsHidden().toggleStyle(OnePlusLinearSwitchStyle())
                         .accessibilityLabel("Keep this Mac awake")
                 }
             } else {
@@ -515,6 +491,16 @@ struct MacTweaksWindowView: View {
                 )
                 .frame(maxWidth: .infinity, minHeight: 390)
             } else {
+                VStack(spacing: OnePlusLinearMetrics.appletFooterGap) {
+                    modifiedTable
+                    Button("Reset all", role: .destructive) { showsResetAllConfirmation = true }
+                        .buttonStyle(OnePlusLinearButtonStyle(.destructive))
+                }
+            }
+        }
+    }
+
+    private var modifiedTable: some View {
                 MacTweaksPanel("Modified settings", glyph: .apps) {
                     HStack(spacing: OnePlusMetrics.spacing[3]) {
                         Text("Setting").frame(maxWidth: .infinity, alignment: .leading)
@@ -550,8 +536,6 @@ struct MacTweaksWindowView: View {
                     }
                     .onePlusScrollIndicators()
                 }
-            }
-        }
     }
 
     private func modifiedRow(_ entry: MacTweaksModifiedEntry, index: Int) -> some View {
@@ -571,9 +555,11 @@ struct MacTweaksWindowView: View {
                 } catch { showError(error.localizedDescription) }
             } label: {
                 Image(systemName: "arrow.counterclockwise")
+                    .frame(width: OnePlusLinearMetrics.toolbarButton, height: OnePlusLinearMetrics.toolbarButton)
             }
-            .buttonStyle(OnePlusButtonStyle(.icon))
+            .buttonStyle(OnePlusLinearButtonStyle())
             .frame(width: OnePlusMetrics.controlHeight)
+            .help("Reset \(entry.field.label)")
             .accessibilityLabel("Reset \(entry.field.label)")
         }
         .onePlusText(.control)
@@ -582,17 +568,19 @@ struct MacTweaksWindowView: View {
     }
 
     private var aboutPage: some View {
-        VStack(alignment: .leading, spacing: 16) {
-            OnePlusCard {
-                HStack(spacing: OnePlusMetrics.cardGap) {
-                    Image("MacTweaksLogo").resizable().aspectRatio(contentMode: .fit).frame(width: 68, height: 68)
-                    Text("Mac Tweaks").onePlusText(.pageTitle)
+        VStack(alignment: .leading, spacing: OnePlusLinearMetrics.appletSectionGap) {
+            OnePlusLinearAppletGroup {
+                HStack(spacing: OnePlusLinearMetrics.toolRowGap) {
+                    Image("MacTweaksLogo").resizable().aspectRatio(contentMode: .fit)
+                        .frame(width: MainPaneMetrics.headerIcon, height: MainPaneMetrics.headerIcon)
+                    Text("Mac Tweaks").font(.system(size: OnePlusLinearMetrics.body, weight: .semibold))
+                        .foregroundStyle(OnePlusLinearColor.ink)
                         .help("Small controls for the way you use your Mac. Part of MacPowerToys.")
                     Spacer()
-                    Text(appVersion).onePlusText(.control)
+                    LinearCaption(appVersion)
                 }
-                .padding(OnePlusMetrics.cardPadding)
-                MacTweaksRowDivider()
+                .padding(.horizontal, OnePlusLinearMetrics.appletRowPadding)
+                .padding(.vertical, MainPaneMetrics.headerPadding)
                 aboutRow("Preferences", value: "Exact-value backup and restore", separator: true)
                 aboutRow("System access", value: "Requested only when selected")
             }
@@ -609,21 +597,11 @@ struct MacTweaksWindowView: View {
     }
 
     private func aboutRow(_ label: String, value: String, separator: Bool = false) -> some View {
-        OnePlusSettingRow(label, controlWidth: OnePlusMetrics.wideControlColumn, separator: separator) {
-            Text(value).onePlusText(.control).lineLimit(1).help(value)
-        }
+        OnePlusLinearAppletRow(label, value: value).help(value)
     }
 
-    @ViewBuilder
     private func preferencePanel(_ title: String, glyph: MacTweaksGlyphName, itemIDs: [String]) -> some View {
-        if itemIDs.map(item(for:)).filter(shouldShow).flatMap({ TweakPreferences.fields(for: $0.id) }).count <= 1 {
-            VStack(alignment: .leading, spacing: 0) {
-                OnePlusCardHeader(title, systemImage: glyph.systemImage)
-                preferenceRows(itemIDs)
-            }
-        } else {
-            MacTweaksPanel(title, glyph: glyph) { preferenceRows(itemIDs) }
-        }
+        MacTweaksPanel(title, glyph: glyph) { preferenceRows(itemIDs) }
     }
 
     @ViewBuilder
@@ -850,32 +828,27 @@ struct MacTweaksWindowView: View {
             choices.append((saved.uid, "\(saved.name) (Unavailable)"))
         }
         choices.append(contentsOf: micLock.devices.map { ($0.id, $0.name) })
-        return OnePlusSelect(
+        return OnePlusLinearSelect(
             choices: choices,
             selection: Binding(
                 get: { saved?.uid ?? "" },
                 set: { micLock.setSavedInput($0.isEmpty ? nil : $0, at: index) }
             ),
-            width: OnePlusMetrics.wideControlColumn,
-            accessibilityLabel: index == 0 ? "Primary microphone" : "Fallback \(index) microphone"
+            accessibilityLabel: index == 0 ? "Primary microphone" : "Fallback \(index) microphone",
+            width: OnePlusMetrics.wideControlColumn
         )
         .disabled(!micLock.isEnabled)
     }
 
     private var inputVolumeControl: some View {
         HStack(spacing: 8) {
-            Slider(value: Binding(
+            OnePlusLinearSlider("Input volume", value: Binding(
                 get: { Double(micLock.volume ?? 0) },
                 set: { micLock.setVolume(Float($0)) }
-            ), in: 0...1)
-            .controlSize(.mini)
+            ))
             .disabled(micLock.volume == nil || micLock.muted == true)
-            HStack(alignment: .firstTextBaseline, spacing: OnePlusMetrics.spacing[0]) {
-                Text(Int((micLock.volume ?? 0) * 100).formatted())
-                Text("%")
-            }
-            .onePlusText(.mono)
-            .fixedSize(horizontal: true, vertical: false)
+            LinearCaption("\(Int((micLock.volume ?? 0) * 100))%")
+                .fixedSize(horizontal: true, vertical: false)
         }
     }
 
@@ -914,7 +887,7 @@ struct MacTweaksWindowView: View {
             (.oneHour, "1 hour")
         ]
         if mode == .custom { choices.append((.custom, awakeDurationLabel(mode))) }
-        return OnePlusSelect(
+        return OnePlusLinearSelect(
             choices: choices,
             selection: Binding(
                 get: { mode },
@@ -1021,7 +994,7 @@ private struct MacTweaksInlineRow<Control: View>: View {
         self.control = control()
     }
     var body: some View {
-        OnePlusSettingRow(title, controlWidth: controlWidth, separator: separator) { control }
+        OnePlusLinearAppletRow(title) { control }
     }
 }
 
@@ -1037,6 +1010,6 @@ private struct MacTweaksBorderedButton: View {
             if let symbol { Label(title, systemImage: symbol) }
             else { Text(title) }
         }
-        .buttonStyle(OnePlusButtonStyle(.neutral))
+        .buttonStyle(OnePlusLinearButtonStyle(.soft))
     }
 }

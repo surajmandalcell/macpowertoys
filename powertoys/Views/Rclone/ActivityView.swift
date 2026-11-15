@@ -62,26 +62,18 @@ struct ActivityView: View {
     }
 
     var body: some View {
-        OnePlusPage(scrolls: false) {
-            OnePlusPageHeader(
-                title: "Activity"
-            ) {
-                Text("\(records.count) transfers · \(RcloneFormat.bytes(aggregateBytes)) moved")
-                    .onePlusText(.caption)
-                OnePlusSearchField(
-                    prompt: "Search activity",
-                    text: $search,
-                    width: OnePlusMetrics.wideControlColumn,
-                    focusTrigger: searchFocus,
-                    shortcutHint: "⌘F"
-                )
+        RSyncFixedPane {
+            RSyncPageToolbar {
+                OnePlusLinearSearchField("Search activity", text: $search, focusTrigger: searchFocus, style: .applet)
+                    .frame(width: RSyncPaneMetrics.searchWidth)
+            } trailing: {
+                LinearCaption("\(records.count) transfers · \(RcloneFormat.bytes(aggregateBytes)) moved")
             }
-        } content: {
             if records.isEmpty {
                 OnePlusEmptyState("No activity yet", systemImage: "clock.arrow.circlepath")
-                    .frame(maxHeight: .infinity)
+                    .frame(maxWidth: .infinity, maxHeight: .infinity)
             } else {
-                OnePlusCard {
+                OnePlusLinearList {
                     OnePlusNativeTable(
                         columns: [
                             OnePlusGridColumn("Time", width: 176, textRole: .mono),

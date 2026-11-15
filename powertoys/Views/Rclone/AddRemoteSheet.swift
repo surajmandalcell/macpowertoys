@@ -87,12 +87,12 @@ struct AddRemoteSheet: View {
                     let supplied = parameters.filter { !$0.value.isEmpty }
                     manager.beginAddRemote(named: name, provider: provider, parameters: supplied)
                 }
-                .buttonStyle(OnePlusButtonStyle(.primary))
+                .buttonStyle(OnePlusLinearButtonStyle(.soft))
                 .keyboardShortcut(.defaultAction)
                 .disabled(!canConnect)
             }
             Button(closeButtonTitle, action: close)
-                .buttonStyle(OnePlusButtonStyle(.ghost))
+                .buttonStyle(OnePlusLinearButtonStyle(.soft))
                 .keyboardShortcut(.cancelAction)
         }
         .task {
@@ -124,6 +124,7 @@ struct AddRemoteSheet: View {
             VStack(spacing: 12) {
                 Text(error).onePlusText(.row).foregroundStyle(OnePlusColor.secondary)
                 Button("Retry") { Task { await manager.loadProviders() } }
+                    .buttonStyle(OnePlusLinearButtonStyle(.soft))
             }
             .padding(20)
         } else {
@@ -152,10 +153,9 @@ struct AddRemoteSheet: View {
                     }
 
                     if hasAdditionalOptions {
-                        Toggle(authenticationModes.isEmpty ? "Show advanced options" : "Show provider options", isOn: $showAdvanced)
-                            .toggleStyle(OnePlusSwitchStyle())
-                            .controlSize(.small)
-                            .onePlusText(.row)
+                        OnePlusLinearAppletGroup {
+                            RSyncSwitchRow(authenticationModes.isEmpty ? "Show advanced options" : "Show provider options", isOn: $showAdvanced)
+                        }
                     }
                 }
                 .padding(20)
@@ -167,12 +167,10 @@ struct AddRemoteSheet: View {
     private var authenticationSection: some View {
         VStack(alignment: .leading, spacing: 8) {
             fieldTitle("SIGN IN")
-            ScrollView(.horizontal) {
-                OnePlusSegmented(choices: authenticationModes.map { ($0, $0.title) },
-                                 selection: $selectedAuthenticationMode, accessibilityLabel: "Sign-in method")
-            }
-            .thinScrollIndicators()
-            .help(selectedAuthenticationMode.detail)
+            OnePlusLinearSelect(choices: authenticationModes.map { ($0, $0.title) },
+                                selection: $selectedAuthenticationMode, accessibilityLabel: "Sign-in method",
+                                width: OnePlusMetrics.wideControlColumn)
+                .help(selectedAuthenticationMode.detail)
         }
     }
 
@@ -192,15 +190,14 @@ struct AddRemoteSheet: View {
 
             if option.type == "bool" {
                 Toggle("Enabled", isOn: boolBinding(option))
-                    .toggleStyle(OnePlusSwitchStyle())
-                    .controlSize(.small)
+                    .toggleStyle(OnePlusLinearSwitchStyle())
                     .labelsHidden()
             } else if option.usesExclusivePicker {
-                OnePlusSelect(
+                OnePlusLinearSelect(
                     choices: exclusiveChoices(for: option),
                     selection: valueBinding(option),
-                    width: OnePlusMetrics.wideControlColumn,
-                    accessibilityLabel: option.label
+                    accessibilityLabel: option.label,
+                    width: OnePlusMetrics.wideControlColumn
                 )
             } else if option.isPassword {
                 SecureField(option.defaultValue, text: valueBinding(option))
@@ -243,15 +240,14 @@ struct AddRemoteSheet: View {
 
             if prompt.option.type == "bool" {
                 Toggle("Enabled", isOn: promptBoolBinding(prompt.option))
-                    .toggleStyle(OnePlusSwitchStyle())
-                    .controlSize(.small)
+                    .toggleStyle(OnePlusLinearSwitchStyle())
                     .labelsHidden()
             } else if prompt.option.usesExclusivePicker {
-                OnePlusSelect(
+                OnePlusLinearSelect(
                     choices: exclusiveChoices(for: prompt.option),
                     selection: $promptAnswer,
-                    width: OnePlusMetrics.wideControlColumn,
-                    accessibilityLabel: prompt.option.label
+                    accessibilityLabel: prompt.option.label,
+                    width: OnePlusMetrics.wideControlColumn
                 )
             } else if prompt.option.isPassword {
                 SecureField(prompt.option.defaultValue, text: $promptAnswer)
@@ -268,7 +264,7 @@ struct AddRemoteSheet: View {
                     manager.answerConfigurationPrompt(answer)
                     promptAnswer = ""
                 }
-                .buttonStyle(.borderedProminent)
+                .buttonStyle(OnePlusLinearButtonStyle(.soft))
                 .keyboardShortcut(.defaultAction)
                 .disabled(prompt.option.required && promptAnswer.isEmpty && prompt.option.defaultValue.isEmpty)
             }
@@ -309,6 +305,7 @@ struct AddRemoteSheet: View {
                 .multilineTextAlignment(.center)
                 .fixedSize(horizontal: false, vertical: true)
             Button("Cancel") { manager.cancelAuth() }
+                .buttonStyle(OnePlusLinearButtonStyle(.soft))
                 .padding(.top, 4)
         }
         .padding(20)
@@ -323,7 +320,7 @@ struct AddRemoteSheet: View {
                 manager.acknowledgeAuthResult()
                 dismiss()
             }
-            .buttonStyle(.borderedProminent)
+            .buttonStyle(OnePlusLinearButtonStyle(.soft))
             .keyboardShortcut(.defaultAction)
             .padding(.top, 4)
         }
@@ -340,6 +337,7 @@ struct AddRemoteSheet: View {
                 .textSelection(.enabled)
                 .fixedSize(horizontal: false, vertical: true)
             Button("Try Again") { manager.acknowledgeAuthResult() }
+                .buttonStyle(OnePlusLinearButtonStyle(.soft))
                 .padding(.top, 4)
         }
         .padding(20)

@@ -19,7 +19,7 @@ struct TransferJobRow: View {
     }
 
     var body: some View {
-        OnePlusCard {
+        OnePlusLinearList {
             VStack(alignment: .leading, spacing: OnePlusMetrics.spacing[3]) {
                 identityRow
                 OnePlusUsageBar(value: job.progressFraction, color: stateColor)
@@ -100,14 +100,14 @@ struct TransferJobRow: View {
     }
 
     private var priorityMenu: some View {
-        OnePlusSelect(
+        OnePlusLinearSelect(
             choices: TransferPriority.allCases.reversed().map { ($0, $0.displayName) },
             selection: Binding(
                 get: { job.priority },
                 set: { manager.setPriority($0, for: job) }
             ),
-            width: OnePlusMetrics.controlColumn,
-            accessibilityLabel: "File priority"
+            accessibilityLabel: "File priority",
+            width: OnePlusMetrics.controlColumn
         )
     }
 
@@ -123,20 +123,17 @@ struct TransferJobRow: View {
     }
 
     private func iconButton(_ symbol: String, _ label: String, action: @escaping () -> Void) -> some View {
-        Button(action: action) { Image(systemName: symbol) }
-            .buttonStyle(OnePlusButtonStyle(.icon, size: .small))
-            .accessibilityLabel(label)
+        OnePlusLinearIconButton(systemImage: symbol, help: label, size: OnePlusLinearMetrics.toolbarButton, action: action)
     }
 
     private var disclosureButton: some View {
-        Button {
+        OnePlusLinearIconButton(
+            systemImage: job.isExpanded ? "chevron.down" : "chevron.right",
+            help: job.isExpanded ? "Hide files" : "Show files",
+            size: OnePlusLinearMetrics.toolbarButton
+        ) {
             manager.setExpanded(!job.isExpanded, for: job)
-        } label: {
-            Image(systemName: "chevron.right")
-                .rotationEffect(.degrees(job.isExpanded ? 90 : 0))
         }
-        .buttonStyle(OnePlusButtonStyle(.icon, size: .small))
-        .accessibilityLabel(job.isExpanded ? "Hide files" : "Show files")
     }
 
     private var fileDetails: some View {

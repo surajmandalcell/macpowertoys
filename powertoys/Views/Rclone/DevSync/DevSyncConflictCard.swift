@@ -106,7 +106,7 @@ struct DevSyncConflictCard: View {
     }
 
     var body: some View {
-        OnePlusCard {
+        OnePlusLinearList {
             VStack(alignment: .leading, spacing: OnePlusMetrics.spacing[3]) {
             headerLine
             metadataGrid
@@ -120,7 +120,7 @@ struct DevSyncConflictCard: View {
             }
             .padding(OnePlusMetrics.cardPadding)
         }
-        .overlay { RoundedRectangle(cornerRadius: OnePlusMetrics.panelRadius).strokeBorder(isFocused ? OnePlusColor.focus : .clear) }
+        .overlay { RoundedRectangle(cornerRadius: OnePlusLinearMetrics.listRadius).strokeBorder(isFocused ? OnePlusColor.focus : .clear) }
         .task(id: conflict.id) {
             diff = await DevConflictDiff.load(
                 internalPath: conflict.internalSafetyPath,

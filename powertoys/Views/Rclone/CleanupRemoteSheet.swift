@@ -61,17 +61,19 @@ struct CleanupRemoteSheet: View {
                 .help(scope)
             content
                 .frame(minHeight: OnePlusMetrics.spacing[8] * 15)
+            if phase == .review {
+                Button(checked.count == 1 ? "Delete 1 Item" : "Delete \(checked.count) Items", role: .destructive) {
+                    isConfirmingDeletion = true
+                }
+                .buttonStyle(OnePlusLinearButtonStyle(.destructive))
+                .keyboardShortcut(.defaultAction)
+                .disabled(checked.isEmpty)
+            }
         } footer: {
             if phase == .review {
                 Button("Cancel") { dismiss() }
                     .keyboardShortcut(.cancelAction)
-                    .buttonStyle(OnePlusButtonStyle(.ghost))
-                Button(checked.count == 1 ? "Delete 1 Item" : "Delete \(checked.count) Items") {
-                    isConfirmingDeletion = true
-                }
-                .buttonStyle(OnePlusButtonStyle(.destructive))
-                .keyboardShortcut(.defaultAction)
-                .disabled(checked.isEmpty)
+                    .buttonStyle(OnePlusLinearButtonStyle(.soft))
             }
         }
         .confirmationDialog("Delete \(checked.count) selected items?", isPresented: $isConfirmingDeletion) {
@@ -130,6 +132,7 @@ struct CleanupRemoteSheet: View {
                     .multilineTextAlignment(.center)
                     .padding(.horizontal, 40)
                 Button("Retry", action: startScan)
+                    .buttonStyle(OnePlusLinearButtonStyle(.soft))
             }
         }
     }
@@ -415,7 +418,7 @@ private struct CheckboxButton: View {
                 .frame(width: 20, height: 20)
                 .contentShape(Rectangle())
         }
-        .buttonStyle(OnePlusButtonStyle(.icon, size: .small))
+        .buttonStyle(OnePlusLinearButtonStyle())
         .accessibilityValue(state == .on ? "Selected" : state == .mixed ? "Partly selected" : "Not selected")
     }
 }

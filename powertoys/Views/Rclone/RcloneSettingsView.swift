@@ -29,81 +29,69 @@ struct RcloneSettingsView: View {
     @AppStorage(RcloneDefaults.binaryPathKey) private var binaryPath = RcloneDefaults.binaryPath
 
     var body: some View {
-        VStack(spacing: OnePlusMetrics.cardGap) {
-            HStack(alignment: .top, spacing: OnePlusMetrics.cardGap) {
-                syncEngineCard
-                    .frame(maxWidth: .infinity)
-                transfersCard
-                    .frame(maxWidth: .infinity)
-            }
-            .fixedSize(horizontal: false, vertical: true)
+        VStack(alignment: .leading, spacing: OnePlusLinearMetrics.appletSectionGap) {
+            syncEngineSection
+            transfersSection
             ignorePatternsSection
-            retriesCard
-            binaryRow
+            retriesSection
+            binarySection
         }
         .onChange(of: startAtLaunch) { _, enabled in
             Task { await RcloneJobManager.shared.backgroundPreferenceDidChange(enabled: enabled) }
         }
     }
 
-    private var syncEngineCard: some View {
-        OnePlusCard {
-            VStack(spacing: 0) {
-                OnePlusCardHeader("Sync engine")
-                OnePlusSettingRow("Start at launch", help: "Ready after sign-in.") {
-                    Toggle("Start at launch", isOn: $startAtLaunch).labelsHidden().toggleStyle(OnePlusSwitchStyle())
-                }
-                OnePlusSettingRow("Show transfer status", help: "In the MacPowerToys menu bar.") {
-                    Toggle("Show transfer status", isOn: $showTray).labelsHidden().toggleStyle(OnePlusSwitchStyle())
-                }
-                OnePlusSettingRow("Retry interrupted transfers", help: "Always on; unfinished transfers resume.", separator: false) {
-                    Text("On").onePlusText(.control)
-                }
+    private var syncEngineSection: some View {
+        OnePlusLinearAppletSection("Sync engine") {
+            OnePlusLinearAppletRow("Start at launch", detail: "Ready after sign-in.") {
+                Toggle("Start at launch", isOn: $startAtLaunch).labelsHidden().toggleStyle(OnePlusLinearSwitchStyle())
             }
+            OnePlusLinearAppletRow("Show transfer status", detail: "In the MacPowerToys menu bar.") {
+                Toggle("Show transfer status", isOn: $showTray).labelsHidden().toggleStyle(OnePlusLinearSwitchStyle())
+            }
+            OnePlusLinearAppletRow("Retry interrupted transfers", value: "On")
+                .help("Always on; unfinished transfers resume.")
         }
     }
 
-    private var transfersCard: some View {
-        OnePlusCard {
-            VStack(spacing: 0) {
-                OnePlusCardHeader("Transfers")
-                OnePlusSettingRow("Parallel transfers", help: "Files copied at the same time.", controlWidth: OnePlusMetrics.wideControlColumn) {
-                    OnePlusStepperField("Parallel transfers", value: $transfers, in: 1...64)
-                }
-                OnePlusSettingRow("Checkers", help: "Remote checks at the same time.", controlWidth: OnePlusMetrics.wideControlColumn) {
-                    OnePlusStepperField("Checkers", value: $checkers, in: 1...128)
-                }
-                OnePlusSettingRow("Bandwidth limit", help: "Leave blank or enter off for no limit.", controlWidth: OnePlusMetrics.wideControlColumn) {
-                    OnePlusTextField("10M, 1.5GiB, or off", text: $bandwidthLimit, error: RcloneBandwidthInput.error(for: bandwidthLimit))
-                }
-                OnePlusSettingRow("Default operation", controlWidth: OnePlusMetrics.wideControlColumn, separator: false) {
-                    OnePlusSelect(
-                        choices: RcloneOperation.allCases.map { ($0.rawValue, $0.displayName) },
-                        selection: $defaultOperation,
-                        width: OnePlusMetrics.wideControlColumn,
-                        accessibilityLabel: "Default operation"
-                    )
-                }
+    private var transfersSection: some View {
+        OnePlusLinearAppletSection("Transfers") {
+            OnePlusLinearAppletRow("Parallel transfers", detail: "Files copied at the same time.") {
+                OnePlusStepperField("Parallel transfers", value: $transfers, in: 1...64)
+            }
+            OnePlusLinearAppletRow("Checkers", detail: "Remote checks at the same time.") {
+                OnePlusStepperField("Checkers", value: $checkers, in: 1...128)
+            }
+            OnePlusLinearAppletRow("Bandwidth limit", detail: "Leave blank or enter off for no limit.") {
+                OnePlusTextField("10M, 1.5GiB, or off", text: $bandwidthLimit, error: RcloneBandwidthInput.error(for: bandwidthLimit))
+                    .frame(width: OnePlusMetrics.wideControlColumn)
+            }
+            OnePlusLinearAppletRow("Default operation") {
+                OnePlusLinearSelect(
+                    choices: RcloneOperation.allCases.map { ($0.rawValue, $0.displayName) },
+                    selection: $defaultOperation,
+                    accessibilityLabel: "Default operation",
+                    width: OnePlusMetrics.wideControlColumn
+                )
             }
         }
     }
 
     private var ignorePatternsSection: some View {
-        VStack(alignment: .leading, spacing: OnePlusMetrics.spacing[2]) {
-            OnePlusSectionTitle("Ignore patterns")
+        OnePlusLinearAppletSection("Ignore patterns") {
             OnePlusTextEditor("Ignore patterns", text: $ignorePatterns)
                 .frame(height: OnePlusMetrics.spacing[6] * 8)
                 .help("One glob per line. Used as an exclude rule.")
+                .padding(OnePlusLinearMetrics.appletRowPadding)
         }
     }
 
-    private var retriesCard: some View {
-        OnePlusCard {
-            OnePlusCardHeader("Retries")
-            OnePlusSettingRow("Max retries", controlWidth: OnePlusMetrics.wideControlColumn) {
+    private var retriesSection: some View {
+        OnePlusLinearAppletSection("Retries") {
+            OnePlusLinearAppletRow("Max retries") {
                 OnePlusStepperField("Max retries", value: $maxRetries, in: 0...20)
             }
-            OnePlusSettingRow("Retry backoff", help: "The wait doubles after each failed try.", controlWidth: OnePlusMetrics.wideControlColumn) {
+            OnePlusLinearAppletRow("Retry backoff", detail: "The wait doubles after each failed try.") {
                 OnePlusStepperField(
                     "Retry backoff",
                     value: Binding(get: { Int(retryBackoff) }, set: { retryBackoff = Double($0) }),
@@ -111,59 +99,49 @@ struct RcloneSettingsView: View {
                     unit: "s"
                 )
             }
-            OnePlusSettingRow("Low-level retries", controlWidth: OnePlusMetrics.wideControlColumn) {
+            OnePlusLinearAppletRow("Low-level retries") {
                 OnePlusStepperField("Low-level retries", value: $lowLevelRetries, in: 1...50)
             }
-            OnePlusSettingRow("Concurrent jobs", controlWidth: OnePlusMetrics.wideControlColumn, separator: false) {
+            OnePlusLinearAppletRow("Concurrent jobs") {
                 OnePlusStepperField("Concurrent jobs", value: $maxConcurrentJobs, in: 1...16)
             }
         }
     }
 
-    private var binaryRow: some View {
-        HStack(spacing: OnePlusMetrics.spacing[3]) {
-            Text("rclone binary path").onePlusText(.row)
-            Image(systemName: "info.circle")
-                .foregroundStyle(OnePlusColor.secondary)
-                .help("Leave blank to use the detected binary.")
-                .accessibilityLabel("Leave blank to use the detected binary")
-            Spacer(minLength: OnePlusMetrics.spacing[3])
-            OnePlusTextField("Auto-detected", text: $binaryPath)
-                .frame(width: OnePlusMetrics.wideControlColumn)
-                .accessibilityLabel("rclone binary path")
+    private var binarySection: some View {
+        OnePlusLinearAppletSection("rclone binary") {
+            OnePlusLinearAppletRow("rclone binary path", detail: "Leave blank to use the detected binary.") {
+                OnePlusTextField("Auto-detected", text: $binaryPath)
+                    .frame(width: OnePlusMetrics.wideControlColumn)
+                    .accessibilityLabel("rclone binary path")
+            }
         }
-        .frame(height: OnePlusMetrics.settingRow)
-        .onePlusRowHover()
     }
 }
 
-struct StepperField<Value: Strideable, Format: ParseableFormatStyle>: View
-where Format.FormatInput == Value, Format.FormatOutput == String {
+/// A whole-number setting row in a filled group: the label and the shared stepper field.
+struct StepperField: View {
     let label: String
-    @Binding var value: Value
-    let range: ClosedRange<Value>
-    let format: Format
-    var suffix: String? = nil
+    @Binding var value: Int
+    let range: ClosedRange<Int>
+    var suffix: String?
+
+    init(label: String, value: Binding<Int>, range: ClosedRange<Int>, format: IntegerFormatStyle<Int> = .number, suffix: String? = nil) {
+        self.label = label; _value = value; self.range = range; self.suffix = suffix
+    }
+
+    /// Settings stored as `Double` (seconds) step in whole units.
+    init(label: String, value: Binding<Double>, range: ClosedRange<Double>,
+         format: FloatingPointFormatStyle<Double> = .number, suffix: String? = nil) {
+        self.label = label
+        _value = Binding(get: { Int(value.wrappedValue.rounded()) }, set: { value.wrappedValue = Double($0) })
+        self.range = Int(range.lowerBound)...Int(range.upperBound)
+        self.suffix = suffix
+    }
 
     var body: some View {
-        HStack(spacing: OnePlusMetrics.spacing[2]) {
-            Text(label).onePlusText(.row)
-            Spacer(minLength: OnePlusMetrics.spacing[2])
-            TextField(label, value: $value, format: format)
-                .textFieldStyle(.plain)
-                .multilineTextAlignment(.trailing)
-                .monospacedDigit()
-                .onePlusText(.control)
-                .padding(.horizontal, OnePlusMetrics.spacing[2])
-                .frame(width: OnePlusMetrics.spacing[8] * 2, height: OnePlusMetrics.controlHeight)
-                .background(OnePlusColor.field, in: RoundedRectangle(cornerRadius: OnePlusMetrics.controlRadius))
-                .overlay { RoundedRectangle(cornerRadius: OnePlusMetrics.controlRadius).strokeBorder(OnePlusColor.line) }
-            if let suffix { Text(suffix).onePlusText(.mono).foregroundStyle(OnePlusColor.secondary) }
-            Stepper(label, value: $value, in: range).labelsHidden()
-        }
-        .onChange(of: value) { _, newValue in
-            if newValue < range.lowerBound { value = range.lowerBound }
-            else if newValue > range.upperBound { value = range.upperBound }
+        OnePlusLinearAppletRow(label) {
+            OnePlusStepperField(label, value: $value, in: range, unit: suffix)
         }
     }
 }

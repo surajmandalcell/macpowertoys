@@ -8,8 +8,10 @@ import OnePlusUI
 
 struct DevSyncRulesSection: View {
     @Binding var configuration: DevSyncConfiguration
+    var title: String?
 
     @State private var isEditingPatterns = false
+    @State private var isEditingSkipPatterns = false
 
     private var keepsVersions: Binding<Bool> {
         Binding(
@@ -19,159 +21,99 @@ struct DevSyncRulesSection: View {
     }
 
     var body: some View {
-        VStack(alignment: .leading, spacing: 10) {
-            skipRow
-            sensitiveRow
-            switchRow("Include Git object store", isOn: $configuration.policy.includeGitMetadata)
-            switchRow("Include Git LFS objects", isOn: $configuration.policy.includeGitLFSObjects)
+        RSyncGroup(title: title) {
+            OnePlusLinearAppletRow("Skip caches, dependencies, build outputs, and tmp") {
+                Button("Extra patterns…") { isEditingSkipPatterns = true }
+                    .buttonStyle(OnePlusLinearButtonStyle(.soft))
+                    .popover(isPresented: $isEditingSkipPatterns, arrowEdge: .bottom) {
+                        patternEditor(
+                            "Extra skip patterns",
+                            patterns: $configuration.policy.explicitExcludes,
+                            help: "One glob per line. A trailing slash matches a folder anywhere. The built-in list already covers node_modules, caches, build outputs, and tmp."
+                        )
+                    }
+                Toggle("Skip caches, dependencies, build outputs, and tmp", isOn: $configuration.policy.skipCommonCaches)
+                    .labelsHidden().toggleStyle(OnePlusLinearSwitchStyle())
+            }
+            .help("Git-tracked content inside a skipped folder still syncs.")
+            OnePlusLinearAppletRow("Back up ignored sensitive and local files") {
+                Button("Edit patterns…") { isEditingPatterns = true }
+                    .buttonStyle(OnePlusLinearButtonStyle(.soft))
+                    .popover(isPresented: $isEditingPatterns, arrowEdge: .bottom) {
+                        patternEditor("Sensitive patterns", patterns: $configuration.policy.sensitivePatterns, help: "One glob per line.")
+                    }
+                Toggle("Back up ignored sensitive and local files", isOn: $configuration.policy.includeIgnoredSensitiveFiles)
+                    .labelsHidden().toggleStyle(OnePlusLinearSwitchStyle())
+            }
+            RSyncSwitchRow("Include Git object store", isOn: $configuration.policy.includeGitMetadata)
+            RSyncSwitchRow("Include Git LFS objects", isOn: $configuration.policy.includeGitLFSObjects)
             metadataRow(title: "Preserve extended attributes", selection: $configuration.metadata.xattrs)
             metadataRow(title: "Preserve permissions", selection: $configuration.metadata.permissions)
             metadataRow(title: "Preserve hard links", selection: $configuration.metadata.hardLinks)
-            switchRow("Keep previous versions", isOn: keepsVersions)
+            RSyncSwitchRow("Keep previous versions", isOn: keepsVersions)
         }
-        .toggleStyle(OnePlusSwitchStyle())
-        .controlSize(.small)
-        .frame(maxWidth: .infinity, alignment: .leading)
     }
 
-    private func switchRow(_ title: String, isOn: Binding<Bool>, disabled: Bool = false, help: String = "") -> some View {
-        HStack(spacing: 8) {
-            Text(title)
-                .onePlusText(.row)
-            Spacer(minLength: 8)
-            Toggle(title, isOn: isOn)
-                .labelsHidden()
-                .disabled(disabled)
-        }
-        .onePlusRowHover()
-        .help(help)
-    }
-
-    @State private var isEditingSkipPatterns = false
-
-    private var skipRow: some View {
-        HStack(spacing: 8) {
-            Text("Skip caches, dependencies, build outputs, and tmp")
-                .onePlusText(.row)
-            Spacer(minLength: 8)
-            Button("Extra patterns…") { isEditingSkipPatterns = true }
-                .controlSize(.small)
-                .popover(isPresented: $isEditingSkipPatterns, arrowEdge: .bottom) {
-                    skipPatternEditor
-                }
-            Toggle("Skip caches, dependencies, build outputs, and tmp", isOn: $configuration.policy.skipCommonCaches)
-                .labelsHidden()
-        }
-        .onePlusRowHover()
-        .help("Git-tracked content inside a skipped folder still syncs.")
-    }
-
-    private var skipPatternEditor: some View {
-        VStack(alignment: .leading, spacing: 8) {
-            DevSyncSectionHeader(title: "Extra skip patterns")
-            TextEditor(text: Binding(
-                get: { configuration.policy.explicitExcludes.joined(separator: "\n") },
+    private func patternEditor(_ title: String, patterns: Binding<[String]>, help: String) -> some View {
+        OnePlusLinearAppletSection(title) {
+            OnePlusTextEditor(title, text: Binding(
+                get: { patterns.wrappedValue.joined(separator: "\n") },
                 set: { text in
-                    configuration.policy.explicitExcludes = text
+                    patterns.wrappedValue = text
                         .split(whereSeparator: \.isNewline)
                         .map { $0.trimmingCharacters(in: .whitespaces) }
                         .filter { !$0.isEmpty }
                 }
             ))
-            .thinScrollIndicators()
-            .onePlusText(.mono)
-            .scrollContentBackground(.hidden)
-            .padding(6)
-            .frame(width: 320, height: 220)
-            .background(RoundedRectangle(cornerRadius: 6).fill(OnePlusColor.track))
-            .help("One glob per line. A trailing slash matches a folder anywhere. The built-in list already covers node_modules, caches, build outputs, and tmp.")
+            .frame(width: OnePlusMetrics.controlColumn * 2, height: OnePlusMetrics.spacing[8] * 8)
+            .padding(OnePlusLinearMetrics.appletRowPadding)
+            .help(help)
         }
-        .padding(14)
-    }
-
-    private var sensitiveRow: some View {
-        HStack(spacing: 8) {
-            Text("Back up ignored sensitive and local files")
-                .onePlusText(.row)
-            Spacer(minLength: 8)
-            Button("Edit patterns…") { isEditingPatterns = true }
-                .controlSize(.small)
-                .popover(isPresented: $isEditingPatterns, arrowEdge: .bottom) {
-                    patternEditor
-                }
-            Toggle("Back up ignored sensitive and local files", isOn: $configuration.policy.includeIgnoredSensitiveFiles)
-                .labelsHidden()
-        }
-        .onePlusRowHover()
-    }
-
-    private var patternEditor: some View {
-        VStack(alignment: .leading, spacing: 8) {
-            DevSyncSectionHeader(title: "Sensitive patterns")
-            TextEditor(text: Binding(
-                get: { configuration.policy.sensitivePatterns.joined(separator: "\n") },
-                set: { text in
-                    configuration.policy.sensitivePatterns = text
-                        .split(whereSeparator: \.isNewline)
-                        .map { $0.trimmingCharacters(in: .whitespaces) }
-                        .filter { !$0.isEmpty }
-                }
-            ))
-            .thinScrollIndicators()
-            .onePlusText(.mono)
-            .scrollContentBackground(.hidden)
-            .padding(6)
-            .frame(width: 320, height: 220)
-            .background(RoundedRectangle(cornerRadius: 6).fill(OnePlusColor.track))
-            .help("One glob per line.")
-        }
-        .padding(14)
+        .padding(OnePlusLinearMetrics.appletGutter)
+        .environment(\.onePlusLinearControlLook, .depth)
     }
 
     private func metadataRow(title: String, selection: Binding<DevMetadataOption>) -> some View {
-        HStack(spacing: 8) {
-            Text(title)
-                .onePlusText(.row)
-            Spacer(minLength: 8)
-            OnePlusSegmented(choices: [(DevMetadataOption.auto, "Auto"), (.on, "On"), (.off, "Off")],
-                             selection: selection, accessibilityLabel: title, width: OnePlusMetrics.wideControlColumn)
+        OnePlusLinearAppletRow(title) {
+            OnePlusLinearSegmented(choices: [(DevMetadataOption.auto, "Auto"), (.on, "On"), (.off, "Off")],
+                                   selection: selection, accessibilityLabel: title)
         }
-        .onePlusRowHover()
     }
 }
 
 struct DevSyncActivitySection: View {
     @Binding var configuration: DevSyncConfiguration
+    var title: String?
 
     @State private var isShowingAdvanced = false
 
     var body: some View {
-        VStack(alignment: .leading, spacing: 10) {
-            OnePlusSegmented(choices: DevActivityPreset.allCases.map { ($0, $0.displayName) }, selection: Binding(
-                get: { configuration.activityPreset },
-                set: { preset in
-                    configuration.activityPreset = preset
-                    configuration.timing = preset.timing
-                }
-            ), accessibilityLabel: "Activity preset")
-
-            DisclosureGroup("Advanced", isExpanded: $isShowingAdvanced) {
-                VStack(alignment: .leading, spacing: 8) {
-                    StepperField(label: "Quiet period", value: $configuration.timing.quietPeriodSeconds, range: 0...600, format: .number, suffix: "s")
-                    StepperField(label: "Minimum project interval", value: $configuration.timing.minimumProjectIntervalSeconds, range: 0...3_600, format: .number, suffix: "s")
-                    StepperField(label: "Activity checkpoint", value: $configuration.timing.continuousCheckpointSeconds, range: 0...7_200, format: .number, suffix: "s")
-                    StepperField(label: "Large file quiet period", value: $configuration.timing.largeFileQuietSeconds, range: 0...3_600, format: .number, suffix: "s")
-                    StepperField(label: "Large file warning", value: largeFileWarningGigabytes, range: 1...512, format: .number, suffix: "GB")
-                    Toggle("Large transfers require power", isOn: $configuration.power.largeTransfersRequirePower)
-                .frame(maxWidth: .infinity)
-                        .toggleStyle(OnePlusSwitchStyle())
-                        .controlSize(.small)
-                }
-                .padding(.top, 8)
+        RSyncGroup(title: title) {
+            OnePlusLinearAppletRow("Activity preset") {
+                OnePlusLinearSelect(choices: DevActivityPreset.allCases.map { ($0, $0.displayName) }, selection: Binding(
+                    get: { configuration.activityPreset },
+                    set: { preset in
+                        configuration.activityPreset = preset
+                        configuration.timing = preset.timing
+                    }
+                ), accessibilityLabel: "Activity preset", width: OnePlusMetrics.wideControlColumn)
             }
-            .onePlusText(.row)
+            OnePlusLinearAppletRow("Advanced timing") {
+                OnePlusLinearIconButton(
+                    systemImage: isShowingAdvanced ? "chevron.up" : "chevron.down",
+                    help: isShowingAdvanced ? "Hide advanced timing" : "Show advanced timing",
+                    size: OnePlusLinearMetrics.appletRowAction
+                ) { isShowingAdvanced.toggle() }
+            }
+            if isShowingAdvanced {
+                StepperField(label: "Quiet period", value: $configuration.timing.quietPeriodSeconds, range: 0...600, format: .number, suffix: "s")
+                StepperField(label: "Minimum project interval", value: $configuration.timing.minimumProjectIntervalSeconds, range: 0...3_600, format: .number, suffix: "s")
+                StepperField(label: "Activity checkpoint", value: $configuration.timing.continuousCheckpointSeconds, range: 0...7_200, format: .number, suffix: "s")
+                StepperField(label: "Large file quiet period", value: $configuration.timing.largeFileQuietSeconds, range: 0...3_600, format: .number, suffix: "s")
+                StepperField(label: "Large file warning", value: largeFileWarningGigabytes, range: 1...512, format: .number, suffix: "GB")
+                RSyncSwitchRow("Large transfers require power", isOn: $configuration.power.largeTransfersRequirePower)
+            }
         }
-        .frame(maxWidth: .infinity, alignment: .leading)
     }
 
     private var largeFileWarningGigabytes: Binding<Int> {
@@ -192,12 +134,7 @@ struct DevSyncPairSettingsPage: View {
     @State private var isConfirmingRemoval = false
 
     var body: some View {
-        OnePlusPage {
-            OnePlusPageHeader(title: "\(pair.displayName) Settings", subtitle: pair.mode.displayName) {
-                Button("Done") { manager.isShowingPairSettings = false }
-                    .buttonStyle(OnePlusButtonStyle(.primary))
-            }
-        } content: {
+        OnePlusLinearPaneBody {
             if let message = manager.errorBanner {
                 OnePlusBanner(message, tone: .error) {
                     Button("Dismiss") { manager.errorBanner = nil }
@@ -217,12 +154,13 @@ struct DevSyncPairSettingsPage: View {
                     }
                 )
                 modeCard
-                section("Rules") { DevSyncRulesSection(configuration: binding) }
-                section("Activity") { DevSyncActivitySection(configuration: binding) }
-                section("Safety") { DevSyncSafetySection(configuration: binding) }
-                section("Power") { DevSyncPowerSection(configuration: binding) }
-                OnePlusSectionTitle("Danger")
-                dangerRow
+                DevSyncRulesSection(configuration: binding, title: "Rules")
+                DevSyncActivitySection(configuration: binding, title: "Activity")
+                DevSyncSafetySection(configuration: binding)
+                DevSyncPowerSection(configuration: binding)
+                Button("Remove Pair…", role: .destructive) { isConfirmingRemoval = true }
+                    .buttonStyle(OnePlusLinearButtonStyle(.destructive))
+                    .help("Files stay on both drives. The safety store is kept.")
             }
         }
         .onAppear { configuration = pair.configuration }
@@ -237,40 +175,10 @@ struct DevSyncPairSettingsPage: View {
     }
 
     private var modeCard: some View {
-        VStack(alignment: .leading, spacing: OnePlusMetrics.spacing[2]) {
-            OnePlusSectionTitle("Mode")
-            OnePlusCard {
-            VStack(alignment: .leading, spacing: 6) {
-                DevSyncValueRow(label: "Mode", value: pair.mode.displayName)
-                Text(pair.mode.summary)
-                    .onePlusText(.caption)
-                    .foregroundStyle(OnePlusColor.secondary)
-                    .fixedSize(horizontal: false, vertical: true)
-                DevSyncValueRow(label: "Internal root", value: pair.internalRoot.path)
-                DevSyncValueRow(label: "External root", value: pair.externalRoot.path)
-            }
-                .padding(OnePlusMetrics.cardPadding)
-            }
-        }
-    }
-
-    private var dangerRow: some View {
-        HStack(spacing: 8) {
-            VStack(alignment: .leading, spacing: 2) {
-                Text("Remove this pair")
-                    .onePlusText(.row)
-                    .help("Files stay on both drives. The safety store is kept.")
-            }
-            Spacer(minLength: 8)
-            Button("Remove Pair…", role: .destructive) { isConfirmingRemoval = true }
-                .controlSize(.small)
-        }
-    }
-
-    private func section<Content: View>(_ title: String, @ViewBuilder content: () -> Content) -> some View {
-        VStack(alignment: .leading, spacing: 8) {
-            OnePlusSectionTitle(title)
-            OnePlusCard { content().padding(OnePlusMetrics.cardPadding) }
+        OnePlusLinearAppletSection("Mode") {
+            OnePlusLinearAppletRow(pair.mode.displayName, detail: pair.mode.summary) { EmptyView() }
+            OnePlusLinearAppletRow("Internal root") { LinearCaption(pair.internalRoot.path, monospaced: true) }
+            OnePlusLinearAppletRow("External root") { LinearCaption(pair.externalRoot.path, monospaced: true) }
         }
     }
 }
@@ -286,19 +194,14 @@ private struct DevSyncSafetySection: View {
     }
 
     var body: some View {
-        VStack(alignment: .leading, spacing: 8) {
+        OnePlusLinearAppletSection("Safety") {
             StepperField(label: "Keep overwritten files", value: $configuration.safety.retainOverwritesDays, range: 0...365, format: .number, suffix: "days")
             StepperField(label: "Keep deleted files", value: $configuration.safety.retainDeletesDays, range: 0...365, format: .number, suffix: "days")
             StepperField(label: "Keep resolved conflicts", value: $configuration.safety.retainResolvedConflictsDays, range: 0...365, format: .number, suffix: "days")
             StepperField(label: "Free space reserve", value: reserveGigabytes, range: 0...512, format: .number, suffix: "GB")
-            Toggle("Protect destination changes", isOn: $configuration.safety.protectDestinationDrift)
-                .frame(maxWidth: .infinity)
-            Toggle("Repair missing links automatically", isOn: $configuration.safety.autoRepairMissingLinks)
-                .frame(maxWidth: .infinity)
+            RSyncSwitchRow("Protect destination changes", isOn: $configuration.safety.protectDestinationDrift)
+            RSyncSwitchRow("Repair missing links automatically", isOn: $configuration.safety.autoRepairMissingLinks)
         }
-        .toggleStyle(OnePlusSwitchStyle())
-        .controlSize(.small)
-        .frame(maxWidth: .infinity, alignment: .leading)
     }
 }
 
@@ -306,15 +209,10 @@ private struct DevSyncPowerSection: View {
     @Binding var configuration: DevSyncConfiguration
 
     var body: some View {
-        VStack(alignment: .leading, spacing: 8) {
-            Toggle("Pause in Low Power Mode", isOn: $configuration.power.pauseOnLowPowerMode)
-                .frame(maxWidth: .infinity)
-            Toggle("Large transfers require power", isOn: $configuration.power.largeTransfersRequirePower)
-                .frame(maxWidth: .infinity)
+        OnePlusLinearAppletSection("Power") {
+            RSyncSwitchRow("Pause in Low Power Mode", isOn: $configuration.power.pauseOnLowPowerMode)
+            RSyncSwitchRow("Large transfers require power", isOn: $configuration.power.largeTransfersRequirePower)
         }
-        .toggleStyle(OnePlusSwitchStyle())
-        .controlSize(.small)
-        .frame(maxWidth: .infinity, alignment: .leading)
     }
 }
 

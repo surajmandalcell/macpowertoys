@@ -73,9 +73,7 @@ struct RemoteBrowserView: View {
         let upload: (() -> Void)? = isBusy || manager.client == nil ? nil : { chooseUpload() }
         let preview: (() -> Void)? = canQuickLook ? { quickLookSelection(selection) } : nil
         let copy: (() -> Void)? = selection.isEmpty || isBusy ? nil : { copyPaths(selection) }
-        return OnePlusPage(scrolls: false) {
-            header
-        } content: {
+        return RSyncFixedPane {
             contentArea
         }
         .quickLookPreview($previewURL)
@@ -121,29 +119,30 @@ struct RemoteBrowserView: View {
         RemoteFolderName.error(for: newFolderName) ?? "Create this folder in \(remote.name):\(path)."
     }
 
-    // MARK: Header
+    // MARK: Toolbar
 
-    private var header: some View {
-        OnePlusPageHeader(title: remote.displayName, subtitle: remote.typeLabel) {
-            Button("Upload") { chooseUpload() }
-                .buttonStyle(OnePlusButtonStyle(.neutral))
-                .disabled(isBusy || manager.client == nil)
-                .help("Drag files and folders from Finder. Save or export Mail and Photos items as local files first.")
-            Button("New Folder") {
-                newFolderName = ""
-                folderCreationError = nil
-                isShowingNewFolder = true
-            }
-            .buttonStyle(OnePlusButtonStyle(.neutral))
-            .disabled(isBusy || manager.client == nil)
-            Button { Task { await load() } } label: { Label("Refresh", systemImage: "arrow.clockwise") }
-                .buttonStyle(OnePlusButtonStyle(.ghost))
-                .disabled(isBusy || manager.client == nil)
-            OnePlusMenuButton("More remote actions", variant: .borderedIcon, items: [
-                .item(.init("Remote Settings…") { isShowingSettings = true }),
-                .item(.init("Clean Up by Ignore Rules…") { isShowingCleanup = true })
-            ])
+    @ViewBuilder
+    private var actions: some View {
+        LinearCaption(entries.count == 1 ? "1 item" : "\(entries.count) items")
+        OnePlusLinearIconButton(systemImage: "arrow.clockwise", help: "Refresh", size: OnePlusLinearMetrics.toolbarButton) {
+            Task { await load() }
         }
+        .disabled(isBusy || manager.client == nil)
+        OnePlusMenuButton("More remote actions", variant: .borderedIcon, items: [
+            .item(.init("Remote Settings…") { isShowingSettings = true }),
+            .item(.init("Clean Up by Ignore Rules…") { isShowingCleanup = true })
+        ])
+        Button("New Folder") {
+            newFolderName = ""
+            folderCreationError = nil
+            isShowingNewFolder = true
+        }
+        .buttonStyle(OnePlusLinearButtonStyle(.soft))
+        .disabled(isBusy || manager.client == nil)
+        Button("Upload") { chooseUpload() }
+            .buttonStyle(OnePlusLinearButtonStyle(.soft))
+            .disabled(isBusy || manager.client == nil)
+            .help("Drag files and folders from Finder. Save or export Mail and Photos items as local files first.")
     }
 
     private var breadcrumbs: some View {
@@ -152,15 +151,15 @@ struct RemoteBrowserView: View {
                 breadcrumbButton(isCurrent: pathComponents.isEmpty, destination: "") {
                     HStack(spacing: 5) {
                         Image(systemName: remote.icon)
-                            .onePlusText(.caption)
+                            .font(.system(size: OnePlusLinearMetrics.caption))
                         Text(remote.name)
                     }
                 }
 
                 ForEach(pathComponents.indices, id: \.self) { index in
                     Image(systemName: "chevron.right")
-                        .onePlusText(.caption)
-                        .foregroundStyle(OnePlusColor.muted)
+                        .font(.system(size: OnePlusLinearMetrics.caption))
+                        .foregroundStyle(OnePlusLinearColor.muted)
 
                     let isCurrent = index == pathComponents.count - 1
                     breadcrumbButton(
@@ -185,8 +184,8 @@ struct RemoteBrowserView: View {
             navigate(to: destination)
         } label: {
             label()
-                .onePlusText(isCurrent ? .cardTitle : .row)
-                .foregroundStyle(isCurrent ? AnyShapeStyle(OnePlusColor.ink) : AnyShapeStyle(OnePlusColor.secondary))
+                .font(.system(size: OnePlusLinearMetrics.body, weight: isCurrent ? .medium : .regular))
+                .foregroundStyle(isCurrent ? OnePlusLinearColor.ink : OnePlusLinearColor.secondary)
                 .lineLimit(1)
                 .contentShape(Rectangle())
         }
@@ -197,21 +196,19 @@ struct RemoteBrowserView: View {
     // MARK: Content
 
     private var contentArea: some View {
-        VStack(spacing: OnePlusMetrics.cardGap) {
+        VStack(spacing: OnePlusLinearMetrics.sectionGap) {
             if let folderCreationError {
                 OnePlusBanner(folderCreationError, tone: .error) {
                     Button("Dismiss") { self.folderCreationError = nil }
                 }
             }
 
-            HStack(spacing: OnePlusMetrics.spacing[3]) {
+            RSyncPageToolbar {
                 breadcrumbs
-                Spacer(minLength: OnePlusMetrics.spacing[2])
-                Text(entries.count == 1 ? "1 item" : "\(entries.count) items")
-                    .onePlusText(.mono)
+            } trailing: {
+                actions
             }
-            .frame(height: OnePlusMetrics.controlHeight)
-            OnePlusCard {
+            OnePlusLinearList {
                 ZStack {
                     if isLoading {
                         ProgressView()
@@ -312,7 +309,7 @@ struct RemoteBrowserView: View {
     private func errorState(_ message: String) -> some View {
         OnePlusEmptyState(message, systemImage: "exclamationmark.triangle") {
             Button("Retry") { Task { await load() } }
-                .buttonStyle(OnePlusButtonStyle(.neutral))
+                .buttonStyle(OnePlusLinearButtonStyle(.soft))
         }
     }
 

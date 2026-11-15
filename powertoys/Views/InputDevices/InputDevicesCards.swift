@@ -73,30 +73,21 @@ struct InputDeviceCard: View {
     @ViewBuilder
     var body: some View {
         if device == nil {
-            OnePlusCardHeader("No \(kind.rawValue.lowercased()) detected", systemImage: kind.icon)
+            OnePlusLinearAppletGroup {
+                OnePlusLinearAppletRow("No \(kind.rawValue.lowercased()) detected") { EmptyView() }
+            }
         } else {
             deviceContent
         }
     }
 
     private var deviceContent: some View {
-        OnePlusCard {
-            OnePlusCardHeader(device?.name ?? kind.rawValue, systemImage: kind.icon) {
-                InputStateLabel(state: device == nil ? .disabled : state)
+        OnePlusLinearAppletSection(device?.name ?? kind.rawValue) {
+            OnePlusLinearAppletRow("Control") { InputStateLabel(state: state) }
+            ForEach(rows, id: \.label) { row in
+                OnePlusLinearAppletRow(row.label, value: row.value)
             }
-            VStack(spacing: 0) {
-                ForEach(rows, id: \.label) { row in
-                    OnePlusKeyValueRow(
-                        row.label,
-                        value: row.value,
-                        monospaced: row.monospaced
-                    )
-                    .onePlusRowHover()
-                }
-                OnePlusKeyValueRow("Scroll profile", value: profile.enabled ? "Enabled" : "Off")
-                    .onePlusRowHover()
-            }
-            .padding(OnePlusMetrics.cardPadding)
+            OnePlusLinearAppletRow("Scroll profile", value: profile.enabled ? "Enabled" : "Off")
         }
     }
 
@@ -167,19 +158,11 @@ struct InputKeyboardCard: View {
     @State private var details = InputKeyboardDetails(keyRepeat: nil, standardFunctionKeys: nil)
 
     var body: some View {
-        OnePlusCard {
-            OnePlusCardHeader("Keyboard", systemImage: "keyboard") {
-                OnePlusStatus("System managed", state: .online)
-            }
-            VStack(spacing: 0) {
-                OnePlusKeyValueRow("Connection", value: "Managed by macOS")
-                    .onePlusRowHover()
-                OnePlusKeyValueRow("Key repeat", value: details.keyRepeat)
-                    .onePlusRowHover()
-                OnePlusKeyValueRow("Function keys", value: details.functionKeys)
-                    .onePlusRowHover()
-            }
-            .padding(OnePlusMetrics.cardPadding)
+        OnePlusLinearAppletSection("Keyboard") {
+            OnePlusLinearAppletRow("Control") { OnePlusStatus("System managed", state: .online) }
+            OnePlusLinearAppletRow("Connection", value: "Managed by macOS")
+            OnePlusLinearAppletRow("Key repeat", value: details.keyRepeat)
+            OnePlusLinearAppletRow("Function keys", value: details.functionKeys)
         }
         .task {
             let loaded = await Task.detached(priority: .utility) {
@@ -201,7 +184,7 @@ struct InputScrollProfileCard: View {
     @ViewBuilder
     var body: some View {
         if isExpanded == nil {
-            OnePlusCard { profileContent }
+            linearContent
         } else {
             profileContent
                 .environment(\.onePlusCardPadding, 0)
@@ -231,6 +214,44 @@ struct InputScrollProfileCard: View {
                 settingRows
             }
         }
+    }
+
+    /// The v15 window and main-page form; the menu panel keeps the collapsible v14 rows.
+    private var linearContent: some View {
+        OnePlusLinearAppletSection(title) {
+            OnePlusLinearAppletRow("Use this profile", detail: deviceDetail) {
+                Toggle("Use \(title.lowercased()) profile", isOn: $profile.enabled).toggleStyle(OnePlusLinearSwitchStyle())
+            }
+            .help("Apply this profile to \(title.lowercased()) scroll events.")
+            OnePlusLinearAppletRow("Direction") {
+                OnePlusLinearSelect(choices: [(false, "System"), (true, "Reversed")], selection: $profile.reverseVertical,
+                                    accessibilityLabel: "\(title) scroll direction")
+            }
+            .help("Keep the macOS scroll direction or reverse it.")
+            .disabled(!profile.enabled)
+            OnePlusLinearAppletSliderRow("Scroll speed", value: $profile.speed, in: 0.35...3, step: 0.05) {
+                $0.formatted(.number.precision(.fractionLength(2)))
+            }
+            .help("Multiply every scroll delta from this device type.")
+            .disabled(!profile.enabled)
+            linearSwitch("Horizontal scrolling", "\(title) horizontal scrolling", $profile.horizontalEnabled,
+                         help: "Pass horizontal scroll events through.", enabled: profile.enabled)
+            linearSwitch("Reverse horizontal", "\(title) reverse horizontal", $profile.reverseHorizontal,
+                         help: "Invert left and right scrolling.", enabled: profile.enabled && profile.horizontalEnabled)
+            linearSwitch("Shift scrolls sideways", "\(title) Shift scrolls sideways", $profile.shiftScrollsHorizontally,
+                         help: "Hold Shift and use the wheel to move sideways.", enabled: profile.enabled && profile.horizontalEnabled)
+            linearSwitch("Smoothing", "\(title) smoothing", $profile.smooth,
+                         help: "Split a coarse wheel notch into smaller steps.", enabled: profile.enabled)
+        }
+    }
+
+    private func linearSwitch(_ label: String, _ accessibilityLabel: String, _ isOn: Binding<Bool>, help: String,
+                              enabled: Bool) -> some View {
+        OnePlusLinearAppletRow(label) {
+            Toggle(accessibilityLabel, isOn: isOn).toggleStyle(OnePlusLinearSwitchStyle())
+        }
+        .help(help)
+        .disabled(!enabled)
     }
 
     @ViewBuilder
