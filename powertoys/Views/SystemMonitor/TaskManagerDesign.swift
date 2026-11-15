@@ -271,12 +271,7 @@ struct TaskManagerHistoryChart: View {
                 y: size.height - CGFloat((min(max(value, range.lowerBound), range.upperBound) - range.lowerBound) / span) * size.height
             )
         }
-        if fills {
-            var area = Path()
-            area.move(to: CGPoint(x: points[0].x, y: size.height))
-            append(points, to: &area)
-            area.addLine(to: CGPoint(x: size.width, y: size.height))
-            area.closeSubpath()
+        if fills, let area = ditherArea(points: points, size: size) {
             context.withCGContext { cg in
                 cg.saveGState()
                 cg.addPath(area.cgPath)
@@ -307,6 +302,18 @@ struct TaskManagerHistoryChart: View {
                 with: .color(color)
             )
         }
+    }
+
+    // A zero-area clip (a flat series at the floor) makes the dither pattern layer allocate an unbounded bitmap.
+    func ditherArea(points: [CGPoint], size: CGSize) -> Path? {
+        guard let first = points.first else { return nil }
+        var area = Path()
+        area.move(to: CGPoint(x: first.x, y: size.height))
+        append(points, to: &area)
+        area.addLine(to: CGPoint(x: size.width, y: size.height))
+        area.closeSubpath()
+        let bounds = area.boundingRect
+        return bounds.isEmpty || !bounds.width.isFinite || !bounds.height.isFinite ? nil : area
     }
 
     private func append(_ points: [CGPoint], to path: inout Path) {

@@ -629,6 +629,17 @@ final class SystemMonitorTests: XCTestCase {
     }
 
     @MainActor
+    func testHistoryChartSkipsDitherForZeroAreaSeries() {
+        let size = CGSize(width: 320, height: 72)
+        let floor = [CGPoint(x: 0, y: 72), CGPoint(x: 160, y: 72), CGPoint(x: 320, y: 72)]
+        XCTAssertNil(TaskManagerHistoryChart(values: [0, 0, 0]).ditherArea(points: floor, size: size))
+        XCTAssertNil(TaskManagerHistoryChart(values: [0, 0, 0], stepped: true).ditherArea(points: floor, size: size))
+        XCTAssertNil(TaskManagerHistoryChart(values: []).ditherArea(points: [], size: size))
+        let live = [CGPoint(x: 0, y: 72), CGPoint(x: 320, y: 36)]
+        XCTAssertNotNil(TaskManagerHistoryChart(values: [0, 50]).ditherArea(points: live, size: size))
+    }
+
+    @MainActor
     func testHistoryChartsStayInsideTheirRequestedPlotHeight() throws {
         let margin: CGFloat = 24
         for scheme in [ColorScheme.dark, .light] {
