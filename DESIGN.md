@@ -106,15 +106,21 @@ version 15. Do not restyle a view ahead of that version.
 
 - Main window and the app in general: Linear style. Compact rows, 13 pt
   type, quiet borders, small sidebar icons, no texture. The All, Enabled,
-  and Favorites filter leaves the page body; its place in the header is
-  open.
-- Menu-bar panel: Linear style mixed with the data-first style. A
-  two-column bento grid, a few top processes, more color on data, and real
-  buttons at the bottom in place of keyboard hints. The layout is open.
+  and Favorites filter becomes text tabs with counts in the pane toolbar,
+  after the page title; the body has no filter and the pane has no second
+  search field. Open: tabs on the left or the right, a "get more tools"
+  action, and where new tools are announced.
+- Menu-bar panel: Linear style mixed with the data-first style. The
+  metric tiles are the two-column bento (CPU, GPU, Memory, Disk, Battery,
+  Network, each with its color and history). The rest is the compact
+  list: the Fan and Kwake rows, three top processes, real action buttons,
+  and the footer with Open App. Open: how a process row shows its
+  percentage, and the look of the action buttons.
 - Task Manager: moves to its own product, Task Manager X
   (`../task_manager_x`, one repository): a paid advanced app with the
   Windows 11 Task Manager organization in Linear style, and a free classic
-  app. Its decisions live in that repository's `specs/product.md`.
+  app. Its decisions live in that repository's `specs/product.md`. The
+  tool is still in MacPowerToys; when and how much of it leaves is open.
 - Rejected: the first round of ten look mockups (placeholder icons).
 
 ## Overview
