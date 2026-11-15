@@ -177,6 +177,21 @@
   `check-routes.py`. In current signed source, verify foreground app identity
   after a background open, then test user launch and capture in isolation.
 
+## Settings Route Opens The Overlay
+
+- **Symptom:** `run/ruler.settings` opened the ruler overlay, no route closed
+  it, and the idle app used about 1.3 percent CPU.
+- **Cause:** The settings action called the open path that creates and shows
+  rulers. The close-window route rejected `ruler`. The visible overlay ran its
+  30 Hz timer.
+- **Invariant:** A background `ruler.settings` route only attaches to an
+  existing ruler. It never creates, shows, or reorders one.
+  `diagnostics/close-window/ruler` closes the ruler scope. A malformed run
+  route logs "Unknown action route".
+- **Check:** Run
+  `FreeRulerCoreTests.testBackgroundRulerSettingsRouteNeverCreatesOrShowsRulerOverlay`.
+  Sample the idle app for 90 s. CPU stays near 0 percent.
+
 ## Ruler Launch Ownership
 
 - **Symptom:** A ruler opens when MacPowerToys starts, or the launcher opens a

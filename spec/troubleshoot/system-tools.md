@@ -1,522 +1,38 @@
 # System Tools Troubleshooting
 
-## Compact Panel Metrics And Duplicate Facts, Run 68, 2026-10-01
+NetToys, Input Devices, System Cleaner with Mole, and shared background
+resource rules. Task Manager, Fan, and Remote Stats are in
+[Task Manager](task-manager.md). `DESIGN.md` owns every size and color.
 
-- **Symptom:** Startup disk metrics lose digits or units. Memory shrinks
-  beside its capacity. Disk and Battery repeat facts from their heroes.
-- **Cause:** Precise decimal strings exceed narrow columns. The Memory
-  caption competes with its metric. Detail rows copy hero values.
-- **Invariant:** Compact System Care values use at most one decimal digit
-  and fixed 27pt metrics with separate units. Help retains full byte counts.
-  Memory capacity uses a separate line within the same 70pt tile. CPU,
-  GPU and Memory retain equal metric size and the lower history band.
-  Disk details retain Read/Write. Battery retains reported cycles and power.
-  Preserve stale and unavailable facts. Omit an empty details card.
-- **Check:** `53b31541` passes compact capacity and width checks.
-  `517c5593` passes all 62 Task Manager tests, including both-appearance
-  digit paint, unique detail facts, stale data and missing data.
-  The app and both test bundles compile. Installed review remains open.
-  Report: `tmp/redesign/logs/w10-fix17-panels.md`.
+## Local Unit Tests Must Not Activate The App
 
-## Compact Card Insets And Disk Metadata, Run 68, 2026-10-01
-
-- **Symptom:** Compact headers and controls use 12pt horizontal insets.
-  Disk Available and Used stack labels above their values. Reorder help
-  stays visible beside the Menu bar items heading.
-- **Cause:** The shared card default changes with density. Custom rows copy
-  that old inset. Disk metadata uses vertical stacks.
-- **Invariant:** Card headings, settings and custom information rows use
-  the shared 16pt horizontal token in both densities. Keep explicit 12pt
-  detail-chart labels and legends. Disk pairs share the first text baseline,
-  use 6pt within each pair and 20pt between pairs, and end at x1048.
-  Keep 40pt headers, 44pt settings and 33/34pt table geometry. Put reorder
-  help on its handle and retain keyboard actions and accessibility hints.
-- **Check:** Shared `68c91bf` passes the compact heading/control geometry
-  test. App `aecfb5b7` aligns information and remote rows, Disk metadata and
-  handle help. Six focused package checks and both compile batches pass.
-  The orchestrator owns the shared tag bump, installation and real controls.
-  Report: `tmp/redesign/logs/w10-fix17-main.md`.
-
-## Local Unit Tests Activate The App, 2026-10-01
-
-- **Symptom:** The guarded local run aborts when FocusEffectTests starts.
-- **Cause:** `testKeyNotificationKeepsAnActiveTextEditor` calls NSApp.activate
-  and makeKeyAndOrderFront. The wrapper detects Orca changing to MacPowerToys.
-- **Invariant:** Preserve the owner's foreground app. Use offscreen native
-  focus fixtures for unit checks. Keep tests that require activation in an
-  isolated account or VM. Never remove the wrapper's foreground guard.
-- **Check:** Run 63 records 475 passes, 5 skips, and no assertion failures
-  before exit 4. No retry runs. Further activation paths occur in
-  SystemMonitorTests and TrayPopoverLayoutTests. The orchestrator must separate
-  those cases before completing local execution. Log:
-  `tmp/redesign/logs/local-tests-app.log`.
-
-Run 64 replaces explicit activation in FocusEffectTests, SystemMonitorTests,
-and TrayPopoverLayoutTests with offscreen native fixtures. FanControlTests
-uses offscreen orderBack; the Ruler presentation spy also stops key ordering.
-The unit host prohibits activation and skips Main launch and reopen. Both
-desktop bundles compile. The guarded run stops before execution when Chrome
-changes to the League client. Zero unit tests execute, with zero recorded
-assertion failures. Completion waits for the orchestrator's stable desktop.
-Report: `tmp/redesign/logs/w8-tests-quiet.md`.
-
-## System Monitor Fan Control Packaging
-
-- **Symptom:** Quit blocks on a synchronous Fan queue or clears manual
-  ownership before Auto is confirmed. A pending manual callback may also
-  replace the exit result.
-- **Cause:** The restore path waits with controlQueue.sync and reports no
-  asynchronous failure to the quit coordinator.
-- **Invariant:** Await restoreAutomaticOnExit() async throws. Queue Auto
-  after all already selected presets through the existing bounded writer.
-  Block selections during restore, keep ownership until success, invalidate
-  old reads and callbacks, and propagate failure so termination can cancel.
-- **Check:** FanControlTests covers ordering, awaited completion, failure,
-  and retry. The actual-service fake-writer CLI check passes. No Fan helper
-  or app was executed on this desktop; real hardware remains open.
-
-- **Symptom:** Fan controls direct users to install `smctl` and a second helper
-  even though MacPowerToys already bundles a signed background service.
-- **Cause:** Fan writes used an external CLI while the built-in SMC reader was
-  read-only.
-- **Reference check:** The installed Mole app declares
-  `com.tw93.MoleApp.systemhelper` in `SMPrivilegedExecutables` and installs that
-  helper in `/Library/PrivilegedHelperTools`. Its simpler setup does not remove
-  the privileged-write requirement.
-- **Invariant:** Monitor Sensors alone owns Fan UI
-  and polling; other Monitor pages do not. The signed
-  MacPowerToys daemon accepts only Auto, Cool, or Max from the signed app,
-  validates supported SMC keys and hardware maximum RPM, and restores Auto on
-  a failed write or normal app exit. Setup may register the bundled service;
-  macOS still owns Background App Activity approval. Check the running daemon's
-  source stamp so an old helper is updated before the new XPC method is used.
-- **Check:** Compile app and helper, verify XPC signing requirements and
-  bounded preset/encoding tests, then test approval, maximum, and Auto on an
-  isolated Mac. Never approve a system prompt on the owner's desktop.
-
-## Fan Stays Forced After The App Dies
-
-- **Symptom:** Cool or Max stayed forced after a crash, force quit, or SIGKILL.
-  A failed Cool revert still showed "Auto in 10 minutes".
-- **Cause:** The helper did not track clients, and the in-process revert
-  ignored its result.
-- **Invariant:** The helper writes Auto when the connection that set a manual
-  mode ends (`FanManualLease`). The app holds that connection only while the
-  mode is manual. A failed revert retries 3 times, then shows an error. The
-  helper-commit poll backs off. A disabled Kwake refuses external actions.
-- **Check:** `FanControlTests` lease test. Then, with the new helper approved,
-  set Max, send SIGKILL, and confirm Auto returns on real hardware.
+- **Symptom:** The guarded local run aborts when a test starts.
+- **Cause:** Tests called `NSApp.activate` or `makeKeyAndOrderFront`.
+- **Invariant:** Preserve the owner's foreground app. Unit checks use
+  offscreen native fixtures and presentation spies. The unit host prohibits
+  activation and skips Main launch and reopen. Tests that need activation
+  run only in an isolated account. Never remove the wrapper's foreground
+  guard.
+- **Check:** `tmp/redesign/tools/xtest.sh` runs to the end with the owner's
+  app in front.
 
 ## NetToys
 
-### Scanner Reverse DNS Deadline
+### Product Scope And Helper
 
-- **Symptom:** One local listener scan streamed its HTTP server field, but the
-  complete scan waited 35.1 seconds for an unresolved hostname on the hosted
-  Mac.
-- **Cause:** Blocking `getnameinfo` had no deadline and held the host task open.
-- **Invariant:** Query the system DNS responder for a PTR record with a
-  1.5-second deadline, accept only bounded valid name data, and publish
-  protocol fields while the hostname query runs.
-- **2026-10-02:** No local host had a name. The system resolvers were 1.1.1.1
-  and Tailscale, which cannot answer PTR for 192.168.x.x; the router can
-  (`dig -x 192.168.1.4 @192.168.1.1` returns `PB-iphone.bbrouter`). For an
-  address in the active subnet, fall back to a bounded UDP PTR query to the
-  default gateway, then to multicast DNS. A live /24 scan named all four
-  responding hosts.
-- **Check:** Hosted run `36096121530` passes the streaming and malformed PTR
-  checks; the same one-host fixture completes in 1.57 seconds. Confirm real
-  network hostnames in the final signed app.
+- **Symptom:** NetToys uses generic network tests, or the helper outlives a
+  disabled tool.
+- **Invariant:** The destinations are IP Scanner, SSH Anchor, Network
+  History, and Wi-Fi Priority. IP Scanner implements Angry IP Scanner
+  behavior independently, without GPL source. Network History stores
+  reachability transitions, not every probe. Enabling NetToys registers its
+  bundled login helper; disabling it stops monitoring and unregisters the
+  helper.
+- **Check:** Exercise all four destinations. Enable NetToys, quit
+  MacPowerToys, and confirm the helper continues. Disable NetToys and
+  confirm the helper exits and is unregistered.
 
-- **Symptom:** The NetToys tray tab shows only switches, so current anchor,
-  Wi-Fi priority, and network issue state requires opening the full app.
-- **Cause:** The compact surface had no persistent progressive disclosure.
-- **Invariant:** SSH Anchor, Wi-Fi Priority, and Network History each have an
-  independent disclosure state stored in app preferences. Expanded sections
-  show at most five items: most recently checked anchors, Wi-Fi networks in
-  priority order, or newest outage events. Each section routes to its matching
-  full NetToys page. Each disclosure button owns one full-width content shape
-  with 6pt horizontal and vertical padding, so hover, press, and keyboard focus
-  cover the complete target instead of only its icon and text. Configuration
-  and helper-status refreshes must not collapse an expanded section. The tray
-  reads existing files once and owns no poller.
-- **Check:** Expand each section, save each configuration type, reopen the tray,
-  and confirm all three states remain. Confirm every list is capped at five and
-  its full-page route selects the matching destination.
-
-## NetToys Scanner Imports
-
-- **Symptom:** A target list with a full-line `#` comment treats the comment as
-  a hostname, a large file can stall the scanner window, and oversized IPv4
-  ranges report a generic invalid-target error.
-- **Cause:** `split` omitted the empty prefix before `#`; file reads and JSON
-  decoding ran without a byte limit on the main actor; the target parser
-  discarded the IPv4 address-limit error while trying hostname parsing.
-- **Invariant:** Strip comments before parsing. Bound target lists to 2 MiB,
-  saved scan files to 32 MiB, and target entries to the resolver limit. Parse
-  and decode selected files off the main actor. Keep Scan and other imports
-  disabled until the current import finishes, and report a precise error.
-- **Check:** Import a mixed IPv4, hostname, and commented target list; reject
-  an oversized file and invalid UTF-8; require the address and hostname limits
-  to report the same target-limit error. Confirm the scanner remains responsive
-  during a selected-file import.
-
-## NetToys History Loading
-
-- **Symptom:** Opening NetToys, its launcher settings, or the tray tab stalls
-  while saved network and scanner history loads, and the history page hitches
-  again on its periodic refresh. Recent scans can say "No saved scans" when
-  archived runs exist outside the selected period.
-- **Cause:** `NetToysHistoryViewModel` read and decoded both JSON archives in
-  property initializers and repeated the same synchronous work on the main
-  actor every three seconds. The empty scan label used only the filtered rows,
-  which cannot distinguish an empty period from an empty archive.
-- **Invariant:** Model initialization performs no file I/O. Load one Sendable
-  history snapshot on a utility task, reject canceled results, and coalesce
-  overlapping refreshes. The view-owned task controls periodic work and is
-  canceled when its destination disappears. Use "No scans in this period"
-  for a nonempty archive with no visible runs. Reserve "No saved scans" for
-  an empty archive.
-- **Check:** The focused source regression rejects eager history and archive
-  initializers and requires the utility task. Open and close the settings,
-  history, and tray surfaces repeatedly; require responsive input, current
-  data after loading, and no accumulating refresh task or timer. Run
-  `testHistoryDistinguishesEmptyPeriodFromEmptyArchive` on hosted CI. It checks
-  an empty archive, an older run outside 24 hours, that run inside seven days,
-  and clearing the archive.
-
-## NetToys Location Prompt And Heavy-Tool Switching
-
-- **Symptom:** Returning to NetToys or System Monitor stalls the launcher, and
-  merely opening NetToys can show the Location permission prompt again.
-- **Cause:** SwiftUI retained the heavy-settings readiness state while the
-  selected tool changed, so the next heavy tree built synchronously. NetToys
-  also requested Location on appearance, refresh, and app activation whenever
-  Core Location still reported `notDetermined`.
-- **Invariant:** Key the settings subtree by tool ID so each heavy destination
-  starts with its cancellable loading shell and the old subtree is released.
-  Read the current Location status during refresh, but request authorization
-  only from the visible user action. An existing authorization performs no
-  request; denied or restricted access opens System Settings.
-- **Check:** Alternate NetToys and System Monitor repeatedly in the exact signed
-  app. Each click must respond immediately, the final selection must win, and
-  no Location dialog may appear until Allow Location Access is clicked.
-
-- **Symptom:** NetToys uses generic network tests or SSH tunnels instead of the
-  requested four-part product.
-- **Cause:** An earlier draft was mistaken for the final scope.
-- **Invariant:** Use IP Scanner, SSH Anchor, Network History, and Wi-Fi Priority
-  as the destinations. IP Scanner independently implements useful Angry IP
-  Scanner
-  behavior without GPL source. SSH Anchor monitors the selected SSH port every
-  2 to 3 seconds. When the current address stops answering, it scans only that
-  port on the default connection's local IPv4 subnet and identifies the device
-  by exact MAC, or by one unique first hostname label with learned MAC evidence.
-  Automatic setup inspects the selected SSH entry, retains both signals when
-  available, enables the anchor, and enables the helper in one action. It
-  adds one managed host-key policy during enrollment. When setup starts from an
-  IP Scanner result, the selected scan address overrides a stale `HostName` and
-  both changes use one atomic SSH config edit. Later recovery changes only the
-  selected `HostName` token and preserves every other SSH config byte.
-  Network History stores reachability transitions, not every probe. Enabling
-  NetToys registers and uses its bundled login helper. Disabling NetToys stops
-  monitoring and unregisters the helper.
-- **Check:** Exercise all four destinations. Compare the SSH config before and
-  after an address change and confirm that the one expected token is the only
-  changed byte range. Confirm automatic setup fills the detected evidence and
-  starts the helper. Start from a scanner address that differs from the SSH
-  entry, choose the entry, and confirm enrollment inspects and saves the scanner
-  address instead of the stale address. Change between Wi-Fi or wired
-  connections and confirm the default interface is scanned. Confirm ambiguous
-  recovery never writes. Enable NetToys, quit MacPowerToys, and confirm the
-  helper continues. Disable NetToys and confirm the helper exits and is no
-  longer registered.
-
-## SSH Anchor Host-Key Identity
-
-- **Symptom:** SSH reports an unknown host or a changed remote identification
-  after SSH Anchor changes an address, especially when local addresses are
-  reused by several devices.
-- **Cause:** OpenSSH looked up `known_hosts` by the changing `HostName` address,
-  so trust followed the DHCP slot instead of the enrolled device.
-- **Invariant:** Enrollment atomically prepends one managed policy for every
-  literal alias in the selected `Host` stanza. Use a stable, anchor-specific
-  `HostKeyAlias`, `StrictHostKeyChecking accept-new`, and `CheckHostIP no`.
-  OpenSSH accepts and stores the first key without a confirmation prompt, reuses
-  it across local and Tailscale address changes, and still rejects a real host
-  key change. The login helper migrates existing enabled anchors before probing.
-  Later recovery still changes only the selected `HostName` token.
-- **Check:** Resolve the prepared alias with `ssh -G` and confirm its host-key
-  alias stays fixed while `hostname` changes. Connect once, move the same server
-  to another address, and confirm no confirmation or changed-identification
-  warning appears. Present a different server key through the same anchor and
-  confirm SSH refuses it.
-
-## SSH Anchor Key Access
-
-- **Symptom:** SSH Anchor follows a Windows device to its new address, but
-  `ssh <alias>` asks for the account password again.
-- **Cause:** Host-key identity and user authentication are separate. SSH Anchor
-  prepared stable host trust but never installed the Mac public key on the
-  enrolled device. A password-authenticated connection can appear passwordless
-  only while OpenSSH reuses that live connection.
-- **Invariant:** Automatic enrollment checks key-only login. If the device
-  rejects the key, request the SSH password once in a secure app sheet, pass it
-  to system OpenSSH through a private one-use FIFO, and never store or log it.
-  Install the selected public key in the Windows user authorized-key file. For
-  an administrator account, also use the ProgramData administrator file and
-  restrict it to the Administrators and SYSTEM SIDs. Use `ssh-copy-id` for
-  Unix OpenSSH. Recheck with `BatchMode=yes` before recording success. Keep the
-  stable `HostKeyAlias`, so the verified key remains valid after every address
-  change. If the password sheet is dismissed, leave a quiet inline retry action
-  for that anchor; the key button also remains available. Never bypass a
-  changed host-key warning.
-- **Check:** Confirm key-only SSH fails before enrollment. Complete Automatic
-  enrollment, enter the password once, and confirm the app marks Key Access as
-  verified. Confirm the password is absent from process arguments, environment,
-  logs, and disk. Change the device address, wait for SSH Anchor recovery, and
-  confirm key-only SSH still succeeds. On Windows, verify the standard-user and
-  administrator paths and ACLs with separate test accounts.
-  Dismiss the password sheet and confirm the affected anchor shows the compact
-  retry notice, then use Retry and confirm the sheet reopens.
-
-## NetToys Scanner Persistence And MAC Addresses
-
-- **Symptom:** Scanner results disappear after changing destinations, or the
-  MAC column is empty or shows `02:00:00:00:00:00`.
-- **Cause:** The scanner view owned its model, so SwiftUI discarded the live
-  results with the destination. Completed scan archives were written but not
-  restored. On current macOS, direct routing-socket replies can scrub neighbor
-  hardware addresses even with Local Network permission. A child `arp`
-  process and an in-process neighbor-cache snapshot inherit the signed app's
-  privacy context. A system launch daemon is exempt from per-user Local
-  Network Privacy, but macOS requires explicit Background Item approval.
-- **Invariant:** The NetToys window owns the scanner model. Preserve live
-  results, selection, and sorting across destination changes. Restore the
-  latest completed run after relaunch, and persist target, ports, filter,
-  search, scanner preferences, columns, sort field and direction, openers,
-  favorites, and annotations.
-  Request Local Network access on use and show its state and recovery action in
-  Settings. Query the scoped routing socket and in-process `NET_RT_FLAGS`
-  snapshot first. If values are still missing, register the on-demand neighbor
-  daemon and show its Not Enabled, Needs Approval, Allowed, or Unavailable
-  state beside IP Scanner and in NetToys Settings. The daemon accepts no input
-  and returns only the raw snapshot over mutually code-signing-restricted XPC;
-  the app filters to the active interface and requested addresses. Do not tie
-  the snapshot to the app's exact source commit because an approved daemon can
-  remain alive across an app update. Never accept incomplete, all-zero, or
-  `02:00:00:00:00:00` values.
-- **Check:** Recreate the scanner model and confirm the latest archive and
-  selected sort field and direction load.
-  Change destinations and return, then quit and relaunch, confirming the result
-  remains. Deny Local Network access and confirm Settings offers recovery. In
-  the signed app, enable MAC Access, approve the Background Item when macOS
-  asks, and rescan a reachable neighbor. Compare it with `/usr/sbin/arp -an`
-  and confirm the same canonical MAC appears. Confirm the embedded daemon
-  plist, signatures, and XPC peer requirements match the final installed app.
-  Replace the app while the approved daemon remains alive, rescan, and confirm
-  its canonical MAC still appears. Confirm another interface and an
-  unrequested address are ignored.
-
-### Stale Neighbor Daemon Drops Every MAC, 2026-10-02
-
-- **Symptom:** No scan row had a MAC address, and phones with no open port
-  were listed as down, while Angry IP Scanner showed both.
-- **Cause:** On macOS 27 the `NET_RT_FLAGS`/`RTF_LLINFO` sysctl returns an
-  empty table to ordinary processes; only Apple's `arp` and root get it. The
-  root neighbor daemon had run since Sep 26. App reinstalls replaced its
-  binary, so the process failed its code-signing requirement
-  (`NSXPCConnectionCodeSigningRequirementFailure`, 4102) and the app dropped
-  its replies without a message.
-- **Invariant:** Both neighbor daemons exit 30 seconds after their last
-  connection closes, so launchd starts the installed binary next time.
-  `NetToysNeighborServiceManager` probes the daemon once per launch and
-  restarts it through `SMAppService` when the probe reports 4102. A local
-  address with a neighbor MAC counts as alive and gets a name lookup.
-- **Check:** Sign a probe tool as `com.surajmandal.macpowertoys` and call the
-  daemon over XPC; it must return bytes, not 4102. After an app reinstall,
-  the daemon PID must change. A /24 scan must list silent phones with MACs.
-
-### Own MAC And First Scan After Launch, 2026-10-02
-
-- **Symptom:** This Mac's row showed `02:00:00:00:00:00`. The first scan after
-  a relaunch listed no open ports or response times; the next scan did.
-- **Cause:** This Mac's ARP entry is routed through lo0, so filtering by
-  `rtm_index` dropped it, and `getifaddrs` returns the privacy placeholder to
-  apps. Right after launch, LAN connections fail at once while macOS is still
-  enabling Local Network access, so every TCP probe looked closed.
-- **Invariant:** Filter neighbor entries by the link-layer `sdl_index`, like
-  arp(8), and reject `02:00:00:00:00:00`. Before a scan, probe the gateway and
-  wait (at most three seconds) while it fails within 20 ms.
-- **Check:** Relaunch the installed app and click Scan at once: the router,
-  ShashiPC, and the ESP32 keep their ports, and this Mac shows its real MAC.
-
-### Scan Toolbar Layout Shift, 2026-10-02
-
-- **Symptom:** Choosing a preset or editing the target squeezed the target
-  field and moved every control in the Scan row.
-- **Cause:** The "Results are from … Scan to refresh." notice appeared inside
-  the row, the menu label changed to "Importing...", and Scan and Stop had
-  different widths.
-- **Invariant:** The row holds only fixed controls. The notice and import
-  state show in the results status bar. Scan and Stop share one width.
-
-## NetToys Helper Status Blocks Page Rendering
-
-- **Symptom:** NetToys Settings and Scanner stall before display. Other open
-  pages can also wait for these views to finish rendering.
-- **Cause:** Several labels and enabled states read `SMAppService.status`
-  through a computed property during body and layout. Signed `198055e4`
-  has 1,648 main-thread wait samples from the NetToys render paths.
-- **Invariant:** Keep one observed status snapshot. Coalesce refreshes and
-  read status on a utility task. Until the first result, show Checking.
-  Rendering must not query ServiceManagement. Enable and restart still read
-  current native state; cancel old refreshes and refresh after failed restart.
-- **Check:** The actual manager fixture verifies the pending state, one read
-  for overlapping refreshes, no read for repeated getters, and a new explicit
-  refresh. A computed-query mutation fails. Run
-  `tmp/redesign/perf/w1-windows/check-costs.py`. In the signed build, check
-  pending/final layout, every helper approval state, external Login Items
-  changes, Enable, restart failure, and the shared Task Manager Fan consumer.
-
-## NetToys Background Approval Recovery
-
-- **Symptom:** NetToys cannot be enabled, MAC Address Access says Needs
-  Approval, and Open Login Items is disabled.
-- **Cause:** The shared launcher disabled the complete settings body whenever a
-  tool was off. NetToys kept its macOS background-service recovery action in
-  that body, so the action needed to restore approval was unreachable.
-- **Invariant:** Keep NetToys Settings interactive while NetToys is off. When
-  macOS requires approval, direct the user to turn on every MacPowerToys entry
-  under Background App Activity because the login helper and neighbor daemon
-  are separate approved services. Other disabled tools keep their settings
-  bodies disabled.
-- **Check:** Disable NetToys and confirm Open Login Items remains enabled. Turn
-  on every MacPowerToys Background App Activity entry, return to the app, and
-  confirm NetToys enables, the login helper publishes a fresh heartbeat, and
-  MAC Address Access changes to Allowed.
-
-## NetToys Live Scanner Results
-
-- **Symptom:** The scan counter moves, but the result table stays unchanged
-  until the full network scan finishes. A selected-host rescan can also remove
-  every unselected row.
-- **Cause:** The scanner returned only a final result array. Hostname, protocol,
-  and neighbor enrichment all completed before the view model replaced its
-  table state.
-- **Invariant:** Publish each host after liveness and port probing, update that
-  row after hostname and optional protocol fetchers complete, then update it
-  again if MAC and vendor data arrive. Merge by IP address. A selected-host
-  rescan preserves unrelated rows. A full scan clears the prior run only after
-  target resolution succeeds. Ignore callbacks from a cancelled or superseded
-  scan. Keep comments in the visible table and every full-detail export.
-  NetBIOS information includes available workgroup, user, computer, and MAC
-  fields instead of returning only the first name.
-- **Check:** Scan a subnet with responsive and unresponsive hosts. Confirm rows
-  appear during the scan, later fields fill without row duplication, and live
-  shown and alive counts change. Rescan one selected host and confirm every
-  other row stays. Cancel and immediately start another scan, then confirm the
-  first scan cannot change the new table. Add a comment and confirm it appears
-  in the table and CSV, text, XML, SQL, and saved-result exports.
-
-### NetToys Scanner Active Target At Start
-
-- **Symptom:** The Scanner header and target field show the current subnet, but
-  a completed scan reports zero live hosts and its archive names an older
-  subnet.
-- **Cause:** The page refreshed its automatic target on an asynchronous task.
-  Scan could start first and capture the saved target, then the page replaced
-  the visible field with the current subnet while the old subnet was scanning.
-- **Invariant:** When the target follows the active network, resolve that
-  network again when Scan starts and use the same CIDR for target resolution,
-  the visible field, and the saved run. Explicit user targets remain unchanged.
-- **Check:** Start with a saved automatic target from another subnet and feed a
-  new active network at scan time. Confirm the selected and saved target use
-  the new CIDR. Feed down and live streamed rows into the presentation cache
-  and confirm its visible rows, live count, and open-port count update.
-
-### NetToys Restored Scan Target
-
-- **Symptom:** Scanner shows the current subnet and a completed zero-host run,
-  while the gateway is reachable. The supplied 11.8-second result was restored
-  from an older run on `192.168.0.255/24`, not `192.168.1.0/24`.
-- **Cause:** The model restored result rows and duration from the latest archive,
-  but discarded that run's target. The saved input and active-network refresh
-  then showed a different subnet without identifying the retained results.
-- **Invariant:** Keep the completed run's target with its rows and duration.
-  Show it in the fixed status footer. Updating the next scan's target does not
-  relabel or discard retained results. Clear completed metadata when probing
-  starts or results are imported; set it from the actual completed scan target.
-  Compare that target with the next scan input before showing scan advice.
-  A different target shows "Results are from <target>. Scan to refresh."
-  Keep this note and current-target no-hosts advice on one quiet toolbar row,
-  without a padded card. Filters and search must not restore the stale warning.
-- **Check:** The restoration regression changes the active network and verifies
-  that rows and the completed target still describe the archived run. Read the
-  archive's actual target, addresses, date, and duration before treating a still
-  as a new scan failure. A standalone comparison using the actual scanner actor
-  and probes found three live hosts on `192.168.1.0/24` in 11.3 seconds, including
-  gateway ports 80 and 443. Signed app privacy and a fresh scan remain separate
-  verification gates. Do not change probes based only on a restored result.
-  Run 69 NetToys commit `746abf9` passes all 100 package tests. Its focused
-  regression checks stale and current targets, an empty Alive filter, whitespace,
-  scanning, reachable rows, reset, and retained target, duration, and results.
-  Signed dark/light toolbar review remains with the orchestrator.
-
-## SSH Anchor Tailscale Fallback
-
-- **Symptom:** An SSH Anchor stops working away from its local network, or
-  repeatedly flips between a local and Tailscale address. Enabling Tailscale
-  can also report that its device list is unreadable even while Tailscale is
-  running.
-- **Cause:** The helper knew only the current local address and had no stable
-  remote identity or route hysteresis. Tailscale treats a child process without
-  `TERM` as a GUI launch, so a macOS app process received GUI error text instead
-  of JSON from `tailscale status --json`.
-- **Invariant:** Tailscale fallback is opt-in per anchor. Match an exact first
-  hostname label only during setup; if it is not unique, require the device
-  chooser. Persist the selected Tailscale node ID and refresh its endpoint by
-  that ID. Prefer the local endpoint, fall back after two local failures, and
-  return only after three verified local successes and a 30-second minimum
-  Tailscale dwell. Accept a cached local address only on the active subnet.
-  Apply the same route decision to newly discovered local candidates. Never
-  switch to a cached or discovered local endpoint unless the route monitor
-  returns `useLocal`.
-  Every route change uses the existing verified, atomic `HostName` update and
-  rollback path. Keep the existing bounded local-scan backoff and a 30-second
-  Tailscale retry gate. Initial peer matching must inspect the scanner-selected
-  local endpoint, not a stale address from the original SSH entry. Run the
-  Tailscale child with `TERM=dumb` so its documented JSON command stays in CLI
-  mode when launched by the signed app.
-- **Check:** Decode a legacy local-only anchor. Reject ambiguous labels and a
-  cached private address from another subnet. Confirm the two-failure,
-  three-success, and dwell thresholds. Change a peer IP while retaining its
-  node ID and confirm endpoint refresh. In the signed app, inspect the per-row
-  Tailscale checkbox and chooser. Confirm enabling it reads the device list and
-  saves the selected node without an unreadable-list error, then exercise
-  fallback and local recovery with a disposable SSH host.
-
-## Wi-Fi Priority Failover
-
-- **Symptom:** A failed Wi-Fi connection stays active even when another saved
-  network or the Mac's Instant Hotspot fallback is available.
-- **Cause:** Network History measured outages but had no ordered failover
-  configuration or switching policy.
-- **Invariant:** Wi-Fi Priority stores an ordered list of saved SSIDs without
-  passwords. Automatic failover is off until at least two SSIDs are configured.
-  Failover needs Internet access AND the gateway to fail for at least 30
-  seconds. Then scan nearby SSIDs and join the next saved network in order,
-  trying each saved network once (see "NetToys Helper And Pages"). Keep
-  Instant Hotspot as the final
-  system-managed fallback and open Wi-Fi Settings for its Auto-Join setting.
-  Do not claim that the app can invoke Instant Hotspot through a public API.
-- **Check:** Confirm legacy configuration decodes with failover off. Confirm the
-  failover tests stay idle before 30 seconds of combined failure, attempt after
-  it, and try each saved network once.
-  In the signed installed app, confirm the page lists saved SSIDs, keeps the
-  switch disabled with fewer than two rows, and shows Instant Hotspot last.
-
-## NetToys Helper And Pages
+### NetToys Helper And Pages
 
 - **Symptom:** Wi-Fi Priority left a working network after a few failed HTTPS
   checks and kept rotating. The helper and pages polled files and processes
@@ -534,156 +50,238 @@ Report: `tmp/redesign/logs/w8-tests-quiet.md`.
   take the gateway down for 30 seconds, run a /24 scan, and check the helper
   under launchd.
 
-## Network History Identity
+### Helper Status And Background Approval
 
-- **Symptom:** Wi-Fi changes are reported as changes between `en0` and private
-  gateway addresses instead of changes between Wi-Fi network names.
-- **Cause:** The recorder used `interface | gateway` as the primary identity and
-  treated SSID as an optional label.
-- **Invariant:** Use SSID as the Wi-Fi identity. A gateway change on the same
-  SSID is not a network change. If SSID is temporarily unavailable, wait for a
-  known SSID instead of inferring a change from its private gateway. Use
-  only the SSID in visible labels when it is available. Use
-  `interface | gateway` only as the wired or unavailable-SSID fallback. Migrate
-  legacy events by their exact `interface + gateway` pair only when that pair
-  maps to one unambiguous stored or current SSID; otherwise retain the fallback.
-- **Check:** Change the gateway while SSID stays fixed and confirm no network
-  event. Change SSID with the same gateway and confirm one SSID-only event.
-  Confirm every visible label shows only that SSID. Confirm wired gateway
-  changes still create network events and use the route fallback. Confirm a
-  legacy route pair inherits one known SSID and the migration is idempotent.
+- **Symptom:** Settings and Scanner stall before display, or NetToys cannot
+  be enabled because Open Login Items is disabled.
+- **Cause:** Labels read `SMAppService.status` during body and layout. The
+  launcher disabled the whole settings body while the tool was off, which
+  hid the recovery action.
+- **Invariant:** Keep one observed status snapshot. Coalesce refreshes and
+  read status on a utility task; show Checking until the first result.
+  Rendering never queries ServiceManagement. Keep NetToys Settings
+  interactive while NetToys is off. When approval is needed, tell the user
+  to turn on every MacPowerToys entry under Background App Activity, because
+  the login helper and neighbor daemon are separate services. Other disabled
+  tools keep their settings disabled.
+- **Check:** The manager fixture verifies one read for overlapping refreshes
+  and none for repeated getters. Disable NetToys and confirm Open Login Items
+  stays enabled. Approve every entry and confirm NetToys enables and MAC
+  Address Access shows Allowed.
 
-## Network History Availability Timeline
+### Feature Gates And Tray
 
-- **Symptom:** The availability graph is a cluster of vertical marks near the
-  latest events instead of a readable account of when Internet access was up
-  or down.
-- **Cause:** The graph began and ended at sparse transition timestamps, mixed a
-  network disconnect into the Internet series without recording its recovery,
-  and inherited the transition list's search filter.
-- **Invariant:** Draw Internet reachability as a chronological step timeline
-  from the selected range's start through now. Network changes and search text
-  do not directly alter the series. Show time before the first known state as a
-  distinct no-data level instead of calling it unavailable. A network event
-  must retain simultaneous gateway and Internet changes so disconnect and
-  recovery remain paired. Use a later network boundary plus the current
-  Internet state only to repair legacy records that omitted the paired recovery.
-- **Check:** Record reachable, disconnect, reconnect, and an SSID-only change.
-  Confirm the graph spans the full range, shows unrecorded time as no data,
-  changes level only at the Internet transitions, ends at the current state,
-  and does not change when transition search text changes. Confirm reversing
-  transition order fails the timeline regression test.
+- **Symptom:** SSH Anchor or Wi-Fi Priority keeps probing after its switch is
+  off, the tray starts its own poller, or tray sections lose their state.
+- **Invariant:** Persist one global SSH Anchor gate in `NetToysConfiguration`;
+  off keeps per-anchor choices but returns idle statuses without probes.
+  Wi-Fi Priority reuses its enable flag. The tray reads saved configuration
+  and helper status once when shown and owns no timer. SSH Anchor, Wi-Fi
+  Priority, and Network History each persist their own disclosure, show at
+  most five items, and route to the matching page. Each disclosure button has
+  one full-width hit shape. Refreshes never collapse an expanded section.
+- **Check:** Disable each feature from its page and the tray and confirm no
+  matching helper request. Expand each section, save each configuration
+  type, reopen the tray, and confirm all three states remain.
 
-## NetToys Feature Gates
+### History Loading And Location
 
-- **Symptom:** SSH Anchor or Wi-Fi Priority keeps probing after its page-level
-  switch is off, or the tray starts a second status poller.
-- **Cause:** The UI switch did not own a persisted helper configuration gate,
-  or tray presentation created independent background work.
-- **Invariant:** Persist one global SSH Anchor gate in
-  `NetToysConfiguration`; turning it off keeps per-anchor choices but returns
-  idle statuses without port or recovery probes. Wi-Fi Priority reuses its
-  existing persisted enable flag. The tray reads the saved configuration and
-  the helper's published status once when shown; it never owns a timer.
-- **Check:** Disable each feature from its page and tray, confirm the saved
-  configuration changes, and confirm the helper performs no corresponding
-  request while unrelated NetToys features keep their own state.
+- **Symptom:** Opening NetToys or its tray stalls while history loads, a
+  heavy tool switch freezes the launcher, or Location is requested on open.
+- **Cause:** `NetToysHistoryViewModel` decoded archives in initializers and
+  every three seconds on main. SwiftUI kept heavy-settings readiness across
+  tool changes. Location was requested on appearance while
+  `notDetermined`.
+- **Invariant:** Model initialization does no file I/O. Load one Sendable
+  snapshot on a utility task, reject canceled results, and coalesce
+  refreshes. The view-owned task stops when its destination disappears. Show
+  "No scans in this period" for a nonempty archive and "No saved scans" only
+  for an empty one. Key the settings subtree by tool ID. Request Location
+  only from the visible user action; denied or restricted access opens
+  System Settings.
+- **Check:** Run `testHistoryDistinguishesEmptyPeriodFromEmptyArchive`.
+  Alternate NetToys and Task Manager in the signed app; each click responds,
+  the last selection wins, and no Location dialog appears before the click.
+
+### Scanner Results, Targets, And Imports
+
+- **Symptom:** Rows appear only at scan end, a rescan removes other rows,
+  results vanish on page change, a scan uses an old subnet, or imports stall.
+- **Cause:** The scanner returned one final array, the view owned its model,
+  the automatic target refreshed asynchronously, restored rows lost their
+  run's target, and imports had no size limit on main.
+- **Invariant:** The window owns the scanner model. Publish each host after
+  liveness and port probes, then update it as hostname, protocol, MAC, and
+  vendor data arrive. Merge by IP. A selected-host rescan keeps other rows. A
+  full scan clears the prior run only after target resolution succeeds.
+  Ignore callbacks from canceled scans. Comments appear in the table and
+  every full export. NetBIOS returns all available fields.
+- **Invariant:** Restore the latest completed run after relaunch with its
+  own target, and persist target, ports, filter, search, preferences,
+  columns, sort, openers, favorites, and annotations. An automatic target
+  resolves the active network again when Scan starts. A retained run with a
+  different target shows "Results are from <target>. Scan to refresh." in
+  the results status bar. The toolbar row holds only fixed controls; Scan
+  and Stop share one width.
+- **Invariant:** Strip comments before parsing. Limit target lists to 2 MiB,
+  saved scans to 32 MiB, and entries to the resolver limit. Parse off main.
+  Keep Scan and imports disabled during an import. Report precise errors.
+- **Check:** Scan a subnet; rows appear live without duplicates. Rescan one
+  host; other rows stay. Cancel and restart; the first scan cannot change the
+  table. Change pages and relaunch; results stay. Import a mixed list and
+  reject an oversized file and invalid UTF-8. Read an archive's real target
+  before treating a restored result as a scan failure.
+
+### Reverse DNS
+
+- **Invariant:** Query a PTR record with a 1.5-second deadline, accept only
+  bounded valid names, and publish protocol fields meanwhile. For an address
+  in the active subnet, fall back to a bounded UDP PTR query to the gateway,
+  then multicast DNS, because public resolvers cannot answer private PTR.
+- **Check:** A live /24 scan names every host the router names
+  (`dig -x <ip> @<gateway>`).
+
+### MAC Addresses And The Neighbor Daemon
+
+- **Symptom:** The MAC column is empty, shows `02:00:00:00:00:00`, this Mac's
+  row lacks its MAC, silent phones show as down, or the first scan after
+  launch finds no open ports.
+- **Cause:** macOS scrubs neighbor data for ordinary processes; on macOS 27
+  the `NET_RT_FLAGS` sysctl returns an empty table except to root. An old
+  root daemon failed its code-signing requirement (4102) after reinstalls.
+  This Mac's ARP entry routes through lo0. Right after launch, LAN
+  connections fail while Local Network access is still enabling.
+- **Invariant:** Request Local Network access on use and show state and
+  recovery in Settings. Try the scoped routing socket and in-process
+  snapshot first. Then use the on-demand neighbor daemon and show its Not
+  Enabled, Needs Approval, Allowed, or Unavailable state. The daemon takes no
+  input and returns only the raw snapshot over code-signing-restricted XPC;
+  the app filters to the active interface and requested addresses. Do not
+  tie it to the app's source commit. Both daemons exit 30 seconds after
+  their last connection. `NetToysNeighborServiceManager` probes once per
+  launch and restarts the daemon on 4102. Filter entries by `sdl_index` and
+  reject incomplete, zero, and `02:00:00:00:00:00` values. A local address
+  with a neighbor MAC counts as alive. Before a scan, probe the gateway and
+  wait at most three seconds while it fails within 20 ms.
+- **Check:** A probe signed as `com.surajmandal.macpowertoys` gets bytes, not
+  4102. After a reinstall the daemon PID changes. Compare a scan with
+  `/usr/sbin/arp -an`. Relaunch and scan at once; ports and this Mac's real
+  MAC appear.
+
+### SSH Anchor
+
+- **Symptom:** SSH Anchor loses a device, SSH warns about an unknown or
+  changed host after an address change, asks for a password again, or flips
+  between local and Tailscale.
+- **Cause:** `known_hosts` followed the changing address. Enrollment never
+  installed the public key. No route hysteresis existed. Tailscale without
+  `TERM` returned GUI text instead of JSON.
+- **Invariant:** Probe the SSH port every 2 to 3 seconds. On failure, scan
+  only that port on the default connection's subnet and identify the device
+  by exact MAC, or one unique first hostname label with learned MAC
+  evidence. Ambiguous recovery never writes. Automatic setup inspects the
+  entry, keeps both signals, enables the anchor and the helper in one
+  action. A scanner-selected address overrides a stale `HostName` in one
+  atomic edit. Recovery changes only the selected `HostName` token.
+- **Invariant:** Enrollment prepends one managed policy for every literal
+  alias: a stable anchor `HostKeyAlias`, `StrictHostKeyChecking accept-new`,
+  and `CheckHostIP no`. A real host key change is still refused. The helper
+  migrates existing anchors before probing.
+- **Invariant:** Enrollment checks key-only login. If the key is rejected,
+  ask for the password once in a secure sheet, pass it to OpenSSH through a
+  private one-use FIFO, and never store or log it. Install the key in the
+  Windows user file, plus the ProgramData administrator file restricted to
+  Administrators and SYSTEM for admin accounts; use `ssh-copy-id` on Unix.
+  Recheck with `BatchMode=yes`. A dismissed sheet leaves a quiet retry.
+- **Invariant:** Tailscale fallback is opt-in per anchor. Match a unique
+  first label only at setup, else use the chooser. Persist the node ID and
+  refresh by it. Fall back after two local failures; return after three
+  verified local successes and a 30-second minimum dwell. Accept a cached
+  local address only on the active subnet. Every route change uses the
+  verified atomic `HostName` path with rollback. Run Tailscale with
+  `TERM=dumb`. On each helper tick, keep state only for configured anchors.
+- **Check:** Compare the SSH config before and after recovery; only the one
+  token changes. `ssh -G <alias>` keeps the host-key alias while `hostname`
+  changes. Key-only SSH works after enrollment and after an address change;
+  the password is absent from arguments, environment, logs, and disk. Test
+  Windows standard and admin accounts. Exercise fallback and recovery with a
+  disposable SSH host.
+
+### Wi-Fi Priority
+
+- **Invariant:** Store an ordered list of saved SSIDs without passwords.
+  Failover is off until two SSIDs exist and follows "NetToys Helper And
+  Pages". Instant Hotspot stays the last system-managed fallback; open Wi-Fi
+  Settings for Auto-Join. Never claim a public API can start Instant Hotspot.
+- **Check:** Legacy configuration decodes with failover off. The switch stays
+  disabled with fewer than two rows, and Instant Hotspot shows last.
+
+### Network History
+
+- **Invariant:** SSID is the Wi-Fi identity. A gateway change on the same
+  SSID is not a network change. Wait for a known SSID instead of inferring a
+  change. Labels show only the SSID. `interface | gateway` is the wired or
+  missing-SSID fallback. Migrate a legacy pair only when it maps to one SSID.
+- **Invariant:** The availability graph is a step timeline of Internet
+  reachability from range start to now. Network changes and search do not
+  alter it. Time before the first state shows as no data. A network event
+  keeps simultaneous gateway and Internet changes.
+- **Check:** Change the gateway on one SSID: no event. Change SSID: one
+  event. Reversing transition order fails the timeline regression.
 
 ## Input Devices
 
-- **Symptom:** Mouse settings also change trackpad scrolling, or scrolling stays
-  modified after the tool is disabled.
-- **Cause:** Public scroll events do not expose a stable physical device ID, or
-  the event tap outlived the tool state.
-- **Invariant:** Keep independent mouse-like and trackpad-like profiles. Classify
-  precise events as trackpad-like and coarse events as mouse-like unless the
-  user selects an override. Stop the event tap when the tool is disabled. Show
-  each detected device's type, transport, IDs, tracking and scroll speeds, and
-  available HID resolution, polling, button, firmware, location, report, and
-  serial values.
-  Enumerate without requiring an open HID event stream, and collapse composite
-  keyboard/trackpad services to their pointing interface. Do not show the
-  event-classification implementation note in the task body.
-- **Check:** Apply different reverse settings to both profiles, send precise and
-  coarse scroll events, then disable the tool and confirm events pass unchanged.
+### Profiles And Device Data
 
-## Input Devices Scroll Speed Endpoint, 2026-10-01
+- **Symptom:** Mouse settings change trackpad scrolling, scrolling stays
+  modified after disablement, or cards show false or clipped values.
+- **Cause:** Scroll events expose no stable device ID; the tap outlived the
+  tool; a fixed card anatomy treated absent HID data as content.
+- **Invariant:** Keep independent mouse-like and trackpad-like profiles with
+  a manual override. Stop the event tap when the tool is disabled. Show each
+  device's type, transport, IDs, speeds, and available HID values; omit
+  absent values and the built-in keyboard battery. Enumerate without an open
+  HID stream and collapse composite services to their pointing interface.
+  Use full-width key-value rows; long values keep their full text in the AX
+  label and tooltip. Both profiles keep seven setting rows in one column.
+- **Check:** `testDeviceCardsOmitUnavailableValues`,
+  `testMouseAndTrackpadProfileCardsShareOneHeight`, and
+  `testScrollSettingsStackInOneColumnAtTheWindowWidth`. Disable the tool and
+  confirm events pass unchanged.
 
-- **Symptom:** Mouse reverse scrolling does nothing at displayed 3.0x,
-  although the tool, custom scrolling, profile, and scroll tap are enabled.
-- **Cause:** The native stepped slider saved `3.0000000000000004`.
-  `57acd38c` added a strict `0.35...3` guard, which returned pass-through
-  before reverse or smoothing ran. The installed signed `38158c11`
-  contains that guard and an enabled session scroll tap.
-- **Invariant:** Accept one floating-point step beyond each speed endpoint.
-  Reject nonfinite values and greater excursions. Honor the master and
-  profile gates. Do not change saved owner preferences to repair the range.
-- **Check:** `testReverseAtSavedSliderEndpointsFollowsBothGates` covers
-  both axes, mouse and trackpad, smoothing, both endpoints, and both gates.
-  Its source-derived CLI check fails before `59122487` and passes afterward.
-  The existing invalid-speed test also rejects two steps beyond each bound.
-  The one app/test compile gate fails in unowned `OnePlusType.swift:6`.
-  Hosted execution and signed hardware verification remain with integration.
+### Settings Ownership And Panel
 
-## Input Devices Card Parity
+- **Symptom:** The page gains a second inset, the Scroll device footer
+  scrolls, the panel opens very tall, or Refresh blocks main.
+- **Invariant:** `InputDevicesSettingsContent()` is the one card set. Hosts
+  embed it directly; `OnePlusMenuPanel` owns the panel inset. The Scrolling
+  page keeps `InputScrollDeviceBar` fixed below its row scroller. Devices,
+  Mouse, Trackpad, and Scroll device persist separate disclosures; for unset
+  keys open Devices and collapse the rest, never overwriting saved choices.
+  Collapsed profile headers show direction and speed. Refresh is a separate
+  button. Keep one "Use custom scrolling" switch with help. Enumerate HID on
+  one coalesced utility task and reuse an active tap. Disablement cancels
+  discovery and invalidates queued smoothing steps by session generation.
+- **Check:** Both card stacks start on the page title edge; the footer stays
+  fixed. Test fresh defaults and saved choices across panel recreation.
+- **Open:** In an isolated session, revoke Accessibility during interception;
+  control must stop with visible recovery, and retry only on explicit action.
 
-- **Symptom:** Device cards show false `Not reported` values, long names clip,
-  or one scrolling profile stays below the fixed-height window.
-- **Cause:** A fixed eleven-row device anatomy treated absent HID data as useful
-  content.
-- **Invariant:** Omit every device metadata row whose value is absent. Do not
-  show a battery row for the built-in keyboard. The 820 x 660 window shows
-  device cards and the Mouse and Trackpad profile cards in one full-width
-  column, in every density. Both profiles keep the same seven labeled setting
-  rows.
-- **Check:** `testDeviceCardsOmitUnavailableValues` covers sparse and detailed
-  devices. `testMouseAndTrackpadProfileCardsShareOneHeight` compares both
-  profile cards at 340pt. `testScrollSettingsStackInOneColumnAtTheWindowWidth`
-  checks the stack. Inspect both profiles and the fixed Scroll device footer in
-  the signed full window and compact panel.
+### Scroll Speed Endpoint
 
-## Input Devices Metadata Clipping
+- **Invariant:** Accept one floating-point step beyond each speed endpoint
+  (a saved 3.0x reads `3.0000000000000004`). Reject nonfinite values and
+  larger excursions. Never rewrite saved owner preferences to repair range.
+- **Check:** `testReverseAtSavedSliderEndpointsFollowsBothGates`.
 
-- **Symptom:** Device card values appear as fragments such as `V...or` and
-  `3...×` at the normal Input Devices window width.
-- **Cause:** Each metadata item occupied half a card while its fixed-width label
-  and value also sat side by side, leaving too little width for the value.
-- **Invariant:** Keep one full-width card column. Use full-width key-value rows
-  and omit absent fields. Keep the complete value in its accessibility label and
-  native tooltip when a long identifier is truncated.
-- **Check:** Inspect the cards in the current signed app. Values such as Vendor,
-  Device ID, Firmware, and Scroll speed remain readable.
+### Event Tap Recovery
 
-## Input Devices Scroll Settings Ownership
+- **Invariant:** When macOS disables the scroll tap after a timeout or input
+  change, re-enable the existing tap before the callback returns.
+- **Check:** Sustained wheel input, then lock and unlock; the profile stays
+  active without toggling.
 
-- **Symptom:** The launcher detail page and Scrolling page can gain a second
-  content inset, show different controls, or scroll the Scroll device footer.
-- **Cause:** A padded panel wrapper was embedded inside an already padded page,
-  and the whole card stack owned one outer scroll view.
-- **Invariant:** `InputDevicesSettingsContent()` is the one card implementation.
-  A main-window host embeds it directly with regular density. Main and separate
-  menu panels embed the same cards directly with inherited compact density.
-  `OnePlusMenuPanel` owns their only 8pt body inset. The Scrolling page uses
-  one 24pt page gutter, keeps `InputScrollDeviceBar` fixed below its row
-  scroller, and adds no second horizontal or top inset. Every selector uses
-  `OnePlusSelect`.
-- **Check:** Open the Scrolling page and the launcher Input Devices detail and
-  confirm both card stacks start on the page title's leading edge. Scroll the
-  profiles and confirm the Scroll device footer stays fixed.
-
-## Input Devices Event Tap Recovery
-
-- **Symptom:** Scroll control stops changing events even though the window still
-  reports that control is active.
-- **Cause:** The disabled-tap callback queued a full tap rebuild on the main
-  queue. A timeout can leave that same queue unable to run the recovery.
-- **Invariant:** When macOS disables the scroll event tap after a timeout or
-  session input change, re-enable the existing tap before the callback returns.
-- **Check:** Use sustained wheel input, then lock and unlock the session. Confirm
-  the selected profile continues without toggling Input control or reopening the
-  window.
-
-## Event Taps Off The Main Thread
+### Event Taps Off The Main Thread
 
 - **Symptom:** Scrolling and key presses freeze in every app while
   MacPowerToys is busy.
@@ -700,7 +298,7 @@ Report: `tmp/redesign/logs/w8-tests-quiet.md`.
   nothing. The smoothing unit test passes. With a real wheel during a forced
   main-thread stall, scrolling and typing stay smooth.
 
-## Input Devices Scroll Field Fidelity
+### Input Devices Scroll Field Fidelity
 
 - **Symptom:** Slow speeds do not move. Games see zero or 5x deltas. Smooth
   mice get the trackpad profile. Events from other tools are transformed twice.
@@ -715,921 +313,102 @@ Report: `tmp/redesign/logs/w8-tests-quiet.md`.
   untouched.
 - **Check:** `InputDevicesTests`, plus a real wheel at 0.35x and in a game.
 
-## Input Devices Panel And Scroll Ownership, 2026-10-01
-
-- **Symptom:** The panel hides both profiles behind one link. Refresh performs
-  HID enumeration on the main actor and replaces an active event tap. Pending
-  smoothing steps can still post after tool disablement because the saved
-  scroll-control preference remains on. Signed `198055e4` review also found
-  a 1,146 pt panel because all four sections defaulted to expanded. Round 10
-  also shows a second 16pt inset and repeated Devices/Connected devices headers.
-- **Cause:** Direct groups inherited card padding and a second section header.
-  Every disclosure used an expanded fallback. One shared disclosure
-  gate owns both profiles. Refresh couples
-  device discovery to tap creation, and delayed steps check only the preference.
-- **Invariant:** Devices, Mouse, Trackpad, and Scroll device have independent
-  persisted disclosures. For unset keys, open Devices and collapse Mouse,
-  Trackpad, and Scroll device; never overwrite saved choices. Collapsed profile
-  headers show live direction and speed on the trailing side. Devices keeps its
-  count and Scroll device keeps its selected mode. Use zero onePlusCardPadding
-  for direct groups; true cards keep their inset. Devices has one header with
-  count, Refresh, and chevron trailing. Refresh is a separate button beside
-  the full-row disclosure, so it does not toggle the section. Show every detected device
-  and all seven profile rows when expanded.
-  Keep one "Use custom scrolling" switch with a help-glyph explanation.
-  Put counts and status on the trailing side of their row. Keep the master
-  switch and device selector outside cards. Compact disclosures have no card
-  border. Reserve only the switch width, so labels use the available space.
-  Use instant content changes and color-only hover feedback. Enumerate HID
-  devices on one coalesced utility task. Reuse an active tap. Tool disablement
-  cancels discovery and invalidates queued smoothing steps by session generation.
-  Report the effective override profile and real tap state. Omit zero device IDs
-  and absent metadata; show reported location and input-report size.
-- **Check:** The read-only source probe finds the USB receiver and internal
-  trackpad and passes profile, override, Shift, horizontal, and invalid-speed
-  checks. Compile `InputDevicesTests` here and run them on hosted CI. In the
-  final signed app, test fresh disclosure defaults and saved choices across
-  panel recreation, collapsed header values, both profile
-  gates, permission recovery, tap refresh, and immediate disablement during a
-  smoothed notch. Check direct header/label/control edges against the shell
-  gutter and Refresh separately from disclosure. In an isolated session, revoke
-  Accessibility during interception, require stopped control and visible recovery,
-  then regrant and retry only on explicit action or confirmed permission change.
-  A source trace is not this live acceptance. Preserve the owner's scroll preferences.
-
 ## System Cleaner And Mole
 
-- **Symptom:** Safety and Maintenance use 56pt helper rows. Terminal labels
-  truncate while unused width remains. The initial panel adds an instruction row.
-- **Cause:** Inline captions select the taller row pitch. A fixed 180pt value
-  column compresses two maintenance actions.
-- **Invariant:** Keep help beside labels and use 44pt rows. Paired actions use
-  intrinsic widths, an 8pt gap, 28pt height, and the 16pt content inset. Put initial
-  Scan instructions in help. Keep progress, failures, coverage and empty results.
-- **Check:** `ca9a17bb` and `fb6619b8` implement these changes and shared history
-  columns. `tmp/redesign/syscare/check-r11-ui.py` measures actual source in hidden
-  hosts in both appearances. Safety is 36pt shorter, Maintenance is 48pt shorter,
-  and Open Terminal is 112 x 28pt. History uses matching 34pt rows and 12pt insets.
-  Signed `43ce0eb9` still omits Tasks' underline in both appearances.
-  Route defaults and stateful hidden hosts select Tasks correctly. The shared
-  strip now paints the selected indicator directly from its binding outside
-  the button-style body, with the existing 36pt height, 22pt gap and 2pt ink.
-  `testSelectedTabUnderlineSurvivesInitialEntryAndTabChanges` checks initial
-  entry and Tasks/History/Tasks in both appearances. All 20 focused page and
-  row/tab checks pass. The route paint check fails when selected paint is
-  removed. Signed recapture and native interaction remain with the orchestrator.
+### Cleanup Safety
 
-- **Symptom:** Populated Mole history rows show the same truncated actions
-  dictionary instead of distinct activity.
-- **Cause:** Foundation dictionary descriptions put line breaks into the
-  one-line details cell. Nested action counts were never parsed.
-- **Invariant:** Parse recorded session counts and sizes into a one-line summary,
-  and deletion modes and paths into an operation and target. Keep supplied
-  timestamp/status or positive action counts separate. Omit absent values.
-  Session JSON has no target paths; do not infer them or a success state.
-  Timestamp text has no supplied time zone. Keep raw record JSON in detail/help,
-  outside the summary. Reject malformed record groups and retain prior history
-  on a read failure. Parsing stays in the existing utility worker.
-- **Check:** The source-derived nested fixture fails before 7b606373 and passes
-  afterward. The Swift 6 parser/regression typecheck passes. Run
-  testMoleHistoryParsesNestedCountsTargetsAndOptionalMetadata on hosted CI.
-  syscare-ui owns shared 33pt headers and 34pt body rows, 12pt insets, and optional
-  trailing time/result columns. Compare populated signed captures in both
-  appearances and inspect full raw JSON help. No cleanup is needed for this test.
+- **Symptom:** Cleanup deletes outside its reviewed scope, accepts a changed
+  target, reports a partial scan as complete, goes idle while work runs, or
+  uninstalls the wrong same-named bundle.
+- **Cause:** Unguarded or candidate-supplied paths, mutable completion IDs,
+  unowned detached work, skipped read errors, and CLI calls without
+  lifecycle or identity checks.
+- **Invariant:** Never follow cleanup symlinks. Require one category's
+  trusted root, an immediate child, and unchanged file and root identities at
+  restore and Trash. Walk original path components with lstat; reject dot
+  traversal. Foundation can rewrite `/private/var` to the `/var` link, so it
+  cannot define the checked path. Freeze Trash IDs and keep real failures
+  selected. Lock selection and new work until the worker exits. Trash and
+  Homebrew install cannot be canceled. Report missing, denied, unsafe, and
+  I/O failures separately, plus the 500-child bound per root; an access error
+  alone does not prove TCC. Retry only affected roots.
+- **Invariant:** Use Mole JSON only for read-only data. Run privileged or
+  interactive Mole commands in a visible Terminal and never infer completion.
+  Never bundle Mole or collect sudo input. Limit CLI output to 8 MiB and
+  30 seconds; on cancel, timeout, or overflow send TERM, wait 250 ms, then
+  KILL and reap. Installed help must list each preview flag. Before a
+  name-based uninstall, require one exact path in fresh native and Mole
+  inventories and recheck its identity.
+- **Check:** Reject a target outside the allowed roots. Disposable fixtures
+  cover identity replacement, links, partial Trash failure, competing starts,
+  output cap, deadline, reap, and duplicate bundles. Run `SystemCareTests` on
+  hosted CI.
 
-- **Symptom:** Cleanup accepts a changed target, reports incomplete roots as a
-  complete scan, loses rows after sibling selection changes, or becomes idle
-  while its worker or CLI still runs. Name-based uninstall can select a second
-  bundle with the same name.
-- **Cause:** Candidate-supplied roots, mutable completion IDs, unowned detached
-  work, skipped read errors, and CLI calls without lifecycle or identity checks.
-- **Invariant:** Require one category's trusted root, an immediate child, and
-  unchanged file/root identities at restore and Trash. Walk original path
-  components with lstat; reject symlinks and dot traversal. Foundation can
-  rewrite an existing /private/var path to the /var symlink, so it cannot define
-  the path checked for ancestor links. Freeze Trash IDs and keep actual failures
-  selected. Lock selection and new work until the current worker exits. Trash
-  and Homebrew install are noncancelable. Read cancellation reaches the detached
-  worker; idle is published only after exit. Expose missing, denied, unsafe, and
-  I/O failures separately, plus the 500-child bound per root. An access error
-  alone does not prove TCC. Retry only affected roots and retain prior readable
-  results. Include package descendants in allocated sizes and throw read errors.
-- **Invariant:** Limit CLI output to 8 MiB and read time to 30 seconds. On cancel,
-  timeout, or overflow, TERM, wait at most 250 ms, then KILL and reap. Installed
-  help must advertise each preview flag. Before name-based uninstall, require
-  one exact selected path in fresh native and Mole inventories and recheck its
-  identity. Interactive commands run in Terminal; do not infer completion.
-- **Check:** Both shared compile gates pass. Disposable fixture probes pass for
-  identity replacement, links, partial Trash failure, competing starts, worker
-  exit, package size, coverage, retry, output cap, deadline, reap, and duplicate
-  bundle refusal. Removing the saved-file identity guard makes the probe fail.
-  Mole 1.54.0 help confirms clean, optimize, purge, installer, and uninstall
-  previews. Run SystemCareTests on hosted CI and verify the final signed app.
+### Pages And Rows
 
-- **Symptom:** Recent activity rows lack rules while adjacent setting cards
-  retain them.
-- **Cause:** The card disabled the shared separator on every record.
-- **Invariant:** Keep separators inside the first two 44pt activity rows.
-  Omit the trailing rule after the final Mole row.
-- **Check:** Inspect Overview in both appearances. Rules sit at the row
-  boundaries without increasing the card height.
-
-- **Symptom:** A cleanup can delete outside its reviewed scope, or Mole needs an
-  embedded password prompt.
-- **Cause:** Cleanup paths were not guarded, or an interactive CLI operation was
-  treated as structured app output.
-- **Invariant:** Never follow cleanup symlinks. Move only reviewed, guarded paths
-  to Trash. Use Mole JSON for read-only data. Run privileged or interactive Mole
-  commands in a visible Terminal. Never bundle Mole or collect sudo input. Keep
-  Scan as the primary visible action on Overview and Cleanup before results.
-  Keep one work-status surface in the bottom content inset on every System Care
-  page. Keep top-strip menus and buttons at the shared regular action height.
-  Only directory rows are actionable in Storage. File rows are informational
-  and do not use hover, pressed, or button treatment.
 - **Invariant:** Storage, Cleanup, Applications, Mole, and History use
-  `OnePlusPage(scrolls: false)`. Search, table headers, inspectors, actions, and
-  status stay fixed. Only a lazy row stack inside the list card scrolls. Format
-  application size and last-used metadata on utility tasks. Recursively sum the
-  allocated size of each bundle without following symbolic links. Cache the
-  result and the real `NSWorkspace` icon, then fill each row as it arrives. Show
-  a muted dash only while loading, never `Unknown` or `Zero KB` as a final size.
-  A symbolic-link bundle is not scanned. A final size failure has a visible
-  error caption, a full reason in the fixed inspector, and a Retry Size action.
-  Retries use a window-owned task and stop when the window disappears.
-- **Invariant:** Before a scan, center the cleanup icon and message across the
-  full body width. A leading stack must not collapse the empty state to its
-  intrinsic width.
-- **Check:** Reject a cleanup target outside the allowed roots. Preview each
-  destructive Mole action before opening its command in Terminal. Start a scan
-  from each page and confirm the status stays at the bottom of the pane.
+  `OnePlusPage(scrolls: false)`. Search, headers, inspectors, actions, and
+  status stay fixed; only lazy rows scroll. Scan is the primary action on
+  Overview and Cleanup before results. One work status sits in the bottom
+  content inset. In Storage only directory rows are actionable.
+- **Invariant:** Sum each app bundle's allocated size recursively without
+  following links, on utility tasks, with cached real icons (80 x 80 pixels
+  only; clear caches on window close). Show a dash while loading, never
+  `Unknown` or `Zero KB`. A failed size shows a caption, a full reason in the
+  inspector, and Retry Size on a window-owned task.
+- **Invariant:** Help sits beside labels in 44 pt rows. Paired actions use
+  intrinsic widths side by side. The pre-scan empty state centers across the
+  full width. Activity rows keep separators except after the last row.
+- **Invariant:** Parse Mole history into a one-line summary plus operation
+  and target. Keep timestamp, status, and counts separate; omit absent
+  values; never infer paths or success. Keep raw JSON in help. Reject
+  malformed groups and keep prior history on a read failure.
+- **Check:** Run `testMoleHistoryParsesNestedCountsTargetsAndOptionalMetadata`
+  and `testSelectedTabUnderlineSurvivesInitialEntryAndTabChanges`. Run
+  `tmp/redesign/syscare/check-r11-ui.py`. Start a scan from each page; status
+  stays at the bottom.
 
-## System Monitor
+## Background Resources
 
-- **Symptom:** Window Overview and Settings rebuild their full page trees on
-  return. Retaining Overview without a visibility boundary keeps hidden
-  snapshot observations and process tasks active.
-- **Invariant:** Use OnePlusRetainedPage for only these two slow pages. Create
-  each host on first visit. Keep selection outside content equality, and
-  compare Overview inputs by history, profiles, hover, and focus. Forward the
-  required page environment keys, never the full scene environment. When
-  hidden, keep the last Content value without calling its live builder.
-  Deliver false visibility and layout before detaching. Clear the hosted
-  graph on dismantle; the window-close wrapper must release its owning graph.
-- **Check:** OnePlusRetainedPageTests compares conditional and retained
-  content: 20 unrelated selection builds become zero. Twenty hidden samples
-  cause zero builds, child tasks stop, 10 returns preserve state, cold hidden
-  hosts build a complete frame, and teardown releases the host. The single
-  app/test compile gate passes. Signed <=100ms and control checks remain open.
-  Report: `tmp/redesign/logs/w6-perf-pages.md`.
+### Ownership
 
-- **Symptom:** Task Manager menu tab switches rebuild unchanged content in
-  retained native hosts. The trace spends 111-135ms in AttributeGraph and
-  only 2-5ms in natural-height measurement.
-- **Cause:** Each native host root update can evaluate the complete content
-  switch. A selection Binding is a dynamic property even inside an equality
-  boundary. It invalidates retained content when another tab becomes active.
-  The former probe used a constant binding and missed this dependency.
-- **Invariant:** Retain the shared hosts and metric-specific page states.
-  Compare content by page, model identities, and remote profiles. Keep the
-  selection binding in the tab strip. Pass selection actions into content
-  and Home tiles so hidden pages do not observe that binding. Put visibility and
-  sampling outside the equality boundary. Keep descriptors static and
-  formatting in the existing off-main projection. Do not cache page height.
-- **Check:** Run `python3 tmp/redesign/perf/perf-tm/check-retention.py`. It uses
-  the actual content fields and equality declaration in an offscreen host.
-  Twenty live selection changes rebuild old content 20 times and current
-  content zero times. Retained actions, child metrics, and environment still
-  update; profile and tab changes rebuild. The old source fails the check.
-  Signed after timing and complete-frame acceptance remain open. Commands:
-  `tmp/redesign/logs/w5-perf-tm.md`. Source fix: `027ea904`.
-
-- **Symptom:** A Task Manager page switch also lays out unrelated menu hosts.
-- **Cause:** Each switch writes an AppStorage value. The installed window
-  trace includes hidden menu layout and Switch token formatting during the
-  Task Manager page intervals. Preference changes reach those retained hosts.
-- **Invariant:** Keep navigation in local state. Read the saved page for the
-  initial frame, accept external page requests, and save on hide or close.
-  Panel persistence observes shell visibility in the tab strip, so a content
-  host becoming inactive during a tab change does not save a page.
-- **Check:** Run `python3 tmp/redesign/perf/perf-tm/check-window-selection.py`
-  and repeat with `panel`. Each uses the actual storage fields, getter, and
-  save method. Twenty switches make 20 old preference writes and zero current
-  writes. Initial restoration, hide persistence, external requests, and
-  reopen pass. The panel check exercises the actual visibility modifier.
-  Panel source: `e0432849`. Window source patch and signed acceptance:
-  `tmp/redesign/logs/w5-perf-tm.md`.
-
-- **Symptom:** Processes uses lock or gear fallbacks, and panel app rows
-  never show their real icons.
-- **Cause:** The panel bypasses the window's bundle cache. Row preparation
-  chooses symbols from protected status and system path rather than identity.
-- **Invariant:** Both lists use real bundle icons prepared off the main thread
-  and cached by bundle path. Use terminal for an absolute executable path
-  outside an app bundle. Unknown paths and pending or missing app artwork
-  leave the fixed icon slot blank. Do not draw generic fallback symbols.
-- **Check:** `f0eaaacd` passes the Light/Dark native slot render and the
-  actual-source Finder, cache, cancellation and off-main checks. The former
-  symbol rules fail the same check. The app and both test bundles compile.
-  Hosted tests and signed Processes window/panel acceptance remain open.
-
-- **Symptom:** Process sorting has no visible direction, app rows use generic
-  glyphs, Overview text is undersized, and Disk details repeat hero readings.
-- **Cause:** The custom table header draws only its label. Process rows carry
-  only a symbol. Overview uses raw font sizes, and Disk repeats the same values.
-- **Invariant:** Draw the native active sort indicator beside a stable label
-  inside the shared 33pt header. Cache real bundle icons outside drawing and off the
-  main thread; preserve the 15pt slot and 10pt text gap. Use only terminal for
-  command-line executables; pending app icons and unknown paths stay blank.
-  Use compact cardTitle and caption roles for 11pt and 9.5pt Overview text.
-  Keep Disk heroes and one natural 100pt Volume panel for Mount point and Status.
-- **Check:** Round 12 `23d1a768` passes 12 OnePlusTableTests, including light/dark
-  header paints and untinted image updates. The old header fails the same sort
-  regression. Actual-source checks pass cache reuse, eviction, cancellation,
-  bundle paths, Overview roles, and unique Disk rows. The single tests-mode gate
-  compiles the app and both desktop bundles. Hosted tests and signed interaction
-  remain with the orchestrator; see `tmp/redesign/logs/w3-tm-window.md`.
-
-- **Symptom:** Battery details collapse while pending, process clicks open
-  sheets, or network and disk rates average time spent asleep.
-- **Cause:** Pending rows are omitted, selection also requests inspection,
-  and available rate baselines survive wake with wall-clock elapsed time.
-- **Invariant:** Reserve the four Battery detail rows with muted dashes.
-  Keep valid rows during refresh and show absence only after a completed
-  unavailable sample. Native process clicks select; Return, double-click,
-  or Inspect opens details. Omit Quit actions for protected rows. Reset
-  rate baselines on every wake, use monotonic intervals, and retain rates
-  until a fresh valid pair exists. Label network rates "All interfaces";
-  use the existing NetToys default route for separate connection identity
-  and report an address only when its interface matches that route.
-- **Check:** Run SystemMonitorWindowAuditTests and the native process UI
-  check on hosted CI. Actual-source CLI checks pass for pending rows,
-  protected menus, reset pairs, monotonic clock and counter rollback, and
-  route/address matching. The retained round 11 batch gate at `99a6a1b2`
-  compiles the app and both desktop test bundles with zero compiler errors.
-  Hosted tests and signed load, wake, network changes, native selection,
-  and command behavior remain open.
-
-- **Symptom:** Status values move adjacent items or retained readings look
-  current after the sampler fails. Attachment glyphs stay black in dark mode.
-- **Cause:** Native items use content width and proportional digits. Buttons
-  center the title's actual width. Text attachments do not apply template
-  tint. The overall snapshot time replaces a retained metric's read time.
-- **Invariant:** Reserve bounded widths on configuration edits and use native
-  monospaced digits. Fill the final title slot to stop native centering shifts.
-  Resolve attachment tint with the native label color on each draw. Retain
-  successful metric timestamps through partial or failed reads. One
-  cancellable deadline marks readings stale after three sampling intervals,
-  with a three-second minimum. Status help and AX expose staleness; panel
-  detail puts "Stale" on the trailing side of a reading row. Closing the last
-  sampling owner cancels the deadline. Never hide configured metrics to fit.
-  Keep pending or absent readings as concise dashes.
-- **Check:** `SystemMonitorStatusTests` covers retention, recovery, width,
-  appearance tint, and native item updates. The source-derived stall and
-  native title checks pass. Repeat crowded menu-bar and expiry/recovery
-  checks on the signed integrated build.
-
-- **Symptom:** The signed window keeps CPU, GPU, Network, Disk, Thermal, Load,
-  and Top processes pending. Battery claims absence before it is sampled.
-- **Cause:** Detailed and process samplers never start while the window is
-  hidden or minimized, so its readings stay pending until it is shown. Battery
-  text treats a missing percentage as proof of absent hardware. A Swift 6
-  startup check also catches actor inheritance in the utility timer callback.
-- **Invariant:** Task Manager follows the occlusion-aware visibility gate: a
-  covered or off-Space window stops sampling and shows its last snapshot, then
-  samples again when shown. Closed and minimized windows stop.
-  The first utility timer deadline is now,
-  and its Sendable callback captures immutable settings. Keep the service's
-  latest snapshot on reopen. Process sampling runs before its interval sleep.
-  Pending or unrequested Battery data stays a dash; only a completed
-  unavailable Battery result can show the absence message.
-- **Check:** Run the startup and pending-Battery cases in
-  `SystemMonitorWindowAuditTests` and the package `OnePlusLiveUpdatesTests`.
-  The actual service/sampler check completes its first sample in 6 ms and
-  retains it on reopen. Delaying that first deadline by one second fails.
-  The actual process sampler returns 1,135 rows in 176 ms. Recheck the signed
-  window opened behind the owner's foreground app, warm reopen, and close
-  and minimize. Cover the window with a full-screen app and confirm that
-  sampling stops and CPU stays near 0 %. Cold CPU and network rates require a
-  second counter read.
-
-- **Symptom:** Unknown RAM shows zero allocation, a report save silently fails,
-  or hover and accessibility labels format again during chart rendering.
-- **Cause:** Views substitute zero before a sample, export uses `try?`, and
-  chart text formats directly inside `body`.
-- **Invariant:** Keep missing RAM absent and bound real allocation segments to
-  total RAM. Prepare bounded chart series and labels outside rendering. Save
-  exports atomically on a utility task and show write errors. Report search
-  must track changed content, and repeated section names must still render.
-  Keep full-row hover on values and actions. Place update time on the trailing
-  side, keep related actions together, and put help in info tooltips.
-- **Check:** Run `SystemMonitorWindowAuditTests` on hosted CI. Source-derived
-  checks pass for PID/path guards, missing and clamped RAM, 60/120-sample
-  history, chart labels, raw JSON values, and failed writes. A mutation that
-  swallows the write error fails the check. Signed interaction remains open.
-
-- **Symptom:** Task Manager page changes pause, body cards start on a second
-  inset, or search, headers, sidebars, and footers move with table rows.
-- **Cause:** The window used one outer page scroller, process and report rows
-  sorted or searched in `body`, remote profiles loaded from defaults during
-  view creation, and every sample invalidated the complete window or panel.
-- **Invariant:** Use the shared page header at `T = 16` and one Task Manager
-  gutter. Card pages scroll only their card stack. Processes keeps search and
-  its table header fixed around lazy rows. Remote Stats keeps status fixed.
-  System Report keeps search, actions, category title, and its own sidebar
-  fixed while report rows scroll. Load profiles and prepare large row sets on
-  utility tasks. Keep full-page identity stable and do not animate page
-  replacement. Store the final stable ID once before each row loop. Scope
-  sample observation below window and panel chrome. Let `OnePlusMenuPanel`
-  own the 90 percent visible-screen height cap. Keep all value selectors on
-  `OnePlusSelect`. Inherit the shared focus policy from window and panel
-  roots. Do not disable focus effects on individual Task Manager controls.
-  The shared policy preserves focus for Full Keyboard Access and VoiceOver.
-- **Check:** Switch through all 13 routes in under 100ms, scroll at least 1,000
-  process rows without dropped frames, and confirm every fixed region stays in
-  place. Close the window and panel, then require their sampling owners to stop.
-
-- **Symptom:** Task Manager stays dark in Light appearance, its settings table
-  drifts between metrics, or its menu panel clips the top or bottom edge.
-- **Cause:** The owned views forced a dark color scheme, settings controls used
-  content-sized groups with repeated labels, and the native popover trusted an
-  estimated height instead of the rendered menu shell.
-- **Invariant:** Inherit the app appearance on every Task Manager surface. Use
-  one fixed settings header with 34pt rows and centered 24pt controls; place
-  format-specific fields in one details row. Use 10pt detail gaps, 12pt card
-  padding, and shared 27pt values at weight 550 with a 30.24pt line in both
-  densities. Units keep their role. Metric captions use dark #A0A0A0 or light
-  #5B5B5B. Textured metric cards use the 180 by 110pt grayscale ribbon at
-  0.07 opacity below content.
-  Measure the complete 356pt menu shell before native presentation. Let the
-  shared shell own its natural height and 90 percent visible-screen ceiling.
-  The shared final-height callback updates the native popover without height
-  estimates or resize animation. Reset unsaved navigation before measurement.
-  Load remote profiles off the main thread from the same preferences used for
-  saved navigation.
-- **Check:** Compile the Debug app and desktop-test bundle. Then recapture every
-  page and both menu panels in light and dark from the signed orchestrator
-  build. Measure settings columns, table rows, value-unit baselines, and both
-  popover edges before approval.
-
-- **Symptom:** The System Report actions show bare glyphs, or the CPU chart
-  omits the collected System history.
-- **Cause:** Copy used the unbordered icon variant. The native Export menu
-  drops the shared label's button border. The CPU hero passed only total
-  usage to its existing dual-series chart.
-- **Invariant:** Use shared compact bordered icon controls for Copy and Export.
-  Foundation must add an icon trigger to `OnePlusMenuButton` with the 24pt
-  bordered icon style. Task Manager then routes both export actions through
-  that trigger and `OnePlusPopupMenu`. Keep their accessibility names and
-  export behavior. Pass System CPU history as the secondary accent series.
-  Keep Total usage neutral. Place the "System" legend after "Total usage"
-  without moving the time axis.
-- **Check:** Compile Debug and the desktop test bundle. Run
-  `testTaskManagerMenuMeasuresTabsAndAsyncProfiles` on hosted CI. It compares
-  native popover height with the current layout across short and tall pages
-  and profiles loaded from isolated preferences. Compare CPU and System
-  Report in both appearances on the signed build.
-
-- **Symptom:** The Battery Power draw trace falls below its time axis, and
-  the grid does not align with the scale labels.
-- **Cause:** `TaskManagerHistoryChart` forced a 118pt plot inside a 72pt host.
-- **Invariant:** The requested height controls the Canvas and scale column.
-  Clip the plot to its bounds. Keep time labels and the legend outside the
-  plot. Preserve the normal 138pt detail charts and compact chart heights.
-- **Check:** Run `testHistoryChartsStayInsideTheirRequestedPlotHeight` on
-  hosted CI. It checks painted bounds at 72pt, 138pt, and compact 19pt in
-  both appearances. Recapture Battery and CPU from the signed build.
-
-- **Symptom:** Compact CPU and Sensors cards are too tall, Fan loses Cool and
-  Max without helper access, and offline hosts show an empty storage track.
-- **Cause:** Menu plots requested 96pt. Fan replaced its segmented control
-  with one Auto button. The remote card drew a placeholder storage row.
-- **Invariant:** Compact menu plots request 64pt and size their cards naturally.
-  Keep time labels outside the plot. Fan always shows the shared 24pt Auto,
-  Cool, and Max control. Its warning action owns helper setup and Restore Auto.
-  The shared segmented API uses `isChoiceEnabled` for real buttons and arrow
-  keys. Auto requires manual control or automatic recovery; Cool and Max
-  require manual control. Changing state disables every choice. Fan text is prepared on a
-  utility task, equal results do not publish, and publications stay at least
-  250 ms apart. The final visible owner cancels pending preparation.
-  Offline hosts keep unavailable CPU, RAM, and Network values but no empty
-  storage row or track. Retain their OS in the host's accessibility identity.
-- **Check:** Run `testTaskManagerMenuMeasuresTabsAndAsyncProfiles` on hosted CI.
-  It bounds CPU at 410pt and Sensors at 330pt. Recapture Home, CPU, and Sensors
-  in both appearances. Exercise helper setup and automatic recovery.
-
-- **Symptom:** Disk activity ticks wrap inside the 54pt axis. System Care and
-  Task Manager disagree on disk units. Sensors repeats its only reading.
-- **Cause:** Axis ticks each included a rate unit. Task Manager reused the RAM
-  formatter for disk values. A second Sensors card repeated thermal pressure.
-- **Invariant:** Disk and Network plot ticks are numeric MB/s values on one
-  line. Show the unit once above the 64pt plot. Keep the time axis outside and
-  legends on the card's inner leading edge. Task Manager window and panel
-  disk capacities, used, free, and cumulative reads share decimal
-  `TrayPopoverLayout.diskBytes`, matching System Care. Disk rates use decimal
-  `SystemMonitorDisplayFormat.byteRate`. Remote storage uses the same disk
-  formatter. Native status items also use it for disk used and available.
-  System Report retains the values supplied by `system_profiler`.
-  RAM keeps binary formatting. Sensors puts the existing Fan row directly
-  after the hero at the 8pt detail gap. Add no temperature values without
-  reported readings.
-  Offline remote bodies say No disk data and retain CPU, RAM, and Network
-  dashes. `OnePlusMenuItemCard` supplies header/metric glyphs and muted offline
-  readings. Callers must use these APIs rather than replace the card locally.
-- **Check:** `tmp/redesign/logs/27r10-panels-check.py` checks actual panel
-  formatting, captured high-rate tick widths, and network identity fallbacks.
-  Run `testDiskByteFormatterUsesDecimalUnits` on hosted CI. It checks decimal
-  KB, MB, GB, and TB thresholds. The standalone check reproduces 953.7 MB
-  for one decimal GB through the former window formatter; the shared formatter
-  returns 1 GB. Check that 1,073,741,824 RAM bytes still display as 1 GB.
-  Review Disk, Network, Sensors, and Home in both signed appearances. Compare
-  startup disk cards from the same sample. Execute hosted panel measurement
-  and permission-route checks. Local verification remains compile-only.
-
-- **Symptom:** Overview process and memory cards start on different edges.
-  Battery Power draw reserves an empty caption. Battery details stretches.
-  Dark chart guides are barely visible.
-- **Cause:** The process lane height sat outside its content-sized panel.
-  Hero captions were unconditional. Information rows requested unlimited
-  height. Grid rules used the soft line color and a 0.65pt stroke.
-- **Invariant:** Put the stable 203pt process height inside the panel with
-  top alignment. Omit empty hero captions but retain real explanations.
-  Information panels end after their reported rows and missing-value caption.
-  Keep grid cells top-aligned. Use the shared chart grid token and 1pt rules
-  with whole-point edges inside the plot. Preserve the data strokes, dither,
-  requested plot height, 6pt endpoint reserve, time axis, and legend.
-- **Check:** Run `python3 tmp/redesign/checks/30r11-tm.py` without an app host.
-  It evaluates the actual native renderer and grid coordinates at 1x and 2x.
-  The former binary disk renderer and fractional grid stroke fail the check.
-  Debug and desktop build-for-testing pass. The orchestrator must compare
-  Overview and measured, unavailable, and extended Battery cards in both
-  signed appearances. Check guide contrast and native disk labels too.
-
-- **Symptom:** Compact chart endpoint labels sit 5pt inside their grid lines.
-- **Cause:** A spacer stack aligns label boxes inside the plot. It cannot
-  center the endpoint labels on the top and bottom grid lines.
-- **Invariant:** All seven detail scales use the shared chart's grid fractions
-  and the grid's pixel rounding for their text centers. Keep the plot at 64pt.
-  Reserve 6pt above and below the plot for endpoint labels. The time axis
-  stays outside this region.
-  Keep numeric rate ticks and leading legends. Do not change data or colors.
-- **Check:** Run `tmp/redesign/logs/30r11-panels-check.py`. It evaluates the
-  actual Swift positions against the shared grid. It checks 6.5/38.5/69.5pt
-  centers in the 76pt region. The supplied spacer-stack source fails the check.
-  The orchestrator must raise the hosted CPU height cap from 410pt to 422pt
-  for the 12pt endpoint reserve and run the native height test.
-  Verify all seven charts in both signed appearances. Local checks do not
-  prove painted glyph centers, native sizing, or first-frame switching.
-
-- **Symptom:** Fan can keep polling after a menu panel closes.
-- **Cause:** The shared panel retains its mounted layout. An appearance-only
-  subscription remains active while that layout is hidden.
-- **Invariant:** Fan starts and stops its existing service owner from
-  `onePlusIsVisible`. Hiding also dismisses setup. Disappearance releases the
-  owner again. Do not add another poller.
-- **Check:** Run `testFanViewStopsPollingWhileItsLayoutStaysMounted` on hosted
-  CI. It toggles retained content visibility twice and checks poller release.
-  Measure idle CPU with every panel closed in the signed app.
-
-- **Symptom:** Task Manager declares a 220pt sidebar, but its visible surface
-  ends at 175pt and becomes 220pt only in the native strip below the SwiftUI
-  body, which looks like a transparent or overextended bottom section.
-- **Cause:** The workspace sibling's background drew outside its 860pt layout
-  bound and covered the trailing 45pt of the correctly sized sidebar. The
-  native backdrop remained visible below the SwiftUI body, exposing the paint
-  overlap at the lower edge. A first regression compared two pixels that were
-  both the workspace color and therefore produced a false green.
-- **Invariant:** Clip each independently painted pane to its assigned layout
-  bound. The sidebar, its navigation groups, and its native backdrop all use
-  220pt; the workspace starts at x=220pt and never draws into that region.
-- **Check:** In an exact-build window screenshot, require the pixels at x=40pt
-  and x=218pt to match at both middle and lower sample rows, and require the
-  workspace pixel at x=224pt to differ. Also assert selected navigation rows
-  occupy x=10...210pt and the divider stays at x=220pt.
-
-- **Symptom:** The installed Task Manager can restore as a resizable window,
-  its title feels detached from the traffic lights, or Remote Stats leaves a
-  large gap between Configure and Connect or after Connect.
-- **Cause:** Fixed sizing was applied only after the window attached, restored
-  state included an old size, AppKit's `contentLayoutRect` was mistaken for the
-  SwiftUI content view, the zoom light was hidden, and button frames included
-  transparent space outside their painted bounds.
-- **Invariant:** Declare the 1080 × 660pt content size in the scene and root,
-  restore position only, and reapply the nonresizable policy to the actual
-  content view after attachment and key-window changes. Keep all three traffic
-  lights on the shared 20pt centerline, with zoom visible but disabled and the
-  title at the 84pt leading edge. Render Configure and Connect as adjacent
-  88 × 36pt painted controls with an 8pt gap and 32pt trailing inset.
-- **Check:** Measure a 1080 × 692pt physical window, which includes the native
-  32pt titlebar, and a 1080 × 660pt content view. Attempt resize and zoom after
-  reopening, compare title and traffic-light centerlines, then measure the
-  Remote Stats button heights, painted gap, and trailing inset in the exact
-  source-stamped build.
-- **Verified:** Hosted run `36338530044` passed the package, 900-test app suite,
-  Task Manager interaction, and installable archive. Its reviewed captures show
-  all three traffic lights, the normal title alignment, the dither surface,
-  scoped process hover, and themed process sheet. The UI assertions measure
-  equal 36pt Remote Stats actions, an 8pt gap, and a 32pt trailing inset.
-
-- **Symptom:** The main menu still contains Monitor and Fan while a Monitor
-  status item opens the full window; its cards look like smooth, differently
-  colored gradients despite the requested Dither Kit reference.
-- **Cause:** The main tab list and global Home included Monitor content, status
-  clicks routed to the tool window, and card Canvas surfaces used blurred
-  colored ellipses rather than visible ordered dithering.
-- **Invariant:** Keep Monitor out of the main menu. Every grouped or separate
-  Monitor status item opens the same 440pt popup with labeled tabs and all
-  eight Home statistics. An enabled Monitor menu has at least one metric;
-  restore RAM for an empty saved selection and default to RAM for new users.
-  Use neutral near-black cards with one red accent and visible ordered dots,
-  without smooth color washes. The 2026-10-01 owner correction keeps Fan on
-  Task Manager Home and Sensors and restores it below Awake on main Home.
-- **Check:** Capture the window and dedicated popup in dark and light from the
-  exact source-stamped build; inspect card pixels, alignment, and clipping.
-  Exercise grouped and separate status-item clicks, page selection, and final
-  metric removal in hosted interaction tests. Install the signed clean HEAD
-  without taking focus.
-
-- **Symptom:** Selecting a 10-second menu cadence or changing Off, Combined,
-  and Separate sends a measured value back to `...` and can move unrelated
-  menu-bar items. The title-bar selector also moves within its action area.
-- **Cause:** Each settings reconfiguration cleared all cached menu values,
-  reset the delta sampler, and removed every status item. The title-bar action
-  combined a redundant variable-width metric label with its picker.
-- **Invariant:** Keep the last measured value across interval and placement
-  changes, including the first empty CPU or network delta after rescheduling.
-  Reuse unaffected native status items, but remove values for disabled metrics.
-  Use one fixed-size segmented control on each metric title bar. New CPU,
-  memory, and network menu settings default to 10 seconds; saved choices stay
-  intact. Remote Stats keeps its conservative 30-second default and offers an
-  explicit 5-second choice. Its Connect/Disconnect width stays fixed and
-  Refresh Now remains in place, disabled until connected.
-- **Check:** Run the menu-value retention test with a measured sample, a
-  10-second interval change, an empty delta, and Combined-to-Separate.
-  Require the value and unaffected item identity to remain. Compare the picker
-  bounds for all four metrics and three choices, then inspect the hosted tray
-  render and the signed app without taking desktop focus.
-
-- **Symptom:** The old tinted-card scheme uses unrelated colors and leaves
-  Overview sparse, while the Monitor sidebar wastes content width.
-- **Cause:** Card fills followed individual metric tints and the lower grid
-  packed three columns into two short rows. Monitor inherited the 240pt data
-  sidebar despite short navigation.
-- **Invariant:** Use the shared dithered neutral card and red accent above.
-  Use two Overview columns and taller cards; keep the 220pt Task Manager
-  sidebar and give the returned space to content. Other workspaces keep their
-  widths.
-- **Check:** Compare dark and light Overview, dedicated popup, and Remote Stats
-  renders, then inspect the signed app without taking focus.
-
-- **Symptom:** Graphs stop short of card edges, Load shows unlabeled averages,
-  pending menu readings say Waiting, and the installed app still says Remote.
-- **Cause:** Card padding also inset the graph; Overview joined the 1-, 5-, and
-  15-minute loads without labels; pending labels were long; `/Applications`
-  still ran an older source revision. The saved `oci1` host remained in defaults.
-- **Invariant:** Let graph strokes and fills reach the card edge while retaining
-  header padding. Show the 1-minute Load value as the main number, explain it
-  as average CPU demand, and label longer averages only on the CPU detail page.
-  Use `...` until a Monitor reading exists. Install the committed, signed app
-  without clearing remote preferences or taking focus.
-- **Check:** Compile the Monitor app and test bundles without launching them.
-  Confirm zero active transfers, `oci1` still saved, and the installed source
-  stamp and process match the new clean `HEAD` after background handoff.
-- **Verified visual check:** Hosted run `36128135753` passed and its offscreen
-  Overview and tray renders show the short pending labels, labeled Load card,
-  and tray graph running to the card edges. The first-sample CPU label was then
-  corrected to `...`; run `36129347170` passed the full suite and archived that
-  source. These renders do not prove live hover or remote keyboard interaction.
-
-- **Symptom:** Overview is a sparse four-card summary with no visual history,
-  or body subtitles leave a large dead band below the titlebar.
-- **Cause:** The detailed sampler exposed more data than the overview rendered,
-  and workspace copy repeated context already expressed by the destination.
-- **Invariant:** Overview renders CPU, GPU, memory, disk, network, thermal,
-  battery, and load in the adaptive grid. Each card uses the bounded 120-sample
-  history as a muted semantic-tint sparkline backdrop. Window and tray charts
-  share a native ordered-dot fill inspired by Dither Kit; no web renderer or
-  chart animation timer is needed. Do not repeat CPU, memory, or network in
-  another Overview history-card section. Dedicated detail pages may retain
-  larger charts. Omit body subtitles from System Monitor
-  destinations and keep the shared content top inset compact.
-- **Check:** Render the overview at 1,180 by 780 points and the tray at its
-  production width. Confirm all eight values fit, history lines remain quiet,
-  and closing either surface releases only its own detailed-sampling owner.
-
-- **Symptom:** Monitoring continues after the window closes, ignores a menu
-  item's interval, or leaves status items after disablement.
-- **Cause:** Detailed and menu sampling had separate lifecycles, or menu-only
-  work sampled every metric on each wake. Settings and rendered menu state were
-  also applied without a change check.
-- **Invariant:** Use one sampler and exactly one utility-queue timer while a
-  visible System Monitor surface needs metric data. The detailed window samples
-  only the visible page's metrics each second; Processes, Remote, and About
-  do not own the detailed timer. The tray retains its own detailed owner. In
-  menu-only mode, the timer wakes for the earliest due metric and samples only
-  enabled metrics that are due. Take the first sample immediately. Reset the
-  sampler on its utility queue without waiting on the main thread.
-- **Invariant:** When System Monitor is disabled, or when its window is closed
-  and its menu is off, keep zero System Monitor timers and zero System Monitor
-  status items. Increment a generation before stop. An in-flight sample may
-  finish, but it must not change the snapshot, history, or menu after stop.
-  Teardown is part of every close and disable path. `deinit` is only a backstop.
-- **Invariant:** Let the user choose Off, Combined, or Separate independently
-  for CPU, memory, GPU, disk, network, battery, and thermal. Put the CPU,
-  memory, network, and disk controls in their page title bars. Permit no
-  selected items and mixed placements. Preserve saved order inside the
-  combined item. Give each separate item a stable autosave name and leave its
-  saved macOS position intact when other metrics are enabled or disabled.
-- **Invariant:** Store each item's icon, Icon and Value, Icon Only, or Value Only
-  style, interval, and custom format. Support memory percentage, used, or
-  available; disk percentage, used, or free; network download, upload, or both
-  in bits or bytes; battery percentage or charging state; and compact or full
-  thermal state. Use a versioned schema and preserve old global-interval and
-  metric-selection settings during migration.
-- **Invariant:** Default CPU, memory, and network to 10 seconds, GPU to 5 seconds,
-  and disk, battery, and thermal to 30 seconds. Offer 1, 2, 3, 5, 10, 30, and
-  60 seconds only where the source supports the rate. In menu-only mode, do not
-  poll disk more often than every 15 seconds. Do not poll battery or thermal
-  more often than every 10 seconds. Mark a metric that is not available for the
-  current session. Do not keep a timer alive only to retry it. Retry after a
-  relevant system event, wake, or explicit refresh.
-- **Invariant:** CPU and network need a prior counter sample. Show a waiting
-  state for the first delta. Compute the next rate over the real elapsed time.
-  Do not synthesize a spike after an interval or sleep change. Keep at most 120
-  timestamped detailed snapshots. Menu-only updates do not add chart history.
-- **Invariant:** Compare normalized settings before writing UserDefaults or
-  restarting the timer. Compare the full rendered title, image, tooltip,
-  accessibility label, and length before writing an AppKit status item. Change
-  status-item ownership only when the enabled set, order, or placement changes.
-- **Check:** Test the service with no surface, each surface alone, and both
-  surfaces together. Use at least one enabled menu metric. Require timer counts
-  of 0, 1, 1, and 1. Also require zero timers and status items when the menu is
-  on but no metric is selected. Disable the tool during a sample and confirm the
-  generation guard rejects the result. Advance a test clock across mixed
-  per-item intervals and confirm only due metrics run. Run past 120 chart
-  updates and confirm the cap. Apply the same settings and same rendered value
-  twice and confirm the second pass makes no UserDefaults or AppKit write.
-
-- **Symptom:** Processes hides most PIDs behind a Show 25 picker, cannot sort
-  directly from headers, and offers almost no detail after selection.
-- **Cause:** The view capped the sampled list and used a sort picker; the
-  process model retained only the fields needed by its four columns.
-- **Invariant:** Show every sampled PID in a lazy scrolling stack. Make Process,
-  CPU, Memory, and PID headers reverse sort direction on repeat click and
-  persist the column and direction. Keep unavailable CPU and memory readings
-  after measured values in either direction. Search includes name, PID, and
-  path. Show parent, user, CPU, resident and virtual memory, threads, start
-  time, and executable path for a selection. If macOS denies detailed `libproc` data,
-  use bounded public `ps` output where available; do not show fake zero usage
-  or allow Quit without a verifiable start-time identity.
-- **Check:** Scroll beyond row 25, sort every header in both directions,
-  relaunch and confirm the sort, then inspect a normal and a protected process.
-  Confirm Quit remains guarded against PID reuse.
-
-- **Symptom:** A selected process looks frozen, shows hundreds of gigabytes of
-  unexplained virtual memory, or offers a path that is awkward to copy.
-- **Cause:** The detail panel had no visible sample time or copy action and
-  labeled virtual address space as memory. It omitted parent/child context and
-  selected-process network endpoints.
-- **Invariant:** Resolve selected detail from the newest PID-and-start-time
-  sample and show its update time. Explain that virtual address space includes
-  mapped or reserved ranges and is not physical RAM. Provide Copy Path for a
-  real executable, parent and child context, and a persisted hierarchy option
-  that keeps every PID and sorts siblings by the chosen column. Query network
-  endpoints with a bounded, selected-PID-only `lsof` call every 30 seconds;
-  cancel it when selection or page changes.
-- **Check:** Run the real two-sample CPU regression in an isolated Mac session.
-  Select a changing process, watch two update times and values, copy its path,
-  inspect the virtual-memory help, and compare grouped and flat lists. Confirm
-  no port subprocess runs with no selection.
-
-## Remote Window Density And Prepared Profiles, 2026-10-01
-
-- **Symptom:** Window host actions stack in a narrow lane, configuration repeats
-  the host, and a warm window first shows No remote hosts. A connection reason
-  grows an offline card from 146pt to 190pt. Zero RAM says ZeroKB.
-- **Cause:** Window cards retain the old divided action lane and settings card.
-  Initial state ignores the existing profile snapshot. An inline error row adds
-  height. The default byte formatter uses words for zero.
-- **Invariant:** Window host actions share one horizontal 24pt row. Put host
-  metadata beside its identity and counts beside Add host. Use regular 18pt
-  values. Seed window and page state from the existing shared profile snapshot;
-  explicit supplied profiles win. Off-main loading and edits update that snapshot.
-  Put reasons in header info help and accessibility labels so error bounds stay
-  fixed. Show numeric zero RAM and full panel metric help. The panel retains its
-  20pt header, 36pt metrics, and 84pt trailing actions.
-- **Check:** Run `python3 tmp/redesign/logs/remote-r11-check.py`. The same check
-  with `--before` fails horizontal actions, numeric zero, warm first/later frames,
-  and error bounds. Current Light/Dark fixtures pass at 840pt and 402pt window
-  widths and 338pt panel width. Cold first frames, native help and context menus,
-  SSH launch, host selection, and keyboard actions require signed acceptance.
-
-- **Symptom:** Return does nothing in the remote host field, changing refresh
-  requires a disconnect, or Open Terminal opens an idle shell.
-- **Cause:** The field had no submit action, Refresh was disabled while
-  connected, and Terminal received only an app-open request while the SSH
-  command went to the clipboard.
-- **Invariant:** Name the destination Remote Stats. Return starts the same
-  validated connection as Connect. Refresh offers Manual, 5, 10, 30, 60, 120, and
-  300 seconds. Save edits to restart that host with its selected cadence.
-  Manual obtains the baseline pair needed for rates, then stops repeats.
-  Refresh Now takes a new bounded sample. Preserve SSH config when user or
-  port is blank. Disconnect cancels work. Closing the last owning window or
-  panel cancels work; changing window pages keeps Overview readings live.
-  Open SSH sends a private executable command file to Terminal after the user
-  presses it. The command keeps the host alias and explicit user and port.
-  It removes its temporary file and directory before SSH starts.
-- **Check:** Use an SSH alias, press Return, change refresh while connected,
-  select Manual and confirm no repeats after the baseline pair, then refresh
-  once and disconnect. Verify empty user and port preserve SSH config.
-  Open SSH and confirm Terminal starts the selected command. On the signed
-  build, test edits, removal, host selection, and window and panel closure.
-
-- **Symptom:** A 5-second Remote Stats refresh establishes a fresh SSH
-  connection for every sample.
-- **Cause:** Each bounded remote command launched a new OpenSSH client with no
-  control socket to reuse the authenticated connection.
-- **Invariant:** Reuse one private OpenSSH control socket per host session.
-  Use a short `/tmp/mpt-remote-UUID/ssh` path in a mode-0700 directory.
-  Keep BatchMode and host validation. Cancel and await an in-flight sample
-  before master exit on disconnect, final owner close, or sample failure.
-  One host session must not close another session's master.
-- **Check:** `ssh -G` resolves ControlMaster, ControlPersist, and the short
-  temporary ControlPath. The focused argument regression keeps the remote
-  command unchanged. On a live host, confirm the second sample reuses the
-  master and no control socket or SSH master remains after Disconnect.
-
-- **Symptom:** Remote Overview and panel cards stay Offline while the window
-  samples a host, or a saved host disappears when profiles load.
-- **Cause:** Reading state belonged to one page; other cards used constants.
-  The child copied an empty initial profile array before its parent loaded it.
-- **Invariant:** All surfaces observe `SystemMonitorRemoteSessions` by stable
-  profile ID. Apply asynchronously loaded profiles and saved edits to cards.
-  Failed or disconnected sessions clear readings and show the precise reason.
-  Reject empty numeric fields, malformed loads, and impossible disk values.
-- **Check:** `SystemMonitorRemoteTests` covers three protocols, legacy profiles,
-  manual refresh, late responses, errors, and last-owner closure. Compile here
-  and execute on CI. Real `oci2` sampling and socket removal pass in
-  `tmp/redesign/logs/remote-live-smoke.log`. Signed interaction remains open.
-
-- **Symptom:** A protected-process fallback can leave Processes loading when
-  `/bin/ps` stalls or emits excessive output.
-- **Cause:** The fallback read its pipe to EOF and waited for exit before
-  checking the output size, with no deadline.
-- **Invariant:** Run `ps` through the existing cancellable subprocess runner
-  with a five-second deadline and a 2 MB output limit. Keep the libproc rows
-  if the fallback fails.
-- **Check:** Compile the monitor tests, exercise the runner's output and timeout
-  cases in an isolated test session, and inspect a protected process there.
-
-- **Symptom:** A stalled fan helper can leave the fan card loading or delay app
-  quit indefinitely.
-- **Cause:** Its command path read a pipe to EOF, retained all output, and only
-  sent a soft termination after five seconds.
-- **Invariant:** Drain output with a fixed memory cap. Send a hard kill if the
-  command remains alive after a short termination grace period. Keep fan
-  commands off the main actor except the bounded Auto restoration on quit.
-- **Check:** Use a synthetic command to exceed the output cap in an isolated
-  test session; compile on the owner's desktop without invoking the helper.
-
-- **Symptom:** The fan card has no RPM on a Mac without smctl or Stats.
-- **Cause:** Both read paths required binaries installed outside MacPowerToys.
-- **Invariant:** Read SMC fan keys in the app only while a fan view owns the
-  poller. Limit fan indices and data lengths. Keep this path read-only; route
-  writes through the guarded privileged helper.
-- **Check:** Compile both Mac architectures, run the SMC layout and decoding
-  regression in hosted tests, and inspect a fan-equipped Mac without either
-  external binary installed.
-
-- **Symptom:** System Monitor mixes unrelated clocks, Bluetooth, and metric
-  plugins with activity monitoring, and Remote is labeled Linux-only.
-- **Cause:** A broad feature list was treated as monitor modules even though
-  plugins belong to the MacPowerToys Marketplace.
-- **Invariant:** Keep monitor metrics and MacPowerToys tool plugins separate.
-  Remote selects Linux, macOS, or Windows and samples only after Connect, at
-  30 seconds or slower by default, stopping on Disconnect or page exit.
-- **Check:** Confirm the sidebar order starts Overview, Processes, CPU; it has
-  no World Clocks, Bluetooth, Plugins, or Menu Bar page. Confirm the existing
-  Marketplace still installs tools and Remote is idle until connected.
-
-## Background Resource Ownership
-
-- **Symptom:** An enabled Dev Sync pair wakes five times a second when no
-  files changed and no reconciliation is pending.
-- **Cause:** Its scheduler loop checked the dirty queue every 200 ms, even
-  after the queue became empty.
-- **Invariant:** Sleep until the next due generation. When none exists, park
-  the loop and wake it on file events, manual sync, configuration changes, or
-  remount. Cancel the sleep and loop when the pair stops. A file event only
-  reschedules the deadline; it does not start reconciliation early.
-- **Check:** Keep an enabled pair idle and confirm no periodic scheduler work.
-  Then edit a file and require one debounced operation. Repeat after a remount,
-  rapid edits, a manual Sync Now, and stop/start; no generation may be lost or
-  duplicated.
-
-- **Symptom:** Cloud Sync's launch setting leaves its daemon and poller awake
-  every 700 ms even though no transfer can advance.
-- **Cause:** The poll loop used its active-transfer interval for an empty or
-  fully paused queue.
-- **Invariant:** An empty or fully paused engine checks daemon health every 5
-  seconds. Queued, running, and retrying work retains 700 ms progress polling.
-  Creating, resuming, or retrying a transfer submits it immediately when the
-  daemon is ready and wakes the poller, so idle sleep never delays progress.
-- **Check:** With Start at Launch enabled and no active transfer, measure the
-  signed app and rclone at idle. Start a local copy and require an immediate
-  running state followed by normal progress and completion. Resume and retry
-  must also wake the loop without duplicate submissions.
-
-- **Symptom:** Reopening a window or enabling a tool several times increases
-  timers, watchers, event taps, helpers, status items, or idle resource use.
-- **Cause:** Start paths were not idempotent, or a close and disable path did not
-  release the owner that its start path created.
-- **Invariant:** Every repeating task and external handle has one named owner,
-  one need condition, and one matching stop path. A disabled or closed tool owns
-  no repeating task, file watcher, event tap, child process, helper, status item,
-  or active system handle unless the user independently enabled that background
-  feature. One bounded idle hardware handle may stay cached when reuse costs less
-  than repeated acquisition and `deinit` releases it. Event-driven app-lifetime
-  observers and one-shot debounce work are not polling loops.
-- **Invariant:** Allowed background work is limited to the enabled menu-bar
-  surfaces, Awake activity, Input Devices scroll control, the NetToys login
+- **Symptom:** Reopening or re-enabling a tool increases timers, watchers,
+  taps, helpers, status items, or idle use.
+- **Invariant:** Every repeating task and external handle has one owner, one
+  need condition, and one stop path. A closed or disabled tool owns none
+  unless the user enabled that background feature. One bounded idle hardware
+  handle may stay cached if `deinit` releases it. Allowed background work:
+  enabled menu-bar surfaces, Awake, Input Devices scroll control, the NetToys
   helper, Settings Sync observers, a visible Cloud Sync window, active or
-  continuous Cloud Sync jobs, the saved Cloud Sync start-at-login mode, global
-  shortcuts, and visible Ruler work. Each
-  owner must still stop when its own need condition ends. Repeated start calls
-  must not increase its owner count.
-- **Check:** Expose test-only owner counts instead of inferring them from process
-  CPU or memory. Run at least 25 open and close or enable and disable cycles.
-  After a 30-second settle, require every owner count to return to its baseline
-  and CPU-time growth to return to the baseline range. Confirm that the final
-  ten RSS samples form a stable band with no cycle-by-cycle growth. Do not
-  require process-wide zero CPU or an exact RSS return because allocators and
-  other enabled tools share the process.
+  continuous Cloud Sync jobs, Cloud Sync start-at-login, global shortcuts,
+  and visible Ruler work. Repeated starts never raise the owner count.
+- **Check:** Use test-only owner counts. Run 25 cycles. After 30 seconds,
+  every count returns to baseline and the last ten RSS samples are stable.
 
-- **Symptom:** A large Diskman scan can retain gigabytes after the scan ends.
-- **Cause:** The result tree kept one `DiskEntry` for every file and folder with
-  no entry ceiling.
-- **Invariant:** Stop after 250,000 entries. Keep the last partial result marked
-  incomplete, block removal from it, and ask the user to scan a smaller folder.
-- **Check:** Run the injected small-limit regression in hosted tests. On a signed
-  build, scan a larger tree and confirm memory stops growing at the limit.
+### Idle Loops
 
-- **Symptom:** A subprocess can block on a full pipe, retain unlimited output,
-  outlive cancellation, or leave a readability handler installed.
-- **Cause:** Marketplace and Tailscale retained output to EOF, Portman drained
-  tunnel errors only after exit, failed rclone launch skipped handler cleanup,
-  and Dev Sync retained complete Git output.
-- **Invariant:** Drain pipes while the child runs, retain only the stated cap,
-  stop oversized or timed-out commands, and clear every readability handler on
-  launch failure and termination. Dev Sync retains at most 64 MiB from each Git
-  output pipe and stops the child when either pipe exceeds that cap.
-- **Check:** Run the Marketplace, Tailscale, Portman, and Dev Sync focused
-  regressions in hosted tests. Force rclone launch failure and confirm its
-  handler count returns.
+- **Invariant:** A Dev Sync pair sleeps until its next due generation and
+  parks with none; file events, manual sync, configuration, and remount wake
+  it. An empty or paused Cloud Sync engine checks health every 5 seconds;
+  queued or running work polls every 700 ms. New, resumed, and retried
+  transfers submit at once and wake the poller.
+- **Check:** An idle pair and an idle engine do no periodic work. Edits,
+  Sync Now, resume, and retry run once, without loss or duplicates.
 
-- **Symptom:** Repeated project branches or deleted SSH Anchors can grow service
-  dictionaries for the life of the process.
-- **Cause:** Portman never evicted GitHub link results, and the NetToys helper
-  retained retry, route, Tailscale, and host-policy state for removed anchor IDs.
-- **Invariant:** Expire Portman results after two minutes and retain at most 64.
-  On each helper tick, retain state only for configured SSH Anchor IDs.
-- **Check:** Run the Portman cache regression. Add and remove anchors repeatedly,
-  then confirm helper state stays proportional to the current configuration.
+### Subprocesses And Buffers
 
-## Application Icons And Read Buffer Memory, 2026-10-01
+- **Invariant:** Drain pipes while the child runs, keep only the stated cap,
+  stop oversized or timed-out commands, and clear readability handlers on
+  launch failure and exit. Dev Sync keeps at most 64 MiB per Git pipe.
+  `SSHProcessRunner` defaults to 4 MiB per pipe. Portman drains 64 KiB chunks
+  with an 8 MiB total cap. Drain one autorelease pool per file or pipe chunk.
+  Portman link results expire after two minutes, at most 64 kept.
+- **Check:** `SystemMonitorTests.testSubprocessDefaultOutputIsBounded`,
+  `MarketplaceInstallerTests.testStreamingSHA256ReleasesReadBuffers`,
+  `PortmanTests.testPortScanCommandOutputIsBounded`, and
+  `SystemCareTests.testApplicationIconsKeepOnlyDisplaySizedPixels`.
 
-- **Symptom:** Opening System Care leaves 6.5 GB in 98 Foundation regions.
-- **Cause:** Each native app icon TIFF includes all image representations.
-  Retained NSImage copies use about 70.52 MiB per app. Chunked FileHandle
-  reads can retain every autoreleased NSData until the task ends. SSH key
-  setup had no default output cap; Portman read its whole output pipe.
-- **Invariant:** Cache only 80 x 80 app-icon pixels, pass CGImage directly,
-  remove deleted apps, and clear window caches on close. Drain one pool per
-  file or pipe chunk. SSHProcessRunner defaults to 4 MiB per pipe and stops
-  oversized children. Portman drains 64 KiB chunks with an 8 MiB total cap
-  and kills and reaps an oversized child.
-- **Check:** SystemCareTests.testApplicationIconsKeepOnlyDisplaySizedPixels,
-  SystemMonitorTests.testSubprocessDefaultOutputIsBounded,
-  MarketplaceInstallerTests.testStreamingSHA256ReleasesReadBuffers, and
-  PortmanTests.testPortScanCommandOutputIsBounded compile. Source-derived
-  probes reject old source: ten icons used 1,472 MiB; a 512 MiB checksum
-  used 516.89 MiB; both uncapped subprocess paths accepted oversized output.
-  Fixed probes use below 12 MiB for 91 icons, 8.97 MiB after cache clearing,
-  and 2.47 MiB for that checksum. Run hosted regressions, then record
-  footprint and vmmap per installed page, panel tab, and close.
-
-## Mic Lock Stalls And Input Fights
-
-- **Symptom:** Main-thread stalls and endless input switching while Mic Lock
-  is on.
-- **Cause:** Synchronous CoreAudio calls ran on main. Re-enforcement ran from
-  its own listener with no limit.
-- **Invariant:** Mic Lock does all HAL reads and writes off main. It never
-  rewrites the same target within 2 seconds. The level meter runs only while
-  its page is visible and sends at most 10 updates per second.
-- **Check:** `MicLockResolverTests`. `rg "DispatchQueue.main"` in
-  `MacTweaks/MicLockService.swift` finds nothing.
-
-## Unbounded Subprocesses
+### Unbounded Subprocesses
 
 - **Symptom:** Portman data goes stale or Cloud Sync stalls after a long run.
   A disk command hangs.
@@ -1640,10 +419,14 @@ Report: `tmp/redesign/logs/w8-tests-quiet.md`.
 - **Check:** `PortmanTests` deadline test. `rg "standardOutput = Pipe()"` shows
   a reader beside each match.
 
-## Remote Stats Polling
+### Mic Lock Stalls And Input Fights
 
-- **Symptom:** Remote Stats polled for the whole window lifetime.
-- **Cause:** A window-close event owned the polling.
-- **Invariant:** Each host card owns its polling from appear to disappear.
-- **Check:** On the signed build, switch pages. A connected host must survive a
-  Remote to Overview switch.
+- **Symptom:** Main-thread stalls and endless input switching while Mic Lock
+  is on.
+- **Cause:** Synchronous CoreAudio calls ran on main. Re-enforcement ran from
+  its own listener with no limit.
+- **Invariant:** Mic Lock does all HAL reads and writes off main. It never
+  rewrites the same target within 2 seconds. The level meter runs only while
+  its page is visible and sends at most 10 updates per second.
+- **Check:** `MicLockResolverTests`. `rg "DispatchQueue.main"` in
+  `MacTweaks/MicLockService.swift` finds nothing.
