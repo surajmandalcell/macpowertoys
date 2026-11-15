@@ -29,10 +29,28 @@ struct TrayHomeView: View {
             if toolIDs.contains("awake") {
                 AwakeTrayRow()
             }
-            if SettingsManager.shared.isToolEnabled("system-monitor") {
-                FanControlView(owner: "main-tray-home", compact: true)
-            }
+            FanControlView(owner: "main-tray-home")
         }
+        .modifier(MenuPanelMetricSampling(owner: "main-tray-home"))
+    }
+}
+
+/// The combined panel's Home owns the metric sampler only while it is visible.
+struct MenuPanelMetricSampling: ViewModifier {
+    static let metrics: Set<SystemMonitorMetric> = [.cpu, .gpu, .memory, .disk, .network, .battery]
+    let owner: String
+    @Environment(\.onePlusIsVisible) private var isVisible
+
+    func body(content: Content) -> some View {
+        content
+            .onChange(of: isVisible, initial: true) {
+                if isVisible {
+                    SystemMonitorService.shared.startDetailed(owner: owner, metrics: Self.metrics)
+                } else {
+                    SystemMonitorService.shared.stopDetailed(owner: owner)
+                }
+            }
+            .onDisappear { SystemMonitorService.shared.stopDetailed(owner: owner) }
     }
 }
 

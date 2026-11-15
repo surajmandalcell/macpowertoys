@@ -9,7 +9,6 @@ nonisolated enum ToolGlyph: String, CaseIterable {
     case inputDevices = "input-devices"
     case systemCare = "system-care"
     case diskman = "disk-explorer"
-    case taskManager = "system-monitor"
     case netToys = "nettoys"
     case portman
     case macTweaks = "mac-tweaks"
@@ -25,7 +24,6 @@ nonisolated enum ToolGlyph: String, CaseIterable {
         case .inputDevices: "computermouse"
         case .systemCare: "SystemCareGlyph"
         case .diskman: "opticaldisc"
-        case .taskManager: "waveform.path.ecg.rectangle"
         case .netToys: "NetToysGlyph"
         case .portman: "PortmanStatusGlyph"
         case .macTweaks: "MacTweaksGlyph"

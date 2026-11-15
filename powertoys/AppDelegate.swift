@@ -44,7 +44,7 @@ class AppDelegate: NSObject, NSApplicationDelegate {
 
     private static let nativeSceneToolIDs: Set<String> = [
         "main", "rclone", "logs", "awake", "color-picker",
-        "text-extractor", "input-devices", "system-care", "disk-explorer", "system-monitor", "nettoys", "mac-tweaks",
+        "text-extractor", "input-devices", "system-care", "disk-explorer", "nettoys", "mac-tweaks",
     ]
 
     @MainActor
@@ -125,7 +125,6 @@ class AppDelegate: NSObject, NSApplicationDelegate {
         "text-extractor": "TextExtractorLogo",
         "input-devices": "InputDevicesLogoA",
         "system-care": "SystemCareLogo",
-        "system-monitor": "SystemMonitorLogo",
         "disk-explorer": "DiskExplorerLogo",
         "nettoys": "NetToysLogo",
         "mac-tweaks": "MacTweaksLogo"
@@ -195,24 +194,6 @@ class AppDelegate: NSObject, NSApplicationDelegate {
         }
 
         didFinishLaunching = true
-        if AppRuntime.isUITesting,
-           let monitorMode = ProcessInfo.processInfo.environment["MACPOWERTOYS_UI_TEST_MONITOR_MENU"] {
-            if ProcessInfo.processInfo.environment["MACPOWERTOYS_UI_TEST_REMOTE_PROFILES"] == "1" {
-                SystemMonitorRemoteProfiles.save([
-                    SystemMonitorRemoteProfile(
-                        id: "ui-build-mac", name: "Build Mac", host: "builder@build-mac", platform: .macOS
-                    ),
-                    SystemMonitorRemoteProfile(
-                        id: "ui-windows-ci", name: "Windows CI", host: "builder@windows-ci", platform: .windows
-                    ),
-                ])
-            }
-            SystemMonitorService.shared.updateMenuSettings {
-                $0 = SystemMonitorMenuSettings(enabled: true)
-                if monitorMode == "separate" { $0.setPlacement(.separate, for: .memory) }
-            }
-            NSLog("Monitor UI test status items: \(SystemMonitorService.shared.statusItemOwnerCount)")
-        }
         startApplicationIfReady()
         if !AppRuntime.isUITesting && !CommandLine.arguments.contains("--open") {
             beginLaunchMainWindow(userInfo: notification.userInfo, isActive: NSApp.isActive)

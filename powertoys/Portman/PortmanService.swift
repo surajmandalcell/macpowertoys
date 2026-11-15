@@ -35,6 +35,27 @@ nonisolated struct PortmanLocalPort: Identifiable, Sendable {
     }
 }
 
+/// Keeps option and shell characters out of SSH host arguments.
+nonisolated enum PortmanSSHHost {
+    static func isValid(_ host: String) -> Bool {
+        let parts = host.split(separator: "@", omittingEmptySubsequences: false)
+        guard parts.count <= 2, parts.allSatisfy({ !$0.isEmpty }),
+              parts.count == 1 || isValidUser(String(parts[0])) else { return false }
+        let address = String(parts.last ?? "")
+        return address.utf8.count <= 253 && !address.hasPrefix("-") && address.utf8.allSatisfy { byte in
+            (48...57).contains(byte) || (65...90).contains(byte) || (97...122).contains(byte)
+                || byte == 45 || byte == 46 || byte == 95 || byte == 58
+        }
+    }
+
+    static func isValidUser(_ user: String) -> Bool {
+        !user.isEmpty && user.utf8.count <= 128 && !user.hasPrefix("-") && user.utf8.allSatisfy {
+            (48...57).contains($0) || (65...90).contains($0) || (97...122).contains($0)
+                || [45, 46, 95].contains($0)
+        }
+    }
+}
+
 nonisolated enum PortmanCleanupMode: String, CaseIterable, Sendable {
     case off, ask, automatic
 }
@@ -535,7 +556,7 @@ nonisolated enum PortmanScanner {
 
     static func remotePorts(host: String, password: String? = nil,
                             configurationFile: URL? = nil) async throws -> [PortmanRemotePort] {
-        guard SystemMonitorRemoteProtocol.validHost(host) else {
+        guard PortmanSSHHost.isValid(host) else {
             throw NSError(domain: "Portman", code: 1,
                           userInfo: [NSLocalizedDescriptionKey: "Enter a valid SSH host or alias."])
         }
@@ -600,7 +621,7 @@ nonisolated enum PortmanScanner {
 
     static func remoteProcessDetails(host: String, pid: Int32?, port: UInt16,
                                      password: String? = nil) async throws -> (command: String?, container: String?) {
-        guard SystemMonitorRemoteProtocol.validHost(host) else { return (nil, nil) }
+        guard PortmanSSHHost.isValid(host) else { return (nil, nil) }
         let processCommand = pid.map { "LC_ALL=C ps -p \($0) -o args= 2>/dev/null" } ?? ":"
         let command = processCommand
             + "; printf '\\nMPT_CONTAINER\\n'; docker ps --format '{{.Names}}|{{.Ports}}' 2>/dev/null || true"
@@ -666,7 +687,7 @@ nonisolated enum PortmanScanner {
         host: String, remotePort: UInt16, localPort: UInt16,
         password: Bool = false, configurationFile: URL? = nil
     ) throws -> [String] {
-        guard SystemMonitorRemoteProtocol.validHost(host), remotePort > 0, localPort > 0 else {
+        guard PortmanSSHHost.isValid(host), remotePort > 0, localPort > 0 else {
             throw NSError(domain: "Portman", code: 2,
                           userInfo: [NSLocalizedDescriptionKey: "Choose a valid SSH host and ports."])
         }

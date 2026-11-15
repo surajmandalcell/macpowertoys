@@ -25,25 +25,6 @@ nonisolated enum SystemMonitorProcessUsage {
     }
 }
 
-nonisolated enum SystemMonitorProcessPorts {
-    static func parse(_ output: String) -> [String] {
-        Array(Set(output.split(whereSeparator: \.isNewline)
-            .filter { $0.hasPrefix("n") }
-            .map { String($0.dropFirst()) }
-            .filter { !$0.isEmpty })).sorted().prefix(8).map { $0 }
-    }
-
-    static func endpoints(pid: Int32) async -> [String] {
-        guard let result = try? await SSHProcessRunner.run(
-            executableURL: URL(fileURLWithPath: "/usr/sbin/lsof"),
-            arguments: ["-nP", "-a", "-p", String(pid), "-iTCP", "-iUDP", "-F", "n"],
-            maximumOutputBytes: 65_536,
-            timeout: 3
-        ) else { return [] }
-        return parse(result.standardOutput)
-    }
-}
-
 actor SystemMonitorProcessSampler {
     struct PublicProcessInfo: Sendable {
         let parentPID: Int32
@@ -196,36 +177,5 @@ actor SystemMonitorProcessSampler {
                                             cpuPercent: cpuPercent, path: String(fields[6]))
         }
         return result
-    }
-}
-
-nonisolated enum SystemMonitorProcessControl {
-    enum Failure: LocalizedError {
-        case noLongerRunning
-        case protectedProcess
-        case systemError(Int32)
-
-        var errorDescription: String? {
-            switch self {
-            case .noLongerRunning: "This process has already exited. Refresh the list."
-            case .protectedProcess: "MacPowerToys and system startup cannot be quit here."
-            case .systemError(let code): String(cString: strerror(code))
-            }
-        }
-    }
-
-    static func terminate(_ process: SystemMonitorProcess, force: Bool) throws {
-        guard process.pid > 1, process.pid != getpid() else { throw Failure.protectedProcess }
-        var info = proc_bsdinfo()
-        let bytes = withUnsafeMutablePointer(to: &info) {
-            proc_pidinfo(process.pid, PROC_PIDTBSDINFO, 0, $0, Int32(MemoryLayout<proc_bsdinfo>.size))
-        }
-        let started = info.pbi_start_tvsec * 1_000_000 + info.pbi_start_tvusec
-        guard bytes == MemoryLayout<proc_bsdinfo>.size, started == process.started else {
-            throw Failure.noLongerRunning
-        }
-        guard kill(process.pid, force ? SIGKILL : SIGTERM) == 0 else {
-            throw Failure.systemError(errno)
-        }
     }
 }

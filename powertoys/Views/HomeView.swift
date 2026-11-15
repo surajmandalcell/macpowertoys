@@ -30,14 +30,7 @@ struct HomeView: View {
             VStack(spacing: 0) {
                 MainPaneToolbar(title: pageTitle, canGoBack: !history.back.isEmpty,
                                 canGoForward: !history.forward.isEmpty, back: goBack, forward: goForward)
-                ZStack {
-                    content
-                    OnePlusRetainedPage(isSelected: selectedTool == "system-monitor", revision: "system-monitor") {
-                        ToolAboutView(toolId: "system-monitor")
-                    }
-                    .allowsHitTesting(selectedTool == "system-monitor")
-                    .accessibilityHidden(selectedTool != "system-monitor")
-                }
+                content
             }
         }
         .modifier(MainPageStorage(save: saveSelectedPage))
@@ -98,8 +91,6 @@ struct HomeView: View {
                              focusedToolID: $focusedToolID)
         case "settings":
             MainSettingsView(tab: settingsTab, showManual: { openPage("manual/" + $0) })
-        case "system-monitor":
-            EmptyView()
         case let toolID?:
             // One identity per tool: a reused pane keeps the last tool's scroll offset and tab key.
             ToolAboutView(toolId: toolID).id(toolID)

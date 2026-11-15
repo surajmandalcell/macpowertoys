@@ -77,7 +77,6 @@ final class ToolActionRouter {
         "cloud-sync": "rclone",
         "cloudsync": "rclone",
         "rsync": "rclone",
-        "power-stats": "system-monitor",
         "settings": "main",
         "home": "main"
     ]

@@ -17,7 +17,7 @@ final class MainMenuBarController: NSObject {
     }
 
     private func panelDidClose() {
-        TaskManagerMenuProcessModel.shared.scheduleRelease()
+        MenuPanelTopProcesses.shared.scheduleRelease()
         // The selected tab lives in AppStorage, so the released tree reopens on the same tab.
         MenuPanelRelease.shared.schedule("main") { [weak self] in
             guard let self, !self.panel.isShown else { return }

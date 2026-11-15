@@ -38,12 +38,10 @@ struct MacPowerToysApp: App {
             }
         }
         if DiagnosticsMenuPanels.shared.makeCaptureContent == nil {
-            DiagnosticsMenuPanels.shared.makeCaptureContent = { panel, profiles, resize in
+            DiagnosticsMenuPanels.shared.makeCaptureContent = { panel, _ in
                 switch panel {
                 case .main:
                     AnyView(TrayPopoverView(diagnostic: true).utilityMotionPolicy())
-                case .systemMonitor:
-                    AnyView(SystemMonitorMenuPopoverView(remoteProfiles: profiles, diagnostic: true, onPreferredHeight: resize))
                 case .portman: nil
                 }
             }
@@ -162,13 +160,6 @@ struct MacPowerToysApp: App {
                     .onePlusFixedCanvas(.diskExplorer)
                     .onToolWindowURL("disk-explorer")
             }
-        case "system-monitor":
-            OnePlusWindowContent {
-                SystemMonitorWindowView()
-                    .utilityMotionPolicy()
-                    .onePlusFixedCanvas(.systemMonitor)
-                    .onToolWindowURL("system-monitor")
-            }
         case "nettoys":
             OnePlusWindowContent {
                 MacPowerToysNetToysView()
@@ -277,15 +268,6 @@ struct MacPowerToysApp: App {
             Self.windowContent(id: "disk-explorer")
         }
         .defaultSize(OnePlusWindowCanvas.diskExplorer.size)
-        .windowResizability(.contentSize)
-        .windowStyle(.hiddenTitleBar)
-        .handlesExternalEvents(matching: [])
-        .restorationBehavior(.disabled)
-
-        Window("Task Manager", id: "system-monitor") {
-            Self.windowContent(id: "system-monitor")
-        }
-        .defaultSize(OnePlusWindowCanvas.systemMonitor.size)
         .windowResizability(.contentSize)
         .windowStyle(.hiddenTitleBar)
         .handlesExternalEvents(matching: [])

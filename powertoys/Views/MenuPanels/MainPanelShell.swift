@@ -7,7 +7,6 @@ enum TrayTab: String, CaseIterable, Identifiable {
     case cloudSync = "rclone"
     case inputDevices = "input-devices"
     case systemCare = "system-care"
-    case systemMonitor = "system-monitor"
     case netToys = "nettoys"
 
     var id: String { rawValue }
@@ -18,7 +17,6 @@ enum TrayTab: String, CaseIterable, Identifiable {
         case .cloudSync: "RSync UI"
         case .inputDevices: "Input Devices"
         case .systemCare: "System Cleaner"
-        case .systemMonitor: "Task Manager"
         case .netToys: "NetToys"
         }
     }
@@ -168,8 +166,6 @@ struct TrayPopoverView: View {
             InputDevicesTrayView()
         case .systemCare:
             systemCareRegion(.rows)
-        case .systemMonitor:
-            EmptyView()
         case .netToys:
             NetToysTrayView(snapshot: $netToysSnapshot)
         }

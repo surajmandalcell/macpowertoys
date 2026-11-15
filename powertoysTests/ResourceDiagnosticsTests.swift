@@ -65,7 +65,6 @@ final class ResourceDiagnosticsTests: XCTestCase {
             "menuBar.statusItems",
             "settingsSync.observers",
             "systemMonitor.observers",
-            "systemMonitor.statusItems",
             "systemMonitor.timers",
             "windowState.observers",
         ])

@@ -14,7 +14,7 @@ final class ToolGlyphTests: XCTestCase {
 
     func testToolGlyphsAndStatusImagesShareTheApprovedGeometry() throws {
         let tools = ToolRegistry.builtInTools
-        XCTAssertEqual(tools.count, 13)
+        XCTAssertEqual(tools.count, 12)
         XCTAssertEqual(Set(tools.map(\.icon)).count, tools.count)
         XCTAssertEqual(Set(tools.map(\.id)), Set(ToolGlyph.allCases.map(\.rawValue)))
         for tool in tools {
@@ -28,9 +28,7 @@ final class ToolGlyphTests: XCTestCase {
         for tool in IndividualMenuBarTool.allCases {
             XCTAssertEqual(tool.symbol, try XCTUnwrap(ToolGlyph(rawValue: tool.rawValue)).symbol)
         }
-        let images = try ToolGlyph.allCases.map { try XCTUnwrap(StatusItemIcon.symbol($0.symbol)) }
-            + SystemMonitorMenuMetric.allCases.flatMap { $0.symbols }.map { try XCTUnwrap(StatusItemIcon.symbol($0)) }
-            + [StatusItemIcon.main]
+        let images = try ToolGlyph.allCases.map { try XCTUnwrap(StatusItemIcon.symbol($0.symbol)) }            + [StatusItemIcon.main]
         for image in images {
             XCTAssertTrue(image.isTemplate)
             XCTAssertEqual(image.size, NSSize(width: 14, height: 14))
@@ -46,17 +44,6 @@ final class ToolGlyphTests: XCTestCase {
         XCTAssertNil(StatusItemIcon.symbol("not-a-symbol"))
     }
 
-    func testSoleMetricUsesTaskManagerWithoutChangingSavedMetricGlyphs() {
-        for metric in SystemMonitorMenuMetric.allCases {
-            for symbol in metric.symbols + ["not-a-symbol"] {
-                let item = SystemMonitorMenuItemConfiguration(metric: metric, symbol: symbol)
-                XCTAssertEqual(SystemMonitorMenuRenderer.symbol(for: item, itemCount: 1), "waveform.path.ecg.rectangle")
-                XCTAssertEqual(SystemMonitorMenuRenderer.symbol(for: item, itemCount: 2),
-                               metric.symbols.contains(symbol) ? symbol : metric.symbol)
-                XCTAssertEqual(item.symbol, symbol)
-            }
-        }
-    }
 
     func testPortmanKeepsTheOriginalStatusAsset() throws {
         let image = try XCTUnwrap(StatusItemIcon.symbol(ToolGlyph.portman.symbol))

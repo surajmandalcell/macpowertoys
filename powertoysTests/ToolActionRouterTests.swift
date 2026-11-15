@@ -18,7 +18,7 @@ final class ToolActionRouterTests: XCTestCase {
             override func deminiaturize(_ sender: Any?) { deminiaturizations += 1 }
         }
         let tools = ["main", "rclone", "logs", "awake", "color-picker", "text-extractor",
-                     "input-devices", "system-care", "disk-explorer", "system-monitor", "nettoys", "mac-tweaks"]
+                     "input-devices", "system-care", "disk-explorer", "nettoys", "mac-tweaks"]
         for tool in tools {
             for existing in [false, true] {
                 let window = WindowSpy(contentRect: .zero, styleMask: [], backing: .buffered, defer: true)
@@ -82,7 +82,7 @@ final class ToolActionRouterTests: XCTestCase {
             override func close() { reportsVisible = false; super.close() }
         }
         let tools = ["main", "rclone", "logs", "awake", "color-picker", "text-extractor",
-                     "input-devices", "system-care", "disk-explorer", "system-monitor", "nettoys", "mac-tweaks"]
+                     "input-devices", "system-care", "disk-explorer", "nettoys", "mac-tweaks"]
         let manager = WindowStateManager.shared
         for tool in tools {
             let window = WindowSpy(contentRect: .zero, styleMask: [.titled, .closable], backing: .buffered, defer: false)
@@ -173,9 +173,17 @@ final class ToolActionRouterTests: XCTestCase {
     }
 
     @MainActor
-    func testLegacyMonitorWindowIDResolvesToCurrentID() {
-        XCTAssertEqual(ToolActionRouter.resolvedWindowID("power-stats"), "system-monitor")
-        XCTAssertEqual(ToolActionRouter.resolvedWindowID("system-monitor"), "system-monitor")
+    func testRemovedTaskManagerLinkIsAnUnknownRoute() throws {
+        for id in ["system-monitor", "power-stats"] {
+            XCTAssertEqual(ToolActionRouter.resolvedWindowID(id), id)
+            XCTAssertFalse(ToolRegistry.builtInTools.contains { $0.id == id })
+        }
+        let route = try XCTUnwrap(OpenToolRoute.parse(try XCTUnwrap(URL(string: "macpowertoys://open/system-monitor/cpu"))))
+        let windowsBefore = NSApp.windows.count
+        ToolActionRouter.shared.open(toolID: route.tool, page: route.page, activateApp: false)
+        XCTAssertNil(ToolPageRouter.shared.take(tool: "system-monitor"))
+        XCTAssertEqual(NSApp.windows.count, windowsBefore)
+        XCTAssertFalse(NSApp.windows.contains { $0.identifier?.rawValue.hasPrefix("system-monitor") == true })
     }
 
     func testParsesRulerSettingsWithoutTreatingItAsASwiftUIWindow() throws {
