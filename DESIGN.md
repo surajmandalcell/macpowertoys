@@ -151,7 +151,10 @@ mockups are in `docs/design/v15/`.
     no stagger, no hover motion, nothing while idle; numbers change at
     once; Reduce Motion makes every change instant. This replaces the
     "Motion" section below for each surface when it is converted.
-  - Open: the control look (slider, segmented control, stepper, switch).
+  - Controls "Depth": recessed tracks, gently raised knobs and segment
+    caps with a fine top-edge highlight. The raise stays slight, never a
+    heavy bevel or a strong shadow. It applies to the switch, slider,
+    segmented control, and stepper. Reference: `docs/design/v15/controls-depth.html`.
   The reference renders are `docs/design/v15/applet-*.png`.
 - Rejected: the first round of ten look mockups (placeholder icons).
 
