@@ -116,7 +116,7 @@ final class FanControlTests: XCTestCase {
             let value = rpm.withLock { $0 += 1; return $0 }
             return FanSnapshot(fans: [FanReading(index: 0, actualRPM: Double(value), maximumRPM: 5_000, mode: "auto")],
                                profile: "auto", canControl: true)
-        })
+        }, applyPreset: { _, completion in completion(nil) })
         @MainActor @Sendable func observe() async {
             withObservationTracking { _ = service.display } onChange: {
                 publications.withLock { $0.append(.now) }

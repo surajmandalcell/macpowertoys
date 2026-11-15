@@ -1,37 +1,85 @@
+import IOKit
+import IOKit.ps
 import OnePlusUI
 import SwiftUI
 
+/// The combined panel's Home (DESIGN.md v15): the System bento, the Fan and Kwake card, the top processes,
+/// and the joined action bar. Sampling and the process refresh run only while Home is visible.
 struct TrayHomeView: View {
+    static let owner = "main-tray-home"
     let toolIDs: [String]
+    @State private var readings = MainPanelReadings(hardware: .current)
 
     var body: some View {
-        VStack(spacing: OnePlusMenuMetrics.tileGap) {
-            HStack(spacing: OnePlusMenuMetrics.tileGap) {
-                TrayHomeActionButton(
-                    title: "Pick Color", symbol: ToolGlyph.colorPicker.symbol,
-                    enabled: toolIDs.contains("color-picker")
-                ) {
-                    ToolActionRouter.shared.execute(ToolActionRequest(action: .colorPickerPick))
-                }
-                TrayHomeActionButton(
-                    title: "Extract Text", symbol: ToolGlyph.textExtractor.symbol,
-                    enabled: toolIDs.contains("text-extractor")
-                ) {
-                    ToolActionRouter.shared.execute(ToolActionRequest(action: .textExtractorCapture))
-                }
-                TrayHomeActionButton(
-                    title: "Ruler", symbol: ToolGlyph.ruler.symbol, iconRotation: ToolGlyph.ruler.rotation,
-                    enabled: toolIDs.contains("ruler")
-                ) {
-                    ToolActionRouter.shared.execute(ToolActionRequest(action: .rulerOpen))
-                }
-            }
-            if toolIDs.contains("awake") {
-                AwakeTrayRow()
-            }
-            FanControlView(owner: "main-tray-home")
+        MainPanelHomeContent(readings: readings, processes: MainPanelProcessDisplay.rows(MenuPanelTopProcesses.shared),
+                             actions: actions) {
+            MainPanelControlCard(showsKwake: toolIDs.contains("awake"))
         }
-        .modifier(MenuPanelMetricSampling(owner: "main-tray-home"))
+        .background { MainPanelReadingsFeed(readings: $readings) }
+        .modifier(MenuPanelProcessRefresh())
+        .modifier(MenuPanelMetricSampling(owner: Self.owner))
+    }
+
+    private var actions: [OnePlusLinearAction] {
+        let items: [(id: String, title: String, action: ToolActionID)] = [
+            ("color-picker", "Pick Color", .colorPickerPick),
+            ("text-extractor", "Extract Text", .textExtractorCapture),
+            ("ruler", "Ruler", .rulerOpen),
+        ]
+        return items.filter { toolIDs.contains($0.id) }.map { item in
+            OnePlusLinearAction(item.title, systemImage: ToolGlyph(rawValue: item.id)?.symbol ?? "circle",
+                                id: "tray.action.\(item.id)") {
+                ToolActionRouter.shared.execute(ToolActionRequest(action: item.action))
+            }
+        }
+    }
+}
+
+/// The Home layout from prepared values only, so tests can render it with fixed data.
+struct MainPanelHomeContent<Controls: View>: View {
+    let readings: MainPanelReadings
+    let processes: [MainPanelProcessDisplay]
+    let actions: [OnePlusLinearAction]
+    @ViewBuilder let controls: Controls
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: OnePlusLinearMetrics.panelBlockGap) {
+            VStack(spacing: 0) {
+                OnePlusLinearPanelHeader("System", note: "Last \(MainPanelReadings.historySeconds) s")
+                MainPanelBento(readings: readings)
+            }
+            controls
+            VStack(spacing: 0) {
+                OnePlusLinearPanelHeader.processes()
+                OnePlusLinearList(style: .panel) {
+                    ForEach(0..<MainPanelProcessDisplay.rowCount, id: \.self) { index in
+                        if index < processes.count {
+                            let row = processes[index]
+                            OnePlusLinearProcessRow(row.name, icon: row.icon, cpu: row.cpu, memory: row.memory)
+                        } else {
+                            Color.clear.frame(height: OnePlusLinearMetrics.processRow)
+                        }
+                    }
+                }
+            }
+            if !actions.isEmpty { OnePlusLinearActionBar(actions) }
+        }
+    }
+}
+
+/// One top-process row as the panel draws it. Rows hold their slot while the first reading loads.
+struct MainPanelProcessDisplay {
+    static let rowCount = 3
+    let name: String
+    let icon: Image?
+    let cpu: String
+    let memory: String
+
+    static func rows(_ model: MenuPanelTopProcesses) -> [Self] {
+        model.rows.prefix(rowCount).map { row in
+            Self(name: row.displayName, icon: row.appBundlePath.flatMap { model.icons.images[$0] }.map(Image.init(nsImage:)),
+                 cpu: row.cpuValueText, memory: row.memoryText)
+        }
     }
 }
 
@@ -54,25 +102,310 @@ struct MenuPanelMetricSampling: ViewModifier {
     }
 }
 
-private struct TrayHomeActionButton: View {
-    let title: String
-    let symbol: String
-    var iconRotation = 0.0
-    var enabled = true
-    let action: () -> Void
+/// Formats each new sample off the main thread. Samples arrive once a second, under the 4 per second UI limit.
+private struct MainPanelReadingsFeed: View {
+    @Binding var readings: MainPanelReadings
 
     var body: some View {
-        OnePlusMenuTile(span: 1, height: 32, textured: false, action: action) {
-            Label {
-                Text(title).lineLimit(1)
-            } icon: {
-                Image(systemName: symbol)
-                    .rotationEffect(.degrees(iconRotation))
-                    .symbolRenderingMode(.monochrome)
+        let service = SystemMonitorService.shared
+        Color.clear.task(id: service.snapshot?.id) {
+            guard let sample = service.snapshot else { return }
+            let history = service.history
+            let hardware = MainPanelHardware.current
+            let prepared = await Task.detached(priority: .userInitiated) {
+                MainPanelReadings(sample: sample, history: history, hardware: hardware)
+            }.value
+            guard !Task.isCancelled, prepared != readings else { return }
+            readings = prepared
+        }
+    }
+}
+
+/// Hardware the Home tiles need, probed once per launch so the layout never changes after the first frame.
+nonisolated struct MainPanelHardware: Equatable, Sendable {
+    var hasBattery: Bool
+    var hasGPU: Bool
+    var cores: Int
+    var chip: String?
+
+    static let current = MainPanelHardware(hasBattery: probeBattery(), hasGPU: probeGPU(),
+                                           cores: ProcessInfo.processInfo.activeProcessorCount, chip: probeChip())
+
+    private static func probeBattery() -> Bool {
+        guard let info = IOPSCopyPowerSourcesInfo()?.takeRetainedValue(),
+              let sources = IOPSCopyPowerSourcesList(info)?.takeRetainedValue() as? [CFTypeRef] else { return false }
+        return sources.contains { source in
+            let values = IOPSGetPowerSourceDescription(info, source)?.takeUnretainedValue() as? [String: Any]
+            return values?[kIOPSTypeKey] as? String == kIOPSInternalBatteryType
+        }
+    }
+
+    private static func probeGPU() -> Bool {
+        let service = IOServiceGetMatchingService(kIOMainPortDefault, IOServiceMatching("IOAccelerator"))
+        guard service != 0 else { return false }
+        defer { IOObjectRelease(service) }
+        let statistics = IORegistryEntryCreateCFProperty(service, "PerformanceStatistics" as CFString, kCFAllocatorDefault, 0)?
+            .takeRetainedValue() as? [String: Any]
+        return ["Device Utilization %", "GPU Core Utilization", "GPU Activity(%)", "GPU Busy"]
+            .contains { statistics?[$0] is NSNumber }
+    }
+
+    private static func probeChip() -> String? {
+        var size = 0
+        guard sysctlbyname("machdep.cpu.brand_string", nil, &size, nil, 0) == 0, size > 1 else { return nil }
+        var bytes = [CChar](repeating: 0, count: size)
+        guard sysctlbyname("machdep.cpu.brand_string", &bytes, &size, nil, 0) == 0 else { return nil }
+        let name = String(cString: bytes)
+        return name.hasPrefix("Apple") ? name : nil
+    }
+}
+
+/// Every Home text and chart value, prepared off the main thread. A missing reading shows a dash.
+nonisolated struct MainPanelReadings: Equatable, Sendable {
+    static let historySeconds = 60
+    static let dash = "—"
+
+    var hasBattery: Bool
+    var hasGPU: Bool
+    var cores: String
+    var cpu = MainPanelReadings.dash, cpuUser = MainPanelReadings.dash, cpuSystem = MainPanelReadings.dash
+    var cpuHistory: [Double] = [], cpuRange: ClosedRange<Double> = 0...10
+    var gpu = MainPanelReadings.dash, gpuName: String
+    var gpuHistory: [Double] = [], gpuRange: ClosedRange<Double> = 0...10
+    var memory = MainPanelReadings.dash, memoryUsed = "", memoryTotal = "", memoryFraction = 0.0
+    var diskFree = MainPanelReadings.dash, diskFreeUnit = "GB free", diskUsed = "", diskFraction = 0.0
+    var battery = MainPanelReadings.dash, batteryCaption = "", batteryFraction = 0.0, batterySymbol = "battery.100percent"
+    var down = MainPanelReadings.dash, downUnit = "KB/s", up = MainPanelReadings.dash
+    var downHistory: [Double] = [], upHistory: [Double] = [], networkRange: ClosedRange<Double> = 0...1_024
+
+    init(hardware: MainPanelHardware) {
+        hasBattery = hardware.hasBattery
+        hasGPU = hardware.hasGPU
+        cores = "\(hardware.cores) cores"
+        gpuName = hardware.chip ?? ""
+    }
+
+    init(sample: SystemMonitorSample, history: SystemMonitorHistory, hardware: MainPanelHardware) {
+        self.init(hardware: hardware)
+        cpu = Self.percent(sample.cpuUsage)
+        cpuUser = Self.percent(sample.cpuDetails?.user)
+        cpuSystem = Self.percent(sample.cpuDetails?.system)
+        cpuHistory = Self.recent(history, .cpu, \.cpuUsage)
+        cpuRange = Self.percentRange(cpuHistory)
+        gpu = Self.percent(sample.gpuUsage)
+        gpuHistory = Self.recent(history, .gpu, \.gpuUsage)
+        gpuRange = Self.percentRange(gpuHistory)
+        if let used = sample.memoryUsed, let total = sample.memoryTotal, total > 0 {
+            memory = Self.percent(sample.memoryUsage)
+            memoryUsed = ByteCountFormatter.string(fromByteCount: used, countStyle: .memory) + " used"
+            memoryTotal = ByteCountFormatter.string(fromByteCount: total, countStyle: .memory)
+            memoryFraction = Double(used) / Double(total)
+        }
+        if let used = sample.diskUsed, let total = sample.diskTotal, total > 0 {
+            (diskFree, diskFreeUnit) = Self.split(TrayPopoverLayout.compactDiskBytes(max(0, total - used), fractionLength: 0))
+            diskFreeUnit += " free"
+            diskUsed = TrayPopoverLayout.compactDiskBytes(used, fractionLength: 0) + " used"
+            diskFraction = Double(used) / Double(total)
+        }
+        if let percent = sample.batteryPercent {
+            battery = "\(percent)"
+            batteryFraction = Double(percent) / 100
+            let onPower = sample.batteryCharging == true
+            batteryCaption = onPower ? (percent >= 100 ? "Charged" : "Charging")
+                : sample.batteryDetails?.timeRemaining.map(Self.timeLeft) ?? "Estimating"
+            batterySymbol = onPower ? "battery.100percent.bolt"
+                : "battery.\([0, 25, 50, 75, 100].min { abs($0 - percent) < abs($1 - percent) } ?? 100)percent"
+        }
+        if let download = sample.networkDownload { (down, downUnit) = Self.rate(download) }
+        if let upload = sample.networkUpload { up = Self.rate(upload).0 + " " + Self.rate(upload).1 }
+        downHistory = Self.recent(history, .network, \.networkDownload)
+        upHistory = Self.recent(history, .network, \.networkUpload)
+        networkRange = 0...max(1_024, ((downHistory + upHistory).max() ?? 0) * 1.3)
+    }
+
+    static func percent(_ value: Double?) -> String {
+        guard let value, value.isFinite else { return dash }
+        return "\(Int(min(max(value, 0), 100).rounded()))"
+    }
+
+    /// Bytes per second as a decimal value and unit, such as `2.4` and `MB/s`.
+    static func rate(_ bytesPerSecond: Double) -> (String, String) {
+        let (value, unit) = split(TrayPopoverLayout.compactDiskBytes(Int64(max(0, bytesPerSecond).rounded())))
+        return (value, unit + "/s")
+    }
+
+    static func timeLeft(_ seconds: TimeInterval) -> String {
+        let minutes = Int(seconds / 60)
+        return String(format: "%d:%02d left", minutes / 60, minutes % 60)
+    }
+
+    /// Spikes sit in the lower half, as in the reference, and the scale never goes past 100 percent.
+    static func percentRange(_ values: [Double]) -> ClosedRange<Double> {
+        0...min(100, max(5, (values.max() ?? 0) * 2))
+    }
+
+    private static func split(_ text: String) -> (String, String) {
+        let parts = text.split(separator: " ", maxSplits: 1).map(String.init)
+        return (parts.first ?? dash, parts.count > 1 ? parts[1] : "")
+    }
+
+    private static func recent(_ history: SystemMonitorHistory, _ metric: SystemMonitorMetric,
+                               _ value: KeyPath<SystemMonitorSample, Double?>) -> [Double] {
+        history.samples(for: metric).suffix(historySeconds).compactMap { $0[keyPath: value] }.filter(\.isFinite)
+    }
+}
+
+/// Fixed tile heights that keep both bento columns equal. A missing Battery or GPU tile gives its height to
+/// the column's chart tile (CPU on the left, Network on the right), so the two columns still end on one line.
+nonisolated struct MainPanelBentoLayout: Equatable {
+    let cpu: CGFloat, cpuChart: CGFloat, network: CGFloat, networkChart: CGFloat, height: CGFloat
+
+    init(hasBattery: Bool, hasGPU: Bool) {
+        let gap = OnePlusLinearMetrics.bentoGap
+        let left = OnePlusLinearMetrics.tallTile + gap + OnePlusLinearMetrics.shortTile
+            + (hasBattery ? gap + OnePlusLinearMetrics.shortTile : 0)
+        let right = (hasGPU ? OnePlusLinearMetrics.tile + gap : 0) + 2 * OnePlusLinearMetrics.tile + gap
+        height = max(left, right)
+        cpu = OnePlusLinearMetrics.tallTile + height - left
+        cpuChart = OnePlusLinearMetrics.tallChart + height - left
+        network = OnePlusLinearMetrics.tile + height - right
+        networkChart = OnePlusLinearMetrics.chart + height - right
+    }
+}
+
+struct MainPanelBento: View {
+    let readings: MainPanelReadings
+
+    var body: some View {
+        let layout = MainPanelBentoLayout(hasBattery: readings.hasBattery, hasGPU: readings.hasGPU)
+        OnePlusLinearBento {
+            OnePlusLinearTile(height: layout.cpu, chart: OnePlusLinearChart(
+                [OnePlusLinearSeries(readings.cpuHistory, color: OnePlusLinearColor.cpu)], range: readings.cpuRange,
+                height: layout.cpuChart, midline: true)) {
+                OnePlusLinearTileLabel("CPU", systemImage: "cpu", color: OnePlusLinearColor.cpu, meta: readings.cores)
+                OnePlusLinearTileValue(readings.cpu, unit: "%")
+                OnePlusLinearTileSplit([("User", readings.cpuUser, "%"), ("System", readings.cpuSystem, "%")])
+            }
+            OnePlusLinearTile(height: OnePlusLinearMetrics.shortTile, usage: OnePlusLinearUsage(
+                readings.diskFraction, color: OnePlusLinearColor.disk, caption: readings.diskUsed)) {
+                OnePlusLinearTileLabel("Disk", systemImage: "internaldrive", color: OnePlusLinearColor.disk) {
+                    OnePlusLinearInlineValue(readings.diskFree, unit: readings.diskFreeUnit)
+                }
+            }
+            if readings.hasBattery {
+                OnePlusLinearTile(height: OnePlusLinearMetrics.shortTile, usage: OnePlusLinearUsage(
+                    readings.batteryFraction, color: OnePlusLinearColor.battery, caption: readings.batteryCaption)) {
+                    OnePlusLinearTileLabel("Battery", systemImage: readings.batterySymbol, color: OnePlusLinearColor.battery) {
+                        OnePlusLinearInlineValue(readings.battery, unit: "%")
+                    }
+                }
+            }
+        } trailing: {
+            if readings.hasGPU {
+                OnePlusLinearTile(chart: OnePlusLinearChart(
+                    [OnePlusLinearSeries(readings.gpuHistory, color: OnePlusLinearColor.gpu)], range: readings.gpuRange)) {
+                    OnePlusLinearTileLabel("GPU", systemImage: "display", color: OnePlusLinearColor.gpu, meta: readings.gpuName)
+                    OnePlusLinearTileValue(readings.gpu, unit: "%")
+                }
+            }
+            OnePlusLinearTile(usage: OnePlusLinearUsage(readings.memoryFraction, color: OnePlusLinearColor.memory)) {
+                OnePlusLinearTileLabel("Memory", systemImage: "memorychip", color: OnePlusLinearColor.memory,
+                                       meta: readings.memoryTotal)
+                OnePlusLinearTileValue(readings.memory, unit: "%", note: readings.memoryUsed)
+            }
+            OnePlusLinearTile(height: layout.network, chart: OnePlusLinearChart(
+                [OnePlusLinearSeries(readings.downHistory, color: OnePlusLinearColor.networkDown),
+                 OnePlusLinearSeries(readings.upHistory, color: OnePlusLinearColor.networkUp, filled: false)],
+                range: readings.networkRange, height: layout.networkChart)) {
+                OnePlusLinearTileLabel("Network", systemImage: "network", color: OnePlusLinearColor.networkDown) {
+                    HStack(spacing: 2) {
+                        Image(systemName: "arrow.up").font(.system(size: 9, weight: .medium)).accessibilityHidden(true)
+                        Text(readings.up).font(.system(size: OnePlusLinearMetrics.caption)).monospacedDigit()
+                    }
+                    .foregroundStyle(OnePlusLinearColor.networkUp)
+                    .accessibilityLabel("Upload \(readings.up)")
+                }
+                OnePlusLinearTileValue(readings.down, unit: readings.downUnit,
+                                       glyph: ("arrow.down", OnePlusLinearColor.networkDown))
             }
         }
-        .disabled(!enabled)
-        .accessibilityLabel(title)
+    }
+}
+
+/// One card with the Fan row and the Kwake row. A Mac without fans shows only Kwake; with neither, no card.
+private struct MainPanelControlCard: View {
+    let showsKwake: Bool
+
+    var body: some View {
+        let showsFan = !FanControlService.shared.display.hasNoFans
+        if showsFan || showsKwake {
+            OnePlusLinearList(style: .panel) {
+                if showsFan { FanControlView(owner: TrayHomeView.owner) }
+                if showsKwake { MainPanelKwakeControl() }
+            }
+        }
+    }
+}
+
+/// The Kwake switch row. On keeps the Mac awake with no end time; the Kwake applet sets timed modes.
+struct MainPanelKwakeRow: View {
+    @Binding var isOn: Bool
+    let status: String
+
+    var body: some View {
+        OnePlusLinearControlRow("Kwake", systemImage: ToolGlyph.awake.symbol, status: status) {
+            Toggle("Kwake", isOn: $isOn)
+                .toggleStyle(OnePlusLinearSwitchStyle())
+                .accessibilityIdentifier("awake.toggle")
+        }
+    }
+}
+
+private struct MainPanelKwakeControl: View {
+    var body: some View {
+        let service = AwakeService.shared
+        MainPanelKwakeRow(isOn: Binding(get: { service.configuration.mode != .passive },
+                                        set: { service.setMode($0 ? .indefinite : .passive) }),
+                          status: Self.status(service))
+    }
+
+    static func status(_ service: AwakeService) -> String {
+        if let error = service.assertionError { return error }
+        guard service.configuration.mode != .passive else { return "Off" }
+        guard let remaining = service.remaining else { return service.configuration.mode.title }
+        let seconds = max(Int(remaining), 0)
+        return String(format: "%d:%02d:%02d left", seconds / 3_600, seconds / 60 % 60, seconds % 60)
+    }
+}
+
+/// Top processes refresh only while Home is visible: a CPU baseline, a first reading 0.5 s later, then every 2 s.
+enum MainPanelProcessCadence {
+    static let baseline: Duration = .milliseconds(500)
+    static let interval: Duration = .seconds(2)
+
+    static func run(refresh: () async -> Void, sleep: (Duration) async throws -> Void = { try await Task.sleep(for: $0) }) async {
+        await refresh()
+        var delay = baseline
+        while !Task.isCancelled {
+            do { try await sleep(delay) } catch { return }
+            guard !Task.isCancelled else { return }
+            await refresh()
+            delay = interval
+        }
+    }
+}
+
+/// Runs the top-process cadence while Home is visible; hiding, closing, or a tab change cancels it.
+private struct MenuPanelProcessRefresh: ViewModifier {
+    @Environment(\.onePlusIsVisible) private var isVisible
+
+    func body(content: Content) -> some View {
+        content.task(id: isVisible) {
+            guard isVisible else { return }
+            await MainPanelProcessCadence.run {
+                await MenuPanelTopProcesses.shared.refresh(limit: MainPanelProcessDisplay.rowCount)
+            }
+        }
     }
 }
 

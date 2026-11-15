@@ -2,20 +2,21 @@ import OnePlusUI
 import SwiftUI
 
 enum TrayPopoverLayout {
-    static let width = OnePlusMenuMetrics.width
-    static let horizontalInset = OnePlusMenuMetrics.bodyInset
-    static let tabHeight = OnePlusMenuMetrics.tab
-    static let tabSpacing = OnePlusMenuMetrics.tabGap
+    static let width = OnePlusLinearMetrics.panelWidth
+    static let bodyWidth = OnePlusLinearMetrics.panelWidth - 2 * OnePlusLinearMetrics.panelBodyInset
     static let minimumBodyHeight: CGFloat = 54
-    static let topChromeHeight = OnePlusMenuMetrics.topBar
+    /// The v15 panel chrome around the body: body top and bottom padding plus the footer.
+    static let chromeHeight = OnePlusLinearMetrics.panelBodyTop + OnePlusLinearMetrics.panelBodyBottom
+        + OnePlusLinearMetrics.footer
     static let heightFraction = OnePlusMenuMetrics.heightFraction
     static let homeToolIDs = ["color-picker", "text-extractor", "awake", "ruler"]
     static let defaultComplexTabs: [TrayTab] = [
         .cloudSync, .inputDevices, .systemCare, .netToys,
     ]
 
-    static func maximumBodyHeight(screenHeight: CGFloat) -> CGFloat {
-        max(minimumBodyHeight, screenHeight * heightFraction - topChromeHeight)
+    /// The tallest body that keeps the whole panel inside its display ceiling.
+    static func maximumBodyHeight(panelCeiling: CGFloat) -> CGFloat {
+        max(minimumBodyHeight, panelCeiling - chromeHeight)
     }
 
     nonisolated static func diskBytes(_ value: Int64) -> String {

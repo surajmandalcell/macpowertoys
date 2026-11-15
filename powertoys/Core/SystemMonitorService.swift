@@ -79,6 +79,8 @@ nonisolated struct SystemMonitorBatteryDetails: Sendable {
     let maximumCapacity: Int?
     let voltageMillivolts: Int?
     let amperageMilliamps: Int?
+    /// Seconds until empty on battery power; nil while macOS is still estimating or on AC power.
+    var timeRemaining: TimeInterval? = nil
 }
 
 nonisolated enum SystemMonitorBatteryProperties {
@@ -616,7 +618,8 @@ nonisolated private final class SystemMonitorSampler: @unchecked Sendable {
                     voltageMillivolts: smartDetails?.voltageMillivolts
                         ?? (values["Voltage"] as? NSNumber)?.intValue,
                     amperageMilliamps: smartDetails?.amperageMilliamps
-                        ?? (values["Amperage"] as? NSNumber)?.intValue
+                        ?? (values["Amperage"] as? NSNumber)?.intValue,
+                    timeRemaining: { let estimate = IOPSGetTimeRemainingEstimate(); return estimate > 0 ? estimate : nil }()
                 )
             )
         }

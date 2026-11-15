@@ -4,7 +4,6 @@ import ServiceManagement
 import SwiftUI
 
 struct FanControlView: View {
-    nonisolated private static let presetChoices = FanPreset.allCases.map { (Optional($0), $0.rawValue) }
     let owner: String
 
     @State private var service = FanControlService.shared
@@ -15,10 +14,13 @@ struct FanControlView: View {
     private var detail: String { display.detail }
 
     var body: some View {
-        VStack(alignment: .leading, spacing: 6) {
-            compactContent
+        MainPanelFanRow(status: display.rpm, selection: presetBinding,
+                        isEnabled: !display.isChanging && FanPreset.allCases.contains { display.canSelect($0) }) {
+            if display.hasError || (display.hasCompletedRead && !display.canControl) {
+                setupButton
+            }
         }
-        .padding(.horizontal, 1)
+        .accessibilityHint(detail)
         .onChange(of: isVisible, initial: true) {
             if isVisible { service.start(owner: owner) }
             else {
@@ -33,28 +35,14 @@ struct FanControlView: View {
         .popover(isPresented: $showsSetup, arrowEdge: .bottom) { setupPopover }
     }
 
-    private var compactContent: some View {
-        OnePlusMenuControlRow("Fan", systemImage: "fanblades", status: compactStatus) {
-            HStack(spacing: 2) {
-                if display.hasError || (display.hasCompletedRead && !display.canControl) {
-                    setupButton
-                }
-                presetButtons
-            }
-        }
-        .accessibilityHint(detail)
-    }
-
-    private var compactStatus: String {
-        display.status
-    }
-
     private var setupButton: some View {
         Button { showsSetup = true } label: {
             Image(systemName: "exclamationmark.triangle")
+                .font(.system(size: OnePlusLinearMetrics.caption))
                 .foregroundStyle(OnePlusColor.warn)
+                .frame(width: OnePlusLinearMetrics.segment.height + 4, height: OnePlusLinearMetrics.segment.height + 4)
         }
-        .buttonStyle(OnePlusButtonStyle(.icon, size: .small))
+        .buttonStyle(OnePlusLinearButtonStyle())
         .accessibilityLabel(!display.hasError ? "Set up fan control" : "Fan control issue")
         .accessibilityHint(detail)
         .accessibilityIdentifier("fan-control.setup")
@@ -110,22 +98,34 @@ struct FanControlView: View {
         FanControlPresentation.reportedPreset(snapshot, selectedPreset: selectedPreset)
     }
 
+    /// Only a user choice writes: reading the binding never selects, and a choice the helper cannot apply does nothing.
     private var presetBinding: Binding<FanPreset?> {
         Binding(
             get: { activePreset },
-            set: { if let preset = $0 { service.select(preset) } }
+            set: { if let preset = $0, display.canSelect(preset) { service.select(preset) } }
         )
     }
 
-    private var presetButtons: some View {
-        OnePlusSegmented(
-            choices: Self.presetChoices,
-            selection: presetBinding,
-            accessibilityLabel: "Fan preset",
-            isChoiceEnabled: { display.canSelect($0) }
-        )
-        .onePlusDensity(.compact)
-        .disabled(display.isChanging)
-        .help("Auto follows macOS. Cool boosts cooling for 10 minutes. Max runs fans at their hardware maximum.")
+}
+
+/// The Fan row: RPM and the Auto, Cool, Max control. Only a click on a choice changes `selection`.
+struct MainPanelFanRow<Setup: View>: View {
+    private static var choices: [(FanPreset?, String)] { FanPreset.allCases.map { (Optional($0), $0.rawValue) } }
+    let status: String
+    @Binding var selection: FanPreset?
+    let isEnabled: Bool
+    @ViewBuilder let setup: Setup
+
+    var body: some View {
+        OnePlusLinearControlRow("Fan", systemImage: "fanblades", status: status) {
+            HStack(spacing: 4) {
+                setup
+                // shortcut: OnePlusLinearSegmented 1.1.0 has no per-choice enable state, so the whole control dims
+                // when no choice can apply; adopt the package's per-choice flag when it ships.
+                OnePlusLinearSegmented(choices: Self.choices, selection: $selection, accessibilityLabel: "Fan preset")
+                    .disabled(!isEnabled)
+                    .help("Auto follows macOS. Cool boosts cooling for 10 minutes. Max runs fans at their hardware maximum.")
+            }
+        }
     }
 }

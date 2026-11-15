@@ -169,11 +169,10 @@ What stays in MacPowerToys serves the main panel.
 
 | Status | Request | Evidence | Remaining work |
 |---|---|---|---|
-| Open | Panel metric tiles on main panel Home (layout is an open design pick in `DESIGN.md`). | `SystemMonitorService` samples CPU, GPU, memory, disk, network, and battery with a 120-sample history while Home is visible (`MenuPanelMetricSampling`). No tile UI yet. | Design and build the tiles. |
-| Open | A few top processes in the main panel. | `MenuPanelTopProcesses.refresh(limit:)` returns rows with app icon, name, CPU, and memory; the panel release clears them. No UI yet. | Wire to the panel design when it is picked. |
+| Verify | Version 15 combined panel: footer tabs, gear, and Open App; Home bento (CPU, Disk, Battery; GPU, Memory, Network), Fan and Kwake card, three top processes, joined action bar. | `MainPanelShell.swift`, `MainPanelHome.swift`. `MainPanelTests` cover sampling only while Home is visible, the 2 s process cadence and release, equal bento columns without Battery or GPU, and the 602 pt natural Home height. Offscreen renders in `tmp/redesign/captures/v15-menu-panel/`. | Signed install; live data, hover, tab switch, and timing in both appearances. |
 | Open | Panel latency: warm open within 100ms, cold within 250ms, tab switch within 100ms. | Last signed medians before the removal: Main opens 16.1ms, tabs 66.8ms. | Rerun the collector on the signed build. |
-| Verify | Fan below Awake on main Home, always shown. | `FanControlView(owner: "main-tray-home")`; no longer tied to a tool switch. | Hidden polling stops; protected writes on physical hardware after macOS approval, in an isolated session. |
-| Verify | Bare Fan warning glyph; Auto, Cool, Max stay visible. | Hosted AppKit regression passed. | Keyboard and pointer focus in a hosted UI interaction. |
+| Verify | Fan first in the Home control card, above Kwake; hidden on a Mac with no fans. | `FanControlView(owner: "main-tray-home")`; writes only on a segment click. | Hidden polling stops; protected writes on physical hardware after macOS approval, in an isolated session. |
+| Verify | Fan warning glyph; Auto, Cool, Max stay visible. | Hosted AppKit regression passed. | Keyboard and pointer focus in a hosted UI interaction. |
 | Verify | Read fan RPM without another installed app. | Native SMC reader read two fans; the signed helper shares the SMC layout for guarded writes. | Live RPM and guarded Auto and Max writes after macOS approval, in an isolated session. |
 | Verify | Real and diagnostic panels follow app Appearance. | Source committed. | Change appearance while panels, popups, and sheets are visible. |
 | Verify | Tools built in any language install through the Marketplace. | `docs/MARKETPLACE_TOOLS.md`. | Signed, notarized third-party tool from a custom catalog, end to end. |

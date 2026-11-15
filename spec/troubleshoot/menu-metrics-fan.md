@@ -18,9 +18,14 @@ still use `SystemMonitor`. `DESIGN.md` owns every size, color, and type value.
   over monotonic elapsed time. Reset rate baselines on every wake and keep
   rates until a fresh valid pair exists. Keep at most 120 timestamped samples
   per metric.
+- **Invariant:** Home text is formatted off main into `MainPanelReadings`,
+  which publishes only when a value changes. Battery and GPU presence is
+  probed once per launch (`MainPanelHardware.current`), so the bento never
+  changes shape after the first frame.
 - **Check:** `SystemMonitorTests`: Home metrics get samples, 25 start and
   stop cycles return to zero timers, and sampling stays on until every owner
-  stops.
+  stops. `MainPanelTests`: Home samples only while visible and stops on close
+  or tab change; the bento columns stay equal without Battery or GPU.
 
 ## Top Processes
 
@@ -31,9 +36,11 @@ still use `SystemMonitor`. `DESIGN.md` owns every size, color, and type value.
   load off main and are cached by bundle path; command-line executables use
   the terminal glyph. The `ps` fallback uses the cancellable runner with a
   5 s deadline and a 2 MB cap; keep libproc rows if it fails. The panel
-  release clears rows and icons.
+  release clears rows and icons. Home refreshes three rows while visible:
+  a CPU baseline, 500 ms later the first rows, then every 2 s
+  (`MainPanelProcessCadence`).
 - **Check:** `SystemMonitorTests` process sorting, protected fallback, and
-  top-processes tests.
+  top-processes tests. `MainPanelTests` cadence and release test.
 
 ## Units
 
@@ -67,12 +74,17 @@ still use `SystemMonitor`. `DESIGN.md` owns every size, color, and type value.
   before using a new XPC method. The in-app SMC reader is read-only, runs
   only while a fan view owns the poller, and bounds indices and lengths.
   Fan commands drain output with a cap and hard-kill after a short grace.
-- **Invariant:** Fan shows on main panel Home below Awake, always. Fan
-  starts and stops its service from `onePlusIsVisible`; hiding dismisses
-  setup. It always shows Auto, Cool, and Max via `isChoiceEnabled`. A
+- **Invariant:** Fan is the first row of the Home control card, above
+  Kwake. It shows the RPM and Auto, Cool, and Max. A read that finds no fans
+  hides the row. Fan starts and stops its service from `onePlusIsVisible`;
+  hiding dismisses setup. Only a click on a segment the helper can apply
+  writes (`canSelect`); the whole control dims while none can apply. A
   warning glyph owns helper setup and Restore Auto. Fan text is prepared off
   main, equal results do not publish, and publications stay at least 250 ms
   apart.
+- **Invariant:** No test reaches the real fan helper: every test service
+  gets a fake `applyPreset`, and no test selects on the shared service.
 - **Check:** `FanControlTests` covers ordering, awaited restore, failure, and
-  retry. Run `testFanViewStopsPollingWhileItsLayoutStaysMounted`. Test helper
-  approval, Max, and Auto on an isolated Mac.
+  retry. Run `testFanViewStopsPollingWhileItsLayoutStaysMounted` and
+  `MainPanelTests.testNoTestSendsAFanWrite`. Test helper approval, Max, and
+  Auto on an isolated Mac.

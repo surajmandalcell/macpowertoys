@@ -619,15 +619,61 @@ controls do not move on hover.
 
 ## Menu-bar panels
 
-The Task Manager panel is the pattern for every menu-bar panel: the combined
-MacPowerToys panel, the Task Manager panel, the Portman panel, and any
-separate tool panel.
+The combined MacPowerToys panel uses the version 15 parts below. The
+Portman panel and the separate tool panels keep the version 14 parts
+(top bar, `OnePlusMenuTile`, control rows) until they are converted. The
+shared rules apply to every panel.
+
+### Combined panel (version 15)
+
+Built from the OnePlusUI `OnePlusLinear` panel parts. Values are the
+package tokens (`OnePlusLinearMetrics`, `OnePlusLinearColor`).
+
+- Shell: 356 pt wide, radius 8, `panelShell` fill. Body padding 6 top,
+  9 on each side, 12 bottom; blocks are 12 pt apart. No top bar.
+- Footer: 44 pt on `panelFooter` with a 1 pt `line` top edge and a 9 pt
+  inset. Leading: the panel tabs as 26 pt icon tabs, Home first
+  (`square.grid.2x2`), then the tool tabs in the saved order; the selected
+  tab uses the selected segment chrome. Context menu Move Left and Move
+  Right reorder the tool tabs. Trailing: the 28 pt gear icon button (opens
+  Settings), then the raised `Open App` button. Quit stays in the status
+  item's right-click menu.
+- Home, top to bottom:
+  - Header row (24 pt): "System" and the note "Last 60 s".
+  - Bento: two equal columns, 8 pt gaps, tiles radius 6 on `panelTile`
+    with 10 pt padding. Left: CPU (146 pt, user and system shares, filled
+    history chart 68 pt), Disk (56 pt, free value and a 5 pt usage bar),
+    Battery (56 pt, percent, time left, usage bar). Right: GPU (86 pt,
+    history chart 30 pt), Memory (86 pt, percent, used and total, usage
+    bar), Network (86 pt, down and up rates, a two-series chart). Each tile
+    uses its data color: `cpu`, `gpu`, `memory`, `disk`, `battery`,
+    `networkDown`, `networkUp`. Charts show the last 60 one-second samples.
+  - Missing hardware: a Mac without a battery or without a readable GPU
+    hides that tile. The column's chart tile (CPU on the left, Network on
+    the right) takes the freed height, so both columns still end on one
+    line. Missing readings show a dash.
+  - One list card with the Fan row (32 pt: RPM status and the Auto, Cool,
+    Max segmented control, 40 x 18 segments) and the Kwake row (state text
+    and switch). A Mac with no fans hides the Fan row; the card hides when
+    both rows are absent. Only a click on a segment sends a fan write.
+  - "Top processes" header and three 30 pt rows: the app icon or a
+    terminal glyph (16 pt), the name, the CPU percent in `cpuText` with its
+    percent sign (40 pt column), and memory (52 pt column). No bar.
+  - One joined 28 pt action bar for the enabled tools among Pick Color,
+    Extract Text, and Ruler, with hairline dividers.
+- Speed: metrics sample once per second off the main thread and only while
+  Home is visible; the process list refreshes every 2 seconds. Text is
+  formatted off the main thread. Both stop when the panel closes or the
+  tab changes. Nothing animates.
+- Other tabs keep their version 14 content inside the scrolling body.
+
+### All panels
 
 - Shell corner radius: 8 pt, the product's card and panel radius (owner
   correction 2026-10-01: the combined panel's larger system popover radius
   did not match the product). Every menu-bar panel window (combined,
-  Task Manager, Portman, separate tool items) clips its window, border,
-  and shadow to 8 pt.
+  Portman, separate tool items) clips its window, border, and shadow to
+  8 pt.
 - Shell: 356 pt wide. Its height is always the natural height of the
   current tab's content; 90% of the visible screen is only a ceiling for
   content that is taller (owner correction: a short tab must never open as a
@@ -639,11 +685,14 @@ separate tool panel.
   one frame budget.
 - Identity and flair (owner correction: panels must not look stale): each
   panel keeps its tool's identity color for its key data, for example
-  Portman's blue port numbers and memory bar, Task Manager's coral alert and
-  chart line, RSync UI's blue transfer progress. Live values use
+  Portman's blue port numbers and memory bar, the combined panel's metric
+  colors, RSync UI's blue transfer progress. Live values use
   sparklines and bars, not only text. Neutral chrome stays neutral.
-  Only the body scrolls. One opaque `sidebar` surface. No blur, glass, or
+  Only the body scrolls. One opaque surface. No blur, glass, or
   stacked shells.
+
+### Version 14 panels (Portman and separate tool panels)
+
 - Top bar: padding 10 top, 8 horizontal, 6 bottom (owner correction: more
   room at the top). An icon tab group on the leading side: the tabs sit in
   one container (`track` fill, 1 pt `line`, radius 7, 2 pt inset), 26 pt
@@ -660,13 +709,20 @@ separate tool panel.
   109.33 pt columns. Wide tiles span two columns. A metric tile with history
   (CPU, GPU, Memory) draws it behind the tile content at full width in the
   lower 60 percent. Use a smooth 1 pt line at 35 percent opacity and a
-  7 percent area fill. CPU and GPU use neutral `chartLine`; Memory keeps
-  coral `accent`. Values remain the strongest element in both appearances.
-  CPU, GPU, and Memory headings use compact `cardTitle` type. Metric and
-  control-row glyphs use 13 pt. Action glyphs keep their compact label size.
+  7 percent area fill. Values remain the strongest element in both
+  appearances. Metric and control-row glyphs use 13 pt. Action glyphs keep
+  their compact label size.
+- Control rows: 30 pt, a leading 13 pt glyph, 10.5 pt label, and SF Mono
+  status, with a trailing 24 pt segmented control.
+- Section header: a 1 pt `line` divider, 7 pt top padding, a 9.5 pt section
+  title, and a trailing link action.
+- Instance or item cards: radius 7, a 20 pt header row on a slightly raised
+  fill, metric cells separated by 1 pt lines, and a trailing 84 pt action
+  column.
+
+### Shared behavior
+
 - Status-item icons use the same modest visual size as the Portman icon.
-  A Task Manager item that shows only one metric uses the Task Manager
-  glyph, not the metric glyph.
 - Sidebar and panel glyphs are drawn from each tool's own icon, not picked
   from a loose SF Symbol (owner correction 2026-10-01). Examples: a slanted
   ruler; `SystemCareGlyph`, a tray with one block lifted out;
@@ -678,13 +734,6 @@ separate tool panel.
   its 11.2 pt maximum ink span remains the reference for other status items.
   Custom glyph assets are 32 x 32 template SVGs with 2.5 strokes, and their
   ink fits that same 11.2 pt span.
-- Control rows (Fan, Kwake): 30 pt, a leading 13 pt glyph, 10.5 pt label, and
-  SF Mono status, with a trailing 24 pt segmented control.
-- Section header: a 1 pt `line` divider, 7 pt top padding, a 9.5 pt section
-  title, and a trailing link action.
-- Instance or item cards: radius 7, a 20 pt header row on a slightly raised
-  fill, metric cells separated by 1 pt lines, and a trailing 84 pt action
-  column.
 - Each panel reopens on its last selected tab. Short pages size to content.
 - Status-item left click toggles the panel. Right click and Control-click
   open the same native context menu. Neither path activates the app; an
@@ -713,51 +762,68 @@ tokens, fixed sizes, and components.
 
 ### Main window
 
-The main window uses the structure of the macOS System Settings app (owner
-decision 2026-10-05). It keeps OnePlusUI colors and type, with no
-translucency and no window texture. Apple colors are not copied.
+Version 15 Linear style, built from the OnePlusUI `OnePlusLinear*` parts
+(tokens `OnePlusLinearColor` and `OnePlusLinearMetrics`). Reference:
+`docs/design/v15/main-window-dark.png` and `main-window-light.png`.
 
-- Window: a fixed 820 x 660 canvas with a 215 pt sidebar. It keeps the
-  centerline rule, zoom disabled, and saved position only.
-- Sidebar: no title. The traffic lights sit in the empty 54 pt top row,
-  which drags the window. Search (`Search`, hint `cmd K`) follows, 10 pt
-  from the sidebar edges. Rows are 32 pt high, with a 20 pt rounded-square
-  icon, an 8 pt gap, and the name in `ink`. A disabled tool name uses
-  `muted`. Selection is a `selection` fill with an 8 pt radius. Groups have
-  no captions and are 12 pt apart: `All tools` (app icon), then one group
-  per tool category in category order (registry order inside), then
-  `Settings` and `Exit` on neutral icon tiles as the last group of the same
-  scrolling list, like macOS System Settings. There is no fixed bottom group
-  and no divider above it. The scroll content ends with 12 pt of padding, so
-  the last row clears the window edge when scrolled to the end. There is no
-  main-level Modified page; each tool owns its own reset.
+- Window: a fixed 820 x 660 canvas with a 215 pt sidebar, zoom disabled,
+  and saved position only. The traffic lights center on C = 22, the center
+  of the 44 pt toolbar. No texture and no translucency. The sidebar uses
+  the Linear `sidebar` fill (`#101012` dark, `#F5F5F6` light) with a 1 pt
+  `line` on its trailing edge; the pane uses `window` (`#141416`,
+  `#FCFCFD`).
+- Sidebar (`OnePlusLinearSidebar`): an empty 44 pt top row that drags the
+  window, then the 28 pt search field (`Search` with a `⌘K` chip, 8 pt from
+  the sidebar edges, 8 pt above the list). Command-K and Command-F focus it.
+  The scrolling list holds `All tools` (app icon), then one group per tool
+  category in category order, registry order inside. Each group starts
+  with a 28 pt caption (11.5 pt medium `muted`, 6 pt above the text). Rows
+  are 28 pt: a 16 pt icon, an 8 pt gap, and the 13 pt name in `secondary`.
+  A disabled tool name uses `muted`. Selection is a `selection` fill with a
+  6 pt radius and a medium `ink` name; it never moves the row. `Settings`
+  (`⌘,`) and `Exit` (`⌘Q`) are a fixed bottom group below the scroll view,
+  with glyphs and trailing shortcut hints, 28 pt above them and 20 pt below.
+  There is no main-level Modified page; each tool owns its own reset.
 - Command-1 selects All tools. Command-2 to Command-9 follow the sidebar
-  order. Command-[ and Command-] go back and forward.
-- Pane toolbar: a 54 pt row that drags the window. Back and forward
-  chevron buttons sit in one capsule 12 pt from the pane edge, then the
-  page title in the section-title role.
-- Pane body: one scroll view with a 20 pt gutter. Sections are 10 pt apart.
-  A section title sits outside its rounded group, 10 pt from its edge,
-  6 pt above it. Groups are `OnePlusCard`s with hairline row separators.
-- Hero block: a centered card with a 48 pt icon, the name in the page-title
-  role, a one- or two-line description, and the page controls below.
-- All tools: the hero shows the app icon, `MacPowerToys`, `Your Mac, a
-  little more capable.`, and a segmented filter `All N`, `Enabled N`,
-  `Favorites N`. One section per category follows. Each 52 pt row has a
-  24 pt icon, the name, a one-line summary, the favorite star (shown on
-  hover, focus, or when set), an unlabeled enable switch, and a chevron.
-  A row opens the tool page. Its context menu has Settings, Open, Enable,
-  and Favorite.
-- Tool page: the hero shows the tool icon, name, description, the enable
-  switch, and the primary `Open <Tool>` button. A `Menu bar icon` row
-  (None, Combined, Separate) follows for tools that support placement.
-  The tool's shared settings cards follow. `How to use` closes the page:
-  one titled section per manual section, with one numbered row per point.
-  A manual route scrolls to `How to use`.
-- Settings: a centered segmented control for General, Marketplace, and
-  About, then stacked sections. General holds Appearance and windows,
-  Launch and iCloud, and the Quick Access shortcut. About uses a hero with
-  the update check, then details, links, acknowledgements, and manuals.
+  order. Command-[ and Command-] go back and forward. Command-O opens the
+  selected tool.
+- Pane toolbar (`OnePlusLinearPaneToolbar`): 44 pt including its 1 pt
+  bottom `line`; it drags the window. Back and forward are 24 pt icon
+  buttons 4 pt apart, 16 pt from the pane edge, then the page title in
+  13 pt semibold `ink`. The trailing text tabs (`OnePlusLinearTextTabs`)
+  end 24 pt from the edge, on the content's right inset. Tabs are 16 pt
+  apart; a 12 pt `muted` count follows the 13 pt label after 5 pt. Labels
+  are `secondary`, `ink` on hover and selection. The selected tab draws the
+  2 pt accent underline on the toolbar line and never changes weight or
+  position. All tools shows `All N`, `Enabled N`, and `Favorites N`;
+  Settings shows General, Marketplace, and About; tool pages show no tabs.
+- Pane body (`OnePlusLinearPaneBody`): one scroll view, 14 pt top, 24 pt
+  gutters, and 16 pt between sections and below the last one. A section is
+  a 20 pt caption (11.5 pt medium `muted`, the count 6 pt after it), 6 pt,
+  then a list with radius 8, a 1 pt `line` ring, and `lineSoft` separators.
+- All tools: no hero, filter, or search in the body. One section per
+  category. Each `OnePlusLinearToolRow` is 36 pt with 12 pt padding and
+  12 pt gaps: a 20 pt icon (60% opacity when disabled), the name in 13 pt
+  medium in a 124 pt column (`secondary` when disabled), the one-line
+  summary in `secondary`, the 16 pt star slot (shown on hover, focus, or
+  when set; accent when set), the 26 x 16 switch, and a 10 pt chevron.
+  Hover fills the whole row. A row opens the tool page; arrows move between
+  rows, typing selects by name, and Return opens. Its context menu has
+  Settings, Open, Enable, and Favorite.
+- Tool page: a header list row (32 pt icon, the name in 13 pt semibold,
+  the description in 12 pt `secondary` up to two lines, then the switch and
+  the raised `Open <Tool>` button), with 10 pt vertical padding. A
+  `Menu bar icon` row (None, Combined, Separate) follows for tools that
+  support placement. The tool's shared settings cards follow. `How to use`
+  closes the page: a caption, then one card per manual section with one
+  numbered row per point. A manual route scrolls to `How to use`. Each tool
+  page has its own identity, so it starts at the top. The placement row,
+  settings cards, and manual cards keep version 14 parts until they are
+  converted.
+- Settings: General holds Appearance and windows, Launch and iCloud, and
+  the Quick Access shortcut. About starts with a header row (app icon,
+  `MacPowerToys`, the update status, and `Check for Updates`), then
+  details, links, acknowledgements, and manuals.
 - Enablement, menu-bar placement, runtime state, and window visibility stay
   separate states.
 - Settings embedding contract: each tool exposes one settings content view

@@ -22,7 +22,7 @@ enum TrayTab: String, CaseIterable, Identifiable {
     }
 
     var symbol: String {
-        ToolGlyph(rawValue: rawValue)?.symbol ?? "house"
+        ToolGlyph(rawValue: rawValue)?.symbol ?? "square.grid.2x2"
     }
 
     var toolID: String? { self == .home ? nil : rawValue }
@@ -36,10 +36,13 @@ enum TrayTab: String, CaseIterable, Identifiable {
     }
 }
 
+/// The combined menu panel (DESIGN.md v15): the selected tab's body, then the footer with the tab icons,
+/// Settings, and Open App. Only the selected tab is mounted; Quit lives in the status item's context menu.
 struct TrayPopoverView: View {
     private let diagnostic: Bool
     @AppStorage("tray.selectedTab.v2") private var selectedTabID = TrayTab.home.rawValue
     @AppStorage("tray.tabOrder.v2") private var storedTabOrder = ""
+    @Environment(\.onePlusMenuMaximumHeight) private var suppliedCeiling
     @State private var netToysSnapshot = NetToysTraySnapshot()
     @State private var careSnapshot = SystemCareTraySnapshot()
     @State private var startupDisk: SystemCareStartupDiskSnapshot?
@@ -56,7 +59,7 @@ struct TrayPopoverView: View {
         _cloudJobs = State(initialValue: TrayPopoverLayout.visibleTransferJobs(RcloneJobManager.shared.jobs))
     }
 
-    private static func homeToolIDs() -> [String] {
+    static func homeToolIDs() -> [String] {
         return TrayPopoverLayout.homeToolIDs.dropLast().filter { id in
             guard SettingsManager.shared.isToolEnabled(id),
                   let tool = IndividualMenuBarTool(rawValue: id)
@@ -85,54 +88,21 @@ struct TrayPopoverView: View {
 
     private var tabs: [TrayTab] { preparedTabs }
     private var selectedTab: TrayTab { TrayTab(rawValue: selectedTabID) ?? .home }
+    private var panelCeiling: CGFloat {
+        suppliedCeiling ?? (NSScreen.main?.visibleFrame.height ?? 800) * TrayPopoverLayout.heightFraction
+    }
 
     var body: some View {
-        OnePlusMenuPanel(contentID: selectedTabID) {
-            TrayTabStrip(
-                tabs: tabs,
-                selected: Binding(get: { selectedTab }, set: { select($0) }),
-                reorder: reorder
-            )
-        } actions: {
-            OnePlusMenuOpenApp {
-                if selectedTab == .systemCare {
-                    ToolActionRouter.shared.open(toolID: "system-care", page: "cleanup")
-                } else {
-                    ToolActionRouter.shared.open(toolID: "main")
-                }
-            }
-            Button {
-                if selectedTab == .systemCare {
-                    ToolActionRouter.shared.open(toolID: "system-care", page: "settings/general")
-                } else {
-                    ToolActionRouter.shared.open(toolID: "main", page: "settings")
-                }
-            } label: {
-                Image(systemName: "gearshape")
-            }
-            .buttonStyle(OnePlusButtonStyle(.icon, size: .small))
-            .accessibilityLabel("Open Settings")
-            .help("Open Settings")
-            Button { NSApp.terminate(nil) } label: {
-                Image(systemName: "power")
-            }
-            .buttonStyle(OnePlusButtonStyle(.icon, size: .small))
-            .accessibilityLabel("Quit MacPowerToys")
-            .help("Quit MacPowerToys")
-        } toolbar: {
+        MainPanelFrame(maximumHeight: TrayPopoverLayout.maximumBodyHeight(panelCeiling: panelCeiling),
+                       tabs: tabs, selection: Binding(get: { selectedTab }, set: { select($0) }),
+                       onMove: move, openSettings: openSettings, openApp: openApp) {
             if selectedTab == .systemCare { systemCareRegion(.toolbar) }
-        } footer: {
+            MainPanelScrollBody { tabContent }
             if selectedTab == .systemCare { systemCareRegion(.footer) }
-        } content: {
-            tabContent
         }
+        .onePlusLiveUpdates()
         .onePlusPanelTimings(panel: "main", tab: selectedTab.panelID)
-        .focusedValue(\.appOpenSettings) {
-            ToolActionRouter.shared.open(
-                toolID: selectedTab == .systemCare ? "system-care" : "main",
-                page: selectedTab == .systemCare ? "settings/general" : "settings"
-            )
-        }
+        .focusedValue(\.appOpenSettings, openSettings)
         .onOpenToolPage(diagnostic ? "menu.main" : nil) { id in
             if let tab = TrayTab(panelID: id), tabs.contains(tab) { select(tab) }
         }
@@ -161,18 +131,39 @@ struct TrayPopoverView: View {
         case .home:
             TrayHomeView(toolIDs: preparedHomeTools)
         case .cloudSync:
-            CloudSyncTrayView(jobs: $cloudJobs)
+            v14Tab { CloudSyncTrayView(jobs: $cloudJobs) }
         case .inputDevices:
-            InputDevicesTrayView()
+            v14Tab { InputDevicesTrayView() }
         case .systemCare:
-            systemCareRegion(.rows)
+            v14Tab { systemCareRegion(.rows) }
         case .netToys:
-            NetToysTrayView(snapshot: $netToysSnapshot)
+            v14Tab { NetToysTrayView(snapshot: $netToysSnapshot) }
         }
+    }
+
+    /// Tool tabs keep their version 14 content and its 5 pt rhythm inside the version 15 shell.
+    private func v14Tab<Content: View>(@ViewBuilder _ content: () -> Content) -> some View {
+        VStack(alignment: .leading, spacing: OnePlusMenuMetrics.tileGap) { content() }
     }
 
     private func systemCareRegion(_ region: SystemCareTrayView.Region) -> some View {
         SystemCareTrayView(snapshot: $careSnapshot, disk: startupDisk, diskLoaded: diskLoaded, region: region)
+    }
+
+    private func openApp() {
+        if selectedTab == .systemCare {
+            ToolActionRouter.shared.open(toolID: "system-care", page: "cleanup")
+        } else {
+            ToolActionRouter.shared.open(toolID: "main")
+        }
+    }
+
+    private func openSettings() {
+        if selectedTab == .systemCare {
+            ToolActionRouter.shared.open(toolID: "system-care", page: "settings/general")
+        } else {
+            ToolActionRouter.shared.open(toolID: "main", page: "settings")
+        }
     }
 
     private func select(_ tab: TrayTab) {
@@ -196,6 +187,12 @@ struct TrayPopoverView: View {
         selectedTabID = TrayTab.home.rawValue
     }
 
+    /// Home stays first; the tool tabs move among themselves.
+    private func move(from source: Int, to destination: Int) {
+        guard tabs.indices.contains(source), tabs.indices.contains(destination) else { return }
+        reorder(tabs[source], before: tabs[destination])
+    }
+
     private func reorder(_ source: TrayTab, before destination: TrayTab) {
         let complexTabs = Array(tabs.dropFirst())
         guard source != .home, destination != .home, source != destination,
@@ -206,6 +203,95 @@ struct TrayPopoverView: View {
         let tab = reordered.remove(at: sourceIndex)
         reordered.insert(tab, at: min(destinationIndex, reordered.count))
         storedTabOrder = reordered.map(\.rawValue).joined(separator: ",")
+    }
+}
+
+/// The v15 panel frame: the body regions above the footer with the tab icons, Settings, and Open App.
+struct MainPanelFrame<Regions: View>: View {
+    let maximumHeight: CGFloat
+    let tabs: [TrayTab]
+    @Binding var selection: TrayTab
+    let onMove: (Int, Int) -> Void
+    let openSettings: () -> Void
+    let openApp: () -> Void
+    @ViewBuilder let regions: Regions
+
+    var body: some View {
+        OnePlusLinearPanel {
+            MainPanelBodyLayout(maximumHeight: maximumHeight) { regions }
+        } footer: {
+            OnePlusLinearPanelFooter {
+                OnePlusLinearIconTabs(tabs: menuTabs, selection: $selection, onMove: onMove)
+            } trailing: {
+                OnePlusLinearIconButton(systemImage: "gearshape", help: "Open Settings", action: openSettings)
+                Button("Open App", action: openApp)
+                    .buttonStyle(OnePlusLinearButtonStyle(.raised))
+                    .accessibilityIdentifier("tray.open-app")
+            }
+        }
+        .fixedSize(horizontal: false, vertical: true)
+        .onePlusDensity(.compact)
+        .onePlusNeutralControls()
+        .onePlusFocusPolicy()
+        .onePlusAppAppearance()
+        .transaction { $0.animation = nil }
+    }
+
+    private var menuTabs: [OnePlusMenuTab<TrayTab>] {
+        tabs.map { tab in
+            OnePlusMenuTab(tab, tab.title, systemImage: tab.symbol, image: ToolGlyph(rawValue: tab.rawValue)?.assetImage,
+                           accessibilityIdentifier: "tray.tab.\(tab.rawValue)")
+        }
+    }
+}
+
+/// The tab body: natural height, scrolling only when the panel reaches its display ceiling.
+struct MainPanelScrollBody<Content: View>: View {
+    @ViewBuilder let content: Content
+
+    var body: some View {
+        ScrollView(.vertical) {
+            content.frame(width: TrayPopoverLayout.bodyWidth)
+        }
+        .scrollBounceBehavior(.basedOnSize)
+        .onePlusScrollIndicators(axes: .vertical)
+        .layoutValue(key: MainPanelScrollingBody.self, value: true)
+    }
+}
+
+/// Marks the one region of the panel body that scrolls once the panel reaches its display ceiling.
+struct MainPanelScrollingBody: LayoutValueKey {
+    static let defaultValue = false
+}
+
+/// Stacks the fixed regions and the scrolling body 12 pt apart. Every region keeps its natural height; the
+/// scrolling body gets what remains under `maximumHeight`, so the panel height is known in the first layout pass.
+struct MainPanelBodyLayout: Layout {
+    let maximumHeight: CGFloat
+
+    func sizeThatFits(proposal: ProposedViewSize, subviews: Subviews, cache: inout Void) -> CGSize {
+        let width = proposal.width ?? TrayPopoverLayout.bodyWidth
+        return CGSize(width: width, height: heights(subviews, width: width).reduce(0, +) + gaps(subviews, width: width))
+    }
+
+    func placeSubviews(in bounds: CGRect, proposal: ProposedViewSize, subviews: Subviews, cache: inout Void) {
+        var y = bounds.minY
+        for (subview, height) in zip(subviews, heights(subviews, width: bounds.width)) where height > 0 {
+            subview.place(at: CGPoint(x: bounds.minX, y: y), proposal: ProposedViewSize(width: bounds.width, height: height))
+            y += height + OnePlusLinearMetrics.panelBlockGap
+        }
+    }
+
+    private func heights(_ subviews: Subviews, width: CGFloat) -> [CGFloat] {
+        let natural = subviews.map { $0.sizeThatFits(ProposedViewSize(width: width, height: nil)).height }
+        let fixed = zip(subviews, natural).filter { !$0.0[MainPanelScrollingBody.self] }.map(\.1).reduce(0, +)
+        let gapTotal = CGFloat(max(0, natural.filter { $0 > 0 }.count - 1)) * OnePlusLinearMetrics.panelBlockGap
+        let room = max(0, maximumHeight - fixed - gapTotal)
+        return zip(subviews, natural).map { $0.0[MainPanelScrollingBody.self] ? min($0.1, room) : $0.1 }
+    }
+
+    private func gaps(_ subviews: Subviews, width: CGFloat) -> CGFloat {
+        CGFloat(max(0, heights(subviews, width: width).filter { $0 > 0 }.count - 1)) * OnePlusLinearMetrics.panelBlockGap
     }
 }
 
@@ -263,90 +349,5 @@ struct IndividualToolMenuPanel: View {
             Label(title, systemImage: symbol)
         }
         .accessibilityLabel(title)
-    }
-}
-
-private struct TrayTabStrip: View {
-    let tabs: [TrayTab]
-    @Binding var selected: TrayTab
-    let reorder: (TrayTab, TrayTab) -> Void
-
-    var body: some View {
-        ViewThatFits(in: .horizontal) {
-            tabRow.fixedSize(horizontal: true, vertical: false).onePlusMenuTabGroup()
-            ScrollView(.horizontal) {
-                tabRow
-            }
-            .thinScrollIndicators()
-            .scrollClipDisabled()
-            .frame(height: TrayPopoverLayout.tabHeight)
-            .onePlusMenuTabGroup()
-        }
-    }
-
-    private var tabRow: some View {
-        HStack(spacing: TrayPopoverLayout.tabSpacing) {
-            ForEach(tabs) { tab in
-                let index = tabs.firstIndex(of: tab) ?? 0
-                if tab == .home {
-                    TrayTabButton(tab: tab, selected: selected == tab) { selected = tab }
-                } else {
-                    TrayTabButton(tab: tab, selected: selected == tab) { selected = tab }
-                        .draggable(tab.rawValue)
-                        .dropDestination(for: String.self) { values, _ in
-                            guard let source = values.first.flatMap(TrayTab.init(rawValue:)) else { return false }
-                            reorder(source, tab)
-                            return source != .home
-                        }
-                        .contextMenu {
-                            Button("Move Left", systemImage: "arrow.left") {
-                                reorder(tab, tabs[index - 1])
-                            }
-                            .disabled(index <= 1)
-                            Button("Move Right", systemImage: "arrow.right") {
-                                reorder(tab, tabs[index + 1])
-                            }
-                            .disabled(index >= tabs.count - 1)
-                        }
-                }
-            }
-        }
-        .onMoveCommand { direction in
-            guard direction == .left || direction == .right else { return }
-            if let next = OnePlusSegmented<TrayTab>.nextSelection(in: tabs, current: selected, direction: direction == .left ? -1 : 1) {
-                selected = next
-            }
-        }
-    }
-}
-
-private struct TrayTabButton: View {
-    let tab: TrayTab
-    let selected: Bool
-    let action: () -> Void
-
-    var body: some View {
-        Button(action: action) {
-            TrayTabIcon(tab: tab, selected: selected, size: OnePlusMenuMetrics.glyphSize)
-                .foregroundStyle(selected ? OnePlusColor.ink : OnePlusColor.secondary)
-                .frame(width: TrayPopoverLayout.tabHeight, height: TrayPopoverLayout.tabHeight)
-                .contentShape(Rectangle())
-        }
-        .buttonStyle(OnePlusInteractionStyle(selected: selected))
-        .accessibilityLabel(tab.title)
-        .accessibilityIdentifier("tray.tab.\(tab.rawValue)")
-        .accessibilityAddTraits(selected ? .isSelected : [])
-        .help(tab.title)
-    }
-}
-
-private struct TrayTabIcon: View {
-    let tab: TrayTab
-    let selected: Bool
-    let size: CGFloat
-
-    @ViewBuilder
-    var body: some View {
-        ToolGlyphImage(glyph: ToolGlyph(rawValue: tab.rawValue), size: size)
     }
 }

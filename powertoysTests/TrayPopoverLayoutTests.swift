@@ -171,27 +171,23 @@ final class TrayPopoverLayoutTests: XCTestCase {
     func testTrayUsesSharedMenuPanelWithReorderableTabs() throws {
         let source = try sourceFile("Views/MenuPanels")
 
-        XCTAssertEqual(TrayPopoverLayout.width, OnePlusMenuMetrics.width)
-        XCTAssertEqual(TrayPopoverLayout.tabHeight, OnePlusMenuMetrics.tab)
-        XCTAssertTrue(source.contains("OnePlusMenuPanel"))
-        XCTAssertTrue(source.contains("OnePlusMenuOpenApp"))
-        XCTAssertTrue(source.contains("TrayTabStrip"))
-        XCTAssertTrue(source.contains("TrayTabIcon"))
-        XCTAssertTrue(source.contains("ToolGlyph(rawValue: rawValue)?.symbol"))
+        XCTAssertEqual(TrayPopoverLayout.width, OnePlusLinearMetrics.panelWidth)
+        XCTAssertTrue(source.contains("OnePlusLinearPanel {"))
+        XCTAssertTrue(source.contains("OnePlusLinearPanelFooter"))
+        XCTAssertTrue(source.contains("OnePlusLinearIconTabs(tabs: menuTabs"))
+        XCTAssertTrue(source.contains("OnePlusLinearIconButton(systemImage: \"gearshape\""))
+        XCTAssertTrue(source.contains("\"tray.open-app\""))
+        XCTAssertEqual(TrayTab.home.symbol, "square.grid.2x2")
         XCTAssertEqual(TrayTab.cloudSync.symbol, ToolGlyph.cloudSync.symbol)
-        XCTAssertTrue(source.contains("ViewThatFits(in: .horizontal)"))
-        XCTAssertTrue(source.contains("TrayHomeActionButton"))
         XCTAssertTrue(source.contains("TrayToolHeader"))
-        XCTAssertTrue(source.contains("arrow.up.right"))
-        XCTAssertTrue(source.contains(".draggable(tab.rawValue)"))
-        XCTAssertTrue(source.contains("Button(\"Move Left\""))
-        XCTAssertTrue(source.contains("Button(\"Move Right\""))
+        XCTAssertTrue(source.contains("OnePlusLinearActionBar"))
+        XCTAssertTrue(source.contains("OnePlusLinearControlRow(\"Kwake\""))
+        XCTAssertFalse(source.contains("TrayTabStrip"))
         XCTAssertFalse(source.contains("LogsTrayView"))
         XCTAssertFalse(source.contains("ToolSettingsContent"))
         XCTAssertFalse(source.contains("ToolIconColor.major"))
         XCTAssertFalse(source.contains("accessibilityReduceTransparency"))
-        XCTAssertTrue(source.contains("OnePlusMenuControlRow(\"Kwake\""))
-        XCTAssertTrue(source.contains("OnePlusMenuControlRow(\"Keep display on\""))
+        XCTAssertFalse(source.contains("withAnimation"))
     }
 
     func testTrayCorrectionPassKeepsGroupsAlignedAndErrorsOnDemand() throws {
@@ -228,17 +224,11 @@ final class TrayPopoverLayoutTests: XCTestCase {
     }
 
     func testTrayPopoverHeightStaysWithinSeventyPercentOfTheScreen() {
-        let screenHeight: CGFloat = 900
-        let body = TrayPopoverLayout.maximumBodyHeight(screenHeight: screenHeight)
+        let ceiling: CGFloat = 900 * TrayPopoverLayout.heightFraction
+        let body = TrayPopoverLayout.maximumBodyHeight(panelCeiling: ceiling)
 
-        XCTAssertLessThanOrEqual(
-            body + TrayPopoverLayout.topChromeHeight,
-            screenHeight * TrayPopoverLayout.heightFraction
-        )
-        XCTAssertEqual(
-            TrayPopoverLayout.maximumBodyHeight(screenHeight: 100),
-            TrayPopoverLayout.minimumBodyHeight
-        )
+        XCTAssertEqual(body + TrayPopoverLayout.chromeHeight, ceiling)
+        XCTAssertEqual(TrayPopoverLayout.maximumBodyHeight(panelCeiling: 100), TrayPopoverLayout.minimumBodyHeight)
     }
 
     func testTrayRendersEveryPrimarySurfaceInLightAndDark() throws {
