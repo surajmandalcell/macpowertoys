@@ -112,7 +112,7 @@ version 15. Do not restyle a view ahead of that version.
   two-column bento grid, a few top processes, more color on data, and real
   buttons at the bottom in place of keyboard hints. The layout is open.
 - Task Manager: moves to its own product, Task Manager X
-  (`../task-manager-x`, one repository): a paid advanced app with the
+  (`../task_manager_x`, one repository): a paid advanced app with the
   Windows 11 Task Manager organization in Linear style, and a free classic
   app. Its decisions live in that repository's `specs/product.md`.
 - Rejected: the first round of ten look mockups (placeholder icons).
