@@ -99,6 +99,23 @@ material-based contract. It is the complete visual and window-structure
 contract for every window, menu-bar panel, sheet, and settings page. Tool icon
 rules are in [App and tool icons](#app-and-tool-icons).
 
+## Pending redesign (owner picks, 2026-11-15)
+
+Version 14 stays the contract for shipped code until these picks become
+version 15. Do not restyle a view ahead of that version.
+
+- Main window and the app in general: Linear style. Compact rows, 13 pt
+  type, quiet borders, small sidebar icons, no texture. The All, Enabled,
+  and Favorites filter leaves the page body; its place in the header is
+  open.
+- Menu-bar panel: Linear style mixed with the data-first style. A
+  two-column bento grid, a few top processes, more color on data, and real
+  buttons at the bottom in place of keyboard hints. The layout is open.
+- Task Manager: organized like the Windows 11 Task Manager. It is planned
+  as a separate product with a paid advanced app and a free classic app.
+  Its name, repository, and visual themes are open.
+- Rejected: the first round of ten look mockups (placeholder icons).
+
 ## Overview
 
 MacPowerToys looks like one premium, quiet, dark instrument. Surfaces are flat
