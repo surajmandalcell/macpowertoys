@@ -16,6 +16,37 @@ final class AppDelegateTests: XCTestCase {
         ], isRunningUnitTests: false))
     }
 
+    func testBackgroundDefaultLaunchNeverActivatesOrOrdersMainFront() {
+        let delegate = AppDelegate()
+        var activations = 0
+        var sceneOpens = 0
+        delegate.openMainWindowAfterLaunch = {
+            ToolActionRouter.presentSingleWindow(id: "main", windows: [], activateApp: true,
+                                                 createWindow: { _ in nil },
+                                                 activate: { activations += 1 },
+                                                 openWindow: { _ in sceneOpens += 1 })
+        }
+        let defaultLaunch: [AnyHashable: Any] = [NSApplication.launchIsDefaultUserInfoKey: true]
+
+        // open -g or a login item: default launch, app inactive, and no launch activation follows.
+        delegate.beginLaunchMainWindow(userInfo: defaultLaunch, isActive: false, isRunningUnitTests: false)
+        delegate.endLaunchActivationWindow()
+        delegate.openMainWindowIfLaunchActivated()
+        XCTAssertEqual(activations, 0)
+        XCTAssertEqual(sceneOpens, 0)
+
+        // Finder, Dock, or Spotlight: macOS activates the app right after launch.
+        delegate.beginLaunchMainWindow(userInfo: defaultLaunch, isActive: false, isRunningUnitTests: false)
+        delegate.openMainWindowIfLaunchActivated()
+        delegate.openMainWindowIfLaunchActivated()
+        XCTAssertEqual(activations, 1)
+        XCTAssertEqual(sceneOpens, 1)
+
+        delegate.beginLaunchMainWindow(userInfo: defaultLaunch, isActive: true, isRunningUnitTests: false)
+        XCTAssertEqual(activations, 2)
+        XCTAssertFalse(delegate.opensMainWindowOnLaunchActivation)
+    }
+
     func testUnitTestHostCannotActivateOrReopenMainWindow() {
         XCTAssertTrue(AppRuntime.isRunningUnitTests)
         XCTAssertEqual(NSApp.activationPolicy(), .prohibited)
