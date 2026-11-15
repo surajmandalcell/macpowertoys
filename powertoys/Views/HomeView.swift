@@ -101,7 +101,8 @@ struct HomeView: View {
         case "system-monitor":
             EmptyView()
         case let toolID?:
-            ToolAboutView(toolId: toolID)
+            // One identity per tool: a reused pane keeps the last tool's scroll offset and tab key.
+            ToolAboutView(toolId: toolID).id(toolID)
         default:
             OnePlusEmptyState("Select a tool", systemImage: "wrench.adjustable",
                               caption: "Choose a tool from the sidebar.")
