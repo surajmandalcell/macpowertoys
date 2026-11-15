@@ -1114,7 +1114,7 @@ struct PortmanPanelView: View {
     private var forwardToolbar: some View {
         VStack(alignment: .leading, spacing: OnePlusMetrics.actionSpacing) {
             OnePlusHeaderActions {
-                OnePlusTextField("alias or user@IP", text: $host, onSubmit: scanRemote)
+                OnePlusLinearTextField("alias or user@IP", text: $host, onSubmit: scanRemote)
                     .accessibilityLabel("SSH alias or username at IP address")
                     .help(host.isEmpty ? "SSH alias or username at IP address" : host)
                 if !aliases.isEmpty {
@@ -1140,7 +1140,7 @@ struct PortmanPanelView: View {
                 }
             }
             OnePlusHeaderActions {
-                OnePlusTextField("Remote port", text: $manualPort, onSubmit: addManualPort)
+                OnePlusLinearTextField("Remote port", text: $manualPort, onSubmit: addManualPort)
                     .accessibilityLabel("Remote port to add")
                 Button("Add port", action: addManualPort).disabled(host.isEmpty)
                     .buttonStyle(OnePlusLinearButtonStyle(.soft))
@@ -1246,7 +1246,7 @@ struct PortmanPanelView: View {
                 }
                 .buttonStyle(OnePlusInteractionStyle())
                 .accessibilityLabel("Details for remote port \(String(port))")
-                OnePlusTextField(String(port), text: Binding(
+                OnePlusLinearTextField(String(port), text: Binding(
                     get: { localPortInputs[port] ?? String(port) },
                     set: { localPortInputs[port] = $0; selectedRemotePorts.insert(port) }
                 ), onSubmit: forwardSelected)
@@ -1631,7 +1631,7 @@ struct PortmanSettingsView: View {
             }
             if shows("Ports & processes", "Protected apps", "Extra protected process names") {
                 OnePlusLinearAppletRow("Protected apps") {
-                    OnePlusTextField("Process names", text: $protectedCommands)
+                    OnePlusLinearTextField("Process names", text: $protectedCommands)
                         .frame(width: portControlWidth)
                 }
                 .help("Extra protected process names, comma-separated. Databases, Docker, and SSH stay protected.")

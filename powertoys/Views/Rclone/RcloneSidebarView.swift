@@ -16,18 +16,15 @@ struct RcloneSidebarView: View {
             OnePlusLinearNavCaption("Transfers")
             ForEach(JobFilter.allCases) { filter in
                 let index = JobFilter.allCases.firstIndex(of: filter) ?? 0
-                let count = String(manager.count(for: filter))
-                // shortcut: the trailing hint slot shows the count; use a nav-row count when OnePlusUI adds one.
                 OnePlusLinearNavRow(
                     filter.displayName,
                     systemImage: filter.icon,
                     selected: content == .transfers && manager.filter == filter,
-                    shortcut: count
+                    count: manager.count(for: filter)
                 ) {
                     manager.filter = filter
                     content = .transfers
                 }
-                .accessibilityValue(count)
                 .keyboardShortcut(KeyEquivalent(Character(String(index + 1))))
                 .accessibilityIdentifier("rclone.transfers.\(filter.rawValue)")
             }
@@ -40,11 +37,10 @@ struct RcloneSidebarView: View {
                 "Dev Sync",
                 systemImage: "externaldrive.badge.plus",
                 selected: content == .devSync,
-                shortcut: DevSyncSidebarBadge.text(devSyncManager.attentionCount)
+                count: DevSyncSidebarBadge.count(devSyncManager.attentionCount)
             ) {
                 content = .devSync
             }
-            .accessibilityValue(DevSyncSidebarBadge.text(devSyncManager.attentionCount) ?? "")
             .keyboardShortcut("6")
 
             remotesHeader

@@ -146,13 +146,12 @@ private struct MacTweaksSegmentedControl: View {
             field.choices.indices.map { ($0, field.choices[$0].label) }
     }
 
-    // The applet segmented control has fixed 36 pt segments, too narrow for "Default (On)"; a select fits the words.
     var body: some View {
-        OnePlusLinearSelect(
+        OnePlusLinearSegmented(
             choices: choices,
             selection: Binding(get: { selection }, set: onSelection),
             accessibilityLabel: field.label,
-            width: controlWidth
+            sizing: .fitted
         )
         .accessibilityIdentifier("mac-tweaks.choice.\(field.key)")
     }

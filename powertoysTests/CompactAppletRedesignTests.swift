@@ -10,24 +10,26 @@ final class CompactAppletRedesignTests: XCTestCase {
             XCTAssertTrue(OnePlusWindowCanvas.colorPicker.heightRange!.contains(ColorPickerLayout.historyHeight(count: count)))
             XCTAssertTrue(OnePlusWindowCanvas.textExtractor.heightRange!.contains(TextExtractorLayout.historyHeight(count: count)))
         }
-        XCTAssertEqual(ColorPickerLayout.historyHeight(count: 1000), 426)
-        XCTAssertEqual(TextExtractorLayout.historyHeight(count: 1000), 446)
+        XCTAssertEqual(ColorPickerLayout.historyHeight(count: 1000), 460)
+        XCTAssertEqual(TextExtractorLayout.historyHeight(count: 1000), 462)
+        XCTAssertEqual(ColorPickerLayout.historyHeight(count: 5), 326)
+        XCTAssertEqual(TextExtractorLayout.historyHeight(count: 5), 270)
         XCTAssertEqual(AwakeLayout.windowWidth, 560)
         XCTAssertEqual(AwakeLayout.windowHeight, 500)
     }
 
     func testColorProjectsWindowGrowsUntilItsMaximumHeight() {
         XCTAssertEqual(ColorPickerLayout.projectsHeight(projectCount: 0, isCreating: false), 250)
-        XCTAssertEqual(ColorPickerLayout.projectsHeight(projectCount: 1, isCreating: false), 294)
-        XCTAssertEqual(ColorPickerLayout.projectsHeight(projectCount: 0, isCreating: true), 294)
+        XCTAssertEqual(ColorPickerLayout.projectsHeight(projectCount: 5, isCreating: false), 360)
+        XCTAssertEqual(ColorPickerLayout.projectsHeight(projectCount: 5, isCreating: true), 362)
         XCTAssertEqual(ColorPickerLayout.projectsHeight(projectCount: 100, isCreating: false), 460)
     }
 
     func testColorSettingsWindowFitsCardsAndCapsLongContent() {
-        XCTAssertEqual(ColorPickerLayout.settingsHeight(contentHeight: 296), 376)
+        XCTAssertEqual(ColorPickerLayout.settingsHeight(contentHeight: 296), 360)
         XCTAssertEqual(ColorPickerLayout.settingsHeight(contentHeight: 0), 250)
         XCTAssertEqual(ColorPickerLayout.settingsHeight(contentHeight: 1000), 460)
-        XCTAssertEqual(ColorPickerLayout.settingsHeight(contentHeight: ColorPickerLayout.settingsContentHeight), 352)
+        XCTAssertEqual(ColorPickerLayout.settingsHeight(contentHeight: ColorPickerLayout.settingsContentHeight), 298)
     }
 
     func testColorHistoryPresentationFiltersAndFormatsOffTheViewPath() throws {

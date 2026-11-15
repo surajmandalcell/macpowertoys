@@ -32,7 +32,7 @@ enum ColorPickerLayout {
 
     static func projectsHeight(projectCount: Int, isCreating: Bool) -> CGFloat {
         let toolbar = 2 * OnePlusLinearMetrics.appletToolbarGap
-            + (isCreating ? OnePlusMetrics.controlHeight : OnePlusLinearMetrics.appletButton)
+            + (isCreating ? OnePlusLinearMetrics.appletField : OnePlusLinearMetrics.appletButton)
         return clamped(OnePlusLinearMetrics.appletTitlebar + OnePlusLinearMetrics.appletTabStrip + toolbar
             + CGFloat(max(0, projectCount) + 1) * historyRowHeight + OnePlusLinearMetrics.appletBottom)
     }
@@ -231,8 +231,8 @@ struct ColorHistoryView: View {
                     .accessibilityIdentifier("color-picker.format")
             }
             if sampleRows.isEmpty {
-                OnePlusEmptyState(search.isEmpty ? "Pick a color for \(selectedProjectName)" : "No matching colors",
-                                  systemImage: search.isEmpty ? "eyedropper" : "magnifyingglass")
+                OnePlusLinearEmptyState(search.isEmpty ? "Pick a color for \(selectedProjectName)" : "No matching colors",
+                                        systemImage: search.isEmpty ? "eyedropper" : "magnifyingglass")
                     .frame(maxHeight: .infinity)
             } else {
                 ScrollView {
@@ -283,7 +283,7 @@ struct ColorHistoryView: View {
     }
 
     @ViewBuilder private var newProjectField: some View {
-        OnePlusTextField("Project name", text: $newProjectName, onSubmit: createProject)
+        OnePlusLinearTextField("Project name", text: $newProjectName, onSubmit: createProject)
         Button("Create", action: createProject)
             .buttonStyle(OnePlusLinearButtonStyle(.soft))
             .disabled(!service.canCreateProject(named: newProjectName))
@@ -389,8 +389,8 @@ private struct ColorSampleRow: View {
     @State private var confirmingDelete = false
     @State private var hovering = false
 
-    // shortcut: built from applet tokens because OnePlusLinearAppletListRow 1.2.0 takes a plain String title and
-    // fixed icon actions (no selectable value, no menu action); move back to it when 1.2.1 adds both.
+    // shortcut: built from applet tokens because OnePlusLinearAppletListRow 1.2.1 takes a plain String title and
+    // fixed icon actions (no selectable value, no menu action); move back to it when OnePlusUI adds both.
     var body: some View {
         let sample = row.sample
         HStack(spacing: 0) {
@@ -402,9 +402,9 @@ private struct ColorSampleRow: View {
                 .lineLimit(1).truncationMode(.middle).textSelection(.enabled)
                 .frame(maxWidth: .infinity, alignment: .leading)
             Text(row.timestamp)
-                .font(.system(size: OnePlusLinearMetrics.body))
-                .foregroundStyle(OnePlusLinearColor.appletMuted)
+                .linearText(color: OnePlusLinearColor.appletMuted)
                 .lineLimit(1).fixedSize()
+                .padding(.leading, OnePlusLinearMetrics.appletRowGap)
             HStack(spacing: 2) {
                 OnePlusLinearIconButton(systemImage: "doc.on.doc", help: "Copy \(defaultFormat.title)",
                                         size: OnePlusLinearMetrics.appletRowAction) { copy(sample, defaultFormat) }

@@ -22,8 +22,7 @@ struct AwakeView: View {
                 .accessibilityIdentifier("awake.settings")
             HStack(spacing: OnePlusLinearMetrics.appletActionGap) {
                 Text("Keep display on")
-                    .font(.system(size: OnePlusLinearMetrics.body))
-                    .foregroundStyle(OnePlusLinearColor.appletSecondary)
+                    .linearText(color: OnePlusLinearColor.appletSecondary)
                     .accessibilityHidden(true)
                 Toggle("Keep Display On", isOn: Binding(
                     get: { service.configuration.keepDisplayOn }, set: service.setKeepDisplayOn
@@ -108,10 +107,10 @@ struct SleepTimerCard: View {
                 }
             }
             if service.deadline != nil {
-                OnePlusBanner(awake.isActive
-                              ? "Keep awake is on. The Mac still sleeps when the timer ends."
-                              : "Keep awake is off while the sleep timer runs.",
-                              tone: awake.isActive ? .warning : .information)
+                OnePlusLinearBanner(awake.isActive ? .warning : .info,
+                                    title: awake.isActive
+                                        ? "Keep awake is on. The Mac still sleeps when the timer ends."
+                                        : "Keep awake is off while the sleep timer runs.")
             }
         }
         .buttonStyle(OnePlusLinearButtonStyle(.soft))
@@ -121,8 +120,8 @@ struct SleepTimerCard: View {
     @ViewBuilder
     private var idle: some View {
         OnePlusLinearAppletRow("Sleep after") {
-            OnePlusLinearSelect(choices: SleepTimerPreset.allCases.map { ($0, $0.title) },
-                                selection: $preset, accessibilityLabel: "Sleep after", width: AwakeLayout.selectWidth)
+            OnePlusLinearSegmented(choices: SleepTimerPreset.allCases.map { ($0, $0.title) },
+                                   selection: $preset, accessibilityLabel: "Sleep after", sizing: .fitted)
                 .accessibilityIdentifier("awake.sleep-timer.preset")
         }
         if preset == .custom {
@@ -155,7 +154,7 @@ private struct AwakeStatusRow: View {
     var body: some View {
         VStack(alignment: .leading, spacing: OnePlusLinearMetrics.appletCaptionBelow) {
             OnePlusLinearAppletSection("Status") {
-                // shortcut: OnePlusLinearAppletRow 1.2.0 has a String label only; use it once it takes a status dot.
+                // shortcut: OnePlusLinearAppletRow 1.2.1 has a String label only; use it once it takes a status dot.
                 HStack(spacing: OnePlusLinearMetrics.appletRowGap) {
                     OnePlusStatus(service.statusText, state: service.isActive ? .online : .offline, textRole: .row)
                         .monospacedDigit()
@@ -287,7 +286,7 @@ struct AwakeSettingsView: View {
             OnePlusLinearAppletSection("Attach to a process") {
                 OnePlusLinearAppletRow("Process ID", detail: processHelp) {
                     HStack(spacing: OnePlusLinearMetrics.appletActionGap) {
-                        OnePlusTextField("Process ID", text: $processID, onSubmit: attach)
+                        OnePlusLinearTextField("Process ID", text: $processID, onSubmit: attach)
                             .frame(width: AwakeLayout.processFieldWidth)
                         Button("Attach", action: attach).fixedSize()
                         if service.configuration.attachedProcessID != nil {

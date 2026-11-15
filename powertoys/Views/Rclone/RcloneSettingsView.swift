@@ -63,7 +63,7 @@ struct RcloneSettingsView: View {
                 OnePlusStepperField("Checkers", value: $checkers, in: 1...128)
             }
             OnePlusLinearAppletRow("Bandwidth limit", detail: "Leave blank or enter off for no limit.") {
-                OnePlusTextField("10M, 1.5GiB, or off", text: $bandwidthLimit, error: RcloneBandwidthInput.error(for: bandwidthLimit))
+                OnePlusLinearTextField("10M, 1.5GiB, or off", text: $bandwidthLimit, error: RcloneBandwidthInput.error(for: bandwidthLimit))
                     .frame(width: OnePlusMetrics.wideControlColumn)
             }
             OnePlusLinearAppletRow("Default operation") {
@@ -111,7 +111,7 @@ struct RcloneSettingsView: View {
     private var binarySection: some View {
         OnePlusLinearAppletSection("rclone binary") {
             OnePlusLinearAppletRow("rclone binary path", detail: "Leave blank to use the detected binary.") {
-                OnePlusTextField("Auto-detected", text: $binaryPath)
+                OnePlusLinearTextField("Auto-detected", text: $binaryPath)
                     .frame(width: OnePlusMetrics.wideControlColumn)
                     .accessibilityLabel("rclone binary path")
             }
