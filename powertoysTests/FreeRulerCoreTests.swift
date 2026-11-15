@@ -1021,7 +1021,7 @@ final class FreeRulerCoreTests: XCTestCase {
     }
 
     func testRulerSettingsControlsUseOnePlusSectionsAndAlignedRows() throws {
-        let controlsView = RulerSettingsControlsView(frame: NSRect(x: 0, y: 0, width: 380, height: 491))
+        let controlsView = RulerSettingsControlsView(frame: NSRect(x: 0, y: 0, width: 388, height: 386))
         controlsView.configureForRulerSettings()
 
         controlsView.update(
@@ -1039,51 +1039,44 @@ final class FreeRulerCoreTests: XCTestCase {
 
         let descendants = rulerSettingsDescendants(in: controlsView.contentView)
         let headings = descendants
-            .compactMap { $0 as? NSTextField }
-            .filter { ["MEASUREMENT", "APPEARANCE", "WINDOW"].contains($0.stringValue) }
+            .compactMap { $0 as? RulerAppletCaptionLabel }
+            .sorted { $0.frame.maxY > $1.frame.maxY }
         let cards = descendants
-            .filter { $0 is OnePlusNativeCardView }
+            .compactMap { $0 as? RulerAppletGroupView }
             .sorted { $0.frame.maxY > $1.frame.maxY }
 
-        XCTAssertEqual(headings.count, 3)
+        XCTAssertEqual(headings.map(\.stringValue), ["Measurement", "Appearance", "Window"])
         XCTAssertEqual(cards.count, 3)
-        let measurementHeading = try XCTUnwrap(headings.first { $0.stringValue == "MEASUREMENT" })
-        let appearanceHeading = try XCTUnwrap(headings.first { $0.stringValue == "APPEARANCE" })
-        let windowHeading = try XCTUnwrap(headings.first { $0.stringValue == "WINDOW" })
+        let measurementHeading = try XCTUnwrap(headings.first)
+        let appearanceHeading = try XCTUnwrap(headings.dropFirst().first)
+        let windowHeading = try XCTUnwrap(headings.dropFirst(2).first)
         let measurementCard = try XCTUnwrap(cards.first)
         let appearanceCard = try XCTUnwrap(cards.dropFirst().first)
         let windowCard = try XCTUnwrap(cards.dropFirst(2).first)
 
-        let headingHeight = headings.reduce(CGFloat.zero) { $0 + $1.frame.height }
-        let cardHeight = cards.reduce(CGFloat.zero) { $0 + $1.frame.height }
-        let requiredHeight = headingHeight + cardHeight + (3 * 8) + (2 * 16)
-        XCTAssertEqual(headingHeight, 36, accuracy: 0.5)
-        XCTAssertEqual(cards.map(\.frame.height), [86, 229, 84])
-        XCTAssertEqual(requiredHeight, 491, accuracy: 0.5)
-        XCTAssertEqual(controlsView.contentView.bounds.height, requiredHeight, accuracy: 0.5)
-
-        XCTAssertEqual(measurementHeading.frame.minY - measurementCard.frame.maxY, 8, accuracy: 0.5)
-        XCTAssertEqual(appearanceHeading.frame.minY - appearanceCard.frame.maxY, 8, accuracy: 0.5)
-        XCTAssertEqual(windowHeading.frame.minY - windowCard.frame.maxY, 8, accuracy: 0.5)
+        // Captions are 16 pt, 6 pt above each group; groups are 16 pt apart; rows are 36 pt.
+        XCTAssertEqual(headings.map(\.frame.height), [16, 16, 16])
+        XCTAssertEqual(cards.map(\.frame.height), [72, 144, 72])
+        XCTAssertEqual(controlsView.contentView.bounds.height, 386, accuracy: 0.5)
+        XCTAssertEqual(measurementHeading.frame.minY - measurementCard.frame.maxY, 6, accuracy: 0.5)
+        XCTAssertEqual(appearanceHeading.frame.minY - appearanceCard.frame.maxY, 6, accuracy: 0.5)
+        XCTAssertEqual(windowHeading.frame.minY - windowCard.frame.maxY, 6, accuracy: 0.5)
         XCTAssertEqual(measurementCard.frame.minY - appearanceHeading.frame.maxY, 16, accuracy: 0.5)
         XCTAssertEqual(appearanceCard.frame.minY - windowHeading.frame.maxY, 16, accuracy: 0.5)
-        XCTAssertEqual(windowCard.bounds.maxY - controlsView.floatRulersCheckbox.frame.maxY, 14, accuracy: 0.5)
-        XCTAssertEqual(controlsView.floatRulersCheckbox.frame.minY - controlsView.rulerShadowCheckbox.frame.maxY, 8, accuracy: 0.5)
-        XCTAssertEqual(controlsView.rulerShadowCheckbox.frame.minY, 14, accuracy: 0.5)
+        XCTAssertEqual(windowCard.bounds.maxY - controlsView.floatRulersCheckbox.frame.maxY, 6, accuracy: 0.5)
+        XCTAssertEqual(controlsView.rulerShadowCheckbox.frame.minY, 6, accuracy: 0.5)
 
-        XCTAssertEqual(controlsView.unitLabel.alignmentRect(forFrame: controlsView.unitLabel.frame).minX, 14, accuracy: 0.5)
-        XCTAssertEqual(measurementCard.bounds.maxX - controlsView.unitSegmentedControl.frame.maxX, 14, accuracy: 0.5)
-        XCTAssertEqual(controlsView.rulerColorLabel.alignmentRect(forFrame: controlsView.rulerColorLabel.frame).minX, 14, accuracy: 0.5)
-        XCTAssertEqual(appearanceCard.bounds.maxX - controlsView.rulerColorWell.frame.maxX, 14, accuracy: 0.5)
-        XCTAssertEqual(controlsView.foregroundOpacitySlider.frame.minX, 14, accuracy: 0.5)
-        XCTAssertEqual(appearanceCard.bounds.maxX - controlsView.foregroundOpacitySlider.frame.maxX, 14, accuracy: 0.5)
-        XCTAssertEqual(controlsView.borderOpacitySlider.frame.minX, 14, accuracy: 0.5)
-        XCTAssertEqual(appearanceCard.bounds.maxX - controlsView.borderOpacitySlider.frame.maxX, 14, accuracy: 0.5)
-        XCTAssertEqual(controlsView.floatRulersCheckbox.frame.minX, 14, accuracy: 0.5)
-        XCTAssertTrue(controlsView.dimensionWidthField is OnePlusNativeStepperField)
-        XCTAssertTrue(controlsView.dimensionHeightField is OnePlusNativeStepperField)
-        XCTAssertTrue(controlsView.floatRulersCheckbox is OnePlusNativeSwitchButton)
-        XCTAssertTrue(controlsView.rulerShadowCheckbox is OnePlusNativeSwitchButton)
+        XCTAssertEqual(measurementCard.bounds.maxX - controlsView.unitSegmentedControl.frame.maxX, 12, accuracy: 0.5)
+        XCTAssertEqual(measurementCard.bounds.maxX - controlsView.dimensionHeightField.frame.maxX, 12, accuracy: 0.5)
+        XCTAssertEqual(appearanceCard.bounds.maxX - controlsView.rulerColorWell.frame.maxX, 12, accuracy: 0.5)
+        XCTAssertEqual(controlsView.floatRulersCheckbox.frame.minX, 12, accuracy: 0.5)
+        XCTAssertEqual(windowCard.bounds.maxX - controlsView.floatRulersCheckbox.frame.maxX, 12, accuracy: 0.5)
+        XCTAssertTrue(controlsView.unitSegmentedControl is RulerDepthSegmentedControl)
+        XCTAssertTrue(controlsView.dimensionWidthField is RulerDepthStepperField)
+        XCTAssertTrue(controlsView.dimensionHeightField is RulerDepthStepperField)
+        XCTAssertTrue(controlsView.foregroundOpacitySlider.cell is RulerDepthSliderCell)
+        XCTAssertTrue(controlsView.floatRulersCheckbox is RulerDepthSwitch)
+        XCTAssertTrue(controlsView.rulerShadowCheckbox is RulerDepthSwitch)
 
         let rowLabels: [NSTextField] = [
             controlsView.unitLabel,
@@ -1097,27 +1090,27 @@ final class FreeRulerCoreTests: XCTestCase {
             controlsView.borderOpacityLabel,
         ]
         for label in rowLabels {
-            XCTAssertEqual(try XCTUnwrap(label.font).pointSize, 12, accuracy: 0.1)
+            XCTAssertEqual(try XCTUnwrap(label.font).pointSize, 13, accuracy: 0.1)
+            XCTAssertFalse(try XCTUnwrap(label.font).fontDescriptor.symbolicTraits.contains(.bold))
         }
-        XCTAssertEqual(try XCTUnwrap(controlsView.unitSegmentedControl.font).pointSize, 12, accuracy: 0.1)
-        XCTAssertEqual(try XCTUnwrap(controlsView.dimensionWidthField.font).pointSize, 12, accuracy: 0.1)
-        XCTAssertEqual(try XCTUnwrap(controlsView.floatRulersCheckbox.font).pointSize, 12, accuracy: 0.1)
+        XCTAssertEqual(try XCTUnwrap(controlsView.dimensionWidthField.font).pointSize, 13, accuracy: 0.1)
+        XCTAssertEqual(try XCTUnwrap(controlsView.floatRulersCheckbox.font).pointSize, 13, accuracy: 0.1)
 
         func firstBaselineY(_ view: NSView) -> CGFloat {
             return view.frame.maxY - view.firstBaselineOffsetFromTop
         }
 
-        XCTAssertEqual(firstBaselineY(controlsView.unitLabel), firstBaselineY(controlsView.unitSegmentedControl), accuracy: 1)
-        XCTAssertEqual(firstBaselineY(controlsView.dimensionsLabel), firstBaselineY(controlsView.dimensionWidthField), accuracy: 1)
-        XCTAssertEqual(firstBaselineY(controlsView.dimensionWidthField), firstBaselineY(controlsView.dimensionsSeparatorLabel), accuracy: 1)
-        XCTAssertEqual(firstBaselineY(controlsView.dimensionsSeparatorLabel), firstBaselineY(controlsView.dimensionHeightField), accuracy: 1)
+        XCTAssertEqual(controlsView.unitLabel.frame.midY, controlsView.unitSegmentedControl.frame.midY, accuracy: 0.5)
+        XCTAssertEqual(controlsView.dimensionsLabel.frame.midY, controlsView.dimensionWidthField.frame.midY, accuracy: 0.5)
+        XCTAssertEqual(controlsView.dimensionWidthField.frame.midY, controlsView.dimensionsSeparatorLabel.frame.midY, accuracy: 0.5)
+        XCTAssertEqual(controlsView.dimensionsSeparatorLabel.frame.midY, controlsView.dimensionHeightField.frame.midY, accuracy: 0.5)
         XCTAssertEqual(firstBaselineY(controlsView.foregroundOpacityTitleLabel), firstBaselineY(controlsView.foregroundOpacityLabel), accuracy: 1)
         XCTAssertEqual(firstBaselineY(controlsView.backgroundOpacityTitleLabel), firstBaselineY(controlsView.backgroundOpacityLabel), accuracy: 1)
         XCTAssertEqual(firstBaselineY(controlsView.borderOpacityTitleLabel), firstBaselineY(controlsView.borderOpacityLabel), accuracy: 1)
     }
 
     func testRulerSettingsControlsDoNotIntersectAcrossSupportedLocalizations() {
-        let controlsView = RulerSettingsControlsView(frame: NSRect(x: 0, y: 0, width: 380, height: 491))
+        let controlsView = RulerSettingsControlsView(frame: NSRect(x: 0, y: 0, width: 388, height: 386))
         controlsView.configureForRulerSettings()
 
         let localizations = [
@@ -1179,7 +1172,7 @@ final class FreeRulerCoreTests: XCTestCase {
 
     func testRulerSettingsSectionHeadingsHaveGermanAndJapaneseLocalizations() throws {
         let expectedHeadings = [
-            "de": ["MESSUNG", "DARSTELLUNG", "FENSTER"],
+            "de": ["Messung", "Darstellung", "Fenster"],
             "ja": ["測定", "外観", "ウインドウ"],
         ]
         let keys = [
@@ -1287,23 +1280,22 @@ final class FreeRulerCoreTests: XCTestCase {
         ] {
             window.contentView?.layoutSubtreeIfNeeded()
             XCTAssertEqual(window.frame.width, 420, accuracy: 0.5)
-            XCTAssertEqual(window.contentView!.bounds.height, 571, accuracy: 0.5)
+            XCTAssertEqual(window.frame.height, 500, accuracy: 0.5)
+            XCTAssertEqual(window.contentView!.bounds.height, 500, accuracy: 0.5)
+            XCTAssertFalse(window.isVisible)
             XCTAssertFalse(window.styleMask.contains(.resizable))
-            XCTAssertFalse(window.styleMask.contains(.fullSizeContentView))
+            XCTAssertTrue(window.styleMask.contains(.fullSizeContentView))
             XCTAssertTrue(window.isOpaque)
             XCTAssertNotEqual(window.backgroundColor, .clear)
-            XCTAssertFalse(window.titlebarAppearsTransparent)
+            XCTAssertTrue(window.titlebarAppearsTransparent)
+            XCTAssertEqual(window.titlebarSeparatorStyle, .none)
             XCTAssertTrue(window.isMovable)
             XCTAssertTrue(window.isMovableByWindowBackground)
-            XCTAssertEqual(controlsView.frame.minX, 20, accuracy: 0.5)
-            XCTAssertEqual(window.contentView!.bounds.maxX - controlsView.frame.maxX, 20, accuracy: 0.5)
-            XCTAssertEqual(window.contentView!.bounds.maxY - controlsView.frame.maxY, 16, accuracy: 0.5)
-            XCTAssertEqual(controlsView.frame.height, 491, accuracy: 0.5)
-            XCTAssertTrue(
-                rulerSettingsDescendants(in: window.contentView!)
-                    .contains { $0 is OnePlusNativeWindowView }
-                    || window.contentView is OnePlusNativeWindowView
-            )
+            XCTAssertEqual(controlsView.frame.minX, 16, accuracy: 0.5)
+            XCTAssertEqual(window.contentView!.bounds.maxX - controlsView.frame.maxX, 16, accuracy: 0.5)
+            XCTAssertEqual(window.contentView!.bounds.maxY - controlsView.frame.maxY, 48, accuracy: 0.5)
+            XCTAssertEqual(controlsView.frame.height, 386, accuracy: 0.5)
+            XCTAssertTrue(window.contentView is RulerAppletWindowView)
             let titlebarView = try XCTUnwrap(window.standardWindowButton(.closeButton)?.superview)
             XCTAssertFalse(
                 rulerSettingsDescendants(in: titlebarView)
@@ -1311,14 +1303,18 @@ final class FreeRulerCoreTests: XCTestCase {
             )
         }
 
-        XCTAssertEqual(settingsController.resetDefaultsButton.frame.height, 28, accuracy: 0.5)
-        XCTAssertEqual(settingsController.setDefaultsButton.frame.height, 28, accuracy: 0.5)
+        XCTAssertEqual(settingsController.resetDefaultsButton.frame.height, 30, accuracy: 0.5)
+        XCTAssertEqual(settingsController.setDefaultsButton.frame.height, 30, accuracy: 0.5)
+        XCTAssertEqual(settingsController.resetDefaultsButton.frame.width,
+                       settingsController.setDefaultsButton.frame.width, accuracy: 0.5)
+        XCTAssertEqual((settingsController.setDefaultsButton as? RulerAppletButton)?.role, .primary)
         XCTAssertEqual(settingsController.setDefaultsButton.keyEquivalent, "\r")
         XCTAssertTrue(settingsController.rulerShadowCheckbox.nextKeyView === settingsController.resetDefaultsButton)
         XCTAssertTrue(settingsController.resetDefaultsButton.nextKeyView === settingsController.setDefaultsButton)
         XCTAssertTrue(settingsController.setDefaultsButton.nextKeyView === settingsController.unitSegmentedControl)
         XCTAssertTrue(preferencesController.resetFactoryDefaultsButton.isBordered == false)
-        XCTAssertEqual(preferencesController.resetFactoryDefaultsButton.contentTintColor, NSColor(OnePlusColor.danger))
+        XCTAssertEqual((preferencesController.resetFactoryDefaultsButton as? RulerAppletButton)?.role, .destructive)
+        XCTAssertEqual(preferencesController.resetFactoryDefaultsButton.frame.width, 388, accuracy: 0.5)
         XCTAssertTrue(preferencesController.rulerShadowCheckbox.nextKeyView === preferencesController.resetFactoryDefaultsButton)
         XCTAssertTrue(preferencesController.resetFactoryDefaultsButton.nextKeyView === preferencesController.unitSegmentedControl)
     }
@@ -1344,7 +1340,7 @@ final class FreeRulerCoreTests: XCTestCase {
             XCTFail("Expected settings window")
             return
         }
-        let savedFrame = NSRect(x: 96, y: 128, width: 420, height: 571)
+        let savedFrame = NSRect(x: 96, y: 128, width: 420, height: 500)
         settingsWindow.setFrame(savedFrame, display: false)
 
         controller.show()
@@ -1500,7 +1496,7 @@ final class FreeRulerCoreTests: XCTestCase {
                 XCTFail("Expected settings window")
                 return
             }
-            let savedFrame = NSRect(x: 80, y: 100, width: 420, height: 571)
+            let savedFrame = NSRect(x: 80, y: 100, width: 420, height: 500)
             settingsWindow.setFrame(savedFrame, display: false)
 
             controller.show()
@@ -1689,7 +1685,7 @@ final class FreeRulerCoreTests: XCTestCase {
                     XCTFail("Expected settings window")
                     return
                 }
-                let savedFrame = NSRect(x: 88, y: 112, width: 420, height: 571)
+                let savedFrame = NSRect(x: 88, y: 112, width: 420, height: 500)
                 settingsWindow.setFrame(savedFrame, display: false)
 
                 appDelegate.flipRulers(along: .horizontal)

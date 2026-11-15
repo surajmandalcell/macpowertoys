@@ -24,10 +24,10 @@
 "RSV-unit-cell.title" = "Unidad";
 
 /* Class = "NSTextFieldCell"; title = "MEASUREMENT"; ObjectID = "RSV-measurement-heading-cell"; */
-"RSV-measurement-heading-cell.title" = "MEDICIÓN";
+"RSV-measurement-heading-cell.title" = "Medición";
 
 /* Class = "NSTextFieldCell"; title = "APPEARANCE"; ObjectID = "RSV-appearance-heading-cell"; */
-"RSV-appearance-heading-cell.title" = "APARIENCIA";
+"RSV-appearance-heading-cell.title" = "Apariencia";
 
 /* Class = "NSTextFieldCell"; title = "WINDOW"; ObjectID = "RSV-window-heading-cell"; */
-"RSV-window-heading-cell.title" = "VENTANA";
+"RSV-window-heading-cell.title" = "Ventana";
