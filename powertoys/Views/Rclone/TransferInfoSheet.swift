@@ -16,7 +16,6 @@ struct TransferInfoSheet: View {
     @State private var showTransferPlanInfo = false
 
     private static let gutter = OnePlusMetrics.spacing[7]
-    private static let cardPadding = OnePlusMetrics.cardPadding
 
     init(details: TransferDetails) {
         self.recordDetails = details
@@ -60,7 +59,7 @@ struct TransferInfoSheet: View {
 
     var body: some View {
         OnePlusSheet("Transfer Info", width: .large, close: { dismiss() }) {
-            OnePlusTabStrip(tabs: infoTabs, selection: $selectedTab)
+            OnePlusLinearAppletTabRow(tabs: infoTabs, selection: $selectedTab) { EmptyView() }
             Group {
                 switch visibleTab {
                 case .overview:
@@ -80,7 +79,7 @@ struct TransferInfoSheet: View {
         } footer: {
             Button("Done") { dismiss() }
                 .keyboardShortcut(.defaultAction)
-                .buttonStyle(OnePlusButtonStyle(.primary))
+                .buttonStyle(OnePlusLinearButtonStyle(.soft))
         }
     }
 
@@ -97,7 +96,7 @@ struct TransferInfoSheet: View {
 
     private var overviewContent: some View {
         ScrollView {
-            VStack(alignment: .leading, spacing: 18) {
+            VStack(alignment: .leading, spacing: OnePlusLinearMetrics.appletSectionGap) {
                 section("Route") { routeRows }
                 section("Result") { resultRows }
                 section("Timing") { timingRows }
@@ -114,52 +113,37 @@ struct TransferInfoSheet: View {
 
     private var settingsContent: some View {
         ScrollView {
-            VStack(alignment: .leading, spacing: 18) {
+            VStack(alignment: .leading, spacing: OnePlusLinearMetrics.appletSectionGap) {
                 if let job {
-                    section("Performance") {
-                        VStack(alignment: .leading, spacing: 2) {
-                            StepperField(label: "Parallel file transfers", value: settingBinding(job, \.transfersOverride), range: 0...64, format: .number)
-                                .onePlusText(.row)
-                                .help("0 inherits the remote or global setting.")
-                        }
-                        VStack(alignment: .leading, spacing: 2) {
-                            StepperField(label: "Checkers", value: settingBinding(job, \.checkersOverride), range: 0...128, format: .number)
-                                .onePlusText(.row)
-                                .help("Parallel comparisons while scanning for changes.")
-                        }
-                    }
-
-                    VStack(alignment: .leading, spacing: OnePlusMetrics.spacing[2]) {
-                        HStack {
-                            Text("Transfer order")
-                                .onePlusText(.row)
-                                .foregroundStyle(OnePlusColor.secondary)
-                            Spacer(minLength: 12)
-                            OnePlusSelect(
+                    OnePlusLinearAppletSection("Performance") {
+                        StepperField(label: "Parallel file transfers", value: settingBinding(job, \.transfersOverride), range: 0...64, format: .number)
+                            .help("0 inherits the remote or global setting.")
+                        StepperField(label: "Checkers", value: settingBinding(job, \.checkersOverride), range: 0...128, format: .number)
+                            .help("Parallel comparisons while scanning for changes.")
+                        OnePlusLinearAppletRow("Transfer order") {
+                            OnePlusLinearSelect(
                                 choices: TransferOrder.allCases.map { ($0, $0.displayName) },
                                 selection: settingBinding(job, \.transferOrder),
-                                width: OnePlusMetrics.controlColumn,
-                                accessibilityLabel: "Transfer order"
+                                accessibilityLabel: "Transfer order",
+                                width: OnePlusMetrics.controlColumn
                             )
                         }
                     }
 
-                    section("Comparison") {
-                        settingToggle("Only update older files",
-                                      caption: "Skip files whose copy on the destination is newer.",
-                                      isOn: settingBinding(job, \.updateOlderOnly))
-                        settingToggle("Skip files that already exist",
-                                      caption: "Never touch a file the destination already has, even if it changed.",
-                                      isOn: settingBinding(job, \.ignoreExisting))
-                        settingToggle("Compare by checksum",
-                                      caption: "Use checksums instead of size and modification time. Slower but exact.",
-                                      isOn: settingBinding(job, \.compareChecksums))
+                    OnePlusLinearAppletSection("Comparison") {
+                        RSyncSwitchRow("Only update older files",
+                                       detail: "Skip files whose copy on the destination is newer.",
+                                       isOn: settingBinding(job, \.updateOlderOnly))
+                        RSyncSwitchRow("Skip files that already exist",
+                                       detail: "Never touch a file the destination already has, even if it changed.",
+                                       isOn: settingBinding(job, \.ignoreExisting))
+                        RSyncSwitchRow("Compare by checksum",
+                                       detail: "Use checksums instead of size and modification time. Slower but exact.",
+                                       isOn: settingBinding(job, \.compareChecksums))
                     }
 
-                    Image(systemName: "info.circle")
-                        .foregroundStyle(OnePlusColor.secondary)
+                    LinearCaption("Changes apply to queued work at once. A running transfer restarts after a short delay.")
                         .help("Changes apply to queued work immediately. A running transfer restarts after a short delay. Completed files stay complete. The active file can restart if its cloud backend cannot resume it.")
-                        .accessibilityLabel("About applying transfer settings")
                 }
             }
             .padding(.horizontal, Self.gutter)
@@ -179,34 +163,13 @@ struct TransferInfoSheet: View {
         )
     }
 
-    private func settingToggle(_ title: String, caption: String, isOn: Binding<Bool>) -> some View {
-        HStack {
-            Text(title).onePlusText(.row)
-            Image(systemName: "info.circle")
-                .foregroundStyle(OnePlusColor.secondary)
-                .help(caption)
-                .accessibilityLabel(caption)
-            Spacer(minLength: 12)
-            Toggle(title, isOn: isOn)
-                .toggleStyle(OnePlusSwitchStyle())
-                .controlSize(.small)
-                .labelsHidden()
-        }
-    }
-
     private func section(_ title: String, @ViewBuilder content: () -> some View) -> some View {
-        VStack(alignment: .leading, spacing: 8) {
-            Text(title.uppercased())
-                .onePlusText(.caption)
-                .foregroundStyle(OnePlusColor.secondary)
-
+        OnePlusLinearAppletSection(title) {
             VStack(alignment: .leading, spacing: 10) {
                 content()
             }
-            .padding(Self.cardPadding)
+            .padding(OnePlusLinearMetrics.appletRowPadding)
             .frame(maxWidth: .infinity, alignment: .leading)
-            .background(OnePlusColor.track)
-            .clipShape(RoundedRectangle(cornerRadius: OnePlusMetrics.panelRadius))
         }
     }
 
@@ -297,7 +260,7 @@ struct TransferInfoSheet: View {
                             .onePlusText(.caption)
                             .foregroundStyle(OnePlusColor.secondary)
                     }
-                    .buttonStyle(OnePlusButtonStyle(.icon, size: .small))
+                    .buttonStyle(OnePlusLinearButtonStyle())
                     .accessibilityLabel("About transfer plan")
                     .help("About the transfer plan")
                     .popover(isPresented: $showTransferPlanInfo) {
@@ -320,6 +283,7 @@ struct TransferInfoSheet: View {
                     .fixedSize()
                 } else {
                     Button("Recalculate") { manager.recalculate(job) }
+                        .buttonStyle(OnePlusLinearButtonStyle(.soft))
                         .disabled(!manager.daemonIsHealthy)
                 }
             }

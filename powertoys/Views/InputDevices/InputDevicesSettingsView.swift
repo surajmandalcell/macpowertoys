@@ -5,7 +5,30 @@ struct InputScrollDeviceBar: View {
     @State private var manager = InputDevicesManager.shared
     var isExpanded: Binding<Bool>? = nil
 
+    @ViewBuilder
     var body: some View {
+        if isExpanded == nil {
+            OnePlusLinearAppletGroup {
+                OnePlusLinearAppletRow("Scroll device") { scrollDeviceSelect }
+                    .help("Automatic separates continuous trackpad events from mouse wheel steps.")
+            }
+        } else {
+            panelBody
+        }
+    }
+
+    private var scrollDeviceSelect: some View {
+        OnePlusLinearSelect(
+            choices: InputEventOverride.allCases.map { ($0, $0.title) },
+            selection: Binding(
+                get: { manager.settings.eventOverride },
+                set: { value in manager.update { $0.eventOverride = value } }
+            ),
+            accessibilityLabel: "Scroll device"
+        )
+    }
+
+    private var panelBody: some View {
         VStack(alignment: .leading, spacing: 0) {
             if let isExpanded {
                 InputDisclosureHeader(title: "Scroll device", detail: manager.settings.eventOverride.title,
@@ -43,8 +66,12 @@ struct InputDevicesSettingsContent: View {
 
     var body: some View {
         VStack(alignment: .leading, spacing: OnePlusMetrics.cardGap) {
-            scrollControlRows
-                .environment(\.onePlusCardPadding, 0)
+            if collapsible {
+                scrollControlRows
+                    .environment(\.onePlusCardPadding, 0)
+            } else {
+                linearScrollControl
+            }
             mouseProfile
             trackpadProfile
             if includesDeviceFooter { InputScrollDeviceBar(isExpanded: collapsible ? $scrollDeviceExpanded : nil) }
@@ -84,6 +111,34 @@ struct InputDevicesSettingsContent: View {
                     }
                 }
                 .onePlusRowHover()
+            }
+            if let errorMessage = manager.errorMessage {
+                OnePlusBanner(errorMessage, tone: .error)
+            }
+        }
+    }
+
+    private var linearScrollControl: some View {
+        VStack(alignment: .leading, spacing: OnePlusLinearMetrics.appletSectionGap) {
+            OnePlusLinearAppletSection("Scrolling") {
+                OnePlusLinearAppletRow("Use custom scrolling") {
+                    Toggle("Use custom scrolling", isOn: setting(
+                        get: { $0.scrollControlEnabled },
+                        set: { $0.scrollControlEnabled = $1 }
+                    ))
+                    .toggleStyle(OnePlusLinearSwitchStyle())
+                }
+                .help("Apply these profiles in every app.")
+                if !manager.permissionGranted {
+                    OnePlusLinearAppletRow("Accessibility", detail: "Allow MacPowerToys to adjust scroll events.") {
+                        HStack(spacing: OnePlusLinearMetrics.appletActionGap) {
+                            Button("Settings") { manager.openPrivacySettings() }
+                                .buttonStyle(OnePlusLinearButtonStyle(.soft))
+                            Button("Grant") { manager.requestPermission() }
+                                .buttonStyle(OnePlusLinearButtonStyle(.soft))
+                        }
+                    }
+                }
             }
             if let errorMessage = manager.errorMessage {
                 OnePlusBanner(errorMessage, tone: .error)

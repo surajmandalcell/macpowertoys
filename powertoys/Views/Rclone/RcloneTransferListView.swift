@@ -15,9 +15,7 @@ struct RcloneTransferListView: View {
 
     var body: some View {
         let jobs = manager.filteredJobs
-        OnePlusPage(scrolls: false) {
-            RcloneTransferHeader()
-        } content: {
+        RSyncFixedPane {
             if let message = manager.errorBanner {
                 OnePlusBanner(message, tone: .error) {
                     Button("Dismiss") { manager.errorBanner = nil }
@@ -28,7 +26,7 @@ struct RcloneTransferListView: View {
                 if RcloneTransferPresentation.showsNewTransferAction(for: manager.filter) {
                     OnePlusEmptyState(emptyTitle, systemImage: "tray", caption: emptyCaption) {
                         Button("New Transfer") { manager.isPresentingNewTransfer = true }
-                            .buttonStyle(OnePlusButtonStyle(.neutral))
+                            .buttonStyle(OnePlusLinearButtonStyle(.soft))
                     }
                     .frame(maxWidth: .infinity, maxHeight: .infinity)
                 } else {
@@ -54,6 +52,15 @@ struct RcloneTransferListView: View {
 }
 
 enum RcloneTransferPresentation {
+    static func title(for filter: JobFilter) -> String {
+        switch filter {
+        case .all: "All transfers"
+        case .active: "Active transfers"
+        case .completed: "Completed transfers"
+        case .failed: "Failed transfers"
+        }
+    }
+
     static func subtitle(
         for filter: JobFilter,
         activeCount: Int,
@@ -87,17 +94,9 @@ enum RcloneTransferPresentation {
     }
 }
 
-private struct RcloneTransferHeader: View {
+/// The transfer page's pane toolbar actions: the summary, Clear finished, and Pause or Resume all.
+struct RcloneTransferActions: View {
     @Environment(RcloneJobManager.self) private var manager
-
-    private var title: String {
-        switch manager.filter {
-        case .all: "All transfers"
-        case .active: "Active transfers"
-        case .completed: "Completed transfers"
-        case .failed: "Failed transfers"
-        }
-    }
 
     private var subtitle: String {
         RcloneTransferPresentation.subtitle(
@@ -109,18 +108,16 @@ private struct RcloneTransferHeader: View {
     }
 
     var body: some View {
-        OnePlusPageHeader(title: title) {
-            Text(subtitle).onePlusText(.caption).lineLimit(1)
-            if manager.jobs.contains(where: { $0.state.isTerminal }) {
-                Button("Clear finished") { manager.clearFinished() }
-                    .buttonStyle(OnePlusButtonStyle(.ghost))
+        LinearCaption(subtitle)
+        if manager.jobs.contains(where: { $0.state.isTerminal }) {
+            Button("Clear finished") { manager.clearFinished() }
+                .buttonStyle(OnePlusLinearButtonStyle(.soft))
+        }
+        if manager.isGloballyPaused || !manager.activeJobs.isEmpty {
+            Button(manager.isGloballyPaused ? "Resume all" : "Pause all") {
+                manager.isGloballyPaused ? manager.resumeAll() : manager.pauseAll()
             }
-            if manager.isGloballyPaused || !manager.activeJobs.isEmpty {
-                Button(manager.isGloballyPaused ? "Resume all" : "Pause all") {
-                    manager.isGloballyPaused ? manager.resumeAll() : manager.pauseAll()
-                }
-                .buttonStyle(OnePlusButtonStyle(.neutral))
-            }
+            .buttonStyle(OnePlusLinearButtonStyle(.soft))
         }
     }
 }

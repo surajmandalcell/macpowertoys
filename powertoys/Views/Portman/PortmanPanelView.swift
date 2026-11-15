@@ -167,7 +167,6 @@ struct PortmanPanelView: View {
     @State private var page = Page.local
     @State private var settingsState = PortmanSettingsState()
     @State private var settingsSearch = ""
-    @State private var focusSettingsSearch = 0
     @State private var selectedPortID: String?
     @State private var host = ""
     @State private var aliases: [String] = []
@@ -260,8 +259,6 @@ struct PortmanPanelView: View {
         "\(selectedPortID ?? "")|\(sessionLinksEnabled)|\(publicGitHubLinksEnabled)"
     }
 
-    private let forwardActionWidth: CGFloat = 64
-
     var body: some View {
         panelDialogs
             .focusedValue(\.appOpenSettings) { navigate(to: .settings) }
@@ -299,8 +296,8 @@ struct PortmanPanelView: View {
                 case .local:
                     if let selectedPort { localDetail(selectedPort) }
                     else { localOverview }
-                case .forward: forwardingPage
-                case .settings: PortmanSettingsView(search: settingsSearch, state: settingsState)
+                case .forward: forwardingPage.portmanAppletLook()
+                case .settings: PortmanSettingsView(search: settingsSearch, state: settingsState).portmanAppletLook()
                 }
             }
             .frame(maxWidth: .infinity, alignment: .topLeading)
@@ -323,11 +320,12 @@ struct PortmanPanelView: View {
             }
         case .forward:
             forwardToolbar
+                .portmanAppletLook()
                 .padding(.bottom, OnePlusMetrics.cardGap - OnePlusMenuMetrics.tileGap)
         case .settings:
-            OnePlusSearchField(prompt: "Search settings", text: $settingsSearch, width: nil,
-                               focusTrigger: focusSettingsSearch, accessibilityIdentifier: "portman.settings.search")
-                .background { Button("Search settings") { focusSettingsSearch += 1 }.keyboardShortcut("f").hidden() }
+            OnePlusLinearSearchField("Search settings", text: $settingsSearch,
+                                     accessibilityIdentifier: "portman.settings.search", style: .applet)
+                .portmanAppletLook()
                 .padding(.bottom, OnePlusMetrics.cardGap - OnePlusMenuMetrics.tileGap)
         }
     }
@@ -1120,28 +1118,24 @@ struct PortmanPanelView: View {
                     .accessibilityLabel("SSH alias or username at IP address")
                     .help(host.isEmpty ? "SSH alias or username at IP address" : host)
                 if !aliases.isEmpty {
-                    OnePlusSelect(
+                    OnePlusLinearSelect(
                         choices: [("", "Hosts")] + aliases.map { ($0, $0) },
                         selection: Binding(
                             get: { aliases.contains(host) ? host : "" },
                             set: { if !$0.isEmpty { host = $0 } }
                         ),
-                        width: OnePlusMenuMetrics.actionColumn,
-                        accessibilityLabel: "Choose an SSH host"
+                        accessibilityLabel: "Choose an SSH host",
+                        width: OnePlusMenuMetrics.actionColumn
                     )
                 }
                 if service.isLoadingRemote {
                     ProgressView().controlSize(.small)
                         .accessibilityLabel("Scanning ports on \(host)")
                     Button("Cancel", action: clearRemoteScan)
-                        .buttonStyle(OnePlusButtonStyle(.ghost, size: .small, minWidth: forwardActionWidth))
+                        .buttonStyle(OnePlusLinearButtonStyle(.soft))
                 } else {
                     Button("Scan", action: scanRemote)
-                        .buttonStyle(OnePlusButtonStyle(
-                            selectedRemotePorts.isEmpty ? .primary : .neutral,
-                            size: .small,
-                            minWidth: forwardActionWidth
-                        ))
+                        .buttonStyle(OnePlusLinearButtonStyle(.soft))
                         .disabled(host.isEmpty)
                 }
             }
@@ -1149,56 +1143,60 @@ struct PortmanPanelView: View {
                 OnePlusTextField("Remote port", text: $manualPort, onSubmit: addManualPort)
                     .accessibilityLabel("Remote port to add")
                 Button("Add port", action: addManualPort).disabled(host.isEmpty)
-                    .buttonStyle(OnePlusButtonStyle(.neutral, size: .small, minWidth: forwardActionWidth))
+                    .buttonStyle(OnePlusLinearButtonStyle(.soft))
             }
         }
     }
 
     @ViewBuilder private var forwardResults: some View {
             if !service.tunnels.isEmpty {
-                HStack {
-                    OnePlusSectionTitle("Forwarded ports")
-                    Text("\(activeTunnelCount) active").onePlusText(.caption)
+                OnePlusLinearAppletSection("Forwarded ports · \(activeTunnelCount) active") {
+                    ForEach(service.tunnels) { tunnelRow($0) }
                 }
-                ForEach(service.tunnels) { tunnelRow($0) }
             }
             if !host.isEmpty && discoveredHost == host {
-                HStack(spacing: OnePlusMetrics.actionSpacing) {
-                    OnePlusSectionTitle(host)
-                    Text("\(service.remotePorts.count) ports").onePlusText(.caption)
-                    Button("Clear scan", action: clearRemoteScan)
-                        .buttonStyle(OnePlusButtonStyle(.ghost, size: .small))
-                }
-                if !service.remotePorts.isEmpty {
+                VStack(alignment: .leading, spacing: OnePlusMetrics.actionSpacing) {
                     HStack(spacing: OnePlusMetrics.actionSpacing) {
-                        Button("Select all") {
-                            selectedRemotePorts.formUnion(service.remotePorts)
-                            lastSelectedRemotePort = nil
+                        if !service.remotePorts.isEmpty {
+                            Button("Select all") {
+                                selectedRemotePorts.formUnion(service.remotePorts)
+                                lastSelectedRemotePort = nil
+                            }
+                            Button("Clear selection") {
+                                selectedRemotePorts = []
+                                lastSelectedRemotePort = nil
+                            }
+                            .disabled(selectedRemotePorts.isEmpty)
                         }
-                        Button("Clear selection") {
-                            selectedRemotePorts = []
-                            lastSelectedRemotePort = nil
-                        }
-                        .disabled(selectedRemotePorts.isEmpty)
-                        Spacer()
-                        Text("Local port").onePlusText(.caption)
+                        Spacer(minLength: 0)
+                        Button("Clear scan", action: clearRemoteScan)
                     }
-                    .buttonStyle(OnePlusButtonStyle(.ghost, size: .small))
-                    ForEach(service.remotePorts, id: \.self) { port in remoteRow(port) }
-                } else {
-                    Text("No listening ports found").onePlusText(.row)
-                        .help("You can add a remote port manually.")
+                    .buttonStyle(OnePlusLinearButtonStyle(.soft))
+                    OnePlusLinearAppletSection("\(host) · \(service.remotePorts.count) ports") {
+                        if service.remotePorts.isEmpty {
+                            OnePlusLinearAppletRow("No listening ports found") { EmptyView() }
+                                .help("You can add a remote port manually.")
+                        } else {
+                            ForEach(service.remotePorts, id: \.self) { port in remoteRow(port) }
+                        }
+                    }
                 }
             }
-            ForEach(selectedRemotePorts.sorted().filter { !service.remotePorts.contains($0) || discoveredHost != host }, id: \.self) {
-                remoteRow($0)
+            if !manualRemotePorts.isEmpty {
+                OnePlusLinearAppletGroup {
+                    ForEach(manualRemotePorts, id: \.self) { remoteRow($0) }
+                }
             }
             if !selectedRemotePorts.isEmpty {
                 Button("Forward \(selectedRemotePorts.count) selected") { forwardSelected() }
-                    .buttonStyle(OnePlusButtonStyle(.primary))
+                    .buttonStyle(OnePlusLinearButtonStyle(.soft))
                     .disabled(host.isEmpty)
             }
             if passwordPromptHost == nil, let error = service.forwardingError { errorText(error) }
+    }
+
+    private var manualRemotePorts: [UInt16] {
+        selectedRemotePorts.sorted().filter { !service.remotePorts.contains($0) || discoveredHost != host }
     }
 
     private func remoteRow(_ port: UInt16) -> some View {
@@ -1254,9 +1252,10 @@ struct PortmanPanelView: View {
                 ), onSubmit: forwardSelected)
                 .frame(width: OnePlusMenuMetrics.actionColumn)
                 .accessibilityLabel("Local port for remote port \(String(port))")
+                .help("Local port")
             }
-            .padding(OnePlusMetrics.actionSpacing)
-            .onePlusRowHover()
+            .padding(.horizontal, OnePlusLinearMetrics.appletRowPadding)
+            .frame(minHeight: OnePlusLinearMetrics.appletRow)
             if expandedRemotePort == port {
                 HStack(alignment: .firstTextBaseline, spacing: OnePlusMetrics.actionSpacing) {
                     if let command = detail?.command {
@@ -1271,9 +1270,13 @@ struct PortmanPanelView: View {
                 }
                 .onePlusText(.mono)
                 .frame(maxWidth: .infinity, alignment: .leading)
-                .padding(OnePlusMetrics.actionSpacing)
-                .onePlusRowHover()
-                if let container = detail?.container { detailRow("Container", container) }
+                .padding(.horizontal, OnePlusLinearMetrics.appletRowPadding)
+                .padding(.bottom, OnePlusMetrics.actionSpacing)
+                if let container = detail?.container { 
+                    OnePlusLinearAppletRow("Container") {
+                        Text(container).textSelection(.enabled).lineLimit(1).help(container)
+                    }
+                }
             }
         }
         .contextMenu {
@@ -1289,38 +1292,34 @@ struct PortmanPanelView: View {
     }
 
     private func tunnelRow(_ tunnel: PortmanTunnel) -> some View {
-        HStack(spacing: OnePlusMetrics.actionSpacing) {
+        var actions: [OnePlusLinearAction] = []
+        if case .running = tunnel.state {
+            actions.append(OnePlusLinearAction("Open tunnel on port \(String(tunnel.localPort))", systemImage: "link") {
+                openLocal(tunnel.localPort)
+            })
+        }
+        if case .failed = tunnel.state {
+            actions.append(OnePlusLinearAction("Retry forwarding", systemImage: "arrow.clockwise") {
+                if case .failed(let message) = tunnel.state,
+                   PortmanScanner.passwordAvailable(in: message) {
+                    retryAfterPassword = tunnel
+                    passwordPromptError = "Authentication failed. Enter the password again."
+                    passwordPromptHost = tunnel.host
+                } else {
+                    service.stopTunnel(tunnel.id)
+                    _ = service.forward(host: tunnel.host, remotePort: tunnel.remotePort,
+                                        localPort: tunnel.localPort,
+                                        password: sshPasswordHost == tunnel.host ? sshPassword : nil)
+                }
+            })
+        }
+        actions.append(OnePlusLinearAction("Stop forwarding", systemImage: "stop.fill") { service.stopTunnel(tunnel.id) })
+        return OnePlusLinearAppletListRow(":\(String(tunnel.localPort)) → \(tunnel.host):\(String(tunnel.remotePort))",
+                                          monospaced: true, metadata: tunnelStateLabel(tunnel.state), actions: actions) {
             Image(systemName: tunnelSymbol(tunnel.state))
                 .foregroundStyle(tunnelColor(tunnel.state))
-            Text(":\(String(tunnel.localPort)) → \(tunnel.host):\(String(tunnel.remotePort))")
-                .onePlusText(.mono).lineLimit(1)
-            Spacer(minLength: 0)
-            Text(tunnelStateLabel(tunnel.state)).onePlusText(.caption, color: tunnelColor(tunnel.state))
-                .lineLimit(1)
-            if case .running = tunnel.state {
-                Button("Link") { openLocal(tunnel.localPort) }
-                .accessibilityLabel("Open tunnel on port \(String(tunnel.localPort))")
-            }
-            if case .failed = tunnel.state {
-                Button("Retry") {
-                    if case .failed(let message) = tunnel.state,
-                       PortmanScanner.passwordAvailable(in: message) {
-                        retryAfterPassword = tunnel
-                        passwordPromptError = "Authentication failed. Enter the password again."
-                        passwordPromptHost = tunnel.host
-                    } else {
-                        service.stopTunnel(tunnel.id)
-                        _ = service.forward(host: tunnel.host, remotePort: tunnel.remotePort,
-                                            localPort: tunnel.localPort,
-                                            password: sshPasswordHost == tunnel.host ? sshPassword : nil)
-                    }
-                }
-            }
-            Button("Stop") { service.stopTunnel(tunnel.id) }
+                .accessibilityHidden(true)
         }
-        .buttonStyle(OnePlusButtonStyle(.neutral, size: .small, minWidth: OnePlusMetrics.compactControlHeight * 2))
-        .padding(OnePlusMetrics.actionSpacing)
-        .onePlusRowHover()
         .help("localhost:\(String(tunnel.localPort)) → \(tunnel.host):\(String(tunnel.remotePort)) · \(tunnelStatus(tunnel.state))")
         .contextMenu {
             if case .running = tunnel.state { Button("Open localhost") { openLocal(tunnel.localPort) } }
@@ -1580,7 +1579,6 @@ struct PortmanSettingsView: View {
                 if integrationsVisible { integrationSettings }
             }
         }
-        .environment(\.onePlusCardPadding, 0)
         .confirmationDialog("Stop eligible servers automatically?", isPresented: $state.pendingAutomaticCleanup) {
             Button("Enable Automatic", role: .destructive) {
                 cleanupMode = PortmanCleanupMode.automatic.rawValue
@@ -1592,144 +1590,119 @@ struct PortmanSettingsView: View {
     }
 
     private var generalSettings: some View {
-        VStack(alignment: .leading, spacing: 0) {
-            OnePlusSectionTitle("General")
+        OnePlusLinearAppletSection("General") {
             if shows("Keyboard shortcut") {
-                OnePlusSettingRow("Shortcut") { ShortcutRecorderField(action: .portman) }
-                    .onePlusRowHover()
+                OnePlusLinearAppletRow("Shortcut") { ShortcutRecorderField(action: .portman) }
             }
             if shows("Open folders in", "editor") {
-                OnePlusSettingRow("Open folders in", separator: false) {
-                    OnePlusSelect(choices: [("auto", "Automatic")] + (state.installedEditors ?? []).map { ($0.id, $0.name) } + [("finder", "Finder")],
-                                  selection: $editor, accessibilityLabel: "Open folders in")
+                OnePlusLinearAppletRow("Open folders in") {
+                    OnePlusLinearSelect(choices: [("auto", "Automatic")] + (state.installedEditors ?? []).map { ($0.id, $0.name) } + [("finder", "Finder")],
+                                        selection: $editor, accessibilityLabel: "Open folders in", width: portControlWidth)
                         .accessibilityIdentifier("portman.settings.editor")
                 }
-                .onePlusRowHover()
             }
         }
     }
 
     private var portSettings: some View {
-        VStack(alignment: .leading, spacing: 0) {
-            OnePlusSectionTitle("Ports & processes")
+        OnePlusLinearAppletSection("Ports & processes") {
             if shows("Ports & processes", "All listeners", "Include other listening processes") {
-                OnePlusSettingRow("All listeners", help: "Include other listening processes", controlWidth: 29) {
+                OnePlusLinearAppletRow("All listeners", detail: "Include other listening processes") {
                     Toggle("Include other listening processes", isOn: $showAllListeners)
-                        .labelsHidden().toggleStyle(OnePlusSwitchStyle())
+                        .labelsHidden().toggleStyle(OnePlusLinearSwitchStyle())
                 }
-                .onePlusRowHover()
             }
             if shows("Ports & processes", "First port", "Scan ports") {
-                OnePlusSettingRow("First port", controlWidth: portControlWidth) {
+                OnePlusLinearAppletRow("First port") {
                     OnePlusStepperField("First scan port", value: $lowerPort, in: 1...max(1, min(upperPort, 65535)))
-                        .frame(width: portControlWidth)
                 }
-                .onePlusRowHover()
             }
             if shows("Ports & processes", "Last port", "Scan ports") {
-                OnePlusSettingRow("Last port", controlWidth: portControlWidth) {
+                OnePlusLinearAppletRow("Last port") {
                     OnePlusStepperField("Last scan port", value: $upperPort, in: max(1, min(lowerPort, 65535))...65535)
-                        .frame(width: portControlWidth)
                 }
-                .onePlusRowHover()
             }
             if shows("Ports & processes", "Scan every") {
-                OnePlusSettingRow("Scan every", controlWidth: portControlWidth) {
-                    OnePlusSelect(choices: [2.0, 5.0, 10.0, 30.0].map { ($0, "\(Int($0)) seconds") },
-                                  selection: $scanInterval, width: portControlWidth, accessibilityLabel: "Scan every")
+                OnePlusLinearAppletRow("Scan every") {
+                    OnePlusLinearSelect(choices: [2.0, 5.0, 10.0, 30.0].map { ($0, "\(Int($0)) seconds") },
+                                        selection: $scanInterval, accessibilityLabel: "Scan every", width: portControlWidth)
                         .accessibilityIdentifier("portman.settings.interval")
                 }
-                .onePlusRowHover()
             }
             if shows("Ports & processes", "Protected apps", "Extra protected process names") {
-                OnePlusSettingRow(
-                    "Protected apps",
-                    help: "Extra protected process names, comma-separated. Databases, Docker, and SSH stay protected.",
-                    controlWidth: portControlWidth,
-                    separator: false
-                ) {
+                OnePlusLinearAppletRow("Protected apps") {
                     OnePlusTextField("Process names", text: $protectedCommands)
                         .frame(width: portControlWidth)
                 }
-                .onePlusRowHover()
+                .help("Extra protected process names, comma-separated. Databases, Docker, and SSH stay protected.")
             }
         }
     }
 
     private var cleanupSettings: some View {
-        VStack(alignment: .leading, spacing: 0) {
-            OnePlusSectionTitle("Clean up")
+        OnePlusLinearAppletSection("Clean up") {
             if shows("Clean up", "Cleanup mode") {
-                OnePlusSettingRow("Mode", help: cleanupHelp) {
-                    OnePlusSegmented(choices: [("off", "Off"), ("ask", "Ask"), ("automatic", "Auto")],
-                                     selection: Binding(get: { cleanupMode }, set: { value in
+                OnePlusLinearAppletRow("Mode", detail: cleanupHelp) {
+                    OnePlusLinearSegmented(choices: [("off", "Off"), ("ask", "Ask"), ("automatic", "Auto")],
+                                           selection: Binding(get: { cleanupMode }, set: { value in
                         if value == PortmanCleanupMode.automatic.rawValue && cleanupMode != value {
                             state.pendingAutomaticCleanup = true
                         } else { cleanupMode = value }
-                    }), accessibilityLabel: "Cleanup mode", width: OnePlusMetrics.controlColumn)
+                    }), accessibilityLabel: "Cleanup mode")
                     .accessibilityIdentifier("portman.settings.cleanupMode")
                 }
-                .onePlusRowHover()
             }
             if shows("Clean up", "Include deleted folders") {
-                OnePlusSettingRow("Deleted folders", controlWidth: 29) {
+                OnePlusLinearAppletRow("Deleted folders") {
                     Toggle("Include deleted folders", isOn: $includeDeletedFolders)
-                        .labelsHidden().toggleStyle(OnePlusSwitchStyle())
+                        .labelsHidden().toggleStyle(OnePlusLinearSwitchStyle())
                 }
-                .onePlusRowHover()
             }
             if shows("Clean up", "Idle for", "Suggest after idle hours") {
-                OnePlusSettingRow("Idle for") {
+                OnePlusLinearAppletRow("Idle for") {
                     OnePlusStepperField("Idle hours", value: integer($idleHours), in: 1...72, unit: "hours")
                 }
-                .onePlusRowHover()
             }
             if shows("Clean up", "Running for", "Suggest after running days") {
-                OnePlusSettingRow("Running for") {
+                OnePlusLinearAppletRow("Running for") {
                     OnePlusStepperField("Running days", value: integer($runningDays), in: 1...30, unit: "days")
                 }
-                .onePlusRowHover()
             }
             if shows("Clean up", "Force quit after seconds") {
-                OnePlusSettingRow("Force quit after", separator: false) {
+                OnePlusLinearAppletRow("Force quit after") {
                     OnePlusStepperField("Force quit seconds", value: integer($forceQuitSeconds), in: 1...30, unit: "sec")
                 }
-                .onePlusRowHover()
             }
         }
     }
 
     private var integrationSettings: some View {
-        VStack(alignment: .leading, spacing: 0) {
-            OnePlusSectionTitle("Integrations")
+        OnePlusLinearAppletSection("Integrations") {
             if shows("Integrations", "Link coding sessions") {
-                OnePlusSettingRow(
-                    "Coding sessions",
-                    help: "Copy a resume command for a matching Claude Code or Codex session.",
-                    controlWidth: 29
-                ) {
+                OnePlusLinearAppletRow("Coding sessions",
+                                       detail: "Copy a resume command for a matching Claude Code or Codex session.") {
                     Toggle("Link coding sessions", isOn: $sessionLinksEnabled)
-                        .labelsHidden().toggleStyle(OnePlusSwitchStyle())
+                        .labelsHidden().toggleStyle(OnePlusLinearSwitchStyle())
                 }
-                .onePlusRowHover()
             }
             if shows("Integrations", "Find public GitHub links") {
-                OnePlusSettingRow(
-                    "GitHub links",
-                    help: "Find public pull requests and previews. Private repositories are excluded.",
-                    controlWidth: 29,
-                    separator: false
-                ) {
+                OnePlusLinearAppletRow("GitHub links",
+                                       detail: "Find public pull requests and previews. Private repositories are excluded.") {
                     Toggle("Find public GitHub links", isOn: $publicGitHubLinksEnabled)
-                        .labelsHidden().toggleStyle(OnePlusSwitchStyle())
+                        .labelsHidden().toggleStyle(OnePlusLinearSwitchStyle())
                 }
-                .onePlusRowHover()
             }
         }
     }
 
     private func integer(_ value: Binding<Double>) -> Binding<Int> {
         Binding(get: { Int(value.wrappedValue) }, set: { value.wrappedValue = Double($0) })
+    }
+}
+
+private extension View {
+    func portmanAppletLook() -> some View {
+        environment(\.onePlusLinearControlLook, .depth).onePlusLinearMotion(.quiet)
     }
 }
 

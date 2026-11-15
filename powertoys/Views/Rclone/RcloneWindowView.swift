@@ -27,14 +27,18 @@ struct RcloneWindowView: View {
     var body: some View {
         @Bindable var manager = manager
 
-        OnePlusWindowRoot(canvas: .rclone) {
+        LinearToolWindow(canvas: .rclone) {
             RcloneSidebarView(content: $content, showAddRemote: $showAddRemote)
         } content: {
-            contentArea
+            LinearToolPane(page: $content, title: paneTitle) {
+                paneActions
+            } content: {
+                contentArea
+            }
         }
         .disabled(manager.isShuttingDown || manager.isPresentingNewTransfer || showAddRemote)
         .environment(manager)
-        .buttonStyle(OnePlusButtonStyle())
+        .buttonStyle(OnePlusLinearButtonStyle(.soft))
         .background(WindowAccessor(identifier: "rclone"))
         .focusedSceneValue(\.appNewTransfer, manager.isPresentingNewTransfer || showAddRemote || manager.isShuttingDown ? nil : { manager.isPresentingNewTransfer = true })
         .focusedSceneValue(\.appOpenSettings, manager.isPresentingNewTransfer || showAddRemote || manager.isShuttingDown ? nil : { content = .settings })
@@ -102,6 +106,39 @@ struct RcloneWindowView: View {
                 content = .browse(remote)
             }
         }
+    }
+
+    private var paneTitle: String {
+        switch content {
+        case .transfers: RcloneTransferPresentation.title(for: manager.filter)
+        case .browse(let remote): remote.displayName
+        case .activity: "Activity"
+        case .devSync: DevSyncPage.title(for: .shared)
+        case .settings: "Settings"
+        }
+    }
+
+    @ViewBuilder
+    private var paneActions: some View {
+        switch content {
+        case .transfers:
+            RcloneTransferActions()
+        case .browse(let remote):
+            LinearCaption(remote.typeLabel, monospaced: true)
+        case .devSync where DevSyncManager.shared.selectedPair != nil && DevSyncManager.shared.isShowingPairSettings:
+            Button("Done") { DevSyncManager.shared.isShowingPairSettings = false }
+                .buttonStyle(OnePlusLinearButtonStyle(.soft))
+        default:
+            EmptyView()
+        }
+        Button {
+            manager.isPresentingNewTransfer = true
+        } label: {
+            Label("New Transfer", systemImage: "plus")
+        }
+        .buttonStyle(OnePlusLinearButtonStyle(.soft))
+        .keyboardShortcut("n")
+        .accessibilityIdentifier("rclone.new-transfer")
     }
 
     @ViewBuilder

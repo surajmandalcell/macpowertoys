@@ -21,13 +21,8 @@ struct MacTweaksPanel<Content: View>: View {
     }
 
     var body: some View {
-        OnePlusCard {
-            VStack(alignment: .leading, spacing: 0) {
-                OnePlusCardHeader(title, systemImage: glyph.systemImage)
-                content
-            }
-        }
-        .frame(maxWidth: .infinity, alignment: .topLeading)
+        OnePlusLinearAppletSection(title) { content }
+            .frame(maxWidth: .infinity, alignment: .topLeading)
     }
 }
 
@@ -84,15 +79,16 @@ struct MacTweaksPreferenceRow: View {
     }
 
     var body: some View {
-        OnePlusSettingRow(
-            field.label,
-            help: help,
-            reset: resetAction,
-            controlWidth: controlWidth,
-            separator: separator
-        ) {
-            MacTweaksChoiceControl(field: field, selection: selection, controlWidth: controlWidth, isEnabled: canWrite, onSelection: apply)
+        OnePlusLinearAppletRow(field.label) {
+            HStack(spacing: OnePlusLinearMetrics.appletActionGap) {
+                if let resetAction {
+                    OnePlusLinearIconButton(systemImage: "arrow.counterclockwise", help: "Reset \(field.label)",
+                                            size: OnePlusLinearMetrics.toolbarButton, action: resetAction)
+                }
+                MacTweaksChoiceControl(field: field, selection: selection, controlWidth: controlWidth, isEnabled: canWrite, onSelection: apply)
+            }
         }
+        .help(help)
         .accessibilityIdentifier("mac-tweaks.setting.\(field.key)")
     }
 
@@ -150,14 +146,15 @@ private struct MacTweaksSegmentedControl: View {
             field.choices.indices.map { ($0, field.choices[$0].label) }
     }
 
+    // The applet segmented control has fixed 36 pt segments, too narrow for "Default (On)"; a select fits the words.
     var body: some View {
-        OnePlusSegmented(
+        OnePlusLinearSelect(
             choices: choices,
             selection: Binding(get: { selection }, set: onSelection),
             accessibilityLabel: field.label,
-            accessibilityIdentifierPrefix: "mac-tweaks.choice.\(field.key)",
             width: controlWidth
         )
+        .accessibilityIdentifier("mac-tweaks.choice.\(field.key)")
     }
 }
 
@@ -168,12 +165,12 @@ private struct MacTweaksMenuControl: View {
     let onSelection: (Int) -> Void
 
     var body: some View {
-        OnePlusSelect(
+        OnePlusLinearSelect(
             choices: (selection == -2 ? [(-2, "Custom value")] : [])
                 + [(-1, defaultLabel)] + field.choices.indices.map { ($0, field.choices[$0].label) },
             selection: Binding(get: { selection }, set: { if $0 >= -1 { onSelection($0) } }),
-            width: controlWidth,
-            accessibilityLabel: field.label
+            accessibilityLabel: field.label,
+            width: controlWidth
         )
     }
 

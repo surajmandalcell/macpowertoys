@@ -231,10 +231,10 @@ struct DevSyncSetupSheet: View {
         } footer: {
             if let model {
                 Button("Back") { model.back() }
-                    .buttonStyle(OnePlusButtonStyle(.ghost))
+                    .buttonStyle(OnePlusLinearButtonStyle(.soft))
                     .disabled(model.step == .roots || model.isWorking)
                 Button("Cancel") { dismiss() }
-                    .buttonStyle(OnePlusButtonStyle(.ghost))
+                    .buttonStyle(OnePlusLinearButtonStyle(.soft))
                     .keyboardShortcut(.cancelAction)
                 Button(model.primaryActionTitle) {
                     Task {
@@ -245,7 +245,7 @@ struct DevSyncSetupSheet: View {
                     }
                 }
                 .keyboardShortcut(.defaultAction)
-                .buttonStyle(OnePlusButtonStyle(.primary))
+                .buttonStyle(OnePlusLinearButtonStyle(.soft))
                 .disabled(!model.canContinue)
             }
         }
@@ -291,19 +291,20 @@ private struct DevSyncSetupRootsStep: View {
     @Bindable var model: DevSyncSetupModel
 
     var body: some View {
-        VStack(alignment: .leading, spacing: 12) {
-            OnePlusTextField("Pair name", text: $model.draft.displayName)
-
-            OnePlusSegmented(choices: DevSyncMode.allCases.map { ($0, $0.displayName) },
-                             selection: $model.draft.mode, accessibilityLabel: "Mode")
-
-            Image(systemName: "info.circle")
-                .foregroundStyle(OnePlusColor.secondary)
-                .help(model.draft.mode.summary)
-                .accessibilityLabel(model.draft.mode.summary)
-
-            rootRow(title: "Internal root", url: model.draft.internalURL) { model.draft.internalURL = $0 }
-            rootRow(title: "External root", url: model.draft.externalURL) { model.draft.externalURL = $0 }
+        VStack(alignment: .leading, spacing: OnePlusLinearMetrics.appletSectionGap) {
+            OnePlusLinearAppletGroup {
+                OnePlusLinearAppletRow("Pair name") {
+                    OnePlusTextField("Pair name", text: $model.draft.displayName)
+                        .frame(width: OnePlusMetrics.wideControlColumn)
+                }
+                OnePlusLinearAppletRow("Mode", detail: model.draft.mode.summary) {
+                    OnePlusLinearSelect(choices: DevSyncMode.allCases.map { ($0, $0.displayName) },
+                                        selection: $model.draft.mode, accessibilityLabel: "Mode",
+                                        width: OnePlusMetrics.wideControlColumn)
+                }
+                rootRow(title: "Internal root", url: model.draft.internalURL) { model.draft.internalURL = $0 }
+                rootRow(title: "External root", url: model.draft.externalURL) { model.draft.externalURL = $0 }
+            }
 
             if let probe = model.probe {
                 volumeCard(title: "Internal", volume: probe.capabilities.internalVolume)
@@ -322,20 +323,13 @@ private struct DevSyncSetupRootsStep: View {
     }
 
     private func rootRow(title: String, url: URL?, set: @escaping (URL) -> Void) -> some View {
-        HStack(spacing: 10) {
-            Text(title)
-                .onePlusText(.row)
-            Spacer(minLength: 8)
-            Text(url?.path ?? "No folder selected")
-                .onePlusText(.mono)
-                .foregroundStyle(url == nil ? .tertiary : .secondary)
-                .lineLimit(1)
-                .truncationMode(.middle)
+        OnePlusLinearAppletRow(title) {
+            LinearCaption(url?.path ?? "No folder selected", monospaced: url != nil)
             Button("Choose…") {
                 guard let chosen = DevSyncSetupSheet.chooseDirectory() else { return }
                 set(chosen)
             }
-            .controlSize(.small)
+            .buttonStyle(OnePlusLinearButtonStyle(.soft))
             .accessibilityLabel("Choose \(title)")
         }
     }
@@ -355,7 +349,7 @@ private struct DevSyncSetupRootsStep: View {
                     tint: volume.isEncrypted == true ? .green : .orange
                 )
             }
-            .utilitySectionCard()
+            .devSyncGroup()
         }
     }
 }
@@ -484,15 +478,15 @@ private struct DevSyncSetupProjectItemRow: View {
             }
 
             if let target = item.adoptableLinkTarget {
-                Toggle(isOn: Binding(
-                    get: { model.isAdoptingLink(item) },
-                    set: { model.setAdoptingLink($0, for: item) }
-                )) {
-                    Text("Adopt link to \(target)")
-                        .onePlusText(.caption)
+                HStack(spacing: OnePlusLinearMetrics.appletRowGap) {
+                    LinearCaption("Adopt link to \(target)")
+                    Toggle("Adopt link to \(target)", isOn: Binding(
+                        get: { model.isAdoptingLink(item) },
+                        set: { model.setAdoptingLink($0, for: item) }
+                    ))
+                    .labelsHidden()
+                    .toggleStyle(OnePlusLinearSwitchStyle())
                 }
-                .toggleStyle(OnePlusSwitchStyle())
-                .controlSize(.mini)
             }
         }
         .padding(OnePlusMetrics.cardPadding)
@@ -545,7 +539,7 @@ private struct DevSyncSetupPreviewStep: View {
             DevSyncValueRow(label: "Blocked paths", value: "\(summary.blockedPathCount)")
             DevSyncValueRow(label: "Sensitive files included", value: "\(summary.sensitiveIncludedCount)")
         }
-        .utilitySectionCard()
+        .devSyncGroup()
     }
 
     private func spaceCard(_ preview: DevSetupPreview) -> some View {
@@ -563,7 +557,7 @@ private struct DevSyncSetupPreviewStep: View {
                 tint: fits ? .green : .red
             )
         }
-        .utilitySectionCard()
+        .devSyncGroup()
     }
 
     private func sensitiveCard(_ paths: [String]) -> some View {
@@ -577,7 +571,7 @@ private struct DevSyncSetupPreviewStep: View {
                     .truncationMode(.middle)
             }
         }
-        .utilitySectionCard()
+        .devSyncGroup()
     }
 }
 
@@ -600,6 +594,15 @@ struct DevSyncIssueStrip: View {
         .padding(.vertical, 8)
         .frame(maxWidth: .infinity, alignment: .leading)
         .background(RoundedRectangle(cornerRadius: 8).fill(OnePlusColor.warn.opacity(0.12)))
+    }
+}
+
+private extension View {
+    /// A padded block of value rows in one filled group.
+    func devSyncGroup() -> some View {
+        OnePlusLinearAppletGroup {
+            self.padding(OnePlusLinearMetrics.appletRowPadding).frame(maxWidth: .infinity, alignment: .leading)
+        }
     }
 }
 

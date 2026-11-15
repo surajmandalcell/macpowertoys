@@ -10,54 +10,48 @@ struct RcloneSidebarView: View {
     private var devSyncManager: DevSyncManager { .shared }
 
     var body: some View {
-        OnePlusSidebar(title: "RSync UI") {
-            Button {
-                manager.isPresentingNewTransfer = true
-            } label: {
-                Label("New Transfer", systemImage: "plus")
-                    .frame(maxWidth: .infinity, alignment: .leading)
-            }
-            .buttonStyle(OnePlusButtonStyle(.primary))
-            .keyboardShortcut("n")
-            .accessibilityIdentifier("rclone.new-transfer")
+        OnePlusLinearSidebar {
+            EmptyView()
         } navigation: {
-            OnePlusNavCaption("Transfers")
+            OnePlusLinearNavCaption("Transfers")
             ForEach(JobFilter.allCases) { filter in
                 let index = JobFilter.allCases.firstIndex(of: filter) ?? 0
-                OnePlusNavRow(
+                let count = String(manager.count(for: filter))
+                // shortcut: the trailing hint slot shows the count; use a nav-row count when OnePlusUI adds one.
+                OnePlusLinearNavRow(
                     filter.displayName,
                     systemImage: filter.icon,
                     selected: content == .transfers && manager.filter == filter,
-                    count: manager.count(for: filter)
+                    shortcut: count
                 ) {
                     manager.filter = filter
                     content = .transfers
                 }
+                .accessibilityValue(count)
                 .keyboardShortcut(KeyEquivalent(Character(String(index + 1))))
                 .accessibilityIdentifier("rclone.transfers.\(filter.rawValue)")
             }
 
-            OnePlusNavRow("Activity", systemImage: "clock.arrow.circlepath", selected: content == .activity) {
+            OnePlusLinearNavRow("Activity", systemImage: "clock.arrow.circlepath", selected: content == .activity) {
                 content = .activity
             }
             .keyboardShortcut("5")
-            OnePlusNavRow(
+            OnePlusLinearNavRow(
                 "Dev Sync",
-                systemImage: "",
-                image: Image(systemName: "externaldrive.badge.plus"),
+                systemImage: "externaldrive.badge.plus",
                 selected: content == .devSync,
-                count: devSyncManager.attentionCount == 0 ? nil : devSyncManager.attentionCount
+                shortcut: DevSyncSidebarBadge.text(devSyncManager.attentionCount)
             ) {
                 content = .devSync
             }
+            .accessibilityValue(DevSyncSidebarBadge.text(devSyncManager.attentionCount) ?? "")
             .keyboardShortcut("6")
 
             remotesHeader
             if manager.remotes.isEmpty {
-                Text("No remotes configured")
-                    .onePlusText(.caption)
-                    .padding(.horizontal, OnePlusMetrics.navPadding)
-                    .padding(.vertical, OnePlusMetrics.spacing[2])
+                LinearCaption("No remotes configured")
+                    .padding(.horizontal, OnePlusLinearMetrics.navPadding)
+                    .frame(height: OnePlusLinearMetrics.navRow)
             } else {
                 ForEach(manager.remotes) { remote in
                     let index = manager.remotes.firstIndex(of: remote) ?? manager.remotes.count
@@ -73,11 +67,11 @@ struct RcloneSidebarView: View {
             }
         } bottom: {
             if !manager.daemonIsHealthy {
-                OnePlusNavRow("Reconnect", systemImage: "arrow.clockwise") {
+                OnePlusLinearNavRow("Reconnect", systemImage: "arrow.clockwise") {
                     Task { await manager.restartDaemon() }
                 }
             }
-            OnePlusNavRow("Settings", systemImage: "gearshape", selected: content == .settings) {
+            OnePlusLinearNavRow("Settings", systemImage: "gearshape", selected: content == .settings, shortcut: "⌘,") {
                 content = .settings
             }
             .keyboardShortcut(",")
@@ -85,14 +79,12 @@ struct RcloneSidebarView: View {
     }
 
     private var remotesHeader: some View {
-        OnePlusHeaderActions {
-            OnePlusNavCaption("Remotes")
-            Button { showAddRemote = true } label: { Image(systemName: "plus") }
-                .buttonStyle(OnePlusButtonStyle(.icon, size: .small))
-                .help("Add remote")
-                .accessibilityLabel("Add remote")
-        }
-        .padding(.trailing, OnePlusMetrics.navPadding)
+        OnePlusLinearNavCaption("Remotes")
+            .overlay(alignment: .bottomTrailing) {
+                OnePlusLinearIconButton(systemImage: "plus", help: "Add remote", size: OnePlusLinearMetrics.toolbarButton) {
+                    showAddRemote = true
+                }
+            }
     }
 
 }
@@ -120,20 +112,14 @@ private struct RcloneRemoteNavRow: View {
     @State private var confirmRemoval = false
 
     var body: some View {
-        OnePlusNavRow(
+        OnePlusLinearNavRow(
             remote.displayName,
-            systemImage: "",
-            image: Image(systemName: remote.icon),
+            systemImage: remote.icon,
             selected: selected,
+            shortcut: remote.typeLabel,
             action: action
         )
-        .overlay(alignment: .trailing) {
-            Text(remote.typeLabel)
-                .onePlusText(.mono)
-                .foregroundStyle(OnePlusColor.muted)
-                .padding(.trailing, OnePlusMetrics.navPadding)
-                .allowsHitTesting(false)
-        }
+        .accessibilityValue(remote.typeLabel)
         .contextMenu {
             Button("Remote Settings…") { showSettings = true }
             Button("Reconnect…") {
@@ -163,5 +149,5 @@ private struct RcloneRemoteNavRow: View {
 #Preview {
     RcloneSidebarView(content: .constant(.transfers), showAddRemote: .constant(false))
         .environment(RcloneJobManager())
-        .frame(width: OnePlusWindowCanvas.rclone.sidebarWidth, height: OnePlusWindowCanvas.rclone.size.height)
+        .frame(height: OnePlusWindowCanvas.rclone.size.height)
 }
