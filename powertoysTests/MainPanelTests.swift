@@ -205,7 +205,7 @@ final class MainPanelTests: XCTestCase {
             ]
         ) {
             OnePlusLinearList(style: .panel) {
-                MainPanelFanRow(status: "3,472 RPM", selection: .constant(.auto), isEnabled: true) { EmptyView() }
+                MainPanelFanRow(status: "3,472 RPM", selection: .constant(.auto), isChoiceEnabled: { _ in true }) { EmptyView() }
                 MainPanelKwakeRow(isOn: .constant(true), status: "Indefinite")
             }
         }

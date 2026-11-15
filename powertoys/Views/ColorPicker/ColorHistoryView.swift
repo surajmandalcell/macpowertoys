@@ -6,27 +6,35 @@ enum ColorPickerLayout {
     static let bodyHorizontalInset = OnePlusMetrics.appletGutter
     static let historyBaseHeight = OnePlusWindowCanvas.colorPicker.size.height - OnePlusMetrics.appletTitlebar
     static let maximumWindowHeight = OnePlusWindowCanvas.colorPicker.heightRange!.upperBound
-    static let settingsContentHeight = 2 * OnePlusMetrics.cardHeader
-        + 4 * OnePlusMetrics.settingRow
-        + OnePlusMetrics.cardGap
-    static let historyRowHeight = OnePlusMetrics.settingRow
+    /// First estimate for the settings page until its measured height arrives: two captions, three rows
+    /// (one with a second line), the section gap, and the destructive footer.
+    static let settingsContentHeight = 2 * (OnePlusLinearMetrics.appletCaptionHeight + OnePlusLinearMetrics.appletCaptionBelow)
+        + 3 * OnePlusLinearMetrics.appletRow + OnePlusLinearMetrics.appletGutter
+        + OnePlusLinearMetrics.appletSectionGap + OnePlusLinearMetrics.appletFooterGap + OnePlusLinearMetrics.appletDestructive
+    static let historyRowHeight = OnePlusLinearMetrics.appletRow
+    static let formatSelectWidth: CGFloat = 92
+    /// Title area, tab row, and the toolbar (field plus its gaps) above the rows; the bottom gutter below them.
+    static let historyChrome = OnePlusLinearMetrics.appletTitlebar + OnePlusLinearMetrics.appletTabStrip
+        + 2 * OnePlusLinearMetrics.appletToolbarGap + OnePlusLinearMetrics.appletField + OnePlusLinearMetrics.appletBottom
+
+    static func clamped(_ height: CGFloat) -> CGFloat {
+        let range = OnePlusWindowCanvas.colorPicker.heightRange!
+        return min(range.upperBound, max(range.lowerBound, height))
+    }
 
     static func historyHeight(count: Int) -> CGFloat {
-        min(maximumWindowHeight, historyBaseHeight + OnePlusMetrics.appletTitlebar
-            + CGFloat(max(0, min(count, 5) - 1)) * historyRowHeight)
+        clamped(historyChrome + CGFloat(max(0, count)) * historyRowHeight)
     }
 
     static func settingsHeight(contentHeight: CGFloat) -> CGFloat {
-        let range = OnePlusWindowCanvas.colorPicker.heightRange!
-        return min(range.upperBound, max(range.lowerBound, contentHeight
-            + OnePlusMetrics.appletTitlebar + OnePlusMetrics.contentGap
-            + OnePlusMetrics.gutter))
+        clamped(contentHeight + OnePlusLinearMetrics.appletTitlebar + OnePlusLinearMetrics.appletBottom)
     }
 
     static func projectsHeight(projectCount: Int, isCreating: Bool) -> CGFloat {
-        min(maximumWindowHeight, OnePlusWindowCanvas.colorPicker.size.height
-            + CGFloat(max(0, projectCount)) * OnePlusMetrics.settingRow
-            + (isCreating ? OnePlusMetrics.controlHeight + OnePlusMetrics.contentGap : 0))
+        let toolbar = 2 * OnePlusLinearMetrics.appletToolbarGap
+            + (isCreating ? OnePlusMetrics.controlHeight : OnePlusLinearMetrics.appletButton)
+        return clamped(OnePlusLinearMetrics.appletTitlebar + OnePlusLinearMetrics.appletTabStrip + toolbar
+            + CGFloat(max(0, projectCount) + 1) * historyRowHeight + OnePlusLinearMetrics.appletBottom)
     }
 }
 
@@ -130,28 +138,25 @@ struct ColorHistoryView: View {
     }
 
     var body: some View {
-        OnePlusWindowRoot(canvas: .colorPicker, sidebar: { EmptyView() }) {
+        OnePlusLinearApplet("Color Picker", canvas: .colorPicker) {
+            OnePlusLinearAppletSettingsButton(isActive: page == .settings) {
+                page = page == .settings ? .history : .settings
+            }
+            .accessibilityIdentifier("color-picker.settings")
+            Button { service.pick() } label: { Label("Pick Color", systemImage: "eyedropper") }
+                .buttonStyle(OnePlusLinearButtonStyle(.soft))
+                .disabled(service.isPicking)
+                .help("Pick a color for \(selectedProjectName)")
+                .accessibilityIdentifier("color-picker.pick")
+        } content: {
             VStack(spacing: 0) {
-                OnePlusAppletTitlebar(title: "Color Picker") {
-                    OnePlusAppletSettingsButton(isActive: page == .settings,
-                                                help: page == .settings ? "Back to History" : "Settings") {
-                        page = page == .settings ? .history : .settings
-                    }
-                    .keyboardShortcut(",")
-                    .accessibilityIdentifier("color-picker.settings")
-                    Button("Pick Color") { service.pick() }
-                        .buttonStyle(OnePlusButtonStyle(.primary, size: .small))
-                        .disabled(service.isPicking)
-                        .help("Pick a color for \(selectedProjectName)")
-                        .accessibilityIdentifier("color-picker.pick")
-                }
-                VStack(spacing: 0) {
-                    if page != .settings { tabBar }
+                if page != .settings { tabBar }
+                OnePlusLinearContentSwitch(page) {
                     switch page {
                     case .history: history
                     case .projects: projects
                     case .settings:
-                        OnePlusPage(layout: .applet, header: { EmptyView() }) {
+                        OnePlusLinearAppletForm {
                             ColorPickerSettingsView()
                                 .onGeometryChange(for: CGFloat.self) { $0.size.height } action: {
                                     settingsContentHeight = $0
@@ -162,16 +167,20 @@ struct ColorHistoryView: View {
                 .frame(maxHeight: .infinity, alignment: .top)
             }
         }
+        .onePlusLinearMotion(.quiet)
+        .onePlusNeutralControls()
         .frame(height: windowHeight)
         .background {
-            Button("Search colors") { page = .history; focusSearch += 1 }.keyboardShortcut("f").hidden()
+            // On History the applet search field owns Command-F; elsewhere it opens History and focuses search.
+            if page != .history {
+                Button("Search colors") { page = .history; focusSearch += 1 }.keyboardShortcut("f").hidden()
+            }
         }
         .alert("Could Not Export Project", isPresented: Binding(
             get: { service.exportError != nil }, set: { if !$0 { service.exportError = nil } }
         )) {
             Button("OK") { service.exportError = nil }
         } message: { Text(service.exportError ?? "The project could not be written.") }
-        .transaction { $0.disablesAnimations = true }
         .onOpenToolPage("color-picker") { id in
             if let destination = ColorPickerPage(rawValue: id) { page = destination }
         }
@@ -201,89 +210,85 @@ struct ColorHistoryView: View {
     }
 
     private var tabBar: some View {
-        OnePlusTabStrip(tabs: [OnePlusTab(.history, "History"), OnePlusTab(.projects, "Projects")],
-                        selection: $page, layout: .applet) {
-            Text(selectedProjectName).onePlusText(.caption).lineLimit(1).help(selectedProjectName)
+        OnePlusLinearAppletTabRow(tabs: [OnePlusTab(.history, "History", count: sampleRows.count),
+                                         OnePlusTab(.projects, "Projects", count: service.projects.count)],
+                                  selection: $page) {
+            OnePlusLinearSelect(choices: [(UUID?.none, "Unfiled")] + service.projects.map { (Optional($0.id), $0.name) },
+                                selection: Binding(get: { service.selectedProjectID }, set: { selectProject($0) }),
+                                accessibilityLabel: "Project", style: .text)
+                .help(selectedProjectName)
         }
     }
 
     private var history: some View {
-        VStack(spacing: OnePlusMetrics.contentGap) {
-            OnePlusHeaderActions {
-                OnePlusSearchField(prompt: "Search colors", text: $search, width: nil,
-                                   focusTrigger: focusSearch, accessibilityIdentifier: "color-picker.search")
-                OnePlusSelect(choices: ColorCopyFormat.allCases.map { ($0, $0.title) },
-                              selection: $service.defaultFormat, width: OnePlusMetrics.controlColumn,
-                              accessibilityLabel: "Copy format")
+        VStack(spacing: 0) {
+            OnePlusLinearAppletToolbar {
+                OnePlusLinearSearchField("Search colors", text: $search, accessibilityIdentifier: "color-picker.search",
+                                         focusTrigger: focusSearch, style: .applet)
+                OnePlusLinearSelect(choices: ColorCopyFormat.allCases.map { ($0, $0.title) },
+                                    selection: $service.defaultFormat, accessibilityLabel: "Copy format",
+                                    width: ColorPickerLayout.formatSelectWidth)
                     .accessibilityIdentifier("color-picker.format")
             }
-            .padding(.horizontal, OnePlusMetrics.appletGutter)
             if sampleRows.isEmpty {
                 OnePlusEmptyState(search.isEmpty ? "Pick a color for \(selectedProjectName)" : "No matching colors",
                                   systemImage: search.isEmpty ? "eyedropper" : "magnifyingglass")
+                    .frame(maxHeight: .infinity)
             } else {
-                OnePlusCard {
-                    ScrollView {
-                        LazyVStack(spacing: 0) {
-                            ForEach(sampleRows) { row in
-                                ColorSampleRow(
-                                    row: row,
-                                    defaultFormat: service.defaultFormat,
-                                    copy: service.copy,
-                                    togglePin: { service.togglePin($0, undoManager: undoManager) },
-                                    remove: { service.remove($0, undoManager: undoManager) }
-                                )
-                                .overlay(alignment: .bottom) {
-                                    if row.id != sampleRows.last?.id {
-                                        OnePlusColor.lineSoft.frame(height: 1)
-                                    }
-                                }
-                            }
+                ScrollView {
+                    OnePlusLinearAppletGroup {
+                        ForEach(sampleRows) { row in
+                            ColorSampleRow(
+                                row: row,
+                                defaultFormat: service.defaultFormat,
+                                copy: service.copy,
+                                togglePin: { service.togglePin($0, undoManager: undoManager) },
+                                remove: { service.remove($0, undoManager: undoManager) }
+                            )
                         }
                     }
-                    .onePlusScrollIndicators()
+                    .padding(.horizontal, OnePlusLinearMetrics.appletGutter)
+                    .padding(.bottom, OnePlusLinearMetrics.appletBottom)
                 }
-                .frame(maxHeight: .infinity)
-                .padding(.horizontal, OnePlusMetrics.appletGutter)
+                .scrollBounceBehavior(.basedOnSize)
+                .onePlusScrollIndicators()
             }
         }
-        .padding(.top, OnePlusMetrics.contentGap)
-        .padding(.bottom, OnePlusMetrics.gutter)
     }
 
     private var projects: some View {
-        VStack(alignment: .leading, spacing: OnePlusMetrics.actionSpacing) {
-            OnePlusHeaderActions {
-                OnePlusSectionTitle("Color projects")
-                Button("New Project", systemImage: "plus") { isCreatingProject.toggle() }
-                    .buttonStyle(OnePlusButtonStyle(.ghost, size: .small))
+        VStack(alignment: .leading, spacing: 0) {
+            OnePlusLinearAppletToolbar {
+                if isCreatingProject {
+                    newProjectField
+                } else {
+                    Button { isCreatingProject = true } label: { Label("New Project", systemImage: "plus") }
+                        .buttonStyle(OnePlusLinearButtonStyle(.soft))
+                    Spacer(minLength: 0)
+                }
             }
-            if isCreatingProject { newProjectField }
             ScrollView {
-                LazyVStack(spacing: 0) {
+                OnePlusLinearAppletGroup {
                     projectRow(id: nil, name: "Unfiled", project: nil)
                     ForEach(service.projects) { project in
                         projectRow(id: project.id, name: project.name, project: project)
                     }
                 }
+                .padding(.horizontal, OnePlusLinearMetrics.appletGutter)
+                .padding(.bottom, OnePlusLinearMetrics.appletBottom)
             }
+            .scrollBounceBehavior(.basedOnSize)
             .onePlusScrollIndicators()
-            .frame(maxHeight: CGFloat(service.projects.count + 1) * OnePlusMetrics.settingRow)
         }
-        .frame(maxHeight: .infinity, alignment: .top)
-        .padding(.horizontal, OnePlusMetrics.appletGutter)
-        .padding(.top, OnePlusMetrics.contentGap)
-        .padding(.bottom, OnePlusMetrics.gutter)
     }
 
-    private var newProjectField: some View {
-        HStack(spacing: OnePlusMetrics.actionSpacing) {
-            OnePlusTextField("Project name", text: $newProjectName, onSubmit: createProject)
-            Button("Create", action: createProject)
-                .buttonStyle(OnePlusButtonStyle())
-                .disabled(!service.canCreateProject(named: newProjectName))
-            Button { isCreatingProject = false; newProjectName = "" } label: { Image(systemName: "xmark") }
-                .buttonStyle(OnePlusButtonStyle(.icon)).help("Cancel").accessibilityLabel("Cancel new project")
+    @ViewBuilder private var newProjectField: some View {
+        OnePlusTextField("Project name", text: $newProjectName, onSubmit: createProject)
+        Button("Create", action: createProject)
+            .buttonStyle(OnePlusLinearButtonStyle(.soft))
+            .disabled(!service.canCreateProject(named: newProjectName))
+        OnePlusLinearIconButton(systemImage: "xmark", help: "Cancel new project") {
+            isCreatingProject = false; newProjectName = ""
         }
     }
 
@@ -297,32 +302,30 @@ struct ColorHistoryView: View {
     private func projectRow(id: UUID?, name: String, project: ColorProject?) -> some View {
         let count = id.map { projectCounts[$0, default: 0] } ?? unfiledCount
         let selected = service.selectedProjectID == id
-        return HStack(spacing: OnePlusMetrics.actionSpacing) {
-            Button { selectProject(id) } label: {
-                HStack(spacing: OnePlusMetrics.actionSpacing) {
-                    Image(systemName: "folder")
-                    Text(name).lineLimit(1)
-                    Spacer(minLength: 0)
-                    Text(count, format: .number).onePlusText(.caption).monospacedDigit().fixedSize()
-                        .accessibilityLabel("\(count) saved colors")
-                    if selected { Image(systemName: "checkmark") }
-                }
-                .onePlusText(.row)
-                .frame(maxWidth: .infinity, minHeight: OnePlusMetrics.settingRow)
-                .contentShape(Rectangle())
-            }.buttonStyle(.plain)
-            if let project {
-                Button { service.export(project, from: NSApp.windows.first { $0.identifier?.rawValue == "color-picker" }) } label: { Image(systemName: "square.and.arrow.up") }
-                    .buttonStyle(OnePlusButtonStyle(.icon, size: .small))
-                    .disabled(count == 0).accessibilityLabel("Export \(name) as CSS")
-            }
+        var actions: [OnePlusLinearAction] = []
+        if let project, count > 0 {
+            actions.append(OnePlusLinearAction("Export \(name) as CSS", systemImage: "square.and.arrow.up", id: "export",
+                                               action: { exportProject(project) }))
         }
-        .padding(.horizontal, OnePlusMetrics.cardPadding)
-        .onePlusRowHover(selected: selected)
+        return OnePlusLinearAppletListRow(name, metadata: count.formatted(), actions: actions) {
+            Image(systemName: selected ? "checkmark" : "folder")
+                .font(.system(size: OnePlusLinearMetrics.body))
+                .foregroundStyle(selected ? OnePlusLinearColor.ink : OnePlusLinearColor.appletSecondary)
+                .frame(width: OnePlusLinearMetrics.appletSwatch)
+        }
+        .contentShape(Rectangle())
+        .onTapGesture { selectProject(id) }
+        .accessibilityAddTraits(selected ? [.isButton, .isSelected] : .isButton)
+        .accessibilityAction { selectProject(id) }
+        .accessibilityValue("\(count) saved colors")
         .contextMenu {
             Button("Use project") { selectProject(id) }
-            if let project { Button("Export CSS") { service.export(project, from: NSApp.windows.first { $0.identifier?.rawValue == "color-picker" }) }.disabled(count == 0) }
+            if let project { Button("Export CSS") { exportProject(project) }.disabled(count == 0) }
         }
+    }
+
+    private func exportProject(_ project: ColorProject) {
+        service.export(project, from: NSApp.windows.first { $0.identifier?.rawValue == "color-picker" })
     }
 
     private func selectProject(_ id: UUID?) {
@@ -339,55 +342,39 @@ struct ColorPickerSettingsView: View {
     @State private var isConfirmingClearAll = false
 
     var body: some View {
-        VStack(alignment: .leading, spacing: OnePlusMetrics.cardGap) {
-            ViewThatFits(in: .horizontal) {
-                HStack(alignment: .top, spacing: OnePlusMetrics.cardGap) {
-                    shortcutSettings
-                    savedColorsSettings
+        VStack(alignment: .leading, spacing: 0) {
+            VStack(alignment: .leading, spacing: OnePlusLinearMetrics.appletSectionGap) {
+                OnePlusLinearAppletSection("Global shortcut") {
+                    OnePlusLinearAppletRow("Enable shortcut") {
+                        Toggle("Enable Pick Color shortcut", isOn: Binding(
+                            get: { shortcuts.isEnabled(.colorPicker) }, set: { shortcuts.setEnabled($0, for: .colorPicker) }
+                        )).toggleStyle(OnePlusLinearSwitchStyle())
+                    }
+                    OnePlusLinearAppletRow("Keyboard shortcut", detail: "Works in every app.") {
+                        ShortcutRecorderField(action: .colorPicker).disabled(!shortcuts.isEnabled(.colorPicker))
+                    }
                 }
-                .frame(minWidth: 2 * OnePlusWindowCanvas.colorPicker.size.width + OnePlusMetrics.cardGap)
-                VStack(alignment: .leading, spacing: OnePlusMetrics.cardGap) {
-                    shortcutSettings
-                    savedColorsSettings
+                ShortcutPermissionNotice(action: .colorPicker)
+                    .padding(.horizontal, OnePlusLinearMetrics.appletRowPadding)
+                OnePlusLinearAppletSection("Saved colors") {
+                    OnePlusLinearAppletRow("Copy format") {
+                        OnePlusLinearSelect(choices: ColorCopyFormat.allCases.map { ($0, $0.title) },
+                                            selection: $service.defaultFormat, accessibilityLabel: "Copy format",
+                                            width: ColorPickerLayout.formatSelectWidth)
+                    }
                 }
             }
+            Button("Clear All Saved Colors", role: .destructive) { isConfirmingClearAll = true }
+                .buttonStyle(OnePlusLinearButtonStyle(.destructive))
+                .disabled(service.history.isEmpty).help("Clear every saved color. Projects are kept.")
+                .accessibilityIdentifier("color-picker.clear-all")
+                .padding(.top, OnePlusLinearMetrics.appletFooterGap)
         }
-        .transaction { $0.disablesAnimations = true }
+        .environment(\.onePlusLinearControlLook, .depth)
         .confirmationDialog("Clear all picked colors?", isPresented: $isConfirmingClearAll) {
             Button("Clear all", role: .destructive) { service.clearAll(undoManager: undoManager) }
             Button("Cancel", role: .cancel) {}
         } message: { Text("This removes every saved color from History and all projects. Projects are kept.") }
-    }
-
-    private var shortcutSettings: some View {
-        OnePlusCard {
-            OnePlusCardHeader("Global shortcut", systemImage: "keyboard")
-            OnePlusSettingRow("Enable shortcut") {
-                Toggle("Enable Pick Color shortcut", isOn: Binding(
-                    get: { shortcuts.isEnabled(.colorPicker) }, set: { shortcuts.setEnabled($0, for: .colorPicker) }
-                )).labelsHidden().toggleStyle(OnePlusSwitchStyle())
-            }
-            OnePlusSettingRow("Keyboard shortcut", help: "Works in every app.", separator: false) {
-                ShortcutRecorderField(action: .colorPicker).disabled(!shortcuts.isEnabled(.colorPicker))
-            }
-            ShortcutPermissionNotice(action: .colorPicker)
-        }
-    }
-
-    private var savedColorsSettings: some View {
-        OnePlusCard {
-            OnePlusCardHeader("Saved colors", systemImage: "paintpalette")
-            OnePlusSettingRow("Copy format") {
-                OnePlusSelect(choices: ColorCopyFormat.allCases.map { ($0, $0.title) },
-                              selection: $service.defaultFormat, accessibilityLabel: "Copy format")
-            }
-            OnePlusSettingRow("Clear history", help: "Keeps your projects.", separator: false) {
-                Button("Clear all", role: .destructive) { isConfirmingClearAll = true }
-                    .buttonStyle(OnePlusButtonStyle(.destructive))
-                    .disabled(service.history.isEmpty).help("Clear every saved color")
-                    .accessibilityIdentifier("color-picker.clear-all")
-            }
-        }
     }
 }
 
@@ -399,31 +386,51 @@ private struct ColorSampleRow: View {
     let copy: (ColorSample, ColorCopyFormat) -> Void
     let togglePin: (UUID) -> Void
     let remove: (UUID) -> Void
-    @State private var hovering = false
     @State private var confirmingDelete = false
-    @FocusState private var focused: Bool
+    @State private var hovering = false
 
+    // shortcut: built from applet tokens because OnePlusLinearAppletListRow 1.2.0 takes a plain String title and
+    // fixed icon actions (no selectable value, no menu action); move back to it when 1.2.1 adds both.
     var body: some View {
         let sample = row.sample
-        HStack(spacing: OnePlusMetrics.actionSpacing) {
-            RoundedRectangle(cornerRadius: OnePlusMetrics.controlRadius)
-                .fill(Color(nsColor: sample.color))
-                .frame(width: OnePlusMetrics.searchHeight, height: OnePlusMetrics.searchHeight)
-                .overlay { RoundedRectangle(cornerRadius: OnePlusMetrics.controlRadius).strokeBorder(OnePlusColor.line) }
-                .accessibilityLabel(row.accessibilityValue)
-            HStack(alignment: .firstTextBaseline, spacing: OnePlusMetrics.actionSpacing) {
-                Text(row.value).onePlusText(.mono)
-                    .lineLimit(1).truncationMode(.middle).textSelection(.enabled)
-                Spacer(minLength: 0)
-                Text(row.timestamp).onePlusText(.caption).fixedSize()
-            }.frame(maxWidth: .infinity, alignment: .leading)
-            actions
+        HStack(spacing: 0) {
+            OnePlusLinearSwatch(Color(nsColor: sample.color))
+                .padding(.trailing, OnePlusLinearMetrics.appletRowGap)
+            Text(row.value)
+                .font(.system(size: OnePlusLinearMetrics.body, design: .monospaced))
+                .foregroundStyle(OnePlusLinearColor.ink)
+                .lineLimit(1).truncationMode(.middle).textSelection(.enabled)
+                .frame(maxWidth: .infinity, alignment: .leading)
+            Text(row.timestamp)
+                .font(.system(size: OnePlusLinearMetrics.body))
+                .foregroundStyle(OnePlusLinearColor.appletMuted)
+                .lineLimit(1).fixedSize()
+            HStack(spacing: 2) {
+                OnePlusLinearIconButton(systemImage: "doc.on.doc", help: "Copy \(defaultFormat.title)",
+                                        size: OnePlusLinearMetrics.appletRowAction) { copy(sample, defaultFormat) }
+                OnePlusMenuButton("Copy color as", systemImage: "chevron.down", variant: .borderedIcon) {
+                    ColorCopyFormat.allCases.map { format in
+                        .item(OnePlusPopupMenuItem(format.title) { copy(sample, format) })
+                    }
+                }
+                .environment(\.onePlusDensity, .compact)
+                OnePlusLinearIconButton(systemImage: sample.isPinned ? "pin.fill" : "pin",
+                                        help: sample.isPinned ? "Unpin color" : "Pin color",
+                                        size: OnePlusLinearMetrics.appletRowAction) { togglePin(sample.id) }
+                OnePlusLinearIconButton(systemImage: "trash", help: "Delete color",
+                                        size: OnePlusLinearMetrics.appletRowAction) { confirmingDelete = true }
+            }
+            .padding(.leading, OnePlusLinearMetrics.appletRowActionsGap)
         }
-        .padding(.horizontal, OnePlusMetrics.actionSpacing)
-        .frame(height: ColorPickerLayout.historyRowHeight)
-        .background(hovering || (focused && OnePlusFocusPolicy.shared.showsFocus) ? OnePlusColor.panelHover : OnePlusColor.panel)
-        .contentShape(Rectangle()).focusable().focused($focused)
+        .padding(.leading, OnePlusLinearMetrics.appletRowPadding)
+        .padding(.trailing, OnePlusLinearMetrics.appletRowActionsTrailing)
+        .frame(height: OnePlusLinearMetrics.appletRow)
+        .background(hovering ? OnePlusLinearColor.hover : .clear)
+        .contentShape(Rectangle())
         .onHover { hovering = $0 }
+        .accessibilityElement(children: .contain)
+        .accessibilityLabel(row.accessibilityValue)
+        .focusable()
         .onKeyPress(.return) { copy(sample, defaultFormat); return .handled }
         .onKeyPress(.delete) { confirmingDelete = true; return .handled }
         .onKeyPress(characters: CharacterSet(charactersIn: "123456789")) { press in
@@ -441,20 +448,5 @@ private struct ColorSampleRow: View {
         .confirmationDialog("Delete this color?", isPresented: $confirmingDelete) {
             Button("Delete", role: .destructive) { remove(sample.id) }
         }
-    }
-
-    private var actions: some View {
-        HStack(spacing: OnePlusMetrics.spacing[0]) {
-            OnePlusMenuButton("Copy color as", systemImage: "doc.on.doc", variant: .borderedIcon) {
-                ColorCopyFormat.allCases.map { format in
-                    .item(OnePlusPopupMenuItem(format.title) { copy(row.sample, format) })
-                }
-            }
-            .environment(\.onePlusDensity, .compact)
-            Button { togglePin(row.id) } label: { Image(systemName: row.sample.isPinned ? "pin.fill" : "pin") }
-                .accessibilityLabel(row.sample.isPinned ? "Unpin color" : "Pin color")
-            Button { confirmingDelete = true } label: { Image(systemName: "trash") }
-                .accessibilityLabel("Delete color")
-        }.buttonStyle(OnePlusButtonStyle(.icon, size: .small))
     }
 }
