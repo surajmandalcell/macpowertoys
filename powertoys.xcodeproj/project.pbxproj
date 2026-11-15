@@ -794,7 +794,7 @@
 			repositoryURL = "https://github.com/surajmandalcell/oneplus-ui.git";
 			requirement = {
 				kind = exactVersion;
-				version = 1.0.4;
+				version = 1.1.0;
 			};
 		};
 		C40000000000000000000010 /* XCRemoteSwiftPackageReference "NetToys" */ = {
@@ -802,7 +802,7 @@
 			repositoryURL = "https://github.com/surajmandalcell/nettoys.git";
 			requirement = {
 				kind = exactVersion;
-				version = 1.0.12;
+				version = 1.0.13;
 			};
 		};
 /* End XCRemoteSwiftPackageReference section */
