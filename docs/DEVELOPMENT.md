@@ -25,10 +25,9 @@ distribution needs Developer ID signing and Apple notarization.
 | Package | Repository | Used for |
 | --- | --- | --- |
 | OnePlusUI | [surajmandalcell/oneplus-ui](https://github.com/surajmandalcell/oneplus-ui) | Every window, page, card, control, and menu panel |
-| NetToys | [surajmandalcell/nettoys](https://github.com/surajmandalcell/nettoys) | The NetToys tool, shared with the standalone app |
 
-Each package is pinned to an exact version tag in
-`powertoys.xcodeproj/project.pbxproj`. To update one, tag a new version in its
+The package is pinned to an exact version tag in
+`powertoys.xcodeproj/project.pbxproj`. To update it, tag a new version in its
 repository, change the exact version here, resolve, review
 `Package.resolved`, and run the tests.
 

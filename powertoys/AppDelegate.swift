@@ -44,7 +44,7 @@ class AppDelegate: NSObject, NSApplicationDelegate {
 
     private static let nativeSceneToolIDs: Set<String> = [
         "main", "rclone", "logs", "awake", "color-picker",
-        "text-extractor", "input-devices", "system-care", "disk-explorer", "nettoys", "mac-tweaks",
+        "text-extractor", "input-devices", "mac-tweaks",
     ]
 
     @MainActor
@@ -124,9 +124,6 @@ class AppDelegate: NSObject, NSApplicationDelegate {
         "color-picker": "ColorPickerLogo",
         "text-extractor": "TextExtractorLogo",
         "input-devices": "InputDevicesLogoA",
-        "system-care": "SystemCareLogo",
-        "disk-explorer": "DiskExplorerLogo",
-        "nettoys": "NetToysLogo",
         "mac-tweaks": "MacTweaksLogo"
     ]
 

@@ -1,8 +1,6 @@
 import AppKit
-import NetToysCore
 import Darwin
 import Foundation
-import Network
 import IOKit
 import IOKit.ps
 import Observation
@@ -41,8 +39,6 @@ nonisolated struct SystemMonitorMemoryDetails: Sendable {
 
 nonisolated struct SystemMonitorNetworkDetails: Sendable {
     static let rateScope = "All interfaces"
-    let interfaceName: String?
-    let localAddress: String?
     let receivedTotal: UInt64
     let sentTotal: UInt64
 }
@@ -57,18 +53,6 @@ nonisolated struct SystemMonitorDiskDetails: Sendable {
         Self(readPerSecond: readPerSecond ?? previous?.readPerSecond,
              writePerSecond: writePerSecond ?? previous?.writePerSecond,
              readTotal: readTotal, writeTotal: writeTotal)
-    }
-}
-
-nonisolated struct SystemMonitorNetworkIdentity: Sendable {
-    let interfaceName: String?
-    let localAddress: String?
-
-    init(route: DefaultRoute?, network: LocalIPv4Network?) {
-        interfaceName = route?.interfaceName
-        localAddress = route.flatMap { route in
-            network?.interfaceName == route.interfaceName ? network?.address.description : nil
-        }
     }
 }
 
@@ -318,7 +302,6 @@ nonisolated private final class SystemMonitorSampler: @unchecked Sendable {
     private var previousCPU: (timestamp: Date, aggregate: CPUCounters, cores: [CPUCounters])?
     private var previousNetwork: (timestamp: UInt64, received: UInt64, sent: UInt64)?
     private var previousDisk: (timestamp: UInt64, read: UInt64, write: UInt64)?
-    var networkIdentity: SystemMonitorNetworkIdentity?
     private let gpuReader = SystemMonitorGPUReader()
 
     func reset() {
@@ -360,7 +343,7 @@ nonisolated private final class SystemMonitorSampler: @unchecked Sendable {
         var upload: Double?
         var networkDetails: SystemMonitorNetworkDetails?
         if needsNetwork {
-            if let current = Self.networkCounters(identity: networkIdentity) {
+            if let current = Self.networkCounters() {
                 networkDetails = current.details
                 if let previousNetwork {
                     let elapsed = SystemMonitorDelta.elapsedSeconds(previous: previousNetwork.timestamp, current: uptime)
@@ -538,7 +521,7 @@ nonisolated private final class SystemMonitorSampler: @unchecked Sendable {
         )
     }
 
-    private static func networkCounters(identity: SystemMonitorNetworkIdentity?) -> NetworkSnapshot? {
+    private static func networkCounters() -> NetworkSnapshot? {
         var addresses: UnsafeMutablePointer<ifaddrs>?
         guard getifaddrs(&addresses) == 0, let first = addresses else { return nil }
         defer { freeifaddrs(addresses) }
@@ -557,9 +540,7 @@ nonisolated private final class SystemMonitorSampler: @unchecked Sendable {
         }
         return NetworkSnapshot(
             received: received, sent: sent,
-            details: SystemMonitorNetworkDetails(interfaceName: identity?.interfaceName,
-                                                  localAddress: identity?.localAddress,
-                                                  receivedTotal: received, sentTotal: sent)
+            details: SystemMonitorNetworkDetails(receivedTotal: received, sentTotal: sent)
         )
     }
 
@@ -689,8 +670,6 @@ final class SystemMonitorService {
     private let sampler = SystemMonitorSampler()
     private let samplingQueue = DispatchQueue(label: "com.surajmandal.macpowertoys.system-monitor", qos: .utility)
     private var timer: DispatchSourceTimer?
-    private var networkMonitor: NWPathMonitor?
-    private var networkIdentityTask: Task<Void, Never>?
     private var wakeObserver: NSObjectProtocol?
     private var detailedOwners: [String: Set<SystemMonitorMetric>] = [:]
     private var generation = 0
@@ -739,17 +718,6 @@ final class SystemMonitorService {
         let detailedMetrics = detailedOwners.values.reduce(into: Set<SystemMonitorMetric>()) { $0.formUnion($1) }
         guard !detailedMetrics.isEmpty else { return }
         let currentGeneration = generation
-        if detailedMetrics.contains(.network) {
-            let monitor = NWPathMonitor()
-            monitor.pathUpdateHandler = { [weak self] _ in
-                Task { @MainActor [weak self] in
-                    guard let self, self.generation == currentGeneration else { return }
-                    self.refreshNetworkIdentity(generation: currentGeneration)
-                }
-            }
-            networkMonitor = monitor
-            monitor.start(queue: samplingQueue)
-        }
         samplingQueue.async { [sampler] in sampler.reset() }
         let source = DispatchSource.makeTimerSource(queue: samplingQueue)
         source.schedule(deadline: .now(), repeating: 1, leeway: .milliseconds(150))
@@ -774,32 +742,7 @@ final class SystemMonitorService {
         reconfigure()
     }
 
-    private func refreshNetworkIdentity(generation: Int) {
-        networkIdentityTask?.cancel()
-        networkIdentityTask = Task { [weak self] in
-            let data = try? await TailscalePeerCatalog.runStatusCommand(
-                executableURL: URL(fileURLWithPath: "/sbin/route"), arguments: ["-n", "get", "default"],
-                maximumOutputBytes: 8_192, timeout: 2
-            )
-            guard !Task.isCancelled else { return }
-            let route = data.flatMap { DefaultRoute.parse(String(decoding: $0, as: UTF8.self)) }
-            let identity = await Task.detached(priority: .utility) {
-                SystemMonitorNetworkIdentity(route: route, network: route.flatMap {
-                    LocalIPv4Network.active(preferredInterfaceName: $0.interfaceName)
-                })
-            }.value
-            guard !Task.isCancelled, let self, self.generation == generation else { return }
-            self.samplingQueue.async { [sampler = self.sampler] in sampler.networkIdentity = identity }
-            self.networkIdentityTask = nil
-        }
-    }
-
     private func stopTimer() {
-        networkMonitor?.cancel()
-        networkMonitor = nil
-        networkIdentityTask?.cancel()
-        networkIdentityTask = nil
-        samplingQueue.async { [sampler] in sampler.networkIdentity = nil }
         timer?.setEventHandler {}
         timer?.cancel()
         timer = nil

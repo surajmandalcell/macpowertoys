@@ -1,8 +1,6 @@
 import ApplicationServices
 import Carbon.HIToolbox
 import SwiftUI
-import NetToysCore
-import NetToysKit
 import XCTest
 @testable import powertoys
 
@@ -16,9 +14,6 @@ final class UtilityToolsTests: XCTestCase {
         "ColorPickerLogo",
         "TextExtractorLogo",
         "InputDevicesLogoA",
-        "SystemCareLogo",
-        "DiskExplorerLogo",
-        "NetToysLogo",
         "MacTweaksLogo"
     ]
 
@@ -143,9 +138,6 @@ final class UtilityToolsTests: XCTestCase {
         XCTAssertEqual(AppDelegate.dockIconAsset(for: "color-picker"), "ColorPickerLogo")
         XCTAssertEqual(AppDelegate.dockIconAsset(for: "text-extractor"), "TextExtractorLogo")
         XCTAssertEqual(AppDelegate.dockIconAsset(for: "input-devices"), "InputDevicesLogoA")
-        XCTAssertEqual(AppDelegate.dockIconAsset(for: "system-care"), "SystemCareLogo")
-        XCTAssertEqual(AppDelegate.dockIconAsset(for: "disk-explorer"), "DiskExplorerLogo")
-        XCTAssertEqual(AppDelegate.dockIconAsset(for: "nettoys"), "NetToysLogo")
         XCTAssertEqual(AppDelegate.dockIconAsset(for: "mac-tweaks"), "MacTweaksLogo")
         XCTAssertEqual(AppDelegate.dockIconAsset(for: "main"), "AppIcon")
         XCTAssertEqual(AppDelegate.dockIconAsset(for: nil), "AppIcon")
@@ -328,9 +320,7 @@ final class UtilityToolsTests: XCTestCase {
             XCTAssertFalse(source.contains(forbidden), forbidden)
         }
         for content in ["RcloneSettingsView()", "AwakeSettingsView()",
-                        "MacTweaksSettingsContent()", "InputDevicesSettingsContent()",
-                        "SystemCareSettingsCards(mode:",
-                        "MacPowerToysNetToysSettingsView()", "PortmanSettingsView()", "DiskExplorerSettingsView(showsEnableControl: false)",
+                        "MacTweaksSettingsContent()", "InputDevicesSettingsContent()", "PortmanSettingsView()",
                         "ColorPickerSettingsView()", "TextExtractorSettingsView()", "LogsSettingsView()"] {
             XCTAssertTrue(source.contains(content), content)
         }
@@ -342,23 +332,6 @@ final class UtilityToolsTests: XCTestCase {
         XCTAssertTrue(source.contains("storedTab = MainToolTab.settings.rawValue"))
         XCTAssertNotEqual(MainToolTab.storageKey(for: "awake"), MainToolTab.storageKey(for: "rclone"))
         XCTAssertFalse(source.contains(".id(tool.id)"))
-    }
-
-    func testNetToysHistoryRetainsSSIDAcrossThePackageBoundary() throws {
-        let event = NetworkTransitionEvent(networkID: "en0|192.0.2.1", ssid: "Test network",
-                                           date: Date(), changes: [.internet(from: .reachable, to: .unreachable)])
-        let history = NetworkHistory(events: [event])
-        XCTAssertEqual(try JSONDecoder().decode(NetworkHistory.self, from: JSONEncoder().encode(history)), history)
-        XCTAssertEqual(history.events.first?.ssid, "Test network")
-        XCTAssertTrue(NetToysManual.sections.contains { $0.title == "Network History" })
-    }
-
-    func testNetToysMACAccessSurvivesAppUpdates() throws {
-        let contract = NetToysNeighborServiceContract(host: .macPowerToys)
-        XCTAssertTrue(contract.helperRequirement.contains("GF57JXJF5A"))
-        XCTAssertTrue(contract.helperRequirement.contains(NetToysHostID.macPowerToys.helperIdentifier))
-        XCTAssertFalse(contract.helperRequirement.contains("sourceCommit"))
-        XCTAssertNotEqual(contract.machServiceName, NetToysNeighborServiceContract(host: .standalone).machServiceName)
     }
 
     private func toolAboutViewSource() throws -> String {

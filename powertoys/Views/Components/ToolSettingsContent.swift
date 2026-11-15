@@ -4,7 +4,6 @@ import OnePlusUI
 /// The host owns the page, scrolling, and gutters. Each tool supplies only cards.
 struct ToolSettingsContent: View {
     let toolID: String
-    @AppStorage("systemCare.defaultMode") private var systemCareMode = SystemCareMode.quick.rawValue
 
     @ViewBuilder
     var body: some View {
@@ -14,16 +13,9 @@ struct ToolSettingsContent: View {
         case "awake": AwakeSettingsView()
         case "color-picker": ColorPickerSettingsView()
         case "text-extractor": TextExtractorSettingsView()
-        case "nettoys": MacPowerToysNetToysSettingsView()
         case "mac-tweaks": MacTweaksSettingsContent()
         case "input-devices": InputDevicesSettingsContent()
-        case "system-care":
-            SystemCareSettingsCards(mode: Binding(
-                get: { SystemCareMode(rawValue: systemCareMode) ?? .quick },
-                set: { systemCareMode = $0.rawValue }
-            ))
         case "portman": PortmanSettingsView()
-        case "disk-explorer": DiskExplorerSettingsView(showsEnableControl: false)
         case "logs": LogsSettingsView()
         default: OnePlusEmptyState("No settings available", systemImage: "slider.horizontal.3")
         }

@@ -1,13 +1,10 @@
 import OnePlusUI
-import NetToysKit
 import SwiftUI
 
 enum TrayTab: String, CaseIterable, Identifiable {
     case home
     case cloudSync = "rclone"
     case inputDevices = "input-devices"
-    case systemCare = "system-care"
-    case netToys = "nettoys"
 
     var id: String { rawValue }
 
@@ -16,8 +13,6 @@ enum TrayTab: String, CaseIterable, Identifiable {
         case .home: "Home"
         case .cloudSync: "RSync UI"
         case .inputDevices: "Input Devices"
-        case .systemCare: "System Cleaner"
-        case .netToys: "NetToys"
         }
     }
 
@@ -43,10 +38,6 @@ struct TrayPopoverView: View {
     @AppStorage("tray.selectedTab.v2") private var selectedTabID = TrayTab.home.rawValue
     @AppStorage("tray.tabOrder.v2") private var storedTabOrder = ""
     @Environment(\.onePlusMenuMaximumHeight) private var suppliedCeiling
-    @State private var netToysSnapshot = NetToysTraySnapshot()
-    @State private var careSnapshot = SystemCareTraySnapshot()
-    @State private var startupDisk: SystemCareStartupDiskSnapshot?
-    @State private var diskLoaded = false
     @State private var cloudJobs: [TransferJob]
     @State private var preparedHomeTools: [String] = []
     @State private var preparedTabs: [TrayTab] = [.home]
@@ -96,9 +87,7 @@ struct TrayPopoverView: View {
         MainPanelFrame(maximumHeight: TrayPopoverLayout.maximumBodyHeight(panelCeiling: panelCeiling),
                        tabs: tabs, selection: Binding(get: { selectedTab }, set: { select($0) }),
                        onMove: move, openSettings: openSettings, openApp: openApp) {
-            if selectedTab == .systemCare { systemCareRegion(.toolbar) }
             MainPanelScrollBody { tabContent }
-            if selectedTab == .systemCare { systemCareRegion(.footer) }
         }
         .onePlusLiveUpdates()
         .onePlusPanelTimings(panel: "main", tab: selectedTab.panelID)
@@ -111,18 +100,6 @@ struct TrayPopoverView: View {
         .onReceive(NotificationCenter.default.publisher(for: UserDefaults.didChangeNotification)) { _ in
             prepareTabs()
         }
-        .task {
-            let candidates = SystemCareManager.shared.cleanupCandidates
-            let preparedCare = await Task.detached(priority: .utility) { SystemCareTraySnapshot.prepare(candidates) }.value
-            guard !Task.isCancelled else { return }
-            if !careSnapshot.isPrepared { careSnapshot = preparedCare }
-        }
-        .task(id: SystemCareManager.shared.cleanupScanDate) {
-            let disk = await Task.detached(priority: .utility) { SystemCareStartupDiskSnapshot.load() }.value
-            guard !Task.isCancelled else { return }
-            startupDisk = disk
-            diskLoaded = true
-        }
     }
 
     @ViewBuilder
@@ -134,10 +111,6 @@ struct TrayPopoverView: View {
             v14Tab { CloudSyncTrayView(jobs: $cloudJobs) }
         case .inputDevices:
             v14Tab { InputDevicesTrayView() }
-        case .systemCare:
-            v14Tab { systemCareRegion(.rows) }
-        case .netToys:
-            v14Tab { NetToysTrayView(snapshot: $netToysSnapshot) }
         }
     }
 
@@ -146,24 +119,12 @@ struct TrayPopoverView: View {
         VStack(alignment: .leading, spacing: OnePlusMenuMetrics.tileGap) { content() }
     }
 
-    private func systemCareRegion(_ region: SystemCareTrayView.Region) -> some View {
-        SystemCareTrayView(snapshot: $careSnapshot, disk: startupDisk, diskLoaded: diskLoaded, region: region)
-    }
-
     private func openApp() {
-        if selectedTab == .systemCare {
-            ToolActionRouter.shared.open(toolID: "system-care", page: "cleanup")
-        } else {
-            ToolActionRouter.shared.open(toolID: "main")
-        }
+        ToolActionRouter.shared.open(toolID: "main")
     }
 
     private func openSettings() {
-        if selectedTab == .systemCare {
-            ToolActionRouter.shared.open(toolID: "system-care", page: "settings/general")
-        } else {
-            ToolActionRouter.shared.open(toolID: "main", page: "settings")
-        }
+        ToolActionRouter.shared.open(toolID: "main", page: "settings")
     }
 
     private func select(_ tab: TrayTab) {

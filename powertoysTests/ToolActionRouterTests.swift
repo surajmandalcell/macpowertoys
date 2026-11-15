@@ -18,7 +18,7 @@ final class ToolActionRouterTests: XCTestCase {
             override func deminiaturize(_ sender: Any?) { deminiaturizations += 1 }
         }
         let tools = ["main", "rclone", "logs", "awake", "color-picker", "text-extractor",
-                     "input-devices", "system-care", "disk-explorer", "nettoys", "mac-tweaks"]
+                     "input-devices", "mac-tweaks"]
         for tool in tools {
             for existing in [false, true] {
                 let window = WindowSpy(contentRect: .zero, styleMask: [], backing: .buffered, defer: true)
@@ -82,7 +82,7 @@ final class ToolActionRouterTests: XCTestCase {
             override func close() { reportsVisible = false; super.close() }
         }
         let tools = ["main", "rclone", "logs", "awake", "color-picker", "text-extractor",
-                     "input-devices", "system-care", "disk-explorer", "nettoys", "mac-tweaks"]
+                     "input-devices", "mac-tweaks"]
         let manager = WindowStateManager.shared
         for tool in tools {
             let window = WindowSpy(contentRect: .zero, styleMask: [.titled, .closable], backing: .buffered, defer: false)
@@ -184,6 +184,24 @@ final class ToolActionRouterTests: XCTestCase {
         XCTAssertNil(ToolPageRouter.shared.take(tool: "system-monitor"))
         XCTAssertEqual(NSApp.windows.count, windowsBefore)
         XCTAssertFalse(NSApp.windows.contains { $0.identifier?.rawValue.hasPrefix("system-monitor") == true })
+    }
+
+    @MainActor
+    func testRemovedStandaloneToolLinksAreUnknownRoutes() throws {
+        for (id, page) in [("disk-explorer", "device/disk4"), ("system-care", "cleanup"), ("nettoys", "scanner")] {
+            XCTAssertEqual(ToolActionRouter.resolvedWindowID(id), id)
+            XCTAssertNil(ToolRegistry.tool(for: id))
+            XCTAssertNil(ToolGlyph(rawValue: id))
+            XCTAssertNil(TrayTab(panelID: id))
+            for scheme in ["macpowertoys", "powertoys"] {
+                let route = try XCTUnwrap(OpenToolRoute.parse(try XCTUnwrap(URL(string: "\(scheme)://open/\(id)/\(page)"))))
+                let windowsBefore = NSApp.windows.count
+                ToolActionRouter.shared.open(toolID: route.tool, page: route.page, activateApp: false)
+                XCTAssertNil(ToolPageRouter.shared.take(tool: id))
+                XCTAssertEqual(NSApp.windows.count, windowsBefore, id)
+                XCTAssertFalse(NSApp.windows.contains { $0.identifier?.rawValue.hasPrefix(id) == true }, id)
+            }
+        }
     }
 
     func testParsesRulerSettingsWithoutTreatingItAsASwiftUIWindow() throws {

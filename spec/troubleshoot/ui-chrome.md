@@ -28,15 +28,14 @@
 ## Panel Identity Glyphs And Disclosure Captions, Run 68, 2026-10-01
 
 - **Symptom:** Input Devices count drops toward the header divider.
-  NetToys uses a generic graph. Main panel tab glyphs use the 12pt role.
+  Main panel tab glyphs use the 12pt role.
 - **Cause:** A clear Refresh placeholder supplies a bottom baseline.
-  The tool mapping lacks its socket asset. Tabs copy an old size.
+  Tabs copy an old size.
 - **Invariant:** Center the disclosure accessory group inside the 40pt
   header. Keep Refresh's separate target and the single body gutter.
   Use each tool's template asset in tabs, headers and status items.
   All main tabs use the existing 13pt token within 26pt targets.
-  NetToys uses the approved socket module with 32pt SVG and 2.5pt strokes.
-  Its status canvas is 14pt with 11.2pt centered ink.
+  A status canvas is 14pt with 11.2pt centered ink.
 - **Check:** `34c24557` passes all five glyph tests, including status bounds
   at 1x, 2x and 4x. Shared `10b09f5` passes both-appearance named-artwork
   rendering. Adopt the next shared tag before installed identity review.
@@ -276,20 +275,6 @@ latency benefit still needs measurement. See `tmp/redesign/logs/w4-perf-windows.
   Use an independent captured sRGB swatch for bitmap color checks because
   cache-display bitmaps carry the display profile. Installed scroll/reuse,
   sorting, keyboard, focus, and pointer checks remain with the orchestrator.
-
-## Native Table Columns During Tab Changes, 2026-09-30
-
-- **Symptom:** Command-F closes Diskman during a live scan.
-- **Cause:** The SwiftUI owner adds the Files column, but the native table
-  retains its old columns. A later cell refresh asks for an action column
-  outside the row's column count. AppKit raises an internal assertion.
-- **Invariant:** Rebuild native columns before row updates when column
-  identities change. Keep the native table, selection, and action routing.
-  Stable columns still use only changed visible-cell reloads.
-- **Check:** `testNativeTableUpdatesColumnsBeforeLiveCells` adds and removes
-  a column while checking cells, selection, actions, and table identity.
-  The regression passed in macOS `36723274846`. Diskman `36723718557`
-  passed the focused unit suite and every UI case, including Command-F.
 
 ## Portman Requested Page And Retained State, 2026-09-30
 
@@ -767,8 +752,7 @@ latency benefit still needs measurement. See `tmp/redesign/logs/w4-perf-windows.
   artwork keeps its original colors. Use the shared 40pt page strip, 13pt
   destination title, optional 11pt subtitle, 12pt body inset, native controls,
   related multi-column rows, and one accent primary action.
-- **Check:** Inspect launcher, Logs, Cloud Sync, Input Devices,
-  System Care, and System Monitor at default and minimum widths. No workspace has
+- **Check:** Inspect launcher, Logs, Cloud Sync, and Input Devices at default and minimum widths. No workspace has
   a 22pt body title, a second 32pt top gap, or mismatched selected icon and text.
 
 ## Workspace Actions And Bottom Status
@@ -781,7 +765,7 @@ latency benefit still needs measurement. See `tmp/redesign/logs/w4-perf-windows.
   size and a shared 24pt minimum height. Put pane-wide work status in one bottom
   safe-area inset. Do not repeat it inside page scroll content.
 - **Check:** Inspect every workspace top strip at minimum and default widths.
-  Menus and buttons share one centerline. Start System Care work on every page
+  Menus and buttons share one centerline. Start work on every page
   and confirm the status stays at the bottom without unused space below it.
 
 ## Workspace Minimum Window Sizes
@@ -794,10 +778,9 @@ latency benefit still needs measurement. See `tmp/redesign/logs/w4-perf-windows.
   220-point sidebar plus a 980-point content pane that fits four 220-point cards
   with 16-point gaps inside 24-point padding. The launcher also restores position
   only, so a frame saved at an older size never reopens at that size. Logs, Cloud
-  Sync, Input Devices, System Care, and System Monitor use their
+  Sync and Input Devices use their
   sidebar family plus a 640-point content minimum and a 600-point height.
-  NetToys uses a 1,280 by 800 point default and a 1,100 by 700 point minimum so
-  the IP Scanner table retains useful column space. Compact applets and Ruler
+  Compact applets and Ruler
   retain their existing fixed or overlay-specific sizing.
 - **Check:** Unit-check every workspace identifier and confirm restoration
   cannot produce a frame below its family minimum.
@@ -903,7 +886,7 @@ latency benefit still needs measurement. See `tmp/redesign/logs/w4-perf-windows.
   shared sidebar family and layout metrics.
 - **Invariant:** The main window uses its own 215pt System Settings sidebar
   (`DESIGN.md`, Main window). Logs, Input Devices, and Task Manager use the
-  220pt compact family; Cloud Sync and System Care use
+  220pt compact family; Cloud Sync uses
   the 240pt data family.
   Navigation groups have 12pt horizontal
   pane padding. All workspace titles and first controls use the shared 84pt and
@@ -922,7 +905,7 @@ latency benefit still needs measurement. See `tmp/redesign/logs/w4-perf-windows.
   padding inside their native button and provide at least 36pt label height.
   Keep compact title-bar actions and card controls at their own density.
 - **Check:** Compare Remote Stats Connect and Disconnect, process detail
-  actions, System Care cleanup actions, and launcher detail Open in the signed
+  actions, and launcher detail Open in the signed
   build. Confirm even label space, visible focus, and usable disabled states.
 
 ## Launcher Detail Geometry
@@ -1093,94 +1076,8 @@ latency benefit still needs measurement. See `tmp/redesign/logs/w4-perf-windows.
   use a button style. A filled selected tab keeps its accent opaque, applies a
   0.10 primary hover overlay and a 0.18 pressed overlay, and uses the system's
   contrast-aware selected-control text color.
-- **Check:** Inspect the Tailscale chooser, System Care overview and lists,
-  Color Picker tabs and projects, Awake modes, transfer-detail tabs, and AI
+- **Check:** Inspect Color Picker tabs and projects, Awake modes, transfer-detail tabs, and AI
   History bookmark chips. Every enabled item shows hover and pressed feedback.
-
-## NetToys Round 3 Screenshot Review, 2026-09-30
-
-- **Symptom:** Permission actions truncate, Automatic enrollment sits at the
-  far edge of its form, and secondary History cards leave too few transitions
-  visible.
-- **Cause:** Long action names shared a narrow control column with status
-  text. A leading spacer pushed Automatic enrollment right. One uptime
-  scroller combined chart, summary, and outages in an oversized region.
-- **Invariant:** Keep one 180-point permission column with short visible
-  actions and full accessibility names. Align each Anchor label with the
-  first control text line. Keep the uptime chart and time labels fixed. Give
-  outages a 56-point row viewport and scans at most two visible rows. Keep at
-  least three 56-point transition rows and their separators visible inside
-  the shared page bottom gutter. All remaining rows stay scrollable.
-- **Check:** Inspect both appearances with two outages, three scans, multiple
-  network names, and each permission state. Scroll each row region and confirm
-  chart, headers, search, Export, and Clear stay fixed.
-
-## NetToys Open Rows And Scanner Cell Origins, 2026-10-01
-
-- **Symptom:** Scanner values start before their headings. Standalone
-  settings rows retain a 16pt card inset. Empty scan periods and the manual
-  permission summary still have card shells.
-- **Cause:** Scanner cells omit shared cell geometry. Removing a parent card
-  does not clear the setting row's default card padding. Empty content reuses
-  the record card branch.
-- **Invariant:** Use `onePlusTableCell` for each Scanner column. Account for
-  AppKit's first-cell padding so header and value origins are 16pt and 12pt.
-  Set `onePlusCardPadding` to zero only on standalone rows. Keep empty scans
-  in one open 44pt row with period copy trailing. Keep cards for records.
-  Scanner stale-result notes and no-hosts advice use one quiet toolbar line,
-  without a padded card, under the run 69 owner correction.
-- **Check:** `7ae93446`, `ed44cc0d`, and `3145a948` fix these cases. The shared
-  package geometry test and actual IP, hostname and MAC fixtures pass in both
-  appearances. The final app/test gate passes at `168eae83`, with all five
-  changed views matching that source stamp. Signed controls and saved
-  customization remain to be checked.
-
-## NetToys Dynamic Form Stability
-
-- **Symptom:** SSH Anchor labels, fields, metadata, and actions move when the
-  helper refreshes, inspection starts, identity mode changes, or status arrives.
-- **Cause:** Dynamic labels replaced complete controls, optional status views
-  appeared and disappeared, and independent `HStack` rows recomputed unrelated
-  widths.
-- **Invariant:** Keep one label column and one full-width content column for the
-  anchor form. Every row starts its first visible control on the same edge.
-  Reserve widths for helper state, inspection icon, host metadata, anchor
-  status, and actions. Align intrinsic menu controls to the leading edge of
-  their reserved slot. Change content inside those slots instead of inserting
-  or removing controls.
-- **Check:** Inspect the default and minimum widths before, during, and after a
-  device inspection. Switch identity modes and wait for helper refreshes. No
-  label, input, status, or action may change its horizontal position.
-
-## NetToys Scanner And Sidebar Density
-
-- **Symptom:** The result search is taller than adjacent controls, a redundant
-  section label pushes navigation down, or the first destination sits too far
-  below the traffic lights.
-- **Cause:** The scanner used a padded custom search field, and the only
-  navigation group still rendered a group heading.
-- **Invariant:** Use a native small `NSSearchField` in the result-control row.
-  Its 24pt slot shares the centerline of adjacent small controls. When NetToys
-  has one navigation group, do not show a group heading. Start the first
-  destination at the shared 44pt workspace content edge.
-- **Check:** Open IP Scanner in the signed installed build. The result search,
-  filters, menus, and buttons share one centerline. The sidebar shows NetToys
-  followed directly by IP Scanner, SSH Anchor, Network History, and Wi-Fi
-  Priority.
-
-## NetToys Stepper Determinism
-
-- **Symptom:** One click on a scanner setting arrow changes the value several
-  times or changes it in the opposite direction after the pointer moves.
-- **Cause:** The native AppKit stepper enables press-and-hold autorepeat by
-  default, so one mouse press can keep sending actions while the pointer moves
-  between the two arrow halves.
-- **Invariant:** Every NetToys numeric stepper uses the native small AppKit
-  control with autorepeat disabled. One press changes the binding by exactly
-  one configured step.
-- **Check:** Hold each up and down arrow longer than the normal repeat delay.
-  Confirm TCP timeout changes by 100 ms, launch delay by 5 ms, and every other
-  NetToys stepper changes once in the selected direction.
 
 ## Search Field Density
 
@@ -1193,24 +1090,8 @@ latency benefit still needs measurement. See `tmp/redesign/logs/w4-perf-windows.
   sub-app content, toolbars, sheets, and popovers. Put progress beside the
   native field when a content search needs a loading state.
 - **Check:** Inspect the launcher and Logs sidebars, then inspect Color Picker
-  history, Cloud Sync files and connector
-  picker, NetToys scanner and history, and System Care applications. Only the
-  two sidebar searches use the larger padded style.
-
-## NetToys SSH Host Catalog And Scanner Handoff
-
-- **Symptom:** SSH Anchor shows only some aliases from `~/.ssh/config`, or a
-  scan result requires the user to copy its identity into SSH Anchor by hand.
-- **Cause:** The host picker accepted only single-alias blocks with literal IPv4
-  HostName values. It also required an explicit Port line.
-- **Invariant:** Expand every literal alias from each Host block. Keep literal
-  hostname and IPv4 HostName values. Use port 22 when Port is absent. Exclude
-  wildcard and negated patterns because they do not name one editable host.
-  Scanner result actions open SSH Anchor and fill the address, MAC, hostname,
-  and matching alias without creating the anchor automatically.
-- **Check:** Compare the picker with every literal alias in the current config.
-  Scan a configured host, use Add SSH Anchor, and confirm the page and fields
-  change in one action. Repeat with no MAC and with no matching alias.
+  history and Cloud Sync files and connector
+  picker. Only the two sidebar searches use the larger padded style.
 
 ## Permission-Dependent Features
 
@@ -1229,90 +1110,6 @@ latency benefit still needs measurement. See `tmp/redesign/logs/w4-perf-windows.
   macOS asks at the correct time. Test denial, restriction, later approval, and
   an allowed-but-unavailable API result. Confirm both the feature and Settings
   always explain the state and provide the next action.
-
-## NetToys Wi-Fi Identity Permission
-
-- **Symptom:** Network History shows only `interface | gateway` and no Wi-Fi
-  network name.
-- **Cause:** macOS redacts CoreWLAN SSID values until the calling process
-  receives Location access. The request path did not assign the Core Location
-  delegate or confirm that the app was active. The warning had no recovery
-  action, and NetToys Settings showed no permission state. In the signed
-  installed build, the authorization request alone stayed Not Requested until the app started a
-  Core Location service. The release build then stripped the Location
-  entitlement, so `locationd` suppressed the prompt and returned a denied error
-  while the public authorization status remained Not Requested. Granting the
-  main app still left the login helper without SSID access because macOS treats
-  the helper as a separate Location client. The helper then stopped Location
-  Services immediately after authorization and read CoreWLAN before the first
-  location update made SSID data available.
-- **Invariant:** The main app and login helper each own one retained Core
-  Location manager and request their own access. The main app requests only
-  while active and retries when it becomes active. Both processes start location
-  updates to trigger the macOS prompt and stop them after an update or a
-  failure. Allowed access restarts the service, and the first update triggers an
-  immediate SSID sample. The helper publishes Not Requested, Denied, Restricted,
-  or Allowed in its status file. Network History and NetToys Settings show a
-  Needs Attention state and Location Settings recovery whenever the helper lacks
-  access or reports Allowed without an SSID on Wi-Fi. A denied main-app failure
-  while status is Not Requested stops automatic retries and changes recovery to
-  Open Location Settings. Signed builds retain
-  `com.apple.security.personal-information.location` in both the main app and
-  helper. Network History provides an Allow Access action.
-  NetToys Settings shows Not Requested, Denied, Restricted, or Allowed and
-  provides the matching request or System Settings action. The helper reads
-  SSID through public CoreWLAN and stores it as optional data. Missing
-  permission or Ethernet must stay valid and must not create a false network
-  transition.
-- **Check:** Confirm `codesign -d --entitlements :-` lists the Location
-  entitlement for the app and embedded helper. Open Network History in the
-  normal signed app and grant Location access to both MacPowerToys and NetToys
-  Helper when macOS asks. Confirm NetToys Settings changes to Allowed and the
-  helper status reports `ssidAccess: allowed`. Wait for the next sample and
-  confirm the status file contains the SSID and the UI shows only that SSID.
-  Deny access and confirm both Network History and
-  NetToys Settings provide an action that opens Location Services while gateway
-  and internet history continue.
-
-## NetToys Network Uptime Timeline
-
-- **Symptom:** Network History draws a generic up-and-down line with transition
-  dots. It does not show which Wi-Fi network failed or how long an outage
-  lasted.
-- **Cause:** Internet reachability was plotted as one global step line even
-  though history events already carry the active SSID. The chart encoded a
-  categorical state as vertical position and left outage duration for the user
-  to estimate.
-- **Invariant:** Group connected history by SSID. Give each SSID one horizontal
-  time bar with duration-proportional online and unavailable intervals. Exclude
-  disconnected and unknown intervals from uptime. Show uptime percentage,
-  outage count, total downtime, and recent outage sentences with exact
-  durations. Use `interface | gateway` only as the wired or unavailable-SSID
-  fallback. Merge legacy route rows into an SSID row only when the exact route
-  pair has one unambiguous SSID. When an SSID exists, all visible network labels
-  show the SSID alone.
-  Do not reintroduce vertical state lines, transition dots, or a
-  gateway-based Wi-Fi identity.
-- **Check:** Record an outage on one SSID, recover, then switch to another SSID.
-  Confirm each SSID has a separate bar, the first outage duration is correct,
-  and the network switch is not counted as an outage. Leave the second SSID
-  unreachable and confirm the recent outage says it has been unavailable for
-  the current duration. Confirm an unambiguous legacy route row merges into its
-  SSID row while an unknown or ambiguous route keeps its fallback label.
-
-## NetToys Wi-Fi Priority
-
-- **Symptom:** Wi-Fi failover settings are hidden in Network History or expose
-  interface and gateway details instead of network names.
-- **Cause:** NetToys had no dedicated page for ordering saved Wi-Fi networks.
-- **Invariant:** Use one Wi-Fi Priority sidebar page. Show the current SSID in
-  the page header, a native failover switch, a native duration menu, one ordered
-  SSID row per saved network, and the system-managed iPhone Personal Hotspot as
-  the final row. Use SSID-only labels. Use native move, remove, add, and Settings
-  actions with text or help labels. Opening the page must not change networks.
-- **Check:** Inspect the empty and configured states at 1,100pt and default width.
-  Confirm row actions stay aligned, Connected is not color-only, keyboard focus
-  reaches every control, and Wi-Fi Settings opens the system Wi-Fi pane.
 
 ## Compact Applet Window Height
 
@@ -1462,15 +1259,15 @@ latency benefit still needs measurement. See `tmp/redesign/logs/w4-perf-windows.
 
 ## Shortcut Tap Requests Event Access At Launch
 
-- **Symptom:** A normally launched Diskman window opens behind a macOS Device
+- **Symptom:** A normally launched app window opens behind a macOS Device
   Control and Data Access prompt, before the user uses any shortcut.
 - **Cause:** Launch initializes `GlobalShortcutManager`; its default reserved
   screenshot shortcut tries to create a suppressing event tap immediately.
 - **Invariant:** Check Accessibility trust without prompting before creating a
   reserved-shortcut tap. Keep the explicit access action in shortcut settings.
-- **Check:** Hosted normal-launch Diskman captures before the guard showed the
-  prompt; run `36171513372` passed and its normal-launch capture showed the
-  scanning visualization without a permission dialog.
+- **Check:** Hosted normal-launch captures before the guard showed the
+  prompt; run `36171513372` passed and its normal-launch capture showed no
+  permission dialog.
 
 ## Kwake Healthy Status Ink, 2026-10-01
 
@@ -1521,7 +1318,7 @@ latency benefit still needs measurement. See `tmp/redesign/logs/w4-perf-windows.
   in the content that owns the work.
 - **Invariant:** No sidebar, sidebar footer, or menu-bar tab summary shows a
   version number or a status dot. Keep a recovery action such as Cloud Sync `Reconnect`, and keep
-  operational state in content rows (Dev Sync drive state, NetToys peer state).
+  operational state in content rows (Dev Sync drive state).
   The About and Settings surfaces may still show the app version.
 - **Check:** Grep every sidebar view for `CFBundleShortVersionString`, a version
   label, and `Circle()` fills tinted green, orange, or red. Inspect the
@@ -1539,7 +1336,6 @@ latency benefit still needs measurement. See `tmp/redesign/logs/w4-perf-windows.
   Preserve each title and choice identifier. Expose the real segment buttons
   with selected traits, a group label, and the existing arrow-key behavior.
 - **Check:** Hosted run `36705631910` passes Mac Tweaks and Tray Fan UI.
-  Diskman run `36703912801` passes Treemap and Rings selection.
 
 ## Button Caps And Glyph Centers, 2026-10-01
 

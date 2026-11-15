@@ -1,6 +1,5 @@
 import Darwin
 import Foundation
-import NetToysCore
 
 nonisolated struct SystemMonitorProcess: Equatable, Identifiable, Sendable {
     let pid: Int32

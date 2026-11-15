@@ -33,9 +33,6 @@
 | <img src="powertoys/Assets.xcassets/CloudSyncLogo.imageset/icon.svg" width="28" alt=""> | **RSync UI** | Plan and run copy, move, mirror, and two-way rclone transfers. |
 | <img src="powertoys/Assets.xcassets/LogsLogo.imageset/icon.svg" width="28" alt=""> | **Event Viewer** | Read app activity and recent macOS errors. |
 | <img src="powertoys/Assets.xcassets/InputDevicesLogoA.imageset/icon.png" width="28" alt=""> | **Input Devices** | Set scroll direction, speed, and smoothing separately for mouse and trackpad. |
-| <img src="powertoys/Assets.xcassets/SystemCareLogo.imageset/icon.png" width="28" alt=""> | **System Cleaner** | Review storage, preview cleanup, move items to Trash, and remove apps. |
-| <img src="powertoys/Assets.xcassets/DiskExplorerLogo.imageset/icon.png" width="28" alt=""> | **Partition Manager** | Map disk usage as a treemap or rings, and manage removable drives. |
-| <img src="powertoys/Assets.xcassets/NetToysLogo.imageset/icon.png" width="28" alt=""> | **NetToys** | Scan networks, track outages, and keep SSH hosts linked when their address changes. |
 | <img src="powertoys/Assets.xcassets/PortmanLogo.imageset/icon.png" width="28" alt=""> | **Portman** | Find local dev servers and forward ports from a private SSH server. |
 | <img src="powertoys/Assets.xcassets/MacTweaksLogo.imageset/icon.svg" width="28" alt=""> | **Mac Tweaks** | Change hidden Dock, Finder, window, and input settings. Every original value is kept. |
 
@@ -43,9 +40,7 @@ Each tool opens in its own window and does no work while it is closed.
 Turn tools on or off from the launcher. Tools with menu bar content can
 appear in the shared popup, as their own menu bar item, or not at all.
 
-<p align="center">
-  <img src="docs/screenshots/diskman.png" width="49%" alt="Partition Manager treemap of a home folder with a size breakdown of the selected folder">
-</p>
+Partition Manager, System Cleaner, and NetToys are separate apps now.
 
 ## Setup
 
@@ -55,14 +50,13 @@ appear in the shared popup, as their own menu bar item, or not at all.
    Privacy & Security** and choose **Open Anyway**.
 3. Turn on the tools you want in the launcher.
 4. Grant access only when a tool asks: Screen Recording for Text Extractor,
-   Accessibility for Input Devices and the Pick Color shortcut, and Local
-   Network and Location for NetToys. Each tool shows its access state and a button
-   that opens the right privacy pane.
+   Accessibility for Input Devices and the Pick Color shortcut. Each tool
+   shows its access state and a button that opens the right privacy pane.
 5. For RSync UI, install [rclone](https://rclone.org/install/) with
    `brew install rclone`.
 
-Fan control in the menu bar panel and NetToys MAC addresses use signed helpers. macOS
-asks you to approve them once in **Login Items**.
+Fan control in the menu bar panel uses a signed helper. macOS asks you to
+approve it once in **Login Items**.
 
 ## Keyboard
 
@@ -89,8 +83,6 @@ Change or turn off the global shortcuts in each tool's settings.
 - Google Drive setup needs your own OAuth client ID.
 - Input Devices separates mouse and trackpad by event type. macOS does not give
   each scroll event a device identity.
-- NetToys scanning and SSH Anchor support IPv4 only.
-- System Cleaner moves items to Trash. Use **Put Back** in Finder before you empty it.
 - macOS restores a window's position and display, but not its Space.
 
 ## Privacy
@@ -104,7 +96,6 @@ histories, or logs. Read the [Privacy Policy](PRIVACY.md) and
 ## Related projects
 
 - [Switch](https://github.com/surajmandalcell/switch): the standalone Switch app and terminal tool for Codex and Grok CLI accounts.
-- [NetToys](https://github.com/surajmandalcell/nettoys): NetToys as its own app. MacPowerToys embeds the same package.
 - [OnePlusUI](https://github.com/surajmandalcell/oneplus-ui): the SwiftUI component package behind every window and popup.
 
 You can also [build and share your own tool](docs/MARKETPLACE_TOOLS.md) through

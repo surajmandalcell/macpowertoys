@@ -1,22 +1,62 @@
 import AppKit
 import Darwin
-import NetToysCore
 import ObjectiveC
 import OnePlusUI
 import Observation
+import ServiceManagement
 import Synchronization
 import SwiftUI
 import XCTest
 @testable import powertoys
 
 final class FanControlTests: XCTestCase {
-    func testFanCommandsStayOnTheHostDaemon() {
-        let host = MacPowerToysHelperContract.neighbor
-        XCTAssertEqual(host.machServiceName, "com.surajmandal.macpowertoys.nettoys-neighbor")
-        XCTAssertNotEqual(host.machServiceName, NetToysNeighborServiceContract(host: .standalone).machServiceName)
-        let selector = NSSelectorFromString("applyFanPreset:reply:")
-        XCTAssertNotNil(protocol_getMethodDescription(MacPowerToysHelperXPCProtocol.self, selector, true, true).name)
-        XCTAssertNil(protocol_getMethodDescription(NetToysNeighborXPCProtocol.self, selector, true, true).name)
+    func testFanCommandsStayOnTheApprovedHostDaemon() {
+        // These names carry the owner's macOS approval of the helper; they must not change.
+        XCTAssertEqual(MacPowerToysHelperContract.machServiceName, "com.surajmandal.macpowertoys.nettoys-neighbor")
+        XCTAssertEqual(MacPowerToysHelperContract.daemonPlistName, "com.surajmandal.macpowertoys.nettoys-neighbor.plist")
+        XCTAssertTrue(MacPowerToysHelperContract.helperRequirement.contains("\"com.surajmandal.macpowertoys.nettoys-helper\""))
+        XCTAssertTrue(MacPowerToysHelperContract.mainAppRequirement.contains("\"com.surajmandal.macpowertoys\""))
+        XCTAssertTrue(MacPowerToysHelperContract.helperRequirement.contains("GF57JXJF5A"))
+        for name in ["applyFanPreset:reply:", "neighborSnapshotWithReply:"] {
+            XCTAssertNotNil(protocol_getMethodDescription(MacPowerToysHelperXPCProtocol.self,
+                                                          NSSelectorFromString(name), true, true).name, name)
+        }
+    }
+
+    @MainActor
+    func testFanHelperAndFanRowWorkWithoutNetToys() async throws {
+        XCTAssertNil(ToolRegistry.tool(for: "nettoys"))
+        // Registration follows the helper's own status, not a tool switch.
+        let helper = FanHelperService(refreshOnInit: false, readStatus: { .enabled })
+        XCTAssertFalse(helper.isEnabled)
+        helper.refresh()
+        for _ in 0..<200 where !helper.isEnabled { try await Task.sleep(for: .milliseconds(5)) }
+        XCTAssertTrue(helper.isEnabled)
+
+        let root = URL(fileURLWithPath: #filePath).deletingLastPathComponent().deletingLastPathComponent()
+        for path in ["powertoys/Core/FanControlService.swift", "powertoys/Core/FanHelperService.swift",
+                     "powertoys/Core/MacPowerToysHelperXPC.swift", "NetToysHelper/NetToysHelperApp.swift",
+                     "NetToysHelper/FanHelperDaemon.swift", "powertoys.xcodeproj/project.pbxproj"] {
+            let source = try String(contentsOf: root.appendingPathComponent(path), encoding: .utf8)
+            XCTAssertFalse(source.contains("import NetToys"), path)
+            XCTAssertFalse(source.contains("nettoys.git"), path)
+        }
+
+        // The Fan row reads and applies through its service; the fake keeps every write out of the real helper.
+        let applied = Mutex<[FanPreset]>([])
+        let service = FanControlService(readSnapshot: {
+            FanSnapshot(fans: [FanReading(index: 0, actualRPM: 2400, maximumRPM: 5000, mode: "auto")],
+                        profile: "auto", canControl: true)
+        }, applyPreset: { preset, completion in applied.withLock { $0.append(preset) }; completion(nil) })
+        service.start(owner: "fan-without-nettoys")
+        defer { service.stop(owner: "fan-without-nettoys") }
+        await service.refresh()
+        XCTAssertTrue(service.isAvailable)
+        XCTAssertTrue(service.canControl)
+        service.select(.max)
+        for _ in 0..<100 where service.isChanging { try await Task.sleep(for: .milliseconds(5)) }
+        XCTAssertEqual(applied.withLock { $0 }, [.max])
+        XCTAssertEqual(service.selectedPreset, .max)
     }
 
     func testHelperRestoresAutoOnlyWhenTheManualClientIsLost() throws {

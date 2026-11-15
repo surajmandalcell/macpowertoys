@@ -7,9 +7,6 @@ nonisolated enum ToolGlyph: String, CaseIterable {
     case colorPicker = "color-picker"
     case textExtractor = "text-extractor"
     case inputDevices = "input-devices"
-    case systemCare = "system-care"
-    case diskman = "disk-explorer"
-    case netToys = "nettoys"
     case portman
     case macTweaks = "mac-tweaks"
 
@@ -22,9 +19,6 @@ nonisolated enum ToolGlyph: String, CaseIterable {
         case .colorPicker: "eyedropper"
         case .textExtractor: "text.viewfinder"
         case .inputDevices: "computermouse"
-        case .systemCare: "SystemCareGlyph"
-        case .diskman: "opticaldisc"
-        case .netToys: "NetToysGlyph"
         case .portman: "PortmanStatusGlyph"
         case .macTweaks: "MacTweaksGlyph"
         }
@@ -47,7 +41,7 @@ nonisolated enum ToolGlyph: String, CaseIterable {
         return Image(nsImage: image).renderingMode(.template)
     }
 
-    var isAsset: Bool { [.portman, .systemCare, .netToys, .logs, .macTweaks].contains(self) }
+    var isAsset: Bool { [.portman, .logs, .macTweaks].contains(self) }
 
     @MainActor var image: Image { assetImage ?? Image(systemName: symbol) }
 

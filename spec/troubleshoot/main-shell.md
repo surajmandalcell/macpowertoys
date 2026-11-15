@@ -189,9 +189,8 @@ capture) must never activate the app or take key focus.
 
 ### Heavy Launcher Settings First Frame
 
-- **Invariant:** Show a cancellable loading shell before building the NetToys
-  and Task Manager settings trees. Decode NetToys history on a utility task.
-  Do not preload on hover or retain destination views after selection
+- **Invariant:** Show a cancellable loading shell before building a heavy
+  settings tree. Do not preload on hover or retain destination views after selection
   changes.
 - **Check:** Time sidebar activation to the first accessible frame in the
   signed app. Switching away cancels the view task; owners do not grow.
@@ -403,7 +402,7 @@ References: [suppressed launch](https://developer.apple.com/documentation/swiftu
   The body is the only scroller: `MainPanelBodyLayout` gives it its natural
   height up to the ceiling minus the shell chrome, and the hosts resize the
   panel from `onGeometryChange`. Complex tabs default to
-  RSync UI, Input Devices, System Cleaner, NetToys. App-only tools such as Event
+  RSync UI and Input Devices. App-only tools such as Event
   Viewer never appear. Order and selection persist. Every tab gets the
   shared body width before measuring its natural height. Empty states are
   small cards; omit a separate empty transfer card when remote cards already
@@ -428,19 +427,12 @@ References: [suppressed launch](https://developer.apple.com/documentation/swiftu
 
 ### Tab Content
 
-- **Invariant:** System Care shows startup Used, Purgeable, and Free from one
-  capacity snapshot, with a dash when unavailable, one Scan action, saved
-  selection, and confirmed Move to Trash. Cloud Sync shows remotes with
+- **Invariant:** Cloud Sync shows remotes with
   their latest transfer state and time on one row, matched by exact remote
-  name, plus New Transfer. NetToys reads route and IP once on open or Refresh,
-  reads SSID without asking permission, and probes the gateway once with a
-  2 s deadline and 8 KiB cap; refresh work cancels when the panel hides. Use
-  `NetworkIdentity.displayName`; a missing SSID offers a Location access link
-  to NetToys Settings. Switch loads usage only on request and shows one
+  name, plus New Transfer. Switch loads usage only on request and shows one
   refresh icon and one unloaded-limit warning. Input Devices shows devices,
   batteries, and profile values before controls.
-- **Check:** Run the startup-disk and remote-activity regressions. Check
-  missing capacity, denied SSID, gateway timeout, and unloaded usage.
+- **Check:** Run the remote-activity regression. Check unloaded usage.
 
 ### Fan And Kwake Rows
 
@@ -456,7 +448,7 @@ References: [suppressed launch](https://developer.apple.com/documentation/swiftu
 ## Tool Glyphs And Status Image Size
 
 - **Invariant:** `ToolGlyph` owns 12 unique glyphs drawn from each tool's own
-  icon. Asset glyphs such as `SystemCareGlyph` are marked
+  icon. Asset glyphs such as `EventViewerGlyph` are marked
   `ToolGlyph.isAsset` and drawn through `assetImage` or `ToolGlyphImage`,
   never `Image(systemName:)`. Portman uses the original `PortmanStatusGlyph`,
   copied at 14 pt as a template, without normalization. `StatusItemIcon`

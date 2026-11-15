@@ -1,5 +1,4 @@
 import XCTest
-import NetToysCore
 import Carbon.HIToolbox
 import Combine
 import SwiftUI
@@ -64,7 +63,7 @@ final class AppDelegateTests: XCTestCase {
         let routing = try String(contentsOf: root.appendingPathComponent("powertoys/Core/ToolPageRouter.swift"), encoding: .utf8)
         let delegate = try String(contentsOf: root.appendingPathComponent("powertoys/AppDelegate.swift"), encoding: .utf8)
         let sceneCount = scenes.components(separatedBy: ".handlesExternalEvents(matching:").count - 1
-        XCTAssertEqual(sceneCount, 11)
+        XCTAssertEqual(sceneCount, 8)
         XCTAssertEqual(scenes.components(separatedBy: ".handlesExternalEvents(matching: [])").count - 1, sceneCount,
                        "All cold tool and page URLs must use the background-aware router.")
         XCTAssertTrue(routing.contains(".handlesExternalEvents(preferring: [], allowing: [])"),
@@ -73,21 +72,6 @@ final class AppDelegateTests: XCTestCase {
                        "Mounted window content must not register another activating URL receiver.")
         XCTAssertFalse(delegate.contains("requiresManualURLRouting"))
         XCTAssertTrue(delegate.contains("for url in urls {\n            MacPowerToysApp.handleIncomingURL(url)\n        }"))
-    }
-
-    func testNetToysDeepLinkParsesValidatedScanPrefill() {
-        XCTAssertEqual(
-            NetToysScanPrefill.parse(URL(string:
-                "macpowertoys://open/nettoys?targets=jetson.local%2C192.168.1.0%2F24&ports=22%2C80-81"
-            )!),
-            NetToysScanPrefill(targets: "jetson.local,192.168.1.0/24", ports: "22,80-81")
-        )
-        XCTAssertNil(NetToysScanPrefill.parse(URL(string:
-            "macpowertoys://open/nettoys?targets=192.168.1.1&ports=0"
-        )!))
-        XCTAssertNil(NetToysScanPrefill.parse(URL(string:
-            "macpowertoys://open/nettoys?targets=2001%3Adb8%3A%3A1&ports=22"
-        )!))
     }
 
     func testStatusItemInterceptsOnlyRightClick() {
@@ -125,8 +109,8 @@ final class AppDelegateTests: XCTestCase {
         var coordinator = QuitCommandCoordinator()
 
         XCTAssertEqual(
-            coordinator.action(toolID: "nettoys", now: 0),
-            .closeToolWindows("nettoys")
+            coordinator.action(toolID: "input-devices", now: 0),
+            .closeToolWindows("input-devices")
         )
         XCTAssertEqual(
             coordinator.action(toolID: nil, now: 1),
@@ -168,9 +152,12 @@ final class AppDelegateTests: XCTestCase {
     func testQuitCommandMapsOnlyKnownSubAppWindows() {
         XCTAssertNil(AppDelegate.quitCommandToolID(for: "main"))
         XCTAssertNil(AppDelegate.quitCommandToolID(for: "unknown-window"))
+        for removed in ["system-care", "disk-explorer", "nettoys"] {
+            XCTAssertNil(AppDelegate.quitCommandToolID(for: removed))
+        }
         for toolID in [
             "rclone", "logs", "awake", "color-picker",
-            "text-extractor", "input-devices", "system-care", "nettoys",
+            "text-extractor", "input-devices", "mac-tweaks",
         ] {
             XCTAssertEqual(AppDelegate.quitCommandToolID(for: toolID), toolID)
             XCTAssertEqual(AppDelegate.quitCommandToolID(for: "\(toolID)-settings"), toolID)
@@ -182,7 +169,7 @@ final class AppDelegateTests: XCTestCase {
     func testQuitCommandClosesEachNativeSubAppScope() {
         for toolID in [
             "rclone", "logs", "awake", "color-picker",
-            "text-extractor", "input-devices", "system-care", "nettoys",
+            "text-extractor", "input-devices", "mac-tweaks",
         ] {
             let toolWindow = CloseTrackingWindow(identifier: toolID)
             let settingsWindow = CloseTrackingWindow(identifier: "\(toolID)-settings")
@@ -207,14 +194,14 @@ final class AppDelegateTests: XCTestCase {
     @MainActor
     func testQuitCommandEndsAttachedSheetBeforeClosingToolWindows() {
         let parent = NSWindow()
-        parent.identifier = NSUserInterfaceItemIdentifier("nettoys")
+        parent.identifier = NSUserInterfaceItemIdentifier("mac-tweaks")
         let sheet = NSWindow()
         parent.beginSheet(sheet)
 
         XCTAssertTrue(parent.attachedSheet === sheet)
-        XCTAssertEqual(AppDelegate.quitCommandToolID(for: sheet), "nettoys")
+        XCTAssertEqual(AppDelegate.quitCommandToolID(for: sheet), "mac-tweaks")
         AppDelegate.closeToolWindows(
-            "nettoys",
+            "mac-tweaks",
             activeWindow: sheet,
             windows: []
         )
@@ -484,8 +471,8 @@ final class AppDelegateTests: XCTestCase {
 
     @MainActor
     func testNativeCommandWActionRemainsOnTheWindowClosePath() throws {
-        let activeWindow = CloseTrackingWindow(identifier: "system-care")
-        let otherWindow = CloseTrackingWindow(identifier: "nettoys")
+        let activeWindow = CloseTrackingWindow(identifier: "input-devices")
+        let otherWindow = CloseTrackingWindow(identifier: "mac-tweaks")
         let sourceURL = URL(fileURLWithPath: #filePath)
             .deletingLastPathComponent()
             .deletingLastPathComponent()

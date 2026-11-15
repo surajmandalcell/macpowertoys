@@ -45,9 +45,6 @@ render AwakeLogo awake
 render ColorPickerLogo color-picker
 render TextExtractorLogo text-extractor
 render InputDevicesLogoA input-devices
-render SystemCareLogo system-care
-render DiskExplorerLogo disk-explorer
-render NetToysLogo nettoys
 render PortmanLogo portman
 
 extension_source="$repo_dir/raycast/assets/extension-icon.svg"

@@ -48,20 +48,17 @@ variant weakens the deliberate temperature and contrast difference.
 | Color Picker | Chosen Color | Chosen Color | Eyedropper with attached color samples |
 | Text Extractor | Chosen Color | Chosen Color | Capture card with a selected text strip |
 | Input Devices | Chosen Color | Chosen Color | Ivory mouse with a violet scroll wheel |
-| System Cleaner | Chosen Color | Chosen Color | Cleanup tray with one removable block |
-| Partition Manager | Chosen Color | Chosen Color | Owner-selected Sector platter |
 | Task Manager | Chosen Color | Chosen Color | Midnight-blue display-and-metrics identity is fixed |
-| NetToys | Chosen Color | Chosen Color | Network module with a connected coral port |
 | Portman | Midnight | Porcelain | Neutral network-port glyph in both appearances |
 | Mac Tweaks | Chosen Color | Chosen Color | Tweak wand with a lavender tip and sparkles |
 
 The 2026-09-25 owner request in `spec/icon-refresh-request-list.md` replaces
-the prior identities for these six tools. The 2026-10-05 owner pick EV1
+the prior identities for Text Extractor, Input Devices, and Color Picker. The 2026-10-05 owner pick EV1
 gives Event Viewer the same treatment, and the 2026-10-05 owner pick MS7
-gives it to Mac Tweaks. These eight tools use 512px PNG image
+gives it to Mac Tweaks. These five tools use 512px PNG image
 sets with transparent rounded corners and one universal appearance. Their
-detailed material finish follows the owner-selected Sector platter. All
-remaining tool icons continue to follow the SVG construction rules below.
+detailed material finish follows the shallow lighting of the approved
+bitmap icons. All remaining tool icons continue to follow the SVG construction rules below.
 
 For SVG tools, the base `icon.svg` entry is the light-appearance asset. Add `icon-dark.svg`
 with a `luminosity: dark` appearance only when the matrix calls for a different
@@ -104,7 +101,7 @@ palette or reuse another tool's semantic hue.
   closed glyph tokens rather than either white.
 - SVG icons use no decorative outline, gloss, blur, rim light, or soft drop
   shadow. A gradient is allowed only when color itself is the metaphor or part
-  of an approved legacy Chosen Color asset. The eight bitmap icons above keep
+  of an approved legacy Chosen Color asset. The five bitmap icons above keep
   their shallow material lighting from the approved visual direction.
 
 The base application icon is the deliberate exception to the tool/plugin SVG
@@ -153,7 +150,7 @@ has been changed.
 | Kwake | `#F5B71E` | `#23272E`, `#F7F5F0` | Cream eye catchlight |
 | Task Manager | `#002B26` | `#E0FFF8` | M02 Scope trace identity |
 
-The eight bitmap identities in the appearance matrix take their colors from
+The five bitmap identities in the appearance matrix take their colors from
 their approved `icon.png` assets, rather than this SVG palette table.
 
 New Chosen Color tools should receive their own semantic hue unless a documented
@@ -206,7 +203,7 @@ An image set with different appearance assets uses this shape:
 
 ## Generation workflow
 
-The steps below apply to SVG tool icons. The eight bitmap icons named in the
+The steps below apply to SVG tool icons. The five bitmap icons named in the
 appearance matrix use 512px RGBA PNG sources, one universal image entry per
 image set, transparent corners, and 512/64/32/16px visual checks.
 

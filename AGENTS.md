@@ -32,8 +32,8 @@ requirements or verification results change.
 Keep `spec/ruler-request-list.md` current when Ruler requirements or
 verification results change.
 
-Keep `spec/system-tools-request-list.md` current when Input Devices, System
-Care, or System Monitor requirements or verification results change.
+Keep `spec/system-tools-request-list.md` current when Input Devices
+requirements or verification results change.
 
 Tool and app icon rules live in `spec/icons.md`. Read it before any icon work.
 

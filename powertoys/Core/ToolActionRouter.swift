@@ -85,7 +85,10 @@ final class ToolActionRouter {
         guard let page else { open(toolID: toolID, activateApp: activateApp); return }
         let resolved = Self.resolvedWindowID(toolID)
         guard resolved == "main" || (SettingsManager.shared.isToolEnabled(resolved)
-            && ToolRegistry.builtInTools.contains(where: { $0.id == resolved })) else { return }
+            && ToolRegistry.builtInTools.contains(where: { $0.id == resolved })) else {
+            LogManager.shared.info("Ignored page route for tool: \(resolved)", source: "ToolActionRouter")
+            return
+        }
         ToolPageRouter.shared.post(tool: resolved, page: page)
         open(toolID: resolved, activateApp: activateApp)
     }

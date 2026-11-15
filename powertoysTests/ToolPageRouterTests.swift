@@ -8,7 +8,7 @@ struct ToolPageRouterTests {
     @Test func closeWindowDiagnosticsRequireOneBoundedToolID() throws {
         for scheme in ["macpowertoys", "powertoys"] {
             for tool in ["main", "rclone", "logs", "awake", "color-picker", "text-extractor",
-                         "input-devices", "system-care", "disk-explorer", "nettoys", "mac-tweaks"] {
+                         "input-devices", "mac-tweaks"] {
                 #expect(DiagnosticsRoute.parse(try #require(URL(string: "\(scheme)://diagnostics/close-window/\(tool)")))
                     == .closeWindow(tool))
                 #expect(DiagnosticsRoute.parse(try #require(URL(string: "\(scheme)://diagnostics/native-close/\(tool)")))
@@ -45,13 +45,13 @@ struct ToolPageRouterTests {
 
     @Test func parsesToolAndPageForBothSchemes() throws {
         for scheme in ["macpowertoys", "powertoys"] {
-            #expect(OpenToolRoute.parse(try #require(URL(string: "\(scheme)://open/nettoys/scanner")))
-                == OpenToolRoute(tool: "nettoys", page: "scanner"))
+            #expect(OpenToolRoute.parse(try #require(URL(string: "\(scheme)://open/mac-tweaks/finder")))
+                == OpenToolRoute(tool: "mac-tweaks", page: "finder"))
             #expect(OpenToolRoute.parse(try #require(URL(string: "\(scheme)://open/main/rclone")))
                 == OpenToolRoute(tool: "main", page: "rclone"))
         }
-        #expect(OpenToolRoute.parse(try #require(URL(string: "powertoys://open/nettoys?targets=localhost")))
-            == OpenToolRoute(tool: "nettoys", page: nil))
+        #expect(OpenToolRoute.parse(try #require(URL(string: "powertoys://open/rclone?targets=localhost")))
+            == OpenToolRoute(tool: "rclone", page: nil))
     }
 
     @Test func rejectsMalformedRoutes() throws {
@@ -65,7 +65,7 @@ struct ToolPageRouterTests {
 
     @Test func parsesCaseSensitiveMultiSegmentPages() throws {
         let routes = [
-            ("disk-explorer/device/disk4s2", "disk-explorer", "device/disk4s2"),
+            ("rclone/remote/disk4s2", "rclone", "remote/disk4s2"),
             ("main/tool/color-picker", "main", "tool/color-picker"),
             ("rclone/remote/My%20Drive", "rclone", "remote/My Drive"),
             ("rclone/remote/Caf%C3%A9%20%26%20Work", "rclone", "remote/Café & Work"),
@@ -186,11 +186,11 @@ struct ToolPageRouterTests {
         let router = ToolPageRouter()
         router.post(tool: "main", page: "rclone")
         router.post(tool: "main", page: "awake")
-        router.post(tool: "disk-explorer", page: "device/disk4")
+        router.post(tool: "rclone", page: "remote/disk4")
         #expect(router.take(tool: "main", matching: "rclone") == nil)
         #expect(router.take(tool: "main")?.page == "awake")
         #expect(router.take(tool: "main") == nil)
-        #expect(router.take(tool: "disk-explorer")?.page == "device/disk4")
+        #expect(router.take(tool: "rclone")?.page == "remote/disk4")
     }
 
     @MainActor @Test func diagnosticsSelectOnlyKnownPanelTabs() throws {
@@ -199,8 +199,7 @@ struct ToolPageRouterTests {
         defer { defaults.removePersistentDomain(forName: suite) }
         let panels: [(DiagnosticsPanel, String, [(String, String)])] = [
             (.main, "tray.selectedTab.v2", [("home", "home"), ("cloud-sync", "rclone"),
-                ("input-devices", "input-devices"), ("system-care", "system-care"),
-                ("nettoys", "nettoys")]),
+                ("input-devices", "input-devices")]),
             (.portman, "portman.selectedPage", [("servers", "Servers"), ("forward", "Forward"), ("settings", "Settings")])
         ]
         for (panel, key, tabs) in panels {
@@ -211,7 +210,7 @@ struct ToolPageRouterTests {
                 #expect(defaults.string(forKey: key) == saved)
             }
             let saved = defaults.string(forKey: key)
-            for unknown in [nil, "", "unknown", "CPU", "rclone", "../home"] as [String?] {
+            for unknown in [nil, "", "unknown", "CPU", "rclone", "../home", "system-care", "nettoys"] as [String?] {
                 panel.selectTab(unknown, defaults: defaults)
                 #expect(defaults.string(forKey: key) == saved)
             }

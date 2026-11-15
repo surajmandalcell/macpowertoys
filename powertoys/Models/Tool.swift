@@ -6,7 +6,6 @@
 //
 
 import Foundation
-import NetToysKit
 
 // MARK: - Tool Protocol
 
@@ -265,80 +264,6 @@ struct InputDevicesTool: Tool {
     static let shared = InputDevicesTool()
 }
 
-// MARK: - System Care Tool
-
-struct SystemCareTool: Tool {
-    let id = "system-care"
-    let name = "System Cleaner"
-    let summary = "Find caches and leftovers to move to Trash"
-    let description = "Understand storage, preview safe cleanup, remove apps, and use advanced Mole maintenance."
-    let icon = ToolGlyph.systemCare.symbol
-    let logoAsset = "SystemCareLogo"
-    let category = ToolCategory.system
-    let hasTrayTab = true
-
-    let manual = [
-        ToolManualSection(title: "Storage and Cleanup", points: [
-            "Choose a folder in Storage to see its largest contents and drill into any directory.",
-            "Quick Cleanup scans supported rebuildable data. Guided Cleanup lets you choose categories. Analysis Only cannot clean.",
-            "Review every selected item before moving it to macOS Trash."
-        ]),
-        ToolManualSection(title: "Mole CLI", points: [
-            "Install or update Mole from the Mole CLI page with Homebrew.",
-            "Preview each maintenance operation before opening it in Terminal.",
-            "Mole uses Terminal when macOS needs administrator approval."
-        ])
-    ]
-
-    static let shared = SystemCareTool()
-}
-
-struct DiskExplorerTool: Tool {
-    let id = "disk-explorer"
-    let name = "Partition Manager"
-    let summary = "Inspect, resize, and format disk partitions"
-    let description = "See every disk as a partition map, then mount, format, resize, create, or delete partitions with the macOS disk tools."
-    let icon = ToolGlyph.diskman.symbol
-    let logoAsset = "DiskExplorerLogo"
-    let category = ToolCategory.files
-
-    let manual = [
-        ToolManualSection(title: "Disks", points: [
-            "The sidebar lists internal, external, and removable disks and attached disk images.",
-            "Each disk shows a partition map. Block width follows partition size, and the darker fill shows used space.",
-            "Click a block to select a partition or unallocated space. Click the disk header to select the whole disk."
-        ]),
-        ToolManualSection(title: "Actions", points: [
-            "The inspector lists every action. An unavailable action shows why when you point to it.",
-            "Resize and Create Partition preview the new layout on the map before you review them.",
-            "Format, Delete, Resize, and Erase Disk open a confirmation that names the exact disk. Erase Disk asks you to type the disk name."
-        ]),
-        ToolManualSection(title: "Protection", points: [
-            "Partition Manager never changes the startup disk, the disk with this app, internal disks, or the External1TB drive.",
-            "It reads each disk again before every change and stops if the layout changed."
-        ])
-    ]
-
-    static let shared = DiskExplorerTool()
-}
-
-// MARK: - NetToys Tool
-
-struct NetToysTool: Tool {
-    let id = "nettoys"
-    let name = "NetToys"
-    let summary = "Scan networks and keep SSH hosts reachable"
-    let description = "Scan IP networks, keep SSH hosts attached to changing local addresses, and review network outages."
-    let icon = ToolGlyph.netToys.symbol
-    let logoAsset = "NetToysLogo"
-    let category = ToolCategory.system
-    let hasTrayTab = true
-
-    let manual = NetToysManual.sections.map { ToolManualSection(title: $0.title, points: $0.points) }
-
-    static let shared = NetToysTool()
-}
-
 struct PortmanTool: Tool {
     let id = "portman"
     let name = "Portman"
@@ -442,9 +367,6 @@ struct ToolRegistry {
         ColorPickerTool.shared,
         TextExtractorTool.shared,
         InputDevicesTool.shared,
-        SystemCareTool.shared,
-        DiskExplorerTool.shared,
-        NetToysTool.shared,
         PortmanTool.shared,
         MacTweaksTool.shared
     ]

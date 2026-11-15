@@ -86,7 +86,7 @@ final class AppInitializer {
         await MarketplaceManager.shared.restore()
         guard !Task.isCancelled else { return }
         SettingsSyncManager.shared.startIfEnabled()
-        await SettingsManager.shared.reconcileNetToysLifecycle()
+        await FanHelperService.retireLegacyLoginItem()
         guard !Task.isCancelled else { return }
         await LocalChangeHistory.shared.restore()
         guard !Task.isCancelled else { return }

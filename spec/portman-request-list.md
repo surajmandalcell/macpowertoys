@@ -49,7 +49,7 @@ Local app-hosted tests and installation belong to the orchestrator.
 
 The fixes are committed as `1750f97c`, `1ac2e939`, and `5c96af10`.
 Five gated build attempts reached unowned compile errors. The final Debug
-and desktop test-build retries both stopped on the NetToys scanner table's
+and desktop test-build retries both stopped on a
 type-check timeout. Full app and test compilation is not verified. Current
 standalone scanner, projection, TCP metadata, cleanup policy, missing-tool,
 and disposable SSH checks pass. The prior projection fails the selected-child

@@ -26,16 +26,16 @@ final class LauncherGridTests: XCTestCase {
 
     func testCatalogTabsCountEveryToolAndFilterTheRows() {
         let tools = ToolRegistry.builtInTools
-        let favorites: Set<String> = ["ruler", "nettoys"]
-        let disabled: Set<String> = ["awake", "logs", "disk-explorer"]
+        let favorites: Set<String> = ["ruler", "portman"]
+        let disabled: Set<String> = ["awake", "logs", "mac-tweaks"]
         let all = MainCatalog.preparedRows(tools, query: "", filter: .all, favorites: favorites, disabled: disabled)
         let tabs = MainCatalog.tabs(total: all.total, enabled: all.enabled, favorites: all.favorites)
-        XCTAssertEqual(tools.count, 12)
+        XCTAssertEqual(tools.count, 9)
         XCTAssertEqual(tabs.map(\.id), [.all, .enabled, .favorites])
         XCTAssertEqual(tabs.map(\.title), ["All", "Enabled", "Favorites"])
-        XCTAssertEqual(tabs.map(\.count), [12, 9, 2])
+        XCTAssertEqual(tabs.map(\.count), [9, 6, 2])
         let enabled = MainCatalog.preparedRows(tools, query: "", filter: .enabled, favorites: favorites, disabled: disabled)
-        XCTAssertEqual(enabled.visible.count, 9)
+        XCTAssertEqual(enabled.visible.count, 6)
         XCTAssertTrue(enabled.visible.allSatisfy { !disabled.contains($0.id) })
         let starred = MainCatalog.preparedRows(tools, query: "", filter: .favorites, favorites: favorites, disabled: disabled)
         XCTAssertEqual(Set(starred.visible.map(\.id)), favorites)

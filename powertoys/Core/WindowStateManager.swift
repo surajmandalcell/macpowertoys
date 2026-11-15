@@ -131,9 +131,6 @@ final class WindowStateManager {
         "color-picker",
         "text-extractor",
         "input-devices",
-        "system-care",
-        "disk-explorer",
-        "nettoys",
         "portman",
         "mac-tweaks"
     ]

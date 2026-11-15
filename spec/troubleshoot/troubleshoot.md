@@ -47,8 +47,7 @@ describes.
 | Applet UI, titlebars, settings placement, gutters, tabs | [UI chrome](ui-chrome.md) |
 | Ruler behavior, windows, settings, or FreeRuler parity | [Ruler](ruler.md) |
 | Text Extractor UI or behavior | [Text Extractor](text-extractor.md) |
-| Partition Manager disks, partition map, actions, or safety guard | [Partition Manager](disk-explorer.md) |
-| NetToys, Input Devices, System Cleaner, Mole, background resources | [System tools](system-tools.md) |
+| Input Devices, background resources | [System tools](system-tools.md) |
 | Menu-panel metric sampling, top processes, Fan | [Menu metrics and Fan](menu-metrics-fan.md) |
 | Internal logs or macOS system diagnostics | [Event Viewer](logs.md) |
 | RSync UI, Cloud Sync, Dev Sync, file watching | [Cloud Sync](cloud-sync.md) |

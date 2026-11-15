@@ -34,8 +34,7 @@ and appearance acceptance remains with the orchestrator on the integrated
 signed build. Evidence: `tmp/redesign/logs/w3-glyphs-status.md`.
 
 `ToolGlyph` owns 14 unique identities and retains the approved colored artwork.
-Ruler is slanted, Switch uses regular `stop.circle`, System Care uses
-`tray.and.arrow.up`, and Diskman uses `opticaldisc`. The owner's Round 12
+Ruler is slanted and Switch uses regular `stop.circle`. The owner's Round 12
 correction restores Portman's original `PortmanStatusGlyph` socket asset,
 including its copied 14pt template status image; other tools use SF Symbols.
 Sidebar, panel, and status consumers share the definitions. Actual-source
@@ -47,27 +46,22 @@ Source checkpoint: `5c04a1e7`. The single tests-mode gate compiles the
 Debug app and both desktop test bundles with matching glyph source files.
 Hosted execution and signed surface review remain with the orchestrator.
 
-Requested on 2026-09-25. The owner selected Disk Explorer option 02,
-**Sector platter**, from `tmp/disk-explorer/index.index2.html` and asked for
-System Care, Text Extractor, Input Devices, NetToys, and Color Picker to be
-redesigned in a similarly crafted macOS icon language. This supersedes the
-previously locked identities for those five tools.
+Requested on 2026-09-25. The owner asked for Text Extractor, Input Devices,
+and Color Picker to be redesigned in a crafted macOS icon language. This
+supersedes the previously locked identities for those three tools.
 
 | Status | Request | Acceptance |
 |---|---|---|
-| Verify | Promote Sector platter as Disk Explorer's icon. | The selected platter is a 512px RGBA asset and is wired into the launcher, Dock, and Raycast. |
-| Verify | Redesign System Care. | A removable coral block leaves an empty slot in a cleanup tray. |
 | Superseded | Redesign Text Extractor. | The lifted-strip treatment was replaced by the owner's final T01 Scan beam choice below. |
 | Verify | Redesign Input Devices. | An ivory mouse gives its violet scroll wheel the visual focus. |
-| Verify | Redesign NetToys. | Three recessed network ports connect to one coral cable. |
 | Verify | Redesign Color Picker. | An eyedropper touches a cluster of violet, coral, and cyan samples. |
 
-The six icons should share rounded tiles, strong physical silhouettes, a
+The icons should share rounded tiles, strong physical silhouettes, a
 restrained material finish, and useful contrast at launcher and Dock sizes.
 Preview each on light and dark surfaces and at 64 px and 16 px. The tool name
 remains readable even if the smallest icon loses detail.
 
-All six sources and Raycast copies are 512px PNGs. The focused Dock/icon tests,
+All sources and Raycast copies are 512px PNGs. The focused Dock/icon tests,
 Raycast icon sync check, Raycast lint, and Raycast build pass. The comparison
 page is `tmp/icon-refresh/index.html`. Final acceptance still needs the clean,
 signed installed app checked in the launcher and Dock.

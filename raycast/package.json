@@ -71,27 +71,6 @@
       "mode": "no-view"
     },
     {
-      "name": "system-care",
-      "title": "System Cleaner",
-      "description": "Open System Cleaner",
-      "icon": "system-care.png",
-      "mode": "no-view"
-    },
-    {
-      "name": "disk-explorer",
-      "title": "Partition Manager",
-      "description": "Open Partition Manager",
-      "icon": "disk-explorer.png",
-      "mode": "no-view"
-    },
-    {
-      "name": "nettoys",
-      "title": "NetToys",
-      "description": "Open NetToys",
-      "icon": "nettoys.png",
-      "mode": "no-view"
-    },
-    {
       "name": "portman",
       "title": "Portman",
       "description": "Open Portman in the menu bar",

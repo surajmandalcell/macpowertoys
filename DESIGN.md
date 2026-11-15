@@ -73,10 +73,7 @@ geometry:
   tab-strip: { height: 36, gap: 22, underline: 2 }
 windows:
   main: { size: [820, 660], sidebar: 215, density: regular, resizable: false, texture: none, sidebar-icon: 20, row-icon: 24, hero-icon: 48, pane-gutter: 20, section-gap: 10, section-title-gap: 6, sidebar-group-gap: 12 }
-  disk-explorer: { size: [1440, 900], sidebar: 216, density: regular, resizable: false }
-  nettoys: { size: [1440, 900], sidebar: 200, density: regular, resizable: false }
   rclone: { size: [1240, 840], sidebar: 216, density: regular, resizable: false }
-  system-care: { size: [1240, 840], sidebar: 200, density: regular, resizable: false }
   switch: { size: [1240, 840], sidebar: 200, density: regular, resizable: false }
   mac-tweaks: { size: [820, 660], sidebar: 200, density: regular, resizable: false }
   system-monitor: { size: [1080, 660], sidebar: 200, density: compact, resizable: false }
@@ -88,7 +85,7 @@ windows:
 menu-panel: { status-icon: 14, status-icon-ink: 11.2, width: 356, max-height-fraction: 0.9, top-bar-padding: [10, 8, 6], tab-group-radius: 7, tab: 26, tab-gap: 2, body-inset: 8, tile-radius: 6, tile-gap: 5, columns: 3, action-button-height: 32 }
 popup-menu: { padding: 5, radius: 7, item: 28, item-compact: 24, item-radius: 4, item-padding: 9, max-visible-items: 12 }
 performance: { page-switch-ms: 100, table-rows-smooth: 1000 }
-texture: { ribbon: [700, 220], ribbon-drawn: [630, 198], ribbon-opacity-dark: 0.20, ribbon-opacity-light: 0.10, grain: [200, 125], metric-wave: [180, 110], metric-wave-opacity: 0.07, chart-dot-cell: 4 }
+texture: { ribbon: [700, 220], ribbon-drawn: [630, 198], ribbon-opacity-dark: 0.20, ribbon-opacity-light: 0.10, metric-wave: [180, 110], metric-wave-opacity: 0.07, chart-dot-cell: 4 }
 motion: { hover: 0, selection: 0, content: 0, idle-animation: none }
 ---
 
@@ -191,7 +188,7 @@ Resolve conflicts in this order:
    the package instead.
 4. The version 15 reference renders in `docs/design/v15/`, and the HTML
    references (kept outside the repository): `mac-tweaks-design.html`
-   (settings rows and controls), and `diskman-fixed.html` (storage charts).
+   (settings rows and controls).
 5. Current screenshots in `docs/screenshots/`.
 
 ## Appearance
@@ -215,8 +212,7 @@ Color rules:
 - Connected or healthy states stay neutral. Offline uses a hollow dot and
   muted text, never red.
 - Chart series: neutral steps `#BCBCBC`, `#8A8A8A`, `#626262`, `#454545`;
-  gray line `#BEBEBE`; accent line uses `accent`; grid `#343434`. Partition Manager
-  keeps its storage series (see the Partition Manager recipe).
+  gray line `#BEBEBE`; accent line uses `accent`; grid `#343434`.
 - Text selection uses accent at 28% with primary text.
 - Measure text contrast with APCA (the WCAG 3 candidate method), not the
   WCAG 2 ratio. The WCAG 2 ratio misjudges text on saturated fills and in
@@ -260,8 +256,8 @@ everywhere.
 | Metric value | 27 | 27 | 550, line 30.24 | -1 | `ink` |
 | Metric unit | 12 | 10 | regular | 0 | `secondary` |
 
-- Regular density: main window, Mac Tweaks, Partition Manager, RSync UI, Event
-  Viewer, Input Devices, System Cleaner, NetToys, compact applets, and sheets.
+- Regular density: main window, Mac Tweaks, RSync UI, Event Viewer, Input
+  Devices, compact applets, and sheets.
 - Compact density: every menu-bar panel.
 - Descriptions and metric units use `secondary`. Supporting captions and metadata use
   `muted`; metric captions use `metricCaption`. These roles stay separate
@@ -356,7 +352,7 @@ clipped to a header, tab strip, or scroll view.
   fade (0%, 26%, 82%, 100%).
 - Metric wave: cards and menu tiles marked `textured` draw the cached
   grayscale ribbon at 180 x 110 pt in their top-right corner, opacity 0.07,
-  clipped to the card. Partition Manager keeps its explicit grain texture.
+  clipped to the card.
 - Texture stays above the fill and below all content. Text, icons, controls,
   rows, and list views never carry texture.
 - Chart dither: ordered 4 x 4 pt dots under area charts, masked to the chart,
@@ -555,10 +551,10 @@ apps felt like a Tailwind web app, not a Mac app.
 
 - Use the width first. Put metadata (time, date, count, size, status) on
   the trailing side of the same row, not on a new line below.
-- Related actions sit side by side in one row (for example Review
-  Leftovers and Uninstall), never stacked one per row.
-- Do not show provenance or help text inline, such as "Updated by NetToys
-  Helper". Drop it, or put it behind a small info glyph with a tooltip or
+- Related actions sit side by side in one row (for example Save and
+  Cancel), never stacked one per row.
+- Do not show provenance or help text inline, such as "Updated by the
+  helper". Drop it, or put it behind a small info glyph with a tooltip or
   popover.
 - Page toolbars (target fields, search, filters, presets, primary action)
   sit directly on the page in one row. Never wrap a toolbar or a single row
@@ -633,8 +629,6 @@ controls do not move on hover.
   only during real work and stop on completion, error, cancel, or dismissal.
 - No scale, bounce, slide, shimmer, parallax, or lifted hover panels.
 - Reduce Motion removes nonessential animation and keeps layout identical.
-- The one exception is the Partition Manager partition map. Its recipe
-  defines its spring motion.
 
 ## Menu-bar panels
 
@@ -744,8 +738,7 @@ package tokens (`OnePlusLinearMetrics`, `OnePlusLinearColor`).
 - Status-item icons use the same modest visual size as the Portman icon.
 - Sidebar and panel glyphs are drawn from each tool's own icon, not picked
   from a loose SF Symbol (owner correction 2026-10-01). Examples: a slanted
-  ruler; `SystemCareGlyph`, a tray with one block lifted out;
-  `EventViewerGlyph`, a log tablet with a warning badge; `MacTweaksGlyph`,
+  ruler; `EventViewerGlyph`, a log tablet with a warning badge; `MacTweaksGlyph`,
   a wand with sparkles. No two tools
   share a glyph.
   Portman retains its original `PortmanStatusGlyph` socket asset on every
@@ -852,49 +845,6 @@ Version 15 Linear style, built from the OnePlusUI `OnePlusLinear*` parts
   it in `OnePlusPage`; the main window's tool page places it inside its
   single scrolling page. `ToolSettingsContent` only dispatches by tool id.
 
-### Partition Manager
-
-Partition Manager is a dedicated partition tool, modeled on the EaseUS
-Partition Manager page but native: 1440 x 900 and a 216 pt sidebar.
-
-- Sidebar: disks grouped under INTERNAL, EXTERNAL, REMOVABLE, and DISK IMAGES.
-  Each row shows the name and `diskN · size`, plus a lock when the disk is
-  protected. A disk image takes its file name. macOS-owned images (simulator
-  runtimes, cryptexes) are not listed. About sits at the bottom.
-- Page: the title `Partition Manager`, a count subtitle, and a Refresh icon
-  action. One scrolling column holds a card per disk. A fixed 260 pt
-  inspector card sits on the trailing side. Errors and results show as a
-  banner in the page footer.
-- Disk card: a 56 pt header button (kind glyph, name in the section role,
-  mono `diskN · scheme · size · connection`, SMART status, and a Protected
-  label with the reason in help). Below it, a 72 pt partition map.
-- Partition map: one block per partition in disk order, width proportional
-  to bytes, at least 56 pt, 4 pt gaps, radius 4. A block uses its storage
-  series color at full strength for used space and darkened for free
-  space, with white name, mono `file system · size`, and a mount or lock
-  badge. Unallocated space is a hatched `track` block. A previewed new
-  partition is a dashed accent outline. Storage series:
-  `#66504A #4C6272 #6C5A43 #48645E #68546C #745047 #455D70 #706048 #435E60
-  #5B4E67 #536149`.
-- Selection: a 2 pt accent outline on the selected block, or around the
-  whole map for the disk. APFS volumes are selected in the inspector.
-- Inspector: facts for the selection, the APFS volume list, an inline
-  Resize or Create Partition editor, then actions in three groups: VOLUME
-  (Mount or Unmount, Rename, Format, First Aid, Info), PARTITION (Create
-  Partition, Resize, Delete Partition), and DISK (Eject Disk, Erase Disk).
-  Destructive actions use the destructive button style. An unavailable
-  action is disabled and its help names the reason.
-- Confirmation: every write that can lose data opens a native sheet that
-  names the disk, `/dev/diskN`, its size in bytes, and the target. Erase Disk
-  asks the owner to type the disk name.
-- Motion (owner exception, Partition Manager only): this surface uses
-  purposeful motion instead of the instant rule. Use one spring (response
-  0.22 s, damping 0.86). Block widths animate when a resize or create
-  preview changes or a real change lands. The selection outline moves
-  between blocks with a matched geometry effect. A new block grows in from
-  its leading edge; a deleted block collapses. The affected block shows
-  operation progress inline. Reduce Motion makes every change instant.
-
 ### Mac Tweaks
 
 Mac Tweaks is laid out like macOS System Settings: an 820 x 660 window, the
@@ -913,9 +863,9 @@ embeds the same stacked cards.
 
 ### Other workspaces
 
-RSync UI, Event Viewer, System Cleaner, and NetToys use the
+RSync UI and Event Viewer use the
 same sidebar, page, card, row, and table anatomy with no tool-specific
-chrome. Operational rows (transfers, scan results, log lines) use
+chrome. Operational rows (transfers, log lines) use
 `OnePlusTable` or dense cards with the same radii and lines. Settings are a
 sidebar page, never a separate window or dialog.
 

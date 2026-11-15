@@ -2,15 +2,6 @@
   "originHash" : "1eb54eb5e3ee5f598f6578a0b20c73d82fd0dc5c7e21ebbd5441c220de07345a",
   "pins" : [
     {
-      "identity" : "nettoys",
-      "kind" : "remoteSourceControl",
-      "location" : "https://github.com/surajmandalcell/nettoys.git",
-      "state" : {
-        "revision" : "1d32d160ae84d51ea862fc02270eb873d000755a",
-        "version" : "1.0.13"
-      }
-    },
-    {
       "identity" : "oneplus-ui",
       "kind" : "remoteSourceControl",
       "location" : "https://github.com/surajmandalcell/oneplus-ui.git",
