@@ -35,7 +35,6 @@
 | <img src="powertoys/Assets.xcassets/InputDevicesLogoA.imageset/icon.png" width="28" alt=""> | **Input Devices** | Set scroll direction, speed, and smoothing separately for mouse and trackpad. |
 | <img src="powertoys/Assets.xcassets/SystemCareLogo.imageset/icon.png" width="28" alt=""> | **System Cleaner** | Review storage, preview cleanup, move items to Trash, and remove apps. |
 | <img src="powertoys/Assets.xcassets/DiskExplorerLogo.imageset/icon.png" width="28" alt=""> | **Partition Manager** | Map disk usage as a treemap or rings, and manage removable drives. |
-| <img src="powertoys/Assets.xcassets/SystemMonitorLogo.imageset/icon.png" width="28" alt=""> | **Task Manager** | Inspect processes and live activity on this Mac or on hosts over SSH. Optional fan control. |
 | <img src="powertoys/Assets.xcassets/NetToysLogo.imageset/icon.png" width="28" alt=""> | **NetToys** | Scan networks, track outages, and keep SSH hosts linked when their address changes. |
 | <img src="powertoys/Assets.xcassets/PortmanLogo.imageset/icon.png" width="28" alt=""> | **Portman** | Find local dev servers and forward ports from a private SSH server. |
 | <img src="powertoys/Assets.xcassets/MacTweaksLogo.imageset/icon.svg" width="28" alt=""> | **Mac Tweaks** | Change hidden Dock, Finder, window, and input settings. Every original value is kept. |
@@ -45,7 +44,6 @@ Turn tools on or off from the launcher. Tools with menu bar content can
 appear in the shared popup, as their own menu bar item, or not at all.
 
 <p align="center">
-  <img src="docs/screenshots/task-manager.png" width="49%" alt="Task Manager overview with CPU, memory, disk, thermal, and load cards, and two remote SSH hosts">
   <img src="docs/screenshots/diskman.png" width="49%" alt="Partition Manager treemap of a home folder with a size breakdown of the selected folder">
 </p>
 
@@ -63,7 +61,7 @@ appear in the shared popup, as their own menu bar item, or not at all.
 5. For RSync UI, install [rclone](https://rclone.org/install/) with
    `brew install rclone`.
 
-Task Manager fan control and NetToys MAC addresses use signed helpers. macOS
+Fan control in the menu bar panel and NetToys MAC addresses use signed helpers. macOS
 asks you to approve them once in **Login Items**.
 
 ## Keyboard

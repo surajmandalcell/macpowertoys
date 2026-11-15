@@ -49,7 +49,7 @@ describes.
 | Text Extractor UI or behavior | [Text Extractor](text-extractor.md) |
 | Partition Manager disks, partition map, actions, or safety guard | [Partition Manager](disk-explorer.md) |
 | NetToys, Input Devices, System Cleaner, Mole, background resources | [System tools](system-tools.md) |
-| Task Manager window or panel, menu metrics, Fan, Remote Stats | [Task Manager](task-manager.md) |
+| Menu-panel metric sampling, top processes, Fan | [Menu metrics and Fan](menu-metrics-fan.md) |
 | Internal logs or macOS system diagnostics | [Event Viewer](logs.md) |
 | RSync UI, Cloud Sync, Dev Sync, file watching | [Cloud Sync](cloud-sync.md) |
 | Concurrent edits, staging, overwritten work | [Shared worktree](shared-worktree.md) |

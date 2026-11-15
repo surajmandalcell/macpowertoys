@@ -1,7 +1,7 @@
 # System Tools Request List
 
-Scope: Input Devices, System Care (with Mole), Task Manager (formerly System
-Monitor), NetToys, and the window behavior these tools share.
+Scope: Input Devices, System Care (with Mole), NetToys, the main panel's
+metrics, top processes, and Fan, and the window behavior these tools share.
 
 Ownership: the orchestrator owns hosted tests, clean signed installation, and
 installed-app interaction checks unless a row says otherwise. Status words:
@@ -16,22 +16,19 @@ verified result changes a status.
   running path. See `spec/troubleshoot/verification.md`.
 - Background opens: background routes order windows back without
   activation, skip other Spaces, and reuse closed scene hosts. Source probes
-  pass for all 13 scene roots. Open on the signed build: close and reopen,
+  pass for all 12 scene roots. Open on the signed build: close and reopen,
   Dock reopen, menu Open App, launcher Open, full-screen, and lock/unlock,
   with the frontmost app unchanged. Guarded native tests need a quiet desktop.
 - Hosted tests: run `InputDevicesTests`, `SystemCareTests`,
-  `SystemMonitorTests`, `SystemMonitorRemoteTests`, and the NetToys tests with
+  `SystemMonitorTests`, `FanControlTests`, and the NetToys tests with
   `tmp/redesign/tools/xtest.sh` while no game or full-screen app is in front.
 - Performance (DESIGN quality gate 9): warm panel open at most 100ms, cold
   panel and window open at most 250ms, page and tab switch at most 100ms,
-  measured to the complete final frame. The last signed run measured Task
-  Manager pages at 215-287ms and panel tabs at 128-244ms; later fixes need a
-  signed rerun. Cold Processes preparation is open. Evidence:
-  `tmp/redesign/perf/w1-windows.md`.
+  measured to the complete final frame. Later fixes need a signed rerun.
+  Evidence: `tmp/redesign/perf/w1-windows.md`.
 - Shared OnePlusUI: adopt the next tag (`7dbcb3f`, `10b09f5`, `68c91bf`,
   `716ad8b`, `a02d43d`). The app pins 1.0.0, so two corrected applet Settings
-  height assertions wait for the tag. Then verify Task Manager card headers,
-  System Care panel glyphs, and Disk geometry in both appearances.
+  height assertions wait for the tag. Then verify System Care panel glyphs, and Disk geometry in both appearances.
 - Both appearances: every Verify row needs a Light and Dark capture of the
   signed build, including Full Keyboard Access and VoiceOver focus modes.
 
@@ -94,7 +91,7 @@ Done:
 | Location permission requested only from the visible action. | Explicit-action regression |
 | Ordered Wi-Fi failover with iPhone hotspot fallback (macOS manages Instant Hotspot; no public API invokes it). | `552f4e8` |
 | Bundled login helper required while NetToys is enabled, with source-commit handshake. | `8e648a7`, `81e7595` |
-| Launcher, scene, deep link, icon, window state, Raycast integration; NetToys and Task Manager open without blocking the launcher. | `b61b0b3`, `95fc954` |
+| Launcher, scene, deep link, icon, window state, Raycast integration; NetToys opens without blocking the launcher. | `b61b0b3`, `95fc954` |
 
 ## Input Devices
 
@@ -164,61 +161,29 @@ Done:
 | Scan is the primary action; status at the bottom; persistent tray scan with guarded Move to Trash. | `6fb2d41`, `1666d71`, `275d5d5` |
 | Real-data check: 100 candidates, Put Back restore, Mole previews. | `631facd` |
 
-## Task Manager (formerly System Monitor)
+## Panel metrics, top processes, and Fan
 
-Open verification:
-
-- Round 11 window fixes (T056-T063, T105-T106) and Fan exit: hosted tests,
-  physical Fan writes, sleep and wake, route changes.
-- Process icons, CPU and Memory capacity, header action rows, table and
-  metric traits, scroll edges, menu-panel radius, stale status readings, and
-  the glyph pass: signed captures, scrolling, sorting, selection, focus,
-  hover, and crowded menu checks.
-- Retained pages: signed times for Overview, Settings, and panel tabs with
-  complete frames (P1, P3, P4, P5).
-- T014-T016: covered windows sample; hidden and minimized stop. Signed close
-  and minimize, inactive Space, detail redraw, menu-metric independence, idle
-  CPU, wakeups, energy, App Nap, footprint.
-- Panel height callback and diagnostics routes: signed short and tall tab
-  frames, latency, panel route comparison.
+The Task Manager tool (window, pages, own panel, menu-bar metric items,
+Remote Stats) was removed on 2026-11-16. It continues as a separate product.
+What stays in MacPowerToys serves the main panel.
 
 | Status | Request | Evidence | Remaining work |
 |---|---|---|---|
-| Open | Panel latency: warm open within 100ms, cold within 250ms, tab switch within 100ms (P1, P4, P5, P6). | Last signed medians: opens 16.1/38.1/79.0ms, tabs 66.8/128.2/84.4ms (Main, Task Manager, Portman). Panel diagnostics no longer match the Task Manager scene. | Install the fix; rerun the collector; require warm opens and tabs at most 100ms. Cold complete frames, separate items, saved-host edits, closed-panel CPU, hosted run. |
-| Open | T001-T008, T051, T110: native panel behavior, display sizing before measurement, accessible status names; T108 Settings hooks. | Source committed. | Clean install; pointer and keyboard timing, complete frames, Escape chains, foreground preservation, runtime owners, Control-click parity. |
-| Open | B3: Fan below Awake on combined Home; Fan stays on Task Manager Home and Sensors. | `FanControlView(owner: "main-tray-home", compact: true)` while Task Manager is enabled. | Fan ownership tests; all locations, hidden polling, disabled-tool state; protected writes on physical hardware after macOS approval, in an isolated session. |
-| Open | Stats breadth without World Clocks or Bluetooth pages. | Overview and tray show CPU, GPU, memory, disk, network, battery, thermal, load, fans. | Add first-party temperature sensors where supported; verify both appearances. |
-| Verify | Process sort feedback, app icons, compact Overview text, unique Disk details. | Native sort indicator, bundle icons off main, compact roles, one Volume panel. | Hosted `SystemMonitorTests`; sort clicks, icons, Disk in both appearances. |
-| Verify | Remote Stats: window controls, stable saved-host and error frames, complete panel readings (T053-T055); host editing, SSH sampling, lifecycle (B8). | Bounded `oci2` probe and two real samples pass. | `SystemMonitorRemoteTests`; cold and later frames, help and context menus, host edits, Return, interval, Manual, close paths, Terminal, Open App; live macOS and Windows sampling. |
-| Verify | All nine panel tabs dense, responsive, and complete before presentation (B7, A7, P5, S5, T096-T098). | Full-tile histories, 4 Hz limit, prepared text, full Processes list, no duplicate readings. | All tabs and actions, remote Connect/Disconnect, Home labels, chart contrast, heights, first frames, idle work. T098: 120 real samples, long Network rates, complete RAM, Disk help. |
-| Verify | Window audit and density correction (guarded process actions, 30-second endpoint interval, cached chart text, independent Auto, hidden-window gating). | Source committed. | Background-open pending data, warm reopen, close and minimize, every route, helper state, process confirmation, export, Settings, timing. |
-| Verify | Title paint matches page titles; native traffic-light hover works. | Source committed. | Title paint, close and minimize hover glyphs, key changes, restore, appearance changes. |
-| Verify | Layout and chart corrections: process lane, no empty captions, content-height info cards, 1pt rules, centered chart scales, decimal disk units (RAM binary), grid labels, unavailable cells, format picker width, Export trigger, numeric MB/s ticks, no repeated Sensors card, offline remote cells, three Fan presets, 64pt plots, hidden Fan polling released, plot bounds, no competing height estimates, natural-height cards, search kept across tabs, 120 samples per metric. | Source committed with hosted and package regressions. | Raise the hosted CPU height cap from 410pt to 422pt and run it; tick centers, endpoint clearance, natural heights, both appearances, Text and JSON exports, 1,000-row scrolling, compare window and panel disk from one sample. |
-| Verify | Real and diagnostic panels follow app Appearance. | Source committed. | Change appearance while panels, popups, and sheets are visible. |
-| Verify | Fixed regions and one gutter on every page and panel; profiler fixes without behavior change. | Shared page host; filter, sort, formatting on utility tasks. | 100ms page switch; 1,000-row scrolling; every route and panel tab. |
-| Verify | One settings content view for window and main-window embedding (`SystemMonitorSettingsContent()`). | Settings route owns the sole `OnePlusPage`. | Confirm `ToolSettingsContent` dispatches `system-monitor` to it. |
-| Verify | Fixed window and a 356pt panel, keeping all pages, process actions, Remote Stats, Fan, menu metrics, and saved navigation. | Stable page IDs, metric reorder, shared panel parts. | Exact-build window, panel, sheet, menu, keyboard, sampling. Confirm the foundation `tab` query connects to `systemMonitor.trayPage`. |
-| Verify | Bare Fan warning glyph; Auto, Cool, Max stay visible; stale keyboard outlines release on outside click. | Hosted AppKit regression passed. | Keyboard and pointer focus in a hosted UI interaction. |
-| Verify | Remote Stats refresh from 5 seconds; menu readings stay visible on interval or placement change; no control shifts. | Fixed-size picker and value-retention regressions passed. | Final signed build, native item position, live connected layout. |
-| Verify | Useful, live process details (Copy Path, sample time, virtual-address help, ports, hierarchy keeping every PID). | Hosted regressions passed. | Live detail, copy, hierarchy, endpoints in a signed app. |
-| Verify | Keyboard-usable Remote Stats settings (Return connects, interval restarts polling, Manual stops, Open Terminal). | One bounded SSH sample returned the protocol marker. | Return, cadence, Terminal handoff, connected visuals with Linux, macOS, and Windows hosts. |
-| Verify | Monitor Linux, macOS, and Windows hosts only while connected (default 30 seconds); reuse one SSH control socket. | Bounded SSH reads after Connect; three parsers pass; `ssh -G` resolves the options. | Live hosts on all three systems; sampling stops and no socket or master remains after disconnect. |
-| Verify | Searchable full process list, persistent sortable headers, rich details, guarded Quit. | Sampler runs only on Processes; `ps` fallback capped at 2 MB and 5 seconds. | Sorting, large-list scrolling, details, guarded actions. |
+| Open | Panel metric tiles on main panel Home (layout is an open design pick in `DESIGN.md`). | `SystemMonitorService` samples CPU, GPU, memory, disk, network, and battery with a 120-sample history while Home is visible (`MenuPanelMetricSampling`). No tile UI yet. | Design and build the tiles. |
+| Open | A few top processes in the main panel. | `MenuPanelTopProcesses.refresh(limit:)` returns rows with app icon, name, CPU, and memory; the panel release clears them. No UI yet. | Wire to the panel design when it is picked. |
+| Open | Panel latency: warm open within 100ms, cold within 250ms, tab switch within 100ms. | Last signed medians before the removal: Main opens 16.1ms, tabs 66.8ms. | Rerun the collector on the signed build. |
+| Verify | Fan below Awake on main Home, always shown. | `FanControlView(owner: "main-tray-home")`; no longer tied to a tool switch. | Hidden polling stops; protected writes on physical hardware after macOS approval, in an isolated session. |
+| Verify | Bare Fan warning glyph; Auto, Cool, Max stay visible. | Hosted AppKit regression passed. | Keyboard and pointer focus in a hosted UI interaction. |
 | Verify | Read fan RPM without another installed app. | Native SMC reader read two fans; the signed helper shares the SMC layout for guarded writes. | Live RPM and guarded Auto and Max writes after macOS approval, in an isolated session. |
+| Verify | Real and diagnostic panels follow app Appearance. | Source committed. | Change appearance while panels, popups, and sheets are visible. |
 | Verify | Tools built in any language install through the Marketplace. | `docs/MARKETPLACE_TOOLS.md`. | Signed, notarized third-party tool from a custom catalog, end to end. |
-| Verify | Combined, Separate, Off placement in each metric page title bar; seven menu metrics enabled and reordered independently with per-item icon, style, interval, and format (schema version 2). | Saved placement and order; removing the last metric turns the menu off; re-enabling restores RAM. | Command-drag, relaunch, positions kept, final-metric disable, minimum-width clipping. |
-| Verify | M02 Scope trace as the Task Manager icon. | App and Raycast PNGs match the owner file. | Dock display in the signed app. |
 
 Done:
 
 | Request | Evidence |
 |---|---|
-| Window chrome: fixed content, three traffic lights on the centerline, clipped sidebar and workspace paint, compact Remote Stats actions. | `4838fb0`, `d288343` |
 | Reusable OnePlusUI package and showcase. | `0ddbae8` |
-| Rename to Task Manager and reproduce `task-manager.html`. | `556751e` to `7b28ae0`; `docs/screenshots/task-manager*.png` |
-| Graph insets removed; 1-minute Load value; `...` while pending; no redundant Overview history cards. | `dc97280`, `d06c96c` |
-| CPU, memory, GPU, disk, network, battery, thermal, load data; dense tray overview from the 120-sample history. | `b1d532e`, `275d5d5` |
-| One due-driven sampler; detailed collection only while visible; zero timers and status items when unused; writes only on change; baseline after 25 cycles. | `3a76cfe`, `cc5a1ba`, `75cd9d9` |
+| One sampler on a utility queue; sampling only while an owner is visible; zero timers when unused; baseline after 25 cycles. | `SystemMonitorTests` |
 
 ## Shared window behavior
 

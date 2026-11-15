@@ -59,7 +59,6 @@ enum ResourceDiagnostics {
                 "menuBar.statusItems": menuBar?.statusItemOwnerCount ?? 0,
                 "settingsSync.observers": settingsSync?.observerOwnerCount ?? 0,
                 "systemMonitor.observers": systemMonitor?.wakeObserverOwnerCount ?? 0,
-                "systemMonitor.statusItems": systemMonitor?.statusItemOwnerCount ?? 0,
                 "systemMonitor.timers": systemMonitor?.timerOwnerCount ?? 0,
                 "windowState.observers": windowState?.observerOwnerCount ?? 0,
             ]

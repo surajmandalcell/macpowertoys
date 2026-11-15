@@ -64,7 +64,7 @@ final class AppDelegateTests: XCTestCase {
         let routing = try String(contentsOf: root.appendingPathComponent("powertoys/Core/ToolPageRouter.swift"), encoding: .utf8)
         let delegate = try String(contentsOf: root.appendingPathComponent("powertoys/AppDelegate.swift"), encoding: .utf8)
         let sceneCount = scenes.components(separatedBy: ".handlesExternalEvents(matching:").count - 1
-        XCTAssertEqual(sceneCount, 12)
+        XCTAssertEqual(sceneCount, 11)
         XCTAssertEqual(scenes.components(separatedBy: ".handlesExternalEvents(matching: [])").count - 1, sceneCount,
                        "All cold tool and page URLs must use the background-aware router.")
         XCTAssertTrue(routing.contains(".handlesExternalEvents(preferring: [], allowing: [])"),
@@ -170,7 +170,7 @@ final class AppDelegateTests: XCTestCase {
         XCTAssertNil(AppDelegate.quitCommandToolID(for: "unknown-window"))
         for toolID in [
             "rclone", "logs", "awake", "color-picker",
-            "text-extractor", "input-devices", "system-care", "system-monitor", "nettoys",
+            "text-extractor", "input-devices", "system-care", "nettoys",
         ] {
             XCTAssertEqual(AppDelegate.quitCommandToolID(for: toolID), toolID)
             XCTAssertEqual(AppDelegate.quitCommandToolID(for: "\(toolID)-settings"), toolID)
@@ -182,7 +182,7 @@ final class AppDelegateTests: XCTestCase {
     func testQuitCommandClosesEachNativeSubAppScope() {
         for toolID in [
             "rclone", "logs", "awake", "color-picker",
-            "text-extractor", "input-devices", "system-care", "system-monitor", "nettoys",
+            "text-extractor", "input-devices", "system-care", "nettoys",
         ] {
             let toolWindow = CloseTrackingWindow(identifier: toolID)
             let settingsWindow = CloseTrackingWindow(identifier: "\(toolID)-settings")
@@ -484,7 +484,7 @@ final class AppDelegateTests: XCTestCase {
 
     @MainActor
     func testNativeCommandWActionRemainsOnTheWindowClosePath() throws {
-        let activeWindow = CloseTrackingWindow(identifier: "system-monitor")
+        let activeWindow = CloseTrackingWindow(identifier: "system-care")
         let otherWindow = CloseTrackingWindow(identifier: "nettoys")
         let sourceURL = URL(fileURLWithPath: #filePath)
             .deletingLastPathComponent()

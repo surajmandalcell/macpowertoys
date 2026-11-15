@@ -4,6 +4,13 @@ Notable changes are documented here. The project follows semantic versioning aft
 
 ## [Unreleased]
 
+### Removed
+
+- Removed the Task Manager tool: its window, pages, menu bar panel and metric
+  items, Remote Stats, routes, and Raycast command. It continues as a separate
+  app. The main panel keeps Fan control, and the metric sampler stays for its
+  Home page.
+
 ## [1.9.4] - 2026-10-02
 
 ### Fixed

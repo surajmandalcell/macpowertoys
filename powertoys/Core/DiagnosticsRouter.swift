@@ -51,11 +51,9 @@ final class DiagnosticsMenuPanels: NSObject {
     private(set) var captureWindow: NSPanel?
     private var cachedWindows: [DiagnosticsPanel: NSPanel] = [:]
     private var cachedTabs: [DiagnosticsPanel: String] = [:]
-    private var cachedProfiles: [SystemMonitorRemoteProfile]?
-    private var presentationTask: Task<Void, Never>?
     private var releaseTask: Task<Void, Never>?
     private static let captureLifetime: Duration = .seconds(30)
-    var makeCaptureContent: ((DiagnosticsPanel, [SystemMonitorRemoteProfile]?, @escaping (CGFloat) -> Void) -> AnyView?)?
+    var makeCaptureContent: ((DiagnosticsPanel, @escaping (CGFloat) -> Void) -> AnyView?)?
     private let defaults: UserDefaults
 
     init(defaults: UserDefaults = .standard) {
@@ -72,8 +70,6 @@ final class DiagnosticsMenuPanels: NSObject {
     }
 
     func close(clearCache: Bool = false) {
-        presentationTask?.cancel()
-        presentationTask = nil
         for panel in DiagnosticsPanel.allCases { OnePlusPanelTimings.shared.cancel(panel: panel.rawValue) }
         for tool in IndividualMenuBarTool.allCases { OnePlusPanelTimings.shared.cancel(panel: tool.id) }
         if clearCache {
@@ -107,36 +103,18 @@ final class DiagnosticsMenuPanels: NSObject {
         for window in cachedWindows.values { window.orderOut(nil) }
         cachedWindows.removeAll()
         cachedTabs.removeAll()
-        cachedProfiles = nil
     }
 
     func open(_ panel: DiagnosticsPanel, tab: String?) {
         let switching = (captureWindow?.identifier?.rawValue == "diagnostics-panel.\(panel.rawValue)"
             && captureWindow?.isVisible == true) || (panel == .portman && PortmanMenuController.shared.isShown)
         if !switching { close() }
-        presentationTask?.cancel()
-        presentationTask = nil
         OnePlusPanelTimings.shared.begin(panel: panel.rawValue, operation: switching ? .tabSwitch : .open,
                                          tab: tab ?? "", input: "diagnostics")
-        if panel == .systemMonitor {
-            let defaults = defaults
-            presentationTask = Task { [weak self] in
-                if tab == SystemMonitorTrayPage.processes.rawValue {
-                    await TaskManagerMenuProcessModel.shared.prepareForPresentation()
-                }
-                let profiles = await Task.detached(priority: .userInitiated) {
-                    SystemMonitorRemoteProfiles.load(defaults: defaults)
-                }.value
-                guard !Task.isCancelled else { return }
-                self?.presentationTask = nil
-                self?.present(panel, tab: tab, profiles: profiles)
-            }
-        } else {
-            present(panel, tab: tab)
-        }
+        present(panel, tab: tab)
     }
 
-    private func present(_ panel: DiagnosticsPanel, tab: String?, profiles: [SystemMonitorRemoteProfile]? = nil) {
+    private func present(_ panel: DiagnosticsPanel, tab: String?) {
         if captureWindow?.identifier?.rawValue == "diagnostics-panel.\(panel.rawValue)",
            captureWindow?.isVisible == true {
             if let tab {
@@ -151,17 +129,16 @@ final class DiagnosticsMenuPanels: NSObject {
             return
         }
         panel.selectTab(tab, defaults: defaults)
-        presentCapturePanel(panel, tab: tab, profiles: profiles)
+        presentCapturePanel(panel, tab: tab)
     }
 
-    private func presentCapturePanel(_ panel: DiagnosticsPanel, tab: String?, profiles: [SystemMonitorRemoteProfile]?) {
+    private func presentCapturePanel(_ panel: DiagnosticsPanel, tab: String?) {
         // MenuBarExtra has no public presentation binding. Capture the same content
         // in a nonactivating panel; native menu-bar clicks keep their existing host.
         let screen = panel.statusButton?.window?.screen ?? NSScreen.main
         let visible = screen?.visibleFrame ?? CGRect(x: 0, y: 0, width: 1440, height: 900)
         let anchor = panel.statusButton?.window?.frame
-        if let window = cachedWindows[panel], cachedTabs[panel] == (tab ?? ""),
-           panel != .systemMonitor || cachedProfiles == profiles {
+        if let window = cachedWindows[panel], cachedTabs[panel] == (tab ?? "") {
             captureWindow = window
             window.contentView?.layoutSubtreeIfNeeded()
             window.orderFrontInBackground()
@@ -170,7 +147,7 @@ final class DiagnosticsMenuPanels: NSObject {
         }
         let window = DiagnosticsCapturePanel(contentRect: CGRect(x: 0, y: 0, width: OnePlusMenuMetrics.width, height: 80),
                                              styleMask: [.borderless, .nonactivatingPanel], backing: .buffered, defer: false)
-        window.title = panel == .main ? "MacPowerToys Menu" : "Task Manager Menu"
+        window.title = "MacPowerToys Menu"
         window.identifier = .init("diagnostics-panel.\(panel.rawValue)")
         window.isReleasedWhenClosed = false
         window.isOpaque = false
@@ -189,7 +166,7 @@ final class DiagnosticsMenuPanels: NSObject {
             window.setContentSize(CGSize(width: OnePlusMenuMetrics.width, height: height))
             window.setFrameTopLeftPoint(CGPoint(x: x, y: top))
         }
-        guard let content = makeCaptureContent?(panel, profiles, resize) else {
+        guard let content = makeCaptureContent?(panel, resize) else {
             LogManager.shared.warning("Panel content is not ready: \(panel.rawValue)", source: "DeepLinkHandler")
             return
         }
@@ -208,7 +185,6 @@ final class DiagnosticsMenuPanels: NSObject {
         captureWindow = window
         cachedWindows[panel] = window
         cachedTabs[panel] = tab ?? ""
-        if panel == .systemMonitor { cachedProfiles = profiles }
         window.orderFrontInBackground()
         scheduleCaptureRelease()
     }

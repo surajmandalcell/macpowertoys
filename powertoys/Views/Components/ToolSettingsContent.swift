@@ -17,7 +17,6 @@ struct ToolSettingsContent: View {
         case "nettoys": MacPowerToysNetToysSettingsView()
         case "mac-tweaks": MacTweaksSettingsContent()
         case "input-devices": InputDevicesSettingsContent()
-        case "system-monitor": SystemMonitorSettingsContent()
         case "system-care":
             SystemCareSettingsCards(mode: Binding(
                 get: { SystemCareMode(rawValue: systemCareMode) ?? .quick },

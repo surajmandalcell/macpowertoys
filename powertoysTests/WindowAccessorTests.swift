@@ -37,7 +37,6 @@ final class WindowAccessorTests: XCTestCase {
             "logs": NSSize(width: 1080, height: 660),
             "input-devices": NSSize(width: 820, height: 660),
             "system-care": NSSize(width: 1240, height: 840),
-            "system-monitor": NSSize(width: 1080, height: 660),
             "nettoys": NSSize(width: 1440, height: 900),
             "disk-explorer": NSSize(width: 1440, height: 900),
             "mac-tweaks": NSSize(width: 820, height: 660),

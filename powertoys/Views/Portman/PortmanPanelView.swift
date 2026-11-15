@@ -353,7 +353,7 @@ struct PortmanPanelView: View {
                 let url = FileManager.default.homeDirectoryForCurrentUser.appendingPathComponent(".ssh/config")
                 let data = (try? Data(contentsOf: url)) ?? Data()
                 let names = SSHConfigEditor.entries(in: data).flatMap(\.aliases)
-                    .filter(SystemMonitorRemoteProtocol.validHost)
+                    .filter(PortmanSSHHost.isValid)
                 return Array(Set(names)).sorted()
             }
             let names = await withTaskCancellationHandler { await load.value } onCancel: { load.cancel() }

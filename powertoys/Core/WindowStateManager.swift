@@ -133,7 +133,6 @@ final class WindowStateManager {
         "input-devices",
         "system-care",
         "disk-explorer",
-        "system-monitor",
         "nettoys",
         "portman",
         "mac-tweaks"
@@ -221,11 +220,7 @@ final class WindowStateManager {
     }
 
     static func storedStateData(for storageIdentifier: String, in defaults: UserDefaults) -> Data? {
-        let key: (String) -> String = { "windowState.\($0)" }
-        return defaults.data(forKey: key(storageIdentifier))
-            ?? (storageIdentifier == "system-monitor"
-                ? defaults.data(forKey: key("power-stats"))
-                : nil)
+        defaults.data(forKey: "windowState.\(storageIdentifier)")
     }
 
     private static func screenIdentifier(for screen: NSScreen) -> String? {

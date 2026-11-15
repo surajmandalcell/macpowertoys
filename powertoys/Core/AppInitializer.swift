@@ -39,7 +39,6 @@ final class AppInitializer {
                 MainActor.assumeIsolated {
                     guard let self else { return }
                     self.formattingRevision &+= 1
-                    SystemMonitorService.current?.refreshMenuFormatting()
                 }
             }
         }
@@ -68,7 +67,6 @@ final class AppInitializer {
         if SettingsManager.shared.isToolEnabled("input-devices") {
             InputDevicesManager.shared.refresh()
         }
-        SystemMonitorService.shared.startFromStoredSettings()
         if SettingsManager.shared.isToolEnabled("mac-tweaks") {
             MicLockService.shared.startIfNeeded()
         }

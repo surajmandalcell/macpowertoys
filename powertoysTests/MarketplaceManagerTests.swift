@@ -18,7 +18,7 @@ final class MarketplaceManagerTests: XCTestCase {
     }
 
     private static let builtInToolIDs: Set<String> = [
-        "rclone", "logs", "ruler", "awake", "color-picker", "text-extractor", "input-devices", "system-care", "system-monitor"
+        "rclone", "logs", "ruler", "awake", "color-picker", "text-extractor", "input-devices", "system-care"
     ]
 
     private static let host = HostEnvironment(

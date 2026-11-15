@@ -197,7 +197,6 @@ final class TrayPopoverLayoutTests: XCTestCase {
     func testTrayCorrectionPassKeepsGroupsAlignedAndErrorsOnDemand() throws {
         let source = try sourceFile("Views/MenuPanels")
 
-        XCTAssertTrue(source.contains("Spacer(minLength: OnePlusMetrics.actionSpacing)"))
         XCTAssertTrue(source.contains("@State private var showsError = false"))
         XCTAssertTrue(source.contains("if showsError, let error = job.errorMessage"))
         XCTAssertTrue(source.contains("symbol: ToolGlyph.textExtractor.symbol"))

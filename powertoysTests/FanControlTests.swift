@@ -171,7 +171,7 @@ final class FanControlTests: XCTestCase {
     func testFanViewStopsPollingWhileItsLayoutStaysMounted() async throws {
         let service = FanControlService.shared
         let owner = "fan-view-visibility-test"
-        let host = NSHostingView(rootView: FanControlView(owner: owner, compact: true)
+        let host = NSHostingView(rootView: FanControlView(owner: owner)
             .environment(\.onePlusIsVisible, false))
         let window = NSWindow(contentRect: NSRect(x: -10000, y: -10000, width: 338, height: 30),
                               styleMask: [.titled], backing: .buffered, defer: false)
@@ -180,7 +180,7 @@ final class FanControlTests: XCTestCase {
         window.orderBack(nil)
         defer { window.close(); window.contentView = nil; service.stop(owner: owner) }
         for visible in [false, true, false, true, false] {
-            host.rootView = FanControlView(owner: owner, compact: true)
+            host.rootView = FanControlView(owner: owner)
                 .environment(\.onePlusIsVisible, visible)
             host.layoutSubtreeIfNeeded()
             try await Task.sleep(for: .milliseconds(50))

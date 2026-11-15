@@ -11,7 +11,7 @@ final class MainPanelTests: XCTestCase {
         defer { defaults.removePersistentDomain(forName: domain) }
         let panels = DiagnosticsMenuPanels(defaults: defaults)
         var builds = 0
-        panels.makeCaptureContent = { _, _, _ in
+        panels.makeCaptureContent = { _, _ in
             builds += 1
             return AnyView(Color.clear.frame(width: 356, height: 120))
         }

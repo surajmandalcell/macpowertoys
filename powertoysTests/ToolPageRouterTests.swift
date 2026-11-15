@@ -8,7 +8,7 @@ struct ToolPageRouterTests {
     @Test func closeWindowDiagnosticsRequireOneBoundedToolID() throws {
         for scheme in ["macpowertoys", "powertoys"] {
             for tool in ["main", "rclone", "logs", "awake", "color-picker", "text-extractor",
-                         "input-devices", "system-care", "disk-explorer", "system-monitor", "nettoys", "mac-tweaks"] {
+                         "input-devices", "system-care", "disk-explorer", "nettoys", "mac-tweaks"] {
                 #expect(DiagnosticsRoute.parse(try #require(URL(string: "\(scheme)://diagnostics/close-window/\(tool)")))
                     == .closeWindow(tool))
                 #expect(DiagnosticsRoute.parse(try #require(URL(string: "\(scheme)://diagnostics/native-close/\(tool)")))
@@ -45,8 +45,8 @@ struct ToolPageRouterTests {
 
     @Test func parsesToolAndPageForBothSchemes() throws {
         for scheme in ["macpowertoys", "powertoys"] {
-            #expect(OpenToolRoute.parse(try #require(URL(string: "\(scheme)://open/system-monitor/cpu")))
-                == OpenToolRoute(tool: "system-monitor", page: "cpu"))
+            #expect(OpenToolRoute.parse(try #require(URL(string: "\(scheme)://open/nettoys/scanner")))
+                == OpenToolRoute(tool: "nettoys", page: "scanner"))
             #expect(OpenToolRoute.parse(try #require(URL(string: "\(scheme)://open/main/rclone")))
                 == OpenToolRoute(tool: "main", page: "rclone"))
         }
@@ -126,7 +126,7 @@ struct ToolPageRouterTests {
         panels.close(clearCache: true)
         let factory = panels.makeCaptureContent
         let defaults = UserDefaults.standard
-        let keys = ["tray.selectedTab.v2", "systemMonitor.trayPage"]
+        let keys = ["tray.selectedTab.v2"]
         let saved = keys.map { defaults.object(forKey: $0) }
         defer {
             panels.close(clearCache: true)
@@ -138,17 +138,17 @@ struct ToolPageRouterTests {
         }
         var built: [DiagnosticsPanel] = []
         var resize: ((CGFloat) -> Void)?
-        panels.makeCaptureContent = { panel, _, onHeightChange in
+        panels.makeCaptureContent = { panel, onHeightChange in
             built.append(panel)
             resize = onHeightChange
-            #expect(defaults.string(forKey: panel == .main ? keys[0] : keys[1]) == "home")
+            #expect(defaults.string(forKey: keys[0]) == "home")
             return AnyView(Text("Panel body").frame(width: 356, height: 160))
         }
         let foreground = NSWorkspace.shared.frontmostApplication?.processIdentifier
         for scheme in ["macpowertoys", "powertoys"] {
-            for panel in [DiagnosticsPanel.main, .systemMonitor] {
+            for panel in [DiagnosticsPanel.main] {
                 let url = try #require(URL(string: "\(scheme)://diagnostics/open-panel/\(panel.rawValue)?tab=home"))
-                defaults.set(panel == .main ? "rclone" : "memory", forKey: panel == .main ? keys[0] : keys[1])
+                defaults.set("rclone", forKey: keys[0])
                 DeepLinkHandler.shared.handle(url: url)
                 for _ in 0..<200 where panels.captureWindow == nil {
                     try await Task.sleep(for: .milliseconds(5))
@@ -168,14 +168,15 @@ struct ToolPageRouterTests {
                 panels.close(clearCache: true)
             }
         }
-        #expect(built == [.main, .systemMonitor, .main, .systemMonitor])
+        #expect(built == [.main, .main])
     }
 
     @Test func diagnosticsStayUnderDiagnosticsHost() throws {
-        for panel in ["main", "system-monitor", "portman"] {
+        for panel in ["main", "portman"] {
             #expect(DiagnosticsPanel.parse(try #require(URL(string: "macpowertoys://diagnostics/open-panel/\(panel)"))) != nil)
         }
         for value in ["powertoys://open/open-panel/main", "powertoys://diagnostics/open-panel/unknown",
+                      "powertoys://diagnostics/open-panel/system-monitor",
                       "powertoys://diagnostics/open-panel/main?extra=1"] {
             #expect(DiagnosticsPanel.parse(try #require(URL(string: value))) == nil)
         }
@@ -185,11 +186,11 @@ struct ToolPageRouterTests {
         let router = ToolPageRouter()
         router.post(tool: "main", page: "rclone")
         router.post(tool: "main", page: "awake")
-        router.post(tool: "system-monitor", page: "cpu")
+        router.post(tool: "disk-explorer", page: "device/disk4")
         #expect(router.take(tool: "main", matching: "rclone") == nil)
         #expect(router.take(tool: "main")?.page == "awake")
         #expect(router.take(tool: "main") == nil)
-        #expect(router.take(tool: "system-monitor")?.page == "cpu")
+        #expect(router.take(tool: "disk-explorer")?.page == "device/disk4")
     }
 
     @MainActor @Test func diagnosticsSelectOnlyKnownPanelTabs() throws {
@@ -200,8 +201,6 @@ struct ToolPageRouterTests {
             (.main, "tray.selectedTab.v2", [("home", "home"), ("cloud-sync", "rclone"),
                 ("input-devices", "input-devices"), ("system-care", "system-care"),
                 ("nettoys", "nettoys")]),
-            (.systemMonitor, "systemMonitor.trayPage", ["home", "cpu", "gpu", "memory", "network",
-                "disk", "battery", "sensors", "processes"].map { ($0, $0) }),
             (.portman, "portman.selectedPage", [("servers", "Servers"), ("forward", "Forward"), ("settings", "Settings")])
         ]
         for (panel, key, tabs) in panels {
@@ -228,14 +227,13 @@ struct ToolPageRouterTests {
     @MainActor @Test func diagnosticsFindFlattenedMainStatusLabelWithoutGuessing() {
         let main = NSStatusBarButton(frame: .zero)
         let monitor = NSStatusBarButton(frame: .zero)
-        monitor.identifier = NSUserInterfaceItemIdentifier("SystemMonitorMenuBarItem")
+        monitor.identifier = NSUserInterfaceItemIdentifier("individual-menu.color-picker")
         let portman = NSStatusBarButton(frame: .zero)
         portman.setAccessibilityIdentifier("portman.statusItem")
         let individual = NSStatusBarButton(frame: .zero)
         individual.identifier = NSUserInterfaceItemIdentifier("individual-menu.awake")
         let buttons = [individual, monitor, main, portman]
         #expect(DiagnosticsPanel.main.matchingButton(in: buttons) === main)
-        #expect(DiagnosticsPanel.systemMonitor.matchingButton(in: buttons) === monitor)
         #expect(DiagnosticsPanel.portman.matchingButton(in: buttons) === portman)
         #expect(DiagnosticsPanel.main.matchingButton(in: [main, NSStatusBarButton(frame: .zero)]) == nil)
         #expect(DiagnosticsPanel.main.matchingButton(in: [monitor, portman, individual]) == nil)
@@ -249,10 +247,9 @@ struct ToolPageRouterTests {
         let router = DiagnosticsMenuPanels(defaults: defaults)
         defer { router.close() }
         var built: [DiagnosticsPanel] = []
-        router.makeCaptureContent = { panel, _, _ in
+        router.makeCaptureContent = { panel, _ in
             built.append(panel)
-            #expect(defaults.string(forKey: panel == .main ? "tray.selectedTab.v2" : "systemMonitor.trayPage")
-                == (panel == .main ? "rclone" : "memory"))
+            #expect(defaults.string(forKey: "tray.selectedTab.v2") == "rclone")
             return AnyView(Text("Panel body").frame(width: 356, height: 160))
         }
         let wasActive = NSApp.isActive
@@ -263,15 +260,6 @@ struct ToolPageRouterTests {
         #expect(router.captureWindow?.contentView?.frame.height == 160)
         #expect(defaults.string(forKey: "tray.selectedTab.v2") == "rclone")
         #expect(NSApp.isActive == wasActive)
-        let firstWindow = try #require(router.captureWindow)
-        router.open(.systemMonitor, tab: "memory")
-        for _ in 0..<200 where router.captureWindow == nil {
-            try await Task.sleep(for: .milliseconds(5))
-        }
-        #expect(built == [.main, .systemMonitor])
-        #expect(firstWindow.isVisible == false)
-        #expect(firstWindow.contentViewController != nil)
-        #expect(defaults.string(forKey: "systemMonitor.trayPage") == "memory")
         router.close()
         #expect(router.captureWindow == nil)
     }

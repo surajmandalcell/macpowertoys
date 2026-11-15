@@ -1,8 +1,8 @@
 # System Tools Troubleshooting
 
 NetToys, Input Devices, System Cleaner with Mole, and shared background
-resource rules. Task Manager, Fan, and Remote Stats are in
-[Task Manager](task-manager.md). `DESIGN.md` owns every size and color.
+resource rules. Menu metrics, top processes, and Fan are in
+[Menu metrics and Fan](menu-metrics-fan.md). `DESIGN.md` owns every size and color.
 
 ## Local Unit Tests Must Not Activate The App
 
@@ -100,7 +100,7 @@ resource rules. Task Manager, Fan, and Remote Stats are in
   only from the visible user action; denied or restricted access opens
   System Settings.
 - **Check:** Run `testHistoryDistinguishesEmptyPeriodFromEmptyArchive`.
-  Alternate NetToys and Task Manager in the signed app; each click responds,
+  Alternate NetToys and System Care in the signed app; each click responds,
   the last selection wins, and no Location dialog appears before the click.
 
 ### Scanner Results, Targets, And Imports

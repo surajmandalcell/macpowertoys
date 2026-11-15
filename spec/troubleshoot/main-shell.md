@@ -389,9 +389,8 @@ References: [suppressed launch](https://developer.apple.com/documentation/swiftu
 
 - **Invariant:** One reorderable icon tab group leads; Open App, Settings,
   and Quit form one fixed trailing group. Home has the Pick Color, Extract
-  Text, and Ruler action row, then Kwake, then Fan (when Task Manager is
-  enabled). Complex tabs default to RSync UI, Input Devices, System Cleaner,
-  NetToys. Task Manager has its own panel. App-only tools such as Event
+  Text, and Ruler action row, then Kwake, then Fan. Complex tabs default to
+  RSync UI, Input Devices, System Cleaner, NetToys. App-only tools such as Event
   Viewer never appear. Order and selection persist. Every tab gets the
   shared body width before measuring its natural height. Empty states are
   small cards; omit a separate empty transfer card when remote cards already
@@ -432,24 +431,23 @@ References: [suppressed launch](https://developer.apple.com/documentation/swiftu
 
 ### Fan And Kwake Rows
 
-- **Invariant:** Main Home, Task Manager Home, and Sensors reuse
-  `FanControlView` with separate visibility owners; other pages omit Fan.
+- **Invariant:** Only main Home shows `FanControlView`, with its own
+  visibility owner; other pages omit Fan.
   Fan uses the shared control row; Fan, RPM, and utilization share one line.
   When control is unavailable, a warning glyph opens the built-in helper
   approval flow; no package or Terminal command. The app never approves its
   own background item.
-- **Check:** Inspect all three locations at production width in both
+- **Check:** Inspect main Home at production width in both
   appearances, with live RPM and disabled controls.
 
 ## Tool Glyphs And Status Image Size
 
-- **Invariant:** `ToolGlyph` owns 13 unique glyphs drawn from each tool's own
+- **Invariant:** `ToolGlyph` owns 12 unique glyphs drawn from each tool's own
   icon. Asset glyphs such as `SystemCareGlyph` are marked
   `ToolGlyph.isAsset` and drawn through `assetImage` or `ToolGlyphImage`,
   never `Image(systemName:)`. Portman uses the original `PortmanStatusGlyph`,
   copied at 14 pt as a template, without normalization. `StatusItemIcon`
   caches other templates on a 14 pt canvas with an 11.2 pt ink span,
-  rasterizing SF images once at 4x. Use the Task Manager glyph when one metric
-  shows; keep Value Only behavior.
+  rasterizing SF images once at 4x.
 - **Check:** `ToolGlyphTests`, including exact Portman pixels at 1x, 2x, 4x.
   After install, capture only the menu bar with `screencapture -R`.

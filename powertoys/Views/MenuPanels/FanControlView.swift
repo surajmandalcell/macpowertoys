@@ -6,29 +6,19 @@ import SwiftUI
 struct FanControlView: View {
     nonisolated private static let presetChoices = FanPreset.allCases.map { (Optional($0), $0.rawValue) }
     let owner: String
-    var compact = false
 
     @State private var service = FanControlService.shared
     @State private var showsSetup = false
-    @Environment(\.colorSchemeContrast) private var contrast
     @Environment(\.onePlusIsVisible) private var isVisible
 
     private var display: FanControlPresentation { service.display }
     private var detail: String { display.detail }
 
     var body: some View {
-        VStack(alignment: .leading, spacing: compact ? 6 : 12) {
-            if compact { compactContent } else { expandedContent }
+        VStack(alignment: .leading, spacing: 6) {
+            compactContent
         }
-        .padding(.horizontal, compact ? 1 : 0)
-        .padding(.vertical, 0)
-        .background(compact ? Color.clear : TaskManagerTheme.card,
-                    in: RoundedRectangle(cornerRadius: TaskManagerTheme.panelRadius))
-        .overlay {
-            RoundedRectangle(cornerRadius: TaskManagerTheme.panelRadius)
-                .strokeBorder(compact ? Color.clear : TaskManagerTheme.line,
-                              lineWidth: contrast == .increased ? 1.5 : 1)
-        }
+        .padding(.horizontal, 1)
         .onChange(of: isVisible, initial: true) {
             if isVisible { service.start(owner: owner) }
             else {
@@ -85,77 +75,31 @@ struct FanControlView: View {
                 .fixedSize(horizontal: false, vertical: true)
             if display.canRestoreAutomatic && !display.canControl {
                 Button("Restore Auto") { service.select(.auto) }
-                    .taskManagerControl()
+                    .onePlusControl()
                     .disabled(display.isChanging)
                     .help("Return fan control to macOS")
             }
             HStack(spacing: 8) {
                 if display.needsApproval {
                     Button("Open Login Items") { SMAppService.openSystemSettingsLoginItems() }
-                        .taskManagerControl(.primary)
+                        .onePlusControl(.primary)
                 } else if !display.canControl {
                     Button(display.needsHelperUpdate ? "Update Fan Helper" : "Enable Fan Control") {
                         Task { await service.enableControl() }
                     }
-                    .taskManagerControl(.primary)
+                    .onePlusControl(.primary)
                 }
                 Button("Check Again") { Task { await service.refresh() } }
-                    .taskManagerControl()
+                    .onePlusControl()
             }
             .frame(minHeight: 34)
         }
         .frame(width: 292, alignment: .leading)
         .padding(OnePlusMetrics.spacing[6])
-        .foregroundStyle(TaskManagerTheme.ink)
-        .background(TaskManagerTheme.card)
+        .foregroundStyle(OnePlusTheme.ink)
+        .background(OnePlusTheme.card)
         .onePlusFocusPolicy()
         .onePlusAppAppearance()
-    }
-
-    private var expandedContent: some View {
-        VStack(spacing: 0) {
-            OnePlusCardHeader("Fan", systemImage: "fanblades") {
-                Text(display.status)
-                    .font(.system(size: 10, design: .monospaced))
-                    .foregroundStyle(TaskManagerTheme.secondary)
-            }
-            OnePlusSettingRow(
-                "Fan control",
-                controlWidth: 160
-            ) {
-                HStack(spacing: OnePlusMetrics.spacing[0]) {
-                    if display.hasError || (display.hasCompletedRead && !display.canControl) { setupButton }
-                    Toggle("Fan control", isOn: fanControlBinding)
-                        .labelsHidden()
-                        .toggleStyle(OnePlusSwitchStyle())
-                        .disabled(display.isChanging)
-                        .accessibilityIdentifier("fan-control.enabled")
-                }
-                .help(detail)
-                .accessibilityHint(detail)
-            }
-            OnePlusSettingRow(
-                "Preset",
-                controlWidth: 160,
-                separator: false
-            ) {
-                presetButtons
-            }
-        }
-    }
-
-    private var fanControlBinding: Binding<Bool> {
-        Binding(
-            get: { display.selectedPreset != nil && display.selectedPreset != .auto },
-            set: { enabled in
-                if enabled {
-                    if display.canControl { service.select(.cool) }
-                    else { showsSetup = true }
-                } else if display.canControl || display.canRestoreAutomatic {
-                    service.select(.auto)
-                }
-            }
-        )
     }
 
     private var activePreset: FanPreset? {

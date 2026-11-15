@@ -116,7 +116,7 @@ extension EnvironmentValues {
 }
 
 nonisolated enum DiagnosticsPanel: String, CaseIterable, Sendable {
-    case main, systemMonitor = "system-monitor", portman
+    case main, portman
 
     nonisolated static func parse(_ url: URL) -> Self? {
         guard case .openPanel(let panel, _) = DiagnosticsRoute.parse(url) else { return nil }
@@ -132,11 +132,6 @@ nonisolated enum DiagnosticsPanel: String, CaseIterable, Sendable {
                   tab == .home || TrayPopoverLayout.defaultComplexTabs.contains(tab) else { return }
             if defaults.string(forKey: "tray.selectedTab.v2") != tab.rawValue {
                 defaults.set(tab.rawValue, forKey: "tray.selectedTab.v2")
-            }
-        case .systemMonitor:
-            guard let page = SystemMonitorTrayPage(rawValue: id) else { return }
-            if defaults.string(forKey: "systemMonitor.trayPage") != page.rawValue {
-                defaults.set(page.rawValue, forKey: "systemMonitor.trayPage")
             }
         case .portman:
             let pages: [String: PortmanPanelView.Page] = ["servers": .local, "forward": .forward, "settings": .settings]
@@ -161,8 +156,6 @@ nonisolated enum DiagnosticsPanel: String, CaseIterable, Sendable {
     func matchingButton(in candidates: [NSStatusBarButton]) -> NSStatusBarButton? {
         let button = candidates.first { button in
             switch self {
-            case .systemMonitor: button.accessibilityIdentifier() == "SystemMonitorMenuBarItem"
-                || button.identifier?.rawValue == "SystemMonitorMenuBarItem"
             case .portman: button.accessibilityIdentifier() == "portman.statusItem"
             case .main:
                 // The main item is owned by SwiftUI, so its label is an accessibility child.
@@ -175,7 +168,6 @@ nonisolated enum DiagnosticsPanel: String, CaseIterable, Sendable {
         // All other status items have identifiers owned by the native controllers.
         let remaining = candidates.filter {
             $0.identifier?.rawValue.hasPrefix("individual-menu.") != true
-                && DiagnosticsPanel.systemMonitor.matchingButton(in: [$0]) == nil
                 && DiagnosticsPanel.portman.matchingButton(in: [$0]) == nil
         }
         return remaining.count == 1 ? remaining[0] : nil

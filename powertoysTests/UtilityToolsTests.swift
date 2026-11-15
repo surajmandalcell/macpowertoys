@@ -18,7 +18,6 @@ final class UtilityToolsTests: XCTestCase {
         "InputDevicesLogoA",
         "SystemCareLogo",
         "DiskExplorerLogo",
-        "SystemMonitorLogo",
         "NetToysLogo",
         "MacTweaksLogo"
     ]
@@ -146,7 +145,6 @@ final class UtilityToolsTests: XCTestCase {
         XCTAssertEqual(AppDelegate.dockIconAsset(for: "input-devices"), "InputDevicesLogoA")
         XCTAssertEqual(AppDelegate.dockIconAsset(for: "system-care"), "SystemCareLogo")
         XCTAssertEqual(AppDelegate.dockIconAsset(for: "disk-explorer"), "DiskExplorerLogo")
-        XCTAssertEqual(AppDelegate.dockIconAsset(for: "system-monitor"), "SystemMonitorLogo")
         XCTAssertEqual(AppDelegate.dockIconAsset(for: "nettoys"), "NetToysLogo")
         XCTAssertEqual(AppDelegate.dockIconAsset(for: "mac-tweaks"), "MacTweaksLogo")
         XCTAssertEqual(AppDelegate.dockIconAsset(for: "main"), "AppIcon")
@@ -331,7 +329,7 @@ final class UtilityToolsTests: XCTestCase {
         }
         for content in ["RcloneSettingsView()", "AwakeSettingsView()",
                         "MacTweaksSettingsContent()", "InputDevicesSettingsContent()",
-                        "SystemMonitorSettingsContent()", "SystemCareSettingsCards(mode:",
+                        "SystemCareSettingsCards(mode:",
                         "MacPowerToysNetToysSettingsView()", "PortmanSettingsView()", "DiskExplorerSettingsView(showsEnableControl: false)",
                         "ColorPickerSettingsView()", "TextExtractorSettingsView()", "LogsSettingsView()"] {
             XCTAssertTrue(source.contains(content), content)

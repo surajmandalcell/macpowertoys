@@ -47,7 +47,6 @@ render TextExtractorLogo text-extractor
 render InputDevicesLogoA input-devices
 render SystemCareLogo system-care
 render DiskExplorerLogo disk-explorer
-render SystemMonitorLogo system-monitor
 render NetToysLogo nettoys
 render PortmanLogo portman
 
