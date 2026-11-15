@@ -129,14 +129,33 @@ mockups are in `docs/design/v15/`.
   panel keeps the metric tiles, the top processes, and the Fan row on a
   small sampler that runs only while the panel is open. The product
   continues as Task Manager X (`../task_manager_x`).
+- Tools that move out (owner, 2026-11-16): Partition Manager, System
+  Cleaner, and NetToys leave the app and continue as their own apps:
+  Sam's Partition Manager (`../sams_partition_manager`), Sam's System
+  Cleaner (`../sams_system_cleaner`), and Sam's NetToys (`../nettoys`).
+  RSync UI and Event Viewer stay for now. Nine tools stay: Color Picker,
+  Text Extractor, Ruler, Kwake, Mac Tweaks, Input Devices, Portman,
+  RSync UI, and Event Viewer.
 - Applets (owner, 2026-11-16): the small tool and settings windows are
-  called applets. The large tools will leave the app; which ones is open.
-  Every applet gets the version 15 look. Settled: the title area has the
-  body color with no separator or border under it, and a destructive
-  action such as "Reset to Factory Defaults" is a full-width red button
-  at the bottom. Open: the applet shell, the control look, and motion.
-  The owner wants premium motion; the pick will replace the "Motion"
-  section below, which still binds every shipped surface until then.
+  called applets, and every applet gets the version 15 look:
+  - Shell "Filled groups": the title area has the body color with no
+    separator or border under it; a caption sits above each group; a
+    group is a filled surface with no border and a 10 pt radius; rows
+    inside it have hairline separators.
+  - Primary button: soft gray fill with no border (`#EBEBED` light,
+    `#2C2C30` dark; hover `#E2E2E5` / `#34343A`; pressed `#D8D8DC` /
+    `#3C3C42`). Never the white or black fill.
+  - Destructive action such as "Reset to Factory Defaults": a full-width
+    button at the bottom with a red tint fill (red at about 14 percent)
+    and red text (`#B02D24` light, `#FFA8A0` dark).
+  - Motion "Quiet": only real state changes move, in 120 to 160 ms with
+    an ease-out curve. A segment thumb and a switch or slider knob
+    slide; a panel or sheet fades with a 4 pt move. No scale on press,
+    no stagger, no hover motion, nothing while idle; numbers change at
+    once; Reduce Motion makes every change instant. This replaces the
+    "Motion" section below for each surface when it is converted.
+  - Open: the control look (slider, segmented control, stepper, switch).
+  The reference renders are `docs/design/v15/applet-*.png`.
 - Rejected: the first round of ten look mockups (placeholder icons).
 
 ## Overview

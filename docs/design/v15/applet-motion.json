@@ -1,0 +1,168 @@
+{
+  "group": "Applet motion",
+  "lead": "Pick how the applets and the menu panel move. Every option runs the same scene; click the controls or use the Replay links.",
+  "options": [
+    {
+      "key": "motion-fluid",
+      "name": "Fluid springs",
+      "sub": "Springs on real state changes only. Nothing moves on hover or while idle.",
+      "recommended": true,
+      "keep": false,
+      "size": {
+        "w": 820,
+        "h": 658
+      },
+      "rows": [
+        [
+          "What moves",
+          "The segmented thumb, the switch knobs, and the tab thumb slide; buttons press to 97 percent; the panel, the applet, and the sheet open; numbers count to the new value on reset."
+        ],
+        [
+          "Timing",
+          "Knobs and thumbs use a spring of response 0.30 s and damping 0.80 (390 ms, 1.5 percent overshoot). Sliders on reset use 0.40 s and 0.86. The panel opens in 180 ms and the applet in 200 ms from scale 0.96. The sheet drops with a spring of 0.36 s and 0.84. Reset staggers controls by 18 ms."
+        ],
+        [
+          "Best at",
+          "It feels like a native Mac or iOS app: motion starts on the same frame as the click and a second click reverses it from where it is."
+        ],
+        [
+          "Cost",
+          "About ten spring values to keep in one motion token file. Each move is one SwiftUI animation on a state change, so the cost at run time is close to zero."
+        ]
+      ]
+    },
+    {
+      "key": "motion-quiet",
+      "name": "Quiet",
+      "sub": "Only the essential moves, short and without bounce.",
+      "recommended": false,
+      "keep": false,
+      "size": {
+        "w": 820,
+        "h": 658
+      },
+      "rows": [
+        [
+          "What moves",
+          "Thumbs and knobs slide, and the panel, the applet, and the sheet fade with a 4 px move. Buttons do not scale, controls do not stagger, and numbers change at once."
+        ],
+        [
+          "Timing",
+          "Every move uses cubic-bezier(0.25, 1, 0.5, 1). Knobs and thumbs take 140 ms, sliders on reset 160 ms, the panel, the applet, and the sheet 160 ms to open and 120 ms to close."
+        ],
+        [
+          "Best at",
+          "It is calm and quick. Nobody will call it web-like, and it keeps the spirit of the instant rule."
+        ],
+        [
+          "Cost",
+          "The least work after Instant. It can feel a little flat next to Apple apps, because nothing has spring."
+        ]
+      ]
+    },
+    {
+      "key": "motion-instant",
+      "name": "Instant (keep as is)",
+      "sub": "The rule of today: every change happens in one frame.",
+      "recommended": false,
+      "keep": true,
+      "size": {
+        "w": 820,
+        "h": 658
+      },
+      "rows": [
+        [
+          "What moves",
+          "Nothing slides or scales. Only the panel open and the sheet keep a 100 ms fade, like the system."
+        ],
+        [
+          "Timing",
+          "All controls change in 0 ms. The panel and the sheet fade in and out in 100 ms, linear."
+        ],
+        [
+          "Best at",
+          "It is the fastest and it is the rule that ships today, so it needs no work."
+        ],
+        [
+          "Cost",
+          "No work. It does not give the premium feel you asked for, and a jump from one state to the next is easy to miss."
+        ]
+      ]
+    },
+    {
+      "key": "motion-rich",
+      "name": "Expressive",
+      "sub": "Fluid springs plus one more layer of motion.",
+      "recommended": false,
+      "keep": false,
+      "size": {
+        "w": 820,
+        "h": 658
+      },
+      "rows": [
+        [
+          "What moves",
+          "Everything in Fluid springs. Also the applet sections rise in 30 ms apart, the reset button fills and turns into a check, the color well ripples, and panel pages slide sideways."
+        ],
+        [
+          "Timing",
+          "Sections rise 6 px in 280 ms with cubic-bezier(0.2, 0.9, 0.25, 1). The reset fill takes 520 ms and the check shows at 440 ms. The ripple takes 520 ms. Pages slide 24 px with the knob spring; the old page fades out in 100 ms and the new one fades in over 200 ms after 70 ms."
+        ],
+        [
+          "Best at",
+          "It is the most premium on the first look and in a demo, and every extra move still follows a real state change."
+        ],
+        [
+          "Cost",
+          "It can feel like too much: the section rise on every applet open and the page slide repeat many times a day. The reset fill adds 0.5 s before the check shows."
+        ]
+      ]
+    }
+  ],
+  "native": {
+    "Switch knob, segmented thumb, tab thumb": "withAnimation(.spring(response: 0.30, dampingFraction: 0.80)) on the bound value; the selection fill is one view moved with matchedGeometryEffect.",
+    "Switch knob stretch": "A custom ToggleStyle reads configuration.isPressed through a ButtonStyle wrapper and widens the knob by 5 pt with the same spring.",
+    "Button press": "A ButtonStyle with .scaleEffect(configuration.isPressed ? 0.97 : 1) and .animation(.spring(response: 0.26, dampingFraction: 0.62), value: configuration.isPressed).",
+    "Slider knob while pressed": "onEditingChanged sets a pressed flag; .scaleEffect(pressed ? 1.18 : 1) with the press spring.",
+    "Menu panel open and close": "NSPanel animator: NSAnimationContext with duration 0.18 and a CAMediaTimingFunction(controlPoints: 0.2, 0.9, 0.25, 1) on alphaValue, plus a scale of the content layer from 0.96 with the same curve, anchored at the status item.",
+    "Menu panel resize between pages": "Measure the new page, then setFrame(_:display:animate:) inside NSAnimationContext, or SwiftUI .animation(.spring(response: 0.34, dampingFraction: 0.90), value: page) on the content height.",
+    "Applet window open": "NSWindow.animationBehavior = .none, then animate the content layer from scale 0.96 and alpha 0 over 0.20 s (Quiet: alpha only with a 4 pt move).",
+    "Confirmation sheet": "beginSheet keeps the system sheet motion; a SwiftUI .sheet uses the system spring. A custom in-window sheet uses .transition(.move(edge: .top)) with .spring(response: 0.36, dampingFraction: 0.84).",
+    "Numbers that change on reset": "Text(value, format: .number).contentTransition(.numericText(value: value)) inside the same spring as the slider (response 0.40, dampingFraction 0.86).",
+    "Reset stagger": "Apply each control change in its own withAnimation(.spring(...).delay(Double(index) * 0.018)).",
+    "Expressive extras": "Section rise: .transition(.opacity.combined(with: .offset(y: 6))) with .delay(index * 0.03). Page slide: .transition(.push(from: .trailing)). Reset fill: a Rectangle with .scaleEffect(x: progress, anchor: .leading). Ripple: a stroked overlay animated with .easeOut(duration: 0.52).",
+    "Reduce Motion": "Read @Environment(\\.accessibilityReduceMotion) (AppKit: NSWorkspace.shared.accessibilityDisplayShouldReduceMotion) and use nil animations, keeping only the 100 ms fades."
+  },
+  "springs": {
+    "knob": {
+      "response": 0.3,
+      "damping": 0.8,
+      "dur": 390,
+      "overshoot": 1.5
+    },
+    "slider": {
+      "response": 0.4,
+      "damping": 0.86,
+      "dur": 510,
+      "overshoot": 0.5
+    },
+    "release": {
+      "response": 0.26,
+      "damping": 0.62,
+      "dur": 410,
+      "overshoot": 8.3
+    },
+    "resize": {
+      "response": 0.34,
+      "damping": 0.9,
+      "dur": 320,
+      "overshoot": 0
+    },
+    "sheet": {
+      "response": 0.36,
+      "damping": 0.84,
+      "dur": 470,
+      "overshoot": 0.8
+    }
+  }
+}
