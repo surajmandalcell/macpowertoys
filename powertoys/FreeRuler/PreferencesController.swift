@@ -7,12 +7,6 @@ private let rulerColorPanelIdentifier = NSUserInterfaceItemIdentifier("ruler-col
 private let rulerColorPanelOpaqueAccessibilityValue = "ruler-color-panel-alpha-hidden"
 private weak var activeRulerColorWell: RulerColorWell?
 
-private func configureRulerUtilityWindowChrome(_ window: NSWindow?) {
-    guard let window else { return }
-
-    window.titlebarAppearsTransparent = false
-}
-
 func configureOpaqueColorPicking() {
     let colorPanel = NSColorPanel.shared
     colorPanel.identifier = rulerColorPanelIdentifier
@@ -448,7 +442,7 @@ final class RulerSettingsControlsView: NSView, NSTextFieldDelegate {
     }
 
     private func configureBaseControls() {
-        OnePlusNativeForm.style(contentView)
+        RulerAppletStyle.apply(to: contentView)
         unitSegmentedControl.target = self
         unitSegmentedControl.action = #selector(setUnit(_:))
         unitSegmentedControl.segmentStyle = .rounded
@@ -590,10 +584,10 @@ final class RulerSettingsControlsView: NSView, NSTextFieldDelegate {
         formatter.minimumFractionDigits = 0
         formatter.maximumFractionDigits = 3
         formatter.numberStyle = .decimal
+        formatter.usesGroupingSeparator = false
 
         field.formatter = formatter
         field.alignment = .right
-        field.bezelStyle = .roundedBezel
         field.delegate = self
         field.target = self
         field.action = #selector(setDimensions(_:))
@@ -730,15 +724,13 @@ class PreferencesController: NSWindowController, NSWindowDelegate, NotificationP
         window?.identifier = NSUserInterfaceItemIdentifier("preferences-window")
         window?.setAccessibilityIdentifier("preferences-window")
         window?.isMovableByWindowBackground = true
-        configureRulerUtilityWindowChrome(window)
         configureOpaqueColorPicking()
         settingsControlsView.delegate = self
         settingsControlsView.configureForPreferences()
         window?.initialFirstResponder = unitSegmentedControl
         resetFactoryDefaultsButton.identifier = NSUserInterfaceItemIdentifier("reset-factory-defaults-button")
         resetFactoryDefaultsButton.setAccessibilityIdentifier("reset-factory-defaults-button")
-        resetFactoryDefaultsButton.isBordered = false
-        resetFactoryDefaultsButton.contentTintColor = NSColor(OnePlusColor.danger)
+        (resetFactoryDefaultsButton as? RulerAppletButton)?.role = .destructive
 
         subscribeToPrefs()
         subscribeToColorPanel()
@@ -1057,7 +1049,6 @@ final class RulerSettingsController: NSWindowController, NSWindowDelegate {
         window?.setAccessibilityIdentifier("ruler-settings-window")
         window?.isMovableByWindowBackground = true
         window?.isReleasedWhenClosed = false
-        configureRulerUtilityWindowChrome(window)
         window?.initialFirstResponder = unitSegmentedControl
         settingsControlsView.delegate = self
         settingsControlsView.configureForRulerSettings()
@@ -1072,8 +1063,8 @@ final class RulerSettingsController: NSWindowController, NSWindowDelegate {
         setDefaultsButton.setAccessibilityIdentifier("save-ruler-settings-as-default-button")
         setDefaultsButton.keyEquivalent = "\r"
         setDefaultsButton.keyEquivalentModifierMask = []
-        setDefaultsButton.bezelColor = NSColor(OnePlusColor.primaryFill)
-        setDefaultsButton.contentTintColor = NSColor(OnePlusColor.primaryInk)
+        (setDefaultsButton as? RulerAppletButton)?.role = .primary
+        (resetDefaultsButton as? RulerAppletButton)?.role = .plain
         subscribeToColorPanel()
         updateView()
     }

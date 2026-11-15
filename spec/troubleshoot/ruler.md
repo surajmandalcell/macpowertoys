@@ -118,15 +118,18 @@
   Settings and block the native titlebar. Interaction suspension also left the
   borderless ruler pointer-active, so an overlapping ruler could take titlebar
   drags and close-button clicks from Settings.
-- **Invariant:** Both fixed 420pt windows use active HUD material in the body
-  and opaque native titlebars. Both XIBs instantiate plain `NSWindow` objects
-  with the same titled, closable, and miniaturizable native titlebar style.
-  Do not add a custom window subclass, titlebar material, or drag overlay. They
-  use 20pt outer edges, 16pt section gaps, 8pt
-  heading gaps, and 14pt card insets. Cards use a 10pt radius and dynamic label
-  color at 5%.
-  Settings uses trailing secondary and primary actions. Defaults uses one quiet
-  destructive action. Both windows keep their autosaved positions and displays.
+- **Invariant (v15 applet, 2026-11-16):** Both fixed 420 x 500pt windows are
+  plain `NSWindow` objects (titled, closable, miniaturizable, full-size
+  content, transparent titlebar, `visibleAtLaunch="NO"`) with native traffic
+  lights and dragging. `RulerAppletWindowView` paints the body color under the
+  48pt title area with no separator and draws the title 14pt after zoom.
+  Captions sit above filled groups (10pt radius, 36pt rows, hairlines), 16pt
+  gutters. Switch, slider, and segmented drawing is the Depth style in
+  `RulerDepthControls.swift`, set as XIB custom classes; values, keys, and
+  accessibility stay native. Settings uses two equal soft buttons; Defaults uses
+  one full-width red-tint factory reset. Old autosaved frames keep their
+  top-left and are resized to 420 x 500. Do not add titlebar material or a drag
+  overlay. Both windows keep their autosaved positions and displays.
   Settings never attaches to or follows a ruler. It keeps a target reference so
   controls update the intended ruler. Closing Settings leaves the ruler open.
   Suspend the target ruler before Settings makes itself key and frontmost. Do
@@ -135,8 +138,8 @@
   The native color panel can remain a child of Settings.
 - **Check:** Compile all three XIBs. Run `RulerCoreTests` and the focused signed
   Ruler UI flow. Inspect light, dark, increased-contrast, reduced-transparency,
-  English, German, and Japanese states. Confirm each native titlebar remains
-  opaque and visibly distinct from the HUD body, with no overlap, 24pt hit frames,
+  English, German, and Japanese states. Confirm the title area shares the body
+  color with no separator, with no overlap, 24pt hit frames,
   the complete key loop, Command-W dismissal, and focus return to the ruler.
   Move Settings from the native titlebar, move the ruler, and confirm that the
   Settings window stays in place.
