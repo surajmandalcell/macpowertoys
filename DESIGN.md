@@ -111,9 +111,10 @@ version 15. Do not restyle a view ahead of that version.
 - Menu-bar panel: Linear style mixed with the data-first style. A
   two-column bento grid, a few top processes, more color on data, and real
   buttons at the bottom in place of keyboard hints. The layout is open.
-- Task Manager: organized like the Windows 11 Task Manager. It is planned
-  as a separate product with a paid advanced app and a free classic app.
-  Its name, repository, and visual themes are open.
+- Task Manager: moves to its own product, Task Manager X
+  (`../task-manager-x`, one repository): a paid advanced app with the
+  Windows 11 Task Manager organization in Linear style, and a free classic
+  app. Its decisions live in that repository's `specs/product.md`.
 - Rejected: the first round of ten look mockups (placeholder icons).
 
 ## Overview
