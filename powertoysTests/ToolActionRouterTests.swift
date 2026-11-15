@@ -191,6 +191,10 @@ final class ToolActionRouterTests: XCTestCase {
         XCTAssertNil(ToolActionRouter.request(from: try XCTUnwrap(URL(string: "https://run/ruler.open"))))
         XCTAssertNil(ToolActionRouter.request(from: try XCTUnwrap(URL(string: "macpowertoys://open/ruler.open"))))
         XCTAssertNil(ToolActionRouter.request(from: try XCTUnwrap(URL(string: "macpowertoys://run/unknown.action"))))
+        for malformed in ["run/ruler/settings", "run/ruler.settings/extra", "run/ruler", "run"] {
+            XCTAssertNil(ToolActionRouter.request(from: try XCTUnwrap(URL(string: "macpowertoys://\(malformed)"))),
+                         malformed)
+        }
         for removedAction in ["ruler.new-horizontal", "ruler.new-vertical", "ruler.new-joined", "ruler.measure"] {
             XCTAssertNil(ToolActionRouter.request(
                 from: try XCTUnwrap(URL(string: "macpowertoys://run/\(removedAction)"))

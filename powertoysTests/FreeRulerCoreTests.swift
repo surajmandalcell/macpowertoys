@@ -1630,6 +1630,36 @@ final class FreeRulerCoreTests: XCTestCase {
         XCTAssertFalse(settingsWindow.isVisible)
     }
 
+    func testBackgroundRulerSettingsRouteNeverCreatesOrShowsRulerOverlay() {
+        withRestoredRulerPreferences {
+            withRestoredRulerSetState {
+                let appDelegate = makeRulerAppDelegate()
+                appDelegate.freeRulerDidInitialize = true
+
+                appDelegate.performFreeRulerAction(.rulerSettings, activateApp: false)
+                XCTAssertTrue(appDelegate.rulerManager.controllers.isEmpty, "No ruler may be created.")
+                XCTAssertNil(appDelegate.rulerSettingsController)
+
+                let hidden = appDelegate.rulerManager.addRuler(state: .createFromDefaults())
+                let spy = hidden.rulerWindow as? RulerPresentationSpy
+                appDelegate.rulerSettingsController = makeRulerSettingsController(rulerController: hidden)
+                defer {
+                    appDelegate.rulerSettingsController?.close()
+                    appDelegate.closeFreeRulerToolWindows()
+                }
+
+                appDelegate.performFreeRulerAction(.rulerSettings, activateApp: false)
+                XCTAssertEqual(appDelegate.rulerManager.controllers.count, 1)
+                XCTAssertFalse(hidden.isVisible, "Existing hidden rulers stay hidden.")
+                XCTAssertEqual(spy?.keyRequests, 0)
+                XCTAssertTrue(appDelegate.rulerSettingsController?.currentRulerController === hidden)
+
+                appDelegate.closeFreeRulerToolWindows()
+                XCTAssertTrue(appDelegate.rulerManager.controllers.isEmpty, "The close route removes every ruler.")
+            }
+        }
+    }
+
     func testRulerSettingsControllerPositionDoesNotChangeWithRulerZeroCorner() {
         withRestoredRulerPreferences {
             withRestoredRulerSetState {

@@ -282,8 +282,8 @@ final class ToolActionRouter {
     nonisolated static func request(from url: URL) -> ToolActionRequest? {
         guard DeepLinkHandler.isSupportedScheme(url.scheme), url.host == "run" else { return nil }
         let components = url.pathComponents.filter { $0 != "/" }
-        guard let value = components.first,
-              let action = ToolActionID(rawValue: value.replacingOccurrences(of: "/", with: "."))
+        guard components.count == 1, let value = components.first,
+              let action = ToolActionID(rawValue: value)
         else { return nil }
 
         let parameters = URLComponents(url: url, resolvingAgainstBaseURL: false)?

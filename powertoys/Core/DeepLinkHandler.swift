@@ -95,6 +95,10 @@ final class DeepLinkHandler {
             DiagnosticsMenuPanels.shared.close()
             return
         case .closeWindow(let id):
+            if id == "ruler" {
+                AppDelegate.current?.closeFreeRulerToolWindows()
+                return
+            }
             guard id == "main" || AppDelegate.quitCommandToolID(for: id) == id else { return }
             let windows = NSApp.windows.filter { AppDelegate.window($0, belongsTo: id) }
             AppDelegate.closeToolWindows(id, activeWindow: windows.first, windows: windows)
@@ -209,7 +213,14 @@ final class DeepLinkHandler {
                 if let prefill {
                     NotificationCenter.default.post(name: .netToysPrefill, object: prefill)
                 }
+            } else {
+                LogManager.shared.warning("Unknown open route: \(url.path)", source: "DeepLinkHandler")
             }
+
+        case "run":
+            LogManager.shared.warning(
+                "Unknown action route: \(url.path). Use run/<action>, for example run/ruler.settings.",
+                source: "DeepLinkHandler")
 
         default:
             LogManager.shared.warning("Unknown deep link host: \(url.host ?? "nil")", source: "DeepLinkHandler")

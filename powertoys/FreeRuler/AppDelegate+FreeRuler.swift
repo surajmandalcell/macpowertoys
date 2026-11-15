@@ -148,13 +148,16 @@ extension AppDelegate {
 
     @objc private func handleFreeRulerToolAction(_ notification: Notification) {
         guard let action = notification.object as? ToolActionID else { return }
+        performFreeRulerAction(action, activateApp: notification.userInfo?["activateApp"] as? Bool ?? true)
+    }
 
+    func performFreeRulerAction(_ action: ToolActionID, activateApp: Bool) {
         switch action {
         case .rulerOpen:
-            openFreeRuler(activateApp: notification.userInfo?["activateApp"] as? Bool ?? true)
-        case .rulerSettings:
-            let activateApp = notification.userInfo?["activateApp"] as? Bool ?? true
             openFreeRuler(activateApp: activateApp)
+        case .rulerSettings:
+            // A background route only shows settings; it never creates or reorders a ruler overlay.
+            if activateApp { openFreeRuler(activateApp: true) } else { initializeFreeRulerIfNeeded() }
             openRulerSettings(self, activateApp: activateApp)
         default:
             break
@@ -180,21 +183,23 @@ extension AppDelegate {
 
 extension AppDelegate {
     func openFreeRuler(activateApp: Bool = true) {
-        if !freeRulerDidInitialize {
-            if AppRuntime.isUITesting {
-                resetFreeRulerPreferences()
-            }
-            configureOpaqueColorPicking()
-            subscribeToPrefs()
-            updateDisplay()
-            rulerManager.setApplicationActive(NSApp.isActive)
-            restoreSavedRulers()
-            freeRulerDidInitialize = true
-        }
-
+        initializeFreeRulerIfNeeded()
         showRulers(activateApp: activateApp)
         if activateApp { NSApp.activate(ignoringOtherApps: true) }
         updateFreeRulerMenuContext(for: NSApp.keyWindow)
+    }
+
+    func initializeFreeRulerIfNeeded() {
+        guard !freeRulerDidInitialize else { return }
+        if AppRuntime.isUITesting {
+            resetFreeRulerPreferences()
+        }
+        configureOpaqueColorPicking()
+        subscribeToPrefs()
+        updateDisplay()
+        rulerManager.setApplicationActive(NSApp.isActive)
+        restoreSavedRulers()
+        freeRulerDidInitialize = true
     }
 
     func updateFreeRulerForApplicationActivation(_ isActive: Bool) {
@@ -515,7 +520,10 @@ extension AppDelegate {
     }
 
     private func openRulerSettings(_ sender: Any, activateApp: Bool) {
-        guard let controller = rulerManager.activeController else { return }
+        guard let controller = rulerManager.activeController else {
+            LogManager.shared.info("Ruler Settings needs a ruler; none exists.", source: "Ruler")
+            return
+        }
 
         if rulerSettingsController == nil {
             rulerSettingsController = RulerSettingsController(rulerController: controller)
