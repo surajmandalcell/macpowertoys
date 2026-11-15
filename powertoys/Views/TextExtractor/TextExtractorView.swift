@@ -8,7 +8,6 @@ enum TextExtractorLayout {
     static let settingsContentEstimate = maximumWindowHeight - OnePlusLinearMetrics.appletTitlebar
         - OnePlusLinearMetrics.appletBottom
     static let historyRowHeight = OnePlusLinearMetrics.appletRow
-    static let selectWidth: CGFloat = 110
     /// Title area and the History caption above the rows; the bottom gutter below them.
     static let historyChrome = OnePlusLinearMetrics.appletTitlebar + OnePlusLinearMetrics.appletCaptionHeight
         + OnePlusLinearMetrics.appletCaptionBelow + OnePlusLinearMetrics.appletBottom
@@ -113,7 +112,7 @@ struct TextExtractorView: View {
         VStack(alignment: .leading, spacing: 0) {
             statusBanner
             if service.history.isEmpty {
-                OnePlusEmptyState("Select text anywhere", systemImage: "viewfinder")
+                OnePlusLinearEmptyState("Select text anywhere", systemImage: "viewfinder")
                     .help("Drag a region. Recognized text is copied automatically.")
                     .frame(maxHeight: .infinity)
             } else {
@@ -136,13 +135,13 @@ struct TextExtractorView: View {
     @ViewBuilder private var statusBanner: some View {
         switch service.state {
         case .selecting:
-            OnePlusBanner("Drag to select text. Press Escape to cancel.").modifier(AppletBannerInset())
+            OnePlusLinearBanner(.info, title: "Drag to select text. Press Escape to cancel.").modifier(AppletBannerInset())
         case .recognizing:
-            OnePlusBanner("Recognizing text on this Mac…") {
+            OnePlusLinearBanner(.info, title: "Recognizing text on this Mac…") {
                 ProgressView().controlSize(.small).accessibilityLabel("Recognizing text")
             }.modifier(AppletBannerInset())
         case .permissionDenied(let message):
-            OnePlusBanner(message, tone: .warning) {
+            OnePlusLinearBanner(.warning, title: message) {
                 Button("Privacy Settings", action: openPrivacySettings)
             }.modifier(AppletBannerInset())
         case .failed(let message): OnePlusBanner(message, tone: .error).modifier(AppletBannerInset())
@@ -216,9 +215,9 @@ struct TextExtractorSettingsView: View {
     private var recognitionSettings: some View {
         OnePlusLinearAppletSection("Recognition") {
             OnePlusLinearAppletRow("Recognition quality") {
-                OnePlusLinearSelect(choices: TextRecognitionSpeed.allCases.map { ($0, $0.title) },
-                                    selection: $service.settings.speed, accessibilityLabel: "Recognition quality",
-                                    width: TextExtractorLayout.selectWidth)
+                OnePlusLinearSegmented(choices: TextRecognitionSpeed.allCases.map { ($0, $0.title) },
+                                       selection: $service.settings.speed, accessibilityLabel: "Recognition quality",
+                                       sizing: .fitted)
             }
             OnePlusLinearAppletRow("Language correction") {
                 Toggle("Use language correction", isOn: $service.settings.languageCorrection)
@@ -229,7 +228,7 @@ struct TextExtractorSettingsView: View {
                     .toggleStyle(OnePlusLinearSwitchStyle())
             }
             OnePlusLinearAppletRow("Preferred languages", detail: "Empty means automatic.") {
-                OnePlusTextField("en-US, fr-FR", text: $languages, onSubmit: applyLanguages)
+                OnePlusLinearTextField("en-US, fr-FR", text: $languages, onSubmit: applyLanguages)
                     .frame(width: OnePlusMetrics.controlColumn)
                     .accessibilityLabel("Preferred languages")
                     .onChange(of: languages) { applyLanguages() }

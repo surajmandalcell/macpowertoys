@@ -224,8 +224,8 @@ struct InputScrollProfileCard: View {
             }
             .help("Apply this profile to \(title.lowercased()) scroll events.")
             OnePlusLinearAppletRow("Direction") {
-                OnePlusLinearSelect(choices: [(false, "System"), (true, "Reversed")], selection: $profile.reverseVertical,
-                                    accessibilityLabel: "\(title) scroll direction")
+                OnePlusLinearSegmented(choices: [(false, "System"), (true, "Reversed")], selection: $profile.reverseVertical,
+                                       accessibilityLabel: "\(title) scroll direction", sizing: .fitted)
             }
             .help("Keep the macOS scroll direction or reverse it.")
             .disabled(!profile.enabled)

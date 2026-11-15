@@ -2,45 +2,35 @@ import AppKit
 import SwiftUI
 import OnePlusUI
 
-// shortcut: v15 applet values live here until OnePlusUI has them; move to OnePlusUI 1.2.0 applet tokens when the app adopts it.
+/// The OnePlusUI applet tokens as AppKit colors for the native Ruler windows.
 enum RulerAppletColor {
-    private static func dynamic(_ name: String, light: UInt32, lightAlpha: Double = 1,
-                                dark: UInt32, darkAlpha: Double = 1) -> NSColor {
-        OnePlusLinearColor.dynamic("RulerApplet.\(name)", light: light, lightAlpha: lightAlpha,
-                                   dark: dark, darkAlpha: darkAlpha)
-    }
-
-    static let window = dynamic("window", light: 0xFDFDFD, dark: 0x1A1A1D)
-    static let group = dynamic("group", light: 0xF5F5F6, dark: 0x28282B)
-    static let line = dynamic("line", light: 0x000000, lightAlpha: 0.05, dark: 0xFFFFFF, darkAlpha: 0.08)
+    static let window = NSColor(OnePlusLinearColor.appletWindow)
+    static let group = NSColor(OnePlusLinearColor.appletGroup)
+    static let line = NSColor(OnePlusLinearColor.appletLine)
     static let ink = NSColor(OnePlusLinearColor.ink)
-    static let secondary = dynamic("secondary", light: 0x68686F, dark: 0xC1C1C7)
-    static let muted = dynamic("muted", light: 0x82828A, dark: 0xAAABB2)
-    static let softButton = dynamic("softButton", light: 0xEBEBED, dark: 0x2C2C30)
-    static let softButtonHover = dynamic("softButtonHover", light: 0xE2E2E5, dark: 0x34343A)
-    static let softButtonPressed = dynamic("softButtonPressed", light: 0xD8D8DC, dark: 0x3C3C42)
-    static let destructiveFill = dynamic("destructiveFill", light: 0xE0493E, lightAlpha: 0.10,
-                                         dark: 0xFF6B5E, darkAlpha: 0.18)
-    static let destructiveHover = dynamic("destructiveHover", light: 0xE0493E, lightAlpha: 0.14,
-                                          dark: 0xFF6B5E, darkAlpha: 0.23)
-    static let destructivePressed = dynamic("destructivePressed", light: 0xE0493E, lightAlpha: 0.18,
-                                            dark: 0xFF6B5E, darkAlpha: 0.28)
-    /// Dark uses the rendered mockup value; `#FFA8A0` stays below APCA Lc 60 on the red tint.
-    static let destructiveText = dynamic("destructiveText", light: 0xB02D24, dark: 0xFFB8AF)
+    static let secondary = NSColor(OnePlusLinearColor.appletSecondary)
+    static let muted = NSColor(OnePlusLinearColor.appletMuted)
+    static let softButton = NSColor(OnePlusLinearColor.softButton)
+    static let softButtonHover = NSColor(OnePlusLinearColor.softButtonHover)
+    static let softButtonPressed = NSColor(OnePlusLinearColor.softButtonPressed)
+    static let destructiveFill = NSColor(OnePlusLinearColor.destructiveFill)
+    static let destructiveHover = NSColor(OnePlusLinearColor.destructiveHover)
+    static let destructivePressed = NSColor(OnePlusLinearColor.destructivePressed)
+    static let destructiveText = NSColor(OnePlusLinearColor.destructiveText)
 }
 
 enum RulerAppletMetrics {
     static let windowSize = NSSize(width: 420, height: 500)
-    static let titleArea: CGFloat = 48
+    static let titleArea = OnePlusLinearMetrics.appletTitlebar
     static let centerline = OnePlusMetrics.appletCenterline
     static let titleAfterZoom: CGFloat = 14
-    static let gutter: CGFloat = 16
-    static let row: CGFloat = 36
-    static let rowPadding: CGFloat = 12
-    static let groupRadius: CGFloat = 10
-    static let buttonRadius: CGFloat = 8
-    static let caption: CGFloat = 12
-    static let body: CGFloat = 13
+    static let gutter = OnePlusLinearMetrics.appletGutter
+    static let row = OnePlusLinearMetrics.appletRow
+    static let rowPadding = OnePlusLinearMetrics.appletRowPadding
+    static let groupRadius = OnePlusLinearMetrics.appletGroupRadius
+    static let buttonRadius = OnePlusLinearMetrics.appletDestructiveRadius
+    static let caption = OnePlusLinearMetrics.appletCaption
+    static let body = OnePlusLinearMetrics.body
 }
 
 /// The one place that styles the Ruler applet bodies. Switch, slider, and segmented drawing are the

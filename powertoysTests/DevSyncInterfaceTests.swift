@@ -319,8 +319,8 @@ final class DevSyncInterfaceTests: XCTestCase {
     // MARK: Sidebar badge
 
     func testSidebarBadgeHidesAtZeroAndShowsTheCount() {
-        XCTAssertNil(DevSyncSidebarBadge.text(0))
-        XCTAssertEqual(DevSyncSidebarBadge.text(3), "3")
+        XCTAssertNil(DevSyncSidebarBadge.count(0))
+        XCTAssertEqual(DevSyncSidebarBadge.count(3), 3)
     }
 
     // MARK: Conflict diff

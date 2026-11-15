@@ -3,7 +3,7 @@ import SwiftUI
 
 extension OnePlusWindowCanvas {
     /// The v15 form of a sidebar tool window: the same size, the Linear sidebar, and the lights on the 44 pt toolbar centerline.
-    // shortcut: `isApplet` is the only 1.2.0 way to center the lights on C = 22; use a v15 canvas flag when OnePlusUI adds one.
+    // shortcut: `isApplet` is the only 1.2.1 way to center the lights on C = 22; use a v15 canvas flag when OnePlusUI adds one.
     var linear: Self { Self(width: size.width, height: size.height, sidebarWidth: OnePlusLinearMetrics.sidebarWidth, density: density, isApplet: true) }
 }
 
@@ -75,7 +75,6 @@ struct LinearToolPane<Page: Hashable, Trailing: View, Content: View>: View {
 }
 
 /// Quiet status or metadata text for a pane toolbar or a group row.
-// shortcut: OnePlusUI 1.2.0 keeps `linearText` internal; use its public text role when one ships.
 struct LinearCaption: View {
     let text: String
     var monospaced = false
@@ -83,8 +82,15 @@ struct LinearCaption: View {
     init(_ text: String, monospaced: Bool = false) { self.text = text; self.monospaced = monospaced }
 
     var body: some View {
-        Text(text).font(.system(size: OnePlusLinearMetrics.control, design: monospaced ? .monospaced : .default))
-            .monospacedDigit().foregroundStyle(OnePlusLinearColor.muted).lineLimit(1).truncationMode(.middle).help(text)
+        label.lineLimit(1).truncationMode(.middle).help(text)
+    }
+
+    @ViewBuilder private var label: some View {
+        if monospaced {
+            Text(text).font(.system(size: OnePlusLinearMetrics.control, design: .monospaced)).foregroundStyle(OnePlusLinearColor.muted)
+        } else {
+            Text(text).linearText(OnePlusLinearMetrics.control, color: OnePlusLinearColor.muted)
+        }
     }
 }
 

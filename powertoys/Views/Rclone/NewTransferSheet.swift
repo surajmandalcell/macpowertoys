@@ -199,10 +199,8 @@ private struct EndpointCard: View {
     var body: some View {
         OnePlusLinearAppletSection(title) {
             OnePlusLinearAppletRow("Location") {
-                // shortcut: a Select until the applet segmented control fits "Remote"; switch back when it sizes segments to labels.
-                OnePlusLinearSelect(choices: [(EndpointKind.local, "Local"), (.remote, "Remote")],
-                                    selection: $config.kind, accessibilityLabel: "\(title) location",
-                                    width: OnePlusMetrics.wideControlColumn)
+                OnePlusLinearSegmented(choices: [(EndpointKind.local, "Local"), (.remote, "Remote")],
+                                       selection: $config.kind, accessibilityLabel: "\(title) location", sizing: .fitted)
             }
             switch config.kind {
             case .local:
@@ -224,7 +222,7 @@ private struct EndpointCard: View {
                         )
                     }
                     OnePlusLinearAppletRow("Path within remote") {
-                        OnePlusTextField("Optional", text: $config.remotePath)
+                        OnePlusLinearTextField("Optional", text: $config.remotePath)
                             .frame(width: OnePlusMetrics.wideControlColumn)
                     }
                 }

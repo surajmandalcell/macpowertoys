@@ -24,13 +24,13 @@ struct RcloneTransferListView: View {
 
             if jobs.isEmpty {
                 if RcloneTransferPresentation.showsNewTransferAction(for: manager.filter) {
-                    OnePlusEmptyState(emptyTitle, systemImage: "tray", caption: emptyCaption) {
+                    OnePlusLinearEmptyState(emptyTitle, systemImage: "tray", message: emptyCaption) {
                         Button("New Transfer") { manager.isPresentingNewTransfer = true }
                             .buttonStyle(OnePlusLinearButtonStyle(.soft))
                     }
                     .frame(maxWidth: .infinity, maxHeight: .infinity)
                 } else {
-                    OnePlusEmptyState(emptyTitle, systemImage: "tray", caption: emptyCaption)
+                    OnePlusLinearEmptyState(emptyTitle, systemImage: "tray", message: emptyCaption)
                         .frame(maxWidth: .infinity, maxHeight: .infinity)
                 }
             } else {

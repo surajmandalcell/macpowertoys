@@ -24,8 +24,8 @@ enum DevSyncFormat {
 }
 
 enum DevSyncSidebarBadge {
-    static func text(_ count: Int) -> String? {
-        count > 0 ? "\(count)" : nil
+    static func count(_ count: Int) -> Int? {
+        count > 0 ? count : nil
     }
 }
 
@@ -168,7 +168,7 @@ struct DevSyncPage: View {
 
     private var emptyState: some View {
         RSyncFixedPane {
-            OnePlusEmptyState("No Dev Sync pair yet", systemImage: "externaldrive.badge.plus", caption: "Pair an internal development folder with an external drive. Review every change before files move.") {
+            OnePlusLinearEmptyState("No Dev Sync pair yet", systemImage: "externaldrive.badge.plus", message: "Pair an internal development folder with an external drive. Review every change before files move.") {
                 Button {
                     manager.isPresentingSetup = true
                 } label: {

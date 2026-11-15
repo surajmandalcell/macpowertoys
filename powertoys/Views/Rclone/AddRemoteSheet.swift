@@ -143,7 +143,7 @@ struct AddRemoteSheet: View {
                     }
 
                     fieldTitle("REMOTE NAME")
-                    OnePlusTextField("Remote name", text: $name)
+                    OnePlusLinearTextField("Remote name", text: $name)
 
                     if !visibleOptions.isEmpty {
                         fieldTitle("CONNECTION OPTIONS")
@@ -203,7 +203,7 @@ struct AddRemoteSheet: View {
                 SecureField(option.defaultValue, text: valueBinding(option))
                     .textFieldStyle(.roundedBorder)
             } else {
-                OnePlusTextField(option.label, text: valueBinding(option))
+                OnePlusLinearTextField(option.label, text: valueBinding(option))
             }
 
             if !option.help.isEmpty {

@@ -70,7 +70,7 @@ struct ActivityView: View {
                 LinearCaption("\(records.count) transfers · \(RcloneFormat.bytes(aggregateBytes)) moved")
             }
             if records.isEmpty {
-                OnePlusEmptyState("No activity yet", systemImage: "clock.arrow.circlepath")
+                OnePlusLinearEmptyState("No activity yet", systemImage: "clock.arrow.circlepath")
                     .frame(maxWidth: .infinity, maxHeight: .infinity)
             } else {
                 OnePlusLinearList {

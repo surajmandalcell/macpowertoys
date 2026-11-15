@@ -4,7 +4,7 @@ import OnePlusUI
 
 // The owner's v15 "Depth" control look for the AppKit Ruler windows: recessed tracks, raised caps with a fine
 // top highlight. Only drawing changes here; values, keyboard, and accessibility stay native.
-// shortcut: Depth values live here until OnePlusUI has AppKit Depth controls; move to OnePlusUI 1.2.0 when the app adopts it.
+// shortcut: AppKit Depth drawing lives here because OnePlusUI 1.2.1 has SwiftUI Depth controls only; move it there when it adds AppKit ones.
 enum RulerDepth {
     private static func color(_ name: String, light: UInt32, lightAlpha: Double = 1,
                               dark: UInt32, darkAlpha: Double = 1) -> NSColor {
@@ -12,23 +12,23 @@ enum RulerDepth {
                                    dark: dark, darkAlpha: darkAlpha)
     }
 
-    static let recess = color("recess", light: 0xE7E7EA, dark: 0x0E0E10)
-    static let recessShadow = color("recessShadow", light: 0x000000, lightAlpha: 0.2, dark: 0x000000, darkAlpha: 0.7)
-    static let recessRing = color("recessRing", light: 0x000000, lightAlpha: 0.12, dark: 0xFFFFFF, darkAlpha: 0.05)
-    static let recessLip = color("recessLip", light: 0xFFFFFF, lightAlpha: 0.9, dark: 0xFFFFFF, darkAlpha: 0.06)
-    static let capTop = color("capTop", light: 0xFFFFFF, dark: 0x606067)
-    static let capBottom = color("capBottom", light: 0xEFEFF2, dark: 0x46464C)
-    static let capPressedTop = color("capPressedTop", light: 0xF2F2F4, dark: 0x55555C)
-    static let capPressedBottom = color("capPressedBottom", light: 0xE6E6EA, dark: 0x3E3E44)
-    static let capRing = color("capRing", light: 0x000000, lightAlpha: 0.2, dark: 0x000000, darkAlpha: 0.7)
-    static let capDrop = color("capDrop", light: 0x000000, lightAlpha: 0.16, dark: 0x000000, darkAlpha: 0.55)
-    static let capAmbient = color("capAmbient", light: 0x000000, lightAlpha: 0.08, dark: 0x000000, darkAlpha: 0.35)
-    static let capHighlight = color("capHighlight", light: 0xFFFFFF, dark: 0xFFFFFF, darkAlpha: 0.24)
-    static let rodTop = color("rodTop", light: 0x45464D, dark: 0xF4F4F6)
-    static let rodBottom = color("rodBottom", light: 0x1C1D22, dark: 0xC9C9CE)
-    static let rodHighlight = color("rodHighlight", light: 0xFFFFFF, lightAlpha: 0.14, dark: 0xFFFFFF, darkAlpha: 0.6)
+    static let recess = NSColor(OnePlusLinearColor.depthRecess)
+    static let recessShadow = NSColor(OnePlusLinearColor.depthRecessShade)
+    static let recessRing = NSColor(OnePlusLinearColor.depthRecessRing)
+    static let recessLip = NSColor(OnePlusLinearColor.depthRecessLip)
+    static let capTop = NSColor(OnePlusLinearColor.depthCapTop)
+    static let capBottom = NSColor(OnePlusLinearColor.depthCapBottom)
+    static let capPressedTop = NSColor(OnePlusLinearColor.depthCapPressedTop)
+    static let capPressedBottom = NSColor(OnePlusLinearColor.depthCapPressedBottom)
+    static let capRing = NSColor(OnePlusLinearColor.depthCapRing)
+    static let capDrop = NSColor(OnePlusLinearColor.depthCapShadow)
+    static let capAmbient = NSColor(OnePlusLinearColor.depthCapGlow)
+    static let capHighlight = NSColor(OnePlusLinearColor.depthCapHighlight)
+    static let rodTop = NSColor(OnePlusLinearColor.depthRodTop)
+    static let rodBottom = NSColor(OnePlusLinearColor.depthRodBottom)
+    static let rodHighlight = NSColor(OnePlusLinearColor.depthRodHighlight)
     static let ink = NSColor(OnePlusLinearColor.ink)
-    static let secondary = color("secondary", light: 0x55555C, dark: 0xB4B4BB)
+    static let secondary = NSColor(OnePlusLinearColor.secondary)
     static let ring = color("ring", light: 0x000000, lightAlpha: 0.3, dark: 0xFFFFFF, darkAlpha: 0.36)
 
     static let duration: TimeInterval = 0.14

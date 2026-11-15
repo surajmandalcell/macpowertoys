@@ -216,7 +216,7 @@ struct RemoteBrowserView: View {
                     } else if let errorMessage {
                         errorState(errorMessage)
                     } else if entries.isEmpty {
-                        OnePlusEmptyState("Empty folder", systemImage: "folder")
+                        OnePlusLinearEmptyState("Empty folder", systemImage: "folder")
                     } else {
                         entryList
                     }
@@ -307,7 +307,7 @@ struct RemoteBrowserView: View {
     }
 
     private func errorState(_ message: String) -> some View {
-        OnePlusEmptyState(message, systemImage: "exclamationmark.triangle") {
+        OnePlusLinearEmptyState(message, systemImage: "exclamationmark.triangle") {
             Button("Retry") { Task { await load() } }
                 .buttonStyle(OnePlusLinearButtonStyle(.soft))
         }

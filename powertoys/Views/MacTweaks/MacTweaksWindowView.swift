@@ -270,12 +270,12 @@ struct MacTweaksWindowView: View {
             OnePlusLinearNavCaption("System")
             sidebarGroup("System")
         } bottom: {
-            // shortcut: the Linear glyph row has no count or muted state in 1.2.0; the count rides in the trailing hint slot.
             OnePlusLinearNavRow(
                 "Modified",
                 systemImage: "arrow.counterclockwise",
                 selected: !isSearching && selectedPage == "modified",
-                shortcut: modifiedEntries.isEmpty ? nil : "\(modifiedEntries.count)"
+                dimmed: modifiedEntries.isEmpty,
+                count: modifiedEntries.isEmpty ? nil : modifiedEntries.count
             ) {
                 if !modifiedEntries.isEmpty { navigate(to: "modified") }
             }
@@ -442,7 +442,7 @@ struct MacTweaksWindowView: View {
         let results = TweakSearch.results(for: trimmedSearch, in: allWorkingItems)
         return Group {
             if results.isEmpty {
-                OnePlusEmptyState(
+                OnePlusLinearEmptyState(
                     "No matching settings",
                     systemImage: "magnifyingglass"
                 ) {
@@ -485,7 +485,7 @@ struct MacTweaksWindowView: View {
     private var modifiedPage: some View {
         Group {
             if modifiedEntries.isEmpty {
-                OnePlusEmptyState(
+                OnePlusLinearEmptyState(
                     "No modified settings",
                     systemImage: "checkmark.circle"
                 )

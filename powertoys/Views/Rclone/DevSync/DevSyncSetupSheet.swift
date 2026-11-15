@@ -294,7 +294,7 @@ private struct DevSyncSetupRootsStep: View {
         VStack(alignment: .leading, spacing: OnePlusLinearMetrics.appletSectionGap) {
             OnePlusLinearAppletGroup {
                 OnePlusLinearAppletRow("Pair name") {
-                    OnePlusTextField("Pair name", text: $model.draft.displayName)
+                    OnePlusLinearTextField("Pair name", text: $model.draft.displayName)
                         .frame(width: OnePlusMetrics.wideControlColumn)
                 }
                 OnePlusLinearAppletRow("Mode", detail: model.draft.mode.summary) {

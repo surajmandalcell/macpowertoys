@@ -350,7 +350,6 @@ private struct LogsSidebar: View {
     }
 
     var body: some View {
-        // shortcut: the Linear glyph row has no count in 1.2.0; counts ride in its trailing hint slot.
         OnePlusLinearSidebar {
             OnePlusLinearSearchField("Search logs", text: $search, accessibilityIdentifier: "logs.search",
                                      focusTrigger: searchFocus)
@@ -360,14 +359,14 @@ private struct LogsSidebar: View {
                 "Internal",
                 systemImage: LogsPage.internalLogs.icon,
                 selected: page == .internalLogs,
-                shortcut: "\(logManager.logs.count)"
+                count: logManager.logs.count
             ) { page = .internalLogs }
                 .keyboardShortcut("1")
             OnePlusLinearNavRow(
                 "System issues",
                 systemImage: LogsPage.systemIssues.icon,
                 selected: page == .systemIssues,
-                shortcut: "\(systemLogs.entries.count)"
+                count: systemLogs.entries.count
             ) { page = .systemIssues }
                 .keyboardShortcut("2")
 
@@ -376,7 +375,7 @@ private struct LogsSidebar: View {
                 OnePlusLinearNavRow(
                     level.name,
                     systemImage: selectedLevels.contains(level) ? level.icon : "circle",
-                    shortcut: "\(count(for: level))"
+                    count: count(for: level)
                 ) { toggle(level) }
                     .accessibilityValue(selectedLevels.contains(level) ? "Included" : "Excluded")
             }
@@ -505,7 +504,7 @@ private struct LogsPageView: View {
                 ProgressView("Reading system issues…")
                     .frame(maxWidth: .infinity, maxHeight: .infinity)
             } else if visibleRows.isEmpty {
-                OnePlusEmptyState(
+                OnePlusLinearEmptyState(
                     page == .internalLogs ? "No internal logs" : "No system issues",
                     systemImage: page == .internalLogs ? "doc.text" : "checkmark.circle"
                 )
