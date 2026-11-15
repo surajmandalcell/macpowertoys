@@ -87,28 +87,35 @@ capture) must never activate the app or take key focus.
 ### Sidebar Last Row Hidden Behind Fixed Settings Group
 
 - **Symptom:** The last tool row was half hidden behind Settings and Exit.
-- **Cause:** `ToolSidebarView` drew Settings and Exit as a fixed group under
-  the scroll view, and the list had no end padding.
-- **Invariant:** Settings and Exit are the last group inside the same
-  scrolling list, after the normal group gap. No fixed bottom group or
-  divider. The scroll content has bottom padding. Both rows stay visible
-  while searching. Shortcuts and keyboard order are unchanged.
-- **Check:** On the installed build, capture the main window at rest and
-  scrolled to the end. Every row is fully visible above the window edge.
+- **Cause:** `ToolSidebarView` drew Settings and Exit as a fixed group over
+  the end of the scroll view, and the list had no end padding.
+- **Invariant (v15):** Settings and Exit are the `bottom` group of
+  `OnePlusLinearSidebar`, a sibling below the scroll view, never an overlay.
+  The scroll view ends above them, so no tool row can sit behind them. Both
+  rows stay visible while searching. Shortcuts and keyboard order are
+  unchanged.
+- **Check:** The offscreen render in `LauncherGridTests` shows every tool row
+  above Settings. On the installed build, capture the main window at rest
+  and scrolled to the end.
 
 ### Settings Structure
 
 - **Invariant:** The fixed canvas comes from `OnePlusWindowCanvas.mainWindow`
-  through `appTool("main")` until a OnePlusUI tag owns it. `MainWindowShell`
-  draws no texture. The sidebar groups tools with `MainCatalog.groups`;
-  Command-2 to Command-9 use `MainCatalog.shortcutTools`. `MainPaneToolbar`
-  sits outside page content, so the retained Task Manager page also gets
-  back and forward. `MainPageHistory` records every page change except its
-  own traversal. A `manual/<id>` route stores a one-shot request that
-  scrolls the tool page to How to use.
+  through `appTool("main")` until a OnePlusUI tag owns it. It sets
+  `isApplet` only to center the traffic lights on C = 22, the center of the
+  44 pt v15 toolbar. `MainWindowShell` draws no texture. The sidebar groups
+  tools with `MainCatalog.groups`; Command-2 to Command-9 use
+  `MainCatalog.shortcutTools`. `OnePlusLinearPaneToolbar` sits outside page
+  content and owns Command-[ and Command-]; never add a second shortcut for
+  them. The All, Enabled, and Favorites tabs (`MainCatalogTabs`) and the
+  Settings tabs sit in its trailing slot. `MainPageHistory` records every
+  page change except its own traversal. A `manual/<id>` route stores a
+  one-shot request that scrolls the tool page to How to use.
 - **Check:** `LauncherGridTests` renders All tools, Ruler, and Settings in
-  both appearances; compare with System Settings at the same scale.
-  `MainCatalogTests` covers groups, shortcut order, and history.
+  both appearances; compare with `docs/design/v15/main-window-*.png` at the
+  same scale. It also checks that the last tab ends on the 24 pt content
+  inset and that selection does not move the tabs. `MainCatalogTests` covers
+  groups, shortcut order, and history.
 
 ### Page IDs, Retention, And Updates
 
@@ -150,8 +157,9 @@ capture) must never activate the app or take key focus.
   and tray tabs read it. Disabled tools stay selectable only so they can be
   re-enabled. Overview rows carry an unlabeled switch and a chevron; Open
   stays in the context menu and Command-O. A tool page puts the switch and
-  `Open <Tool>` side by side in the hero. The shared header owns enablement
-  on embedded pages.
+  `Open <Tool>` side by side in its header row. The shared header owns
+  enablement on embedded pages. A switch change while the tool starts or
+  stops is ignored (`MainToolEnablement`).
 - **Check:** Disable every tool from All tools and from its page. Open,
   shortcuts, deep links, CLI, Awake, Cloud Sync, and the tray all follow.
 
@@ -387,9 +395,14 @@ References: [suppressed launch](https://developer.apple.com/documentation/swiftu
 
 ### Layout And Tabs
 
-- **Invariant:** One reorderable icon tab group leads; Open App, Settings,
-  and Quit form one fixed trailing group. Home has the Pick Color, Extract
-  Text, and Ruler action row, then Kwake, then Fan. Complex tabs default to
+- **Invariant:** The combined panel has no top bar. Its footer leads with
+  the icon tabs (Home first; tool tabs reorder through Move Left and Move
+  Right) and ends with the gear and Open App. Quit lives in the status
+  item's right-click menu. Home is the bento, the Fan and Kwake card, three
+  top processes, then the Pick Color, Extract Text, and Ruler action bar.
+  The body is the only scroller: `MainPanelBodyLayout` gives it its natural
+  height up to the ceiling minus the shell chrome, and the hosts resize the
+  panel from `onGeometryChange`. Complex tabs default to
   RSync UI, Input Devices, System Cleaner, NetToys. App-only tools such as Event
   Viewer never appear. Order and selection persist. Every tab gets the
   shared body width before measuring its natural height. Empty states are
@@ -433,7 +446,7 @@ References: [suppressed launch](https://developer.apple.com/documentation/swiftu
 
 - **Invariant:** Only main Home shows `FanControlView`, with its own
   visibility owner; other pages omit Fan.
-  Fan uses the shared control row; Fan, RPM, and utilization share one line.
+  Fan uses the shared linear control row with the RPM as its status.
   When control is unavailable, a warning glyph opens the built-in helper
   approval flow; no package or Terminal command. The app never approves its
   own background item.

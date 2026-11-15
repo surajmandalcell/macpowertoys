@@ -67,7 +67,7 @@ enum ToolCategory: String, CaseIterable, Identifiable {
 struct RcloneTool: Tool {
     let id = "rclone"
     let name = "RSync UI"
-    let summary = "Copy, sync, and move files across cloud storage."
+    let summary = "Sync folders to cloud and remote storage"
     let description = "Move files between your Mac and cloud storage with live progress, automatic retries, and ignore rules."
     let icon = ToolGlyph.cloudSync.symbol
     let logoAsset = "CloudSyncLogo"
@@ -115,7 +115,7 @@ struct RcloneTool: Tool {
 struct LogsTool: Tool {
     let id = "logs"
     let name = "Event Viewer"
-    let summary = "Read app activity and recent macOS errors."
+    let summary = "Read app and system logs in one place"
     let description = "Inspect MacPowerToys activity and recent macOS errors and faults in clearly separated views."
     let icon = ToolGlyph.logs.symbol
     let logoAsset = "LogsLogo"
@@ -144,7 +144,7 @@ struct LogsTool: Tool {
 struct RulerTool: Tool {
     let id = "ruler"
     let name = "Ruler"
-    let summary = "Measure the screen in pixels, millimeters, or inches."
+    let summary = "Measure on-screen distances in px, mm, or in"
     let description = "Measure the screen with movable, resizable rulers in pixels, millimeters, or inches."
     let icon = ToolGlyph.ruler.symbol
     let logoAsset = "RulerLogo"
@@ -170,7 +170,7 @@ struct RulerTool: Tool {
 struct AwakeTool: Tool {
     let id = "awake"
     let name = "Kwake"
-    let summary = "Keep your Mac awake for as long as you need."
+    let summary = "Keep your Mac awake for a set time"
     let description = "Keep your Mac awake indefinitely, for a duration, or until a chosen time without changing Energy settings."
     let icon = ToolGlyph.awake.symbol
     let logoAsset = "AwakeLogo"
@@ -197,7 +197,7 @@ struct AwakeTool: Tool {
 struct ColorPickerTool: Tool {
     let id = "color-picker"
     let name = "Color Picker"
-    let summary = "Pick screen colors and copy them in your chosen format."
+    let summary = "Pick and save colors from anywhere on screen"
     let description = "Pick any onscreen color, copy it instantly, and keep a compact searchable history of useful values."
     let icon = ToolGlyph.colorPicker.symbol
     let logoAsset = "ColorPickerLogo"
@@ -220,7 +220,7 @@ struct ColorPickerTool: Tool {
 struct TextExtractorTool: Tool {
     let id = "text-extractor"
     let name = "Text Extractor"
-    let summary = "Copy text from any screen region, processed on your Mac."
+    let summary = "Copy text from any part of the screen"
     let description = "Select text anywhere on screen and copy it using private, fully on-device Apple Vision recognition."
     let icon = ToolGlyph.textExtractor.symbol
     let logoAsset = "TextExtractorLogo"
@@ -243,7 +243,7 @@ struct TextExtractorTool: Tool {
 struct InputDevicesTool: Tool {
     let id = "input-devices"
     let name = "Input Devices"
-    let summary = "Set mouse and trackpad scroll direction and speed."
+    let summary = "Separate mouse and trackpad scrolling"
     let description = "Tune mouse and trackpad scrolling independently, including direction, speed, horizontal movement, and wheel smoothing."
     let icon = ToolGlyph.inputDevices.symbol
     let logoAsset = "InputDevicesLogoA"
@@ -270,7 +270,7 @@ struct InputDevicesTool: Tool {
 struct SystemCareTool: Tool {
     let id = "system-care"
     let name = "System Cleaner"
-    let summary = "Review storage, clean up files, and remove apps."
+    let summary = "Find caches and leftovers to move to Trash"
     let description = "Understand storage, preview safe cleanup, remove apps, and use advanced Mole maintenance."
     let icon = ToolGlyph.systemCare.symbol
     let logoAsset = "SystemCareLogo"
@@ -296,7 +296,7 @@ struct SystemCareTool: Tool {
 struct DiskExplorerTool: Tool {
     let id = "disk-explorer"
     let name = "Partition Manager"
-    let summary = "Mount, format, resize, and partition disks."
+    let summary = "Inspect, resize, and format disk partitions"
     let description = "See every disk as a partition map, then mount, format, resize, create, or delete partitions with the macOS disk tools."
     let icon = ToolGlyph.diskman.symbol
     let logoAsset = "DiskExplorerLogo"
@@ -327,7 +327,7 @@ struct DiskExplorerTool: Tool {
 struct NetToysTool: Tool {
     let id = "nettoys"
     let name = "NetToys"
-    let summary = "Scan networks, track outages, and keep SSH hosts linked."
+    let summary = "Scan networks and keep SSH hosts reachable"
     let description = "Scan IP networks, keep SSH hosts attached to changing local addresses, and review network outages."
     let icon = ToolGlyph.netToys.symbol
     let logoAsset = "NetToysLogo"
@@ -342,7 +342,7 @@ struct NetToysTool: Tool {
 struct PortmanTool: Tool {
     let id = "portman"
     let name = "Portman"
-    let summary = "Find local servers and forward private SSH ports."
+    let summary = "See and stop processes that hold ports"
     let description = "See local development servers and forward private SSH ports to this Mac."
     let icon = ToolGlyph.portman.symbol
     let logoAsset = "PortmanLogo"
@@ -367,7 +367,7 @@ struct PortmanTool: Tool {
 struct MacTweaksTool: Tool {
     let id = "mac-tweaks"
     let name = "Mac Tweaks"
-    let summary = "Tune input, Dock, Finder, windows, apps, and power."
+    let summary = "Hidden macOS settings with one switch each"
     let description = "Find and control small Mac settings, starting with Mic Lock for Bluetooth headphone sound."
     let icon = ToolGlyph.macTweaks.symbol
     let logoAsset = "MacTweaksLogo"

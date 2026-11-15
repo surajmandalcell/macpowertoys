@@ -1,35 +1,27 @@
 import SwiftUI
 import OnePlusUI
 
-struct MainFavoriteButton: View {
-    let toolName: String
-    @Binding var isFavorite: Bool
-    private var title: String { "\(isFavorite ? "Remove" : "Add") \(toolName) \(isFavorite ? "from" : "to") favorites" }
-
-    var body: some View {
-        Button { isFavorite.toggle() } label: { Image(systemName: isFavorite ? "star.fill" : "star") }
-            .buttonStyle(OnePlusButtonStyle(.icon, size: .small))
-            .help(title).accessibilityLabel(title)
-            .accessibilityValue(isFavorite ? "Favorite" : "Not a favorite")
+/// Enablement goes through `SettingsManager`, which starts and stops the tool's services. A tool that is still
+/// starting or stopping ignores new changes.
+enum MainToolEnablement {
+    @MainActor
+    static func binding(for toolID: String, settings: SettingsManager) -> Binding<Bool> {
+        Binding(get: { settings.isToolEnabled(toolID) }, set: { enabled in
+            guard !settings.isToolTransitioning(toolID) else { return }
+            settings.setToolEnabled(enabled, for: toolID)
+        })
     }
 }
 
 struct MainToolEnableSwitch: View {
     let tool: any Tool
-    var catalog = false
     @State private var settings = SettingsManager.shared
 
     var body: some View {
-        HStack(spacing: OnePlusCatalogMetrics.smallGap) {
-            Toggle("Enable \(tool.name)", isOn: Binding(
-                get: { settings.isToolEnabled(tool.id) },
-                set: { settings.setToolEnabled($0, for: tool.id) }
-            ))
-            .labelsHidden().toggleStyle(OnePlusSwitchStyle())
+        Toggle("Enable \(tool.name)", isOn: MainToolEnablement.binding(for: tool.id, settings: settings))
+            .toggleStyle(OnePlusLinearSwitchStyle())
             .disabled(settings.isToolTransitioning(tool.id))
-            .accessibilityLabel("Enable \(tool.name)")
-            .accessibilityIdentifier("tool.\(tool.id).\(catalog ? "quick-toggle" : "enabled")")
-        }.fixedSize()
+            .accessibilityIdentifier("tool.\(tool.id).enabled")
     }
 }
 
@@ -37,21 +29,17 @@ struct MainOpenToolButton: View {
     let toolID: String?
     var toolName: String? = nil
     var title = "Open"
-    var catalog = false
-    var primary = false
     @State private var settings = SettingsManager.shared
 
     var body: some View {
         let resolvedToolName = toolName ?? toolID.flatMap { ToolRegistry.tool(for: $0)?.name } ?? "selected tool"
-        Button {
+        Button(title) {
             guard let toolID else { return }
             ToolActionRouter.shared.open(toolID: toolID)
-        } label: { Text(title) }
-        .buttonStyle(OnePlusButtonStyle(primary ? .accentPrimary : .ghost, size: primary ? .regular : .small,
-                                      minWidth: OnePlusCatalogMetrics.openWidth,
-                                      height: primary ? OnePlusMetrics.controlHeight : OnePlusCatalogMetrics.openHeight))
+        }
+        .buttonStyle(OnePlusLinearButtonStyle(.raised))
         .disabled(toolID == nil || !settings.isToolEnabled(toolID ?? "") || settings.isToolTransitioning(toolID ?? ""))
-        .accessibilityIdentifier("tool.\(toolID ?? "none").\(catalog ? "open" : "launch")")
+        .accessibilityIdentifier("tool.\(toolID ?? "none").launch")
         .accessibilityLabel("Open \(resolvedToolName)")
         .help("Open \(resolvedToolName)")
     }
@@ -64,6 +52,7 @@ struct MainToolContextMenu: View {
     @State private var settings = SettingsManager.shared
 
     var body: some View {
+        let favorites = MainCatalog.favorites(from: storedFavorites)
         Button("Settings") {
             MainToolTab.select(.settings, for: tool.id)
             select()
@@ -72,10 +61,9 @@ struct MainToolContextMenu: View {
         Button(settings.isToolEnabled(tool.id) ? "Disable" : "Enable") {
             settings.setToolEnabled(!settings.isToolEnabled(tool.id), for: tool.id)
         }.disabled(settings.isToolTransitioning(tool.id))
-        Button(MainCatalog.favorites(from: storedFavorites).contains(tool.id) ? "Remove favorite" : "Add favorite") {
-            var favorites = MainCatalog.favorites(from: storedFavorites)
-            if !favorites.insert(tool.id).inserted { favorites.remove(tool.id) }
-            storedFavorites = MainCatalog.storing(favorites: favorites)
+        Button(favorites.contains(tool.id) ? "Remove favorite" : "Add favorite") {
+            storedFavorites = MainCatalog.storing(
+                favorites: MainCatalog.setting(favorite: !favorites.contains(tool.id), for: tool.id, in: favorites))
         }
     }
 }

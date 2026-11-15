@@ -9,45 +9,33 @@ struct ToolSidebarView: View {
     @State private var groups: [MainToolGroup] = []
 
     var body: some View {
-        VStack(spacing: 0) {
-            Color.clear.frame(height: OnePlusMetrics.titleRow)
-                .contentShape(Rectangle()).gesture(WindowDragGesture())
-            OnePlusSidebarSearch(text: $searchText, focusTrigger: searchFocusTrigger)
-                .padding(.horizontal, OnePlusMetrics.navContainerInset)
-                .padding(.bottom, MainPaneMetrics.sidebarGroupGap)
-            ScrollView {
-                VStack(alignment: .leading, spacing: MainPaneMetrics.sidebarGroupGap) {
-                    MainSidebarRow(title: "All tools", selected: selectedTool == "all-tools") {
-                        MainAppIconTile()
-                    } action: { selectedTool = "all-tools" }
-                    .accessibilityIdentifier("main.sidebar.all-tools")
-                    ForEach(groups) { group in
-                        VStack(spacing: 0) { ForEach(group.tools, id: \.id) { toolRow($0) } }
-                    }
-                    VStack(spacing: 0) {
-                        MainSidebarRow(title: "Settings", selected: selectedTool == "settings") {
-                            MainSymbolTile(systemImage: "gearshape")
-                        } action: { selectedTool = "settings" }
-                        MainSidebarRow(title: "Exit") {
-                            MainSymbolTile(systemImage: "power")
-                        } action: { NSApp.terminate(nil) }
-                    }
-                }
-                .padding(.horizontal, OnePlusMetrics.navContainerInset)
-                .padding(.bottom, MainPaneMetrics.sidebarGroupGap)
-                .frame(maxWidth: .infinity, alignment: .leading)
+        OnePlusLinearSidebar {
+            OnePlusLinearSearchField(text: $searchText, accessibilityIdentifier: "main.sidebar.search",
+                                     focusTrigger: searchFocusTrigger)
+        } navigation: {
+            OnePlusLinearNavRow("All tools", image: MainToolIcon.app, selected: selectedTool == "all-tools") {
+                selectedTool = "all-tools"
             }
-            .onePlusScrollIndicators(axes: .vertical)
+            .accessibilityIdentifier("main.sidebar.all-tools")
+            ForEach(groups) { group in
+                OnePlusLinearNavCaption(group.category.rawValue)
+                ForEach(group.tools, id: \.id) { toolRow($0) }
+            }
+        } bottom: {
+            OnePlusLinearNavRow("Settings", systemImage: "gearshape", selected: selectedTool == "settings", shortcut: "⌘,") {
+                selectedTool = "settings"
+            }
+            .accessibilityIdentifier("main.sidebar.settings")
+            OnePlusLinearNavRow("Exit", systemImage: "power", shortcut: "⌘Q") { NSApp.terminate(nil) }
+                .accessibilityIdentifier("main.sidebar.exit")
         }
-        .accessibilityElement(children: .contain)
         .onChange(of: searchText, initial: true) { _, _ in refreshVisibleTools() }
         .onReceive(NotificationCenter.default.publisher(for: .marketplaceReceiptsChanged)) { _ in refreshVisibleTools() }
     }
 
     private func toolRow(_ tool: any Tool) -> some View {
-        MainSidebarRow(title: tool.name, selected: selectedTool == tool.id, muted: !settings.isToolEnabled(tool.id)) {
-            ToolIconView(tool: tool, size: MainPaneMetrics.sidebarIcon)
-        } action: { selectedTool = tool.id }
+        OnePlusLinearNavRow(tool.name, image: MainToolIcon.image(for: tool), selected: selectedTool == tool.id,
+                            dimmed: !settings.isToolEnabled(tool.id)) { selectedTool = tool.id }
         .accessibilityIdentifier("main.sidebar.\(tool.id)")
         .accessibilityValue(settings.isToolEnabled(tool.id) ? "Enabled" : "Disabled")
         .simultaneousGesture(TapGesture(count: 2).onEnded {

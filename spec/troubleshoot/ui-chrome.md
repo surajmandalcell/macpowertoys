@@ -933,15 +933,15 @@ latency benefit still needs measurement. See `tmp/redesign/logs/w4-perf-windows.
   selects a tool.
 - **Cause:** Launcher detail controls used compact defaults and empty settings
   content was allowed to choose its own vertical placement.
-- **Invariant:** Tool pages follow the System Settings hero in `DESIGN.md`
-  (Main window): a centered 48pt icon, the page-title name, the description,
-  then the switch and the regular-size Open button. Settings sections begin
-  directly below the hero; an empty settings body adds no space. A
+- **Invariant:** Tool pages follow the v15 header row in `DESIGN.md`
+  (Main window): a 32pt icon, the name, the description, then the switch and
+  the raised `Open <Tool>` button on the same row. Settings sections begin
+  directly below the header; an empty settings body adds no space. A
   double-click on an enabled sidebar tool row opens that tool; one click only
   selects it.
 - **Check:** Inspect every built-in tool page, then single- and double-click
   sidebar rows. Confirm Input Devices keeps its settings directly below the
-  hero with no large unused space.
+  header with no large unused space.
 
 ## Applet Settings Placement
 

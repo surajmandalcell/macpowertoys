@@ -28,7 +28,7 @@ final class MainAppBehaviorUITests: XCTestCase {
     @MainActor
     func testToolCardsAndDetailsExposeSharedSettingsAndEnablement() throws {
         let app = launchApp()
-        let quickToggle = app.descendants(matching: .any)["tool.logs.quick-toggle"]
+        let quickToggle = app.descendants(matching: .any)["tool.logs.card"].descendants(matching: .any)["Enable Event Viewer"]
         XCTAssertTrue(quickToggle.waitForExistence(timeout: 5))
 
         app.descendants(matching: .any)["tool.logs.card"].click()

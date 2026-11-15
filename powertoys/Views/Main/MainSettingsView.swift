@@ -7,10 +7,7 @@ struct MainSettingsView: View {
     var showManual: (String) -> Void = { _ in }
 
     var body: some View {
-        MainPaneScroll {
-            OnePlusSegmented(choices: MainSettingsTab.allCases.map { ($0, $0.title) }, selection: $tab,
-                             accessibilityLabel: "Settings page", width: MainPaneMetrics.segmentedWidth)
-                .frame(maxWidth: .infinity)
+        OnePlusLinearPaneBody {
             switch tab {
             case .general: MainGeneralSettings()
             case .marketplace: MarketplaceSettingsView()
@@ -19,6 +16,8 @@ struct MainSettingsView: View {
         }
         .accessibilityIdentifier("main.settings.\(tab.rawValue)")
     }
+
+    static let tabs = MainSettingsTab.allCases.map { OnePlusTab($0, $0.title) }
 }
 
 private struct MainGeneralSettings: View {
@@ -32,7 +31,7 @@ private struct MainGeneralSettings: View {
     @State private var loginError: String?
 
     var body: some View {
-        VStack(alignment: .leading, spacing: MainPaneMetrics.sectionGap) {
+        VStack(alignment: .leading, spacing: OnePlusLinearMetrics.sectionGap) {
             appearanceCard
             launchCard
             shortcutCard
@@ -145,10 +144,15 @@ private struct MainAboutSettings: View {
     private var repository: String { HostAppMetadata.repository.absoluteString }
 
     var body: some View {
-        VStack(alignment: .leading, spacing: MainPaneMetrics.sectionGap) {
-            MainHero(title: "MacPowerToys", subtitle: "A collection of tools for your Mac.") {
-                MainAppIconTile(size: MainPaneMetrics.heroIcon)
-            } controls: { updateCheck }
+        VStack(alignment: .leading, spacing: OnePlusLinearMetrics.sectionGap) {
+            MainPageHeader(title: "MacPowerToys", subtitle: updateStatus) {
+                MainToolIcon.app.resizable().scaledToFit()
+            } controls: {
+                if updates.isChecking { ProgressView().controlSize(.small).accessibilityLabel("Checking for updates") }
+                Button(updates.isChecking ? "Checking..." : "Check for Updates", action: updates.check)
+                    .buttonStyle(OnePlusLinearButtonStyle(.raised)).disabled(updates.isChecking)
+            }
+            updateResult
             MainSection {
                 metadataRow("Version", value: metadata.version)
                 metadataRow("Build", value: metadata.build)
@@ -177,30 +181,28 @@ private struct MainAboutSettings: View {
                 }
             }
             Text("Closing a window leaves enabled background tools running. Choose Quit MacPowerToys to stop them. Each tool's How to use section explains its actions and background work.")
-                .onePlusText(.caption).padding(.horizontal, MainPaneMetrics.sectionTitleInset)
+                .onePlusText(.caption)
         }
     }
 
-    private var updateCheck: some View {
-        VStack(alignment: .leading, spacing: OnePlusMetrics.actionSpacing) {
-            HStack(spacing: OnePlusMetrics.actionSpacing) {
-                Button(updates.isChecking ? "Checking..." : "Check for Updates", action: updates.check)
-                    .buttonStyle(OnePlusButtonStyle()).disabled(updates.isChecking)
-                switch updates.state {
-                case .checking: ProgressView().controlSize(.small).accessibilityLabel("Checking for updates")
-                case .current: Text("MacPowerToys is up to date.").onePlusText(.row, color: OnePlusColor.secondary)
-                case .available(let version, let url):
-                    Text("Version \(version) is available.").onePlusText(.row, color: OnePlusColor.secondary)
-                    Spacer()
-                    Link("Release notes and download", destination: url).buttonStyle(OnePlusButtonStyle(.link))
-                default: EmptyView()
-                }
+    private var updateStatus: String {
+        switch updates.state {
+        case .checking: "Checking for updates..."
+        case .current: "MacPowerToys is up to date."
+        case .available(let version, _): "Version \(version) is available."
+        case .idle, .failed: "A collection of tools for your Mac."
+        }
+    }
+
+    @ViewBuilder private var updateResult: some View {
+        switch updates.state {
+        case .available(_, let url):
+            Link("Release notes and download", destination: url).buttonStyle(OnePlusButtonStyle(.link))
+        case .failed(let message):
+            OnePlusBanner(message, tone: .error) {
+                Button("Retry", action: updates.check).buttonStyle(OnePlusButtonStyle())
             }
-            if case .failed(let message) = updates.state {
-                OnePlusBanner(message, tone: .error) {
-                    Button("Retry", action: updates.check).buttonStyle(OnePlusButtonStyle())
-                }
-            }
+        default: EmptyView()
         }
     }
 
