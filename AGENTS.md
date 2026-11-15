@@ -35,6 +35,8 @@ verification results change.
 Keep `spec/system-tools-request-list.md` current when Input Devices, System
 Care, or System Monitor requirements or verification results change.
 
+Tool and app icon rules live in `spec/icons.md`. Read it before any icon work.
+
 Keep `goals.md` current when a request list adds or closes current work.
 
 After every local app code or UI change, finish the installed-app handoff in

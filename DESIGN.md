@@ -97,30 +97,38 @@ motion: { hover: 0, selection: 0, content: 0, idle-animation: none }
 Version 14 (OnePlusUI), adopted 2026-09-29. It replaces the earlier
 material-based contract. It is the complete visual and window-structure
 contract for every window, menu-bar panel, sheet, and settings page. Tool icon
-rules are in [App and tool icons](#app-and-tool-icons).
+rules are in `spec/icons.md`.
 
-## Pending redesign (owner picks, 2026-11-15)
+## Version 15 (owner picks, 2026-11-16)
 
-Version 14 stays the contract for shipped code until these picks become
-version 15. Do not restyle a view ahead of that version.
+Version 15 changes the parts below. A surface not named here keeps its
+version 14 rules until it is converted. Reference renders of the picked
+mockups are in `docs/design/v15/`.
 
-- Main window and the app in general: Linear style. Compact rows, 13 pt
-  type, quiet borders, small sidebar icons, no texture. The All, Enabled,
-  and Favorites filter becomes text tabs with counts in the pane toolbar,
-  after the page title; the body has no filter and the pane has no second
-  search field. Open: tabs on the left or the right, a "get more tools"
-  action, and where new tools are announced.
-- Menu-bar panel: Linear style mixed with the data-first style. The
-  metric tiles are the two-column bento (CPU, GPU, Memory, Disk, Battery,
-  Network, each with its color and history). The rest is the compact
-  list: the Fan and Kwake rows, three top processes, real action buttons,
-  and the footer with Open App. Open: how a process row shows its
-  percentage, and the look of the action buttons.
-- Task Manager: moves to its own product, Task Manager X
-  (`../task_manager_x`, one repository): a paid advanced app with the
-  Windows 11 Task Manager organization in Linear style, and a free classic
-  app. Its decisions live in that repository's `specs/product.md`. The
-  tool is still in MacPowerToys; when and how much of it leaves is open.
+- Style: Linear. 13 pt body type, compact rows, quiet 1 pt borders, small
+  sidebar icons, and no window texture. The one coral accent stays.
+- Main window: the sidebar keeps the search field, `All tools`, and one
+  captioned group for each category; Settings and Exit sit at the bottom.
+  The pane toolbar holds back and forward, the page title, and, at the
+  right edge, the text tabs `All`, `Enabled`, and `Favorites` with their
+  counts. The tabs end on the content's right inset. The selected tab has
+  the 2 pt accent underline and never changes weight or position. The
+  body has no hero block, no filter, and no search field: one captioned
+  section for each category, and one row for each tool with its icon,
+  name, one-line summary, favorite star, enable switch, and chevron.
+- Combined menu panel, top to bottom: the two-column bento of metric
+  tiles (CPU with its history, Disk, and Battery on the left; GPU, Memory,
+  and Network on the right, each in its data color); one card with the
+  Fan row and the Kwake row; three top processes (icon, name, CPU percent
+  in the data color with its percent sign, memory; no bar); one joined
+  action bar for Pick Color, Extract Text, and Ruler with hairline
+  dividers; the footer with the panel tabs as icons on the left and the
+  gear and `Open App` on the right. The panel has no top bar.
+- Task Manager left the app on 2026-11-16: its window, its own menu
+  panel and status items, its tool page, and its routes. The combined
+  panel keeps the metric tiles, the top processes, and the Fan row on a
+  small sampler that runs only while the panel is open. The product
+  continues as Task Manager X (`../task_manager_x`).
 - Rejected: the first round of ten look mockups (placeholder icons).
 
 ## Overview
@@ -758,32 +766,6 @@ translucency and no window texture. Apple colors are not copied.
   it in `OnePlusPage`; the main window's tool page places it inside its
   single scrolling page. `ToolSettingsContent` only dispatches by tool id.
 
-### Task Manager
-
-Follows `task-manager.html` with the owner's corrections: fixed 1080 x 660,
-the normal system sidebar title, dot-matrix page titles, the 54 pt title row
-with the centerline rule (more room above the page title than before),
-compact density, and the HTML's spacing and tightness. Pages: Overview,
-Processes, CPU, GPU, Memory, Network, Disk, Battery, Sensors, Remote stats,
-System Report, About, and Settings. The Task Manager menu panel follows the
-HTML panel exactly, except `Open App`, which uses the ghost style.
-
-Overview uses 27 pt values and thermal words, weight 550, line 30.24 pt,
-with 12 pt units and 13 pt glyphs. Metric labels use chartSeries[0];
-notes use metricCaption and glyphs use secondary ink. Cards and grid columns have 16 pt gaps.
-Detail legends share the card label's 12 pt inset; time axes follow plots.
-Chart captions and core IDs use compact 9.5 pt caption or mono roles.
-Navigation chevrons reserve their frame and appear only on hover or
-accessible keyboard focus. Histories use chartLine and 1.2 pt strokes,
-with the shared ordered-dot pattern clipped to the measured area.
-
-Remote window cards use the shared 27 pt metric role in both densities. Host
-destination and platform sit beside the identity. Configure, Refresh,
-Open SSH, and Connect/Disconnect/Open App share a horizontal row of 24 pt
-buttons with compact control type. The connected/host count sits beside
-Add host. The menu panel keeps its 20 pt header, shared 27 pt metrics, and 84 pt
-trailing action column.
-
 ### Partition Manager
 
 Partition Manager is a dedicated partition tool, modeled on the EaseUS
@@ -903,254 +885,3 @@ both appearances:
 11. A capture of the running signed build, compared at the same scale with
    the reference, shows no material difference in spacing, alignment, or
    density.
-
-
-## App and tool icons
-
-Icons follow the bold, friendly-flat language of current independent macOS
-utilities. Each tool gets one oversized metaphor and enough personality to
-remain recognizable without a label. The family has three approved treatments:
-the tool's **Chosen Color** identity plus the neutral **Midnight** and
-**Porcelain** appearance families.
-
-### Appearance strategy
-
-The neutral appearance rule is intentionally inverted against the surrounding
-desktop for stronger Dock separation:
-
-- **Light macOS appearance uses Midnight.** The dark tile remains clearly bounded
-  against a light desktop and light launcher surfaces.
-- **Dark macOS appearance uses Porcelain.** The light tile remains clearly bounded
-  against a dark desktop and dark launcher surfaces.
-- A tool may explicitly keep its Chosen Color identity in one or both
-  appearances. These exceptions are product decisions, not automatic palette
-  substitutions.
-- Appearance changes are implemented through asset-catalog luminosity variants.
-  SwiftUI and AppKit always request the same named image. Do not add per-view or
-  per-window theme branches.
-
-#### Neutral palette
-
-| Family | Ground | Echo | Primary glyph | Contrast detail |
-|---|---|---|---|---|
-| Midnight | `#1C1D22` | `#5B5D66` | `#F4F4F5` | `#25262B` |
-| Porcelain | `#E7E7EA` | `#A6A8AF` | `#25262B` | `#F4F4F5` |
-
-Contrast detail is the optional opposing-color mark inside the primary glyph,
-such as a cutout, screen, or graduation. It is never a ground, outline, or
-second echo. Omit it when the metaphor does not need an internal detail.
-
-Use these exact neutral shades. They are not aliases of the warmer Chosen Color
-ink `#23272E` and paper `#F7F5F0`. Mixing the two neutral families within one
-variant weakens the deliberate temperature and contrast difference.
-
-#### Tool appearance matrix
-
-| Tool | Light appearance | Dark appearance | Decision |
-|---|---|---|---|
-| RSync UI | Midnight | Chosen Color | Preserve the blue cloud echo in dark mode |
-| Event Viewer | Chosen Color | Chosen Color | Ceramic log tablet with a coral warning badge |
-| Ruler | Chosen Color | Chosen Color | Orange identity is fixed in both appearances |
-| Kwake | Chosen Color | Chosen Color | Yellow eye identity is fixed in both appearances |
-| Color Picker | Chosen Color | Chosen Color | Eyedropper with attached color samples |
-| Text Extractor | Chosen Color | Chosen Color | Capture card with a selected text strip |
-| Input Devices | Chosen Color | Chosen Color | Ivory mouse with a violet scroll wheel |
-| System Cleaner | Chosen Color | Chosen Color | Cleanup tray with one removable block |
-| Partition Manager | Chosen Color | Chosen Color | Owner-selected Sector platter |
-| Task Manager | Chosen Color | Chosen Color | Midnight-blue display-and-metrics identity is fixed |
-| NetToys | Chosen Color | Chosen Color | Network module with a connected coral port |
-| Portman | Midnight | Porcelain | Neutral network-port glyph in both appearances |
-| Mac Tweaks | Chosen Color | Chosen Color | Tweak wand with a lavender tip and sparkles |
-
-The 2026-09-25 owner request in `spec/icon-refresh-request-list.md` replaces
-the prior identities for these six tools. The 2026-10-05 owner pick EV1
-gives Event Viewer the same treatment, and the 2026-10-05 owner pick MS7
-gives it to Mac Tweaks. These eight tools use 512px PNG image
-sets with transparent rounded corners and one universal appearance. Their
-detailed material finish follows the owner-selected Sector platter. All
-remaining tool icons continue to follow the SVG construction rules below.
-
-For SVG tools, the base `icon.svg` entry is the light-appearance asset. Add `icon-dark.svg`
-with a `luminosity: dark` appearance only when the matrix calls for a different
-dark asset. Tools that use Chosen Color in both modes keep one universal SVG.
-
-Every new plugin adds its approved light and dark treatment to this matrix
-before icon work begins. If its product brief has no approved Chosen Color
-identity, use Midnight in light appearance and Porcelain in dark appearance.
-An absent matrix row is a blocking metadata defect, never permission to guess a
-palette or reuse another tool's semantic hue.
-
-### Construction
-
-- Every active SVG tool-icon appearance uses the same outer SVG template. This
-  applies to every remaining SVG tool and light and dark variant.
-- Use a `512 × 512` SVG view box and a full-canvas tile.
-- Define `clipPath id="tile"` with a `512 × 512` rectangle and `rx="112"`.
-  Wrap the ground and all artwork in `<g clip-path="url(#tile)">`.
-- Every launcher, sidebar, grid, and tray rendering path also applies the shared
-  `toolIconTile(size:)` mask. Its corner radius is `size × 112 ÷ 512`.
-- Do not use a local corner radius or rely on the ground shape to clip later
-  artwork. A bleeding glyph or band must never replace a rounded corner with a
-  sharp one.
-- Let the glyph occupy 60–72% of the tile width. Structural elements may bleed
-  through the tile edge so the subject feels large instead of sticker-like.
-- Build one literal metaphor from the fewest recognizable shapes. Prefer broad
-  closed silhouettes and 28–64pt bands over detailed illustration or floating
-  linework.
-- Every exposed stroke uses `stroke-linecap="round"` and
-  `stroke-linejoin="round"`. Round the ends of filled shapes too.
-- Chosen Color icons normally create depth with meaningful overlap, such as one
-  object passing behind another. Midnight and Porcelain use the approved solid
-  echo construction below.
-- Use punch-through details sparingly and only when they clearly read as a
-  physical cutout. Never use one for a catchlight or decorative control.
-- New Chosen Color icons use warm off-white `#F7F5F0` and charcoal `#23272E`,
-  never pure white or black. The Chosen Color palette table is the binding
-  legacy exception: RSync UI retains its listed `#FFFFFF` foreground.
-  Neutral Midnight/Porcelain assets always use their own
-  closed glyph tokens rather than either white.
-- SVG icons use no decorative outline, gloss, blur, rim light, or soft drop
-  shadow. A gradient is allowed only when color itself is the metaphor or part
-  of an approved legacy Chosen Color asset. The eight bitmap icons above keep
-  their shallow material lighting from the approved visual direction.
-
-The base application icon is the deliberate exception to the tool/plugin SVG
-construction rules above. `powertoys/AppIcon.icon` uses Icon Composer's
-`1024 × 1024` layered source canvas and solid document fill; its SVG layers
-must not bake in the rounded-square ground or any lighting effect. The symbol
-uses the same Lucide-derived outline flexed-arm geometry as the menu-bar glyph,
-centered at roughly 58% of the source-canvas width so it remains clear at Dock
-and Raycast sizes. Its secondary layer keeps the `52px` right/down echo offset
-at that scale (`26px` on a 512 canvas), rather than adopting the tool-icon
-`18 × 22` echo. Icon Composer supplies the system enclosure, lighting, and
-prior-generation fallback.
-
-### Solid echo construction
-
-Midnight and Porcelain derive their depth from one flat copy of the semantic
-glyph behind the foreground:
-
-1. Construct the complete semantic foreground silhouette first.
-2. Duplicate that silhouette once and place the copy behind the foreground.
-3. Offset the echo by exactly `18px` right and `22px` down with
-   `transform="translate(18 22)"`.
-4. Fill or stroke the complete echo with the family echo token. Neutral echoes
-   are fully opaque. They never use blur, gradients, blend modes, or multiple
-   offsets.
-5. Keep the echo's geometry, scale, rotation, line caps, and line joins identical
-   to the foreground. Only its position and color differ.
-6. The echo may be clipped by the rounded-square ground. Do not shrink the glyph
-   merely to keep the echo inside the tile.
-
-Compound glyphs must behave as one silhouette. Put all echo pieces inside one
-`<g>` with one shared fill or stroke. When a Chosen Color legacy icon uses a
-translucent semantic echo, apply `opacity` to the group, never to overlapping
-children. This prevents darker seams where parts overlap.
-
-At 32px the echo should read as a narrow lower-right depth cue, not a duplicate
-icon. If it becomes a second symbol, the foreground is too small or the offset
-has been changed.
-
-### Chosen color palette
-
-| Tool | Ground | Foreground | Semantic accent |
-|---|---|---|---|
-| RSync UI | `#1C1D22` | `#FFFFFF` at `.92` | `#5B8DEF` cloud echo at `.30` |
-| Ruler | `#F04E23` | `#23272E` | Cream graduation cutouts |
-| Kwake | `#F5B71E` | `#23272E`, `#F7F5F0` | Cream eye catchlight |
-| Task Manager | `#002B26` | `#E0FFF8` | M02 Scope trace identity |
-
-The eight bitmap identities in the appearance matrix take their colors from
-their approved `icon.png` assets, rather than this SVG palette table.
-
-New Chosen Color tools should receive their own semantic hue unless a documented
-product decision deliberately links them to an existing color. Neutral
-appearance variants always use the closed Midnight or Porcelain palette instead
-of inventing tool-specific grays.
-
-### Asset catalog structure
-
-An image set with different appearance assets uses this shape:
-
-```json
-{
-  "images": [
-    {
-      "filename": "icon.svg",
-      "idiom": "universal"
-    },
-    {
-      "appearances": [
-        {
-          "appearance": "luminosity",
-          "value": "dark"
-        }
-      ],
-      "filename": "icon-dark.svg",
-      "idiom": "universal"
-    }
-  ],
-  "info": {
-    "author": "xcode",
-    "version": 1
-  },
-  "properties": {
-    "preserves-vector-representation": true
-  }
-}
-```
-
-- `icon.svg` is always the light-appearance result from the matrix.
-- `icon-dark.svg` is always the dark-appearance result from the matrix.
-- Both files remain vector SVGs at a `512 × 512` view box.
-- Keep `preserves-vector-representation` enabled for appearance-aware image
-  sets.
-- If both appearances use the same Chosen Color icon, keep a single universal
-  image entry (`icon.svg` or an approved `icon.png`). Do not duplicate an
-  identical dark file.
-- Launcher cards and the Dock use the same named asset. Do not create a separate
-  Dock-only color treatment.
-
-### Generation workflow
-
-The steps below apply to SVG tool icons. The eight bitmap icons named in the
-appearance matrix use 512px RGBA PNG sources, one universal image entry per
-image set, transparent corners, and 512/64/32/16px visual checks.
-
-1. Pick one literal object or action for the tool. Do not combine metaphors.
-2. Sketch and approve one master semantic glyph at 512px using rounded filled
-   shapes and broad round-capped bands. Make it larger than feels initially
-   comfortable. Geometry is approved independently of its appearance palette.
-3. Look up the tool in the appearance matrix. For a new plugin, add the required
-   row using the rule above before continuing. Never assume every tool receives
-   both neutral families.
-4. Follow the matrix branch. If Chosen Color is approved, apply its documented
-   palette to the master glyph. For each Midnight or Porcelain result, preserve
-   the same master geometry and apply only the closed neutral palette plus the
-   `18 × 22` solid echo. A neutral-only plugin produces Midnight and Porcelain
-   directly and has no Chosen Color asset or invented semantic hue. Never
-   redesign the metaphor between appearances.
-5. Save the light result as
-   `Assets.xcassets/<Tool>Logo.imageset/icon.svg`. Add `icon-dark.svg` and the
-   luminosity appearance entry only when the dark result differs.
-6. Validate every referenced SVG and preview each appearance from the repository
-   root:
-
-   ```sh
-   xmllint --noout powertoys/Assets.xcassets/<Tool>Logo.imageset/icon.svg
-   xmllint --noout powertoys/Assets.xcassets/<Tool>Logo.imageset/icon-dark.svg
-   sips -s format png powertoys/Assets.xcassets/<Tool>Logo.imageset/icon.svg \
-     --out /tmp/<Tool>-icon-light.png
-   sips -s format png powertoys/Assets.xcassets/<Tool>Logo.imageset/icon-dark.svg \
-     --out /tmp/<Tool>-icon-dark.png
-   ```
-
-7. Inspect every active appearance at 512, 64, 32, and 16px. The metaphor must
-   still read at 32px, and the echo must remain a depth cue. At 16px the glyph
-   may simplify, but it must not collapse into visual noise.
-8. Build the app so `actool` validates `Contents.json`, both luminosity slots,
-   and vector preservation. Check the icon once on a light desktop and once on a
-   dark desktop before release.
-
-Menu bar icons are the exception: use a single-color template silhouette of the
-same metaphor because macOS controls their tint.
