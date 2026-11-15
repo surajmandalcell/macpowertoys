@@ -1,6 +1,5 @@
 import Darwin
 import Foundation
-import NetToysCore
 import Observation
 
 extension Notification.Name {

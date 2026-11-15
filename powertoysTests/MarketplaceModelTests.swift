@@ -3,7 +3,7 @@ import XCTest
 
 final class MarketplaceModelTests: XCTestCase {
     private static let builtInToolIDs: Set<String> = [
-        "rclone", "logs", "ruler", "awake", "color-picker", "text-extractor", "input-devices", "system-care", "disk-explorer", "nettoys", "portman", "mac-tweaks"
+        "rclone", "logs", "ruler", "awake", "color-picker", "text-extractor", "input-devices", "portman", "mac-tweaks"
     ]
 
     private func fixture(_ name: String) throws -> Data {

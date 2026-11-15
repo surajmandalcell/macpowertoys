@@ -11,7 +11,7 @@ enum TrayPopoverLayout {
     static let heightFraction = OnePlusMenuMetrics.heightFraction
     static let homeToolIDs = ["color-picker", "text-extractor", "awake", "ruler"]
     static let defaultComplexTabs: [TrayTab] = [
-        .cloudSync, .inputDevices, .systemCare, .netToys,
+        .cloudSync, .inputDevices,
     ]
 
     /// The tallest body that keeps the whole panel inside its display ceiling.

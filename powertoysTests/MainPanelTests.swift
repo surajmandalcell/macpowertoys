@@ -213,7 +213,7 @@ final class MainPanelTests: XCTestCase {
 
     @MainActor
     private static func panel(maximumHeight: CGFloat) -> some View {
-        MainPanelFrame(maximumHeight: maximumHeight, tabs: [.home, .inputDevices, .systemCare, .netToys, .cloudSync],
+        MainPanelFrame(maximumHeight: maximumHeight, tabs: [.home, .inputDevices, .cloudSync],
                        selection: .constant(.home), onMove: { _, _ in }, openSettings: {}, openApp: {}) {
             MainPanelScrollBody { homeContent() }
         }

@@ -1,7 +1,5 @@
 import Darwin
 import Foundation
-import NetToysCore
-import NetToysKit
 import Observation
 import ServiceManagement
 
@@ -153,13 +151,31 @@ nonisolated enum FanCommand {
         return commit.count == 40 && commit.allSatisfy(\.isHexDigit) ? commit : nil
     }
 
+    /// A running helper whose binary an app update replaced fails the code-signing check.
+    static func helperIsStale() -> Bool {
+        let reply = HelperReply()
+        let connection = NSXPCConnection(machServiceName: MacPowerToysHelperContract.machServiceName, options: .privileged)
+        connection.remoteObjectInterface = NSXPCInterface(with: MacPowerToysHelperXPCProtocol.self)
+        connection.setCodeSigningRequirement(MacPowerToysHelperContract.helperRequirement)
+        connection.invalidationHandler = { reply.finish("") }
+        connection.resume()
+        let proxy = connection.remoteObjectProxyWithErrorHandler { error in
+            reply.finish((error as NSError).code == NSXPCConnectionCodeSigningRequirementFailure ? "stale" : "")
+        } as? MacPowerToysHelperXPCProtocol
+        proxy?.neighborSnapshot { _, _ in reply.finish("") }
+        if proxy == nil { reply.finish("") }
+        let result = reply.wait(seconds: 2)
+        connection.invalidate()
+        return result == "stale"
+    }
+
     private static func helperConnection(reply: HelperReply) -> (NSXPCConnection, MacPowerToysHelperXPCProtocol?) {
         let connection = NSXPCConnection(
-            machServiceName: MacPowerToysHelperContract.neighbor.machServiceName,
+            machServiceName: MacPowerToysHelperContract.machServiceName,
             options: .privileged
         )
         connection.remoteObjectInterface = NSXPCInterface(with: MacPowerToysHelperXPCProtocol.self)
-        connection.setCodeSigningRequirement(MacPowerToysHelperContract.neighbor.helperRequirement)
+        connection.setCodeSigningRequirement(MacPowerToysHelperContract.helperRequirement)
         connection.interruptionHandler = { reply.finish("The built-in fan helper stopped.") }
         connection.invalidationHandler = { reply.finish("The built-in fan helper is unavailable.") }
         connection.resume()
@@ -350,16 +366,16 @@ final class FanControlService {
     var canControl: Bool { snapshot?.canControl == true }
     var canRestoreAutomatic: Bool {
         (ownsManualControl || hasPendingManualCommand || snapshot?.hasExternalManualControl == true)
-            && (FanCommand.smctlPath != nil || MacPowerToysNetToys.host.neighborService.isEnabled)
+            && (FanCommand.smctlPath != nil || FanHelperService.shared.isEnabled)
     }
-    var needsApproval: Bool { MacPowerToysNetToys.host.neighborService.status == .requiresApproval }
+    var needsApproval: Bool { FanHelperService.shared.status == .requiresApproval }
     var needsHelperUpdate: Bool {
         guard let helperCommit else { return false }
         return helperCommit != Bundle.main.object(forInfoDictionaryKey: "MPTSourceCommit") as? String
     }
 
     func enableControl() async {
-        let manager = MacPowerToysNetToys.host.neighborService
+        let manager = FanHelperService.shared
         if needsHelperUpdate {
             do { try await manager.restart() }
             catch { errorMessage = error.localizedDescription; return }
@@ -401,7 +417,7 @@ final class FanControlService {
         let readSnapshot = readSnapshot
         let result = await Task.detached(priority: .utility) { readSnapshot() }.value
         guard currentRevision == revision, !owners.isEmpty, !isRestoringOnExit else { return }
-        if result?.canControl != true, MacPowerToysNetToys.host.neighborService.isEnabled, helperCommit == nil,
+        if result?.canControl != true, FanHelperService.shared.isEnabled, helperCommit == nil,
            helperCommitRetryAt.map({ ContinuousClock.now >= $0 }) ?? true {
             helperCommit = await Task.detached(priority: .utility) { FanCommand.helperSourceCommit() }.value
             // Back off from 10 s to 5 min while the helper commit cannot be read; Enable retries at once.
@@ -412,7 +428,7 @@ final class FanControlService {
         guard currentRevision == revision, !owners.isEmpty, !isRestoringOnExit else { return }
         hasCompletedRead = true
         if let result {
-            let nativeControl = MacPowerToysNetToys.host.neighborService.isEnabled
+            let nativeControl = FanHelperService.shared.isEnabled
                 && !needsHelperUpdate && helperCommit != nil
                 && !result.fans.isEmpty
                 && (!result.hasExternalManualControl || ownsManualControl)

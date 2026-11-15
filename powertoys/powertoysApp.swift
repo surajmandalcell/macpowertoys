@@ -146,27 +146,6 @@ struct MacPowerToysApp: App {
                     .onePlusFixedCanvas(.macTweaks)
                     .onToolWindowURL("input-devices")
             }
-        case "system-care":
-            OnePlusWindowContent {
-                SystemCareWindowView()
-                    .utilityMotionPolicy()
-                    .onePlusFixedCanvas(.systemCare)
-                    .onToolWindowURL("system-care")
-            }
-        case "disk-explorer":
-            OnePlusWindowContent {
-                DiskExplorerWindowView()
-                    .utilityMotionPolicy()
-                    .onePlusFixedCanvas(.diskExplorer)
-                    .onToolWindowURL("disk-explorer")
-            }
-        case "nettoys":
-            OnePlusWindowContent {
-                MacPowerToysNetToysView()
-                    .utilityMotionPolicy()
-                    .onePlusFixedCanvas(.netToys)
-                    .onToolWindowURL("nettoys")
-            }
         case "mac-tweaks":
             OnePlusWindowContent {
                 MacTweaksWindowView()
@@ -250,33 +229,6 @@ struct MacPowerToysApp: App {
             Self.windowContent(id: "input-devices")
         }
         .defaultSize(OnePlusWindowCanvas.macTweaks.size)
-        .windowResizability(.contentSize)
-        .windowStyle(.hiddenTitleBar)
-        .handlesExternalEvents(matching: [])
-        .restorationBehavior(.disabled)
-
-        Window("System Cleaner", id: "system-care") {
-            Self.windowContent(id: "system-care")
-        }
-        .defaultSize(OnePlusWindowCanvas.systemCare.size)
-        .windowResizability(.contentSize)
-        .windowStyle(.hiddenTitleBar)
-        .handlesExternalEvents(matching: [])
-        .restorationBehavior(.disabled)
-
-        Window("Partition Manager", id: "disk-explorer") {
-            Self.windowContent(id: "disk-explorer")
-        }
-        .defaultSize(OnePlusWindowCanvas.diskExplorer.size)
-        .windowResizability(.contentSize)
-        .windowStyle(.hiddenTitleBar)
-        .handlesExternalEvents(matching: [])
-        .restorationBehavior(.disabled)
-
-        Window("NetToys", id: "nettoys") {
-            Self.windowContent(id: "nettoys")
-        }
-        .defaultSize(OnePlusWindowCanvas.netToys.size)
         .windowResizability(.contentSize)
         .windowStyle(.hiddenTitleBar)
         .handlesExternalEvents(matching: [])

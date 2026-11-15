@@ -4,7 +4,6 @@
 //
 
 import Foundation
-import NetToysKit
 import AppKit
 import SwiftUI
 
@@ -107,36 +106,11 @@ final class SettingsManager {
 
     func setToolEnabled(_ enabled: Bool, for toolID: String) {
         guard enabled != isToolEnabled(toolID) else { return }
-        if toolID == "nettoys", !AppRuntime.isRunningTests {
-            guard !transitioningToolIDs.contains(toolID) else { return }
-            transitioningToolIDs.insert(toolID)
-            Task {
-                let succeeded = await MacPowerToysNetToys.host.loginItems.setEnabled(enabled)
-                if succeeded {
-                    persistToolEnabled(enabled, toolID: toolID)
-                    postEnablementChange(enabled, toolID: toolID)
-                }
-                transitioningToolIDs.remove(toolID)
-            }
-            return
-        }
         persistToolEnabled(enabled, toolID: toolID)
 
         guard !AppRuntime.isRunningTests else { return }
         postEnablementChange(enabled, toolID: toolID)
         applyLifecycle(enabled: enabled, toolID: toolID)
-    }
-
-    func reconcileNetToysLifecycle() async {
-        guard !AppRuntime.isRunningTests else { return }
-        let requested = isToolEnabled("nettoys")
-        let loginItems = MacPowerToysNetToys.host.loginItems
-        // A disabled tool with no request and no registered helper has nothing to reconcile.
-        if !requested {
-            guard await loginItems.hasBackgroundWork() else { return }
-        }
-        let succeeded = await loginItems.setEnabled(requested)
-        if requested, !succeeded { persistToolEnabled(false, toolID: "nettoys") }
     }
 
     private func persistToolEnabled(_ enabled: Bool, toolID: String) {

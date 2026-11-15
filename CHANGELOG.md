@@ -6,6 +6,11 @@ Notable changes are documented here. The project follows semantic versioning aft
 
 ### Removed
 
+- Removed the Partition Manager, System Cleaner, and NetToys tools: their
+  windows, pages, menu bar content, routes, and Raycast commands. They continue
+  as Sam's Partition Manager, Sam's System Cleaner, and Sam's NetToys. An old
+  link to one of them ends as an unknown tool route. The NetToys package
+  dependency is removed. The fan helper stays for Fan control.
 - Removed the Task Manager tool: its window, pages, menu bar panel and metric
   items, Remote Stats, routes, and Raycast command. It continues as a separate
   app. The main panel keeps Fan control, and the metric sampler stays for its

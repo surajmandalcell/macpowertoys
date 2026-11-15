@@ -7,8 +7,6 @@ import Foundation
 import SwiftUI
 import Darwin
 import OnePlusUI
-import NetToysCore
-import NetToysKit
 
 @Observable
 @MainActor
@@ -26,7 +24,6 @@ final class DeepLinkHandler {
 
     private var pendingLinks: [URL] = []
     private var openWindowAction: OpenWindowAction?
-    private var pendingNetToysPrefill: NetToysScanPrefill?
 
     private init() {}
 
@@ -195,24 +192,13 @@ final class DeepLinkHandler {
         pendingLinks.removeAll()
     }
 
-    func takeNetToysPrefill() -> NetToysScanPrefill? {
-        defer { pendingNetToysPrefill = nil }
-        return pendingNetToysPrefill
-    }
-
     private func processURL(_ url: URL) {
         if ToolActionRouter.shared.execute(url: url) { return }
 
         switch url.host {
         case "open":
             if let route = OpenToolRoute.parse(url) {
-                let toolId = route.tool
-                let prefill = toolId == "nettoys" ? NetToysScanPrefill.parse(url) : nil
-                if let prefill { pendingNetToysPrefill = prefill }
-                ToolActionRouter.shared.open(toolID: toolId, page: route.page, activateApp: false)
-                if let prefill {
-                    NotificationCenter.default.post(name: .netToysPrefill, object: prefill)
-                }
+                ToolActionRouter.shared.open(toolID: route.tool, page: route.page, activateApp: false)
             } else {
                 LogManager.shared.warning("Unknown open route: \(url.path)", source: "DeepLinkHandler")
             }

@@ -1,5 +1,4 @@
 import AppKit
-import NetToysCore
 import XCTest
 @testable import powertoys
 

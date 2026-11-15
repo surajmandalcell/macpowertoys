@@ -1,6 +1,4 @@
 import OnePlusUI
-import NetToysCore
-import NetToysKit
 import SwiftUI
 import XCTest
 @testable import powertoys
@@ -36,10 +34,10 @@ final class TrayPopoverLayoutTests: XCTestCase {
     func testComplexTabOrderUsesSavedUniqueAvailableTabsThenDefaults() {
         XCTAssertEqual(
             TrayPopoverLayout.orderedComplexTabs(
-                available: [.cloudSync, .inputDevices, .systemCare],
-                savedIDs: ["input-devices", "unknown", "rclone", "input-devices"]
+                available: [.cloudSync, .inputDevices],
+                savedIDs: ["input-devices", "unknown", "nettoys", "rclone", "input-devices"]
             ),
-            [.inputDevices, .cloudSync, .systemCare]
+            [.inputDevices, .cloudSync]
         )
     }
 
@@ -47,7 +45,7 @@ final class TrayPopoverLayoutTests: XCTestCase {
         XCTAssertEqual(
             ["home", "cloud-sync", "input-devices", "system-care", "nettoys"]
                 .compactMap(TrayTab.init(panelID:)),
-            [.home, .cloudSync, .inputDevices, .systemCare, .netToys]
+            [.home, .cloudSync, .inputDevices]
         )
     }
 
@@ -78,45 +76,6 @@ final class TrayPopoverLayoutTests: XCTestCase {
         XCTAssertEqual(visible.last?.createdAt, Date(timeIntervalSince1970: 102))
     }
 
-    func testPreparedCleanupKeepsEveryRowAndCategoryTotal() {
-        let candidates = [SystemCareCategoryID.logs, .caches, .logs].enumerated().map { index, category in
-            CleanupCandidate(url: URL(fileURLWithPath: "/scan/item-\(index)"),
-                             allowedRoot: URL(fileURLWithPath: "/scan"),
-                             category: category, size: Int64(index + 1) * 1_024)
-        }
-        let snapshot = SystemCareTraySnapshot.prepare(candidates)
-
-        XCTAssertTrue(snapshot.isPrepared)
-        XCTAssertEqual(snapshot.totalSize, 6_144)
-        XCTAssertEqual(snapshot.totals.map(\.category), [.caches, .logs])
-        XCTAssertEqual(snapshot.totals.map(\.size), [2_048, 4_096])
-        XCTAssertEqual(snapshot.groups[.logs]?.map(\.id), [candidates[0].id, candidates[2].id])
-        XCTAssertEqual(snapshot.groups[.caches]?.first?.size, SystemCarePresentationRows.cleanup([candidates[1]]).first?.size)
-        XCTAssertTrue(SystemCareTraySnapshot.prepare([]).groups.isEmpty)
-        XCTAssertEqual(SystemCareTraySnapshot.prepare([]).totalSize, 0)
-    }
-
-    func testStartupDiskSegmentsKeepPurgeableSeparateFromFree() throws {
-        for (free, available, used, purgeable) in [
-            (Int64(100), Int64(300), Int64(700), Int64(200)),
-            (100, 50, 900, 0), (100, 2_000, 0, 900),
-            (100, .min, 900, 0), (-100, 300, 700, 300), (2_000, 300, 0, 0)
-        ] {
-            let disk = try XCTUnwrap(SystemCareStartupDiskSnapshot(
-                capacity: 1_000, free: free, availableForImportantUsage: available
-            ))
-            XCTAssertEqual(disk.used, used)
-            XCTAssertEqual(disk.purgeable, purgeable)
-            XCTAssertEqual(disk.used + disk.free + (disk.purgeable ?? 0), 1_000)
-        }
-        let unknown = try XCTUnwrap(SystemCareStartupDiskSnapshot(
-            capacity: 1_000, free: 100, availableForImportantUsage: nil
-        ))
-        XCTAssertNil(unknown.purgeable)
-        XCTAssertEqual(unknown.used, 900)
-        XCTAssertNil(SystemCareStartupDiskSnapshot(capacity: 0, free: 0, availableForImportantUsage: nil))
-    }
-
     func testRemoteActivityUsesBothEndpointsAndLatestFinishTime() {
         let latest = transferJob(state: .completed, createdAt: Date(timeIntervalSince1970: 1),
                                  sourceFs: "foo:source", destinationFs: "bar:destination")
@@ -130,42 +89,6 @@ final class TrayPopoverLayoutTests: XCTestCase {
         XCTAssertEqual(activity["bar"]?.id, latest.id)
         XCTAssertEqual(activity["foobar"]?.id, other.id)
         XCTAssertNil(activity["/source"])
-    }
-
-    func testNetToysActivityListsStayBoundedAndNewestFirst() {
-        let anchors = (0..<7).map { index in
-            SSHAnchorConfiguration(
-                hostAlias: "host-\(index)",
-                hostName: "192.168.1.\(index)",
-                port: 22,
-                identity: .stableMAC("00:11:22:33:44:\(index)")
-            )
-        }
-        let statuses = anchors.enumerated().map { index, anchor in
-            SSHAnchorStatus(
-                anchorID: anchor.id,
-                state: .healthy,
-                currentHostName: anchor.hostName,
-                lastCheck: Date(timeIntervalSince1970: Double(index)),
-                message: nil
-            )
-        }
-        let events = (0..<7).map { index in
-            NetworkTransitionEvent(
-                networkID: "en0|192.168.1.1",
-                date: Date(timeIntervalSince1970: Double(index)),
-                changes: [.internet(from: .reachable, to: .unreachable)]
-            )
-        } + [NetworkTransitionEvent(
-            networkID: "en0|192.168.1.1",
-            date: Date(timeIntervalSince1970: 8),
-            changes: [.internet(from: .unreachable, to: .reachable)]
-        )]
-
-        XCTAssertEqual(NetToysMenuLayout.recentAnchors(anchors, statuses: statuses).count, 5)
-        XCTAssertEqual(NetToysMenuLayout.recentAnchors(anchors, statuses: statuses).first?.id, anchors.last?.id)
-        XCTAssertEqual(NetToysMenuLayout.recentNetworkIssues(events).count, 5)
-        XCTAssertEqual(NetToysMenuLayout.recentNetworkIssues(events).first?.date, Date(timeIntervalSince1970: 6))
     }
 
     func testTrayUsesSharedMenuPanelWithReorderableTabs() throws {
@@ -198,21 +121,6 @@ final class TrayPopoverLayoutTests: XCTestCase {
         XCTAssertTrue(source.contains("symbol: ToolGlyph.textExtractor.symbol"))
     }
 
-    func testNetToysTrayKeepsBoundedPersistentDisclosuresAndRoutesToFullPages() throws {
-        let tray = try sourceFile("Views/MenuPanels")
-        let window = try sourceFile("Views/NetToys/MacPowerToysNetToysView.swift")
-
-        XCTAssertTrue(tray.contains("NetToysMenuContent(snapshot: $snapshot, host: MacPowerToysNetToys.host)"))
-        XCTAssertTrue(tray.contains("ToolActionRouter.shared.open(toolID: \"nettoys\", page: page.pageID)"))
-        XCTAssertTrue(window.contains(".onOpenToolPage(\"nettoys\")"))
-        XCTAssertTrue(window.contains("NetToysWindowView(host: MacPowerToysNetToys.host"))
-    }
-
-    func testNetToysDisclosureHoverOwnsTheFullPaddedRow() throws {
-        XCTAssertEqual(NetToysMenuLayout.disclosureHorizontalPadding, 6)
-        XCTAssertEqual(NetToysMenuLayout.disclosureVerticalPadding, 6)
-    }
-
     func testCorrectedSharedSurfacesHaveOneTrailingAndHoverGeometry() throws {
         let input = try sourceFile("Views/InputDevices/InputDevicesSettingsView.swift")
         let launcher = try sourceFile("Views/AllToolsGridView.swift")
@@ -239,35 +147,12 @@ final class TrayPopoverLayoutTests: XCTestCase {
             (.cloudSync, .light, "RSync UI — Light"),
             (.inputDevices, .dark, "Input Devices — Dark"),
             (.inputDevices, .light, "Input Devices — Light"),
-            (.systemCare, .dark, "System Cleaner — Dark"),
-            (.systemCare, .light, "System Cleaner — Light"),
-            (.netToys, .dark, "NetToys — Dark"),
-            (.netToys, .light, "NetToys — Light"),
         ] {
             let attachment = XCTAttachment(image: try render(tab: tab, colorScheme: scheme))
             attachment.name = "Menu Bar — \(name)"
             attachment.lifetime = .keepAlways
             add(attachment)
         }
-
-        let defaults = UserDefaults.standard
-        let keys = [
-            "tray.nettoys.anchor.expanded",
-            "tray.nettoys.wifi.expanded",
-            "tray.nettoys.history.expanded",
-        ]
-        let priorValues = keys.map { defaults.object(forKey: $0) }
-        defer {
-            for (key, value) in zip(keys, priorValues) {
-                if let value { defaults.set(value, forKey: key) }
-                else { defaults.removeObject(forKey: key) }
-            }
-        }
-        keys.forEach { defaults.set(true, forKey: $0) }
-        let attachment = XCTAttachment(image: try render(tab: .netToys, colorScheme: .dark))
-        attachment.name = "Menu Bar — NetToys Expanded — Dark"
-        attachment.lifetime = .keepAlways
-        add(attachment)
     }
 
     private func restore(_ value: String?, key: String) {
