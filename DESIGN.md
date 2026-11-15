@@ -170,9 +170,8 @@ Resolve conflicts in this order:
    implements this file.
    A view never restyles a OnePlusUI component locally. Add a named variant to
    the package instead.
-4. The HTML references (kept outside the repository): `task-manager.html`
-   (Task Manager window and the menu-bar panel pattern),
-   the macOS System Settings app (main window structure), `mac-tweaks-design.html`
+4. The version 15 reference renders in `docs/design/v15/`, and the HTML
+   references (kept outside the repository): `mac-tweaks-design.html`
    (settings rows and controls), and `diskman-fixed.html` (storage charts).
 5. Current screenshots in `docs/screenshots/`.
 
@@ -228,7 +227,7 @@ everywhere.
 | Sidebar title | 12.5 | 12.5 | semibold | -0.16 | `ink` |
 | Nav row | 12.5 | 11.5 | regular | 0 | `secondary`, selected `ink` |
 | Nav section caption | 9 uppercase | 9 uppercase | medium | +1 | `muted` |
-| Page title | 24 | 20 dot matrix | semibold | -0.7 | `ink` |
+| Page title | 24 | 20 | semibold | -0.7 | `ink` |
 | Page subtitle | 12.5 | 10.5 | regular | 0 | `secondary` |
 | Tab label | 12 | 11 | regular | 0 | `secondary`, hover and selected `ink` |
 | Section title | 13 | 12 | semibold | -0.1 | `ink` |
@@ -244,13 +243,10 @@ everywhere.
 
 - Regular density: main window, Mac Tweaks, Partition Manager, RSync UI, Event
   Viewer, Input Devices, System Cleaner, NetToys, compact applets, and sheets.
-- Compact density: the Task Manager window and every menu-bar panel.
+- Compact density: every menu-bar panel.
 - Descriptions and metric units use `secondary`. Supporting captions and metadata use
   `muted`; metric captions use `metricCaption`. These roles stay separate
   from primary values.
-- The dot-matrix title is Task Manager's identity only. It is drawn from the
-  5 x 7 glyph table as one cached path with one accessibility label. The Task
-  Manager sidebar title uses the normal system role.
 
 ## Geometry
 
@@ -279,9 +275,7 @@ buttons) centers on that control's center line, and all text in the row
 shares one baseline (owner correction 2026-10-01: "MAC access: Allowed"
 and "2 pointing devices found" sat higher than the button beside them).
 Items in the row are 12 pt apart.
-Use the text baseline and glyph bounds for system titles. Task Manager's
-20 pt dot canvas starts at its painted path top inside the regular 28.8 pt
-line box. Measure cap strokes in linear light at 1x and 2x to exclude the
+Use the text baseline and glyph bounds for system titles. Measure cap strokes in linear light at 1x and 2x to exclude the
 appearance-dependent antialiasing halo.
 
 Traffic-light inset (owner pick 2026-10-01, "Inset B"): the close button's
@@ -394,7 +388,7 @@ C=27  (traffic lights and sidebar title center here; title top aligns with their
       [ footer / status row ]        (fixed)
 ```
 
-- Content gutter: 24 pt on both sides (Task Manager uses 20). Every body
+- Content gutter: 24 pt on both sides. Every body
   element, including embedded settings, starts on the page title's leading
   edge. Nothing adds a second inset.
 - The first line box of the page title starts at `T`. The subtitle sits 2 pt
@@ -487,7 +481,6 @@ Use only these. Names are the package API.
 | `OnePlusEmptyState` | A centered 26 pt glyph, 13 pt medium title, one caption sentence, and an optional neutral button, with at least 40 pt vertical padding. |
 | `OnePlusToast` | A non-focusable overlay 20 pt above the content bottom, radius 6, `raised` at 96%, 1 pt `line`, 11 pt text. It also posts an accessibility announcement. |
 | `OnePlusSheet` | A native `.sheet` with a 40 pt header (title, optional close), 20 pt body padding, and a footer with trailing actions (Cancel ghost, confirm primary or destructive). Widths 420, 560, or 700. |
-| `OnePlusDotTitle` | The Task Manager dot-matrix title. |
 | `OnePlusWindowTexture` | The window texture layer. |
 | Menu-panel parts | See "Menu-bar panels". |
 
