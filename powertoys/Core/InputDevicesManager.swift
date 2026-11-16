@@ -4,6 +4,7 @@ import Foundation
 import IOKit
 import IOKit.hid
 import os
+import QuartzCore
 
 nonisolated enum InputEventOverride: String, Codable, CaseIterable, Identifiable, Sendable {
     case automatic
@@ -102,37 +103,78 @@ nonisolated struct InputScrollStep: Equatable, Sendable {
              lineVertical: lhs.lineVertical - rhs.lineVertical, lineHorizontal: lhs.lineHorizontal - rhs.lineHorizontal)
     }
 
-    func share(of steps: Int) -> Self {
-        let count = Double(steps)
-        return Self(vertical: (vertical / count).rounded(), horizontal: (horizontal / count).rounded(),
-                    lineVertical: (lineVertical / count).rounded(), lineHorizontal: (lineHorizontal / count).rounded())
+    func scaled(_ factor: Double) -> Self {
+        Self(vertical: vertical * factor, horizontal: horizontal * factor,
+             lineVertical: lineVertical * factor, lineHorizontal: lineHorizontal * factor)
     }
 }
 
-/// Splits a smoothed wheel notch: the first step rewrites the real event, the rest are posted later.
-/// Whole lines are split too, so line-based readers see the same line total as without smoothing.
-nonisolated struct InputScrollSmoother: Equatable, Sendable {
-    static let steps = 5
-    static let interval = 0.018
+/// One posted frame: whole pixels and whole lines, plus the exact line fraction for fixed-point readers.
+nonisolated struct InputScrollFrame: Equatable, Sendable {
+    var vertical = 0.0
+    var horizontal = 0.0
+    var lineVertical = 0.0
+    var lineHorizontal = 0.0
+    var fixedVertical = 0.0
+    var fixedHorizontal = 0.0
 
-    private(set) var pending = InputScrollStep()
-    private(set) var stepsLeft = 0
+    var isZero: Bool { vertical == 0 && horizontal == 0 && lineVertical == 0 && lineHorizontal == 0 }
+}
 
-    mutating func begin(_ total: InputScrollStep) -> InputScrollStep {
-        let first = total.share(of: Self.steps)
-        pending = pending + total - first
-        stepsLeft = Self.steps - 1
-        return first
+/// Eases smoothed wheel notches out over display frames: each frame moves a time-based share of what is left.
+/// A new notch adds to what is left, so speed carries over; a notch against the motion drops that axis at once.
+/// `InputScrollStep` lines here are fractional (fixed-point) lines; whole pixels and lines carry their fractions.
+nonisolated struct InputScrollAnimator: Equatable, Sendable {
+    /// About 95% of a notch lands within 210 ms, like a short trackpad flick.
+    static let timeConstant = 0.07
+    static let firstFrame = 1.0 / 120
+    static let maxFrameGap = 1.0 / 30
+
+    private(set) var remaining = InputScrollStep()
+    private var lastTime: Double?
+    private var pixelVertical = InputScrollLineCarry()
+    private var pixelHorizontal = InputScrollLineCarry()
+    private var wholeLineVertical = InputScrollLineCarry()
+    private var wholeLineHorizontal = InputScrollLineCarry()
+
+    var isActive: Bool { lastTime != nil }
+
+    mutating func add(_ delta: InputScrollStep, at time: Double) {
+        if lastTime == nil { lastTime = time - Self.firstFrame }
+        let verticalReversed = Self.reverses(remaining.vertical, delta.vertical)
+        let horizontalReversed = Self.reverses(remaining.horizontal, delta.horizontal)
+        remaining = InputScrollStep(
+            vertical: (verticalReversed ? 0 : remaining.vertical) + delta.vertical,
+            horizontal: (horizontalReversed ? 0 : remaining.horizontal) + delta.horizontal,
+            lineVertical: (verticalReversed ? 0 : remaining.lineVertical) + delta.lineVertical,
+            lineHorizontal: (horizontalReversed ? 0 : remaining.lineHorizontal) + delta.lineHorizontal
+        )
     }
 
-    mutating func next() -> InputScrollStep? {
-        while stepsLeft > 0 {
-            let step = pending.share(of: stepsLeft)
-            pending = pending - step
-            stepsLeft -= 1
-            if !step.isZero { return step }
-        }
-        return nil
+    mutating func reset() { self = Self() }
+
+    /// The frame for `time`; nil when idle. The animation ends once less than half a pixel would be left.
+    mutating func step(at time: Double) -> InputScrollFrame? {
+        guard let last = lastTime else { return nil }
+        let elapsed = min(max(time - last, 0), Self.maxFrameGap)
+        lastTime = max(last, time)
+        let keep = exp(-elapsed / Self.timeConstant)
+        let finished = abs(remaining.vertical * keep) < 0.5 && abs(remaining.horizontal * keep) < 0.5
+        let move = finished ? remaining : remaining.scaled(1 - keep)
+        remaining = finished ? InputScrollStep() : remaining - move
+        if finished { lastTime = nil }
+        return InputScrollFrame(
+            vertical: pixelVertical.take(move.vertical),
+            horizontal: pixelHorizontal.take(move.horizontal),
+            lineVertical: wholeLineVertical.take(move.lineVertical),
+            lineHorizontal: wholeLineHorizontal.take(move.lineHorizontal),
+            fixedVertical: move.lineVertical,
+            fixedHorizontal: move.lineHorizontal
+        )
+    }
+
+    private static func reverses(_ current: Double, _ new: Double) -> Bool {
+        current != 0 && new != 0 && (current < 0) != (new < 0)
     }
 }
 
@@ -144,7 +186,8 @@ nonisolated struct InputScrollLineCarry: Equatable, Sendable {
         guard lines != 0 else { return 0 }
         if remainder != 0, (remainder < 0) != (lines < 0) { remainder = 0 }
         let total = remainder + lines
-        let whole = total.rounded(.towardZero)
+        // Summed frame shares can land a hair below a whole value; that is still the whole value.
+        let whole = abs(total - total.rounded()) < 1e-9 ? total.rounded() : total.rounded(.towardZero)
         remainder = total - whole
         return whole
     }
@@ -287,6 +330,7 @@ final class InputDevicesManager {
     private var eventTap: CFMachPort?
     private var runLoopSource: CFRunLoopSource?
     private var refreshTask: Task<Void, Never>?
+    private var screenObserver: NSObjectProtocol?
     nonisolated private static let scrollTap = ScrollEventTap()
     private var scrollTap: ScrollEventTap { Self.scrollTap }
 
@@ -380,6 +424,22 @@ final class InputDevicesManager {
         eventTap = tap
         runLoopSource = source
         interceptionActive = true
+        installDisplayLinks()
+        screenObserver = NotificationCenter.default.addObserver(
+            forName: NSApplication.didChangeScreenParametersNotification, object: nil, queue: .main
+        ) { _ in
+            Task { @MainActor in InputDevicesManager.current?.installDisplayLinks() }
+        }
+    }
+
+    private func installDisplayLinks() {
+        guard eventTap != nil else { return }
+        var links: [CGDirectDisplayID: CADisplayLink] = [:]
+        for screen in NSScreen.screens {
+            guard let number = screen.deviceDescription[NSDeviceDescriptionKey("NSScreenNumber")] as? NSNumber else { continue }
+            links[number.uint32Value] = screen.displayLink(target: scrollTap, selector: #selector(ScrollEventTap.displayFrame(_:)))
+        }
+        scrollTap.useDisplayLinks(links)
     }
 
     private func stopInterception() {
@@ -392,6 +452,9 @@ final class InputDevicesManager {
             CGEvent.tapEnable(tap: eventTap, enable: false)
             CFMachPortInvalidate(eventTap)
         }
+        if eventTap != nil { scrollTap.useDisplayLinks([:]) }
+        if let screenObserver { NotificationCenter.default.removeObserver(screenObserver) }
+        screenObserver = nil
         eventTap = nil
         runLoopSource = nil
         interceptionActive = false
@@ -480,7 +543,7 @@ final class InputDevicesManager {
 }
 
 /// Runs the scroll tap on `EventTapThread`. The main actor writes `snapshot`; everything else is tap-thread state.
-nonisolated final class ScrollEventTap: @unchecked Sendable {
+nonisolated final class ScrollEventTap: NSObject, @unchecked Sendable {
     nonisolated struct Snapshot {
         var settings = InputDevicesSettings()
         var tap: CFMachPort?
@@ -488,21 +551,18 @@ nonisolated final class ScrollEventTap: @unchecked Sendable {
     }
 
     static let syntheticEventTag: Int64 = 0x4D_50_54_49_4E_50_55_54
-    private static let idleFireDate = Date.distantFuture.timeIntervalSinceReferenceDate
-    private static let lateStepLimit = 0.1
     private static let ownPID = Int64(getpid())
 
     let snapshot = OSAllocatedUnfairLock(uncheckedState: Snapshot())
 
     private var verticalLines = InputScrollLineCarry()
     private var horizontalLines = InputScrollLineCarry()
-    private var smoother = InputScrollSmoother()
-    private var smoothingGeneration = 0
-    private var stepping = false
-    private var nextStepDeadline: CFAbsoluteTime = 0
+    private var animator = InputScrollAnimator()
+    private var animatorGeneration = 0
+    private var displayLinks: [CGDirectDisplayID: CADisplayLink] = [:]
+    private weak var activeLink: CADisplayLink?
     private var syntheticFlags: CGEventFlags = []
     private var syntheticLocation = CGPoint.zero
-    private lazy var stepTimer: CFRunLoopTimer = makeStepTimer()
 
     static let callback: CGEventTapCallBack = { _, type, event, userInfo in
         guard let userInfo else { return Unmanaged.passUnretained(event) }
@@ -564,15 +624,39 @@ nonisolated final class ScrollEventTap: @unchecked Sendable {
         let horizontalLineSource = result.shiftConverted ? lineVertical : lineHorizontal
         let verticalScale = vertical == 0 ? 0 : result.vertical / vertical
         let horizontalScale = horizontalSource == 0 ? 0 : result.horizontal / horizontalSource
+        if result.shouldSmooth {
+            let fixedVertical = event.getDoubleValueField(.scrollWheelEventFixedPtDeltaAxis1)
+            let fixedHorizontal = result.shiftConverted
+                ? fixedVertical : event.getDoubleValueField(.scrollWheelEventFixedPtDeltaAxis2)
+            let notch = InputScrollStep(
+                vertical: result.vertical,
+                horizontal: result.horizontal,
+                lineVertical: (fixedVertical == 0 ? lineVertical : fixedVertical) * verticalScale,
+                lineHorizontal: (fixedHorizontal == 0 ? horizontalLineSource : fixedHorizontal) * horizontalScale
+            )
+            Self.write(smooth(notch, from: event, generation: generation), to: event)
+            return
+        }
         let full = InputScrollStep(
             vertical: result.vertical,
             horizontal: result.horizontal,
             lineVertical: verticalLines.take(lineVertical * verticalScale),
             lineHorizontal: horizontalLines.take(horizontalLineSource * horizontalScale)
         )
-        let target = result.shouldSmooth ? beginSmoothing(full, from: event, generation: generation) : full
-        Self.write(target, to: event, vertical: vertical, horizontal: horizontalSource,
+        Self.write(full, to: event, vertical: vertical, horizontal: horizontalSource,
                    shiftConverted: result.shiftConverted)
+    }
+
+    /// Writes a smoothing frame. Every event of a smoothed notch, the real one included, is a phase-less
+    /// continuous pixel event, so apps never mix AppKit's own line animation with our frames.
+    static func write(_ frame: InputScrollFrame, to event: CGEvent) {
+        event.setIntegerValueField(.scrollWheelEventIsContinuous, value: 1)
+        event.setIntegerValueField(.scrollWheelEventDeltaAxis1, value: Int64(frame.lineVertical))
+        event.setIntegerValueField(.scrollWheelEventDeltaAxis2, value: Int64(frame.lineHorizontal))
+        event.setDoubleValueField(.scrollWheelEventPointDeltaAxis1, value: frame.vertical)
+        event.setDoubleValueField(.scrollWheelEventPointDeltaAxis2, value: frame.horizontal)
+        event.setDoubleValueField(.scrollWheelEventFixedPtDeltaAxis1, value: frame.fixedVertical)
+        event.setDoubleValueField(.scrollWheelEventFixedPtDeltaAxis2, value: frame.fixedHorizontal)
     }
 
     /// Scales the real event to `target`; a Shift conversion moves the vertical source onto the horizontal axis.
@@ -595,60 +679,66 @@ nonisolated final class ScrollEventTap: @unchecked Sendable {
         event.setDoubleValueField(.scrollWheelEventFixedPtDeltaAxis2, value: fixedHorizontal * horizontalScale)
     }
 
-    private func beginSmoothing(_ total: InputScrollStep, from event: CGEvent, generation: Int) -> InputScrollStep {
-        if smoothingGeneration != generation {
-            smoother = InputScrollSmoother()
-            smoothingGeneration = generation
+    /// Adds a notch to the animation and returns the frame the real event carries now.
+    private func smooth(_ notch: InputScrollStep, from event: CGEvent, generation: Int) -> InputScrollFrame {
+        if animatorGeneration != generation {
+            animator.reset()
+            animatorGeneration = generation
         }
-        let first = smoother.begin(total)
+        let now = CACurrentMediaTime()
+        animator.add(notch, at: now)
         syntheticFlags = event.flags
         syntheticLocation = event.location
-        if !stepping {
-            stepping = true
-            nextStepDeadline = CFAbsoluteTimeGetCurrent() + InputScrollSmoother.interval
-            CFRunLoopTimerSetNextFireDate(stepTimer, nextStepDeadline)
-        }
-        return first
+        let frame = animator.step(at: now) ?? InputScrollFrame()
+        if animator.isActive { runDisplayLink(under: event.location) } else { pauseDisplayLink() }
+        return frame
     }
 
-    private func postNextStep() {
+    /// Frames follow the refresh of the screen under the pointer, so ProMotion displays get 120 Hz.
+    private func runDisplayLink(under point: CGPoint) {
+        var display = CGMainDisplayID()
+        var count: UInt32 = 0
+        CGGetDisplaysWithPoint(point, 1, &display, &count)
+        guard let link = displayLinks[display] ?? displayLinks[CGMainDisplayID()] ?? displayLinks.values.first else { return }
+        if activeLink !== link { pauseDisplayLink() }
+        activeLink = link
+        link.isPaused = false
+    }
+
+    private func pauseDisplayLink() {
+        activeLink?.isPaused = true
+        activeLink = nil
+    }
+
+    @objc func displayFrame(_ link: CADisplayLink) {
         let state = snapshot.withLockUnchecked { $0 }
-        let now = CFAbsoluteTimeGetCurrent()
-        let late = now - nextStepDeadline > Self.lateStepLimit
-        nextStepDeadline = now + InputScrollSmoother.interval
-        let live = state.tap != nil && state.generation == smoothingGeneration && state.settings.scrollControlEnabled
-        if !live || late { smoother = InputScrollSmoother() }
-        guard let step = smoother.next() else {
-            stepping = false
-            CFRunLoopTimerSetNextFireDate(stepTimer, Self.idleFireDate)
-            return
+        guard state.tap != nil, state.generation == animatorGeneration, state.settings.scrollControlEnabled else {
+            animator.reset()
+            return pauseDisplayLink()
         }
-        guard let synthetic = CGEvent(
-            scrollWheelEvent2Source: nil,
-            units: .pixel,
-            wheelCount: 2,
-            wheel1: Int32(step.vertical),
-            wheel2: Int32(step.horizontal),
-            wheel3: 0
-        ) else { return }
+        let frame = animator.step(at: link.timestamp)
+        if !animator.isActive { pauseDisplayLink() }
+        guard let frame, !frame.isZero,
+              let synthetic = CGEvent(scrollWheelEvent2Source: nil, units: .pixel, wheelCount: 2,
+                                      wheel1: 0, wheel2: 0, wheel3: 0) else { return }
         synthetic.flags = syntheticFlags
         synthetic.location = syntheticLocation
         synthetic.setIntegerValueField(.eventSourceUserData, value: Self.syntheticEventTag)
-        synthetic.setIntegerValueField(.scrollWheelEventIsContinuous, value: 1)
-        synthetic.setIntegerValueField(.scrollWheelEventDeltaAxis1, value: Int64(step.lineVertical))
-        synthetic.setIntegerValueField(.scrollWheelEventDeltaAxis2, value: Int64(step.lineHorizontal))
+        Self.write(frame, to: synthetic)
         synthetic.post(tap: .cgSessionEventTap)
     }
 
-    private func makeStepTimer() -> CFRunLoopTimer {
-        let timer: CFRunLoopTimer = CFRunLoopTimerCreateWithHandler(
-            kCFAllocatorDefault, Self.idleFireDate, InputScrollSmoother.interval, 0, 0
-        ) { [weak self] timer in
-            guard let self else { return CFRunLoopTimerInvalidate(timer) }
-            self.postNextStep()
+    /// Replaces the per-screen display links on the tap thread; an empty set releases them.
+    func useDisplayLinks(_ links: [CGDirectDisplayID: CADisplayLink]) {
+        nonisolated(unsafe) let links = links
+        EventTapThread.shared.perform { [self] in
+            pauseDisplayLink()
+            displayLinks.values.forEach { $0.invalidate() }
+            links.values.forEach {
+                $0.isPaused = true
+                $0.add(to: .current, forMode: .common)
+            }
+            displayLinks = links
         }
-        EventTapThread.shared.add(timer)
-        return timer
     }
-
 }

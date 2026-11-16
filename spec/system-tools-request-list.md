@@ -65,6 +65,7 @@ Open verification:
 | Verify | Mac Tweaks window: one full-width column of cards on Devices, Scrolling, and About; profile cards stack. | Offscreen renders of all three pages in both appearances. | Adopt OnePlusUI with an `input-devices` canvas, then delete `ToolWindowCanvas.swift`. Inspect each route; real mouse and trackpad. |
 | Verify | Use the new Input Devices mouse icon. | 512px RGBA asset. | Inspect launcher and Dock. |
 | Verify | Useful hardware details per device; omit absent values. | Source built. | Inspect sparse USB and built-in devices. |
+| Verify | Smooth wheel feels like a native Mac scroll. | Display-linked frames on the pointer's screen, 70 ms exponential ease-out, notches add to the motion, reversal cancels at once, whole-pixel carry, every event continuous and phase-less; `testSmoothingEasesOutCarriesFractionsAndCancelsOnReversal`. | Real wheel in Safari, Chrome, Xcode, and Finder at 1x and 3x, on a 120 Hz and a 60 Hz screen. |
 | Verify | Keep scroll control active after macOS disables the event tap. | The tap is re-enabled inside the callback. | Sustained wheel input, then lock and unlock. |
 | Verify | Real mouse and trackpad control after Accessibility permission. | Unit seams cover profile selection and transformation. | Vertical, horizontal, reverse, speed, smooth wheel on real hardware. |
 | Verify | One professional native tool (native controls, system focus, truncation, gated switches). | Equal cards and shared settings in the menu-bar tab. | Hover, keyboard traversal, accessibility text sizes. |

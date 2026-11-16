@@ -84,27 +84,36 @@ final class InputDevicesTests: XCTestCase {
         XCTAssertEqual(restored.mouse.speed, 2.5)
     }
 
-    func testSmoothingRewritesTheRealEventAndPostsOnlyTheRemainder() throws {
-        var smoother = InputScrollSmoother()
-        let first = smoother.begin(InputScrollStep(vertical: -10.5, horizontal: 7, lineVertical: -1))
-        XCTAssertEqual(first.vertical, -2)
-        XCTAssertEqual(first.horizontal, 1)
-        var steps: [InputScrollStep] = []
-        while let step = smoother.next() { steps.append(step) }
-        XCTAssertEqual(steps.count, InputScrollSmoother.steps - 1)
-        let total = steps.reduce(first, +)
-        XCTAssertEqual(total.vertical + smoother.pending.vertical, -10.5, accuracy: 1e-9)
-        XCTAssertEqual(total.horizontal + smoother.pending.horizontal, 7, accuracy: 1e-9)
-        XCTAssertLessThanOrEqual(abs(smoother.pending.vertical), 0.5)
-        XCTAssertEqual(total.lineVertical, -1, "line readers get the unsmoothed line total")
+    func testSmoothingEasesOutCarriesFractionsAndCancelsOnReversal() throws {
+        func run(_ animator: inout InputScrollAnimator, from start: Double, hz: Double = 120) -> [InputScrollFrame] {
+            var frames: [InputScrollFrame] = []
+            var time = start
+            while let frame = animator.step(at: time) { frames.append(frame); time += 1 / hz }
+            return frames
+        }
+        var animator = InputScrollAnimator()
+        animator.add(InputScrollStep(vertical: -40.7, horizontal: 7, lineVertical: -1.3), at: 0)
+        let frames = run(&animator, from: 0)
+        let moves = frames.map { abs($0.vertical) }
+        XCTAssertGreaterThan(moves.first ?? 0, 0, "the real event moves at once")
+        XCTAssertTrue(zip(moves, moves.dropFirst()).allSatisfy { $1 <= $0 + 1 }, "frames ease out, never speed up")
+        XCTAssertGreaterThan(moves.first ?? 0, moves.last ?? 0)
+        XCTAssertLessThan(Double(frames.count) / 120, 0.4, "a notch settles within 400 ms")
+        XCTAssertEqual(frames.reduce(0) { $0 + $1.vertical }, -40, "whole pixels carry the fraction")
+        XCTAssertEqual(frames.reduce(0) { $0 + $1.horizontal }, 7)
+        XCTAssertEqual(frames.reduce(0) { $0 + $1.fixedVertical }, -1.3, accuracy: 1e-9)
+        XCTAssertEqual(frames.reduce(0) { $0 + $1.lineVertical }, -1, "line readers get whole lines")
+        XCTAssertTrue(frames.allSatisfy { $0.vertical == $0.vertical.rounded() })
 
-        var small = InputScrollSmoother()
-        let smallFirst = small.begin(InputScrollStep(vertical: 3))
-        var smallSteps: [InputScrollStep] = []
-        while let step = small.next() { smallSteps.append(step) }
-        XCTAssertFalse(smallSteps.contains { $0.isZero }, "a step with no movement is skipped")
-        XCTAssertLessThan(smallSteps.count, InputScrollSmoother.steps - 1)
-        XCTAssertEqual(smallSteps.reduce(smallFirst, +).vertical, 3)
+        var fast = InputScrollAnimator()
+        fast.add(InputScrollStep(vertical: 100), at: 0)
+        _ = fast.step(at: 0.05)
+        let left = fast.remaining.vertical
+        fast.add(InputScrollStep(vertical: 100), at: 0.05)
+        XCTAssertEqual(fast.remaining.vertical, left + 100, accuracy: 1e-9, "a fast notch adds to the motion")
+        fast.add(InputScrollStep(vertical: -30), at: 0.05)
+        XCTAssertEqual(fast.remaining.vertical, -30, "a reversed notch drops the old motion at once")
+        XCTAssertTrue(run(&fast, from: 0.06, hz: 60).allSatisfy { $0.vertical <= 0 })
 
         let tap = ScrollEventTap()
         tap.snapshot.withLockUnchecked { $0.settings = InputDevicesSettings(scrollControlEnabled: true) }

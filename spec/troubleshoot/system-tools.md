@@ -82,7 +82,9 @@ processes, and Fan are in [Menu metrics and Fan](menu-metrics-fan.md).
   Accessibility is trusted.
 - **Check:** `rg "CFRunLoopGetMain|assumeIsolated"` in
   `Core/InputDevicesManager.swift` and `Core/GlobalShortcutManager.swift` finds
-  nothing. The smoothing unit test passes. With a real wheel during a forced
+  nothing. The smoothing unit test passes. Smoothing frames come from a
+  per-screen `CADisplayLink` on `EventTapThread`, never a fixed timer; the
+  real notch is rewritten as the first continuous frame, never dropped. With a real wheel during a forced
   main-thread stall, scrolling and typing stay smooth.
 
 ### Input Devices Scroll Field Fidelity
