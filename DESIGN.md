@@ -142,9 +142,6 @@ mockups are in `docs/design/v15/`.
   - Primary button: soft gray fill with no border (`#EBEBED` light,
     `#2C2C30` dark; hover `#E2E2E5` / `#34343A`; pressed `#D8D8DC` /
     `#3C3C42`). Never the white or black fill.
-  - Destructive action such as "Reset to Factory Defaults": a full-width
-    button at the bottom with a red tint fill (red at about 14 percent)
-    and red text (`#B02D24` light, `#FFA8A0` dark).
   - Motion "Quiet": only real state changes move, in 120 to 160 ms with
     an ease-out curve. A segment thumb and a switch or slider knob
     slide; a panel or sheet fades with a 4 pt move. No scale on press,
@@ -157,8 +154,11 @@ mockups are in `docs/design/v15/`.
     with plain minus and plus. Segment labels center vertically, and
     short vertical dividers that fade at both ends separate unselected
     segments. Reference: OnePlusUI showcase `ControlStyleOptions.swift`.
-  - Open: the destructive button. The red tint reads as "meh"; the owner
-    wants a classic macOS destructive look that is not a heavy red fill.
+  - Destructive action (owner pick 2026-11-16, replaces the red tint):
+    plain red text with no fill and no border, like the red rows in
+    System Settings and iOS Settings. A native confirmation alert still
+    guards it. Never a tinted red pill: that pattern reads as generated
+    web UI.
   The reference renders are `docs/design/v15/applet-*.png`.
 - Rejected: the first round of ten look mockups (placeholder icons).
 
