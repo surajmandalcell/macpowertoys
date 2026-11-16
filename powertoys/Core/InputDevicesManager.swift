@@ -562,7 +562,6 @@ nonisolated final class ScrollEventTap: NSObject, @unchecked Sendable {
     private var displayLinks: [CGDirectDisplayID: CADisplayLink] = [:]
     private weak var activeLink: CADisplayLink?
     private var syntheticFlags: CGEventFlags = []
-    private var syntheticLocation = CGPoint.zero
 
     static let callback: CGEventTapCallBack = { _, type, event, userInfo in
         guard let userInfo else { return Unmanaged.passUnretained(event) }
@@ -688,7 +687,6 @@ nonisolated final class ScrollEventTap: NSObject, @unchecked Sendable {
         let now = CACurrentMediaTime()
         animator.add(notch, at: now)
         syntheticFlags = event.flags
-        syntheticLocation = event.location
         let frame = animator.step(at: now) ?? InputScrollFrame()
         if animator.isActive { runDisplayLink(under: event.location) } else { pauseDisplayLink() }
         return frame
@@ -722,7 +720,8 @@ nonisolated final class ScrollEventTap: NSObject, @unchecked Sendable {
               let synthetic = CGEvent(scrollWheelEvent2Source: nil, units: .pixel, wheelCount: 2,
                                       wheel1: 0, wheel2: 0, wheel3: 0) else { return }
         synthetic.flags = syntheticFlags
-        synthetic.location = syntheticLocation
+        // The live pointer position: a stored one makes macOS warp the pointer back on every frame.
+        if let pointer = CGEvent(source: nil)?.location { synthetic.location = pointer }
         synthetic.setIntegerValueField(.eventSourceUserData, value: Self.syntheticEventTag)
         Self.write(frame, to: synthetic)
         synthetic.post(tap: .cgSessionEventTap)
