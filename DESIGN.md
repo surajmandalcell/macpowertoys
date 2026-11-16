@@ -151,10 +151,14 @@ mockups are in `docs/design/v15/`.
     no stagger, no hover motion, nothing while idle; numbers change at
     once; Reduce Motion makes every change instant. This replaces the
     "Motion" section below for each surface when it is converted.
-  - Controls "Depth": recessed tracks, gently raised knobs and segment
-    caps with a fine top-edge highlight. The raise stays slight, never a
-    heavy bevel or a strong shadow. It applies to the switch, slider,
-    segmented control, and stepper. Reference: `docs/design/v15/controls-depth.html`.
+  - Controls "Quiet Raised" (owner pick 2026-11-16, replaces Depth):
+    quiet sunken tracks, one solid knob with one soft shadow, no glow or
+    white rings, coral only for an "on" state. The stepper is one field
+    with plain minus and plus. Segment labels center vertically, and
+    short vertical dividers that fade at both ends separate unselected
+    segments. Reference: OnePlusUI showcase `ControlStyleOptions.swift`.
+  - Open: the destructive button. The red tint reads as "meh"; the owner
+    wants a classic macOS destructive look that is not a heavy red fill.
   The reference renders are `docs/design/v15/applet-*.png`.
 - Rejected: the first round of ten look mockups (placeholder icons).
 
