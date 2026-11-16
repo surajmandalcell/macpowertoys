@@ -105,23 +105,22 @@ class RulerColorWell: NSColorWell {
     }
 
     override func draw(_ dirtyRect: NSRect) {
-        let bounds = bounds.insetBy(dx: OnePlusMetrics.spacing[0], dy: OnePlusMetrics.spacing[0])
-        let path = NSBezierPath(roundedRect: bounds, xRadius: OnePlusMetrics.controlRadius,
-                                yRadius: OnePlusMetrics.controlRadius)
-
-        NSColor(OnePlusColor.field).setFill()
-        path.fill()
-
+        let look = RulerQuietRaised.look
+        let well = RulerQuietRaised.controlRect(in: bounds, width: look.well.width, trailing: true)
+        RulerQuietRaised.drawWell(well, radius: look.radius, fill: RulerQuietRaised.field, line: RulerQuietRaised.fieldLine)
+        let swatch = well.insetBy(dx: look.wellInset, dy: look.wellInset)
+        let radius = look.radius - look.wellInset
+        let path = NSBezierPath(roundedRect: swatch, xRadius: radius, yRadius: radius)
         color.setFill()
         path.fill()
-
-        NSColor(OnePlusColor.line).setStroke()
-        path.lineWidth = 1
-        path.stroke()
+        let hairline = RulerQuietRaised.hairline
+        let line = NSBezierPath(roundedRect: swatch.insetBy(dx: hairline / 2, dy: hairline / 2),
+                                xRadius: radius - hairline / 2, yRadius: radius - hairline / 2)
+        line.lineWidth = hairline
+        NSColor(OnePlusLinearColor.quietSwatchLine).setStroke()
+        line.stroke()
         if window?.firstResponder == self, OnePlusFocusPolicy.shared.showsFocus {
-            NSColor(OnePlusColor.focus).setFill()
-            let dot = NSRect(x: bounds.maxX - 9, y: bounds.maxY - 9, width: 6, height: 6)
-            NSBezierPath(ovalIn: dot).fill()
+            RulerQuietRaised.drawFocus(well, radius: look.radius)
         }
     }
 

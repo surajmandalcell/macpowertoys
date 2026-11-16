@@ -114,7 +114,7 @@ struct SleepTimerCard: View {
             }
         }
         .buttonStyle(OnePlusLinearButtonStyle(.soft))
-        .environment(\.onePlusLinearControlLook, .depth)
+        .environment(\.onePlusLinearControlLook, .quietRaised)
     }
 
     @ViewBuilder
@@ -191,7 +191,7 @@ struct AwakeSettingsView: View {
             process
         }
         .buttonStyle(OnePlusLinearButtonStyle(.soft))
-        .environment(\.onePlusLinearControlLook, .depth)
+        .environment(\.onePlusLinearControlLook, .quietRaised)
         .onAppear {
             let seconds = max(60, Int(service.configuration.intervalSeconds))
             hours = min(168, seconds / 3600)

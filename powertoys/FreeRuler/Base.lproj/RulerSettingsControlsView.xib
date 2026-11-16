@@ -56,9 +56,9 @@
                                 <color key="backgroundColor" name="textBackgroundColor" catalog="System" colorSpace="catalog"/>
                             </textFieldCell>
                         </textField>
-                        <segmentedControl verticalHuggingPriority="750" translatesAutoresizingMaskIntoConstraints="NO" id="RSV-unit-control" customClass="RulerDepthSegmentedControl" customModule="powertoys" customModuleProvider="target">
+                        <segmentedControl verticalHuggingPriority="750" translatesAutoresizingMaskIntoConstraints="NO" id="RSV-unit-control" customClass="RulerQuietRaisedSegmentedControl" customModule="powertoys" customModuleProvider="target">
                             <rect key="frame" x="264" y="42" width="112" height="24"/>
-                            <segmentedCell key="cell" borderStyle="border" alignment="left" style="rounded" trackingMode="selectOne" id="RSV-unit-control-cell" customClass="RulerDepthSegmentedCell" customModule="powertoys" customModuleProvider="target">
+                            <segmentedCell key="cell" borderStyle="border" alignment="left" style="rounded" trackingMode="selectOne" id="RSV-unit-control-cell" customClass="RulerQuietRaisedSegmentedCell" customModule="powertoys" customModuleProvider="target">
                                 <font key="font" name=".AppleSystemUIFont" size="12"/>
                                 <segments>
                                     <segment label="px" width="36"/>
@@ -75,33 +75,33 @@
                                 <color key="backgroundColor" name="textBackgroundColor" catalog="System" colorSpace="catalog"/>
                             </textFieldCell>
                         </textField>
-                        <textField focusRingType="none" verticalHuggingPriority="750" translatesAutoresizingMaskIntoConstraints="NO" id="RSV-dimension-width" customClass="RulerDepthStepperField" customModule="powertoys" customModuleProvider="target">
-                            <rect key="frame" x="192" y="6" width="84" height="24"/>
+                        <textField focusRingType="none" verticalHuggingPriority="750" translatesAutoresizingMaskIntoConstraints="NO" id="RSV-dimension-width" customClass="RulerQuietRaisedStepperField" customModule="powertoys" customModuleProvider="target">
+                            <rect key="frame" x="152" y="6" width="104" height="24"/>
                             <constraints>
-                                <constraint firstAttribute="width" constant="84" id="8ky-LW-7YX"/>
+                                <constraint firstAttribute="width" constant="104" id="8ky-LW-7YX"/>
                                 <constraint firstAttribute="height" constant="24" id="PLE-rg-IGq"/>
                             </constraints>
-                            <textFieldCell key="cell" scrollable="YES" lineBreakMode="clipping" selectable="YES" editable="YES" alignment="right" id="RSV-dimension-width-cell" customClass="RulerDepthStepperCell" customModule="powertoys" customModuleProvider="target">
+                            <textFieldCell key="cell" scrollable="YES" lineBreakMode="clipping" selectable="YES" editable="YES" alignment="right" id="RSV-dimension-width-cell" customClass="RulerQuietRaisedStepperCell" customModule="powertoys" customModuleProvider="target">
                                 <font key="font" name=".AppleSystemUIFont" size="12"/>
                                 <color key="textColor" name="controlTextColor" catalog="System" colorSpace="catalog"/>
                                 <color key="backgroundColor" name="textBackgroundColor" catalog="System" colorSpace="catalog"/>
                             </textFieldCell>
                         </textField>
                         <textField focusRingType="none" horizontalHuggingPriority="251" verticalHuggingPriority="750" translatesAutoresizingMaskIntoConstraints="NO" id="RSV-dimensions-separator">
-                            <rect key="frame" x="290" y="10" width="12" height="16"/>
+                            <rect key="frame" x="256" y="10" width="12" height="16"/>
                             <textFieldCell key="cell" lineBreakMode="clipping" alignment="center" title="×" id="RSV-dimensions-separator-cell">
                                 <font key="font" name=".AppleSystemUIFont" size="13"/>
                                 <color key="textColor" name="labelColor" catalog="System" colorSpace="catalog"/>
                                 <color key="backgroundColor" name="textBackgroundColor" catalog="System" colorSpace="catalog"/>
                             </textFieldCell>
                         </textField>
-                        <textField focusRingType="none" verticalHuggingPriority="750" translatesAutoresizingMaskIntoConstraints="NO" id="RSV-dimension-height" customClass="RulerDepthStepperField" customModule="powertoys" customModuleProvider="target">
-                            <rect key="frame" x="292" y="6" width="84" height="24"/>
+                        <textField focusRingType="none" verticalHuggingPriority="750" translatesAutoresizingMaskIntoConstraints="NO" id="RSV-dimension-height" customClass="RulerQuietRaisedStepperField" customModule="powertoys" customModuleProvider="target">
+                            <rect key="frame" x="272" y="6" width="104" height="24"/>
                             <constraints>
-                                <constraint firstAttribute="width" constant="84" id="Vqe-VX-SWf"/>
+                                <constraint firstAttribute="width" constant="104" id="Vqe-VX-SWf"/>
                                 <constraint firstAttribute="height" constant="24" id="lu1-IP-lwT"/>
                             </constraints>
-                            <textFieldCell key="cell" scrollable="YES" lineBreakMode="clipping" selectable="YES" editable="YES" alignment="right" id="RSV-dimension-height-cell" customClass="RulerDepthStepperCell" customModule="powertoys" customModuleProvider="target">
+                            <textFieldCell key="cell" scrollable="YES" lineBreakMode="clipping" selectable="YES" editable="YES" alignment="right" id="RSV-dimension-height-cell" customClass="RulerQuietRaisedStepperCell" customModule="powertoys" customModuleProvider="target">
                                 <font key="font" name=".AppleSystemUIFont" size="12"/>
                                 <color key="textColor" name="controlTextColor" catalog="System" colorSpace="catalog"/>
                                 <color key="backgroundColor" name="textBackgroundColor" catalog="System" colorSpace="catalog"/>
@@ -177,7 +177,7 @@
                         </textField>
                         <slider verticalHuggingPriority="750" translatesAutoresizingMaskIntoConstraints="NO" id="RSV-fg-slider">
                             <rect key="frame" x="176" y="76" width="150" height="28"/>
-                            <sliderCell key="cell" continuous="YES" state="on" alignment="left" minValue="5" maxValue="100" doubleValue="90" tickMarkPosition="below" numberOfTickMarks="20" allowsTickMarkValuesOnly="YES" sliderType="linear" id="RSV-fg-slider-cell" customClass="RulerDepthSliderCell" customModule="powertoys" customModuleProvider="target"/>
+                            <sliderCell key="cell" continuous="YES" state="on" alignment="left" minValue="5" maxValue="100" doubleValue="90" tickMarkPosition="below" numberOfTickMarks="20" allowsTickMarkValuesOnly="YES" sliderType="linear" id="RSV-fg-slider-cell" customClass="RulerQuietRaisedSliderCell" customModule="powertoys" customModuleProvider="target"/>
                         </slider>
                         <textField focusRingType="none" horizontalHuggingPriority="251" verticalHuggingPriority="750" translatesAutoresizingMaskIntoConstraints="NO" id="RSV-fg-value" customClass="RulerAppletValueLabel" customModule="powertoys" customModuleProvider="target">
                             <rect key="frame" x="334" y="82" width="44" height="16"/>
@@ -197,7 +197,7 @@
                         </textField>
                         <slider verticalHuggingPriority="750" translatesAutoresizingMaskIntoConstraints="NO" id="RSV-bg-slider">
                             <rect key="frame" x="176" y="40" width="150" height="28"/>
-                            <sliderCell key="cell" continuous="YES" state="on" alignment="left" minValue="5" maxValue="100" doubleValue="50" tickMarkPosition="below" numberOfTickMarks="20" allowsTickMarkValuesOnly="YES" sliderType="linear" id="RSV-bg-slider-cell" customClass="RulerDepthSliderCell" customModule="powertoys" customModuleProvider="target"/>
+                            <sliderCell key="cell" continuous="YES" state="on" alignment="left" minValue="5" maxValue="100" doubleValue="50" tickMarkPosition="below" numberOfTickMarks="20" allowsTickMarkValuesOnly="YES" sliderType="linear" id="RSV-bg-slider-cell" customClass="RulerQuietRaisedSliderCell" customModule="powertoys" customModuleProvider="target"/>
                         </slider>
                         <textField focusRingType="none" horizontalHuggingPriority="251" verticalHuggingPriority="750" translatesAutoresizingMaskIntoConstraints="NO" id="RSV-bg-value" customClass="RulerAppletValueLabel" customModule="powertoys" customModuleProvider="target">
                             <rect key="frame" x="334" y="46" width="44" height="16"/>
@@ -217,7 +217,7 @@
                         </textField>
                         <slider verticalHuggingPriority="750" translatesAutoresizingMaskIntoConstraints="NO" id="RSV-border-slider">
                             <rect key="frame" x="176" y="4" width="150" height="28"/>
-                            <sliderCell key="cell" continuous="YES" state="on" alignment="left" minValue="0.0" maxValue="100" doubleValue="25" tickMarkPosition="below" numberOfTickMarks="21" allowsTickMarkValuesOnly="YES" sliderType="linear" id="RSV-border-slider-cell" customClass="RulerDepthSliderCell" customModule="powertoys" customModuleProvider="target"/>
+                            <sliderCell key="cell" continuous="YES" state="on" alignment="left" minValue="0.0" maxValue="100" doubleValue="25" tickMarkPosition="below" numberOfTickMarks="21" allowsTickMarkValuesOnly="YES" sliderType="linear" id="RSV-border-slider-cell" customClass="RulerQuietRaisedSliderCell" customModule="powertoys" customModuleProvider="target"/>
                         </slider>
                         <textField focusRingType="none" horizontalHuggingPriority="251" verticalHuggingPriority="750" translatesAutoresizingMaskIntoConstraints="NO" id="RSV-border-value" customClass="RulerAppletValueLabel" customModule="powertoys" customModuleProvider="target">
                             <rect key="frame" x="334" y="10" width="44" height="16"/>
@@ -283,14 +283,14 @@
                 <customView translatesAutoresizingMaskIntoConstraints="NO" id="RSV-window-card" customClass="RulerAppletGroupView" customModule="powertoys" customModuleProvider="target">
                     <rect key="frame" x="0.0" y="0.0" width="388" height="72"/>
                     <subviews>
-                        <button verticalHuggingPriority="750" translatesAutoresizingMaskIntoConstraints="NO" id="RSV-float-checkbox" customClass="RulerDepthSwitch" customModule="powertoys" customModuleProvider="target">
+                        <button verticalHuggingPriority="750" translatesAutoresizingMaskIntoConstraints="NO" id="RSV-float-checkbox" customClass="RulerQuietRaisedSwitch" customModule="powertoys" customModuleProvider="target">
                             <rect key="frame" x="12" y="42" width="364" height="24"/>
                             <buttonCell key="cell" type="check" title="Float ruler above other applications" bezelStyle="regularSquare" imagePosition="left" state="on" inset="2" id="RSV-float-cell">
                                 <behavior key="behavior" changeContents="YES" doesNotDimImage="YES" lightByContents="YES"/>
                                 <font key="font" name=".AppleSystemUIFont" size="13"/>
                             </buttonCell>
                         </button>
-                        <button verticalHuggingPriority="750" translatesAutoresizingMaskIntoConstraints="NO" id="RSV-shadow-checkbox" customClass="RulerDepthSwitch" customModule="powertoys" customModuleProvider="target">
+                        <button verticalHuggingPriority="750" translatesAutoresizingMaskIntoConstraints="NO" id="RSV-shadow-checkbox" customClass="RulerQuietRaisedSwitch" customModule="powertoys" customModuleProvider="target">
                             <rect key="frame" x="12" y="6" width="364" height="24"/>
                             <buttonCell key="cell" type="check" title="Show ruler shadow" bezelStyle="regularSquare" imagePosition="left" inset="2" id="RSV-shadow-cell">
                                 <behavior key="behavior" changeContents="YES" doesNotDimImage="YES" lightByContents="YES"/>

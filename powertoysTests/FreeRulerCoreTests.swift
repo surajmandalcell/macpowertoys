@@ -1071,12 +1071,12 @@ final class FreeRulerCoreTests: XCTestCase {
         XCTAssertEqual(appearanceCard.bounds.maxX - controlsView.rulerColorWell.frame.maxX, 12, accuracy: 0.5)
         XCTAssertEqual(controlsView.floatRulersCheckbox.frame.minX, 12, accuracy: 0.5)
         XCTAssertEqual(windowCard.bounds.maxX - controlsView.floatRulersCheckbox.frame.maxX, 12, accuracy: 0.5)
-        XCTAssertTrue(controlsView.unitSegmentedControl is RulerDepthSegmentedControl)
-        XCTAssertTrue(controlsView.dimensionWidthField is RulerDepthStepperField)
-        XCTAssertTrue(controlsView.dimensionHeightField is RulerDepthStepperField)
-        XCTAssertTrue(controlsView.foregroundOpacitySlider.cell is RulerDepthSliderCell)
-        XCTAssertTrue(controlsView.floatRulersCheckbox is RulerDepthSwitch)
-        XCTAssertTrue(controlsView.rulerShadowCheckbox is RulerDepthSwitch)
+        XCTAssertTrue(controlsView.unitSegmentedControl is RulerQuietRaisedSegmentedControl)
+        XCTAssertTrue(controlsView.dimensionWidthField is RulerQuietRaisedStepperField)
+        XCTAssertTrue(controlsView.dimensionHeightField is RulerQuietRaisedStepperField)
+        XCTAssertTrue(controlsView.foregroundOpacitySlider.cell is RulerQuietRaisedSliderCell)
+        XCTAssertTrue(controlsView.floatRulersCheckbox is RulerQuietRaisedSwitch)
+        XCTAssertTrue(controlsView.rulerShadowCheckbox is RulerQuietRaisedSwitch)
 
         let rowLabels: [NSTextField] = [
             controlsView.unitLabel,

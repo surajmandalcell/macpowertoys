@@ -13,10 +13,8 @@ enum RulerAppletColor {
     static let softButton = NSColor(OnePlusLinearColor.softButton)
     static let softButtonHover = NSColor(OnePlusLinearColor.softButtonHover)
     static let softButtonPressed = NSColor(OnePlusLinearColor.softButtonPressed)
-    static let destructiveFill = NSColor(OnePlusLinearColor.destructiveFill)
-    static let destructiveHover = NSColor(OnePlusLinearColor.destructiveHover)
-    static let destructivePressed = NSColor(OnePlusLinearColor.destructivePressed)
     static let destructiveText = NSColor(OnePlusLinearColor.destructiveText)
+    static let destructivePressedText = NSColor(OnePlusLinearColor.destructivePressedText)
 }
 
 enum RulerAppletMetrics {
@@ -28,13 +26,13 @@ enum RulerAppletMetrics {
     static let row = OnePlusLinearMetrics.appletRow
     static let rowPadding = OnePlusLinearMetrics.appletRowPadding
     static let groupRadius = OnePlusLinearMetrics.appletGroupRadius
-    static let buttonRadius = OnePlusLinearMetrics.appletDestructiveRadius
+    static let buttonRadius = OnePlusLinearMetrics.radius
     static let caption = OnePlusLinearMetrics.appletCaption
     static let body = OnePlusLinearMetrics.body
 }
 
-/// The one place that styles the Ruler applet bodies. Switch, slider, and segmented drawing are the
-/// Depth classes in `RulerDepthControls.swift`, set as the XIB custom classes.
+/// The one place that styles the Ruler applet bodies. Switch, slider, segmented, and stepper drawing are the
+/// Quiet Raised classes in `RulerQuietRaisedControls.swift`, set as the XIB custom classes.
 @MainActor
 enum RulerAppletStyle {
     static func apply(to root: NSView) {
@@ -50,7 +48,7 @@ enum RulerAppletStyle {
         case let value as RulerAppletValueLabel:
             value.font = .monospacedDigitSystemFont(ofSize: RulerAppletMetrics.body, weight: .regular)
             value.textColor = RulerAppletColor.secondary
-        case let field as RulerDepthStepperField:
+        case let field as RulerQuietRaisedStepperField:
             field.font = .monospacedDigitSystemFont(ofSize: RulerAppletMetrics.body, weight: .regular)
             field.textColor = RulerAppletColor.ink
         case let label as NSTextField where !label.isEditable:
@@ -153,7 +151,8 @@ final class RulerAppletWindowView: NSView {
     }
 }
 
-/// Applet footer buttons. Hover and press change only the fill; nothing moves.
+/// Applet footer buttons. Hover and press change only the fill; nothing moves. The destructive role is plain red
+/// text on the group's row text edge, with no fill and no border; press darkens the text.
 final class RulerAppletButton: NSButton {
     enum Role { case primary, plain, destructive }
 
@@ -186,12 +185,14 @@ final class RulerAppletButton: NSButton {
             return pressed ? RulerAppletColor.softButtonPressed
                 : isHovered ? RulerAppletColor.softButtonHover : RulerAppletColor.softButton
         case .destructive:
-            return pressed ? RulerAppletColor.destructivePressed
-                : isHovered ? RulerAppletColor.destructiveHover : RulerAppletColor.destructiveFill
+            return .clear
         }
     }
 
-    var titleColor: NSColor { role == .destructive ? RulerAppletColor.destructiveText : RulerAppletColor.ink }
+    var titleColor: NSColor {
+        guard role == .destructive else { return RulerAppletColor.ink }
+        return cell?.isHighlighted == true ? RulerAppletColor.destructivePressedText : RulerAppletColor.destructiveText
+    }
 
     override func draw(_ dirtyRect: NSRect) {
         let alpha = isEnabled ? 1 : OnePlusMetrics.disabledOpacity
@@ -200,7 +201,7 @@ final class RulerAppletButton: NSButton {
         fillColor.withAlphaComponent(fillColor.alphaComponent * alpha).setFill()
         shape.fill()
         let paragraph = NSMutableParagraphStyle()
-        paragraph.alignment = .center
+        paragraph.alignment = role == .destructive ? .left : .center
         paragraph.lineBreakMode = .byTruncatingTail
         let font = NSFont.systemFont(ofSize: RulerAppletMetrics.body, weight: role == .primary ? .medium : .regular)
         let attributes: [NSAttributedString.Key: Any] = [

@@ -8,7 +8,7 @@ extension OnePlusWindowCanvas {
 }
 
 /// A v15 sidebar tool window: the Linear sidebar and one pane on the window surface, no texture,
-/// the Depth control look, and Quiet motion.
+/// the Quiet Raised control look, and Quiet motion.
 struct LinearToolWindow<Sidebar: View, Content: View>: View {
     let canvas: OnePlusWindowCanvas
     @ViewBuilder let sidebar: Sidebar
@@ -23,7 +23,7 @@ struct LinearToolWindow<Sidebar: View, Content: View>: View {
         .ignoresSafeArea()
         .onePlusFixedCanvas(canvas.linear)
         .onePlusNeutralControls()
-        .environment(\.onePlusLinearControlLook, .depth)
+        .environment(\.onePlusLinearControlLook, .quietRaised)
         .onePlusLinearMotion(.quiet)
     }
 }
