@@ -370,7 +370,7 @@ struct ColorPickerSettingsView: View {
                 .accessibilityIdentifier("color-picker.clear-all")
                 .padding(.top, OnePlusLinearMetrics.appletFooterGap)
         }
-        .environment(\.onePlusLinearControlLook, .depth)
+        .environment(\.onePlusLinearControlLook, .quietRaised)
         .confirmationDialog("Clear all picked colors?", isPresented: $isConfirmingClearAll) {
             Button("Clear all", role: .destructive) { service.clearAll(undoManager: undoManager) }
             Button("Cancel", role: .cancel) {}

@@ -70,7 +70,7 @@ struct DevSyncRulesSection: View {
             .help(help)
         }
         .padding(OnePlusLinearMetrics.appletGutter)
-        .environment(\.onePlusLinearControlLook, .depth)
+        .environment(\.onePlusLinearControlLook, .quietRaised)
     }
 
     private func metadataRow(title: String, selection: Binding<DevMetadataOption>) -> some View {

@@ -1702,7 +1702,7 @@ struct PortmanSettingsView: View {
 
 private extension View {
     func portmanAppletLook() -> some View {
-        environment(\.onePlusLinearControlLook, .depth).onePlusLinearMotion(.quiet)
+        environment(\.onePlusLinearControlLook, .quietRaised).onePlusLinearMotion(.quiet)
     }
 }
 

@@ -2,7 +2,7 @@ import AppKit
 import XCTest
 @testable import powertoys
 
-/// Renders both Ruler applet windows offscreen and checks the Depth control geometry. Nothing is ordered on screen.
+/// Renders both Ruler applet windows offscreen and checks the Quiet Raised control geometry. Nothing is ordered on screen.
 @MainActor
 final class RulerAppletRenderTests: XCTestCase {
     private final class HiddenRuler: RulerWindow {
@@ -13,7 +13,7 @@ final class RulerAppletRenderTests: XCTestCase {
         override func order(_ place: NSWindow.OrderingMode, relativeTo otherWin: Int) {}
     }
 
-    func testRenderRulerAppletWindowsAndCheckDepthGeometry() throws {
+    func testRenderRulerAppletWindowsAndCheckQuietRaisedGeometry() throws {
         let ruler = RulerController(frame: NSRect(x: 0, y: 0, width: 400, height: 400),
                                     windowFactory: { HiddenRuler(frame: $0, settings: $1) })
         let settings = RulerSettingsController(rulerController: ruler)
@@ -44,15 +44,15 @@ final class RulerAppletRenderTests: XCTestCase {
     private func checkGeometry(in root: NSView) throws {
         root.layoutSubtreeIfNeeded()
         let views = all(root)
-        let switches = views.compactMap { $0 as? RulerDepthSwitch }
+        let switches = views.compactMap { $0 as? RulerQuietRaisedSwitch }
         XCTAssertEqual(switches.count, 2)
         for item in switches { XCTAssertEqual(item.frame.height, 24) }
-        let segmented = try XCTUnwrap(views.compactMap { $0 as? RulerDepthSegmentedControl }.first)
+        let segmented = try XCTUnwrap(views.compactMap { $0 as? RulerQuietRaisedSegmentedControl }.first)
         XCTAssertEqual(segmented.frame.size, NSSize(width: 112, height: 24))
         let sliders = views.compactMap { $0 as? NSSlider }
         XCTAssertEqual(sliders.count, 3)
         for slider in sliders {
-            XCTAssertTrue(slider.cell is RulerDepthSliderCell)
+            XCTAssertTrue(slider.cell is RulerQuietRaisedSliderCell)
             // Track and knob share the slider's center line on whole points.
             XCTAssertEqual(slider.frame.height.truncatingRemainder(dividingBy: 2), 0)
         }
