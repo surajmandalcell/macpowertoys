@@ -34,8 +34,9 @@ nonisolated final class EventTapThread: @unchecked Sendable {
         CFRunLoopRemoveSource(loop, source, .commonModes)
     }
 
-    func add(_ timer: CFRunLoopTimer) {
-        CFRunLoopAddTimer(loop, timer, .commonModes)
+    func perform(_ block: @escaping @Sendable () -> Void) {
+        CFRunLoopPerformBlock(loop, CFRunLoopMode.commonModes.rawValue, block)
+        CFRunLoopWakeUp(loop)
     }
 
     @MainActor private static var lastDisabledLog: [String: Date] = [:]
