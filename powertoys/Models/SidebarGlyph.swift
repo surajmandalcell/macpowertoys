@@ -1,9 +1,13 @@
 import AppKit
+import SwiftUI
 
 /// One-color 16 pt sidebar glyphs with 1.5 pt strokes, drawn from each tool's own icon.
-/// Template SVG assets `SidebarGlyph<Name>`; the sidebar does not use them yet.
+/// Template SVG assets `SidebarGlyph<Name>`; the sidebar tints them `secondary`, `ink` when selected.
 enum SidebarGlyph {
     static let allTools = "SidebarGlyphAllTools"
+
+    /// The template glyph for a built-in tool; marketplace tools have none and keep their artwork.
+    static func glyph(for toolID: String) -> Image? { assetName(for: toolID).map { Image($0) } }
 
     static func assetName(for toolID: String) -> String? {
         switch toolID {
