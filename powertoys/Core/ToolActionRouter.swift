@@ -89,8 +89,19 @@ final class ToolActionRouter {
             LogManager.shared.info("Ignored page route for tool: \(resolved)", source: "ToolActionRouter")
             return
         }
+        if resolved == "awake" || (page == "settings" && Self.mainPageSettingsToolIDs.contains(resolved)) {
+            openMainPage(toolID: resolved, activateApp: activateApp)
+            return
+        }
         ToolPageRouter.shared.post(tool: resolved, page: page)
         open(toolID: resolved, activateApp: activateApp)
+    }
+
+    /// These tools keep their settings on the main window tool page. Kwake has no window at all.
+    nonisolated static let mainPageSettingsToolIDs: Set<String> = ["color-picker", "text-extractor", "portman"]
+
+    func openMainPage(toolID: String, activateApp: Bool = true) {
+        open(toolID: "main", page: "tool/\(toolID)", activateApp: activateApp)
     }
 
     func open(toolID: String, activateApp: Bool = true) {
@@ -101,6 +112,10 @@ final class ToolActionRouter {
         }
         if resolved == "ruler" {
             execute(ToolActionRequest(action: .rulerOpen, activateApp: activateApp))
+            return
+        }
+        if resolved == "awake" {
+            openMainPage(toolID: resolved, activateApp: activateApp)
             return
         }
 

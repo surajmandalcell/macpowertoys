@@ -14,8 +14,6 @@ final class CompactAppletRedesignTests: XCTestCase {
         XCTAssertEqual(TextExtractorLayout.historyHeight(count: 1000), 462)
         XCTAssertEqual(ColorPickerLayout.historyHeight(count: 5), 326)
         XCTAssertEqual(TextExtractorLayout.historyHeight(count: 5), 270)
-        XCTAssertEqual(AwakeLayout.windowWidth, 560)
-        XCTAssertEqual(AwakeLayout.windowHeight, 500)
     }
 
     func testColorProjectsWindowGrowsUntilItsMaximumHeight() {
@@ -23,13 +21,6 @@ final class CompactAppletRedesignTests: XCTestCase {
         XCTAssertEqual(ColorPickerLayout.projectsHeight(projectCount: 5, isCreating: false), 360)
         XCTAssertEqual(ColorPickerLayout.projectsHeight(projectCount: 5, isCreating: true), 362)
         XCTAssertEqual(ColorPickerLayout.projectsHeight(projectCount: 100, isCreating: false), 460)
-    }
-
-    func testColorSettingsWindowFitsCardsAndCapsLongContent() {
-        XCTAssertEqual(ColorPickerLayout.settingsHeight(contentHeight: 296), 360)
-        XCTAssertEqual(ColorPickerLayout.settingsHeight(contentHeight: 0), 250)
-        XCTAssertEqual(ColorPickerLayout.settingsHeight(contentHeight: 1000), 460)
-        XCTAssertEqual(ColorPickerLayout.settingsHeight(contentHeight: ColorPickerLayout.settingsContentHeight), 298)
     }
 
     func testColorHistoryPresentationFiltersAndFormatsOffTheViewPath() throws {
@@ -83,7 +74,7 @@ final class CompactAppletRedesignTests: XCTestCase {
         let directory = URL(fileURLWithPath: "/Volumes/External1TB/dev/personal/powertoys/tmp/redesign/captures")
         try FileManager.default.createDirectory(at: directory, withIntermediateDirectories: true)
         func descendants(_ view: NSView) -> [NSView] { [view] + view.subviews.flatMap(descendants) }
-        for page in [ColorPickerPage.history, .projects, .settings] {
+        for page in [ColorPickerPage.history, .projects] {
             for scheme in [ColorScheme.dark, .light] {
                 let priorAppearance = NSApp.appearance
                 NSApp.appearance = NSAppearance(named: scheme == .dark ? .darkAqua : .aqua)
@@ -126,15 +117,12 @@ final class CompactAppletRedesignTests: XCTestCase {
     }
 
     @MainActor
-    func testAppletTitlebarGearRendersForKwakeAndTextExtractor() async throws {
+    func testAppletTitlebarGearRendersForTextExtractor() async throws {
         let directory = URL(fileURLWithPath: "/Volumes/External1TB/dev/personal/powertoys/tmp/redesign/captures")
         try FileManager.default.createDirectory(at: directory, withIntermediateDirectories: true)
-        let width = OnePlusWindowCanvas.awake.size.width
+        let width = OnePlusWindowCanvas.textExtractor.size.width
         let applets: [(String, AnyView)] = [
-            ("kwake-home", AnyView(AwakeView())),
-            ("kwake-settings", AnyView(AwakeView(settings: true))),
             ("text-extractor-history", AnyView(TextExtractorView())),
-            ("text-extractor-settings", AnyView(TextExtractorView(page: .settings))),
         ]
         for (name, view) in applets {
             for scheme in [ColorScheme.dark, .light] {

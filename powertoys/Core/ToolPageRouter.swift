@@ -134,7 +134,7 @@ nonisolated enum DiagnosticsPanel: String, CaseIterable, Sendable {
                 defaults.set(tab.rawValue, forKey: "tray.selectedTab.v2")
             }
         case .portman:
-            let pages: [String: PortmanPanelView.Page] = ["servers": .local, "forward": .forward, "settings": .settings]
+            let pages: [String: PortmanPanelView.Page] = ["servers": .local, "forward": .forward]
             guard let page = pages[id] else { return }
             if defaults.string(forKey: "portman.selectedPage") != page.rawValue {
                 defaults.set(page.rawValue, forKey: "portman.selectedPage")

@@ -918,7 +918,7 @@ final class PortmanTests: XCTestCase {
     func testPortmanForwardAndSettingsRenderInBothAppearances() throws {
         let service = PortmanService.shared
         defer { service.clearRemoteScan() }
-        for (page, scanning) in [(PortmanPanelView.Page.forward, false), (.settings, false), (.forward, true)] {
+        for (page, scanning) in [(PortmanPanelView.Page.forward, false), (.forward, true)] {
             service.clearRemoteScan()
             service.isLoadingRemote = scanning
             for scheme in [ColorScheme.light, .dark] {

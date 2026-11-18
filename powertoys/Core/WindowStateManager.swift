@@ -127,7 +127,6 @@ final class WindowStateManager {
         "main",
         "rclone",
         "logs",
-        "awake",
         "color-picker",
         "text-extractor",
         "input-devices",
