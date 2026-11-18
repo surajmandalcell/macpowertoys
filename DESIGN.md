@@ -795,7 +795,9 @@ Version 15 Linear style, built from the OnePlusUI `OnePlusLinear*` parts
   window, then the 28 pt search field (`Search` with a `⌘K` chip, 8 pt from
   the sidebar edges, 8 pt above the list). Command-K and Command-F focus it.
   The scrolling list holds `All tools` (app icon), then one group per tool
-  category in category order, registry order inside. Each group starts
+  category: System first, Developer second, then the rest (owner,
+  2026-11-18). Inside a group, tools sort by name length, shortest first,
+  and the All tools body uses the same order. Each group starts
   with a 28 pt caption (11.5 pt medium `muted`, 6 pt above the text). Rows
   are 28 pt: a 16 pt icon, an 8 pt gap, and the 13 pt name in `secondary`.
   A disabled tool name uses `muted`. Selection is a `selection` fill with a
