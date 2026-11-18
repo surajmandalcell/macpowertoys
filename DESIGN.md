@@ -185,10 +185,8 @@ mockups are in `docs/design/v15/`.
       "Main window" (Tool page).
     - Panel components: "Toolbar", shipped in OnePlusUI 1.3.8 (see
       "Combined panel").
-    - Panel surface: "Fill steps" (owner, 2026-11-19). No lines
-      anywhere in the panel: tiles, groups, rows, and buttons separate
-      only by a step in fill color and by spacing. Reference:
-      `v15-panel-r3/borderless-*.png`.
+    - Panel surface: "Fill steps", shipped in OnePlusUI 1.3.10 (see
+      "Combined panel").
 
 ## Overview
 
@@ -676,22 +674,24 @@ shared rules apply to every panel.
 
 ### Combined panel (version 15)
 
-Built from the OnePlusUI `OnePlusLinear` panel parts. Values are the
-package tokens (`OnePlusLinearMetrics`, `OnePlusLinearColor`).
+Built from the OnePlusUI `OnePlusLinear` panel parts with
+`OnePlusLinearPanel(style: .fillSteps)`. Values are the package tokens
+(`OnePlusLinearPanelStyle`, `OnePlusLinearMetrics`, `OnePlusLinearColor`).
 
-- Shell: 356 pt wide, radius 8, `panelShell` fill. Body padding 12 top,
-  9 on each side, 12 bottom; blocks are 12 pt apart.
-- Top bar, the same on every tab: 44 pt on `panelFooter` with a 1 pt
-  `line` bottom edge and a 9 pt inset. Leading: the panel tabs as 26 pt
-  icon tabs, Home first (`square.grid.2x2`), then the tool tabs in the
-  saved order; the selected tab uses the selected segment chrome. Context
-  menu Move Left and Move Right reorder the tool tabs. Trailing: the 28 pt
-  gear icon button (opens Settings), then `Open App` in the filled
-  primary style (`primaryFill`, `primaryInk`, medium). Quit stays in the
-  status item's right-click menu.
+- Surface "Fill steps": no lines anywhere in the shell. Parts separate
+  only by a fill step and spacing: `fillShell` under `fillGroup` groups
+  and tiles, `fillRowHover`, `fillTrack`, and `fillThumb` inside them.
+- Shell: 356 pt wide, radius 12, `fillShell`. Body padding 2 below the
+  bar, 10 on each side, 12 bottom; blocks are 10 pt apart.
+- Top bar, the same on every tab: 46 pt, no fill and no line, 10 pt
+  inset. Leading: the panel tabs as 28 pt icon tabs with 13 pt glyphs,
+  Home first (`square.grid.2x2`), then the tool tabs in the saved order;
+  the selected tab is a radius 7 `fillTabSelected` step. Context menu Move
+  Left and Move Right reorder the tool tabs. Trailing: the 28 pt gear
+  (13 pt glyph, opens Settings), then `Open App`: radius 8, `accent` fill,
+  white medium text. Quit stays in the status item's right-click menu.
 - Home, top to bottom, with no header row:
-  - Bento, "Instrument" style: one `panelTile` card, radius 6, split
-    into two columns and its tiles by `lineSoft` hairlines, 10 pt tile
+  - Bento: six `fillGroup` tiles, radius 8, 4 pt apart, 10 pt tile
     padding. Left: CPU (146 pt, user and system shares, history chart
     68 pt), Disk (56 pt, free value and a 5 pt usage bar), Battery (56 pt,
     percent, time left, usage bar). Right: GPU (86 pt, history chart
@@ -707,32 +707,35 @@ package tokens (`OnePlusLinearMetrics`, `OnePlusLinearColor`).
     hides that tile. The column's chart tile (CPU on the left, Network on
     the right) takes the freed height, so both columns still end on one
     line. Missing readings show a dash.
-  - One list card with the Fan row (32 pt: RPM status and the Auto, Cool,
-    Max segmented control, 40 x 18 segments) and the Kwake row (state text
-    and switch). A Mac with no fans hides the Fan row; the card hides when
-    both rows are absent. Only a click on a segment sends a fan write.
-  - "Top processes" header and five 30 pt rows in 12 pt text: the app
-    icon or a terminal glyph (16 pt), the name, the CPU percent in
+  - Groups are `fillGroup`, radius 10, 4 pt top and bottom padding, no
+    separators. Row hover is a radius 6 `fillRowHover` step inset 4 pt
+    from the group sides and 1 pt from the row edges.
+  - One group with the Fan row (32 pt: RPM status and the Auto, Cool,
+    Max segmented control: a `fillTrack` track, radius 7, 2 pt inset, a
+    radius 5 `fillThumb` thumb, no dividers) and the Kwake row (state text
+    and a 32 x 18 switch: `accent` on, `fillTrack` off, 14 pt knob). A Mac
+    with no fans hides the Fan row; the group hides when both rows are
+    absent. Only a click on a segment sends a fan write.
+  - "Top processes" header and a group of five 30 pt rows in 12 pt text:
+    the app icon or a terminal glyph (16 pt), the name, the CPU percent in
     `cpuText` with its percent sign (40 pt column), and memory (68 pt
-    column, fits "1,023.7 MB"). No bar. Hover fills the full row with
-    `selection`.
-  - Action toolbar, 28 pt, for the enabled tools among Pick Color,
-    Extract Text, and Ruler: equal items on the panel with no fill or
-    border, 14 pt `lineSoft` dividers between them, and a radius 5
-    `selection` fill inset 3 pt on hover.
+    column, fits "1,023.7 MB"). No bar.
+  - Actions for the enabled tools among Pick Color, Extract Text, and
+    Ruler: equal 32 pt `fillGroup` buttons, radius 8, 4 pt apart;
+    hover `fillButtonHover`, pressed `fillButtonPressed`.
 - Speed: metrics sample once per second off the main thread and only while
   Home is visible; the process list refreshes every 2 seconds. Text is
   formatted off the main thread. Both stop when the panel closes or the
   tab changes. Only the chart ticker moves.
-- Other tabs keep their version 14 content inside the scrolling body.
+- Other tabs (RSync UI, Input Devices) keep their version 14 content
+  inside the scrolling body; their cards and section headers still draw
+  lines until they are converted.
 
 ### All panels
 
-- Shell corner radius: 8 pt, the product's card and panel radius (owner
-  correction 2026-10-01: the combined panel's larger system popover radius
-  did not match the product). Every menu-bar panel window (combined,
-  Portman, separate tool items) clips its window, border, and shadow to
-  8 pt.
+- Shell corner radius: 8 pt for Portman and the separate tool panels; the
+  combined panel uses 12 pt (Fill steps). Every menu-bar panel window
+  clips its window, border, and shadow to its shell radius.
 - Shell: 356 pt wide. Its height is always the natural height of the
   current tab's content; 90% of the visible screen is only a ceiling for
   content that is taller (owner correction: a short tab must never open as a

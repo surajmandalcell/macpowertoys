@@ -178,7 +178,7 @@ struct MainPanelFrame<Regions: View>: View {
     @ViewBuilder let regions: Regions
 
     var body: some View {
-        OnePlusLinearPanel {
+        OnePlusLinearPanel(style: TrayPopoverLayout.style) {
             OnePlusLinearPanelFooter(edge: .top) {
                 OnePlusLinearIconTabs(tabs: menuTabs, selection: $selection, onMove: onMove)
             } trailing: {
@@ -239,20 +239,20 @@ struct MainPanelBodyLayout: Layout {
         var y = bounds.minY
         for (subview, height) in zip(subviews, heights(subviews, width: bounds.width)) where height > 0 {
             subview.place(at: CGPoint(x: bounds.minX, y: y), proposal: ProposedViewSize(width: bounds.width, height: height))
-            y += height + OnePlusLinearMetrics.panelBlockGap
+            y += height + TrayPopoverLayout.style.blockGap
         }
     }
 
     private func heights(_ subviews: Subviews, width: CGFloat) -> [CGFloat] {
         let natural = subviews.map { $0.sizeThatFits(ProposedViewSize(width: width, height: nil)).height }
         let fixed = zip(subviews, natural).filter { !$0.0[MainPanelScrollingBody.self] }.map(\.1).reduce(0, +)
-        let gapTotal = CGFloat(max(0, natural.filter { $0 > 0 }.count - 1)) * OnePlusLinearMetrics.panelBlockGap
+        let gapTotal = CGFloat(max(0, natural.filter { $0 > 0 }.count - 1)) * TrayPopoverLayout.style.blockGap
         let room = max(0, maximumHeight - fixed - gapTotal)
         return zip(subviews, natural).map { $0.0[MainPanelScrollingBody.self] ? min($0.1, room) : $0.1 }
     }
 
     private func gaps(_ subviews: Subviews, width: CGFloat) -> CGFloat {
-        CGFloat(max(0, heights(subviews, width: width).filter { $0 > 0 }.count - 1)) * OnePlusLinearMetrics.panelBlockGap
+        CGFloat(max(0, heights(subviews, width: width).filter { $0 > 0 }.count - 1)) * TrayPopoverLayout.style.blockGap
     }
 }
 

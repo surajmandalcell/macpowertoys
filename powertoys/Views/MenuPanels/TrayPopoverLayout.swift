@@ -2,12 +2,13 @@ import OnePlusUI
 import SwiftUI
 
 enum TrayPopoverLayout {
+    /// The combined panel's surface style (owner pick "Fill steps", 2026-11-19).
+    static let style = OnePlusLinearPanelStyle.fillSteps
     static let width = OnePlusLinearMetrics.panelWidth
-    static let bodyWidth = OnePlusLinearMetrics.panelWidth - 2 * OnePlusLinearMetrics.panelBodyInset
+    static let bodyWidth = OnePlusLinearMetrics.panelWidth - 2 * style.bodyInset
     static let minimumBodyHeight: CGFloat = 54
-    /// The v15 panel chrome around the body: the top toolbar plus the body top and bottom padding.
-    static let chromeHeight = OnePlusLinearMetrics.panelBodyTopUnderToolbar + OnePlusLinearMetrics.panelBodyBottom
-        + OnePlusLinearMetrics.footer
+    /// The v15 panel chrome around the body: the top bar plus the body top and bottom padding.
+    static let chromeHeight = style.bodyTopUnderBar + OnePlusLinearMetrics.panelBodyBottom + style.bar
     static let heightFraction = OnePlusMenuMetrics.heightFraction
     static let homeToolIDs = ["color-picker", "text-extractor", "awake", "ruler"]
     static let defaultComplexTabs: [TrayTab] = [
