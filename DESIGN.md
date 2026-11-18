@@ -185,9 +185,10 @@ mockups are in `docs/design/v15/`.
       "Main window" (Tool page).
     - Panel components: "Toolbar", shipped in OnePlusUI 1.3.8 (see
       "Combined panel").
-    - The panel still needs a more premium surface style: the faint
-      low-opacity borders do not work (options pending:
-      `v15-panel-r3/manifest.json`).
+    - Panel surface: "Fill steps" (owner, 2026-11-19). No lines
+      anywhere in the panel: tiles, groups, rows, and buttons separate
+      only by a step in fill color and by spacing. Reference:
+      `v15-panel-r3/borderless-*.png`.
 
 ## Overview
 
