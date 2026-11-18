@@ -192,9 +192,13 @@ mockups are in `docs/design/v15/`.
     - Metrics: "Floating tiles with wash": shipped in OnePlusUI 1.3.11
       (see "Combined panel").
     - Tabs: "Soft keys": shipped in OnePlusUI 1.3.11 (see "Combined
-      panel"). Dark mode looks weaker than Light (options pending).
-    - Light mode action buttons are too close to the background
-      (options pending).
+      panel").
+  - Round 6 picks (owner, 2026-11-19), reference `v15-panel-r5/`:
+    - Dark tabs: "Panel key" direction, quieter; mixes with "Deep
+      track" pending.
+    - Light action buttons: "Soft keys" direction; softness level
+      between Soft keys and Floating keys pending.
+    - Open App: softer and tighter, options pending.
 
 ## Overview
 
