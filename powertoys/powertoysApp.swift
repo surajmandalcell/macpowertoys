@@ -115,14 +115,6 @@ struct MacPowerToysApp: App {
                     .onePlusFixedCanvas(.logs)
                     .onToolWindowURL("logs")
             }
-        case "awake":
-            OnePlusWindowContent {
-                AwakeView()
-                    .utilityMotionPolicy()
-                    .background(WindowAccessor(identifier: "awake"))
-                    .onePlusFixedCanvas(.awake)
-                    .onToolWindowURL("awake")
-            }
         case "color-picker":
             OnePlusWindowContent {
                 ColorHistoryView()
@@ -187,15 +179,6 @@ struct MacPowerToysApp: App {
             Self.windowContent(id: "logs")
         }
         .defaultSize(OnePlusWindowCanvas.logs.size)
-        .windowResizability(.contentSize)
-        .windowStyle(.hiddenTitleBar)
-        .handlesExternalEvents(matching: [])
-        .restorationBehavior(.disabled)
-
-        Window("Kwake", id: "awake") {
-            Self.windowContent(id: "awake")
-        }
-        .defaultSize(OnePlusWindowCanvas.awake.size)
         .windowResizability(.contentSize)
         .windowStyle(.hiddenTitleBar)
         .handlesExternalEvents(matching: [])

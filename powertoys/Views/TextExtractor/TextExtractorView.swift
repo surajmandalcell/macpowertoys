@@ -5,8 +5,6 @@ enum TextExtractorLayout {
     static let windowWidth = OnePlusWindowCanvas.textExtractor.size.width
     static let historyBaseHeight = OnePlusWindowCanvas.textExtractor.size.height - OnePlusMetrics.appletTitlebar
     static let maximumWindowHeight = OnePlusWindowCanvas.textExtractor.heightRange!.upperBound
-    static let settingsContentEstimate = maximumWindowHeight - OnePlusLinearMetrics.appletTitlebar
-        - OnePlusLinearMetrics.appletBottom
     static let historyRowHeight = OnePlusLinearMetrics.appletRow
     /// Title area and the History caption above the rows; the bottom gutter below them.
     static let historyChrome = OnePlusLinearMetrics.appletTitlebar + OnePlusLinearMetrics.appletCaptionHeight
@@ -19,10 +17,6 @@ enum TextExtractorLayout {
 
     static func historyHeight(count: Int) -> CGFloat {
         clamped(historyChrome + CGFloat(max(0, count)) * historyRowHeight)
-    }
-
-    static func settingsHeight(contentHeight: CGFloat) -> CGFloat {
-        clamped(contentHeight + OnePlusLinearMetrics.appletTitlebar + OnePlusLinearMetrics.appletBottom)
     }
 }
 
@@ -49,19 +43,13 @@ struct TextExtractorView: View {
     @Environment(\.undoManager) private var undoManager
     @State private var service = TextExtractorService.shared
     @State private var shortcuts = GlobalShortcutManager.shared
-    @State private var page: TextExtractorPage
     @State private var selectedExtraction: TextExtraction?
     @State private var historyRows: [TextExtractionPresentation] = []
-    @State private var settingsContentHeight = TextExtractorLayout.settingsContentEstimate
-
-    init(page: TextExtractorPage = .history) {
-        _page = State(initialValue: page)
-    }
 
     var body: some View {
         OnePlusLinearApplet("Text Extractor", canvas: .textExtractor) {
-            OnePlusLinearAppletSettingsButton(isActive: page == .settings) {
-                page = page == .settings ? .history : .settings
+            OnePlusLinearAppletSettingsButton(isActive: false) {
+                ToolActionRouter.shared.openMainPage(toolID: "text-extractor")
             }
             .accessibilityIdentifier("text-extractor.settings")
             Button { service.begin() } label: { Label("Extract Text", systemImage: "text.viewfinder") }
@@ -70,28 +58,16 @@ struct TextExtractorView: View {
                 .help("Select text anywhere on screen (\(shortcuts.shortcut(for: .textExtractor).display))")
                 .accessibilityIdentifier("text-extractor.extract")
         } content: {
-            OnePlusLinearContentSwitch(page) {
-                switch page {
-                case .history: history
-                case .settings:
-                    OnePlusLinearAppletForm {
-                        TextExtractorSettingsView()
-                            .onGeometryChange(for: CGFloat.self) { $0.size.height } action: { settingsContentHeight = $0 }
-                    }
-                }
-            }
+            history
         }
         .onePlusLinearMotion(.quiet)
         .onePlusNeutralControls()
-        .frame(height: page == .settings ? TextExtractorLayout.settingsHeight(contentHeight: settingsContentHeight)
-               : TextExtractorLayout.historyHeight(count: service.history.count))
+        .frame(height: TextExtractorLayout.historyHeight(count: service.history.count))
         .sheet(item: $selectedExtraction) { TextExtractionDetailView(extraction: $0) }
-        .onOpenToolPage("text-extractor") { id in
-            if let destination = TextExtractorPage(rawValue: id) { page = destination }
-        }
+        .onOpenToolPage("text-extractor") { _ in }
         .onReceive(NotificationCenter.default.publisher(for: .commandOpenSettings)) { _ in
             guard NSApp.keyWindow?.identifier?.rawValue.hasPrefix("text-extractor") == true else { return }
-            page = .settings
+            ToolActionRouter.shared.openMainPage(toolID: "text-extractor")
         }
         .task(id: service.history.map(\.id)) {
             let history = service.history
@@ -242,7 +218,6 @@ struct TextExtractorSettingsView: View {
     }
 }
 
-enum TextExtractorPage: String { case history, settings }
 
 /// A banner above an applet body sits on the 16 pt gutter, one section gap above the first group.
 struct AppletBannerInset: ViewModifier {

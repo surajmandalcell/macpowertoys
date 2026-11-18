@@ -2,67 +2,8 @@ import SwiftUI
 import OnePlusUI
 
 enum AwakeLayout {
-    static let windowWidth = OnePlusWindowCanvas.awake.size.width
-    static let windowHeight = OnePlusWindowCanvas.awake.size.height
     static let selectWidth: CGFloat = 140
     static let processFieldWidth: CGFloat = 100
-}
-
-struct AwakeView: View {
-    @State private var service = AwakeService.shared
-    @State private var settings: Bool
-
-    init(settings: Bool = false) {
-        _settings = State(initialValue: settings)
-    }
-
-    var body: some View {
-        OnePlusLinearApplet("Kwake", canvas: .awake) {
-            OnePlusLinearAppletSettingsButton(isActive: settings) { settings.toggle() }
-                .accessibilityIdentifier("awake.settings")
-            HStack(spacing: OnePlusLinearMetrics.appletActionGap) {
-                Text("Keep display on")
-                    .linearText(color: OnePlusLinearColor.appletSecondary)
-                    .accessibilityHidden(true)
-                Toggle("Keep Display On", isOn: Binding(
-                    get: { service.configuration.keepDisplayOn }, set: service.setKeepDisplayOn
-                ))
-                .toggleStyle(OnePlusLinearSwitchStyle())
-                .accessibilityIdentifier("awake.keep-display-on")
-            }
-            .fixedSize()
-        } content: {
-            OnePlusLinearContentSwitch(settings) {
-                OnePlusLinearAppletForm {
-                    if settings {
-                        AwakeSettingsView(showsDisplayToggle: false)
-                    } else {
-                        AwakeHomeView()
-                    }
-                }
-            }
-        }
-        .onePlusLinearMotion(.quiet)
-        .onePlusNeutralControls()
-        .onOpenToolPage("awake") { page in
-            if page == "home" { settings = false }
-            if page == "settings" { settings = true }
-        }
-        .onReceive(NotificationCenter.default.publisher(for: .commandOpenSettings)) { _ in
-            guard NSApp.keyWindow?.identifier?.rawValue.hasPrefix("awake") == true else { return }
-            settings = true
-        }
-    }
-}
-
-private struct AwakeHomeView: View {
-    var body: some View {
-        VStack(alignment: .leading, spacing: OnePlusLinearMetrics.appletSectionGap) {
-            AwakeStatusRow()
-            SleepTimerCard()
-            AwakeSettingsView(showsDisplayToggle: false)
-        }
-    }
 }
 
 enum SleepTimerPreset: Hashable, CaseIterable {
@@ -171,8 +112,8 @@ private struct AwakeStatusRow: View {
     }
 }
 
+/// The whole Kwake tool: the main window page hosts it, since Kwake has no window.
 struct AwakeSettingsView: View {
-    var showsDisplayToggle = true
     @State private var service = AwakeService.shared
     @State private var hours = 0
     @State private var minutes = 30
@@ -186,8 +127,10 @@ struct AwakeSettingsView: View {
 
     var body: some View {
         VStack(alignment: .leading, spacing: OnePlusLinearMetrics.appletSectionGap) {
+            AwakeStatusRow()
             modes
             quickTimes
+            SleepTimerCard()
             process
         }
         .buttonStyle(OnePlusLinearButtonStyle(.soft))
@@ -217,12 +160,11 @@ struct AwakeSettingsView: View {
                                     accessibilityLabel: "Keep awake", width: AwakeLayout.selectWidth)
                     .accessibilityIdentifier("awake.mode")
             }
-            if showsDisplayToggle {
-                OnePlusLinearAppletRow("Keep display on") {
-                    Toggle("Keep Display On", isOn: Binding(
-                        get: { service.configuration.keepDisplayOn }, set: service.setKeepDisplayOn
-                    )).toggleStyle(OnePlusLinearSwitchStyle())
-                }
+            OnePlusLinearAppletRow("Keep display on") {
+                Toggle("Keep Display On", isOn: Binding(
+                    get: { service.configuration.keepDisplayOn }, set: service.setKeepDisplayOn
+                )).toggleStyle(OnePlusLinearSwitchStyle())
+                .accessibilityIdentifier("awake.keep-display-on")
             }
             if service.configuration.mode == .timed || duration == 0 {
                 OnePlusLinearAppletRow("Duration") {
@@ -254,28 +196,19 @@ struct AwakeSettingsView: View {
                             .fixedSize()
                             .contextMenu { Button("Remove Preset", role: .destructive) { presetToRemove = seconds } }
                     }
-                    if !showsDisplayToggle {
-                        OnePlusLinearIconButton(systemImage: "plus", help: "Add the current interval as a quick time") {
-                            service.setPresets(service.configuration.presets + [duration])
-                        }
-                        .disabled(duration == 0 || service.configuration.presets.count >= 8
-                                  || service.configuration.presets.contains(duration))
-                    }
                 }
                 .padding(.horizontal, OnePlusLinearMetrics.appletRowPadding)
                 .frame(minHeight: OnePlusLinearMetrics.appletRow)
             }
             .onePlusScrollIndicators()
-            if showsDisplayToggle {
-                OnePlusLinearAppletRow("New preset", detail: "Save up to eight durations.") {
-                    HStack(spacing: OnePlusLinearMetrics.appletActionGap) {
-                        OnePlusStepperField("Preset minutes", value: $presetMinutes, in: 1...10_080, unit: "min")
-                        Button("Add") {
-                            service.setPresets(service.configuration.presets + [TimeInterval(presetMinutes * 60)])
-                        }
-                        .disabled(service.configuration.presets.count >= 8
-                                  || service.configuration.presets.contains(TimeInterval(presetMinutes * 60)))
+            OnePlusLinearAppletRow("New preset", detail: "Save up to eight durations.") {
+                HStack(spacing: OnePlusLinearMetrics.appletActionGap) {
+                    OnePlusStepperField("Preset minutes", value: $presetMinutes, in: 1...10_080, unit: "min")
+                    Button("Add") {
+                        service.setPresets(service.configuration.presets + [TimeInterval(presetMinutes * 60)])
                     }
+                    .disabled(service.configuration.presets.count >= 8
+                              || service.configuration.presets.contains(TimeInterval(presetMinutes * 60)))
                 }
             }
         }

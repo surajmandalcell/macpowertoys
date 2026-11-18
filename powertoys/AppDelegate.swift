@@ -43,7 +43,7 @@ class AppDelegate: NSObject, NSApplicationDelegate {
     }
 
     private static let nativeSceneToolIDs: Set<String> = [
-        "main", "rclone", "logs", "awake", "color-picker",
+        "main", "rclone", "logs", "color-picker",
         "text-extractor", "input-devices", "mac-tweaks",
     ]
 
@@ -120,7 +120,6 @@ class AppDelegate: NSObject, NSApplicationDelegate {
         "ruler-settings-window": "RulerLogo",
         "preferences-window": "RulerLogo",
         "ruler-color-panel": "RulerLogo",
-        "awake": "AwakeLogo",
         "color-picker": "ColorPickerLogo",
         "text-extractor": "TextExtractorLogo",
         "input-devices": "InputDevicesLogoA",

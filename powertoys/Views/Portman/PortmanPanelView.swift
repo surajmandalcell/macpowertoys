@@ -131,13 +131,12 @@ struct PortmanPanelView: View {
     private static let selectedPageKey = "portman.selectedPage"
 
     enum Page: String, CaseIterable {
-        case local = "Servers", forward = "Forward", settings = "Settings"
+        case local = "Servers", forward = "Forward"
 
         init?(panelID: String) {
             switch panelID {
             case "home", "servers": self = .local
             case "forward": self = .forward
-            case "settings": self = .settings
             default: return nil
             }
         }
@@ -146,7 +145,6 @@ struct PortmanPanelView: View {
             switch self {
             case .local: "servers"
             case .forward: "forward"
-            case .settings: "settings"
             }
         }
     }
@@ -165,8 +163,6 @@ struct PortmanPanelView: View {
 
     @State private var service = PortmanService.shared
     @State private var page = Page.local
-    @State private var settingsState = PortmanSettingsState()
-    @State private var settingsSearch = ""
     @State private var selectedPortID: String?
     @State private var host = ""
     @State private var aliases: [String] = []
@@ -261,7 +257,7 @@ struct PortmanPanelView: View {
 
     var body: some View {
         panelDialogs
-            .focusedValue(\.appOpenSettings) { navigate(to: .settings) }
+            .focusedValue(\.appOpenSettings) { ToolActionRouter.shared.openMainPage(toolID: "portman") }
             .onOpenToolPage("portman") { id in
                 if let destination = Page(panelID: id) { navigate(to: destination) }
             }
@@ -271,14 +267,17 @@ struct PortmanPanelView: View {
         OnePlusMenuPanel(contentID: page.panelID) {
             OnePlusMenuTabStrip(tabs: [
                 OnePlusMenuTab(.local, "Servers", systemImage: ToolGlyph.portman.symbol, image: ToolGlyph.portman.assetImage, accessibilityIdentifier: "portman.page.Servers"),
-                OnePlusMenuTab(.forward, "Forward", systemImage: "arrow.left.arrow.right", accessibilityIdentifier: "portman.page.Forward"),
-                OnePlusMenuTab(.settings, "Settings", systemImage: "gearshape", accessibilityIdentifier: "portman.page.Settings")
+                OnePlusMenuTab(.forward, "Forward", systemImage: "arrow.left.arrow.right", accessibilityIdentifier: "portman.page.Forward")
             ], selection: Binding(get: { page }, set: navigate))
         } actions: {
             OnePlusMenuOpenApp {
                 ToolActionRouter.shared.open(toolID: "main", page: "tool/portman")
             }
             .accessibilityIdentifier("portman.open-app")
+            Button { ToolActionRouter.shared.openMainPage(toolID: "portman") } label: { Image(systemName: "gearshape") }
+                .buttonStyle(OnePlusButtonStyle(.icon, size: .small))
+                .help("Settings").accessibilityLabel("Portman settings")
+                .accessibilityIdentifier("portman.settings")
             Button {
                 refreshTask?.cancel()
                 refreshTask = Task { await service.refreshLocal() }
@@ -297,7 +296,6 @@ struct PortmanPanelView: View {
                     if let selectedPort { localDetail(selectedPort) }
                     else { localOverview }
                 case .forward: forwardingPage.portmanAppletLook()
-                case .settings: PortmanSettingsView(search: settingsSearch, state: settingsState).portmanAppletLook()
                 }
             }
             .frame(maxWidth: .infinity, alignment: .topLeading)
@@ -320,11 +318,6 @@ struct PortmanPanelView: View {
             }
         case .forward:
             forwardToolbar
-                .portmanAppletLook()
-                .padding(.bottom, OnePlusMetrics.cardGap - OnePlusMenuMetrics.tileGap)
-        case .settings:
-            OnePlusLinearSearchField("Search settings", text: $settingsSearch,
-                                     accessibilityIdentifier: "portman.settings.search", style: .applet)
                 .portmanAppletLook()
                 .padding(.bottom, OnePlusMetrics.cardGap - OnePlusMenuMetrics.tileGap)
         }
