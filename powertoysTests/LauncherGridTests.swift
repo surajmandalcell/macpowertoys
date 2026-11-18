@@ -91,7 +91,8 @@ final class LauncherGridTests: XCTestCase {
             XCTAssertEqual(before.upperBound, after.upperBound, accuracy: 1)
         }
         let last = try XCTUnwrap(frames[1].last)
-        XCTAssertEqual(last.upperBound, Self.paneWidth - OnePlusLinearMetrics.gutter, accuracy: 1.5)
+        XCTAssertEqual(last.upperBound, Self.paneWidth - OnePlusLinearMetrics.gutter - OnePlusLinearMetrics.tabPadding,
+                       accuracy: 1.5)
     }
 
     func testMainWindowRendersTheLinearStructureInBothAppearances() throws {
