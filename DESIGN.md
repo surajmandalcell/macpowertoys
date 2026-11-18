@@ -116,11 +116,11 @@ mockups are in `docs/design/v15/`.
 - Combined menu panel, top to bottom: the two-column bento of metric
   tiles (CPU with its history, Disk, and Battery on the left; GPU, Memory,
   and Network on the right, each in its data color); one card with the
-  Fan row and the Kwake row; three top processes (icon, name, CPU percent
-  in the data color with its percent sign, memory; no bar); one joined
-  action bar for Pick Color, Extract Text, and Ruler with hairline
-  dividers; the footer with the panel tabs as icons on the left and the
-  gear and `Open App` on the right. The panel has no top bar.
+  Fan row and the Kwake row; five top processes (icon, name, CPU percent
+  in the data color with its percent sign, memory; no bar); one action
+  toolbar for Pick Color, Extract Text, and Ruler. A top bar holds the
+  panel tabs as icons on the left and the gear and `Open App` on the
+  right (see "Combined panel").
 - Task Manager left the app on 2026-11-16: its window, its own menu
   panel and status items, its tool page, and its routes. The combined
   panel keeps the metric tiles, the top processes, and the Fan row on a
@@ -183,10 +183,8 @@ mockups are in `docs/design/v15/`.
   - Round 4 picks (owner, 2026-11-19):
     - Bordered reset block and "Launch tile" header: shipped, see
       "Main window" (Tool page).
-    - Panel components: "Toolbar". Actions sit on the panel with
-      short dividers and a rounded fill on hover. The footer moves to
-      the top: tabs on the left, the gear and a filled `Open App` on
-      the right. The "System" and "Last 60 s" header row is removed.
+    - Panel components: "Toolbar", shipped in OnePlusUI 1.3.8 (see
+      "Combined panel").
     - The panel still needs a more premium surface style: the faint
       low-opacity borders do not work (options pending:
       `v15-panel-r3/manifest.json`).
@@ -680,17 +678,17 @@ shared rules apply to every panel.
 Built from the OnePlusUI `OnePlusLinear` panel parts. Values are the
 package tokens (`OnePlusLinearMetrics`, `OnePlusLinearColor`).
 
-- Shell: 356 pt wide, radius 8, `panelShell` fill. Body padding 6 top,
-  9 on each side, 12 bottom; blocks are 12 pt apart. No top bar.
-- Footer: 44 pt on `panelFooter` with a 1 pt `line` top edge and a 9 pt
-  inset. Leading: the panel tabs as 26 pt icon tabs, Home first
-  (`square.grid.2x2`), then the tool tabs in the saved order; the selected
-  tab uses the selected segment chrome. Context menu Move Left and Move
-  Right reorder the tool tabs. Trailing: the 28 pt gear icon button (opens
-  Settings), then the raised `Open App` button. Quit stays in the status
-  item's right-click menu.
-- Home, top to bottom:
-  - Header row (24 pt): "System" and the note "Last 60 s".
+- Shell: 356 pt wide, radius 8, `panelShell` fill. Body padding 12 top,
+  9 on each side, 12 bottom; blocks are 12 pt apart.
+- Top bar, the same on every tab: 44 pt on `panelFooter` with a 1 pt
+  `line` bottom edge and a 9 pt inset. Leading: the panel tabs as 26 pt
+  icon tabs, Home first (`square.grid.2x2`), then the tool tabs in the
+  saved order; the selected tab uses the selected segment chrome. Context
+  menu Move Left and Move Right reorder the tool tabs. Trailing: the 28 pt
+  gear icon button (opens Settings), then `Open App` in the filled
+  primary style (`primaryFill`, `primaryInk`, medium). Quit stays in the
+  status item's right-click menu.
+- Home, top to bottom, with no header row:
   - Bento, "Instrument" style: one `panelTile` card, radius 6, split
     into two columns and its tiles by `lineSoft` hairlines, 10 pt tile
     padding. Left: CPU (146 pt, user and system shares, history chart
@@ -715,9 +713,12 @@ package tokens (`OnePlusLinearMetrics`, `OnePlusLinearColor`).
   - "Top processes" header and five 30 pt rows in 12 pt text: the app
     icon or a terminal glyph (16 pt), the name, the CPU percent in
     `cpuText` with its percent sign (40 pt column), and memory (68 pt
-    column, fits "1,023.7 MB"). No bar.
-  - One joined 28 pt action bar for the enabled tools among Pick Color,
-    Extract Text, and Ruler, with hairline dividers.
+    column, fits "1,023.7 MB"). No bar. Hover fills the full row with
+    `selection`.
+  - Action toolbar, 28 pt, for the enabled tools among Pick Color,
+    Extract Text, and Ruler: equal items on the panel with no fill or
+    border, 14 pt `lineSoft` dividers between them, and a radius 5
+    `selection` fill inset 3 pt on hover.
 - Speed: metrics sample once per second off the main thread and only while
   Home is visible; the process list refreshes every 2 seconds. Text is
   formatted off the main thread. Both stop when the panel closes or the

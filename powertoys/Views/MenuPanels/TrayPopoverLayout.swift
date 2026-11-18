@@ -5,8 +5,8 @@ enum TrayPopoverLayout {
     static let width = OnePlusLinearMetrics.panelWidth
     static let bodyWidth = OnePlusLinearMetrics.panelWidth - 2 * OnePlusLinearMetrics.panelBodyInset
     static let minimumBodyHeight: CGFloat = 54
-    /// The v15 panel chrome around the body: body top and bottom padding plus the footer.
-    static let chromeHeight = OnePlusLinearMetrics.panelBodyTop + OnePlusLinearMetrics.panelBodyBottom
+    /// The v15 panel chrome around the body: the top toolbar plus the body top and bottom padding.
+    static let chromeHeight = OnePlusLinearMetrics.panelBodyTopUnderToolbar + OnePlusLinearMetrics.panelBodyBottom
         + OnePlusLinearMetrics.footer
     static let heightFraction = OnePlusMenuMetrics.heightFraction
     static let homeToolIDs = ["color-picker", "text-extractor", "awake", "ruler"]

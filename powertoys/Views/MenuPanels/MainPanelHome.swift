@@ -3,7 +3,7 @@ import IOKit.ps
 import OnePlusUI
 import SwiftUI
 
-/// The combined panel's Home (DESIGN.md v15): the System bento, the Fan and Kwake card, the top processes,
+/// The combined panel's Home (DESIGN.md v15): the metric bento, the Fan and Kwake card, the top processes,
 /// and the joined action bar. Sampling and the process refresh run only while Home is visible.
 struct TrayHomeView: View {
     static let owner = "main-tray-home"
@@ -44,10 +44,7 @@ struct MainPanelHomeContent<Controls: View>: View {
 
     var body: some View {
         VStack(alignment: .leading, spacing: OnePlusLinearMetrics.panelBlockGap) {
-            VStack(spacing: 0) {
-                OnePlusLinearPanelHeader("System", note: "Last \(MainPanelReadings.historySeconds) s")
-                MainPanelBento(readings: readings)
-            }
+            MainPanelBento(readings: readings)
             controls
             VStack(spacing: 0) {
                 OnePlusLinearPanelHeader.processes()

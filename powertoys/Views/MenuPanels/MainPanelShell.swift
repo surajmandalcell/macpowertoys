@@ -31,8 +31,8 @@ enum TrayTab: String, CaseIterable, Identifiable {
     }
 }
 
-/// The combined menu panel (DESIGN.md v15): the selected tab's body, then the footer with the tab icons,
-/// Settings, and Open App. Only the selected tab is mounted; Quit lives in the status item's context menu.
+/// The combined menu panel (DESIGN.md v15): the toolbar with the tab icons, Settings, and Open App, then the
+/// selected tab's body. Only the selected tab is mounted; Quit lives in the status item's context menu.
 struct TrayPopoverView: View {
     private let diagnostic: Bool
     @AppStorage("tray.selectedTab.v2") private var selectedTabID = TrayTab.home.rawValue
@@ -167,7 +167,7 @@ struct TrayPopoverView: View {
     }
 }
 
-/// The v15 panel frame: the body regions above the footer with the tab icons, Settings, and Open App.
+/// The v15 panel frame: the toolbar with the tab icons, Settings, and Open App above the body regions.
 struct MainPanelFrame<Regions: View>: View {
     let maximumHeight: CGFloat
     let tabs: [TrayTab]
@@ -179,16 +179,16 @@ struct MainPanelFrame<Regions: View>: View {
 
     var body: some View {
         OnePlusLinearPanel {
-            MainPanelBodyLayout(maximumHeight: maximumHeight) { regions }
-        } footer: {
-            OnePlusLinearPanelFooter {
+            OnePlusLinearPanelFooter(edge: .top) {
                 OnePlusLinearIconTabs(tabs: menuTabs, selection: $selection, onMove: onMove)
             } trailing: {
                 OnePlusLinearIconButton(systemImage: "gearshape", help: "Open Settings", action: openSettings)
                 Button("Open App", action: openApp)
-                    .buttonStyle(OnePlusLinearButtonStyle(.raised))
+                    .buttonStyle(OnePlusLinearButtonStyle(.filled))
                     .accessibilityIdentifier("tray.open-app")
             }
+        } content: {
+            MainPanelBodyLayout(maximumHeight: maximumHeight) { regions }
         }
         .fixedSize(horizontal: false, vertical: true)
         .onePlusDensity(.compact)
