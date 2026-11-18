@@ -181,13 +181,8 @@ mockups are in `docs/design/v15/`.
   - Menu panel (round 3, 2026-11-18): "Instrument", shipped in OnePlusUI
     1.3.7 (see "Combined panel").
   - Round 4 picks (owner, 2026-11-19):
-    - Ruler reset: one full-width bordered button (1 pt border, no
-      fill, red text, fills on hover), its own block outside every
-      group, above How to use. No hairline under the last row of a
-      group.
-    - Tool page header: "Launch tile". Name and description on the
-      left; one large soft tile on the right is the Open button and
-      shows the shortcut. Kwake has no window, so no tile.
+    - Bordered reset block and "Launch tile" header: shipped, see
+      "Main window" (Tool page).
     - Panel components: "Toolbar". Actions sit on the panel with
       short dividers and a rounded fill on hover. The footer moves to
       the top: tabs on the left, the gear and a filled `Open App` on
@@ -886,13 +881,21 @@ Version 15 Linear style, built from the OnePlusUI `OnePlusLinear*` parts
   set), and a 10 pt chevron. No switch. Hover fills the whole row. A row
   opens the tool page; its context menu has Settings, Open, Enable, and
   Favorite.
-- Tool page (`ToolAboutView`): `OnePlusLinearToolHeader` (56 pt icon, the
-  24 pt name, the description, and a soft `Open <Tool>` button; Kwake has
-  no window and shows no Open), the `Menu bar icon` row (None, Combined,
+- Tool page (`ToolAboutView`): `OnePlusLinearToolHeader`, "Launch tile":
+  a 48 pt icon above the 24 pt name and description on the left, and on
+  the right the 176 x 108 soft `OnePlusLinearLaunchTile` (radius 12) that
+  opens the tool. It shows `Open` and an arrow, then the tool's global
+  shortcut (22 pt) over its action name when the shortcut is on (Color
+  Picker, Text Extractor, Portman), else only `Open <Tool>`. Kwake has no
+  window and no tile. Then the `Menu bar icon` row (None, Combined,
   Separate) for tools that support placement, then the tool's settings
   inline in the editorial look. Ruler shows its defaults for new rulers
-  inline, bound to FreeRuler `prefs`, with Open Ruler Settings and Reset
-  to Factory Defaults. `How to use` is the footer: a caption, then one
+  inline, bound to FreeRuler `prefs`, with Open Ruler Settings. A reset
+  or clear (Ruler Reset to Factory Defaults, Color Picker Clear All Saved
+  Colors, Text Extractor Clear History) is `OnePlusLinearButtonStyle(
+  .resetBlock)`: one full-width 32 pt button, 1 pt `line` border, radius
+  8, no fill until hover, red medium text, its own block after the last
+  group. `How to use` is the footer: a caption, then one
   group per manual section with one numbered row per point. A manual route
   scrolls to it.
 - Settings uses `OnePlusLinearPaneBody`: 14 pt top, 24 pt gutters, 16 pt

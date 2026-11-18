@@ -60,9 +60,7 @@ struct ToolAboutView: View {
             ToolIconView(tool: tool, size: OnePlusLinearEditorialMetrics.headerIcon)
         } actions: {
             // Kwake has no window: its routes open this page, so Open would only reselect it.
-            if tool.id != "awake" {
-                MainOpenToolButton(toolID: tool.id, toolName: tool.name, title: "Open \(tool.name)", style: .soft)
-            }
+            if tool.id != "awake" { MainLaunchTile(tool: tool) }
         }
     }
 
