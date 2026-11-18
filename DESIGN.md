@@ -193,13 +193,10 @@ mockups are in `docs/design/v15/`.
       (see "Combined panel").
     - Tabs: "Soft keys": shipped in OnePlusUI 1.3.11 (see "Combined
       panel").
-  - Round 7 picks (owner, 2026-11-19), reference `v15-panel-r6/`:
-    - Dark tabs: "Quiet key in deep track", or quieter; faded hairline
-      dividers between tabs pending.
-    - Open App: "Tight soft key" (26 pt coral soft key); label size
-      and vertical centering check pending.
-    - Light action buttons: "Soft keys" with less visual weight,
-      options pending.
+  - Round 8 picks (owner, 2026-11-19), reference `v15-panel-r7/`:
+    Dark tabs "Quieter key, fainter dividers", Open App "12 pt,
+    centered", and Light buttons "Regular labels", shipped in
+    OnePlusUI 1.3.12 (see "Combined panel").
 
 ## Overview
 
@@ -702,11 +699,17 @@ Built from the OnePlusUI `OnePlusLinear` panel parts with
   13 pt glyphs, 2 pt apart, in a sunken track (radius 8, 2 pt inset,
   `softKeyTrack*` gradient, edge, and inner shade). The selected tab is a
   raised key (radius 6, `softKey*` gradient, edge, and drop shadow) with
-  an `ink` glyph; the rest are `secondary`. Home first
+  a `softKeyInk` glyph; the rest are `softKeyTrackInk`. Dark is the
+  quieter look: a deep track (`#050506` to `#09090A`, lit bottom lip,
+  inner shade 2.5 pt at y 1.5), a `#313136` to `#28282C` key, and a
+  1 pt `softKeyDivider` (white 12%, fading out at both ends) between
+  two unselected tabs only. Home first
   (`square.grid.2x2`), then the tool tabs in the saved order. Context menu Move
-  Left and Move Right reorder the tool tabs. Trailing: the 28 pt gear
-  (13 pt glyph, opens Settings), then `Open App`: radius 8, `accent` fill,
-  white medium text. Quit stays in the status item's right-click menu.
+  Left and Move Right reorder the tool tabs. Trailing, 2 pt apart: the
+  28 pt gear (13 pt glyph, opens Settings), then `Open App`: a 26 pt
+  coral soft key (`openKey*` gradient, lit top edge, short drop), radius
+  8, 10 pt side padding, 12 pt medium white text centered on its cap
+  height. Quit stays in the status item's right-click menu.
 - Home, top to bottom, with no header row:
   - Bento, "Floating tiles with wash": six separate `fillGroup` tiles,
     radius 8, 7 pt apart, 10 pt tile padding, 266 pt tall. One shadow
@@ -743,8 +746,10 @@ Built from the OnePlusUI `OnePlusLinear` panel parts with
     `cpuText` with its percent sign (40 pt column), and memory (68 pt
     column, fits "1,023.7 MB"). No bar.
   - Actions for the enabled tools among Pick Color, Extract Text, and
-    Ruler: equal 32 pt `fillGroup` buttons, radius 8, 4 pt apart;
-    hover `fillButtonHover`, pressed `fillButtonPressed`.
+    Ruler: equal 32 pt `actionKey*` buttons, radius 8, 4 pt apart;
+    pressed `fillButtonPressed`. Light: white soft keys with a lit top
+    edge and a short drop, regular labels. Dark: flat `fillGroup`, hover
+    `fillButtonHover`, medium labels.
 - Speed: metrics sample once per second off the main thread and only while
   Home is visible; the process list refreshes every 2 seconds. Text is
   formatted off the main thread. Both stop when the panel closes or the
