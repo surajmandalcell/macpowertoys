@@ -852,11 +852,15 @@ Version 15 Linear style, built from the OnePlusUI `OnePlusLinear*` parts
   changes weight or position. All tools shows `All N`, `Enabled N`, and
   `Favorites N`; Settings shows General, Marketplace, and About. A tool
   page shows no title or tabs: its trailing item is `Enabled` (control
-  text, `secondary`) and the tool's enable switch.
+  text, `secondary`) and the tool's enable switch, the Quiet Raised coral
+  switch in both appearances.
 - Editorial body (`OnePlusLinearEditorialBody`, All tools and tool pages):
   one scroll view, 20 pt top, 32 pt gutters, 20 pt between blocks, 24 pt
-  bottom. Groups have no fill or ring: a `line` hairline on top and a
-  `lineSoft` hairline under each 40 pt row. Group captions are 13 pt
+  bottom. Its controls use Quiet Raised. Groups have no fill or ring: a
+  `line` hairline on top and a `lineSoft` hairline between 40 pt rows,
+  none under the last row. Setting rows, the Menu bar icon row, red text
+  actions, and How to use rows start on the header's leading edge; only
+  hover rows (tool rows) keep their own inset. Group captions are 13 pt
   semibold `ink`. An optional footer ends the page: on a short page the
   free space sits above it.
 - All tools: `OnePlusLinearPageTitle` ("All tools", 24 pt semibold, and
