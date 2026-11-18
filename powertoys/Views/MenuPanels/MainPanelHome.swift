@@ -69,7 +69,7 @@ struct MainPanelHomeContent<Controls: View>: View {
 
 /// One top-process row as the panel draws it. Rows hold their slot while the first reading loads.
 struct MainPanelProcessDisplay {
-    static let rowCount = 3
+    static let rowCount = 5
     let name: String
     let icon: Image?
     let cpu: String
@@ -286,25 +286,25 @@ struct MainPanelBento: View {
 
     var body: some View {
         let layout = MainPanelBentoLayout(hasBattery: readings.hasBattery, hasGPU: readings.hasGPU)
-        OnePlusLinearBento {
+        OnePlusLinearBento(style: .instrument) {
             OnePlusLinearTile(height: layout.cpu, chart: OnePlusLinearChart(
                 [OnePlusLinearSeries(readings.cpuHistory, color: OnePlusLinearColor.cpu)], range: readings.cpuRange,
-                height: layout.cpuChart, midline: true, slots: MainPanelReadings.historySeconds)) {
+                height: layout.cpuChart, slots: MainPanelReadings.historySeconds)) {
                 OnePlusLinearTileLabel("CPU", systemImage: "cpu", color: OnePlusLinearColor.cpu, meta: readings.cores)
-                OnePlusLinearTileValue(readings.cpu, unit: "%")
+                OnePlusLinearTileValue(readings.cpu, unit: "%", color: OnePlusLinearColor.cpuText)
                 OnePlusLinearTileSplit([("User", readings.cpuUser, "%"), ("System", readings.cpuSystem, "%")])
             }
             OnePlusLinearTile(height: OnePlusLinearMetrics.shortTile, usage: OnePlusLinearUsage(
                 readings.diskFraction, color: OnePlusLinearColor.disk, caption: readings.diskUsed)) {
                 OnePlusLinearTileLabel("Disk", systemImage: "internaldrive", color: OnePlusLinearColor.disk) {
-                    OnePlusLinearInlineValue(readings.diskFree, unit: readings.diskFreeUnit)
+                    OnePlusLinearInlineValue(readings.diskFree, unit: readings.diskFreeUnit, color: OnePlusLinearColor.disk)
                 }
             }
             if readings.hasBattery {
                 OnePlusLinearTile(height: OnePlusLinearMetrics.shortTile, usage: OnePlusLinearUsage(
                     readings.batteryFraction, color: OnePlusLinearColor.battery, caption: readings.batteryCaption)) {
                     OnePlusLinearTileLabel("Battery", systemImage: readings.batterySymbol, color: OnePlusLinearColor.battery) {
-                        OnePlusLinearInlineValue(readings.battery, unit: "%")
+                        OnePlusLinearInlineValue(readings.battery, unit: "%", color: OnePlusLinearColor.battery)
                     }
                 }
             }
@@ -314,13 +314,13 @@ struct MainPanelBento: View {
                     [OnePlusLinearSeries(readings.gpuHistory, color: OnePlusLinearColor.gpu)], range: readings.gpuRange,
                     slots: MainPanelReadings.historySeconds)) {
                     OnePlusLinearTileLabel("GPU", systemImage: "display", color: OnePlusLinearColor.gpu, meta: readings.gpuName)
-                    OnePlusLinearTileValue(readings.gpu, unit: "%")
+                    OnePlusLinearTileValue(readings.gpu, unit: "%", color: OnePlusLinearColor.gpu)
                 }
             }
             OnePlusLinearTile(usage: OnePlusLinearUsage(readings.memoryFraction, color: OnePlusLinearColor.memory)) {
                 OnePlusLinearTileLabel("Memory", systemImage: "memorychip", color: OnePlusLinearColor.memory,
                                        meta: readings.memoryTotal)
-                OnePlusLinearTileValue(readings.memory, unit: "%", note: readings.memoryUsed)
+                OnePlusLinearTileValue(readings.memory, unit: "%", note: readings.memoryUsed, color: OnePlusLinearColor.memory)
             }
             OnePlusLinearTile(height: layout.network, chart: OnePlusLinearChart(
                 [OnePlusLinearSeries(readings.downHistory, color: OnePlusLinearColor.networkDown),
@@ -328,14 +328,15 @@ struct MainPanelBento: View {
                 range: readings.networkRange, height: layout.networkChart, slots: MainPanelReadings.historySeconds)) {
                 OnePlusLinearTileLabel("Network", systemImage: "network", color: OnePlusLinearColor.networkDown) {
                     HStack(spacing: 2) {
-                        Image(systemName: "arrow.up").font(.system(size: 9, weight: .medium)).accessibilityHidden(true)
+                        Image(systemName: "arrow.up").font(.system(size: 9, weight: .medium))
+                            .foregroundStyle(OnePlusLinearColor.secondary).accessibilityHidden(true)
                         Text(readings.up).font(.system(size: OnePlusLinearMetrics.caption)).monospacedDigit()
+                            .foregroundStyle(OnePlusLinearColor.networkUp)
                     }
-                    .foregroundStyle(OnePlusLinearColor.networkUp)
                     .accessibilityLabel("Upload \(readings.up)")
                 }
                 OnePlusLinearTileValue(readings.down, unit: readings.downUnit,
-                                       glyph: ("arrow.down", OnePlusLinearColor.networkDown))
+                                       glyph: ("arrow.down", OnePlusLinearColor.networkDown), color: OnePlusLinearColor.networkDown)
             }
         }
     }
