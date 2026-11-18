@@ -51,10 +51,12 @@ enum MainCatalog {
         return String(decoding: data, as: UTF8.self)
     }
 
-    /// Sidebar and overview groups: one per category, in category order, registry order inside.
+    /// Sidebar and overview groups: one per category, in category order, shortest name first inside.
     static func groups(_ tools: [any Tool]) -> [MainToolGroup] {
         ToolCategory.allCases.compactMap { category in
-            let members = tools.filter { $0.category == category }
+            let members = tools.filter { $0.category == category }.sorted {
+                $0.name.count == $1.name.count ? $0.name < $1.name : $0.name.count < $1.name.count
+            }
             return members.isEmpty ? nil : MainToolGroup(category: category, tools: members)
         }
     }
