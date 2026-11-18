@@ -161,6 +161,30 @@ mockups are in `docs/design/v15/`.
     web UI.
   The reference renders are `docs/design/v15/applet-*.png`.
 - Rejected: the first round of ten look mockups (placeholder icons).
+- Round 2 picks (owner, 2026-11-18). These win over older main window
+  rules above and below:
+  - Main window look: "Editorial list" (large page title, open lists).
+    Every tool page matches the picked Ruler page with its settings
+    inline.
+  - All tools rows: no enable switch. A tool that is off shows a quiet
+    "Off" word with a muted name. The favorite star sits beside it, at
+    the trailing edge; when the tool is on, the star takes that space.
+  - Enable control: a switch at the right edge of the pane toolbar on
+    each tool page.
+  - Simple applet settings live on the tool's main window page. An
+    applet's gear opens that page. An applet keeps only its real work
+    (Color Picker keeps History and Projects).
+  - Kwake has no separate window: its menu panel row and its main
+    window page are enough.
+  - `How to use` sits at the bottom of the page, below the space left
+    by short content.
+  - Sidebar icons: one-color glyphs (`SidebarGlyph`), `secondary` at
+    rest, `ink` when selected.
+  - Motion: "Native snap" replaces "Quiet" (spec in
+    `v15-motion-r1/manifest.json`, recorded in the Motion section when
+    it ships).
+  - Menu panel charts are smoothed. The panel needs a more premium,
+    less colorful look (options pending).
 
 ## Overview
 
