@@ -57,17 +57,18 @@ final class MainCatalogTests: XCTestCase {
         XCTAssertTrue(MainCatalog.favorites(from: "not json").isEmpty)
     }
 
-    func testGroupsFollowCategoryOrderAndKeepRegistryOrderInside() {
+    func testGroupsPutSystemFirstAndSortByNameLength() {
         let tools: [any Tool] = [
             CatalogTool(id: "notes", name: "Notes", category: .text),
             CatalogTool(id: "logs", name: "Activity", category: .system),
             CatalogTool(id: "files", name: "Files", category: .files),
-            CatalogTool(id: "trace", name: "Trace", category: .system)
+            CatalogTool(id: "trace", name: "Trace", category: .system),
+            CatalogTool(id: "board", name: "Board", category: .system)
         ]
         let groups = MainCatalog.groups(tools)
-        XCTAssertEqual(groups.map(\.category), [.text, .files, .system])
-        XCTAssertEqual(groups.map { $0.tools.map(\.id) }, [["notes"], ["files"], ["logs", "trace"]])
-        XCTAssertEqual(MainCatalog.shortcutTools(tools).map(\.id), ["notes", "files", "logs", "trace"])
+        XCTAssertEqual(groups.map(\.category), [.system, .text, .files])
+        XCTAssertEqual(groups.map { $0.tools.map(\.id) }, [["board", "trace", "logs"], ["notes"], ["files"]])
+        XCTAssertEqual(MainCatalog.shortcutTools(tools).map(\.id), ["board", "trace", "logs", "notes", "files"])
         XCTAssertEqual(MainCatalog.shortcutTools(ToolRegistry.builtInTools).map(\.id),
                        Array(MainCatalog.groups(ToolRegistry.builtInTools).flatMap(\.tools).map(\.id).prefix(8)))
     }

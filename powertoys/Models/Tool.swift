@@ -42,11 +42,12 @@ struct ToolManualSection: Identifiable {
 // MARK: - Tool Category
 
 enum ToolCategory: String, CaseIterable, Identifiable {
+    // Case order is the sidebar and overview order.
     case all = "All Tools"
+    case system = "System"
     case dev = "Developer"
     case text = "Text"
     case files = "Files"
-    case system = "System"
 
     var id: String { rawValue }
 
