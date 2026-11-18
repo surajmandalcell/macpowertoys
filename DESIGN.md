@@ -187,6 +187,14 @@ mockups are in `docs/design/v15/`.
       "Combined panel").
     - Panel surface: "Fill steps", shipped in OnePlusUI 1.3.10 (see
       "Combined panel").
+  - Round 5 picks (owner, 2026-11-19), reference
+    `v15-panel-r4/t-softkeys_m-floatwash-*.png`:
+    - Metrics: "Floating tiles with wash": six separate tiles on one
+      soft shadow, each with a faint wash of its data color at the top.
+    - Tabs: "Soft keys": a sunken track with a raised key for the
+      selected tab. Dark mode looks weaker than Light (options pending).
+    - Light mode action buttons are too close to the background
+      (options pending).
 
 ## Overview
 
