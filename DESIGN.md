@@ -193,12 +193,13 @@ mockups are in `docs/design/v15/`.
       (see "Combined panel").
     - Tabs: "Soft keys": shipped in OnePlusUI 1.3.11 (see "Combined
       panel").
-  - Round 6 picks (owner, 2026-11-19), reference `v15-panel-r5/`:
-    - Dark tabs: "Panel key" direction, quieter; mixes with "Deep
-      track" pending.
-    - Light action buttons: "Soft keys" direction; softness level
-      between Soft keys and Floating keys pending.
-    - Open App: softer and tighter, options pending.
+  - Round 7 picks (owner, 2026-11-19), reference `v15-panel-r6/`:
+    - Dark tabs: "Quiet key in deep track", or quieter; faded hairline
+      dividers between tabs pending.
+    - Open App: "Tight soft key" (26 pt coral soft key); label size
+      and vertical centering check pending.
+    - Light action buttons: "Soft keys" with less visual weight,
+      options pending.
 
 ## Overview
 
