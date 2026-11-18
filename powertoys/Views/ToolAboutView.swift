@@ -75,7 +75,6 @@ struct ToolAboutView: View {
                         .fixedSize(horizontal: false, vertical: true)
                         .frame(maxWidth: .infinity, alignment: .leading)
                 }
-                .padding(.horizontal, OnePlusLinearMetrics.toolRowPadding)
                 .padding(.vertical, 11)
                 .frame(minHeight: OnePlusLinearEditorialMetrics.row)
             }
