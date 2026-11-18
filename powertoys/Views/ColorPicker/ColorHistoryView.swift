@@ -409,7 +409,7 @@ private struct ColorSampleRow: View {
         .frame(height: OnePlusLinearMetrics.appletRow)
         .background(hovering ? OnePlusLinearColor.hover : .clear)
         .contentShape(Rectangle())
-        .onHover { hovering = $0 }
+        .onePlusHover($hovering)
         .accessibilityElement(children: .contain)
         .accessibilityLabel(row.accessibilityValue)
         .focusable()

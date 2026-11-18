@@ -105,11 +105,6 @@ final class WindowAccessorTests: XCTestCase {
                        MacTweaksLayout.windowSize.height, accuracy: 0.5)
     }
 
-    func testUtilityMotionIsInstantWithOrWithoutReduceMotion() {
-        XCTAssertNil(UtilityMotion.animation(reduceMotion: false))
-        XCTAssertNil(UtilityMotion.animation(reduceMotion: true))
-    }
-
     private func firstView<T: NSView>(of type: T.Type, in view: NSView) -> T? {
         if let result = view as? T { return result }
         return view.subviews.lazy.compactMap { self.firstView(of: type, in: $0) }.first

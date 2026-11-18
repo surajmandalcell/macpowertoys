@@ -12,18 +12,6 @@ enum UtilityLayout {
     ).height
 }
 
-enum UtilityMotion {
-    static let standardDuration = OnePlusMotion.content
-    static let interactionDuration = OnePlusMotion.hover
-
-    static func animation(
-        reduceMotion: Bool,
-        duration: Double = standardDuration
-    ) -> Animation? {
-        OnePlusMotion.animation(reduceMotion: reduceMotion, duration: duration)
-    }
-}
-
 struct QuietDivider: View {
     var body: some View {
         OnePlusColor.lineSoft.frame(height: 1).accessibilityHidden(true)
@@ -49,17 +37,6 @@ extension View {
 
     func thinScrollIndicators() -> some View {
         onePlusScrollIndicators()
-    }
-
-    func utilityAnimation<Value: Equatable>(
-        value _: Value,
-        duration _: Double = UtilityMotion.standardDuration
-    ) -> some View {
-        self
-    }
-
-    func utilityContentTransition<Value: Hashable>(value _: Value) -> some View {
-        self
     }
 
     func utilityMotionPolicy() -> some View {

@@ -30,10 +30,7 @@ enum RulerQuietRaised {
     /// The look's sizes, equal to `OnePlusLinearControlLook.quietRaised`.
     static let look = OnePlusLinearControlLook.quietRaised
 
-    static let duration: TimeInterval = OnePlusLinearMotion.knob
-    static let curve = CAMediaTimingFunction(controlPoints: 0.25, 1, 0.5, 1)
-
-    static var reducesMotion: Bool { NSWorkspace.shared.accessibilityDisplayShouldReduceMotion }
+    static var reducesMotion: Bool { OnePlusMotion.reducesMotion }
 
     /// A control-height rect centered vertically in `bounds`.
     static func controlRect(in bounds: NSRect, width: CGFloat? = nil, trailing: Bool = false) -> NSRect {
@@ -122,11 +119,11 @@ enum RulerQuietRaised {
         return 1 / max(scale, 1)
     }
 
-    static func run(_ changes: @escaping () -> Void, animated: Bool) {
+    static func run(_ changes: @escaping () -> Void, animated: Bool, duration: TimeInterval = OnePlusMotion.knob) {
         guard animated, !reducesMotion else { changes(); return }
         NSAnimationContext.runAnimationGroup { context in
             context.duration = duration
-            context.timingFunction = curve
+            context.timingFunction = OnePlusMotion.easeOutTiming
             changes()
         }
     }
@@ -287,7 +284,8 @@ final class RulerQuietRaisedSegmentedControl: NSSegmentedControl {
         let target = CGFloat(max(selectedSegment, 0))
         guard abs(thumbPosition - target) > 0.001 else { return }
         guard window?.isVisible == true, !RulerQuietRaised.reducesMotion else { thumbPosition = target; return }
-        RulerQuietRaised.run({ [weak self] in self?.animator().thumbPosition = target }, animated: true)
+        RulerQuietRaised.run({ [weak self] in self?.animator().thumbPosition = target }, animated: true,
+                             duration: OnePlusMotion.segment)
     }
 }
 
