@@ -13,7 +13,7 @@ struct ToolSidebarView: View {
             OnePlusLinearSearchField(text: $searchText, accessibilityIdentifier: "main.sidebar.search",
                                      focusTrigger: searchFocusTrigger)
         } navigation: {
-            OnePlusLinearNavRow("All tools", image: MainToolIcon.app, selected: selectedTool == "all-tools") {
+            OnePlusLinearNavRow("All tools", glyph: Image(SidebarGlyph.allTools), selected: selectedTool == "all-tools") {
                 selectedTool = "all-tools"
             }
             .accessibilityIdentifier("main.sidebar.all-tools")
@@ -22,11 +22,11 @@ struct ToolSidebarView: View {
                 ForEach(group.tools, id: \.id) { toolRow($0) }
             }
         } bottom: {
-            OnePlusLinearNavRow("Settings", systemImage: "gearshape", selected: selectedTool == "settings", shortcut: "⌘,") {
+            OnePlusLinearNavRow("Settings", glyph: Image(systemName: "gearshape"), symbol: true, selected: selectedTool == "settings", shortcut: "⌘,") {
                 selectedTool = "settings"
             }
             .accessibilityIdentifier("main.sidebar.settings")
-            OnePlusLinearNavRow("Exit", systemImage: "power", shortcut: "⌘Q") { NSApp.terminate(nil) }
+            OnePlusLinearNavRow("Exit", glyph: Image(systemName: "power"), symbol: true, shortcut: "⌘Q") { NSApp.terminate(nil) }
                 .accessibilityIdentifier("main.sidebar.exit")
         }
         .onChange(of: searchText, initial: true) { _, _ in refreshVisibleTools() }
@@ -34,8 +34,15 @@ struct ToolSidebarView: View {
     }
 
     private func toolRow(_ tool: any Tool) -> some View {
-        OnePlusLinearNavRow(tool.name, image: MainToolIcon.image(for: tool), selected: selectedTool == tool.id,
-                            dimmed: !settings.isToolEnabled(tool.id)) { selectedTool = tool.id }
+        Group {
+            if let glyph = SidebarGlyph.glyph(for: tool.id) {
+                OnePlusLinearNavRow(tool.name, glyph: glyph, selected: selectedTool == tool.id,
+                                    dimmed: !settings.isToolEnabled(tool.id)) { selectedTool = tool.id }
+            } else {
+                OnePlusLinearNavRow(tool.name, image: MainToolIcon.image(for: tool), selected: selectedTool == tool.id,
+                                    dimmed: !settings.isToolEnabled(tool.id)) { selectedTool = tool.id }
+            }
+        }
         .accessibilityIdentifier("main.sidebar.\(tool.id)")
         .accessibilityValue(settings.isToolEnabled(tool.id) ? "Enabled" : "Disabled")
         .simultaneousGesture(TapGesture(count: 2).onEnded {
