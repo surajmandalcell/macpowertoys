@@ -189,10 +189,10 @@ mockups are in `docs/design/v15/`.
       "Combined panel").
   - Round 5 picks (owner, 2026-11-19), reference
     `v15-panel-r4/t-softkeys_m-floatwash-*.png`:
-    - Metrics: "Floating tiles with wash": six separate tiles on one
-      soft shadow, each with a faint wash of its data color at the top.
-    - Tabs: "Soft keys": a sunken track with a raised key for the
-      selected tab. Dark mode looks weaker than Light (options pending).
+    - Metrics: "Floating tiles with wash": shipped in OnePlusUI 1.3.11
+      (see "Combined panel").
+    - Tabs: "Soft keys": shipped in OnePlusUI 1.3.11 (see "Combined
+      panel"). Dark mode looks weaker than Light (options pending).
     - Light mode action buttons are too close to the background
       (options pending).
 
@@ -689,22 +689,31 @@ Built from the OnePlusUI `OnePlusLinear` panel parts with
 - Surface "Fill steps": no lines anywhere in the shell. Parts separate
   only by a fill step and spacing: `fillShell` under `fillGroup` groups
   and tiles, `fillRowHover`, `fillTrack`, and `fillThumb` inside them.
+  Only the soft-key tab track and key draw gradient edges.
 - Shell: 356 pt wide, radius 12, `fillShell`. Body padding 2 below the
   bar, 10 on each side, 12 bottom; blocks are 10 pt apart.
 - Top bar, the same on every tab: 46 pt, no fill and no line, 10 pt
-  inset. Leading: the panel tabs as 28 pt icon tabs with 13 pt glyphs,
-  Home first (`square.grid.2x2`), then the tool tabs in the saved order;
-  the selected tab is a radius 7 `fillTabSelected` step. Context menu Move
+  inset. Leading: the panel tabs, "Soft keys": 26 pt icon tabs with
+  13 pt glyphs, 2 pt apart, in a sunken track (radius 8, 2 pt inset,
+  `softKeyTrack*` gradient, edge, and inner shade). The selected tab is a
+  raised key (radius 6, `softKey*` gradient, edge, and drop shadow) with
+  an `ink` glyph; the rest are `secondary`. Home first
+  (`square.grid.2x2`), then the tool tabs in the saved order. Context menu Move
   Left and Move Right reorder the tool tabs. Trailing: the 28 pt gear
   (13 pt glyph, opens Settings), then `Open App`: radius 8, `accent` fill,
   white medium text. Quit stays in the status item's right-click menu.
 - Home, top to bottom, with no header row:
-  - Bento: six `fillGroup` tiles, radius 8, 4 pt apart, 10 pt tile
-    padding. Left: CPU (146 pt, user and system shares, history chart
-    68 pt), Disk (56 pt, free value and a 5 pt usage bar), Battery (56 pt,
-    percent, time left, usage bar). Right: GPU (86 pt, history chart
-    30 pt), Memory (86 pt, percent, used and total, usage bar), Network
-    (86 pt, down and up rates, a two-series chart). Values are 26 pt light
+  - Bento, "Floating tiles with wash": six separate `fillGroup` tiles,
+    radius 8, 7 pt apart, 10 pt tile padding, 266 pt tall. One shadow
+    layer under all tiles (`fillTileContact` 0.75 pt, y 0.5, and
+    `fillTileShadow` 8 pt, y 3), so no tile darkens a neighbor. Each tile
+    has a wash of its data color at the top (`fillTileWashOpacity`,
+    fading out at 75% of the height). Left: CPU (140 pt, user and system
+    shares, history chart), Disk (56 pt, free value and a 5 pt usage
+    bar), Battery (56 pt, percent, time left, usage bar). Right: GPU
+    (84 pt, history chart 30 pt), Memory (84 pt, percent, used and
+    total, usage bar), Network (84 pt, down and up rates, a two-series
+    chart). Values are 26 pt light
     in their data color (`cpuText`, `gpu`, `memory`, `disk`, `battery`,
     `networkDown`, `networkUp`); icons stay `secondary`. Charts show the
     last 60 one-second samples as a 1 pt line with a dot at the current

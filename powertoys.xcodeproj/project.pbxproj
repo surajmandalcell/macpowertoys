@@ -782,7 +782,7 @@
 			repositoryURL = "https://github.com/surajmandalcell/oneplus-ui.git";
 			requirement = {
 				kind = exactVersion;
-				version = 1.3.10;
+				version = 1.3.11;
 			};
 		};
 /* End XCRemoteSwiftPackageReference section */
