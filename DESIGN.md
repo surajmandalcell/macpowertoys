@@ -178,8 +178,15 @@ mockups are in `docs/design/v15/`.
   - Motion: "Native snap" replaces "Quiet" (spec in
     `v15-motion-r1/manifest.json`, recorded in the Motion section when
     it ships).
-  - Menu panel charts are smoothed. The panel needs a more premium,
-    less colorful look (options pending).
+  - Menu panel (round 3, 2026-11-18): the "Instrument" layout (one
+    metrics card split by hairlines, large light numbers). Values and
+    charts keep their data colors; icons stay neutral. Charts are a line
+    with a soft fade and scroll on smoothly when a sample arrives, with
+    no jump. Top processes: five rows in smaller text; the memory column
+    fits five digits in MB. Buttons, hover, and controls need a more
+    premium look (options pending).
+  - A destructive reset is its own full-width button, outside every
+    group. No hairline under the last row of a group.
 
 ## Overview
 
