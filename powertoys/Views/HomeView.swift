@@ -109,6 +109,8 @@ struct HomeView: View {
         case "settings":
             OnePlusLinearTextTabs(tabs: MainSettingsView.tabs, selection: settingsTab)
                 .accessibilityLabel("Settings page")
+        case let id?:
+            if let tool = ToolRegistry.tool(for: id) { MainToolEnableSwitch(tool: tool) }
         default: EmptyView()
         }
     }
@@ -149,9 +151,7 @@ struct HomeView: View {
 
     private var pageTitle: String {
         switch selectedTool {
-        case "all-tools": "All tools"
         case "settings": "Settings"
-        case let id?: ToolRegistry.tool(for: id)?.name ?? ""
         default: ""
         }
     }

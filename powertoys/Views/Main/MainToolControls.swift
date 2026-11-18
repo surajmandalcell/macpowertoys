@@ -18,10 +18,14 @@ struct MainToolEnableSwitch: View {
     @State private var settings = SettingsManager.shared
 
     var body: some View {
-        Toggle("Enable \(tool.name)", isOn: MainToolEnablement.binding(for: tool.id, settings: settings))
-            .toggleStyle(OnePlusLinearSwitchStyle())
-            .disabled(settings.isToolTransitioning(tool.id))
-            .accessibilityIdentifier("tool.\(tool.id).enabled")
+        HStack(spacing: 8) {
+            Text("Enabled").linearText(OnePlusLinearMetrics.control, color: OnePlusLinearColor.secondary)
+                .accessibilityHidden(true)
+            Toggle("Enable \(tool.name)", isOn: MainToolEnablement.binding(for: tool.id, settings: settings))
+                .toggleStyle(OnePlusLinearSwitchStyle()).labelsHidden()
+                .disabled(settings.isToolTransitioning(tool.id))
+                .accessibilityIdentifier("tool.\(tool.id).enabled")
+        }
     }
 }
 
@@ -29,6 +33,7 @@ struct MainOpenToolButton: View {
     let toolID: String?
     var toolName: String? = nil
     var title = "Open"
+    var style = OnePlusLinearButtonStyle.Kind.raised
     @State private var settings = SettingsManager.shared
 
     var body: some View {
@@ -37,7 +42,7 @@ struct MainOpenToolButton: View {
             guard let toolID else { return }
             ToolActionRouter.shared.open(toolID: toolID)
         }
-        .buttonStyle(OnePlusLinearButtonStyle(.raised))
+        .buttonStyle(OnePlusLinearButtonStyle(style))
         .disabled(toolID == nil || !settings.isToolEnabled(toolID ?? "") || settings.isToolTransitioning(toolID ?? ""))
         .accessibilityIdentifier("tool.\(toolID ?? "none").launch")
         .accessibilityLabel("Open \(resolvedToolName)")
