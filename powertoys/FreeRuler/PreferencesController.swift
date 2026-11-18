@@ -155,7 +155,7 @@ private func configureResetRulerColorButtonAppearance(_ button: NSButton, identi
     button.setAccessibilityLabel(resetRulerColorLabel)
 }
 
-private func rulerDimensionValue(fromPixelLength pixelLength: CGFloat, unit: Unit, screen: NSScreen?) -> CGFloat {
+func rulerDimensionValue(fromPixelLength pixelLength: CGFloat, unit: Unit, screen: NSScreen?) -> CGFloat {
     switch unit {
     case .pixels:
         return pixelLength
@@ -166,7 +166,7 @@ private func rulerDimensionValue(fromPixelLength pixelLength: CGFloat, unit: Uni
     }
 }
 
-private func rulerPixelLength(fromDimensionValue dimensionValue: CGFloat, unit: Unit, screen: NSScreen?) -> CGFloat {
+func rulerPixelLength(fromDimensionValue dimensionValue: CGFloat, unit: Unit, screen: NSScreen?) -> CGFloat {
     let pixelLength: CGFloat
     switch unit {
     case .pixels:
