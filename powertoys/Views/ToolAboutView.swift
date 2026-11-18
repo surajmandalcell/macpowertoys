@@ -10,7 +10,7 @@ enum MainToolTab: String {
     }
 }
 
-/// A tool pane: the compact identity row, the menu-bar placement, the shared settings cards, then How to use.
+/// A tool pane: the editorial header, the menu-bar placement, the tool's inline settings, then How to use at the bottom.
 struct ToolAboutView: View {
     let toolId: String
     @AppStorage private var storedTab: String
@@ -24,16 +24,17 @@ struct ToolAboutView: View {
     var body: some View {
         if let tool = ToolRegistry.tool(for: toolId) {
             ScrollViewReader { proxy in
-                OnePlusLinearPaneBody {
+                OnePlusLinearEditorialBody {
                     header(tool)
                     if let menuTool = IndividualMenuBarTool(rawValue: tool.id) {
-                        MainSection { MainMenuBarPlacement(tool: menuTool) }
+                        OnePlusLinearAppletGroup { MainMenuBarPlacement(tool: menuTool) }
                     }
                     ToolSettingsContent(toolID: tool.id)
                         .frame(maxWidth: .infinity, alignment: .topLeading)
+                } footer: {
                     VStack(alignment: .leading, spacing: OnePlusLinearMetrics.sectionCaptionBelow) {
                         OnePlusLinearSectionCaption("How to use")
-                        VStack(alignment: .leading, spacing: OnePlusLinearMetrics.sectionGap) {
+                        VStack(alignment: .leading, spacing: OnePlusLinearEditorialMetrics.blockGap) {
                             ForEach(tool.manual) { section in manualSection(section) }
                         }
                     }
@@ -55,30 +56,28 @@ struct ToolAboutView: View {
     }
 
     private func header(_ tool: any Tool) -> some View {
-        MainPageHeader(title: tool.name, subtitle: tool.description) {
-            ToolIconView(tool: tool, size: MainPaneMetrics.headerIcon)
-        } controls: {
-            MainToolEnableSwitch(tool: tool)
-            MainOpenToolButton(toolID: tool.id, toolName: tool.name, title: "Open \(tool.name)")
+        OnePlusLinearToolHeader(tool.name, detail: tool.description) {
+            ToolIconView(tool: tool, size: OnePlusLinearEditorialMetrics.headerIcon)
+        } actions: {
+            // Kwake has no window: its routes open this page, so Open would only reselect it.
+            if tool.id != "awake" {
+                MainOpenToolButton(toolID: tool.id, toolName: tool.name, title: "Open \(tool.name)", style: .soft)
+            }
         }
     }
 
     private func manualSection(_ section: ToolManualSection) -> some View {
-        OnePlusCard {
-            OnePlusCardHeader(section.title)
+        OnePlusLinearSection(section.title) {
             ForEach(section.points.indices, id: \.self) { index in
-                HStack(alignment: .firstTextBaseline, spacing: OnePlusCatalogMetrics.gap) {
-                    Text(String(index + 1) + ".").onePlusText(.mono)
-                    Text(section.points[index]).onePlusText(.row).textSelection(.enabled)
+                HStack(alignment: .firstTextBaseline, spacing: 8) {
+                    Text("\(index + 1).").linearText(color: OnePlusLinearColor.muted).monospacedDigit()
+                    Text(section.points[index]).linearText().textSelection(.enabled)
+                        .fixedSize(horizontal: false, vertical: true)
                         .frame(maxWidth: .infinity, alignment: .leading)
                 }
-                .padding(.horizontal, OnePlusMetrics.cardPadding)
-                .padding(.vertical, OnePlusCatalogMetrics.gap)
-                .overlay(alignment: .bottom) {
-                    if index != section.points.count - 1 {
-                        OnePlusColor.lineSoft.frame(height: 1).padding(.horizontal, OnePlusCatalogMetrics.cardInset)
-                    }
-                }
+                .padding(.horizontal, OnePlusLinearMetrics.toolRowPadding)
+                .padding(.vertical, 11)
+                .frame(minHeight: OnePlusLinearEditorialMetrics.row)
             }
         }
     }
@@ -94,9 +93,9 @@ private struct MainMenuBarPlacement: View {
     }
 
     var body: some View {
-        OnePlusSettingRow("Menu bar icon", controlWidth: OnePlusCatalogMetrics.placementWidth, separator: false) {
-            OnePlusSegmented(choices: MenuBarDisplayMode.allCases.map { ($0, $0.title) },
-                             selection: $mode, accessibilityLabel: "Menu bar placement")
+        OnePlusLinearAppletRow("Menu bar icon") {
+            OnePlusLinearSegmented(choices: MenuBarDisplayMode.allCases.map { ($0, $0.title) },
+                                   selection: $mode, accessibilityLabel: "Menu bar placement", sizing: .fitted)
                 .accessibilityIdentifier("tool.\(tool.id).menu-bar-icon")
         }
         .onChange(of: mode) { _, _ in IndividualMenuBarController.shared.refresh() }
