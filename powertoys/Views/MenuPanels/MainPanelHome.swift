@@ -43,7 +43,7 @@ struct MainPanelHomeContent<Controls: View>: View {
     @ViewBuilder let controls: Controls
 
     var body: some View {
-        VStack(alignment: .leading, spacing: OnePlusLinearMetrics.panelBlockGap) {
+        VStack(alignment: .leading, spacing: TrayPopoverLayout.style.blockGap) {
             MainPanelBento(readings: readings)
             controls
             VStack(spacing: 0) {
@@ -266,7 +266,7 @@ nonisolated struct MainPanelBentoLayout: Equatable {
     let cpu: CGFloat, cpuChart: CGFloat, network: CGFloat, networkChart: CGFloat, height: CGFloat
 
     init(hasBattery: Bool, hasGPU: Bool) {
-        let gap = OnePlusLinearMetrics.bentoGap
+        let gap = TrayPopoverLayout.style.bentoGap
         let left = OnePlusLinearMetrics.tallTile + gap + OnePlusLinearMetrics.shortTile
             + (hasBattery ? gap + OnePlusLinearMetrics.shortTile : 0)
         let right = (hasGPU ? OnePlusLinearMetrics.tile + gap : 0) + 2 * OnePlusLinearMetrics.tile + gap
