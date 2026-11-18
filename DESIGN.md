@@ -142,12 +142,7 @@ mockups are in `docs/design/v15/`.
   - Primary button: soft gray fill with no border (`#EBEBED` light,
     `#2C2C30` dark; hover `#E2E2E5` / `#34343A`; pressed `#D8D8DC` /
     `#3C3C42`). Never the white or black fill.
-  - Motion "Quiet": only real state changes move, in 120 to 160 ms with
-    an ease-out curve. A segment thumb and a switch or slider knob
-    slide; a panel or sheet fades with a 4 pt move. No scale on press,
-    no stagger, no hover motion, nothing while idle; numbers change at
-    once; Reduce Motion makes every change instant. This replaces the
-    "Motion" section below for each surface when it is converted.
+  - Motion "Native snap" (owner pick 2026-11-18): see "Motion" below.
   - Controls "Quiet Raised" (owner pick 2026-11-16, replaces Depth):
     quiet sunken tracks, one solid knob with one soft shadow, no glow or
     white rings, coral only for an "on" state. The stepper is one field
@@ -646,20 +641,22 @@ A surface fails review if any of these is missing where it applies:
 
 ## Motion
 
-Owner correction 2026-10-01: the motion felt web-like and bad. Native Mac
-controls do not move on hover.
+"Native snap" (owner pick 2026-11-18). The values are the OnePlusUI
+`OnePlusMotion` tokens; ease-out is cubic-bezier(0.25, 1, 0.5, 1), ease-in
+cubic-bezier(0.4, 0, 1, 1).
 
-- Hover and press change only fill, line, or text color, at once, with no
-  animation. Nothing moves, nudges, scales, or slides on hover or press
-  (no arrow nudge, no lift, no offset).
-- Page, tab, and content changes are instant. No opacity, move, or scale
-  transitions on content, rows, cards, or panels. Selection indicators
-  (tab underline, segment) move at once.
-- Sheets, popovers, menus, and window open use system motion only.
-- Nothing animates while idle. Spinners, pulses, and indeterminate bars run
-  only during real work and stop on completion, error, cancel, or dismissal.
-- No scale, bounce, slide, shimmer, parallax, or lifted hover panels.
-- Reduce Motion removes nonessential animation and keeps layout identical.
+- Menu panel open: 140 ms ease-out fade plus a 4 pt move down; the first
+  frame has the final layout. Close: 100 ms ease-in fade, no move.
+- Row and button hover: the fill fades in over 60 ms and out over 150 ms.
+  Press is instant. Nothing moves or scales on hover or press.
+- Sidebar selection: 120 ms crossfade of the old and new fill, no slide.
+- Toolbar tab underline and panel footer chip: slide 180 ms. Segment
+  thumb: 160 ms. Switch knob and track color: 140 ms.
+- Page and content switches, numbers, and popup menu items change at once.
+  Sheets and windows use system motion.
+- Nothing animates while idle. Spinners run only during real work.
+- Reduce Motion: every change is instant, except the panel open, which is
+  a 100 ms fade only.
 
 ## Menu-bar panels
 

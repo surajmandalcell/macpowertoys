@@ -643,7 +643,7 @@ private struct FileTreeRowView: View {
         .padding(.trailing, 8)
         .padding(.leading, 8 + CGFloat(depth) * 16)
         .onePlusRowHover()
-        .onHover { isHovering = $0 }
+        .onePlusHover($isHovering)
     }
 
     @ViewBuilder

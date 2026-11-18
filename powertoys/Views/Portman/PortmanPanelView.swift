@@ -695,7 +695,7 @@ struct PortmanPanelView: View {
                         .foregroundStyle(hoveredLinkPortID == port.id ? OnePlusColor.portmanSeries[0] : OnePlusColor.secondary)
                         .background(hoveredLinkPortID == port.id ? OnePlusColor.raised : .clear,
                                     in: RoundedRectangle(cornerRadius: OnePlusMetrics.controlRadius))
-                        .onHover { hoveredLinkPortID = $0 ? port.id : nil }
+                        .onHover { inside in OnePlusMotion.withHover(inside) { hoveredLinkPortID = inside ? port.id : nil } }
                         .help("Open localhost port \(String(port.port))")
                         .accessibilityLabel("Open localhost port \(String(port.port))")
                         .accessibilityIdentifier("portman.link.\(String(port.port))")
@@ -709,7 +709,7 @@ struct PortmanPanelView: View {
                             .foregroundStyle(hoveredStopPortID == port.id ? OnePlusColor.danger : OnePlusColor.secondary)
                             .background(hoveredStopPortID == port.id ? OnePlusColor.dangerFill : .clear,
                                         in: RoundedRectangle(cornerRadius: OnePlusMetrics.controlRadius))
-                            .onHover { hoveredStopPortID = $0 ? port.id : nil }
+                            .onHover { inside in OnePlusMotion.withHover(inside) { hoveredStopPortID = inside ? port.id : nil } }
                             .help("Stop process tree for port \(String(port.port))")
                             .accessibilityLabel("Stop process tree for port \(String(port.port))")
                             .accessibilityIdentifier("portman.stop.\(String(port.port))")
@@ -733,11 +733,13 @@ struct PortmanPanelView: View {
         .accessibilityElement(children: .contain)
         .accessibilityIdentifier("portman.local.row.\(String(port.port))")
         .onHover { inside in
-            hoveredRowID = inside ? port.id : nil
-            highlightedProcessID = inside ? port.processID : nil
-            if !inside {
-                if hoveredLinkPortID == port.id { hoveredLinkPortID = nil }
-                if hoveredStopPortID == port.id { hoveredStopPortID = nil }
+            OnePlusMotion.withHover(inside) {
+                hoveredRowID = inside ? port.id : nil
+                highlightedProcessID = inside ? port.processID : nil
+                if !inside {
+                    if hoveredLinkPortID == port.id { hoveredLinkPortID = nil }
+                    if hoveredStopPortID == port.id { hoveredStopPortID = nil }
+                }
             }
         }
         .task(id: port.id) { await service.loadMetadata(for: port) }
@@ -769,7 +771,7 @@ struct PortmanPanelView: View {
                             .frame(width: geometry.size.width * Double(segment.memoryBytes) / Double(max(1, total)))
                             .opacity(highlightedProcessID == nil || highlightedProcessID == segment.port.processID ? 1 : OnePlusMetrics.disabledOpacity)
                             .onHover { inside in
-                                highlightedProcessID = inside ? segment.port.processID : nil
+                                OnePlusMotion.withHover(inside) { highlightedProcessID = inside ? segment.port.processID : nil }
                             }
                             .help("Port \(String(segment.port.port)): \(memoryString(segment.memoryBytes))")
                     }
@@ -879,7 +881,7 @@ struct PortmanPanelView: View {
                     }
                     .buttonStyle(OnePlusButtonStyle(.icon, size: .small))
                     .foregroundStyle(hoveredStopPortID == port.id ? OnePlusColor.danger : OnePlusColor.secondary)
-                    .onHover { hoveredStopPortID = $0 ? port.id : nil }
+                    .onHover { inside in OnePlusMotion.withHover(inside) { hoveredStopPortID = inside ? port.id : nil } }
                     .help("Stop port \(String(port.port)) process tree")
                     .accessibilityLabel("Stop process tree for port \(String(port.port))")
                 }
