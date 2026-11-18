@@ -15,6 +15,7 @@ struct AllToolsGridView: View {
     @State private var favoriteIDs: Set<String> = []
     @State private var groups: [MainToolGroup] = []
     @State private(set) var visibleTools: [any Tool] = []
+    @State private var counts = ""
 
     init(selectedTool: Binding<String?>, query: String = "",
          filter: Binding<MainCatalogFilter> = .constant(.all),
@@ -26,13 +27,15 @@ struct AllToolsGridView: View {
         _favoriteIDs = State(initialValue: favorites)
         _groups = State(initialValue: rows.groups)
         _visibleTools = State(initialValue: rows.visible)
+        _counts = State(initialValue: Self.counts(rows.total, rows.enabled))
     }
 
     var body: some View {
-        OnePlusLinearPaneBody {
+        OnePlusLinearEditorialBody {
+            OnePlusLinearPageTitle("All tools", subtitle: counts)
             if groups.isEmpty { emptyState }
             ForEach(groups) { group in
-                OnePlusLinearSection(group.category.rawValue, count: group.tools.count) {
+                OnePlusLinearSection(group.category.rawValue) {
                     ForEach(group.tools, id: \.id) { tool in
                         MainToolRow(tool: tool, favorite: favoriteBinding(tool.id), focus: $focusedRow,
                                     move: { moveFocus(from: tool.id, direction: $0) }, typeSelect: typeSelect) {
@@ -102,7 +105,10 @@ struct AllToolsGridView: View {
                                             favorites: favoriteIDs, disabled: settings.disabledToolIDs)
         groups = rows.groups
         visibleTools = rows.visible
+        counts = Self.counts(rows.total, rows.enabled)
     }
+
+    private static func counts(_ total: Int, _ enabled: Int) -> String { "\(total) tools, \(enabled) on" }
 }
 
 /// All, Enabled, and Favorites with live counts, for the pane toolbar. Counts refresh on change, never in `body`.

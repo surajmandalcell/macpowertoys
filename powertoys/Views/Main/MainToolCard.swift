@@ -12,9 +12,8 @@ struct MainToolRow: View {
     @State private var settings = SettingsManager.shared
 
     var body: some View {
-        OnePlusLinearToolRow(tool.name, summary: tool.summary, icon: MainToolIcon.image(for: tool),
-                             isEnabled: MainToolEnablement.binding(for: tool.id, settings: settings),
-                             isFavorite: $favorite, open: open)
+        OnePlusLinearEditorialToolRow(tool.name, summary: tool.summary, icon: MainToolIcon.image(for: tool),
+                                      isOn: settings.isToolEnabled(tool.id), isFavorite: $favorite, open: open)
             .focused(focus, equals: tool.id)
             .onKeyPress(.return) { open(); return .handled }
             .onMoveCommand(perform: move)
