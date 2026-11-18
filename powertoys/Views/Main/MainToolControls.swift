@@ -50,6 +50,33 @@ struct MainOpenToolButton: View {
     }
 }
 
+/// The tool page "Launch tile": opens the tool, and shows its global shortcut when one is on.
+struct MainLaunchTile: View {
+    let tool: any Tool
+    @State private var settings = SettingsManager.shared
+    @State private var shortcuts = GlobalShortcutManager.shared
+
+    private var action: GlobalShortcutAction? {
+        switch tool.id {
+        case "color-picker": .colorPicker
+        case "text-extractor": .textExtractor
+        case "portman": .portman
+        default: nil
+        }
+    }
+
+    var body: some View {
+        let active = action.flatMap { shortcuts.isEnabled($0) && shortcuts.shortcut(for: $0).isSet ? $0 : nil }
+        OnePlusLinearLaunchTile(shortcut: active.map { shortcuts.shortcut(for: $0).display },
+                                caption: active.map { $0 == .portman ? "Open \(tool.name)" : $0.title } ?? "Open \(tool.name)") {
+            ToolActionRouter.shared.open(toolID: tool.id)
+        }
+        .disabled(!settings.isToolEnabled(tool.id) || settings.isToolTransitioning(tool.id))
+        .accessibilityIdentifier("tool.\(tool.id).launch")
+        .help("Open \(tool.name)")
+    }
+}
+
 struct MainToolContextMenu: View {
     let tool: any Tool
     let select: () -> Void

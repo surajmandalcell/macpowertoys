@@ -60,11 +60,9 @@ struct RulerLauncherSettingsView: View {
                     }
                     .buttonStyle(OnePlusLinearButtonStyle(.raised))
                 }
-                OnePlusLinearAppletRow("") {
-                    Button("Reset to Factory Defaults", role: .destructive) { prefs.resetRulerDefaultsToFactoryDefaults() }
-                        .buttonStyle(OnePlusLinearButtonStyle(.destructive))
-                }
             }
+            Button("Reset to Factory Defaults", role: .destructive) { prefs.resetRulerDefaultsToFactoryDefaults() }
+                .buttonStyle(OnePlusLinearButtonStyle(.resetBlock))
         }
         .environment(\.onePlusLinearControlLook, .quietRaised)
         .disabled(!settings.isToolEnabled("ruler") || settings.isToolTransitioning("ruler"))

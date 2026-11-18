@@ -152,7 +152,7 @@ struct TextExtractorSettingsView: View {
                 recognitionSettings
             }
             Button("Clear History", role: .destructive) { confirmingClear = true }
-                .buttonStyle(OnePlusLinearButtonStyle(.destructive))
+                .buttonStyle(OnePlusLinearButtonStyle(.resetBlock))
                 .disabled(service.history.isEmpty).help("Removes saved extracted text.")
                 .accessibilityIdentifier("text-extractor.clear-history")
                 .padding(.top, OnePlusLinearMetrics.appletFooterGap)

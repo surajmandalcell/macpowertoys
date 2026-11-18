@@ -347,7 +347,7 @@ struct ColorPickerSettingsView: View {
                 }
             }
             Button("Clear All Saved Colors", role: .destructive) { isConfirmingClearAll = true }
-                .buttonStyle(OnePlusLinearButtonStyle(.destructive))
+                .buttonStyle(OnePlusLinearButtonStyle(.resetBlock))
                 .disabled(service.history.isEmpty).help("Clear every saved color. Projects are kept.")
                 .accessibilityIdentifier("color-picker.clear-all")
                 .padding(.top, OnePlusLinearMetrics.appletFooterGap)
