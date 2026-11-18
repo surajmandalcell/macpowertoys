@@ -266,14 +266,15 @@ nonisolated struct MainPanelBentoLayout: Equatable {
     let cpu: CGFloat, cpuChart: CGFloat, network: CGFloat, networkChart: CGFloat, height: CGFloat
 
     init(hasBattery: Bool, hasGPU: Bool) {
-        let gap = TrayPopoverLayout.style.bentoGap
-        let left = OnePlusLinearMetrics.tallTile + gap + OnePlusLinearMetrics.shortTile
+        let style = TrayPopoverLayout.style
+        let gap = style.bentoGap
+        let left = style.tallTile + gap + OnePlusLinearMetrics.shortTile
             + (hasBattery ? gap + OnePlusLinearMetrics.shortTile : 0)
-        let right = (hasGPU ? OnePlusLinearMetrics.tile + gap : 0) + 2 * OnePlusLinearMetrics.tile + gap
+        let right = (hasGPU ? style.tile + gap : 0) + 2 * style.tile + gap
         height = max(left, right)
-        cpu = OnePlusLinearMetrics.tallTile + height - left
+        cpu = style.tallTile + height - left
         cpuChart = OnePlusLinearMetrics.tallChart + height - left
-        network = OnePlusLinearMetrics.tile + height - right
+        network = style.tile + height - right
         networkChart = OnePlusLinearMetrics.chart + height - right
     }
 }
@@ -286,20 +287,21 @@ struct MainPanelBento: View {
         OnePlusLinearBento(style: .instrument) {
             OnePlusLinearTile(height: layout.cpu, chart: OnePlusLinearChart(
                 [OnePlusLinearSeries(readings.cpuHistory, color: OnePlusLinearColor.cpu)], range: readings.cpuRange,
-                height: layout.cpuChart, slots: MainPanelReadings.historySeconds)) {
+                height: layout.cpuChart, slots: MainPanelReadings.historySeconds), tint: OnePlusLinearColor.cpu) {
                 OnePlusLinearTileLabel("CPU", systemImage: "cpu", color: OnePlusLinearColor.cpu, meta: readings.cores)
                 OnePlusLinearTileValue(readings.cpu, unit: "%", color: OnePlusLinearColor.cpuText)
                 OnePlusLinearTileSplit([("User", readings.cpuUser, "%"), ("System", readings.cpuSystem, "%")])
             }
             OnePlusLinearTile(height: OnePlusLinearMetrics.shortTile, usage: OnePlusLinearUsage(
-                readings.diskFraction, color: OnePlusLinearColor.disk, caption: readings.diskUsed)) {
+                readings.diskFraction, color: OnePlusLinearColor.disk, caption: readings.diskUsed), tint: OnePlusLinearColor.disk) {
                 OnePlusLinearTileLabel("Disk", systemImage: "internaldrive", color: OnePlusLinearColor.disk) {
                     OnePlusLinearInlineValue(readings.diskFree, unit: readings.diskFreeUnit, color: OnePlusLinearColor.disk)
                 }
             }
             if readings.hasBattery {
                 OnePlusLinearTile(height: OnePlusLinearMetrics.shortTile, usage: OnePlusLinearUsage(
-                    readings.batteryFraction, color: OnePlusLinearColor.battery, caption: readings.batteryCaption)) {
+                    readings.batteryFraction, color: OnePlusLinearColor.battery, caption: readings.batteryCaption),
+                    tint: OnePlusLinearColor.battery) {
                     OnePlusLinearTileLabel("Battery", systemImage: readings.batterySymbol, color: OnePlusLinearColor.battery) {
                         OnePlusLinearInlineValue(readings.battery, unit: "%", color: OnePlusLinearColor.battery)
                     }
@@ -309,12 +311,13 @@ struct MainPanelBento: View {
             if readings.hasGPU {
                 OnePlusLinearTile(chart: OnePlusLinearChart(
                     [OnePlusLinearSeries(readings.gpuHistory, color: OnePlusLinearColor.gpu)], range: readings.gpuRange,
-                    slots: MainPanelReadings.historySeconds)) {
+                    slots: MainPanelReadings.historySeconds), tint: OnePlusLinearColor.gpu) {
                     OnePlusLinearTileLabel("GPU", systemImage: "display", color: OnePlusLinearColor.gpu, meta: readings.gpuName)
                     OnePlusLinearTileValue(readings.gpu, unit: "%", color: OnePlusLinearColor.gpu)
                 }
             }
-            OnePlusLinearTile(usage: OnePlusLinearUsage(readings.memoryFraction, color: OnePlusLinearColor.memory)) {
+            OnePlusLinearTile(usage: OnePlusLinearUsage(readings.memoryFraction, color: OnePlusLinearColor.memory),
+                              tint: OnePlusLinearColor.memory) {
                 OnePlusLinearTileLabel("Memory", systemImage: "memorychip", color: OnePlusLinearColor.memory,
                                        meta: readings.memoryTotal)
                 OnePlusLinearTileValue(readings.memory, unit: "%", note: readings.memoryUsed, color: OnePlusLinearColor.memory)
@@ -322,7 +325,8 @@ struct MainPanelBento: View {
             OnePlusLinearTile(height: layout.network, chart: OnePlusLinearChart(
                 [OnePlusLinearSeries(readings.downHistory, color: OnePlusLinearColor.networkDown),
                  OnePlusLinearSeries(readings.upHistory, color: OnePlusLinearColor.networkUp, filled: false)],
-                range: readings.networkRange, height: layout.networkChart, slots: MainPanelReadings.historySeconds)) {
+                range: readings.networkRange, height: layout.networkChart, slots: MainPanelReadings.historySeconds),
+                tint: OnePlusLinearColor.networkDown) {
                 OnePlusLinearTileLabel("Network", systemImage: "network", color: OnePlusLinearColor.networkDown) {
                     HStack(spacing: 2) {
                         Image(systemName: "arrow.up").font(.system(size: 9, weight: .medium))

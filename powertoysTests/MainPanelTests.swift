@@ -71,15 +71,17 @@ final class MainPanelTests: XCTestCase {
 
     @MainActor
     func testMissingBatteryOrGPUKeepsBothBentoColumnsEven() {
-        for (battery, gpu, height) in [(true, true, 274.0), (false, true, 274), (true, false, 274), (false, false, 210)] {
+        let style = TrayPopoverLayout.style
+        for (battery, gpu, height) in [(true, true, 266.0), (false, true, 266), (true, false, 266), (false, false, 203)] {
             let layout = MainPanelBentoLayout(hasBattery: battery, hasGPU: gpu)
             XCTAssertEqual(layout.height, height, "battery \(battery), gpu \(gpu)")
-            XCTAssertEqual(layout.cpuChart - OnePlusLinearMetrics.tallChart, layout.cpu - OnePlusLinearMetrics.tallTile)
-            XCTAssertEqual(layout.networkChart - OnePlusLinearMetrics.chart, layout.network - OnePlusLinearMetrics.tile)
+            XCTAssertEqual(layout.cpuChart - OnePlusLinearMetrics.tallChart, layout.cpu - style.tallTile)
+            XCTAssertEqual(layout.networkChart - OnePlusLinearMetrics.chart, layout.network - style.tile)
             var readings = Self.reference
             readings.hasBattery = battery
             readings.hasGPU = gpu
-            let bento = NSHostingView(rootView: MainPanelBento(readings: readings).frame(width: TrayPopoverLayout.bodyWidth))
+            let bento = NSHostingView(rootView: MainPanelBento(readings: readings).frame(width: TrayPopoverLayout.bodyWidth)
+                .environment(\.onePlusLinearPanelStyle, style))
             XCTAssertEqual(bento.fittingSize.height, height, accuracy: 0.5, "battery \(battery), gpu \(gpu)")
         }
         XCTAssertTrue(FanControlPresentation(snapshot: FanSnapshot(fans: [], profile: nil, canControl: false)).hasNoFans)
@@ -88,11 +90,13 @@ final class MainPanelTests: XCTestCase {
 
     @MainActor
     func testHomeHasItsNaturalHeightAndTheBodyScrollsOnlyAtTheCeiling() {
-        let content = NSHostingView(rootView: Self.homeContent().frame(width: TrayPopoverLayout.bodyWidth))
-        XCTAssertEqual(content.fittingSize.height, 274 + 12 + 64 + 12 + 24 + 150 + 12 + 28, accuracy: 0.5)
+        let content = NSHostingView(rootView: Self.homeContent().frame(width: TrayPopoverLayout.bodyWidth)
+            .environment(\.onePlusLinearPanelStyle, TrayPopoverLayout.style))
+        // Bento, Fan and Kwake group, process header and group, actions, 10 pt apart.
+        XCTAssertEqual(content.fittingSize.height, 266 + 10 + 72 + 10 + 24 + 158 + 10 + 32, accuracy: 0.5)
         let panel = NSHostingView(rootView: Self.panel(maximumHeight: 2_000))
         XCTAssertEqual(panel.fittingSize.width, OnePlusLinearMetrics.panelWidth, accuracy: 0.5)
-        XCTAssertEqual(panel.fittingSize.height, 576 + TrayPopoverLayout.chromeHeight, accuracy: 0.5)
+        XCTAssertEqual(panel.fittingSize.height, 582 + TrayPopoverLayout.chromeHeight, accuracy: 0.5)
         let capped = NSHostingView(rootView: Self.panel(maximumHeight: 300))
         XCTAssertEqual(capped.fittingSize.height, 300 + TrayPopoverLayout.chromeHeight, accuracy: 0.5)
         XCTAssertEqual(TrayPopoverLayout.maximumBodyHeight(panelCeiling: 810) + TrayPopoverLayout.chromeHeight, 810)
