@@ -179,10 +179,22 @@ mockups are in `docs/design/v15/`.
     `v15-motion-r1/manifest.json`, recorded in the Motion section when
     it ships).
   - Menu panel (round 3, 2026-11-18): "Instrument", shipped in OnePlusUI
-    1.3.7 (see "Combined panel"). Buttons, hover, and controls need a
-    more premium look (options pending: `v15-panel-r2/manifest.json`).
-  - A destructive reset is its own full-width button, outside every
-    group. No hairline under the last row of a group.
+    1.3.7 (see "Combined panel").
+  - Round 4 picks (owner, 2026-11-19):
+    - Ruler reset: one full-width bordered button (1 pt border, no
+      fill, red text, fills on hover), its own block outside every
+      group, above How to use. No hairline under the last row of a
+      group.
+    - Tool page header: "Launch tile". Name and description on the
+      left; one large soft tile on the right is the Open button and
+      shows the shortcut. Kwake has no window, so no tile.
+    - Panel components: "Toolbar". Actions sit on the panel with
+      short dividers and a rounded fill on hover. The footer moves to
+      the top: tabs on the left, the gear and a filled `Open App` on
+      the right. The "System" and "Last 60 s" header row is removed.
+    - The panel still needs a more premium surface style: the faint
+      low-opacity borders do not work (options pending:
+      `v15-panel-r3/manifest.json`).
 
 ## Overview
 
