@@ -820,12 +820,14 @@ Version 15 Linear style, built from the OnePlusUI `OnePlusLinear*` parts
   2026-11-18). Inside a group, tools sort by name length, shortest first,
   and the All tools body uses the same order. Each group starts
   with a 28 pt caption (11.5 pt medium `muted`, 6 pt above the text). Rows
-  are 28 pt: a 16 pt icon, an 8 pt gap, and the 13 pt name in `secondary`.
-  A disabled tool name uses `muted`. Selection is a `selection` fill with a
-  6 pt radius and a medium `ink` name; it never moves the row. `Settings`
-  (`⌘,`) and `Exit` (`⌘Q`) are a fixed bottom group below the scroll view,
-  with glyphs and trailing shortcut hints, 28 pt above them and 20 pt below.
-  There is no main-level Modified page; each tool owns its own reset.
+  are 28 pt: a 16 pt one-color glyph (`SidebarGlyph`, `secondary` at rest,
+  `ink` when selected; a marketplace tool uses its artwork), an 8 pt gap,
+  and the 13 pt name in `secondary`. A disabled tool name uses `muted`.
+  Selection is a `selection` fill with a 6 pt radius and a medium `ink`
+  name; it never moves the row. `Settings` (`⌘,`) and `Exit` (`⌘Q`) are a
+  fixed bottom group below the scroll view, with 13 pt medium SF Symbols
+  and trailing shortcut hints, 28 pt above them and 20 pt below. There is
+  no main-level Modified page; each tool owns its own reset.
 - Command-1 selects All tools. Command-2 to Command-9 follow the sidebar
   order. Command-[ and Command-] go back and forward. Command-O opens the
   selected tool.
@@ -840,31 +842,37 @@ Version 15 Linear style, built from the OnePlusUI `OnePlusLinear*` parts
   `secondary`, `ink` on hover and selection. The selected tab draws the
   2 pt accent underline on the toolbar line across its whole padded box
   (owner, 2026-11-18: the text-wide underline was too short), and never
-  changes weight or position. All tools shows `All N`, `Enabled N`, and `Favorites N`;
-  Settings shows General, Marketplace, and About; tool pages show no tabs.
-- Pane body (`OnePlusLinearPaneBody`): one scroll view, 14 pt top, 24 pt
-  gutters, and 16 pt between sections and below the last one. A section is
-  a 20 pt caption (11.5 pt medium `muted`, the count 6 pt after it), 6 pt,
-  then a list with radius 8, a 1 pt `line` ring, and `lineSoft` separators.
-- All tools: no hero, filter, or search in the body. One section per
-  category. Each `OnePlusLinearToolRow` is 36 pt with 12 pt padding and
-  12 pt gaps: a 20 pt icon (60% opacity when disabled), the name in 13 pt
-  medium in a 124 pt column (`secondary` when disabled), the one-line
-  summary in `secondary`, the 16 pt star slot (shown on hover, focus, or
-  when set; accent when set), the 26 x 16 switch, and a 10 pt chevron.
-  Hover fills the whole row. A row opens the tool page; arrows move between
-  rows, typing selects by name, and Return opens. Its context menu has
-  Settings, Open, Enable, and Favorite.
-- Tool page: a header list row (32 pt icon, the name in 13 pt semibold,
-  the description in 12 pt `secondary` up to two lines, then the switch and
-  the raised `Open <Tool>` button), with 10 pt vertical padding. A
-  `Menu bar icon` row (None, Combined, Separate) follows for tools that
-  support placement. The tool's shared settings cards follow. `How to use`
-  closes the page: a caption, then one card per manual section with one
-  numbered row per point. A manual route scrolls to `How to use`. Each tool
-  page has its own identity, so it starts at the top. The placement row,
-  settings cards, and manual cards keep version 14 parts until they are
-  converted.
+  changes weight or position. All tools shows `All N`, `Enabled N`, and
+  `Favorites N`; Settings shows General, Marketplace, and About. A tool
+  page shows no title or tabs: its trailing item is `Enabled` (control
+  text, `secondary`) and the tool's enable switch.
+- Editorial body (`OnePlusLinearEditorialBody`, All tools and tool pages):
+  one scroll view, 20 pt top, 32 pt gutters, 20 pt between blocks, 24 pt
+  bottom. Groups have no fill or ring: a `line` hairline on top and a
+  `lineSoft` hairline under each 40 pt row. Group captions are 13 pt
+  semibold `ink`. An optional footer ends the page: on a short page the
+  free space sits above it.
+- All tools: `OnePlusLinearPageTitle` ("All tools", 24 pt semibold, and
+  "N tools, M on" in `secondary`), then one captioned group per category.
+  Each `OnePlusLinearEditorialToolRow` is 48 pt: a 24 pt icon (45% opacity
+  when off), the 13 pt medium name over a one-line caption summary, a quiet
+  `Off` for a tool that is off (name `secondary`, summary `muted`), the star
+  slot at one fixed x (shown on hover, focus, or when set; accent when
+  set), and a 10 pt chevron. No switch. Hover fills the whole row. A row
+  opens the tool page; its context menu has Settings, Open, Enable, and
+  Favorite.
+- Tool page (`ToolAboutView`): `OnePlusLinearToolHeader` (56 pt icon, the
+  24 pt name, the description, and a soft `Open <Tool>` button; Kwake has
+  no window and shows no Open), the `Menu bar icon` row (None, Combined,
+  Separate) for tools that support placement, then the tool's settings
+  inline in the editorial look. Ruler shows its defaults for new rulers
+  inline, bound to FreeRuler `prefs`, with Open Ruler Settings and Reset
+  to Factory Defaults. `How to use` is the footer: a caption, then one
+  group per manual section with one numbered row per point. A manual route
+  scrolls to it.
+- Settings uses `OnePlusLinearPaneBody`: 14 pt top, 24 pt gutters, 16 pt
+  between sections; a 20 pt `muted` caption, then a list with radius 8, a
+  1 pt `line` ring, and `lineSoft` separators.
 - Settings: General holds Appearance and windows, Launch and iCloud, and
   the Quick Access shortcut. About starts with a header row (app icon,
   `MacPowerToys`, the update status, and `Check for Updates`), then
@@ -872,11 +880,9 @@ Version 15 Linear style, built from the OnePlusUI `OnePlusLinear*` parts
 - Enablement, menu-bar placement, runtime state, and window visibility stay
   separate states.
 - Settings embedding contract: each tool exposes one settings content view
-  that returns only its cards (a `VStack` of `OnePlusCard`s with 16 pt gaps):
-  no `OnePlusPage`, no scroll view, no outer padding, no page header, no
-  `Spacer`, and no maximum-height frame. The tool's own Settings page wraps
-  it in `OnePlusPage`; the main window's tool page places it inside its
-  single scrolling page. `ToolSettingsContent` only dispatches by tool id.
+  that returns only its groups: no page, scroll view, outer padding, page
+  header, `Spacer`, or maximum-height frame. The tool page places it inside
+  its single scrolling body. `ToolSettingsContent` only dispatches by tool id.
 
 ### Mac Tweaks
 
