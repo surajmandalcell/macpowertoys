@@ -122,7 +122,7 @@ final class MainPanelTests: XCTestCase {
         XCTAssertEqual(readings.down, "2.4")
         XCTAssertEqual(readings.downUnit, "MB/s")
         XCTAssertEqual(readings.up, "310 KB/s")
-        XCTAssertEqual(MainPanelReadings.percentRange([4, 27.7]).upperBound, 55.4, accuracy: 0.01)
+        XCTAssertEqual(MainPanelReadings.percentRange([4, 27.7]).upperBound, 50)
         XCTAssertEqual(MainPanelReadings.percentRange([90]).upperBound, 100)
     }
 

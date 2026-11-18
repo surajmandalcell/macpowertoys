@@ -112,8 +112,9 @@ private struct MainPanelReadingsFeed: View {
             guard let sample = service.snapshot else { return }
             let history = service.history
             let hardware = MainPanelHardware.current
+            let previous = readings
             let prepared = await Task.detached(priority: .userInitiated) {
-                MainPanelReadings(sample: sample, history: history, hardware: hardware)
+                MainPanelReadings(sample: sample, history: history, hardware: hardware, previous: previous)
             }.value
             guard !Task.isCancelled, prepared != readings else { return }
             readings = prepared
@@ -185,16 +186,17 @@ nonisolated struct MainPanelReadings: Equatable, Sendable {
         gpuName = hardware.chip ?? ""
     }
 
-    init(sample: SystemMonitorSample, history: SystemMonitorHistory, hardware: MainPanelHardware) {
+    /// Charts draw eased samples on a ceiling that eases from `previous`; the text shows the raw current reading.
+    init(sample: SystemMonitorSample, history: SystemMonitorHistory, hardware: MainPanelHardware, previous: Self? = nil) {
         self.init(hardware: hardware)
         cpu = Self.percent(sample.cpuUsage)
         cpuUser = Self.percent(sample.cpuDetails?.user)
         cpuSystem = Self.percent(sample.cpuDetails?.system)
         cpuHistory = Self.recent(history, .cpu, \.cpuUsage)
-        cpuRange = Self.percentRange(cpuHistory)
+        cpuRange = Self.percentRange(cpuHistory, previous: previous?.cpuRange)
         gpu = Self.percent(sample.gpuUsage)
         gpuHistory = Self.recent(history, .gpu, \.gpuUsage)
-        gpuRange = Self.percentRange(gpuHistory)
+        gpuRange = Self.percentRange(gpuHistory, previous: previous?.gpuRange)
         if let used = sample.memoryUsed, let total = sample.memoryTotal, total > 0 {
             memory = Self.percent(sample.memoryUsage)
             memoryUsed = ByteCountFormatter.string(fromByteCount: used, countStyle: .memory) + " used"
@@ -220,7 +222,8 @@ nonisolated struct MainPanelReadings: Equatable, Sendable {
         if let upload = sample.networkUpload { up = Self.rate(upload).0 + " " + Self.rate(upload).1 }
         downHistory = Self.recent(history, .network, \.networkDownload)
         upHistory = Self.recent(history, .network, \.networkUpload)
-        networkRange = 0...max(1_024, ((downHistory + upHistory).max() ?? 0) * 1.3)
+        networkRange = 0...OnePlusChartSmoothing.ceiling(peak: Self.peak(downHistory + upHistory),
+                                                         previous: previous?.networkRange.upperBound, minimum: 10_000)
     }
 
     static func percent(_ value: Double?) -> String {
@@ -239,19 +242,24 @@ nonisolated struct MainPanelReadings: Equatable, Sendable {
         return String(format: "%d:%02d left", minutes / 60, minutes % 60)
     }
 
-    /// Spikes sit in the lower half, as in the reference, and the scale never goes past 100 percent.
-    static func percentRange(_ values: [Double]) -> ClosedRange<Double> {
-        0...min(100, max(5, (values.max() ?? 0) * 2))
+    /// A stable 5, 10, 20, 25, 50, or 100 percent top that never clips a sample and settles down slowly.
+    static func percentRange(_ values: [Double], previous: ClosedRange<Double>? = nil) -> ClosedRange<Double> {
+        0...OnePlusChartSmoothing.ceiling(peak: peak(values), previous: previous?.upperBound, minimum: 5, maximum: 100)
     }
+
+    private static func peak(_ values: [Double]) -> Double { values.filter(\.isFinite).max() ?? 0 }
 
     private static func split(_ text: String) -> (String, String) {
         let parts = text.split(separator: " ", maxSplits: 1).map(String.init)
         return (parts.first ?? dash, parts.count > 1 ? parts[1] : "")
     }
 
+    /// The last 60 samples, eased over the whole kept history so a drawn point never changes. A missing reading
+    /// stays a gap in its own slot instead of shifting later points left.
     private static func recent(_ history: SystemMonitorHistory, _ metric: SystemMonitorMetric,
                                _ value: KeyPath<SystemMonitorSample, Double?>) -> [Double] {
-        history.samples(for: metric).suffix(historySeconds).compactMap { $0[keyPath: value] }.filter(\.isFinite)
+        let raw = history.samples(for: metric).map { $0[keyPath: value] ?? .nan }
+        return Array(OnePlusChartSmoothing.eased(raw).suffix(historySeconds))
     }
 }
 
@@ -281,7 +289,7 @@ struct MainPanelBento: View {
         OnePlusLinearBento {
             OnePlusLinearTile(height: layout.cpu, chart: OnePlusLinearChart(
                 [OnePlusLinearSeries(readings.cpuHistory, color: OnePlusLinearColor.cpu)], range: readings.cpuRange,
-                height: layout.cpuChart, midline: true)) {
+                height: layout.cpuChart, midline: true, slots: MainPanelReadings.historySeconds)) {
                 OnePlusLinearTileLabel("CPU", systemImage: "cpu", color: OnePlusLinearColor.cpu, meta: readings.cores)
                 OnePlusLinearTileValue(readings.cpu, unit: "%")
                 OnePlusLinearTileSplit([("User", readings.cpuUser, "%"), ("System", readings.cpuSystem, "%")])
@@ -303,7 +311,8 @@ struct MainPanelBento: View {
         } trailing: {
             if readings.hasGPU {
                 OnePlusLinearTile(chart: OnePlusLinearChart(
-                    [OnePlusLinearSeries(readings.gpuHistory, color: OnePlusLinearColor.gpu)], range: readings.gpuRange)) {
+                    [OnePlusLinearSeries(readings.gpuHistory, color: OnePlusLinearColor.gpu)], range: readings.gpuRange,
+                    slots: MainPanelReadings.historySeconds)) {
                     OnePlusLinearTileLabel("GPU", systemImage: "display", color: OnePlusLinearColor.gpu, meta: readings.gpuName)
                     OnePlusLinearTileValue(readings.gpu, unit: "%")
                 }
@@ -316,7 +325,7 @@ struct MainPanelBento: View {
             OnePlusLinearTile(height: layout.network, chart: OnePlusLinearChart(
                 [OnePlusLinearSeries(readings.downHistory, color: OnePlusLinearColor.networkDown),
                  OnePlusLinearSeries(readings.upHistory, color: OnePlusLinearColor.networkUp, filled: false)],
-                range: readings.networkRange, height: layout.networkChart)) {
+                range: readings.networkRange, height: layout.networkChart, slots: MainPanelReadings.historySeconds)) {
                 OnePlusLinearTileLabel("Network", systemImage: "network", color: OnePlusLinearColor.networkDown) {
                     HStack(spacing: 2) {
                         Image(systemName: "arrow.up").font(.system(size: 9, weight: .medium)).accessibilityHidden(true)
