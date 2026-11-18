@@ -812,11 +812,14 @@ Version 15 Linear style, built from the OnePlusUI `OnePlusLinear*` parts
   bottom `line`; it drags the window. Back and forward are 24 pt icon
   buttons 4 pt apart, 16 pt from the pane edge, then the page title in
   13 pt semibold `ink`. The trailing text tabs (`OnePlusLinearTextTabs`)
-  end 24 pt from the edge, on the content's right inset. Tabs are 16 pt
-  apart; a 12 pt `muted` count follows the 13 pt label after 5 pt. Labels
-  are `secondary`, `ink` on hover and selection. The selected tab draws the
-  2 pt accent underline on the toolbar line and never changes weight or
-  position. All tools shows `All N`, `Enabled N`, and `Favorites N`;
+  end 24 pt from the edge, on the content's right inset. Each tab pads its
+  label and count by 8 pt on both sides; the padded boxes touch, so the
+  texts stay 16 pt apart, and the last box ends on the inset. A 12 pt
+  `muted` count follows the 13 pt label after 5 pt. Labels are
+  `secondary`, `ink` on hover and selection. The selected tab draws the
+  2 pt accent underline on the toolbar line across its whole padded box
+  (owner, 2026-11-18: the text-wide underline was too short), and never
+  changes weight or position. All tools shows `All N`, `Enabled N`, and `Favorites N`;
   Settings shows General, Marketplace, and About; tool pages show no tabs.
 - Pane body (`OnePlusLinearPaneBody`): one scroll view, 14 pt top, 24 pt
   gutters, and 16 pt between sections and below the last one. A section is
