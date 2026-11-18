@@ -178,13 +178,9 @@ mockups are in `docs/design/v15/`.
   - Motion: "Native snap" replaces "Quiet" (spec in
     `v15-motion-r1/manifest.json`, recorded in the Motion section when
     it ships).
-  - Menu panel (round 3, 2026-11-18): the "Instrument" layout (one
-    metrics card split by hairlines, large light numbers). Values and
-    charts keep their data colors; icons stay neutral. Charts are a line
-    with a soft fade and scroll on smoothly when a sample arrives, with
-    no jump. Top processes: five rows in smaller text; the memory column
-    fits five digits in MB. Buttons, hover, and controls need a more
-    premium look (options pending).
+  - Menu panel (round 3, 2026-11-18): "Instrument", shipped in OnePlusUI
+    1.3.7 (see "Combined panel"). Buttons, hover, and controls need a
+    more premium look (options pending: `v15-panel-r2/manifest.json`).
   - A destructive reset is its own full-width button, outside every
     group. No hairline under the last row of a group.
 
@@ -688,14 +684,19 @@ package tokens (`OnePlusLinearMetrics`, `OnePlusLinearColor`).
   item's right-click menu.
 - Home, top to bottom:
   - Header row (24 pt): "System" and the note "Last 60 s".
-  - Bento: two equal columns, 8 pt gaps, tiles radius 6 on `panelTile`
-    with 10 pt padding. Left: CPU (146 pt, user and system shares, filled
-    history chart 68 pt), Disk (56 pt, free value and a 5 pt usage bar),
-    Battery (56 pt, percent, time left, usage bar). Right: GPU (86 pt,
-    history chart 30 pt), Memory (86 pt, percent, used and total, usage
-    bar), Network (86 pt, down and up rates, a two-series chart). Each tile
-    uses its data color: `cpu`, `gpu`, `memory`, `disk`, `battery`,
-    `networkDown`, `networkUp`. Charts show the last 60 one-second samples.
+  - Bento, "Instrument" style: one `panelTile` card, radius 6, split
+    into two columns and its tiles by `lineSoft` hairlines, 10 pt tile
+    padding. Left: CPU (146 pt, user and system shares, history chart
+    68 pt), Disk (56 pt, free value and a 5 pt usage bar), Battery (56 pt,
+    percent, time left, usage bar). Right: GPU (86 pt, history chart
+    30 pt), Memory (86 pt, percent, used and total, usage bar), Network
+    (86 pt, down and up rates, a two-series chart). Values are 26 pt light
+    in their data color (`cpuText`, `gpu`, `memory`, `disk`, `battery`,
+    `networkDown`, `networkUp`); icons stay `secondary`. Charts show the
+    last 60 one-second samples as a 1 pt line with a dot at the current
+    point and a soft gradient fade below, the left edge fading out over
+    16 pt. Ticker: each sample slides the chart left one step over 1 s,
+    linear, as a Core Animation translation; Reduce Motion steps.
   - Missing hardware: a Mac without a battery or without a readable GPU
     hides that tile. The column's chart tile (CPU on the left, Network on
     the right) takes the freed height, so both columns still end on one
@@ -704,15 +705,16 @@ package tokens (`OnePlusLinearMetrics`, `OnePlusLinearColor`).
     Max segmented control, 40 x 18 segments) and the Kwake row (state text
     and switch). A Mac with no fans hides the Fan row; the card hides when
     both rows are absent. Only a click on a segment sends a fan write.
-  - "Top processes" header and three 30 pt rows: the app icon or a
-    terminal glyph (16 pt), the name, the CPU percent in `cpuText` with its
-    percent sign (40 pt column), and memory (52 pt column). No bar.
+  - "Top processes" header and five 30 pt rows in 12 pt text: the app
+    icon or a terminal glyph (16 pt), the name, the CPU percent in
+    `cpuText` with its percent sign (40 pt column), and memory (68 pt
+    column, fits "1,023.7 MB"). No bar.
   - One joined 28 pt action bar for the enabled tools among Pick Color,
     Extract Text, and Ruler, with hairline dividers.
 - Speed: metrics sample once per second off the main thread and only while
   Home is visible; the process list refreshes every 2 seconds. Text is
   formatted off the main thread. Both stop when the panel closes or the
-  tab changes. Nothing animates.
+  tab changes. Only the chart ticker moves.
 - Other tabs keep their version 14 content inside the scrolling body.
 
 ### All panels

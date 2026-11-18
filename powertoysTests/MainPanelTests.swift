@@ -89,10 +89,10 @@ final class MainPanelTests: XCTestCase {
     @MainActor
     func testHomeHasItsNaturalHeightAndTheBodyScrollsOnlyAtTheCeiling() {
         let content = NSHostingView(rootView: Self.homeContent().frame(width: TrayPopoverLayout.bodyWidth))
-        XCTAssertEqual(content.fittingSize.height, 24 + 274 + 12 + 64 + 12 + 24 + 90 + 12 + 28, accuracy: 0.5)
+        XCTAssertEqual(content.fittingSize.height, 24 + 274 + 12 + 64 + 12 + 24 + 150 + 12 + 28, accuracy: 0.5)
         let panel = NSHostingView(rootView: Self.panel(maximumHeight: 2_000))
         XCTAssertEqual(panel.fittingSize.width, OnePlusLinearMetrics.panelWidth, accuracy: 0.5)
-        XCTAssertEqual(panel.fittingSize.height, 540 + TrayPopoverLayout.chromeHeight, accuracy: 0.5)
+        XCTAssertEqual(panel.fittingSize.height, 600 + TrayPopoverLayout.chromeHeight, accuracy: 0.5)
         let capped = NSHostingView(rootView: Self.panel(maximumHeight: 300))
         XCTAssertEqual(capped.fittingSize.height, 300 + TrayPopoverLayout.chromeHeight, accuracy: 0.5)
         XCTAssertEqual(TrayPopoverLayout.maximumBodyHeight(panelCeiling: 810) + TrayPopoverLayout.chromeHeight, 810)
