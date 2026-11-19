@@ -299,7 +299,7 @@ coordinates; it never scrolls or repeats.
 | `OnePlusSelect` | 28 pt trigger, radius 6, `raised`, trailing chevron; opens `OnePlusPopupMenu`. |
 | `OnePlusPopupMenu` | Borderless panel below the trigger (above without room), at least the trigger width and wide enough for the longest item; 5 pt padding, radius 7, `raised`, one soft shadow; 28 pt items (24 compact), radius 4, checkmark column, `selection` highlight. Long titles truncate in the middle with the full title as help. Arrows, Return, Escape, type-select. Scrolls after 12 items, only for the wheel or arrow keys at an edge, never for pointer hover. Closes on outside click, Escape, window move, or deactivation. Context menus stay native. |
 | `OnePlusMenuButton` | Ghost or neutral button with a chevron that opens the popup with actions. |
-| `OnePlusStepperField` | One text field with minus and plus. Every stepper is one control column wide (160 pt) in every look; the value and its unit right-align, so "4 hours", "3 days", and "3 sec" line up. A value without a unit centers. |
+| `OnePlusStepperField` | One text field with minus and plus. Every stepper is one control column wide (160 pt) in every look; the value and its unit right-align, so "4 hours", "3 days", and "3 sec" line up. A value without a unit right-aligns too. |
 | `OnePlusTextField` / `OnePlusSearchField` | Native field in a 28 pt `field` bezel (32 pt search in sidebars), radius 6; focus `fieldFocus` with an inset line, no ring, no size change; error `dangerLine` plus a caption. Escape clears search first. |
 | `OnePlusTextEditor` | `NSTextView` in `NSScrollView`, `track`, radius 6, 11 x 12 padding, SF Mono for code. |
 | `OnePlusCard`, `OnePlusCardHeader`, `OnePlusSettingRow`, `OnePlusPageHeader`, `OnePlusTabStrip`, `OnePlusSidebar`, `OnePlusNavRow` | As above. |
@@ -541,7 +541,8 @@ its panel row and main window page are enough.
 - Primary button: soft gray fill, no border (`#EBEBED` / `#2C2C30`; hover
   `#E2E2E5` / `#34343A`; pressed `#D8D8DC` / `#3C3C42`).
 - Controls "Quiet Raised": quiet sunken tracks, one solid knob with one soft
-  shadow, coral only for "on". Segment labels center; short fading dividers
+  shadow, coral only for "on". A field beside a 24 pt button uses
+  `.quietRaisedActionRow` (24 pt field), so the row has one height. Segment labels center; short fading dividers
   separate unselected segments.
 - Destructive: plain red text, no fill or border, with a native
   confirmation. Never a tinted red pill.

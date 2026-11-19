@@ -266,10 +266,11 @@ struct ColorHistoryView: View {
 
     @ViewBuilder private var newProjectField: some View {
         OnePlusLinearTextField("Project name", text: $newProjectName, onSubmit: createProject)
+            .environment(\.onePlusLinearControlLook, .quietRaisedActionRow)
         Button("Create", action: createProject)
             .buttonStyle(OnePlusLinearButtonStyle(.soft))
             .disabled(!service.canCreateProject(named: newProjectName))
-        OnePlusLinearIconButton(systemImage: "xmark", help: "Cancel new project") {
+        OnePlusLinearIconButton(systemImage: "xmark", help: "Cancel new project", size: OnePlusLinearMetrics.appletButton) {
             isCreatingProject = false; newProjectName = ""
         }
     }
