@@ -203,6 +203,9 @@ mockups are in `docs/design/v15/`.
     window").
   - Open key (owner, 2026-11-19): "Ink key" with the label `Open
     MacPowerToys`, shipped in OnePlusUI 1.3.17 (see "Combined panel").
+  - Panel motion (owner, 2026-11-19): "Live instrument" (count up,
+    draw in then steady scroll, rolling digits, lift and brighten),
+    shipped in OnePlusUI 1.3.18 (see "Panel motion").
 
 ## Overview
 
@@ -681,6 +684,43 @@ cubic-bezier(0.4, 0, 1, 1).
 - Nothing animates while idle. Spinners run only during real work.
 - Reduce Motion: every change is instant, except the panel open, which is
   a 100 ms fade only.
+- The combined panel uses the richer "Panel motion" below. Native snap
+  applies everywhere else.
+
+### Panel motion (combined panel)
+
+"Live instrument" (owner picks 2026-11-19). Tokens are in `OnePlusMotion`
+(durations) and `OnePlusNumberPace` (numbers).
+
+- First Home open after launch: numbers count up from 0 and usage bars
+  grow, 600 ms ease-out. Each chart line draws in left to right over
+  450 ms ease-out, the next chart 30 ms later (CPU, GPU, Network). Later
+  opens show values as is.
+- Charts: one constant-speed scroll (see "Combined panel"). A new top
+  value eases the scale over 400 ms.
+- Numbers roll only the digits that change (numeric text, spring damping
+  0.9, monospaced digits). Each metric has its own pace; the shown text
+  changes at most once per interval, after its offset, while charts get
+  every sample:
+
+  | Metric | Spring response | Interval | Offset |
+  |---|---|---|---|
+  | Network | 0.25 s | every sample | 0 |
+  | CPU | 0.45 s | 2 s | 0.15 s |
+  | GPU | 0.45 s | 2 s | 0.30 s |
+  | Memory | 0.6 s | 4 s | 0.45 s |
+  | Disk | 0.6 s | 5 s | 0.60 s |
+  | Battery | 0.6 s | 5 s | 0.75 s |
+  | Process rows | 0.5 s | every 2 s refresh | 0 |
+
+- Hover: a tile rises 1 pt and its wash gets 1.8 times stronger, 160 ms
+  in and 240 ms out. Row fills fade 90 ms in and 200 ms out. Action keys
+  rise 1 pt on hover (120 ms) and sit 0.5 pt down while pressed. No
+  shadow changes.
+- Reduce Motion: no count-up and no draw-in, the scroll steps once per
+  sample, numbers crossfade over 150 ms, and hover changes color only.
+- A closed panel runs no animation; a value that changes while it is
+  hidden shows at once on the next open.
 
 ## Menu-bar panels
 
@@ -737,8 +777,9 @@ Built from the OnePlusUI `OnePlusLinear` panel parts with
     `networkDown`, `networkUp`); icons stay `secondary`. Charts show the
     last 60 one-second samples as a 1 pt line with a dot at the current
     point and a soft gradient fade below, the left edge fading out over
-    16 pt. Ticker: each sample slides the chart left one step over 1 s,
-    linear, as a Core Animation translation; Reduce Motion steps.
+    16 pt. Ticker: one Core Animation scroll at a constant speed of one
+    step per second that never restarts per sample; a sample only adds a
+    point (see "Panel motion"). Reduce Motion steps once per sample.
   - Missing hardware: a Mac without a battery or without a readable GPU
     hides that tile. The column's chart tile (CPU on the left, Network on
     the right) takes the freed height, so both columns still end on one
@@ -771,8 +812,8 @@ Built from the OnePlusUI `OnePlusLinear` panel parts with
   first sample on open comes at once. Charts space samples by index, so
   the slow samples show a longer stretch of time. The process list
   refreshes every 2 seconds, only while Home is visible. Text is formatted
-  off the main thread, only while Home is visible. Only the chart ticker
-  moves.
+  off the main thread, only while Home is visible. While idle, only the
+  chart ticker moves.
 - Other tabs (RSync UI, Input Devices) keep their version 14 content
   inside the scrolling body; their cards and section headers still draw
   lines until they are converted.

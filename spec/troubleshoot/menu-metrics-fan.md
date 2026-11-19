@@ -50,6 +50,21 @@ still use `SystemMonitor`. `DESIGN.md` owns every size, color, and type value.
   to 5 s on close or tab change; the bento columns stay equal without
   Battery or GPU.
 
+## Chart Scroll
+
+- **Symptom:** The Home chart lines stopped, then jumped back, at each new
+  sample.
+- **Cause:** `OnePlusChartTickerView.tick` started a new 1 s slide from one
+  step to 0 at every sample. A sample that came late left the line resting
+  at 0; one that came early cut the slide and jumped the line a step right.
+- **Invariant:** One constant-speed scroll (one step per `chartTick`). A
+  sample starts the next slide from the current presentation offset plus
+  one step, clamped to 1.5 steps, toward -0.5 steps, with a duration that
+  keeps the same speed. A sample only adds a point. Reduce Motion removes
+  the scroll, so the chart steps.
+- **Check:** Watch a chart for 10 s at 1 s sampling: no pause and no
+  backward jump. The first frame after open shows no jump.
+
 ## Top Processes
 
 - **Symptom:** The process sample hangs, icons are generic, or rows sort
