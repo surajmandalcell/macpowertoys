@@ -724,8 +724,9 @@ cubic-bezier(0.4, 0, 1, 1).
 
 ## Menu-bar panels
 
-The combined MacPowerToys panel uses the version 15 parts below. The
-Portman panel and the separate tool panels keep the version 14 parts
+The combined MacPowerToys panel and the Portman panel use the version 15
+parts below (Portman: see "Portman"). The separate tool panels keep the
+version 14 parts
 (top bar, `OnePlusMenuTile`, control rows) until they are converted. The
 shared rules apply to every panel.
 
@@ -1052,8 +1053,40 @@ sidebar page, never a separate window or dialog.
 
 ### Portman
 
-The Portman menu panel keeps its current home layout and look. Its other
-tabs use the menu-panel parts and OnePlusUI controls.
+Owner picks 2026-11-19 (layout "Hero ring", rows "Two lines with a port
+chip", motion "Live instrument"). The Portman panel uses the combined
+panel's Fill steps shell: the same Soft keys tabs (Servers, Forward), the
+gear, and the `Open MacPowerToys` Ink key. Parts live in
+`PortmanOverviewParts.swift`.
+
+- Servers, top to bottom, with no header row and no bottom bar:
+  - Hero ring: one `fillGroup` card (radius 10, 16 pt vertical padding).
+    A 132 pt ring with a 9 pt track shows each listening process's memory
+    share in its port color, round caps, small gaps. The center holds the
+    total in MB (26 pt light, rolling digits) over "N% of RAM" (or
+    "N selected" during Clean up). Below it: servers, CPU, and the longest
+    uptime.
+  - One `OnePlusLinearList(style: .panel)` of 40 pt rows: the port chip
+    (`:8787` in the port color on a 14% wash, radius 5), the app icon or a
+    terminal glyph, the name over the branch and "up 3h 12m", a 32 pt
+    sparkline, and memory in a 52 pt column. Hover is the Fill steps row
+    hover (radius 6, 4 pt inside the group, 1 pt off the row edges), the
+    row rises 1 pt, and Open and Stop replace the sparkline.
+  - A click opens the server's details. Right-click on a row: Open
+    localhost, Show Details, Stop Process Tree…, then the body menu. The
+    body menu holds Sort by (Port, Memory, Name, CPU), Refresh Servers,
+    and Clean Up. Clean up shows checkboxes and one Cancel and Stop row
+    until it ends. Refresh also stays in the status item's menu.
+- Steady height (`onePlusSteadyRows`, owner 2026-11-19): the list keeps
+  room for at least 3 rows and grows at once when rows are added. It
+  shrinks only when the count drops 2 or more below the reserved rows,
+  then to the new count, never below 3. The space a removed row leaves
+  stays empty until then.
+- Motion: the first Servers open after launch counts the ring and the
+  numbers up (`panelReveal`). A new row opens over 250 ms and fades in
+  after 70 ms; a removed row fades out over 150 ms and closes over 250 ms
+  after 50 ms. Reduce Motion makes both instant.
+- The Forward tab and the server details keep their version 14 content.
 
 ### Ruler
 
