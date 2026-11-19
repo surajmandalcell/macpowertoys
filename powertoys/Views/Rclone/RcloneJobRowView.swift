@@ -53,10 +53,11 @@ struct TransferJobRow: View {
                 pathChip(job.destinationDisplay, color: OnePlusLinearColor.secondary)
             }
             Spacer(minLength: OnePlusLinearSpace.small)
+            // Left of the size text, so the size, status, and key columns stay at one x in every row.
+            if job.kind == .file { priorityMenu }
             Text("\(RcloneFormat.bytes(job.progressBytes)) / \(RcloneFormat.bytes(job.effectiveTotalBytes))\(job.isSizing ? "~" : "") · \(job.progressFiles)/\(job.effectiveTotalFiles) files")
                 .linearText(OnePlusLinearMetrics.control, color: OnePlusLinearColor.secondary).monospacedDigit().lineLimit(1)
             statusColumn
-            if job.kind == .file { priorityMenu }
             actionButtons
                 .frame(width: Self.keySlot * 3 + OnePlusLinearSpace.tight * 2, alignment: .trailing)
             disclosureButton
