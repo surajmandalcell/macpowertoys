@@ -430,7 +430,8 @@ References: [suppressed launch](https://developer.apple.com/documentation/swiftu
 
 - **Invariant:** Every status item uses `OnePlusMenuPresenter` with one
   retained borderless nonactivating `NSPanel`, clear and nonopaque.
-  `OnePlusMenuPanel` clips fill and its inset border to the panel radius;
+  `OnePlusLinearPanel` (and `OnePlusLinearMenuPanel` for one-tool items)
+  clips its fill to the panel radius;
   AppKit derives the shadow from that outline, so never draw another. Keep
   natural height, the originating display's ceiling, and the top edge while
   resizing. Supply the status button's screen ceiling before host creation.

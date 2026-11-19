@@ -41,7 +41,7 @@ processes, and Fan are in [Menu metrics and Fan](menu-metrics-fan.md).
 - **Symptom:** The page gains a second inset, the Scroll device footer
   scrolls, the panel opens very tall, or Refresh blocks main.
 - **Invariant:** `InputDevicesSettingsContent()` is the one card set. Hosts
-  embed it directly; `OnePlusMenuPanel` owns the panel inset. The Scrolling
+  embed it directly; the panel shell owns the panel inset. The Scrolling
   page keeps `InputScrollDeviceBar` fixed below its row scroller. Devices,
   Mouse, Trackpad, and Scroll device persist separate disclosures; for unset
   keys open Devices and collapse the rest, never overwriting saved choices.

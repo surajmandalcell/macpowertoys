@@ -218,13 +218,13 @@ private struct TrayTransferRow: View {
         VStack(alignment: .leading, spacing: 4) {
             OnePlusLinearUsageBar(job.progressFraction, color: stateColor)
             HStack(spacing: OnePlusLinearMetrics.rowGap) {
-                Text("\(RcloneFormat.bytes(job.displayBytes)) of \(RcloneFormat.bytes(job.effectiveTotalBytes))")
+                Text("\(RcloneFormat.bytes(job.progressBytes)) of \(RcloneFormat.bytes(job.effectiveTotalBytes))")
                 Spacer(minLength: OnePlusLinearMetrics.rowGap)
                 if job.stats.speed > 0 || job.displayEta != nil {
                     if job.stats.speed > 0 { Text(RcloneFormat.speed(job.stats.speed)) }
                     if job.displayEta != nil { Text("ETA \(RcloneFormat.eta(job.displayEta))") }
                 } else if job.effectiveTotalFiles > 0 {
-                    Text("\(job.displayFiles) of \(job.effectiveTotalFiles) files")
+                    Text("\(job.progressFiles) of \(job.effectiveTotalFiles) files")
                 }
             }
             .linearText(OnePlusLinearMetrics.caption, color: OnePlusLinearColor.panelMuted)

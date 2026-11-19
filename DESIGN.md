@@ -90,8 +90,8 @@ texture: { ribbon: [700, 220], ribbon-drawn: [630, 198], ribbon-opacity-dark: 0.
 The complete visual and window-structure contract for every window, menu-bar
 panel, sheet, and settings page. Tool icon rules are in `spec/icons.md`.
 Version 15 (Linear style, owner picks 2026-11-16 to 2026-11-19) covers the
-main window, the combined panel, Portman, and the applets. Other surfaces
-keep the version 14 rules below until they are converted.
+main window, every menu-bar panel, and the applets. The RSync UI and Event
+Viewer windows keep the version 14 window rules below.
 
 ## Sources of truth
 
@@ -518,26 +518,21 @@ the Open key. Parts: `PortmanOverviewParts.swift`,
      (state glyph, mono `:local → host:remote`, state text, 22 pt icon
      actions).
   The scan spinner is the gear spinner; nothing in the body moves.
-- Server details keep their version 14 content.
+- Server details (Home's parts): a fixed header row (back icon, name,
+  `:port` in the port color, open-link icon); an instrument bento with
+  Memory and CPU tiles and their 10 min history; the server group (Server
+  row with compact Restart and Stop keys, label-value rows with 22 pt copy
+  or open accessories, a Details disclosure row); the Processes group (a
+  disclosure row, then 40 pt rows with a usage bar); an action bar (Editor,
+  Finder, Copy URL, Preview). Errors are a warning banner.
 
-### Version 14 panels (separate tool panels)
+### Separate tool panels
 
-The shell below stays version 14. The body inside it uses the combined
-panel's tool-tab content: RSync UI and Input Devices without their Open
-key, Awake as one group with its segmented row and Keep display on switch,
-Color Picker and Text Extractor as one action key.
-
-- Top bar: padding 10 top, 8 sides, 6 bottom; icon tab group in a `track`
-  container (radius 7, 26 pt tabs, radius 5); trailing `Open App` as a small
-  ghost button, then small ghost icon buttons.
-- Action buttons: one row of equal 32 pt buttons, glyph and label on one
-  line.
-- Body 3 top, 8 sides, 8 bottom. `OnePlusMenuTile`: radius 6, 1 pt `line`,
-  7 x 8 padding, 5 pt gaps, three 109.33 pt columns. History draws behind
-  the tile at full width in the lower 60% (1 pt line at 35%, 7% fill).
-- Control rows 30 pt with a 13 pt glyph, 10.5 pt label, SF Mono status, and
-  a 24 pt segmented control. Section headers: 1 pt `line`, 7 pt top, 9.5 pt
-  title, trailing link.
+`OnePlusLinearMenuPanel`: the combined panel's shell and 46 pt top bar (a
+one-key icon track and the tool name; the gear and `Open App` trailing),
+with the same height reporting. The body is the tool-tab content: RSync UI
+and Input Devices without their Open key, Awake as one group, Color Picker
+and Text Extractor as one action key.
 
 ## Applets
 
