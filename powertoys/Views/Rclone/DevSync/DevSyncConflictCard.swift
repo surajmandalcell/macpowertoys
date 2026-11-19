@@ -107,7 +107,7 @@ struct DevSyncConflictCard: View {
 
     var body: some View {
         OnePlusLinearList {
-            VStack(alignment: .leading, spacing: OnePlusMetrics.spacing[3]) {
+            VStack(alignment: .leading, spacing: OnePlusLinearSpace.row) {
             headerLine
             metadataGrid
             safetyCopies
@@ -118,9 +118,9 @@ struct DevSyncConflictCard: View {
 
             actionRow
             }
-            .padding(OnePlusMetrics.cardPadding)
+            .padding(OnePlusLinearSpace.section)
         }
-        .overlay { RoundedRectangle(cornerRadius: OnePlusLinearMetrics.listRadius).strokeBorder(isFocused ? OnePlusColor.focus : .clear) }
+        .overlay { RoundedRectangle(cornerRadius: OnePlusLinearMetrics.listRadius).strokeBorder(isFocused ? OnePlusLinearColor.lineStrong : .clear) }
         .task(id: conflict.id) {
             diff = await DevConflictDiff.load(
                 internalPath: conflict.internalSafetyPath,
@@ -132,7 +132,8 @@ struct DevSyncConflictCard: View {
     private var headerLine: some View {
         HStack(alignment: .firstTextBaseline, spacing: 8) {
             Text(conflict.relativePath)
-                .onePlusText(.mono)
+                .font(.system(size: OnePlusLinearMetrics.control, design: .monospaced))
+                .foregroundStyle(OnePlusLinearColor.secondary)
                 .lineLimit(1)
                 .truncationMode(.middle)
                 .textSelection(.enabled)
@@ -140,13 +141,13 @@ struct DevSyncConflictCard: View {
             DevSyncStateBadge(
                 icon: "exclamationmark.triangle.fill",
                 title: conflict.type.displayName,
-                tint: OnePlusColor.danger
+                tint: OnePlusLinearColor.destructiveText
             )
         }
     }
 
     private var metadataGrid: some View {
-        VStack(alignment: .leading, spacing: OnePlusMetrics.spacing[2]) {
+        VStack(alignment: .leading, spacing: OnePlusLinearSpace.small) {
             sideColumn(title: "Internal", signature: conflict.internalSignature)
             sideColumn(title: "External", signature: conflict.externalSignature)
             sideColumn(title: "Baseline", signature: conflict.baselineSignature)
@@ -154,15 +155,14 @@ struct DevSyncConflictCard: View {
     }
 
     private func sideColumn(title: String, signature: DevFileSignature?) -> some View {
-        HStack(spacing: OnePlusMetrics.spacing[3]) {
-            Text(title).onePlusText(.row)
-            Spacer(minLength: OnePlusMetrics.spacing[2])
+        HStack(spacing: OnePlusLinearSpace.row) {
+            Text(title).linearText()
+            Spacer(minLength: OnePlusLinearSpace.small)
             Text(sizeText(signature))
-                .onePlusText(.caption)
+                .linearText(OnePlusLinearMetrics.control, color: OnePlusLinearColor.secondary)
                 .monospacedDigit()
             Text(timeText(signature))
-                .onePlusText(.caption)
-                .foregroundStyle(OnePlusColor.secondary)
+                .linearText(OnePlusLinearMetrics.control, color: OnePlusLinearColor.secondary)
                 .monospacedDigit()
         }
         .frame(maxWidth: .infinity, alignment: .leading)
@@ -196,10 +196,11 @@ struct DevSyncConflictCard: View {
     private func safetyRow(title: String, path: String) -> some View {
         HStack(spacing: 8) {
             Text("\(title): \(path)")
-                .onePlusText(.mono)
-                .foregroundStyle(OnePlusColor.secondary)
+                .font(.system(size: OnePlusLinearMetrics.control, design: .monospaced))
+                .foregroundStyle(OnePlusLinearColor.secondary)
                 .lineLimit(1)
                 .truncationMode(.middle)
+                .textSelection(.enabled)
             Spacer(minLength: 8)
             Button("Reveal in Finder") { manager.reveal(URL(fileURLWithPath: path)) }
                 .controlSize(.small)
@@ -211,7 +212,7 @@ struct DevSyncConflictCard: View {
         LazyVStack(alignment: .leading, spacing: 1) {
             ForEach(diff) { line in
                 Text("\(line.prefix) \(line.text)")
-                    .onePlusText(.mono)
+                    .font(.system(size: OnePlusLinearMetrics.control, design: .monospaced))
                     .foregroundStyle(line.tint)
                     .lineLimit(1)
                     .frame(maxWidth: .infinity, alignment: .leading)
@@ -220,7 +221,7 @@ struct DevSyncConflictCard: View {
         }
         .padding(8)
         .frame(maxWidth: .infinity, alignment: .leading)
-        .background(RoundedRectangle(cornerRadius: 8).fill(OnePlusColor.track))
+        .background(RoundedRectangle(cornerRadius: 8).fill(OnePlusLinearColor.barTrack))
     }
 
     private var actionRow: some View {

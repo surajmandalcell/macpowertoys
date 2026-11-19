@@ -144,11 +144,12 @@ struct TransferFileTreeView: View {
             if showPatternEditor {
                 TextEditor(text: $patternsText)
                     .thinScrollIndicators()
-                    .onePlusText(.mono)
+                    .font(.system(size: OnePlusLinearMetrics.control, design: .monospaced))
+                    .foregroundStyle(OnePlusLinearColor.secondary)
                     .scrollContentBackground(.hidden)
                     .frame(height: 70)
                     .padding(6)
-                    .background(OnePlusColor.track)
+                    .background(OnePlusLinearColor.barTrack)
                     .clipShape(RoundedRectangle(cornerRadius: 6))
             }
         }
@@ -170,8 +171,8 @@ struct TransferFileTreeView: View {
             centered {
                 VStack(spacing: 10) {
                     Text(rootError)
-                        .onePlusText(.row)
-                        .foregroundStyle(OnePlusColor.secondary)
+                        .linearText(color: OnePlusLinearColor.secondary)
+                        .textSelection(.enabled)
                         .multilineTextAlignment(.center)
                     Button("Retry") {
                         Task { await loadRoots() }
@@ -182,8 +183,7 @@ struct TransferFileTreeView: View {
         } else if roots.isEmpty {
             centered {
                 Text("No files found")
-                    .onePlusText(.row)
-                    .foregroundStyle(OnePlusColor.muted)
+                    .linearText(color: OnePlusLinearColor.muted)
             }
         } else {
             treeList
@@ -220,8 +220,8 @@ struct TransferFileTreeView: View {
             centered {
                 VStack(spacing: 10) {
                     Text(indexError)
-                        .onePlusText(.row)
-                        .foregroundStyle(OnePlusColor.secondary)
+                        .linearText(color: OnePlusLinearColor.secondary)
+                        .textSelection(.enabled)
                         .multilineTextAlignment(.center)
                     Button("Retry") { ensureIndex() }
                 }
@@ -232,24 +232,21 @@ struct TransferFileTreeView: View {
                 HStack(spacing: 8) {
                     ProgressView().controlSize(.small)
                     Text("indexing…")
-                        .onePlusText(.row)
-                        .foregroundStyle(OnePlusColor.secondary)
+                        .linearText(color: OnePlusLinearColor.secondary)
                 }
             }
         } else {
             if projection.searchRows.isEmpty {
                 centered {
                     Text("No matches")
-                        .onePlusText(.row)
-                        .foregroundStyle(OnePlusColor.muted)
+                        .linearText(color: OnePlusLinearColor.muted)
                 }
             } else {
                 ScrollView {
                     LazyVStack(spacing: 1) {
                         if indexTruncated {
                             Text("showing first \(Self.indexLimit.formatted())")
-                                .onePlusText(.caption)
-                                .foregroundStyle(OnePlusColor.muted)
+                                .linearText(OnePlusLinearMetrics.control, color: OnePlusLinearColor.muted)
                                 .frame(maxWidth: .infinity, alignment: .leading)
                                 .padding(.horizontal, 8)
                                 .padding(.bottom, 4)
@@ -280,35 +277,33 @@ struct TransferFileTreeView: View {
     @ViewBuilder
     private var splitStatusView: some View {
         if let rootError {
-            centered { Text(rootError).onePlusText(.row).foregroundStyle(OnePlusColor.secondary) }
+            centered { Text(rootError).linearText(color: OnePlusLinearColor.secondary).textSelection(.enabled) }
         } else if let indexError {
-            centered { Text(indexError).onePlusText(.row).foregroundStyle(OnePlusColor.secondary) }
+            centered { Text(indexError).linearText(color: OnePlusLinearColor.secondary).textSelection(.enabled) }
         } else if let destinationError {
-            centered { Text(destinationError).onePlusText(.row).foregroundStyle(OnePlusColor.secondary) }
+            centered { Text(destinationError).linearText(color: OnePlusLinearColor.secondary).textSelection(.enabled) }
         } else if allEntries == nil || isIndexing || isLoadingRoot || isLoadingDestination {
             centered {
                 HStack(spacing: 8) {
                     ProgressView().controlSize(.small)
                     Text("Comparing source and destination…")
-                        .onePlusText(.row)
-                        .foregroundStyle(OnePlusColor.secondary)
+                        .linearText(color: OnePlusLinearColor.secondary)
                 }
             }
         } else {
             VStack(spacing: 0) {
                 if indexTruncated {
                     Text("Comparison is limited to the first \(Self.indexLimit.formatted()) source entries.")
-                        .onePlusText(.caption)
-                        .foregroundStyle(OnePlusColor.warn)
+                        .linearText(OnePlusLinearMetrics.control, color: OnePlusLinearColor.warning)
                         .frame(maxWidth: .infinity, alignment: .leading)
                         .padding(.horizontal, 12)
                         .padding(.vertical, 7)
                     QuietDivider()
                 }
                 HStack(spacing: 0) {
-                    statusColumn(title: "NOT UPLOADED", status: .pending, rows: projection.pendingRows, tint: OnePlusColor.warn)
+                    statusColumn(title: "NOT UPLOADED", status: .pending, rows: projection.pendingRows, tint: OnePlusLinearColor.warning)
                     QuietDivider()
-                    statusColumn(title: "UPLOADED", status: .uploaded, rows: projection.uploadedRows, tint: OnePlusColor.ok)
+                    statusColumn(title: "UPLOADED", status: .uploaded, rows: projection.uploadedRows, tint: OnePlusLinearColor.success)
                 }
             }
         }
@@ -323,8 +318,8 @@ struct TransferFileTreeView: View {
         VStack(spacing: 0) {
             HStack(spacing: 6) {
                 Circle().fill(tint).frame(width: 6, height: 6)
-                Text(title).onePlusText(.caption).foregroundStyle(OnePlusColor.secondary)
-                Text("\(rows.count)").onePlusText(.caption).foregroundStyle(OnePlusColor.muted).monospacedDigit()
+                Text(title).linearText(OnePlusLinearMetrics.control, color: OnePlusLinearColor.secondary)
+                Text("\(rows.count)").linearText(OnePlusLinearMetrics.control, color: OnePlusLinearColor.muted).monospacedDigit()
                 Spacer()
             }
             .padding(.horizontal, 12)
@@ -333,8 +328,7 @@ struct TransferFileTreeView: View {
 
             if rows.isEmpty {
                 Text(status == .uploaded ? "Nothing uploaded yet" : "Everything is uploaded")
-                    .onePlusText(.caption)
-                    .foregroundStyle(OnePlusColor.muted)
+                    .linearText(OnePlusLinearMetrics.control, color: OnePlusLinearColor.muted)
                     .frame(maxWidth: .infinity, maxHeight: .infinity)
             } else {
                 ScrollView {
@@ -384,7 +378,7 @@ struct TransferFileTreeView: View {
     private var toastView: some View {
         if let toast {
             Text(toast)
-                .onePlusText(.caption)
+                .linearText(OnePlusLinearMetrics.control, color: OnePlusLinearColor.secondary)
                 .lineLimit(2)
                 .padding(.horizontal, 12)
                 .padding(.vertical, 8)
@@ -625,8 +619,7 @@ private struct FileTreeRowView: View {
 
             if isIgnored {
                 Text("ignored")
-                    .onePlusText(.caption)
-                    .foregroundStyle(OnePlusColor.muted)
+                    .linearText(OnePlusLinearMetrics.control, color: OnePlusLinearColor.muted)
 
             } else {
                 OnePlusLinearIconButton(systemImage: "eye.slash", help: "Add to ignore patterns",
@@ -642,7 +635,7 @@ private struct FileTreeRowView: View {
         .padding(.vertical, 4)
         .padding(.trailing, 8)
         .padding(.leading, 8 + CGFloat(depth) * 16)
-        .onePlusRowHover()
+        .linearGroupRowHover()
         .onePlusHover($isHovering)
     }
 
@@ -678,8 +671,7 @@ private struct FileTreeRowView: View {
                 .frame(width: 12, height: 12)
         } else {
             Image(systemName: "chevron.right")
-                .onePlusText(.caption)
-                .foregroundStyle(OnePlusColor.secondary)
+                .linearText(OnePlusLinearMetrics.control, color: OnePlusLinearColor.secondary)
                 .rotationEffect(.degrees(isExpanded ? 90 : 0))
                 .frame(width: 12, height: 12)
         }
@@ -687,14 +679,13 @@ private struct FileTreeRowView: View {
 
     private var entryIcon: some View {
         Image(systemName: entry.icon)
-            .onePlusText(.caption)
-            .foregroundStyle(entry.isDir ? AnyShapeStyle(OnePlusColor.accent) : AnyShapeStyle(OnePlusColor.secondary))
+            .linearText(OnePlusLinearMetrics.control, color: entry.isDir ? OnePlusLinearColor.accent : OnePlusLinearColor.secondary)
             .frame(width: 16)
     }
 
     private var nameText: some View {
         Text(label)
-            .onePlusText(.row)
+            .linearText()
             .lineLimit(1)
             .truncationMode(.middle)
     }
@@ -703,14 +694,12 @@ private struct FileTreeRowView: View {
     private var trailingMeta: some View {
         if !size.isEmpty {
             Text(size)
-                .onePlusText(.caption)
-                .foregroundStyle(OnePlusColor.secondary)
+                .linearText(OnePlusLinearMetrics.control, color: OnePlusLinearColor.secondary)
                 .monospacedDigit()
         }
         if let modified {
             Text(modified)
-                .onePlusText(.caption)
-                .foregroundStyle(OnePlusColor.muted)
+                .linearText(OnePlusLinearMetrics.control, color: OnePlusLinearColor.muted)
         }
     }
 }

@@ -65,12 +65,11 @@ struct DevSyncRulesSection: View {
                         .filter { !$0.isEmpty }
                 }
             ))
-            .frame(width: OnePlusMetrics.controlColumn * 2, height: OnePlusMetrics.spacing[8] * 8)
+            .frame(width: OnePlusLinearControlWidth.regular * 2, height: OnePlusLinearSpace.page * 8)
             .padding(OnePlusLinearMetrics.appletRowPadding)
             .help(help)
         }
         .padding(OnePlusLinearMetrics.appletGutter)
-        .environment(\.onePlusLinearControlLook, .quietRaised)
     }
 
     private func metadataRow(title: String, selection: Binding<DevMetadataOption>) -> some View {
@@ -96,7 +95,7 @@ struct DevSyncActivitySection: View {
                         configuration.activityPreset = preset
                         configuration.timing = preset.timing
                     }
-                ), accessibilityLabel: "Activity preset", width: OnePlusMetrics.wideControlColumn)
+                ), accessibilityLabel: "Activity preset", width: OnePlusLinearControlWidth.wide)
             }
             OnePlusLinearAppletRow("Advanced timing") {
                 OnePlusLinearIconButton(
@@ -136,7 +135,7 @@ struct DevSyncPairSettingsPage: View {
     var body: some View {
         OnePlusLinearPaneBody {
             if let message = manager.errorBanner {
-                OnePlusBanner(message, tone: .error) {
+                OnePlusLinearBanner(.error, title: message) {
                     Button("Dismiss") { manager.errorBanner = nil }
                 }
             }

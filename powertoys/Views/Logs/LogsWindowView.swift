@@ -270,7 +270,7 @@ struct LogsWindowView: View {
     @State private var searchFocus = 0
 
     var body: some View {
-        LinearToolWindow(canvas: .logs) {
+        LinearToolWindow(canvas: .logs, editorial: true) {
             LogsSidebar(
                 page: Binding(get: { page }, set: { page = $0 }),
                 selectedLevels: $selectedLevels,
@@ -422,8 +422,8 @@ private struct LogsSidebar: View {
 private struct LogsPageView: View {
     private static let columns: [OnePlusGridColumn] = [
         OnePlusGridColumn("Time", width: 168, textRole: .mono),
-        OnePlusGridColumn("Level", width: 96, textColor: OnePlusColor.secondary,
-                          headerLabelInset: OnePlusMetrics.navIcon + OnePlusMetrics.spacing[1]),
+        OnePlusGridColumn("Level", width: 96, textColor: OnePlusLinearColor.secondary,
+                          headerLabelInset: OnePlusLinearMetrics.navIcon + OnePlusLinearSpace.tight),
         OnePlusGridColumn("Source", width: 215),
         OnePlusGridColumn("Message", width: 500)
     ]
@@ -470,7 +470,7 @@ private struct LogsPageView: View {
                         choices: SystemLogRange.allCases.map { ($0, $0.title) },
                         selection: $systemRange,
                         accessibilityLabel: "System log time range",
-                        width: OnePlusMetrics.controlColumn
+                        width: OnePlusLinearControlWidth.regular
                     )
                     OnePlusLinearIconButton(systemImage: "arrow.clockwise", help: "Refresh system issues",
                                             size: OnePlusLinearMetrics.toolbarButton) { systemLogs.refresh(range: systemRange) }
@@ -480,7 +480,7 @@ private struct LogsPageView: View {
                     choices: [(String?.none, "All sources")] + sources.map { (Optional($0), $0) },
                     selection: $sourceFilter,
                     accessibilityLabel: "Log source",
-                    width: OnePlusMetrics.controlColumn
+                    width: OnePlusLinearControlWidth.regular
                 )
                 Spacer(minLength: 0)
                 LinearCaption(summary)
@@ -494,10 +494,10 @@ private struct LogsPageView: View {
                 Button("Export") { exportRows() }.buttonStyle(OnePlusLinearButtonStyle(.soft)).disabled(visibleRows.isEmpty || isExporting)
             }
             if let error = logManager.persistenceError, page == .internalLogs {
-                OnePlusBanner("Internal log storage is unavailable: \(error)", tone: .error)
+                OnePlusLinearBanner(.error, title: "Internal log storage is unavailable: \(error)") { EmptyView() }
             }
             if let error = systemLogs.errorMessage, page == .systemIssues {
-                OnePlusBanner(error, tone: .error) {
+                OnePlusLinearBanner(.error, title: error) {
                     Button("Try Again") { systemLogs.refresh(range: systemRange) }
                 }
             }
@@ -520,11 +520,11 @@ private struct LogsPageView: View {
                         }
                         .width(Self.columns[0].width)
                         TableColumn("Level", value: \LogsRow.level) { row in
-                            HStack(spacing: OnePlusMetrics.spacing[1]) {
+                            HStack(spacing: OnePlusLinearSpace.tight) {
                                 Image(systemName: row.symbol)
                                     .foregroundStyle(levelGlyphColor(row))
                                     .accessibilityHidden(true)
-                                    .frame(width: OnePlusMetrics.navIcon)
+                                    .frame(width: OnePlusLinearMetrics.navIcon)
                                 Text(row.level)
                                     .lineLimit(1)
                             }
@@ -565,9 +565,9 @@ private struct LogsPageView: View {
             }
         }
         .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topLeading)
-        .padding(.top, OnePlusLinearMetrics.bodyTop)
-        .padding(.horizontal, OnePlusLinearMetrics.gutter)
-        .padding(.bottom, OnePlusLinearMetrics.gutter)
+        .padding(.top, OnePlusLinearEditorialMetrics.bodyTop)
+        .padding(.horizontal, OnePlusLinearEditorialMetrics.gutter)
+        .padding(.bottom, OnePlusLinearEditorialMetrics.bottom)
         .accessibilityIdentifier("logs.\(page.rawValue)")
         .task {
             sortOrder = LogsPresentation.sortOrder(column: sortColumn, direction: sortDirection)
@@ -691,12 +691,12 @@ private struct LogsPageView: View {
     }
 
     private func levelGlyphColor(_ row: LogsRow) -> Color {
-        if row.level == SystemLogLine.Level.fault.rawValue { return OnePlusColor.danger }
+        if row.level == SystemLogLine.Level.fault.rawValue { return OnePlusLinearColor.destructiveText }
         switch row.levelFilter {
-        case .error: return OnePlusColor.danger
-        case .warning: return OnePlusColor.warn
-        case .info: return OnePlusColor.secondary
-        case .debug: return OnePlusColor.muted
+        case .error: return OnePlusLinearColor.destructiveText
+        case .warning: return OnePlusLinearColor.warning
+        case .info: return OnePlusLinearColor.secondary
+        case .debug: return OnePlusLinearColor.muted
         }
     }
 
@@ -738,30 +738,30 @@ private struct LogsPageView: View {
     }
 }
 
-private struct LogDetailSheet: View {
+struct LogDetailSheet: View {
     let row: LogsRow
     let fontSize: Int
     let close: () -> Void
 
     var body: some View {
-        OnePlusSheet("Log Entry", width: .large, close: close) {
+        OnePlusLinearSheet("Log Entry", width: .large, close: close) {
             ScrollView {
-                VStack(alignment: .leading, spacing: OnePlusMetrics.spacing[3]) {
-                    OnePlusKeyValueRow("Time", value: row.detailTime, monospaced: true)
-                    OnePlusKeyValueRow("Level", value: row.level)
-                    HStack(alignment: .firstTextBaseline, spacing: OnePlusMetrics.spacing[2]) {
-                        Text("Source").onePlusText(.caption)
-                            .fixedSize()
-                        Spacer(minLength: 0)
-                        Text(row.source).onePlusText(.mono).textSelection(.enabled)
-                            .multilineTextAlignment(.trailing)
+                VStack(alignment: .leading, spacing: OnePlusLinearSpace.section) {
+                    OnePlusLinearAppletGroup {
+                        detailRow("Time", row.detailTime)
+                        detailRow("Level", row.level)
+                        detailRow("Source", row.source)
                     }
-                    OnePlusColor.lineSoft.frame(height: 1)
                     Text(row.message)
                         .font(.system(size: CGFloat(fontSize), design: .monospaced))
-                        .foregroundStyle(OnePlusColor.ink)
+                        .foregroundStyle(OnePlusLinearColor.ink)
                         .textSelection(.enabled)
-                        .frame(maxWidth: .infinity, minHeight: OnePlusMetrics.spacing[8] * 4, alignment: .topLeading)
+                        .frame(maxWidth: .infinity, minHeight: OnePlusLinearSpace.page * 4, alignment: .topLeading)
+                        .padding(OnePlusLinearMetrics.appletRowPadding)
+                        .background(OnePlusLinearColor.fillGroup,
+                                    in: RoundedRectangle(cornerRadius: OnePlusLinearMetrics.appletGroupRadius, style: .continuous))
+                        .overlay(RoundedRectangle(cornerRadius: OnePlusLinearMetrics.appletGroupRadius, style: .continuous)
+                            .strokeBorder(OnePlusLinearColor.line, lineWidth: 1))
                 }
             }
             .onePlusScrollIndicators()
@@ -777,11 +777,19 @@ private struct LogDetailSheet: View {
                 .buttonStyle(OnePlusLinearButtonStyle(.soft))
         }
     }
+
+    /// A label and a selectable value, so time, level, and source copy like the message.
+    private func detailRow(_ label: String, _ value: String) -> some View {
+        OnePlusLinearAppletRow(label) {
+            Text(value).linearText(color: OnePlusLinearColor.secondary).textSelection(.enabled)
+                .lineLimit(1).truncationMode(.middle).help(value)
+        }
+    }
 }
 
 struct LogsSettingsPage: View {
     var body: some View {
-        OnePlusLinearPaneBody {
+        OnePlusLinearEditorialBody {
             LogsSettingsView()
         }
         .accessibilityIdentifier("logs.settings")
@@ -798,7 +806,7 @@ struct LogsSettingsView: View {
                     choices: [(10, "Small"), (11, "Medium"), (12, "Default"), (14, "Large")],
                     selection: $fontSize,
                     accessibilityLabel: "Log font size",
-                    width: OnePlusMetrics.controlColumn
+                    width: OnePlusLinearControlWidth.regular
                 )
             }
             .help("Used for selectable log detail text.")

@@ -65,7 +65,7 @@ struct AddRemoteSheet: View {
     }
 
     var body: some View {
-        OnePlusSheet("Add Remote", width: .medium, close: close) {
+        OnePlusLinearSheet("Add Remote", width: .medium, close: close) {
             Group {
                 switch manager.authState {
                 case .idle:
@@ -80,7 +80,7 @@ struct AddRemoteSheet: View {
                     failedView(message: message)
                 }
             }
-            .frame(maxWidth: .infinity, minHeight: OnePlusMetrics.spacing[8] * 18, maxHeight: .infinity)
+            .frame(maxWidth: .infinity, minHeight: OnePlusLinearSpace.page * 18, maxHeight: .infinity)
         } footer: {
             if case .idle = manager.authState, let provider = selectedProvider {
                 Button(connectButtonTitle) {
@@ -122,7 +122,7 @@ struct AddRemoteSheet: View {
             centeredProgress("Loading rclone connectors…")
         } else if let error = manager.providerLoadError {
             VStack(spacing: 12) {
-                Text(error).onePlusText(.row).foregroundStyle(OnePlusColor.secondary)
+                Text(error).linearText(color: OnePlusLinearColor.secondary)
                 Button("Retry") { Task { await manager.loadProviders() } }
                     .buttonStyle(OnePlusLinearButtonStyle(.soft))
             }
@@ -169,7 +169,7 @@ struct AddRemoteSheet: View {
             fieldTitle("SIGN IN")
             OnePlusLinearSelect(choices: authenticationModes.map { ($0, $0.title) },
                                 selection: $selectedAuthenticationMode, accessibilityLabel: "Sign-in method",
-                                width: OnePlusMetrics.wideControlColumn)
+                                width: OnePlusLinearControlWidth.wide)
                 .help(selectedAuthenticationMode.detail)
         }
     }
@@ -186,7 +186,7 @@ struct AddRemoteSheet: View {
     private func optionField(_ option: RcloneProviderOption) -> some View {
         VStack(alignment: .leading, spacing: 5) {
             Text(option.label + (option.required ? " *" : ""))
-                .onePlusText(.cardTitle)
+                .linearText(weight: .semibold)
 
             if option.type == "bool" {
                 Toggle("Enabled", isOn: boolBinding(option))
@@ -197,7 +197,7 @@ struct AddRemoteSheet: View {
                     choices: exclusiveChoices(for: option),
                     selection: valueBinding(option),
                     accessibilityLabel: option.label,
-                    width: OnePlusMetrics.wideControlColumn
+                    width: OnePlusLinearControlWidth.wide
                 )
             } else if option.isPassword {
                 SecureField(option.defaultValue, text: valueBinding(option))
@@ -208,7 +208,7 @@ struct AddRemoteSheet: View {
 
             if !option.help.isEmpty {
                 Image(systemName: "info.circle")
-                    .foregroundStyle(OnePlusColor.secondary)
+                    .foregroundStyle(OnePlusLinearColor.secondary)
                     .help(option.help)
                     .accessibilityLabel(option.help)
             }
@@ -232,10 +232,9 @@ struct AddRemoteSheet: View {
     private func questionView(remoteName: String, prompt: RemoteConfigurationPrompt) -> some View {
         VStack(alignment: .leading, spacing: 12) {
             Text(prompt.option.label)
-                .onePlusText(.sectionTitle)
+                .linearText(weight: .semibold)
             Text(prompt.option.help)
-                .onePlusText(.caption)
-                .foregroundStyle(OnePlusColor.secondary)
+                .linearText(OnePlusLinearMetrics.control, color: OnePlusLinearColor.secondary)
                 .fixedSize(horizontal: false, vertical: true)
 
             if prompt.option.type == "bool" {
@@ -247,7 +246,7 @@ struct AddRemoteSheet: View {
                     choices: exclusiveChoices(for: prompt.option),
                     selection: $promptAnswer,
                     accessibilityLabel: prompt.option.label,
-                    width: OnePlusMetrics.wideControlColumn
+                    width: OnePlusLinearControlWidth.wide
                 )
             } else if prompt.option.isPassword {
                 SecureField(prompt.option.defaultValue, text: $promptAnswer)
@@ -298,10 +297,9 @@ struct AddRemoteSheet: View {
         VStack(spacing: 12) {
             ProgressView()
             Text("Waiting for connector setup…")
-                .onePlusText(.row)
+                .linearText()
             Text("If a browser opened, finish signing in as ‘\(remoteName)’. This window updates automatically.")
-                .onePlusText(.caption)
-                .foregroundStyle(OnePlusColor.secondary)
+                .linearText(OnePlusLinearMetrics.control, color: OnePlusLinearColor.secondary)
                 .multilineTextAlignment(.center)
                 .fixedSize(horizontal: false, vertical: true)
             Button("Cancel") { manager.cancelAuth() }
@@ -313,9 +311,11 @@ struct AddRemoteSheet: View {
 
     private func succeededView(remoteName: String) -> some View {
         VStack(spacing: 12) {
-            Image(systemName: "checkmark.circle.fill").onePlusText(.pageTitle).foregroundStyle(OnePlusColor.ok)
-            Text("\(remoteName) connected").onePlusText(.cardTitle)
-            Text("You can start transferring to it right away.").onePlusText(.caption).foregroundStyle(OnePlusColor.secondary)
+            Image(systemName: "checkmark.circle.fill")
+                .font(.system(size: OnePlusLinearEditorialMetrics.title, weight: .semibold))
+                .foregroundStyle(OnePlusLinearColor.success)
+            Text("\(remoteName) connected").linearText(weight: .semibold)
+            Text("You can start transferring to it right away.").linearText(OnePlusLinearMetrics.control, color: OnePlusLinearColor.secondary)
             Button("Done") {
                 manager.acknowledgeAuthResult()
                 dismiss()
@@ -329,10 +329,11 @@ struct AddRemoteSheet: View {
 
     private func failedView(message: String) -> some View {
         VStack(spacing: 12) {
-            Image(systemName: "exclamationmark.triangle").onePlusText(.pageTitle).foregroundStyle(OnePlusColor.warn)
+            Image(systemName: "exclamationmark.triangle")
+                .font(.system(size: OnePlusLinearEditorialMetrics.title, weight: .semibold))
+                .foregroundStyle(OnePlusLinearColor.warning)
             Text(message)
-                .onePlusText(.row)
-                .foregroundStyle(OnePlusColor.secondary)
+                .linearText(color: OnePlusLinearColor.secondary)
                 .multilineTextAlignment(.center)
                 .textSelection(.enabled)
                 .fixedSize(horizontal: false, vertical: true)
@@ -363,13 +364,13 @@ struct AddRemoteSheet: View {
     }
 
     private func fieldTitle(_ title: String) -> some View {
-        Text(title).onePlusText(.caption).foregroundStyle(OnePlusColor.secondary)
+        Text(title).linearText(OnePlusLinearMetrics.control, color: OnePlusLinearColor.secondary)
     }
 
     private func centeredProgress(_ title: String) -> some View {
         VStack(spacing: 10) {
             ProgressView()
-            Text(title).onePlusText(.row).foregroundStyle(OnePlusColor.secondary)
+            Text(title).linearText(color: OnePlusLinearColor.secondary)
         }
         .frame(maxWidth: .infinity, maxHeight: .infinity)
     }
@@ -426,8 +427,7 @@ private struct ProviderDropdown: View {
                     LazyVStack(spacing: 0) {
                         if providers.isEmpty {
                             Text("No connectors found")
-                                .onePlusText(.row)
-                                .foregroundStyle(OnePlusColor.secondary)
+                                .linearText(color: OnePlusLinearColor.secondary)
                                 .frame(maxWidth: .infinity, minHeight: Self.rowHeight)
                         } else {
                             ForEach(providers) { provider in
@@ -445,7 +445,7 @@ private struct ProviderDropdown: View {
             .frame(height: listHeight)
         }
         .frame(width: width)
-        .background(OnePlusColor.panel)
+        .background(OnePlusLinearColor.fillGroup)
     }
 
     private func providerRow(_ provider: RcloneProvider) -> some View {
@@ -455,18 +455,18 @@ private struct ProviderDropdown: View {
         } label: {
             HStack(spacing: 8) {
                 Image(systemName: "checkmark")
-                    .onePlusText(.caption)
+                    .linearText(OnePlusLinearMetrics.control, color: OnePlusLinearColor.secondary)
                     .opacity(selection == provider.id ? 1 : 0)
                     .frame(width: 12)
                 Text(provider.displayName)
-                    .onePlusText(.row)
+                    .linearText()
                     .lineLimit(1)
                     .truncationMode(.tail)
                     .frame(maxWidth: .infinity, alignment: .leading)
             }
             .padding(.horizontal, 10)
             .frame(height: Self.rowHeight)
-            .onePlusRowHover(selected: selection == provider.id)
+            .linearGroupRowHover(selected: selection == provider.id)
             .contentShape(Rectangle())
         }
         .buttonStyle(.plain)

@@ -3,7 +3,7 @@ import SwiftUI
 
 struct RcloneSettingsPage: View {
     var body: some View {
-        OnePlusLinearPaneBody { RcloneSettingsView() }
+        OnePlusLinearEditorialBody { RcloneSettingsView() }
             .accessibilityIdentifier("rclone.settings")
     }
 }

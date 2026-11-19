@@ -17,7 +17,7 @@ struct RcloneTransferListView: View {
         let jobs = manager.filteredJobs
         RSyncFixedPane {
             if let message = manager.errorBanner {
-                OnePlusBanner(message, tone: .error) {
+                OnePlusLinearBanner(.error, title: message) {
                     Button("Dismiss") { manager.errorBanner = nil }
                 }
             }
@@ -35,8 +35,14 @@ struct RcloneTransferListView: View {
                 }
             } else {
                 ScrollView {
-                    LazyVStack(spacing: OnePlusMetrics.spacing[3]) {
-                        ForEach(jobs) { TransferJobRow(job: $0) }
+                    VStack(alignment: .leading, spacing: OnePlusLinearEditorialMetrics.blockGap) {
+                        if RcloneTransferPresentation.showsNewTransferAction(for: manager.filter) {
+                            CloudSyncTiles(active: manager.activeJobs)
+                                .environment(\.onePlusLinearPanelStyle, .fillSteps)
+                        }
+                        OnePlusLinearList {
+                            ForEach(jobs) { TransferJobRow(job: $0) }
+                        }
                     }
                 }
                 .onePlusScrollIndicators()

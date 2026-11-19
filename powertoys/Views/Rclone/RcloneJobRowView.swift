@@ -10,54 +10,54 @@ struct TransferJobRow: View {
     private var hasFiles: Bool { !job.stats.transferring.isEmpty }
     private var stateColor: Color {
         switch job.state {
-        case .completed: OnePlusColor.ok
-        case .retrying, .paused: OnePlusColor.warn
-        case .failed: OnePlusColor.danger
-        case .cancelled: OnePlusColor.muted
-        default: OnePlusColor.dataBlue
+        case .completed: OnePlusLinearColor.success
+        case .retrying, .paused: OnePlusLinearColor.warning
+        case .failed: OnePlusLinearColor.destructiveText
+        case .cancelled: OnePlusLinearColor.muted
+        default: OnePlusLinearColor.cpu
         }
     }
 
     var body: some View {
-        OnePlusLinearList {
-            VStack(alignment: .leading, spacing: OnePlusMetrics.spacing[3]) {
-                identityRow
-                OnePlusUsageBar(value: job.progressFraction, color: stateColor)
-                    .accessibilityLabel("Transfer progress")
+        VStack(alignment: .leading, spacing: OnePlusLinearSpace.row) {
+            identityRow
+            OnePlusLinearUsageBar(job.progressFraction, color: stateColor)
+                .frame(height: OnePlusLinearMetrics.usageBar)
+                .accessibilityLabel("Transfer progress")
 
-                if let message = job.errorMessage {
-                    Label(message, systemImage: "exclamationmark.triangle.fill")
-                        .onePlusText(.caption)
-                        .foregroundStyle(OnePlusColor.danger)
-                        .textSelection(.enabled)
-                }
-
-                if job.isExpanded { fileDetails }
+            if let message = job.errorMessage {
+                Label(message, systemImage: "exclamationmark.triangle.fill")
+                    .linearText(OnePlusLinearMetrics.control, color: OnePlusLinearColor.destructiveText)
+                    .textSelection(.enabled)
             }
-            .padding(OnePlusMetrics.cardPadding)
-            .onePlusRowHover()
+
+            if job.isExpanded { fileDetails }
         }
+        .padding(.horizontal, OnePlusLinearMetrics.appletRowPadding)
+        .padding(.vertical, OnePlusLinearSpace.group)
+        .linearGroupRowHover()
         .contextMenu { contextMenu }
         .sheet(isPresented: $showInfo) { TransferInfoSheet(job: job) }
         .accessibilityIdentifier("rclone.transfer.\(job.id)")
     }
 
     private var identityRow: some View {
-        HStack(spacing: OnePlusMetrics.spacing[2]) {
+        HStack(spacing: OnePlusLinearSpace.group) {
             Image(systemName: job.operation.icon)
-                .foregroundStyle(OnePlusColor.secondary)
-                .frame(width: OnePlusMetrics.controlHeight, height: OnePlusMetrics.controlHeight)
-                .background(OnePlusColor.raised, in: RoundedRectangle(cornerRadius: OnePlusMetrics.controlRadius))
+                .font(.system(size: OnePlusLinearEditorialMetrics.rowGlyphSize))
+                .foregroundStyle(OnePlusLinearColor.secondary)
+                .frame(width: OnePlusLinearEditorialMetrics.rowGlyph)
                 .accessibilityHidden(true)
-            VStack(alignment: .leading, spacing: OnePlusMetrics.spacing[0]) {
-                pathChip(job.sourceDisplay)
-                pathChip(job.destinationDisplay).foregroundStyle(OnePlusColor.secondary)
+            VStack(alignment: .leading, spacing: OnePlusLinearSpace.hair) {
+                pathChip(job.sourceDisplay, color: OnePlusLinearColor.ink)
+                pathChip(job.destinationDisplay, color: OnePlusLinearColor.secondary)
             }
-            Spacer(minLength: OnePlusMetrics.spacing[2])
+            Spacer(minLength: OnePlusLinearSpace.small)
             Text("\(RcloneFormat.bytes(job.progressBytes)) / \(RcloneFormat.bytes(job.effectiveTotalBytes))\(job.isSizing ? "~" : "") · \(job.progressFiles)/\(job.effectiveTotalFiles) files")
-                .onePlusText(.mono).lineLimit(1)
+                .linearText(OnePlusLinearMetrics.control, color: OnePlusLinearColor.secondary).monospacedDigit().lineLimit(1)
             if job.state == .running {
-                Text(RcloneFormat.speed(job.stats.speed)).onePlusText(.mono)
+                Text(RcloneFormat.speed(job.stats.speed))
+                    .linearText(OnePlusLinearMetrics.control, color: OnePlusLinearColor.secondary).monospacedDigit()
             }
             if job.state == .retrying { retryHint } else { stateBadge }
             if job.kind == .file { priorityMenu }
@@ -66,21 +66,21 @@ struct TransferJobRow: View {
         }
     }
 
-    private func pathChip(_ value: String) -> some View {
+    private func pathChip(_ value: String, color: Color) -> some View {
         Text(value)
-            .onePlusText(.mono)
+            .linearText(color: color)
             .lineLimit(1)
             .truncationMode(.middle)
-
+            .help(value)
     }
 
     private var stateBadge: some View {
-        HStack(spacing: OnePlusMetrics.spacing[1]) {
+        HStack(spacing: OnePlusLinearSpace.tight) {
             Image(systemName: job.state.icon).accessibilityHidden(true)
             Text(job.state == .running ? "ETA \(RcloneFormat.eta(job.displayEta))" : job.state.displayName)
                 .monospacedDigit()
         }
-        .onePlusText(.caption)
+        .font(.system(size: OnePlusLinearMetrics.control, weight: .medium))
         .foregroundStyle(stateColor)
         .help("Attempt \(job.attempt)/\(job.maxRetries)")
         .fixedSize()
@@ -91,11 +91,10 @@ struct TransferJobRow: View {
         if let nextRetryAt = job.nextRetryAt {
             TimelineView(.periodic(from: .now, by: 1)) { context in
                 Text("Retrying in \(max(0, Int(nextRetryAt.timeIntervalSince(context.date).rounded())))s")
-                    .onePlusText(.mono)
-                    .foregroundStyle(OnePlusColor.warn)
+                    .linearText(OnePlusLinearMetrics.control, color: OnePlusLinearColor.warning).monospacedDigit()
             }
         } else {
-            Text("Retrying…").onePlusText(.caption).foregroundStyle(OnePlusColor.warn)
+            Text("Retrying…").linearText(OnePlusLinearMetrics.control, color: OnePlusLinearColor.warning)
         }
     }
 
@@ -107,12 +106,12 @@ struct TransferJobRow: View {
                 set: { manager.setPriority($0, for: job) }
             ),
             accessibilityLabel: "File priority",
-            width: OnePlusMetrics.controlColumn
+            width: OnePlusLinearControlWidth.regular
         )
     }
 
     private var actionButtons: some View {
-        HStack(spacing: OnePlusMetrics.spacing[1]) {
+        HStack(spacing: OnePlusLinearSpace.tight) {
             if job.canPause { iconButton("pause", "Pause") { manager.pause(job) } }
             if job.canResume { iconButton("play", "Resume") { manager.resume(job) } }
             if job.canRetry { iconButton("arrow.clockwise", "Retry") { manager.retry(job) } }
@@ -138,11 +137,11 @@ struct TransferJobRow: View {
 
     private var fileDetails: some View {
         LazyVStack(alignment: .leading, spacing: 0) {
-            OnePlusColor.lineSoft.frame(height: 1)
+            OnePlusLinearColor.lineSoft.frame(height: 1)
             if job.stats.transferring.isEmpty {
                 Text("No files transferring")
-                    .onePlusText(.caption)
-                    .padding(.top, OnePlusMetrics.spacing[3])
+                    .linearText(OnePlusLinearMetrics.control, color: OnePlusLinearColor.secondary)
+                    .padding(.top, OnePlusLinearSpace.row)
             } else {
                 ForEach(job.stats.transferring) { file in
                     TransferFileProgressRow(file: file) { global in
@@ -190,23 +189,28 @@ private struct TransferFileProgressRow: View {
 
     var body: some View {
         VStack(spacing: 0) {
-            HStack(spacing: OnePlusMetrics.spacing[3]) {
+            HStack(spacing: OnePlusLinearSpace.row) {
                 Text(file.name)
-                    .onePlusText(.mono)
+                    .font(.system(size: OnePlusLinearMetrics.control, design: .monospaced))
+                    .foregroundStyle(OnePlusLinearColor.ink)
                     .lineLimit(1)
                     .truncationMode(.middle)
+                    .textSelection(.enabled)
                     .frame(maxWidth: .infinity, alignment: .leading)
-                Text(RcloneFormat.bytes(file.size)).onePlusText(.mono).foregroundStyle(OnePlusColor.secondary)
-                OnePlusUsageBar(value: file.fraction).frame(width: OnePlusMetrics.spacing[8] * 3)
-                Text("\(file.percentage)%").onePlusText(.mono).monospacedDigit()
-                Text(RcloneFormat.speed(file.speed)).onePlusText(.mono).foregroundStyle(OnePlusColor.secondary)
+                Text(RcloneFormat.bytes(file.size))
+                    .linearText(OnePlusLinearMetrics.control, color: OnePlusLinearColor.secondary).monospacedDigit()
+                OnePlusLinearUsageBar(file.fraction, color: OnePlusLinearColor.cpu)
+                    .frame(width: OnePlusLinearSpace.page * 3, height: OnePlusLinearMetrics.usageBar)
+                Text("\(file.percentage)%").linearText(OnePlusLinearMetrics.control).monospacedDigit()
+                Text(RcloneFormat.speed(file.speed))
+                    .linearText(OnePlusLinearMetrics.control, color: OnePlusLinearColor.secondary).monospacedDigit()
                 OnePlusMenuButton("Ignore this file", systemImage: "nosign", variant: .borderedIcon, items: [
                     .item(.init("Ignore This Time") { ignore(false) }),
                     .item(.init("Ignore and Add to Ignore List") { ignore(true) })
                 ])
             }
             .frame(minHeight: OnePlusTable.rowHeight(.regular))
-            OnePlusColor.lineSoft.frame(height: 1)
+            OnePlusLinearColor.lineSoft.frame(height: 1)
         }
     }
 }

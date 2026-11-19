@@ -78,7 +78,7 @@ struct ActivityView: View {
                         columns: [
                             OnePlusGridColumn("Time", width: 176, textRole: .mono),
                             OnePlusGridColumn("Operation", width: 100),
-                            OnePlusGridColumn("Source", width: 188, textRole: .mono, textColor: OnePlusColor.ink),
+                            OnePlusGridColumn("Source", width: 188, textRole: .mono, textColor: OnePlusLinearColor.ink),
                             OnePlusGridColumn("Destination", width: 200, textRole: .mono),
                             OnePlusGridColumn("Size", width: 88, trailing: true),
                             OnePlusGridColumn("Duration", width: 88, trailing: true),

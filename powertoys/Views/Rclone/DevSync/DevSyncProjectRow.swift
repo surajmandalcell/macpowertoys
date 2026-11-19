@@ -21,24 +21,23 @@ struct DevSyncProjectRow: View {
     }
 
     var body: some View {
-        VStack(alignment: .leading, spacing: OnePlusMetrics.spacing[3]) {
+        VStack(alignment: .leading, spacing: OnePlusLinearSpace.row) {
             identityLine
 
             ForEach(project.warnings, id: \.self) { warning in
                 Label(warning.displayName, systemImage: "exclamationmark.triangle.fill")
-                    .onePlusText(.caption)
-                    .foregroundStyle(OnePlusColor.warn)
+                    .linearText(OnePlusLinearMetrics.control, color: OnePlusLinearColor.warning)
             }
 
             if project.state == .missing {
                 missingDecisions
             }
         }
-        .padding(.horizontal, OnePlusMetrics.cardPadding)
-        .padding(.vertical, OnePlusMetrics.spacing[3])
-        .frame(minHeight: OnePlusMetrics.captionedSettingRow)
-        .onePlusRowHover()
-        .overlay(alignment: .bottom) { OnePlusColor.lineSoft.frame(height: 1) }
+        .padding(.horizontal, OnePlusLinearSpace.section)
+        .padding(.vertical, OnePlusLinearSpace.row)
+        .frame(minHeight: OnePlusLinearEditorialMetrics.toolRow)
+        .linearGroupRowHover()
+        .overlay(alignment: .bottom) { OnePlusLinearColor.lineSoft.frame(height: 1) }
     }
 
     // MARK: Identity
@@ -48,19 +47,18 @@ struct DevSyncProjectRow: View {
             residencyChip
             VStack(alignment: .leading, spacing: 2) {
                 Text(project.displayName)
-                    .onePlusText(.row)
+                    .linearText()
                 Text(project.isRootUnit ? "Files outside repositories" : project.relativePath)
-                    .onePlusText(.caption)
-                    .foregroundStyle(OnePlusColor.secondary)
+                    .linearText(OnePlusLinearMetrics.control, color: OnePlusLinearColor.secondary)
                     .lineLimit(1)
                     .truncationMode(.middle)
             }
-            Spacer(minLength: OnePlusMetrics.spacing[3])
-            Text(metricsText).onePlusText(.caption).lineLimit(1).help(metricsText)
+            Spacer(minLength: OnePlusLinearSpace.row)
+            Text(metricsText).linearText(OnePlusLinearMetrics.control, color: OnePlusLinearColor.secondary).lineLimit(1).help(metricsText)
             DevSyncStateBadge(
                 icon: project.residency.icon,
                 title: project.residency.displayName,
-                tint: OnePlusColor.secondary
+                tint: OnePlusLinearColor.secondary
             )
             DevSyncStateBadge(
                 icon: stateIcon,
@@ -80,9 +78,8 @@ struct DevSyncProjectRow: View {
 
     private var residencyChip: some View {
         Image(systemName: project.residency.icon)
-            .onePlusText(.cardTitle)
-            .foregroundStyle(OnePlusColor.accent)
-            .frame(width: OnePlusMetrics.navIcon)
+            .linearText(weight: .semibold, color: OnePlusLinearColor.accent)
+            .frame(width: OnePlusLinearMetrics.navIcon)
             .accessibilityHidden(true)
     }
 
@@ -117,7 +114,7 @@ struct DevSyncProjectRow: View {
             DevSyncStateBadge(
                 icon: "arrow.triangle.branch",
                 title: DevSyncFormat.count(driftPaths.count, singular: "drift path", plural: "drift paths"),
-                tint: OnePlusColor.warn
+                tint: OnePlusLinearColor.warning
             )
         }
         .buttonStyle(.plain)
@@ -135,9 +132,11 @@ struct DevSyncProjectRow: View {
             ForEach(driftPaths, id: \.self) { path in
                 VStack(alignment: .leading, spacing: 4) {
                     Text(path)
-                        .onePlusText(.mono)
+                        .font(.system(size: OnePlusLinearMetrics.control, design: .monospaced))
+                        .foregroundStyle(OnePlusLinearColor.secondary)
                         .lineLimit(1)
                         .truncationMode(.middle)
+                        .textSelection(.enabled)
                     HStack(spacing: 8) {
                         ForEach(DevDriftResolution.allCases, id: \.self) { resolution in
                             Button(resolution.displayName) {
@@ -204,8 +203,7 @@ struct DevSyncProjectRow: View {
     private var missingDecisions: some View {
         VStack(alignment: .leading, spacing: 6) {
             Text("This project is no longer on the internal drive.")
-                .onePlusText(.caption)
-                .foregroundStyle(OnePlusColor.secondary)
+                .linearText(OnePlusLinearMetrics.control, color: OnePlusLinearColor.secondary)
             HStack(spacing: 8) {
                 ForEach(DevMissingProjectDecision.allCases, id: \.self) { decision in
                     Button(decision.displayName) {

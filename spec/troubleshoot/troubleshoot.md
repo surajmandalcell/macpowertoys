@@ -4,9 +4,9 @@ This is the highest-priority repo-local operational guidance after platform and
 direct user instructions. Read this file before every task, before other repo
 rules, and before inspecting or changing implementation files.
 
-## 2026-09-29 Redesign Precedence
+## Design Precedence
 
-The owner adopted `DESIGN.md` version 14 (OnePlusUI) on 2026-09-29. Where an
+`DESIGN.md` (version 15, OnePlusUI) owns every visual value. Where an
 older topic entry states a color, size, radius, material, titlebar geometry,
 or window family that differs from `DESIGN.md`, `DESIGN.md` wins. The entry's
 cause and check stay useful. Update an entry when you change the code it

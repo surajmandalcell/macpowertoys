@@ -22,7 +22,7 @@ colors:
   line-soft: { dark: "#2B2B2B", light: "#E1E1E1" }
   ink: { dark: "#EDEDED", light: "#242424" }
   secondary: { dark: "#C8C8C8", light: "#4B4B4B" }
-  muted: { dark: "#BCBCBC", light: "#565656" }  # at least 4.5:1 including card texture
+  muted: { dark: "#BCBCBC", light: "#565656" }  # at least 4.5:1 on every fill
   metric-caption: { dark: "#A0A0A0", light: "#5B5B5B" }
   control-ink: { dark: "#DEDEDE", light: "#343434" }
   accent: { dark: "#EE5B50", light: "#D94F45" }
@@ -72,7 +72,7 @@ geometry:
   control: { height: 28, compact-height: 24, column: 160, wide-column: 180, stepper-width: 160 }
   tab-strip: { height: 36, gap: 22, underline: 2 }
 windows:
-  main: { size: [820, 660], sidebar: 215, density: regular, resizable: false, texture: none, sidebar-icon: 16, row-icon: 24, hero-icon: 48 }
+  main: { size: [820, 660], sidebar: 215, density: regular, resizable: false, sidebar-icon: 16, row-icon: 24, hero-icon: 48 }
   rclone: { size: [1240, 840], sidebar: 216, density: regular, resizable: false }
   mac-tweaks: { size: [820, 660], sidebar: 200, density: regular, resizable: false }
   logs: { size: [1080, 660], sidebar: 200, density: regular, resizable: false }
@@ -82,16 +82,14 @@ windows:
 menu-panel: { status-icon: 14, status-icon-ink: 11.2, width: 356, max-height-fraction: 0.9 }
 popup-menu: { padding: 5, radius: 7, item: 28, item-compact: 24, item-radius: 4, item-padding: 9, max-visible-items: 12 }
 performance: { page-switch-ms: 100, table-rows-smooth: 1000 }
-texture: { ribbon: [700, 220], ribbon-drawn: [630, 198], ribbon-opacity-dark: 0.20, ribbon-opacity-light: 0.10, metric-wave: [180, 110], metric-wave-opacity: 0.07, chart-dot-cell: 4 }
 ---
 
 # MacPowerToys Design Language
 
 The complete visual and window-structure contract for every window, menu-bar
 panel, sheet, and settings page. Tool icon rules are in `spec/icons.md`.
-Version 15 (Linear style, owner picks 2026-11-16 to 2026-11-19) covers the
-main window, every menu-bar panel, and the applets. The RSync UI and Event
-Viewer windows keep the version 14 window rules below.
+Version 15 (Linear style, owner picks 2026-11-16 to 2026-11-19) covers every
+window, menu-bar panel, sheet, and applet.
 
 ## Sources of truth
 
@@ -128,8 +126,8 @@ All shipped; the rules live in the sections below.
 
 A premium, quiet instrument that feels like a Mac app: real traffic lights,
 menus, text fields, sheets, scroll views, and keyboard behavior. Custom
-drawing is limited to identity: charts, dot titles, texture on version 14
-windows, and the shells of controls whose behavior stays native. Alignment
+drawing is limited to identity: charts, dot titles, tiles, and the shells of
+controls whose behavior stays native. Alignment
 is the first quality bar: one leading edge per container, one height and
 baseline per control row. Speed is part of the look. Nothing moves while
 idle.
@@ -154,7 +152,7 @@ idle.
 - Contrast uses APCA: Lc 60 for row, body, control, and button labels; Lc 45
   for captions and metadata. Disabled text and placeholders are exempt.
   Neutral gray text tokens keep 4.5:1 WCAG 2 on `window`, `sidebar`, and
-  `panel`. Check text on hover, selected, and textured fills too.
+  `panel`. Check text on hover, selected, and tile fills too.
 - Menus, icon buttons, drag handles, and shortcut hints use `controlInk` or
   `secondary`, never the system accent tint.
 
@@ -207,76 +205,54 @@ applets, sheets. Compact density: every menu-bar panel.
   fit a 1920 x 1080 display with the Dock and a 1728 x 1117 laptop. A window
   opens at its saved position, clamped to its display, never a saved size.
 
-## Window anatomy (version 14 windows)
+## Window anatomy
 
 ### Shell
 
 - `.windowStyle(.hiddenTitleBar)`, full-size content, one single-instance
   `Window` scene, no tabbing, restoration disabled.
-- Root `ZStack`: `window` fill, texture, then sidebar and workspace.
+- Root: the `window` fill, then the sidebar and the workspace. No texture
+  or translucency.
 - `OnePlusFixedWindowChrome` fixes the size, disables zoom and full screen,
   keeps the three lights visible, and re-centers them after every layout
   pass and on key.
 - Empty header and sidebar background drags the window.
 
-### Window texture
+### Tool windows (`LinearToolWindow`)
 
-One noninteractive layer at the window root, drawn once in window
-coordinates; it never scrolls or repeats.
+RSync UI, Event Viewer, Mac Tweaks, and Input Devices use the main window's
+sidebar, 44 pt pane toolbar, and back and forward keys (see Main window).
+RSync UI and Event Viewer pass `editorial: true`, which turns on the
+editorial body, "Raised keys" controls, and "Inset, gray glyphs" groups:
 
-- Ribbon: the 700 x 220 ordered-dither ribbon drawn at 630 x 198, top -8,
-  right -16, with a horizontal alpha fade (0, 26, 82, 100%).
-- Metric wave: `textured` cards and tiles draw the grayscale ribbon at
-  180 x 110 pt top right, opacity 0.07, clipped to the card.
-- Chart dither: 4 x 4 pt dots under area charts, one cached pattern.
-- Texture changes luminance only, sits below content, is hidden from
-  accessibility and hit testing, and redraws only on size, appearance, or
-  scale change. Text, controls, rows, and lists never carry it.
+- Pages: `OnePlusLinearEditorialBody` for settings, and
+  `OnePlusLinearEditorialFixedBody` for pages whose own list or table
+  scrolls. Spacing comes from `OnePlusLinearSpace` (2, 4, 6, 8, 12, 16, 20,
+  24) and the control column from `OnePlusLinearControlWidth` (160, 180).
+- Live data: Transfers opens with the Home tiles (`CloudSyncTiles`,
+  `OnePlusLinearBento` with `.instrument` tiles under `.fillSteps`), then
+  one group of transfer rows.
+- Rows: `linearGroupRowHover(selected:)` paints the radius 8 `hover` fill
+  past the row content; nothing moves.
+- Tables: under editorial, `onePlusTableRow` and `OnePlusNativeTable` draw
+  the group fill, sentence-case headers, `lineSoft` row lines, and the
+  `selection` fill, with no zebra stripes.
+- Banners: `OnePlusLinearBanner` (`.info`, `.warning`, `.error`); its text is
+  selectable.
+- Sheets: `OnePlusLinearSheet` (title row, close key, groups, trailing
+  footer keys) inside SwiftUI's `.sheet`.
+- Log lines, paths, and messages stay selectable text.
 
-### Sidebar
+### Rows and the control column
 
-- `sidebar` fill, 1 pt trailing `line`, no material.
-- 32 pt search field, 12 pt side margins, 14 pt below; 20 pt caption slots;
-  32 pt nav rows (29 compact), 2 pt gaps, 10 pt inset and padding, 15 pt
-  SF Symbol, 10 pt icon gap. Bottom nav (Settings, Exit) below a `lineSoft`
-  line when needed.
-- Rest transparent `secondary`; hover `raised`; selected `selection` fill
-  with `ink`. Selection never changes weight, icon, or geometry. No stripe.
-- Count badges: 9 pt SF Mono `muted`, trailing. Entity rows with a second
-  line are 44 pt.
-
-### Page
-
-- 24 pt gutters both sides; every body element starts on the title's
-  leading edge. No second inset, no second page header.
-- Header actions center on the title's first line and end 24 pt from the
-  edge.
-- Fixed regions: header, subtitle, tabs, page toolbars, inspectors, footers.
-  Only the card stack (settings pages) or the table rows scroll.
-- Tab strip: 36 pt, 22 pt between tabs, 2 pt accent underline under the
-  selected tab, 9 pt SF Mono counts 6 pt after the label, full-width
-  `lineSoft` bottom line. Hover: `ink` label on a radius 5 `raised` surface
-  8 pt past the label and 4 pt above and below, drawn behind; nothing moves.
-- Overlay scrollers always. Buttons are 28 pt (24 compact).
-
-### Cards, rows, and the control column
-
-- Card: `panel`, 1 pt `line`, radius 8, 16 pt apart. Header 40 pt, 16 pt
-  padding, optional 13 pt icon, 1 pt `lineSoft` bottom line.
-- Setting row: 44 pt (56 with a caption line), 16 pt padding, `lineSoft`
-  separators. Label and optional help or reset glyph lead; the control sits
-  in a right-aligned 160 pt column (180 pt when one value needs it, one width
-  per card). A reset glyph never moves the column. Labels never wrap.
+- The control sits in a right-aligned 160 pt column (180 pt when one value
+  needs it, one width per group). A reset glyph never moves the column.
+  Labels never wrap.
 - Help and navigation chevrons show on row hover or focus; their width is
   reserved at rest.
-- Short cards pair in two equal columns, top-aligned; long cards take the
-  full width. One-row tiles center their row.
 - Hover highlights the complete row rectangle, never only the text.
 - Controls apply at once; an invalid value stays with an error caption and
   never clamps silently.
-- Metric values: 27 pt, weight 550, also in compact density; captions
-  `metricCaption`. Table rows: 33 pt header, 34 pt body, alternating
-  `panel` and `table-alternate`.
 - Process and server rows draw the app's real icon at the full slot (16 pt
   in panels), with no padded tile, ring, or wrapper. An app with only a
   legacy `.icns` icon uses its own `.icns` art, because macOS 26 wraps it in
@@ -647,8 +623,8 @@ Linear style, OnePlusUI `OnePlusLinear*` parts. Reference:
 - Mac Tweaks and Input Devices: 820 x 660, 200 pt sidebar, one full-width
   column of cards on every page, no preview artwork. Input Devices keeps the
   Scroll device footer fixed; its panel tab embeds the same stacked cards.
-- RSync UI and Event Viewer: the version 14 sidebar, page, card, row, and
-  table anatomy; settings are a sidebar page.
+- RSync UI and Event Viewer: editorial tool windows (see Tool windows);
+  settings are a sidebar page.
 - Ruler: the FreeRuler overlay keeps its pinned visuals. Ruler Settings and
   Defaults keep native titlebars and use OnePlusUI tokens for their bodies.
 

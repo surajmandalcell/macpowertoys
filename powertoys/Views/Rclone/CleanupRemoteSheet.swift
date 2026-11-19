@@ -53,14 +53,16 @@ struct CleanupRemoteSheet: View {
     }
 
     var body: some View {
-        OnePlusSheet("Clean Up by Ignore Rules", width: .medium, close: close) {
+        OnePlusLinearSheet("Clean Up by Ignore Rules", width: .medium, close: close) {
             Text(scope)
-                .onePlusText(.mono)
+                .font(.system(size: OnePlusLinearMetrics.control, design: .monospaced))
+                .foregroundStyle(OnePlusLinearColor.secondary)
+                .textSelection(.enabled)
                 .lineLimit(1)
                 .truncationMode(.middle)
                 .help(scope)
             content
-                .frame(minHeight: OnePlusMetrics.spacing[8] * 15)
+                .frame(minHeight: OnePlusLinearSpace.page * 15)
             if phase == .review {
                 Button(checked.count == 1 ? "Delete 1 Item" : "Delete \(checked.count) Items", role: .destructive) {
                     isConfirmingDeletion = true
@@ -96,17 +98,15 @@ struct CleanupRemoteSheet: View {
                 ProgressView()
                     .controlSize(.small)
                 Text("Scanning \(scope) for matches…")
-                    .onePlusText(.caption)
-                    .foregroundStyle(OnePlusColor.secondary)
+                    .linearText(OnePlusLinearMetrics.control, color: OnePlusLinearColor.secondary)
             }
         case .empty:
             stateContainer {
                 Image(systemName: "checkmark.circle.fill")
-                    .onePlusText(.pageTitle)
-                    .foregroundStyle(OnePlusColor.ok)
+                    .font(.system(size: OnePlusLinearEditorialMetrics.title, weight: .semibold))
+                    .foregroundStyle(OnePlusLinearColor.success)
                 Text("Nothing matches your ignore rules.")
-                    .onePlusText(.row)
-                    .foregroundStyle(OnePlusColor.secondary)
+                    .linearText(color: OnePlusLinearColor.secondary)
             }
         case .review:
             reviewList
@@ -115,8 +115,7 @@ struct CleanupRemoteSheet: View {
                 ProgressView()
                     .controlSize(.small)
                 Text("Deleting \(count) items…")
-                    .onePlusText(.caption)
-                    .foregroundStyle(OnePlusColor.secondary)
+                    .linearText(OnePlusLinearMetrics.control, color: OnePlusLinearColor.secondary)
                     .monospacedDigit()
             }
         case .done(let deleted, let failed):
@@ -124,11 +123,11 @@ struct CleanupRemoteSheet: View {
         case .failure(let message):
             stateContainer {
                 Image(systemName: "exclamationmark.triangle")
-                    .onePlusText(.pageTitle)
-                    .foregroundStyle(OnePlusColor.secondary)
+                    .font(.system(size: OnePlusLinearEditorialMetrics.title, weight: .semibold))
+                    .foregroundStyle(OnePlusLinearColor.secondary)
                 Text(message)
-                    .onePlusText(.row)
-                    .foregroundStyle(OnePlusColor.secondary)
+                    .linearText(color: OnePlusLinearColor.secondary)
+                    .textSelection(.enabled)
                     .multilineTextAlignment(.center)
                     .padding(.horizontal, 40)
                 Button("Retry", action: startScan)
@@ -147,16 +146,15 @@ struct CleanupRemoteSheet: View {
     private func doneSummary(deleted: Int, failed: Int) -> some View {
         stateContainer {
             Image(systemName: failed > 0 ? "exclamationmark.triangle.fill" : "checkmark.circle.fill")
-                .onePlusText(.pageTitle)
-                .foregroundStyle(failed > 0 ? AnyShapeStyle(.orange) : AnyShapeStyle(.green))
+                .font(.system(size: OnePlusLinearEditorialMetrics.title, weight: .semibold))
+                .foregroundStyle(failed > 0 ? OnePlusLinearColor.warning : OnePlusLinearColor.success)
             HStack(spacing: 4) {
                 Text(deleted == 1 ? "Deleted 1 item" : "Deleted \(deleted) items")
-                    .onePlusText(.row)
+                    .linearText()
                     .monospacedDigit()
                 if failed > 0 {
                     Text("· \(failed) failed")
-                        .onePlusText(.row)
-                        .foregroundStyle(OnePlusColor.danger)
+                        .linearText(color: OnePlusLinearColor.destructiveText)
                         .monospacedDigit()
                 }
             }
@@ -192,11 +190,10 @@ struct CleanupRemoteSheet: View {
         HStack(spacing: 8) {
             CheckboxButton(state: selectAllState, action: toggleAll).accessibilityLabel("Select all matches")
             Text("Select all")
-                .onePlusText(.row)
+                .linearText()
             Spacer()
             Text("\(checked.count) selected · \(RcloneFormat.bytes(checkedBytes))")
-                .onePlusText(.caption)
-                .foregroundStyle(OnePlusColor.secondary)
+                .linearText(OnePlusLinearMetrics.control, color: OnePlusLinearColor.secondary)
                 .monospacedDigit()
         }
         .padding(.horizontal, 20)
@@ -205,8 +202,7 @@ struct CleanupRemoteSheet: View {
 
     private func truncationNote(total: Int) -> some View {
         Text("Showing the first \(Self.displayCap) of \(total) matches. Run the cleanup again to catch the rest.")
-            .onePlusText(.caption)
-            .foregroundStyle(OnePlusColor.secondary)
+            .linearText(OnePlusLinearMetrics.control, color: OnePlusLinearColor.secondary)
             .padding(.horizontal, 8)
             .padding(.bottom, 6)
     }
@@ -215,46 +211,42 @@ struct CleanupRemoteSheet: View {
         HStack(spacing: 8) {
             CheckboxButton(state: groupState(group)) { toggleGroup(group) }.accessibilityLabel("Select \(group.title)")
             Image(systemName: "folder")
-                .onePlusText(.caption)
-                .foregroundStyle(OnePlusColor.secondary)
+                .linearText(OnePlusLinearMetrics.control, color: OnePlusLinearColor.secondary)
                 .frame(width: 16)
             Text(group.title)
-                .onePlusText(.cardTitle)
+                .linearText(weight: .semibold)
                 .lineLimit(1)
                 .truncationMode(.middle)
             Spacer(minLength: 8)
             Text("\(group.items.count)")
-                .onePlusText(.caption)
-                .foregroundStyle(OnePlusColor.muted)
+                .linearText(OnePlusLinearMetrics.control, color: OnePlusLinearColor.muted)
                 .monospacedDigit()
         }
         .padding(.horizontal, 8)
         .padding(.top, 8)
         .padding(.bottom, 4)
-        .onePlusRowHover()
+        .linearGroupRowHover()
     }
 
     private func entryRow(_ entry: RemoteEntry) -> some View {
         HStack(spacing: 8) {
             CheckboxButton(state: checked.contains(entry.path) ? .on : .off) { toggle(entry) }.accessibilityLabel("Select \(entry.name)")
             Image(systemName: entry.icon)
-                .onePlusText(.row)
-                .foregroundStyle(entry.isDir ? AnyShapeStyle(OnePlusColor.accent) : AnyShapeStyle(OnePlusColor.secondary))
+                .linearText(color: entry.isDir ? OnePlusLinearColor.accent : OnePlusLinearColor.secondary)
                 .frame(width: 16)
             Text(entry.name)
-                .onePlusText(.row)
+                .linearText()
                 .lineLimit(1)
                 .truncationMode(.middle)
             Spacer(minLength: 8)
             Text(entry.isDir ? "folder + contents" : RcloneFormat.bytes(entry.size))
-                .onePlusText(.caption)
-                .foregroundStyle(OnePlusColor.secondary)
+                .linearText(OnePlusLinearMetrics.control, color: OnePlusLinearColor.secondary)
                 .monospacedDigit()
         }
         .padding(.leading, 24)
         .padding(.trailing, 8)
         .padding(.vertical, 3)
-        .onePlusRowHover()
+        .linearGroupRowHover()
     }
 
     private func close() {
@@ -413,8 +405,7 @@ private struct CheckboxButton: View {
     var body: some View {
         Button(action: action) {
             Image(systemName: state.icon)
-                .onePlusText(.row)
-                .foregroundStyle(state == .off ? AnyShapeStyle(OnePlusColor.secondary) : AnyShapeStyle(OnePlusColor.accent))
+                .linearText(color: state == .off ? OnePlusLinearColor.secondary : OnePlusLinearColor.accent)
                 .frame(width: 20, height: 20)
                 .contentShape(Rectangle())
         }
