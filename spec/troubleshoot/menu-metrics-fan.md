@@ -39,8 +39,15 @@ still use `SystemMonitor`. `DESIGN.md` owns every size, color, and type value.
   release clears rows and icons. Home refreshes three rows while visible:
   a CPU baseline, 500 ms later the first rows, then every 2 s
   (`MainPanelProcessCadence`).
+- **Invariant:** Row selection is kept by PID and clears when the PID
+  leaves the rows or the panel hides. Quit Process never signals without
+  the confirmation; it checks the PID still has the sampled start time, so a
+  reused PID is never hit. Apps use `terminate`/`forceTerminate`, others
+  SIGTERM/SIGKILL. The panel closes before the alert, which runs without
+  activating the app.
 - **Check:** `SystemMonitorTests` process sorting, protected fallback, and
-  top-processes tests. `MainPanelTests` cadence and release test.
+  top-processes tests. `MainPanelTests` cadence and release test, and
+  `testQuitProcessMapsPermissionExitAndReusedPIDs` (signal 0 only).
 
 ## Units
 

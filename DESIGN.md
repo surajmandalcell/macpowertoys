@@ -667,8 +667,9 @@ cubic-bezier(0.4, 0, 1, 1).
 - Row and button hover: the fill fades in over 60 ms and out over 150 ms.
   Press is instant. Nothing moves or scales on hover or press.
 - Sidebar selection: 120 ms crossfade of the old and new fill, no slide.
-- Toolbar tab underline and panel footer chip: slide 180 ms. Segment
-  thumb: 160 ms. Switch knob and track color: 140 ms.
+- Pane toolbar tab underline: slide 180 ms. The menu panel tab key, its
+  glyph colors, and its dividers change at once, with no slide (owner,
+  2026-11-19). Segment thumb: 160 ms. Switch knob and track color: 140 ms.
 - Page and content switches, numbers, and popup menu items change at once.
   Sheets and windows use system motion.
 - Nothing animates while idle. Spinners run only during real work.
@@ -744,7 +745,11 @@ Built from the OnePlusUI `OnePlusLinear` panel parts with
   - "Top processes" header and a group of five 30 pt rows in 12 pt text:
     the app icon or a terminal glyph (16 pt), the name, the CPU percent in
     `cpuText` with its percent sign (40 pt column), and memory (68 pt
-    column, fits "1,023.7 MB"). No bar.
+    column, fits "1,023.7 MB"). No bar. A click selects a row (the hover
+    fill step, kept by PID). Right-click opens a native menu: Quit
+    Process… (Activity Monitor style confirmation with Quit, Force Quit,
+    and Cancel), then Open in Task Manager Pro, or Classic when only
+    Classic is installed.
   - Actions for the enabled tools among Pick Color, Extract Text, and
     Ruler: equal 32 pt `actionKey*` buttons, radius 8, 4 pt apart;
     pressed `fillButtonPressed`. Light: white soft keys with a lit top

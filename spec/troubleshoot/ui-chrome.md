@@ -1062,6 +1062,22 @@ latency benefit still needs measurement. See `tmp/redesign/logs/w4-perf-windows.
   and screen-cap tests pass. App-hosted routing tests compile. Signed first
   rendered frames, live tab latency, and foreground preservation remain open.
 
+## Panel Tab Icons Roll On Switch, 2026-11-19
+
+- **Symptom:** Switching combined panel tabs makes the tab icons and key
+  roll for about 170 ms.
+- **Cause:** `OnePlusLinearIconTabs` set a 180 ms animation on every
+  selection change, overriding the host's disabled transaction. The soft key
+  used `matchedGeometryEffect`, which moves in window coordinates. The new
+  tab changes the panel height, so the bar shifts until the window resizes
+  and the key flies vertically as well as sideways.
+- **Invariant:** Panel tab key, glyph colors, and dividers change at once
+  (OnePlusUI 1.3.13). No matched geometry or animation on the panel tabs.
+- **Check:** An offscreen frame probe (hosting controller plus the app's
+  resize callback, 460 to 180 pt) compared the tab bar each 16 ms with the
+  final frame: about 1,900 changed pixels up to 169 ms before, zero from the
+  first frame after.
+
 ## Custom Selectable Interaction States
 
 - **Symptom:** A custom row, card, or tab looks inert when the pointer moves
