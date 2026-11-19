@@ -163,3 +163,48 @@ processes, and Fan are in [Menu metrics and Fan](menu-metrics-fan.md).
   its page is visible and sends at most 10 updates per second.
 - **Check:** `MicLockResolverTests`. `rg "DispatchQueue.main"` in
   `MacTweaks/MicLockService.swift` finds nothing.
+
+## Permissions And The Helper Daemon
+
+`PermissionCenter` is the only reader of permission state. It reads without a
+prompt (`AXIsProcessTrusted`, `CGPreflightScreenCaptureAccess`, the
+`AVCaptureDevice` and notification status, `SMAppService` status), refreshes
+on app activation and on the system Accessibility-list notification, and
+posts `.permissionsChanged`. A row that shows a missing permission adds
+`.permissionWatch(kind)`; only then, and only while it is visible, a 2 s poll
+runs. Prompts come only from a user action.
+
+- **Symptom:** Fan "Check Again" kept showing "needs approval" after the
+  owner approved Login Items. **Cause:** it re-read fan data, not the
+  `SMAppService` status. **Check:** Check Again awaits
+  `PermissionCenter.refresh()`, which awaits `FanHelperService.refresh()`.
+- **Symptom:** The Command-Shift-3 shortcut stayed dead after a later
+  Accessibility grant. **Cause:** one re-check ran 1 s after the prompt, and
+  activation only stopped the tap. **Invariant:** `GlobalShortcutManager`
+  follows `.permissionsChanged` both ways. **Check:** `rg AXIsProcessTrustedWithOptions`
+  finds only `PermissionCenter`.
+- **Symptom:** Input Devices Grant asked for Input Monitoring too, and the
+  page stayed on "Grant" until Refresh. **Cause:** `CGRequestListenEventAccess`
+  was called, although the scroll tap is a modifying tap that needs only
+  Accessibility (no listen-only tap or HID open exists), and nothing re-read
+  trust. **Check:** `rg "CGRequestListenEventAccess|IOHIDManagerOpen|NSInputMonitoring"`
+  finds nothing; `InputDevicesManager` follows `.permissionsChanged`.
+- **Symptom:** Notifications were never asked for, so the sleep warning and
+  the quit error never showed. **Invariant:** `PermissionCenter.allowNotifications()`
+  asks once, at the first notification, and never at launch.
+- **Symptom:** Restart audio asked for the admin password on every click.
+  **Invariant:** with the helper enabled, the daemon's `restartAudio` (no
+  arguments, runs `/usr/bin/killall coreaudiod`, 5 s deadline) does it; any
+  helper error falls back to the osascript prompt.
+- **Symptom:** Every launch after an update unregistered and re-registered the
+  daemon. **Cause:** a stale-daemon check restarted it. **Invariant:** launchd
+  starts the daemon on demand from the bundle's current binary, and an old
+  daemon exits 30 s after its last connection, so an update needs no
+  re-registration. Only "Update Fan Helper" re-registers, and only when the
+  running helper reports another source commit.
+- **Check:** `PermissionCenterTests` (no watcher, no timer; a missing row
+  polls; a grant or hiding stops it). A real grant and a real helper audio
+  restart need the owner's Mac.
+- The `nettoys-neighbor` launchd label, mach service, plist, and the
+  `nettoys-helper` bundle id stay: they are the registered, approved Login
+  Items identity, and a rename forces a new approval.

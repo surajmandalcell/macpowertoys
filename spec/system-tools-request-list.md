@@ -104,6 +104,22 @@ Done:
 | Reusable OnePlusUI package and showcase. | `0ddbae8` |
 | One sampler on a utility queue; sampling only while an owner is visible; zero timers when unused; baseline after 25 cycles. | `SystemMonitorTests` |
 
+## Helper daemon and permissions
+
+Design (owner pick, "Fan daemon + Permission center"): one root daemon for
+privileged work only (fan presets and Restart audio), and one
+`PermissionCenter` as the single source of permission state. Details and
+checks: `spec/troubleshoot/system-tools.md`.
+
+| Status | Request | Evidence | Remaining work |
+|---|---|---|---|
+| Verify | Restart audio through the daemon, no password; osascript fallback when the daemon is off or fails. | `restartAudio` XPC call, no arguments; helper target compiles. | A real Restart audio with the approved new helper. |
+| Verify | `PermissionCenter`: prompt-free reads, refresh on activation and the Accessibility-list notification, 2 s poll only while a visible row shows a missing permission. | `PermissionCenterTests` compiles. | Run the test; a real Accessibility grant with Settings, Input Devices, and Command-Shift-3. |
+| Verify | Fan Check Again re-reads the Login Items approval. | Awaits `FanHelperService.refresh()`. | Approve in Login Items, then Check Again. |
+| Verify | Input Devices asks only for Accessibility and updates by itself after a grant. | No Input Monitoring call or usage string. | Real grant. |
+| Verify | Notifications asked once, at the first sleep warning or quit error. | `allowNotifications()`. | First real notification. |
+| Done | Remove the Location entitlement and the smctl path; no re-registration on update. | Grep found no live use. | None. |
+
 ## Shared window behavior
 
 Open: none beyond the cross-tool list above.
