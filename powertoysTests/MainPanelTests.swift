@@ -5,6 +5,17 @@ import XCTest
 @testable import powertoys
 
 final class MainPanelTests: XCTestCase {
+    /// Signal 0 checks delivery only, so no process is stopped.
+    func testQuitProcessMapsPermissionExitAndReusedPIDs() {
+        XCTAssertNil(MainPanelProcessQuit.signal(0, pid: getpid()))
+        XCTAssertEqual(MainPanelProcessQuit.signal(0, pid: 1), .notPermitted)
+        XCTAssertEqual(MainPanelProcessQuit.signal(0, pid: 99_999_999), .exited)
+        XCTAssertEqual(MainPanelProcessQuit.signal(0, pid: 0), .exited)
+        XCTAssertTrue(MainPanelProcessQuit.isSameProcess(pid: getpid(), started: 0))
+        XCTAssertFalse(MainPanelProcessQuit.isSameProcess(pid: getpid(), started: 1))
+        XCTAssertFalse(MainPanelProcessQuit.isSameProcess(pid: 99_999_999, started: 1))
+    }
+
     @MainActor
     func testWarmDiagnosticOpenRetainsWindowAndHost() throws {
         let domain = "MainPanelTests." + UUID().uuidString

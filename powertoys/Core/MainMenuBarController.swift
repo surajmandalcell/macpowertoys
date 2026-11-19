@@ -51,6 +51,10 @@ final class MainMenuBarController: NSObject {
         self.item = item
     }
 
+    func closePanel() {
+        panel.close()
+    }
+
     @objc private func toggle() {
         if panel.isShown {
             panel.close()

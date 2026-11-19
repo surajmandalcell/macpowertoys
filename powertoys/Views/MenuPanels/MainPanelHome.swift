@@ -9,13 +9,16 @@ struct TrayHomeView: View {
     static let owner = "main-tray-home"
     let toolIDs: [String]
     @State private var readings = MainPanelReadings(hardware: .current)
+    @State private var taskManager: MainPanelTaskManager?
+    @Environment(\.onePlusIsVisible) private var isVisible
 
     var body: some View {
         MainPanelHomeContent(readings: readings, processes: MainPanelProcessDisplay.rows(MenuPanelTopProcesses.shared),
-                             actions: actions) {
+                             actions: actions, taskManager: taskManager) {
             MainPanelControlCard(showsKwake: toolIDs.contains("awake"))
         }
         .background { MainPanelReadingsFeed(readings: $readings) }
+        .task(id: isVisible) { if isVisible { taskManager = .installed() } }
         .modifier(MenuPanelProcessRefresh())
         .modifier(MenuPanelMetricSampling(owner: Self.owner))
     }
@@ -40,7 +43,11 @@ struct MainPanelHomeContent<Controls: View>: View {
     let readings: MainPanelReadings
     let processes: [MainPanelProcessDisplay]
     let actions: [OnePlusLinearAction]
+    var taskManager: MainPanelTaskManager?
     @ViewBuilder let controls: Controls
+    /// Tracked by PID: rows reorder on every refresh.
+    @State private var selectedPID: Int32?
+    @Environment(\.onePlusIsVisible) private var isVisible
 
     var body: some View {
         VStack(alignment: .leading, spacing: TrayPopoverLayout.style.blockGap) {
@@ -51,8 +58,7 @@ struct MainPanelHomeContent<Controls: View>: View {
                 OnePlusLinearList(style: .panel) {
                     ForEach(0..<MainPanelProcessDisplay.rowCount, id: \.self) { index in
                         if index < processes.count {
-                            let row = processes[index]
-                            OnePlusLinearProcessRow(row.name, icon: row.icon, cpu: row.cpu, memory: row.memory)
+                            processRow(processes[index])
                         } else {
                             Color.clear.frame(height: OnePlusLinearMetrics.processRow)
                         }
@@ -61,7 +67,32 @@ struct MainPanelHomeContent<Controls: View>: View {
             }
             if !actions.isEmpty { OnePlusLinearActionBar(actions) }
         }
+        .onChange(of: processes.map(\.pid)) { _, pids in
+            if let selectedPID, !pids.contains(selectedPID) { self.selectedPID = nil }
+        }
+        .onChange(of: isVisible) { _, visible in if !visible { selectedPID = nil } }
     }
+
+    private func processRow(_ row: MainPanelProcessDisplay) -> some View {
+        Button { selectedPID = row.pid } label: {
+            OnePlusLinearProcessRow(row.name, icon: row.icon, cpu: row.cpu, memory: row.memory, selected: row.pid == selectedPID)
+        }
+        .buttonStyle(MainPanelRowButtonStyle())
+        .contextMenu {
+            Button("Quit Process…") { MainPanelProcessQuit.confirm(name: row.name, pid: row.pid, started: row.started) }
+            if let taskManager {
+                Button(taskManager.menuTitle) {
+                    MainMenuBarController.shared.closePanel()
+                    taskManager.open()
+                }
+            }
+        }
+    }
+}
+
+/// The row draws its own hover and selected fill, so the button adds no press look.
+private struct MainPanelRowButtonStyle: ButtonStyle {
+    func makeBody(configuration: Configuration) -> some View { configuration.label }
 }
 
 /// One top-process row as the panel draws it. Rows hold their slot while the first reading loads.
@@ -71,11 +102,13 @@ struct MainPanelProcessDisplay {
     let icon: Image?
     let cpu: String
     let memory: String
+    var pid: Int32 = 0
+    var started: UInt64 = 0
 
     static func rows(_ model: MenuPanelTopProcesses) -> [Self] {
         model.rows.prefix(rowCount).map { row in
             Self(name: row.displayName, icon: row.appBundlePath.flatMap { model.icons.images[$0] }.map(Image.init(nsImage:)),
-                 cpu: row.cpuValueText, memory: row.memoryText)
+                 cpu: row.cpuValueText, memory: row.memoryText, pid: row.process.pid, started: row.process.started)
         }
     }
 }
