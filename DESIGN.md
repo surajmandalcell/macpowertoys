@@ -807,8 +807,9 @@ Built from the OnePlusUI `OnePlusLinear` panel parts with
     Classic is installed.
   - Actions for the enabled tools among Pick Color, Extract Text, and
     Ruler: equal 32 pt `actionKey*` buttons, radius 8, 4 pt apart;
-    pressed `fillButtonPressed`. Light: white soft keys with a lit top
-    edge and a short drop, regular labels. Dark: flat `fillGroup`, hover
+    pressed `fillButtonPressed`. Light ("Hairline edge", owner
+    2026-11-19): white soft keys with one even 1 pt edge at 12% black and
+    no shadow, regular labels. Dark: flat `fillGroup`, hover
     `fillButtonHover`, medium labels.
 - Speed (owner, 2026-11-19): metrics sample off the main thread once per
   second while Home is visible, and every 5 seconds while the panel is
@@ -1084,8 +1085,10 @@ gear, and the `Open MacPowerToys` Ink key. Parts live in
     A 132 pt ring with a 9 pt track shows each listening process's memory
     share in its port color, round caps, small gaps. The center holds the
     total in MB (26 pt light, rolling digits) over "N% of RAM" (or
-    "N selected" during Clean up). Below it: servers, CPU, and the longest
-    uptime.
+    "N selected" during Clean up). 20 pt below the ring: three equal
+    columns (Servers, CPU, Longest up), each a 15 pt medium value (CPU in
+    `cpuText`, the others `ink`, monospaced digits) over a muted caption,
+    split by 30 pt `line` dividers that fade out at both ends.
   - One `OnePlusLinearList(style: .panel)` of 40 pt rows: the port chip
     (`:8787` in the port color on a 14% wash, radius 5), the app icon or a
     terminal glyph, the name over the branch and "up 3h 12m", a 32 pt
@@ -1096,7 +1099,8 @@ gear, and the `Open MacPowerToys` Ink key. Parts live in
     localhost, Show Details, Stop Process Tree…, then the body menu. The
     body menu holds Sort by (Port, Memory, Name, CPU), Refresh Servers,
     and Clean Up. Clean up shows checkboxes and one Cancel and Stop row
-    until it ends. Refresh also stays in the status item's menu.
+    until it ends. Refresh also stays in the status item's menu. The page
+    has no action buttons (owner pick "Right-click only", 2026-11-19).
 - Steady height (`onePlusSteadyRows`, owner 2026-11-19): the list keeps
   room for at least 3 rows and grows at once when rows are added. It
   shrinks only when the count drops 2 or more below the reserved rows,
