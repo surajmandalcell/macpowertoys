@@ -112,18 +112,35 @@ still use `SystemMonitor`. `DESIGN.md` owns every size, color, and type value.
   `F<n>Md` ui8 0 (0 Auto, 1 manual); `F<n>Tg` flt; `F<n>Mn` flt 1350;
   `F<n>Mx` flt 5777; `F<n>Ac` flt. No lowercase `md`/`tg` keys. Temperatures
   are `Tp*` (CPU P), `Te*` (CPU E), `Tg*` (GPU), all flt.
-- **Invariant:** The helper (version 2) is a thin writer:
+- **Invariant:** The helper is a thin writer:
   `writeFanKey(key, value)` takes only `Ftst` 0/1, `F<n>Md` 0/1 for n below
   `FNum`, and `F<n>Tg` inside `F<n>Mn...F<n>Mx` (`FanKeyPolicy`). Every preset
   rule lives in the app (`FanDriver`), so a rule change never needs a new
-  helper or password. The app reads each key back after a write and treats
-  a mismatch as an error.
+  helper or password.
 - **Invariant:** Max and Cool write `Ftst = 1`, then retry `F<n>Md = 1` every
-  0.25 s for up to 10 s, then write `F<n>Tg`. The log records tries and time.
-  Max targets `F<n>Mx`. Cool reads the hottest Tp/Te/Tg sensor every 3 s:
-  Mn at 55 °C or less, Mx at 75 °C or more, linear between (70 °C is 75%);
-  a tick rises at most 800 RPM and falls at most 250 RPM. Auto writes every
-  `F<n>Md = 0`, then `Ftst = 0`.
+  0.25 s for up to 10 s, then move `F<n>Tg` once a second from the current
+  `F<n>Ac`. Max climbs at most 1500 RPM a second to `F<n>Mx`. Auto writes
+  every `F<n>Md = 0`, then `Ftst = 0`, without reading first.
+
+## Cool Maxed The Fans At Once
+
+- **Symptom:** Cool jumped straight to 5777 RPM, then failed with
+  "F0Tg reads 1350 after writing 5777" and left the fans manual.
+- **Cause 1:** Cool followed the hottest raw `Tp`/`Te` sensor. This M4 Pro
+  has 112 of them; single cores spike to 80-90 °C under light load while
+  the mean sits near 45 °C, so a 75 °C full-speed point meant Max. `Tg*`
+  keys here read 0-4, so they are not GPU temperatures.
+- **Cause 2:** SMC reads lag a write: `Ftst` reads the old value for about
+  0.7 s (50 ms polling), `Md` and `Tg` for under 0.1 s. An immediate
+  read-back fails, and a read-gated Auto skips keys that were just set.
+- **Invariant:** Cool smooths the hottest `Tp`/`Te` reading in 20-110 °C
+  (EMA 0.2 per 1 s tick). Mn at 65 °C or less, Mx at 90 °C or more, linear
+  between; a tick rises at most 300 RPM and falls at most 150 RPM. Each tick
+  reads back the previous tick's `Md` and `Tg`; two mismatches in a row end
+  manual control. The helper sets its owner from the write itself
+  (`Ftst = 0` clears it), never from a read.
+- **Check:** `fanprobe`-style SMC reads every 0.5 s across a Cool click:
+  RPM leaves the current speed in steps of 300 or less.
 - **Invariant:** `macpowertoys://fan/...` links work only while the user
   default `MPTAllowFanLinks` is true, because any web page can open a URL.
   Off, the route logs one line and does nothing.
@@ -141,7 +158,7 @@ still use `SystemMonitor`. `DESIGN.md` owns every size, color, and type value.
 - **Invariant:** The last connection whose write left the fans manual owns
   them (`FanManualLease`). The helper restores Auto when that connection ends,
   or when it sends no write for 15 s (watchdog every 5 s; the app rewrites
-  every target each 3 s tick). A failed restore keeps the owner and the
+  every target each 1 s tick). A failed restore keeps the owner and the
   daemon, so the watchdog retries. The app restores Auto and shows the reason
   when macOS takes the fans back or the helper stops. A disabled Awake
   refuses external actions.
@@ -157,7 +174,7 @@ still use `SystemMonitor`. `DESIGN.md` owns every size, color, and type value.
   until success, and propagates failure so termination can cancel.
 - **Invariant:** The signed daemon accepts only allowlisted fan keys from the
   signed app (see "Max Rejected On Apple Silicon"), and the app restores Auto
-  on a failed write. The helper installs with SMJobBless (see
+  on a failed write. The helper installs through osascript (see
   `system-tools.md`, Helper install); never type the admin password on the
   owner's behalf. Raise the helper `CFBundleVersion` before using a new XPC
   method. The in-app SMC reader is read-only, runs

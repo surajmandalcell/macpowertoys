@@ -198,37 +198,45 @@ runs. Prompts come only from a user action.
   polls; a grant or hiding stops it). A real grant and a real helper audio
   restart need the owner's Mac.
 
-### Helper install (SMJobBless)
+### Helper install (osascript)
 
-The owner types the admin password once; nothing goes through System
-Settings or Login Items (owner decision 2026-11-19, the way Mole does it).
+The owner approves once; nothing goes through System Settings or Login
+Items (owner decision 2026-11-19, the way Mole does it).
 
 - Names: label, Mach service, signing identifier, and file name are all
   `com.surajmandal.macpowertoys.helper`. The tool sits in the app at
-  `Contents/Library/LaunchServices/` and macOS copies it to
-  `/Library/PrivilegedHelperTools/`. Its Info.plist and `launchd.plist` are
-  linked into the binary (`__TEXT,__info_plist`, `__TEXT,__launchd_plist`).
+  `Contents/Library/LaunchServices/`; the install copies it to
+  `/Library/PrivilegedHelperTools/`. Its Info.plist is linked into the
+  binary (`__TEXT,__info_plist`).
 - Requirements: the app's `SMPrivilegedExecutables` equals
   `MacPowerToysHelperContract.helperRequirement`, and the helper's
   `SMAuthorizedClients` equals `mainAppRequirement` (team `GF57JXJF5A`).
   The daemon keeps `setConnectionCodeSigningRequirement`.
   `FanControlTests` checks the plists against the contract; `make install`
   refuses a product whose signatures do not satisfy both strings.
-- Install: `FanHelperService.install()` (AuthorizationCopyRights for
-  `kSMRightBlessPrivilegedHelper` with our prompt text and app icon, then
-  `SMJobBless`). It runs on the first
-  Cool or Max click, or on "Install Helper" in the fan popover. Auto with no
+- Install: `FanHelperService.install()` runs `/usr/bin/osascript` with
+  `do shell script ... with administrator privileges` and the fixed
+  `installScript`. Its only argument is the helper path inside our bundle.
+  The script boots out the old job, copies the tool root:wheel 544, checks
+  its team signature after the copy, writes the launchd plist with plutil
+  (root:wheel 644), and bootstraps it; running it twice gives the same
+  result. Error -128 means canceled.
+- Prompts: only a Cool or Max click with the helper missing or older
+  installs (`canInstall` is notInstalled or outdated). A helper that does
+  not answer shows one line and Retry, never a password prompt. Auto with no
   manual mode never installs. Tests never install.
 - Version: the helper's `CFBundleVersion` is an integer. `neighborSnapshot`
-  returns it. A lower running version shows "outdated" and the next write
-  blesses again. Raise `NetToysHelper/Info.plist` `CFBundleVersion` when
-  helper code changes; a normal app update with the same version asks for
-  nothing.
-- Touch ID and the "Apple could not verify ... malware" line: the
-  `blesshelper` right (class user, group admin, no password-only key) allows
-  Touch ID, but SecurityAgent logs `AEWP notarized 0, biometry prohibited 1`
-  and `TouchID is not enabled` for this Apple Development build. Both go away
-  only with a Developer ID Application signature plus notarization.
+  returns it. A lower running version shows "outdated" and the next Cool or
+  Max click installs again. Raise `NetToysHelper/Info.plist`
+  `CFBundleVersion` only when the XPC contract or safety logic must reach
+  users; every raise costs the owner one prompt.
+- Touch ID: SecurityAgent logged `AEWP notarized 0, biometry prohibited 1`
+  and `TouchID is not enabled` for our unnotarized app's SMJobBless prompt,
+  but `AEWP notarized 1, biometry prohibited 0` for an Apple-signed
+  requester (`mdmclient`, 2026-11-19 18:29:46). The osascript prompt comes
+  from Apple-signed osascript, so it should offer Touch ID. Check:
+  `/usr/bin/log show --last 10m --predicate 'process == "SecurityAgent"'
+  | grep -i biometry` right after the next install.
 - Unsigned builds (`ADHOC=1`): the app fails its own team requirement, so the
   status is `unsupported`, fans stay read only, and the row says why.
 - Migration: every launch, `retireLegacyRegistrations()` unregisters the old
