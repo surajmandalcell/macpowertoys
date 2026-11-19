@@ -66,7 +66,6 @@ struct InputDevicesWindowView: View {
         OnePlusLinearSidebar {
             EmptyView()
         } navigation: {
-            OnePlusLinearNavCaption("Input Devices")
             navRow(.devices)
             navRow(.scrolling)
         } bottom: {
