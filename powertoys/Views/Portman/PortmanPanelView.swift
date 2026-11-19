@@ -1555,18 +1555,10 @@ struct PortmanSettingsView: View {
         density == .compact ? OnePlusMetrics.controlColumn : OnePlusMetrics.wideControlColumn
     }
     var body: some View {
-        VStack(alignment: .leading, spacing: OnePlusMetrics.cardGap) {
+        // One column of groups, like the Ruler page (DESIGN.md "Tool page").
+        VStack(alignment: .leading, spacing: OnePlusLinearEditorialMetrics.blockGap) {
             if !generalVisible && !portsVisible && !cleanupVisible && !integrationsVisible {
                 OnePlusEmptyState("No matching settings", systemImage: "magnifyingglass")
-            } else if density == .regular {
-                HStack(alignment: .top, spacing: OnePlusMetrics.cardGap) {
-                    if generalVisible { generalSettings.frame(maxWidth: .infinity) }
-                    if integrationsVisible { integrationSettings.frame(maxWidth: .infinity) }
-                }
-                HStack(alignment: .top, spacing: OnePlusMetrics.cardGap) {
-                    if portsVisible { portSettings.frame(maxWidth: .infinity) }
-                    if cleanupVisible { cleanupSettings.frame(maxWidth: .infinity) }
-                }
             } else {
                 if generalVisible { generalSettings }
                 if portsVisible { portSettings }
@@ -1735,6 +1727,7 @@ nonisolated enum PortmanEditor {
 @MainActor
 final class PortmanMenuController: NSObject {
     static let shared = PortmanMenuController()
+    private static let titleBaselineOffset: CGFloat = -1
 
     private var item: NSStatusItem?
     private let popover = OnePlusMenuPresenter()
@@ -1918,7 +1911,10 @@ final class PortmanMenuController: NSObject {
         let image = StatusItemIcon.symbol(ToolGlyph.portman.symbol)
         button.image = image
         button.imagePosition = .imageLeading
-        button.title = " \(ports.count)"
+        // The digits' ink sat 0.75 pt above the glyph's ink center in a live capture; drop them to match.
+        button.attributedTitle = NSAttributedString(string: " \(ports.count)", attributes: [
+            .font: NSFont.menuBarFont(ofSize: 0), .baselineOffset: Self.titleBaselineOffset,
+        ])
         let forwarded = PortmanService.shared.tunnels.reduce(0) { count, tunnel in
             if case .running = tunnel.state { return count + 1 }
             return count
