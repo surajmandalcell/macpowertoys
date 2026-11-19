@@ -1,7 +1,6 @@
 import AppKit
 import OnePlusUI
 import SwiftUI
-import UniformTypeIdentifiers
 
 /// One of the owner's other Mac apps on the Apps by Sam page.
 nonisolated struct SamApp: Identifiable, Sendable {
@@ -19,7 +18,7 @@ nonisolated struct SamApp: Identifiable, Sendable {
              summary: "See every process, its graphs, and startup items, laid out like Windows 11.",
              icon: "AppBySamTaskManagerPro", price: "Paid"),
         Self(name: "Task Manager Classic", bundleID: MainPanelTaskManager.classic.rawValue,
-             summary: "A small task manager in the Windows 7 layout", icon: "", price: "Free"),
+             summary: "A small task manager in the Windows 7 layout", icon: "AppBySamTaskManagerClassic", price: "Free"),
         Self(name: "Sam's Partition Manager", bundleID: "com.surajmandal.samspartitionmanager",
              summary: "Format and check external drives and SD cards", icon: "AppBySamPartitionManager"),
         Self(name: "Sam's System Cleaner", bundleID: "com.surajmandal.samscc",
@@ -37,10 +36,7 @@ nonisolated struct SamApp: Identifiable, Sendable {
              summary: "Share a background traffic budget and keep games unthrottled", icon: "AppBySamThrottleControl"),
     ]
 
-    /// Task Manager Classic has no icon yet, so it shows the generic app icon.
-    var image: Image {
-        icon.isEmpty ? Image(nsImage: NSWorkspace.shared.icon(for: .applicationBundle)) : Image(icon)
-    }
+    var image: Image { Image(icon) }
 
     nonisolated static func installedIDs() -> Set<String> {
         Set(all.map(\.bundleID).filter { NSWorkspace.shared.urlForApplication(withBundleIdentifier: $0) != nil })
