@@ -208,7 +208,7 @@ final class GlobalShortcutManager {
             Task { @MainActor in self.refreshToolAvailability(toolID) }
         }
         NotificationCenter.default.addObserver(
-            forName: NSApplication.didBecomeActiveNotification,
+            forName: .permissionsChanged,
             object: nil,
             queue: .main
         ) { [weak self] _ in
@@ -216,9 +216,9 @@ final class GlobalShortcutManager {
         }
     }
 
+    /// Follows every Accessibility change: a loss stops the tap, a grant at any later time starts it.
     private func recheckReservedShortcutTrust() {
-        guard reservedShortcutTap != nil, !AXIsProcessTrusted() else { return }
-        stopReservedShortcutTap()
+        if reservedShortcutTap != nil, !PermissionCenter.shared.isGranted(.accessibility) { stopReservedShortcutTap() }
         refreshReservedShortcutTap()
     }
 
@@ -293,11 +293,7 @@ final class GlobalShortcutManager {
     }
 
     func requestAccessibilityPermission() {
-        let options = [kAXTrustedCheckOptionPrompt.takeUnretainedValue() as String: true] as CFDictionary
-        _ = AXIsProcessTrustedWithOptions(options)
-        DispatchQueue.main.asyncAfter(deadline: .now() + 1) { [weak self] in
-            self?.refreshReservedShortcutTap()
-        }
+        PermissionCenter.shared.requestAccessibility()
     }
 
     func shutdown() {

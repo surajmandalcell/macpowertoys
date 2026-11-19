@@ -151,6 +151,7 @@ struct ShortcutPermissionNotice: View {
                     .buttonStyle(OnePlusButtonStyle(.ghost))
             }
             .help("macOS reserves screenshot shortcuts. Accessibility access lets MacPowerToys use them.")
+            .permissionWatch(.accessibility)
         } else if case .failed(let message) = shortcuts.registrationStatus[action] {
             Text(message).onePlusText(.caption, color: OnePlusColor.warn)
         }
