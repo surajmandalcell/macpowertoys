@@ -10,7 +10,7 @@
 	<string>MacPowerToys Helper</string>
 	<!-- Raise CFBundleVersion whenever the helper's code changes; the app reinstalls an older helper. -->
 	<key>CFBundleVersion</key>
-	<string>2</string>
+	<string>3</string>
 	<key>MPTSourceCommit</key>
 	<string>$(MPT_SOURCE_COMMIT)</string>
 	<key>SMAuthorizedClients</key>
