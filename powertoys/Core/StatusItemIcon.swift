@@ -4,7 +4,10 @@ import OnePlusUI
 @MainActor
 enum StatusItemIcon {
     private static var symbols: [String: NSImage] = [:]
-    static let main = normalized(NSImage(named: "MenuBarIcon") ?? NSImage())
+    // Matches SF Symbols at 14 pt regular, medium scale (Control Center, Wi-Fi); DESIGN.md "Shared behavior".
+    private static let mainCanvas: CGFloat = 16
+    private static let mainInk: CGFloat = 13.6
+    static let main = normalized(NSImage(named: "MenuBarIcon") ?? NSImage(), side: mainCanvas, inkSize: mainInk)
 
     static func symbol(_ name: String) -> NSImage? {
         if let image = symbols[name] { return image }
@@ -40,11 +43,14 @@ enum StatusItemIcon {
         return image
     }
 
-    private static func normalized(_ source: NSImage) -> NSImage {
-        let side = OnePlusMenuMetrics.statusIconSize
+    private static func normalized(
+        _ source: NSImage,
+        side: CGFloat = OnePlusMenuMetrics.statusIconSize,
+        inkSize: CGFloat = OnePlusMenuMetrics.statusIconInkSize
+    ) -> NSImage {
         let size = NSSize(width: side, height: side)
         let (source, ink) = rasterized(source)
-        let scale = OnePlusMenuMetrics.statusIconInkSize / max(ink.width, ink.height, 1)
+        let scale = inkSize / max(ink.width, ink.height, 1)
         let image = NSImage(size: size, flipped: false) { _ in
             source.draw(in: NSRect(
                 x: side / 2 - ink.midX * scale,

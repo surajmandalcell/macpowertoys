@@ -823,7 +823,11 @@ Built from the OnePlusUI `OnePlusLinear` panel parts with
 
 ### Shared behavior
 
-- Status-item icons use the same modest visual size as the Portman icon.
+- The main MacPowerToys status icon is the outline flexed-arm template
+  (`MenuBarIcon`, SVG): a 16 pt canvas, 13.6 pt maximum ink, and 1.24 pt
+  lines, matched to SF Symbols at 14 pt regular weight, medium scale
+  (Control Center, Wi-Fi) on the 30 pt menu bar (owner pick 2026-11-19).
+- Tool status-item icons use the same modest visual size as the Portman icon.
 - Sidebar and panel glyphs are drawn from each tool's own icon, not picked
   from a loose SF Symbol (owner correction 2026-10-01). Examples: a slanted
   ruler; `EventViewerGlyph`, a log tablet with a warning badge; `MacTweaksGlyph`,
