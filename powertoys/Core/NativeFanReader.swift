@@ -1,6 +1,7 @@
 import Foundation
 import IOKit
 import Darwin
+import os
 
 nonisolated enum FanPreset: String, CaseIterable, Identifiable, Sendable {
     case auto = "Auto"
@@ -53,39 +54,134 @@ nonisolated struct FanSnapshot: Sendable {
     }
 }
 
-// Helper-side owner of Cool or Max: when that client's connection ends (crash, force quit,
-// SIGKILL), the helper returns the fans to macOS. It never writes a manual mode by itself.
-nonisolated final class FanManualLease: @unchecked Sendable {
-    private let lock = NSLock()
-    private let write: @Sendable (FanPreset) throws -> Void
-    private var owner: ObjectIdentifier?
+/// Numeric access to SMC keys. `write` returns nil on success or the reason.
+nonisolated protocol FanKeyStore: AnyObject {
+    func number(_ key: String) -> Double?
+    func write(_ key: String, value: Double) -> String?
+}
 
-    init(write: @escaping @Sendable (FanPreset) throws -> Void = { try NativeFanReader.apply($0) }) {
-        self.write = write
+/// What the root helper may write. Only fan keys, only legal values, and targets inside the fan's own range.
+nonisolated enum FanKeyPolicy {
+    static func fanCount(_ store: FanKeyStore) -> Int {
+        guard let count = store.number("FNum"), count.isFinite, count >= 0 else { return 0 }
+        return min(Int(count), 8)
     }
 
-    func apply(_ preset: FanPreset, client: ObjectIdentifier) throws {
-        lock.lock()
-        defer { lock.unlock() }
-        do {
-            try write(preset)
-            owner = preset == .auto ? nil : client
-        } catch {
-            // A failed manual write already rolled back to Auto; a failed Auto keeps the owner for a later retry.
-            if preset != .auto { owner = nil }
-            throw error
+    static func modeKey(_ index: Int, _ store: FanKeyStore) -> String? {
+        ["F\(index)Md", "F\(index)md"].first { store.number($0) != nil }
+    }
+
+    static func targetKey(_ index: Int, _ store: FanKeyStore) -> String? {
+        ["F\(index)Tg", "F\(index)tg"].first { store.number($0) != nil }
+    }
+
+    static func refusal(for key: String, value: Double, store: FanKeyStore) -> String? {
+        guard value.isFinite else { return "\(key) needs a finite value." }
+        if key == "Ftst" { return [0, 1].contains(value) ? nil : "Ftst takes only 0 or 1." }
+        let chars = Array(key)
+        guard chars.count == 4, chars[0] == "F", let index = Int(String(chars[1])), index < fanCount(store) else {
+            return "The helper does not write SMC key \(key)."
+        }
+        switch String(chars[2...]) {
+        case "Md", "md":
+            return [0, 1].contains(value) ? nil : "\(key) takes only 0 or 1."
+        case "Tg", "tg":
+            guard let maximum = store.number("F\(index)Mx"), maximum > 0 else {
+                return "Fan \(index) reports no maximum speed."
+            }
+            let minimum = min(store.number("F\(index)Mn") ?? 0, maximum)
+            return (minimum...maximum).contains(value) ? nil
+                : "Fan \(index) target \(Int(value)) RPM is outside \(Int(minimum))-\(Int(maximum)) RPM."
+        default:
+            return "The helper does not write SMC key \(key)."
+        }
+    }
+
+    /// True when no fan is in manual mode and the fan unlock key is clear.
+    static func isAutomatic(_ store: FanKeyStore) -> Bool {
+        guard store.number("Ftst") != 1 else { return false }
+        return (0..<fanCount(store)).allSatisfy { index in
+            modeKey(index, store).flatMap { store.number($0) } != 1
+        }
+    }
+
+    /// Hands every fan back to macOS: each manual mode key to 0, then the unlock key to 0.
+    static func restoreAutomatic(_ store: FanKeyStore) -> String? {
+        for index in 0..<fanCount(store) {
+            if let key = modeKey(index, store), store.number(key) == 1, let failure = store.write(key, value: 0) {
+                return failure
+            }
+        }
+        if store.number("Ftst") == 1, let failure = store.write("Ftst", value: 0) { return failure }
+        return nil
+    }
+}
+
+/// Helper-side owner of manual fan control. The last client whose write left the fans manual owns them. When
+/// that client's connection ends (quit, crash, SIGKILL) or it sends nothing for `timeout` seconds, the helper
+/// hands the fans back to macOS. A failed restore keeps the owner, so the next watchdog tick retries.
+nonisolated final class FanManualLease: @unchecked Sendable {
+    static let timeout: TimeInterval = 15
+    static let logger = Logger(subsystem: MacPowerToysHelperContract.label, category: "fan")
+    private let lock = NSLock()
+    private let openStore: @Sendable () -> FanKeyStore?
+    private let now: @Sendable () -> TimeInterval
+    private var owner: ObjectIdentifier?
+    private var lastTouch: TimeInterval = 0
+
+    init(openStore: @escaping @Sendable () -> FanKeyStore? = { SMCSession() },
+         now: @escaping @Sendable () -> TimeInterval = { ProcessInfo.processInfo.systemUptime }) {
+        self.openStore = openStore
+        self.now = now
+    }
+
+    var hasOwner: Bool { lock.withLock { owner != nil } }
+
+    /// Writes one allowlisted key and replies "" on success or the reason.
+    func write(_ key: String, value: Double, client: ObjectIdentifier) -> String {
+        lock.withLock {
+            guard let store = openStore() else { return "The fan controller could not be opened." }
+            if let refusal = FanKeyPolicy.refusal(for: key, value: value, store: store) {
+                Self.logger.error("Refused \(key, privacy: .public) = \(value): \(refusal, privacy: .public)")
+                return refusal
+            }
+            let failure = store.write(key, value: value)
+            if let failure { Self.logger.error("\(failure, privacy: .public)") }
+            if FanKeyPolicy.isAutomatic(store) {
+                owner = nil
+            } else {
+                owner = client
+                lastTouch = now()
+            }
+            return failure ?? ""
         }
     }
 
     func clientEnded(_ client: ObjectIdentifier) {
-        lock.lock()
-        defer { lock.unlock() }
-        guard owner == client else { return }
-        owner = nil
+        lock.withLock {
+            guard owner == client else { return }
+            Self.logger.notice("Fan client left while manual; restoring Auto")
+            restoreLocked()
+        }
+    }
+
+    func expireIfIdle() {
+        lock.withLock {
+            guard owner != nil, now() - lastTouch > Self.timeout else { return }
+            Self.logger.notice("Fan client sent nothing for \(Self.timeout) s; restoring Auto")
+            restoreLocked()
+        }
+    }
+
+    private func restoreLocked() {
         for attempt in 0..<3 {
-            if (try? write(.auto)) != nil { return }
+            if let store = openStore(), FanKeyPolicy.restoreAutomatic(store) == nil, FanKeyPolicy.isAutomatic(store) {
+                owner = nil
+                return
+            }
             if attempt < 2 { Thread.sleep(forTimeInterval: 0.5) }
         }
+        Self.logger.error("Auto restore failed 3 times; the watchdog retries")
     }
 
     func track(_ connection: NSXPCConnection) {
@@ -100,12 +196,8 @@ nonisolated final class FanManualLease: @unchecked Sendable {
 }
 
 // Adapted from smctl's MIT-licensed SMCCore at ca68174f8cdafc53778908c67d77117cb754e9ef.
-// SMC writes run only inside the signed, privileged MacPowerToys helper.
-nonisolated enum NativeFanReader {
-    private struct ControlError: LocalizedError {
-        let errorDescription: String?
-        init(_ message: String) { errorDescription = message }
-    }
+/// One open AppleSMC connection. Reads work for any user; writes succeed only as root (the helper).
+nonisolated final class SMCSession: FanKeyStore {
     private typealias Bytes20 = (
         UInt8, UInt8, UInt8, UInt8, UInt8, UInt8, UInt8, UInt8, UInt8, UInt8,
         UInt8, UInt8, UInt8, UInt8, UInt8, UInt8, UInt8, UInt8, UInt8, UInt8
@@ -144,33 +236,116 @@ nonisolated enum NativeFanReader {
         )
     }
 
-    private struct Value {
+    struct Value {
         let type: String
         let bytes: [UInt8]
     }
 
     static var hasExpectedLayout: Bool { MemoryLayout<SMCRequest>.stride == 80 }
+    private var connection: io_connect_t = 0
 
-    static func snapshot() -> FanSnapshot? {
-        guard hasExpectedLayout else { return nil }
+    init?() {
+        guard Self.hasExpectedLayout else { return nil }
         let service = IOServiceGetMatchingService(kIOMainPortDefault, IOServiceMatching("AppleSMC"))
         guard service != 0 else { return nil }
         defer { IOObjectRelease(service) }
-
-        var connection: io_connect_t = 0
         guard IOServiceOpen(service, mach_task_self_, 0, &connection) == KERN_SUCCESS else { return nil }
-        defer { IOServiceClose(connection) }
+    }
 
-        let count = number("FNum", connection: connection).flatMap {
+    deinit { IOServiceClose(connection) }
+
+    func number(_ key: String) -> Double? {
+        guard let value = read(key) else { return nil }
+        return NativeFanReader.decodeNumber(value.bytes, type: value.type)
+    }
+
+    func write(_ key: String, value: Double) -> String? {
+        guard let code = Self.code(key) else { return "\(key) is not an SMC key." }
+        var infoRequest = SMCRequest()
+        infoRequest.key = code
+        infoRequest.command = 9
+        let (infoStatus, info) = call(infoRequest)
+        guard let info else { return "The SMC has no key \(key) (\(infoStatus))." }
+        let type = Self.typeName(info.keyInfo.dataType)
+        guard let bytes = NativeFanReader.encodeNumber(value, type: type),
+              info.keyInfo.dataSize == UInt32(bytes.count) else {
+            return "\(key) uses type \(type.trimmingCharacters(in: .whitespaces)), which the helper does not write."
+        }
+        var request = SMCRequest()
+        request.key = code
+        request.keyInfo = info.keyInfo
+        request.command = 6
+        withUnsafeMutableBytes(of: &request.bytes) { $0.copyBytes(from: bytes) }
+        let (status, written) = call(request)
+        return written == nil ? "The SMC refused \(key) = \(Self.text(value)) (\(status))." : nil
+    }
+
+    func read(_ key: String) -> Value? {
+        guard let code = Self.code(key) else { return nil }
+        var infoRequest = SMCRequest()
+        infoRequest.key = code
+        infoRequest.command = 9
+        guard let info = call(infoRequest).1, (1...32).contains(info.keyInfo.dataSize) else { return nil }
+        var valueRequest = SMCRequest()
+        valueRequest.key = code
+        valueRequest.keyInfo = info.keyInfo
+        valueRequest.command = 5
+        guard let response = call(valueRequest).1 else { return nil }
+        let bytes = withUnsafeBytes(of: response.bytes) { Array($0.prefix(Int(info.keyInfo.dataSize))) }
+        return Value(type: Self.typeName(info.keyInfo.dataType), bytes: bytes)
+    }
+
+    /// Every key name the SMC lists, in its own order.
+    func keyNames() -> [String] {
+        guard let total = read("#KEY")?.bytes.prefix(4).reduce(0, { ($0 << 8) | Int($1) }), total < 10_000 else { return [] }
+        return (0..<total).compactMap { index in
+            var request = SMCRequest()
+            request.command = 8
+            request.data32 = UInt32(index)
+            return call(request).1.map { Self.typeName($0.key) }
+        }
+    }
+
+    private func call(_ request: SMCRequest) -> (String, SMCRequest?) {
+        var input = request
+        var output = SMCRequest()
+        var outputSize = MemoryLayout<SMCRequest>.stride
+        let result = IOConnectCallStructMethod(
+            connection, 2, &input, MemoryLayout<SMCRequest>.stride, &output, &outputSize
+        )
+        guard result == KERN_SUCCESS else { return (String(format: "kernel 0x%08x", result), nil) }
+        guard output.result == 0 else { return (String(format: "SMC code 0x%02x", output.result), nil) }
+        return ("ok", output)
+    }
+
+    private static func code(_ key: String) -> UInt32? {
+        let chars = Array(key.utf8)
+        guard chars.count == 4 else { return nil }
+        return chars.reduce(UInt32(0)) { ($0 << 8) | UInt32($1) }
+    }
+
+    private static func typeName(_ code: UInt32) -> String {
+        let bytes = [24, 16, 8, 0].map { UInt8(truncatingIfNeeded: code >> $0) }
+        return String(bytes: bytes, encoding: .ascii) ?? ""
+    }
+
+    static func text(_ value: Double) -> String {
+        value.rounded() == value ? String(Int(value)) : String(format: "%.1f", value)
+    }
+}
+
+nonisolated enum NativeFanReader {
+    static var hasExpectedLayout: Bool { SMCSession.hasExpectedLayout }
+
+    static func snapshot() -> FanSnapshot? {
+        guard let smc = SMCSession() else { return nil }
+        let count = smc.number("FNum").flatMap {
             $0.isFinite && $0 >= 0 && $0 < 1_024 ? min(Int($0), 8) : nil
         }
         let indices = 0..<(count ?? 8)
         let fans: [FanReading] = indices.compactMap { index in
-            guard let actual = number("F\(index)Ac", connection: connection),
-                  actual.isFinite, actual >= 0, actual < 100_000 else { return nil }
-            let maximum = number("F\(index)Mx", connection: connection)
-            let modeValue = read("F\(index)Md", connection: connection)
-                ?? read("F\(index)md", connection: connection)
+            guard let actual = smc.number("F\(index)Ac"), actual.isFinite, actual >= 0, actual < 100_000 else { return nil }
+            let modeValue = smc.read("F\(index)Md") ?? smc.read("F\(index)md")
             let mode: String? = switch modeValue?.bytes.first {
             case 0: "auto"
             case 1: "manual"
@@ -178,86 +353,18 @@ nonisolated enum NativeFanReader {
             case .some(let raw): "unknown \(raw)"
             case nil: nil
             }
-            return FanReading(index: index, actualRPM: actual, maximumRPM: maximum, mode: mode)
+            return FanReading(index: index, actualRPM: actual, maximumRPM: smc.number("F\(index)Mx"), mode: mode)
         }
         guard count == 0 || !fans.isEmpty else { return nil }
         return FanSnapshot(fans: fans, profile: nil, canControl: false)
     }
 
-    static func apply(_ preset: FanPreset) throws {
-        guard geteuid() == 0 else { throw ControlError("Fan control needs macOS approval.") }
-        guard hasExpectedLayout else { throw ControlError("This Mac uses an unsupported SMC layout.") }
-        let service = IOServiceGetMatchingService(kIOMainPortDefault, IOServiceMatching("AppleSMC"))
-        guard service != 0 else { throw ControlError("The fan controller is unavailable.") }
-        defer { IOObjectRelease(service) }
-        var connection: io_connect_t = 0
-        guard IOServiceOpen(service, mach_task_self_, 0, &connection) == KERN_SUCCESS else {
-            throw ControlError("The fan controller could not be opened.")
-        }
-        defer { IOServiceClose(connection) }
-
-        guard let countValue = number("FNum", connection: connection),
-              countValue.isFinite, (1.0...8.0).contains(countValue) else {
-            throw ControlError("No supported fans were found.")
-        }
-        let indices = 0..<Int(countValue)
-        let modes = try indices.map { index -> String in
-            guard let key = ["F\(index)Md", "F\(index)md"].first(where: { read($0, connection: connection) != nil }),
-                  let raw = read(key, connection: connection)?.bytes.first,
-                  [0, 1, 3].contains(raw) else {
-                throw ControlError("Fan \(index) has no supported control mode.")
-            }
-            return key
-        }
-        let testKey = read("Ftst", connection: connection) == nil ? nil : "Ftst"
-        if preset == .auto {
-            for key in modes {
-                guard write(key, bytes: [0], connection: connection) else {
-                    throw ControlError("The fan could not return to macOS control.")
-                }
-            }
-            if let testKey, !write(testKey, bytes: [0], connection: connection) {
-                throw ControlError("The fan diagnostic mode could not be cleared.")
-            }
-            return
-        }
-
-        let targets = try indices.map { index -> (String, [UInt8]) in
-            guard let maximum = number("F\(index)Mx", connection: connection),
-                  maximum.isFinite, maximum > 0, maximum < 100_000,
-                  let key = ["F\(index)Tg", "F\(index)tg"].first(where: { read($0, connection: connection) != nil }),
-                  let value = read(key, connection: connection),
-                  let encoded = encodeNumber(maximum, type: value.type) else {
-                throw ControlError("Fan \(index) has no safe maximum target.")
-            }
-            return (key, encoded)
-        }
-        do {
-            if let testKey {
-                guard write(testKey, bytes: [1], connection: connection) else {
-                    throw ControlError("macOS did not unlock fan control.")
-                }
-                Thread.sleep(forTimeInterval: 0.5)
-            }
-            for index in indices {
-                guard write(modes[index], bytes: [1], connection: connection),
-                      write(targets[index].0, bytes: targets[index].1, connection: connection) else {
-                    throw ControlError("Fan \(index) rejected the maximum speed.")
-                }
-            }
-            guard indices.allSatisfy({ read(modes[$0], connection: connection)?.bytes.first == 1 }) else {
-                throw ControlError("macOS did not retain manual fan control.")
-            }
-        } catch {
-            for key in modes { _ = write(key, bytes: [0], connection: connection) }
-            if let testKey { _ = write(testKey, bytes: [0], connection: connection) }
-            throw error
-        }
-    }
-
     static func encodeNumber(_ value: Double, type: String) -> [UInt8]? {
         guard value.isFinite, value >= 0, value < 100_000 else { return nil }
         let normalized = [type, String(type.reversed())]
+        if normalized.contains("ui8 ") {
+            return value <= 255 && value.rounded() == value ? [UInt8(value)] : nil
+        }
         if normalized.contains("flt ") {
             let bits = Float(value).bitPattern
             return [UInt8(truncatingIfNeeded: bits), UInt8(truncatingIfNeeded: bits >> 8),
@@ -276,65 +383,6 @@ nonisolated enum NativeFanReader {
             #endif
         }
         return nil
-    }
-
-    private static func write(_ key: String, bytes: [UInt8], connection: io_connect_t) -> Bool {
-        let chars = Array(key.utf8)
-        guard chars.count == 4 else { return false }
-        let code = chars.reduce(UInt32(0)) { ($0 << 8) | UInt32($1) }
-        var infoRequest = SMCRequest()
-        infoRequest.key = code
-        infoRequest.command = 9
-        guard let info = call(infoRequest, connection: connection),
-              info.keyInfo.dataSize == UInt32(bytes.count) else { return false }
-        var request = SMCRequest()
-        request.key = code
-        request.keyInfo = info.keyInfo
-        request.command = 6
-        withUnsafeMutableBytes(of: &request.bytes) { $0.copyBytes(from: bytes) }
-        return call(request, connection: connection) != nil
-    }
-
-    private static func number(_ key: String, connection: io_connect_t) -> Double? {
-        guard let value = read(key, connection: connection) else { return nil }
-        return decodeNumber(value.bytes, type: value.type)
-    }
-
-    private static func read(_ key: String, connection: io_connect_t) -> Value? {
-        let chars = Array(key.utf8)
-        guard chars.count == 4 else { return nil }
-        let code = chars.reduce(UInt32(0)) { ($0 << 8) | UInt32($1) }
-
-        var infoRequest = SMCRequest()
-        infoRequest.key = code
-        infoRequest.command = 9
-        guard let infoResponse = call(infoRequest, connection: connection),
-              (1...32).contains(infoResponse.keyInfo.dataSize) else { return nil }
-
-        var valueRequest = SMCRequest()
-        valueRequest.key = code
-        valueRequest.keyInfo = infoResponse.keyInfo
-        valueRequest.command = 5
-        guard let valueResponse = call(valueRequest, connection: connection) else { return nil }
-
-        let typeCode = infoResponse.keyInfo.dataType
-        let typeBytes: [UInt8] = [
-            UInt8(truncatingIfNeeded: typeCode >> 24), UInt8(truncatingIfNeeded: typeCode >> 16),
-            UInt8(truncatingIfNeeded: typeCode >> 8), UInt8(truncatingIfNeeded: typeCode)
-        ]
-        let type = String(bytes: typeBytes, encoding: .ascii) ?? ""
-        let bytes = withUnsafeBytes(of: valueResponse.bytes) { Array($0.prefix(Int(infoResponse.keyInfo.dataSize))) }
-        return Value(type: type, bytes: bytes)
-    }
-
-    private static func call(_ request: SMCRequest, connection: io_connect_t) -> SMCRequest? {
-        var input = request
-        var output = SMCRequest()
-        var outputSize = MemoryLayout<SMCRequest>.stride
-        let result = IOConnectCallStructMethod(
-            connection, 2, &input, MemoryLayout<SMCRequest>.stride, &output, &outputSize
-        )
-        return result == KERN_SUCCESS && output.result == 0 ? output : nil
     }
 
     static func decodeNumber(_ bytes: [UInt8], type: String, littleEndianIntegers: Bool = {

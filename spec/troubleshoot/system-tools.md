@@ -214,8 +214,9 @@ Settings or Login Items (owner decision 2026-11-19, the way Mole does it).
   The daemon keeps `setConnectionCodeSigningRequirement`.
   `FanControlTests` checks the plists against the contract; `make install`
   refuses a product whose signatures do not satisfy both strings.
-- Install: `FanHelperService.install()` (AuthorizationCreate with
-  `kSMRightBlessPrivilegedHelper`, then `SMJobBless`). It runs on the first
+- Install: `FanHelperService.install()` (AuthorizationCopyRights for
+  `kSMRightBlessPrivilegedHelper` with our prompt text and app icon, then
+  `SMJobBless`). It runs on the first
   Cool or Max click, or on "Install Helper" in the fan popover. Auto with no
   manual mode never installs. Tests never install.
 - Version: the helper's `CFBundleVersion` is an integer. `neighborSnapshot`
@@ -223,6 +224,11 @@ Settings or Login Items (owner decision 2026-11-19, the way Mole does it).
   blesses again. Raise `NetToysHelper/Info.plist` `CFBundleVersion` when
   helper code changes; a normal app update with the same version asks for
   nothing.
+- Touch ID and the "Apple could not verify ... malware" line: the
+  `blesshelper` right (class user, group admin, no password-only key) allows
+  Touch ID, but SecurityAgent logs `AEWP notarized 0, biometry prohibited 1`
+  and `TouchID is not enabled` for this Apple Development build. Both go away
+  only with a Developer ID Application signature plus notarization.
 - Unsigned builds (`ADHOC=1`): the app fails its own team requirement, so the
   status is `unsupported`, fans stay read only, and the row says why.
 - Migration: every launch, `retireLegacyRegistrations()` unregisters the old

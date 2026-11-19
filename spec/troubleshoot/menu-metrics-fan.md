@@ -99,16 +99,48 @@ still use `SystemMonitor`. `DESIGN.md` owns every size, color, and type value.
   everywhere; RAM stays binary.
 - **Check:** `testDiskByteFormatterUsesDecimalUnits`.
 
+## Max Rejected On Apple Silicon
+
+- **Symptom:** Max showed "Fan 0 rejected the maximum speed." (helper 1, M4 Pro
+  Mac16,7).
+- **Cause:** The old helper wrote `Ftst = 1`, waited 0.5 s once, and wrote
+  `F0Md = 1` once. On M-series the SMC refuses the mode write until the
+  unlock takes effect, a few seconds later. Mole's helper retries the mode
+  write against a deadline ("fan test mode unlock failed", "mode write
+  failed", "target write failed" in its strings).
+- **Keys on this Mac** (read without root): `FNum` ui8 2; `Ftst` ui8 0;
+  `F<n>Md` ui8 0 (0 Auto, 1 manual); `F<n>Tg` flt; `F<n>Mn` flt 1350;
+  `F<n>Mx` flt 5777; `F<n>Ac` flt. No lowercase `md`/`tg` keys. Temperatures
+  are `Tp*` (CPU P), `Te*` (CPU E), `Tg*` (GPU), all flt.
+- **Invariant:** The helper (version 2) is a thin writer:
+  `writeFanKey(key, value)` takes only `Ftst` 0/1, `F<n>Md` 0/1 for n below
+  `FNum`, and `F<n>Tg` inside `F<n>Mn...F<n>Mx` (`FanKeyPolicy`). Every preset
+  rule lives in the app (`FanDriver`), so a rule change never needs a new
+  helper or password. The app reads each key back after a write and treats
+  a mismatch as an error.
+- **Invariant:** Max and Cool write `Ftst = 1`, then retry `F<n>Md = 1` every
+  0.25 s for up to 10 s, then write `F<n>Tg`. The log records tries and time.
+  Max targets `F<n>Mx`. Cool reads the hottest Tp/Te/Tg sensor every 3 s:
+  Mn at 55 °C or less, Mx at 75 °C or more, linear between (70 °C is 75%);
+  a tick rises at most 800 RPM and falls at most 250 RPM. Auto writes every
+  `F<n>Md = 0`, then `Ftst = 0`.
+- **Check:** after the owner approves helper 2, run
+  `open -g "macpowertoys://fan/max"`, then `/cool`, then `/auto`; read
+  `F0Ac`/`F0Md`/`Ftst` and the Fan log lines. End on Auto.
+
 ## Fan Stays Forced After The App Dies
 
 - **Symptom:** Cool or Max stayed forced after a crash, force quit, or SIGKILL.
 - **Cause:** The helper did not track clients, and the in-process revert
   ignored its result.
-- **Invariant:** The helper writes Auto when the connection that set a manual
-  mode ends (`FanManualLease`). The app holds that connection only while the
-  mode is manual. A failed revert retries 3 times, then shows an error.
-  A disabled Awake refuses external actions.
-- **Check:** `FanControlTests` lease test. Then, with the new helper installed,
+- **Invariant:** The last connection whose write left the fans manual owns
+  them (`FanManualLease`). The helper restores Auto when that connection ends,
+  or when it sends no write for 15 s (watchdog every 5 s; the app rewrites
+  every target each 3 s tick). A failed restore keeps the owner and the
+  daemon, so the watchdog retries. The app restores Auto and shows the reason
+  when macOS takes the fans back or the helper stops. A disabled Awake
+  refuses external actions.
+- **Check:** `FanControlTests` lease and policy tests. Then, with helper 2,
   set Max, send SIGKILL, and confirm Auto returns on real hardware.
 
 ## Fan
@@ -118,8 +150,8 @@ still use `SystemMonitor`. `DESIGN.md` owns every size, color, and type value.
 - **Invariant:** Quit awaits `restoreAutomaticOnExit()` (async throws). It
   queues Auto after selected presets, blocks new selections, keeps ownership
   until success, and propagates failure so termination can cancel.
-- **Invariant:** The signed daemon accepts only Auto, Cool, or Max from the
-  signed app, validates SMC keys and the hardware maximum, and restores Auto
+- **Invariant:** The signed daemon accepts only allowlisted fan keys from the
+  signed app (see "Max Rejected On Apple Silicon"), and the app restores Auto
   on a failed write. The helper installs with SMJobBless (see
   `system-tools.md`, Helper install); never type the admin password on the
   owner's behalf. Raise the helper `CFBundleVersion` before using a new XPC

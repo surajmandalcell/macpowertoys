@@ -24,7 +24,10 @@ nonisolated enum MacPowerToysHelperContract {
 @objc nonisolated protocol MacPowerToysHelperXPCProtocol {
     /// Replies with the helper's CFBundleVersion. The data is always nil; the selector stays for older helpers.
     func neighborSnapshot(reply: @escaping (Data?, String) -> Void)
-    func applyFanPreset(_ preset: String, reply: @escaping (String) -> Void)
+    /// Writes one fan SMC key: `Ftst` (0 or 1), `F<n>Md` (0 or 1), or `F<n>Tg` (between `F<n>Mn` and `F<n>Mx`).
+    /// The helper reads the key back and replies "" on success or the reason. The app owns every preset rule;
+    /// this call stays the same when they change, so a logic change never needs a new helper.
+    func writeFanKey(_ key: String, value: Double, reply: @escaping (String) -> Void)
     /// Restarts coreaudiod. Takes no input, so no caller can choose a command or path. Replies "" on success.
     func restartAudio(reply: @escaping (String) -> Void)
 }

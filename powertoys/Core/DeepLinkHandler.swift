@@ -55,6 +55,16 @@ final class DeepLinkHandler {
             return
         }
 
+        if url.host == "fan" {
+            if let preset = FanPreset.allCases.first(where: { "/" + $0.rawValue.lowercased() == url.path.lowercased() }) {
+                Task { await FanControlService.shared.selectFromLink(preset) }
+            } else {
+                LogManager.shared.warning("Unknown fan route: \(url.path). Use fan/auto, fan/cool, or fan/max.",
+                                          source: "DeepLinkHandler")
+            }
+            return
+        }
+
         switch DiagnosticsRoute.parse(url) {
         case .timings:
             let records = OnePlusPanelTimings.shared.records

@@ -87,19 +87,36 @@ final class FanHelperService {
     }
 
     // SMJobBless is deprecated since macOS 13 but still installs helpers; SMAppService needs a Login Items trip.
+    nonisolated static let installPrompt = "MacPowerToys needs your approval once to control fan speed."
+
+    // Touch ID: SecurityAgent logs "AEWP notarized 0, biometry prohibited 1" for this app, so it offers Touch ID
+    // only once the app is Developer ID signed and notarized. Until then the prompt asks for the password.
     nonisolated private static func bless() -> String? {
         var authorization: AuthorizationRef?
-        let created = kSMRightBlessPrivilegedHelper.withCString { name -> OSStatus in
-            var item = AuthorizationItem(name: name, valueLength: 0, value: nil, flags: 0)
-            return withUnsafeMutablePointer(to: &item) { pointer in
-                var rights = AuthorizationRights(count: 1, items: pointer)
-                return AuthorizationCreate(&rights, nil, [.interactionAllowed, .extendRights, .preAuthorize],
-                                           &authorization)
+        guard AuthorizationCreate(nil, nil, [], &authorization) == errAuthorizationSuccess, let authorization else {
+            return "macOS could not start the fan helper install."
+        }
+        defer { AuthorizationFree(authorization, []) }
+        let icon = Bundle.main.path(forResource: "AppIcon", ofType: "icns")
+        // C copies that outlive every AuthorizationItem pointing at them.
+        let strings = [kSMRightBlessPrivilegedHelper, kAuthorizationEnvironmentPrompt, installPrompt,
+                       kAuthorizationEnvironmentIcon, icon ?? ""].map { strdup($0)! }
+        defer { strings.forEach { free($0) } }
+        var right = AuthorizationItem(name: strings[0], valueLength: 0, value: nil, flags: 0)
+        var environment = [
+            AuthorizationItem(name: strings[1], valueLength: strlen(strings[2]), value: strings[2], flags: 0),
+            AuthorizationItem(name: strings[3], valueLength: strlen(strings[4]), value: strings[4], flags: 0)
+        ]
+        let created = withUnsafeMutablePointer(to: &right) { rightPointer in
+            environment.withUnsafeMutableBufferPointer { items in
+                var rights = AuthorizationRights(count: 1, items: rightPointer)
+                var context = AuthorizationEnvironment(count: icon == nil ? 1 : 2, items: items.baseAddress)
+                return AuthorizationCopyRights(authorization, &rights, &context,
+                                               [.interactionAllowed, .extendRights, .preAuthorize], nil)
             }
         }
-        defer { if let authorization { AuthorizationFree(authorization, []) } }
         if created == errAuthorizationCanceled { return "Fan helper install was canceled." }
-        guard created == errAuthorizationSuccess, let authorization else {
+        guard created == errAuthorizationSuccess else {
             return "macOS did not authorize the fan helper install (\(created))."
         }
         var error: Unmanaged<CFError>?
