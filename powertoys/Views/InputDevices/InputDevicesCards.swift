@@ -179,44 +179,8 @@ struct InputScrollProfileCard: View {
     let icon: String
     let deviceCount: Int
     @Binding var profile: InputScrollProfile
-    var isExpanded: Binding<Bool>? = nil
+    var body: some View { linearContent }
 
-    @ViewBuilder
-    var body: some View {
-        if isExpanded == nil {
-            linearContent
-        } else {
-            profileContent
-                .environment(\.onePlusCardPadding, 0)
-        }
-    }
-
-    private var profileContent: some View {
-        VStack(alignment: .leading, spacing: 0) {
-            if let isExpanded {
-                InputDisclosureHeader(title: title, detail: headerDetail, isExpanded: isExpanded)
-            } else {
-                OnePlusCardHeader(title, systemImage: icon) {
-                    OnePlusStatus(deviceDetail, state: deviceCount > 0 ? .online : .offline)
-                }
-            }
-            if isExpanded?.wrappedValue != false {
-                OnePlusSettingRow(
-                    "Use this profile",
-                    help: "Apply this profile to \(title.lowercased()) scroll events.",
-                    controlWidth: OnePlusMetrics.contentControlHeight
-                ) {
-                    Toggle("Use \(title.lowercased()) profile", isOn: $profile.enabled)
-                        .labelsHidden()
-                        .toggleStyle(OnePlusSwitchStyle())
-                }
-                .onePlusRowHover()
-                settingRows
-            }
-        }
-    }
-
-    /// The v15 window and main-page form; the menu panel keeps the collapsible v14 rows.
     private var linearContent: some View {
         OnePlusLinearAppletSection(title) {
             OnePlusLinearAppletRow("Use this profile", detail: deviceDetail, systemImage: "power") {
@@ -255,130 +219,11 @@ struct InputScrollProfileCard: View {
         .disabled(!enabled)
     }
 
-    @ViewBuilder
-    private var settingRows: some View {
-        Group {
-            OnePlusSettingRow(
-                "Direction",
-                help: "Keep the macOS scroll direction or reverse it."
-            ) {
-                OnePlusSegmented(
-                    choices: [(false, "System"), (true, "Reversed")],
-                    selection: $profile.reverseVertical,
-                    accessibilityLabel: "\(title) scroll direction"
-                )
-            }
-            .onePlusRowHover()
-            OnePlusSettingRow(
-                "Scroll speed",
-                help: "Multiply every scroll delta from this device type."
-            ) {
-                HStack(spacing: OnePlusMetrics.spacing[3]) {
-                    Slider(value: $profile.speed, in: 0.35...3, step: 0.05)
-                        .accessibilityLabel("\(title) scroll speed")
-                    Text(profile.speed.formatted(.number.precision(.fractionLength(2))) + "×")
-                        .onePlusText(.mono)
-                }
-            }
-            .onePlusRowHover()
-            OnePlusSettingRow(
-                "Horizontal scrolling",
-                help: "Pass horizontal scroll events through.",
-                controlWidth: OnePlusMetrics.contentControlHeight
-            ) {
-                Toggle("\(title) horizontal scrolling", isOn: $profile.horizontalEnabled)
-                    .labelsHidden()
-                    .toggleStyle(OnePlusSwitchStyle())
-            }
-            .onePlusRowHover()
-            OnePlusSettingRow(
-                "Reverse horizontal",
-                help: "Invert left and right scrolling.",
-                controlWidth: OnePlusMetrics.contentControlHeight
-            ) {
-                Toggle("\(title) reverse horizontal", isOn: $profile.reverseHorizontal)
-                    .labelsHidden()
-                    .toggleStyle(OnePlusSwitchStyle())
-            }
-            .onePlusRowHover()
-            .disabled(!profile.horizontalEnabled)
-            OnePlusSettingRow(
-                "Shift scrolls sideways",
-                help: "Hold Shift and use the wheel to move sideways.",
-                controlWidth: OnePlusMetrics.contentControlHeight
-            ) {
-                Toggle("\(title) Shift scrolls sideways", isOn: $profile.shiftScrollsHorizontally)
-                    .labelsHidden()
-                    .toggleStyle(OnePlusSwitchStyle())
-            }
-            .onePlusRowHover()
-            .disabled(!profile.horizontalEnabled)
-            OnePlusSettingRow(
-                "Smoothing",
-                help: "Split a coarse wheel notch into smaller steps.",
-                controlWidth: OnePlusMetrics.contentControlHeight,
-                separator: false
-            ) {
-                Toggle("\(title) smoothing", isOn: $profile.smooth)
-                    .labelsHidden()
-                    .toggleStyle(OnePlusSwitchStyle())
-            }
-            .onePlusRowHover()
-        }
-        .disabled(!profile.enabled)
-    }
-
-    var headerDetail: String {
-        if isExpanded?.wrappedValue == false {
-            let direction = profile.reverseVertical ? "Reversed" : "System"
-            return "\(direction) \(profile.speed.formatted(.number.precision(.fractionLength(2))))×"
-        }
-        return deviceDetail
-    }
-
     private var deviceDetail: String {
         switch deviceCount {
         case 0: "No device"
         case 1: "1 connected"
         default: "\(deviceCount) connected"
-        }
-    }
-}
-
-struct InputDisclosureHeader: View {
-    let title: String
-    var detail: String? = nil
-    @Binding var isExpanded: Bool
-    var refreshAction: (() -> Void)? = nil
-    @Environment(\.onePlusCardPadding) private var cardPadding
-
-    var body: some View {
-        Button { isExpanded.toggle() } label: {
-            OnePlusCardHeader(title) {
-                HStack(spacing: OnePlusMetrics.actionSpacing) {
-                    if let detail { Text(detail).onePlusText(.caption).lineLimit(1).help(detail) }
-                    if refreshAction != nil {
-                        Color.clear.frame(width: OnePlusMetrics.compactControlHeight)
-                    }
-                    Image(systemName: isExpanded ? "chevron.down" : "chevron.right")
-                        .onePlusText(.cardTitle)
-                        .frame(width: refreshAction == nil ? nil : OnePlusMetrics.compactControlHeight)
-                        .accessibilityHidden(true)
-                }
-            }
-            .contentShape(Rectangle())
-        }
-        .buttonStyle(OnePlusInteractionStyle(radius: OnePlusMetrics.panelRadius))
-        .accessibilityLabel("\(title) section")
-        .accessibilityValue(isExpanded ? "Expanded" : "Collapsed")
-        .accessibilityHint(isExpanded ? "Hide controls and details" : "Show controls and details")
-        .overlay(alignment: .trailing) {
-            if let refreshAction {
-                Button("Refresh devices", systemImage: "arrow.clockwise", action: refreshAction)
-                    .buttonStyle(OnePlusButtonStyle(.icon, size: .small))
-                    .help("Refresh devices")
-                    .padding(.trailing, cardPadding + OnePlusMetrics.compactControlHeight + OnePlusMetrics.actionSpacing)
-            }
         }
     }
 }

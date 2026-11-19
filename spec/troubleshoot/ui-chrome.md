@@ -627,6 +627,18 @@ orchestrator; see "Open signed checks" at the end.
 - **Check:** Interval-policy regression; idle CPU with the panel open, closed,
   and disabled.
 
+## Panel tab row hover flush with the text
+
+- **Symptom:** Input Devices tab rows (Mouse, Trackpad, Scroll device) drew
+  their hover and selected fill flush with the text.
+- **Cause:** The tab used version 14 rows whose hover fill ran from the text
+  edge with no inset.
+- **Rule:** Every panel tab row uses `linearRowHover` (through OnePlusUI rows
+  such as `OnePlusLinearDisclosureRow`) with text on `panelRowInset`, so the
+  fill overflows the text by 6 pt on each side and nothing moves.
+- **Check:** Offscreen render of each tab with a hovered row beside Home's
+  Top processes hover.
+
 ## Open signed checks
 
 The signed build still needs review in both appearances: canvas sizes, header

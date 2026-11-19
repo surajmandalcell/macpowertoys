@@ -375,7 +375,7 @@ ease-in cubic-bezier(0.4, 0, 1, 1)):
 
 "Live instrument" (`OnePlusMotion`, `OnePlusNumberPace`):
 
-- First Home open after launch: numbers count up from 0 and bars grow over
+- First open of each tab after launch: numbers count up from 0 and bars grow over
   600 ms; chart lines draw in over 450 ms, 30 ms apart. Later opens show
   values as they are.
 - Charts scroll at one constant speed; a new top value eases the scale over
@@ -465,7 +465,18 @@ ease-in cubic-bezier(0.4, 0, 1, 1)):
   every 5 seconds otherwise; the first sample on open comes at once.
   Processes refresh every 2 seconds only while Home shows. Text formats off
   the main thread.
-- RSync UI and Input Devices tabs keep version 14 content in the body.
+- Tool tabs (RSync UI, Input Devices) use Home's parts: a pair of 56 pt
+  tiles, `fillGroup` groups 10 pt apart, 24 pt section headers, 32 pt rows
+  with the Home row hover, and the action keys last.
+  - Input Devices: Mouse and Trackpad tiles (lowest battery as a bar, else
+    the device name and control state); the custom scrolling switch and the
+    Accessibility row with a 24 pt Grant key; one group per Mouse,
+    Trackpad, and Scroll device profile, each opened by a disclosure row
+    (glyph, name, detail, chevron) that keeps its open state.
+  - RSync UI: a warning banner with Retry when the engine stops; Transfers
+    and Speed tiles; Remotes, Active, and Recent groups; transfer rows with
+    a chevron, state text, a 22 pt icon key, and a 5 pt progress bar;
+    New Transfer and Open RSync UI keys.
 
 ### Portman
 
@@ -510,6 +521,11 @@ the Open key. Parts: `PortmanOverviewParts.swift`,
 - Server details keep their version 14 content.
 
 ### Version 14 panels (separate tool panels)
+
+The shell below stays version 14. The body inside it uses the combined
+panel's tool-tab content: RSync UI and Input Devices without their Open
+key, Awake as one group with its segmented row and Keep display on switch,
+Color Picker and Text Extractor as one action key.
 
 - Top bar: padding 10 top, 8 sides, 6 bottom; icon tab group in a `track`
   container (radius 7, 26 pt tabs, radius 5); trailing `Open App` as a small

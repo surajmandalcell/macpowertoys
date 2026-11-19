@@ -385,72 +385,22 @@ final class InputDevicesTests: XCTestCase {
         }
     }
 
-    func testCollapsedProfileKeepsAFullWidthHeaderAndExpandsToAllRows() {
-        let collapsed = InputScrollProfileCard(title: "Mouse", icon: "computermouse", deviceCount: 1,
-                                               profile: .constant(InputScrollProfile()), isExpanded: .constant(false))
-        let expanded = InputScrollProfileCard(title: "Mouse", icon: "computermouse", deviceCount: 1,
-                                              profile: .constant(InputScrollProfile()), isExpanded: .constant(true))
-        XCTAssertEqual(cardHeight(collapsed), 40, accuracy: 1)
-        XCTAssertEqual(cardHeight(expanded) - cardHeight(collapsed), 7 * 44, accuracy: 1)
-        let devices = InputDisclosureHeader(title: "Devices", detail: "2 connected",
-                                            isExpanded: .constant(false), refreshAction: {})
-        XCTAssertEqual(cardHeight(devices), 40, accuracy: 1)
-    }
-
-    func testProfileDisclosureHeaderKeepsDirectionAndSpeedWhenCollapsed() {
-        var profile = InputScrollProfile(reverseVertical: true, speed: 3)
-        var expanded = false
-        let card = InputScrollProfileCard(title: "Mouse", icon: "computermouse", deviceCount: 2,
-                                         profile: Binding(get: { profile }, set: { profile = $0 }),
-                                         isExpanded: Binding(get: { expanded }, set: { expanded = $0 }))
-        XCTAssertEqual(card.headerDetail, "Reversed \(3.0.formatted(.number.precision(.fractionLength(2))))×")
-        profile.reverseVertical = false
-        profile.speed = 0.35
-        XCTAssertEqual(card.headerDetail, "System \(0.35.formatted(.number.precision(.fractionLength(2))))×")
-        expanded = true
-        XCTAssertEqual(card.headerDetail, "2 connected")
-    }
-
-    func testDevicesCaptionAndRefreshKeepTheSameHeaderCenter() throws {
-        for appearance in [NSAppearance.Name.aqua, .darkAqua] {
-            let host = NSHostingView(rootView: InputDisclosureHeader(title: "Devices", detail: "2 connected",
-                isExpanded: .constant(false), refreshAction: {})
-                .environment(\.onePlusCardPadding, 0).onePlusDensity(.compact)
-                .frame(width: 340, height: 40).background(OnePlusColor.panel))
-            let window = NSWindow(contentRect: CGRect(x: -10000, y: -10000, width: 340, height: 40),
-                                  styleMask: .borderless, backing: .buffered, defer: false)
-            window.isReleasedWhenClosed = false
-            window.appearance = NSAppearance(named: appearance)
-            window.contentView = host
-            defer { window.close() }
-            host.layoutSubtreeIfNeeded()
-            let bitmap = try XCTUnwrap(host.bitmapImageRepForCachingDisplay(in: host.bounds))
-            host.cacheDisplay(in: host.bounds, to: bitmap)
-            let scale = CGFloat(bitmap.pixelsWide) / 340
-            func center(_ range: Range<Int>) throws -> CGFloat {
-                var rows: [Int] = []
-                for y in 0..<Int(38 * scale) {
-                    for x in Int(CGFloat(range.lowerBound) * scale)..<Int(CGFloat(range.upperBound) * scale) {
-                        let color = try XCTUnwrap(bitmap.colorAt(x: x, y: y)?.usingColorSpace(.sRGB))
-                        if appearance == .darkAqua ? color.redComponent > 0.55 : color.redComponent < 0.65 { rows.append(y) }
-                    }
-                }
-                return CGFloat(try XCTUnwrap(rows.min()) + XCTUnwrap(rows.max()) + 1) / (2 * scale)
-            }
-            let refresh = try center(280..<312)
-            XCTAssertEqual(refresh, 20, accuracy: 1)
-            XCTAssertEqual(try center(0..<80), refresh, accuracy: 2)
-            XCTAssertEqual(try center(130..<275), refresh, accuracy: 2)
-            XCTAssertEqual(try center(317..<337), refresh, accuracy: 2)
-        }
+    func testProfileDisclosureRowKeepsDirectionAndSpeedWhenCollapsed() {
+        let reversed = InputScrollProfile(reverseVertical: true, speed: 3)
+        XCTAssertEqual(InputPanelProfileGroup.detail(reversed, expanded: false, deviceCount: 2),
+                       "Reversed \(3.0.formatted(.number.precision(.fractionLength(2))))×")
+        let system = InputScrollProfile(speed: 0.35)
+        XCTAssertEqual(InputPanelProfileGroup.detail(system, expanded: false, deviceCount: 2),
+                       "System \(0.35.formatted(.number.precision(.fractionLength(2))))×")
+        XCTAssertEqual(InputPanelProfileGroup.detail(system, expanded: true, deviceCount: 2), "2 connected")
     }
 
     func testProfileRowsFollowTheirGates() throws {
         let source = try String(contentsOf: URL(fileURLWithPath: #filePath)
             .deletingLastPathComponent().deletingLastPathComponent()
-            .appendingPathComponent("powertoys/Views/InputDevices/InputDevicesCards.swift"),
+            .appendingPathComponent("powertoys/Views/MenuPanels/MainPanelInputDevices.swift"),
                                 encoding: .utf8)
-        XCTAssertEqual(source.components(separatedBy: ".disabled(!profile.horizontalEnabled)").count - 1, 2)
+        XCTAssertEqual(source.components(separatedBy: ".disabled(!profile.horizontalEnabled)").count - 1, 1)
         XCTAssertEqual(source.components(separatedBy: ".disabled(!profile.enabled)").count - 1, 1)
     }
 

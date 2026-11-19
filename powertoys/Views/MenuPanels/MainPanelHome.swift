@@ -3,9 +3,28 @@ import IOKit.ps
 import OnePlusUI
 import SwiftUI
 
-/// The first Home open after launch counts numbers up, grows bars, and draws charts in; later opens show values as is.
-enum MainPanelEntrance {
-    @MainActor static var pending = true
+/// The first open of each panel tab after launch counts numbers up, grows bars, and draws charts in; later opens
+/// show values as is (DESIGN.md "Panel motion").
+struct MainPanelReveal: ViewModifier {
+    @MainActor static var pending: Set<String> = Set(TrayTab.allCases.map(\.panelID))
+    let tab: TrayTab
+    @State private var reveal: Double
+    @Environment(\.onePlusIsVisible) private var isVisible
+
+    init(_ tab: TrayTab) {
+        self.tab = tab
+        _reveal = State(initialValue: Self.pending.contains(tab.panelID) && !OnePlusMotion.reducesMotion ? 0 : 1)
+    }
+
+    func body(content: Content) -> some View {
+        content
+            .environment(\.onePlusLinearReveal, reveal)
+            .onChange(of: isVisible, initial: true) {
+                guard isVisible, reveal < 1 else { return }
+                Self.pending.remove(tab.panelID)
+                withAnimation(OnePlusMotion.animation(OnePlusMotion.panelReveal)) { reveal = 1 }
+            }
+    }
 }
 
 /// The combined panel's Home (DESIGN.md v15): the metric bento, the Fan and Awake card, the top processes,
@@ -14,7 +33,6 @@ struct TrayHomeView: View {
     static let owner = "main-tray-home"
     let toolIDs: [String]
     @State private var taskManager: MainPanelTaskManager?
-    @State private var reveal: Double = MainPanelEntrance.pending && !OnePlusMotion.reducesMotion ? 0 : 1
     @Environment(\.onePlusIsVisible) private var isVisible
 
     var body: some View {
@@ -23,14 +41,9 @@ struct TrayHomeView: View {
                              actions: actions, taskManager: taskManager) {
             MainPanelControlCard(showsAwake: toolIDs.contains("awake"))
         }
-        .environment(\.onePlusLinearReveal, reveal)
+        .modifier(MainPanelReveal(.home))
         .background { MainPanelReadingsFeed(model: .shared) }
         .task(id: isVisible) { if isVisible { taskManager = .installed() } }
-        .onChange(of: isVisible, initial: true) {
-            guard isVisible, reveal < 1 else { return }
-            MainPanelEntrance.pending = false
-            withAnimation(OnePlusMotion.animation(OnePlusMotion.panelReveal)) { reveal = 1 }
-        }
         .modifier(MenuPanelProcessRefresh())
         .modifier(MenuPanelMetricSampling(owner: Self.owner))
     }
@@ -89,7 +102,7 @@ struct MainPanelHomeContent<Controls: View>: View {
         Button { selectedPID = row.pid } label: {
             OnePlusLinearProcessRow(row.name, icon: row.icon, cpu: row.cpu, memory: row.memory, selected: row.pid == selectedPID)
         }
-        .buttonStyle(MainPanelRowButtonStyle())
+        .buttonStyle(OnePlusLinearPlainRowStyle())
         .contextMenu {
             Button("Quit Process…") { MainPanelProcessQuit.confirm(name: row.name, pid: row.pid, started: row.started) }
             if let taskManager {
@@ -109,11 +122,6 @@ struct MainPanelHomeContent<Controls: View>: View {
             }
         }
     }
-}
-
-/// The row draws its own hover and selected fill, so the button adds no press look.
-private struct MainPanelRowButtonStyle: ButtonStyle {
-    func makeBody(configuration: Configuration) -> some View { configuration.label }
 }
 
 /// One top-process row as the panel draws it. Rows hold their slot while the first reading loads.
@@ -540,33 +548,31 @@ struct AwakeTrayRow: View {
     }
 
     var body: some View {
-        VStack(alignment: .leading, spacing: 2) {
-            OnePlusMenuControlRow("Awake",systemImage: ToolGlyph.awake.symbol, status: status) {
-                OnePlusSegmented(
-                    choices: [
-                        (AwakeQuickMode?.some(.off), "Off"),
-                        (AwakeQuickMode?.some(.thirtyMinutes), "30m"),
-                        (AwakeQuickMode?.some(.oneHour), "1h"),
-                        (AwakeQuickMode?.some(.indefinite), "∞"),
-                    ],
-                    selection: quickMode
-                )
-                .accessibilityLabel("Awake duration")
-            }
-            OnePlusMenuControlRow("Keep display on", systemImage: "display") {
-                Toggle("Keep display on", isOn: Binding(
-                    get: { service.configuration.keepDisplayOn },
-                    set: service.setKeepDisplayOn
-                ))
-                .labelsHidden()
-                .toggleStyle(OnePlusSwitchStyle())
-                .accessibilityIdentifier("awake.keep-display-on")
+        VStack(alignment: .leading, spacing: TrayPopoverLayout.style.blockGap) {
+            OnePlusLinearList(style: .panel) {
+                OnePlusLinearControlRow("Awake", systemImage: ToolGlyph.awake.symbol, status: status) {
+                    OnePlusLinearSegmented(
+                        choices: [
+                            (AwakeQuickMode?.some(.off), "Off"),
+                            (AwakeQuickMode?.some(.thirtyMinutes), "30m"),
+                            (AwakeQuickMode?.some(.oneHour), "1h"),
+                            (AwakeQuickMode?.some(.indefinite), "∞"),
+                        ],
+                        selection: quickMode,
+                        accessibilityLabel: "Awake duration"
+                    )
+                }
+                OnePlusLinearControlRow("Keep display on", systemImage: "display", titleWidth: nil) {
+                    Toggle("Keep display on", isOn: Binding(
+                        get: { service.configuration.keepDisplayOn },
+                        set: service.setKeepDisplayOn
+                    ))
+                    .toggleStyle(OnePlusLinearSwitchStyle())
+                    .accessibilityIdentifier("awake.keep-display-on")
+                }
             }
             if let assertionError = service.assertionError {
-                Text(assertionError)
-                    .onePlusText(.caption)
-                    .foregroundStyle(OnePlusColor.danger)
-                    .lineLimit(2)
+                OnePlusLinearBanner(.warning, title: assertionError)
             }
         }
     }
