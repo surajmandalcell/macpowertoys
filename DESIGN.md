@@ -124,7 +124,7 @@ mockups are in `docs/design/v15/`.
 - Task Manager left the app on 2026-11-16: its window, its own menu
   panel and status items, its tool page, and its routes. The combined
   panel keeps the metric tiles, the top processes, and the Fan row on a
-  small sampler that runs only while the panel is open. The product
+  small sampler (see "Combined panel", Speed). The product
   continues as Task Manager Pro (paid) and Task Manager Classic (free) in `../task_manager_x`.
 - Tools that move out (owner, 2026-11-16): Partition Manager, System
   Cleaner, and NetToys leave the app and continue as their own apps:
@@ -758,10 +758,14 @@ Built from the OnePlusUI `OnePlusLinear` panel parts with
     pressed `fillButtonPressed`. Light: white soft keys with a lit top
     edge and a short drop, regular labels. Dark: flat `fillGroup`, hover
     `fillButtonHover`, medium labels.
-- Speed: metrics sample once per second off the main thread and only while
-  Home is visible; the process list refreshes every 2 seconds. Text is
-  formatted off the main thread. Both stop when the panel closes or the
-  tab changes. Only the chart ticker moves.
+- Speed (owner, 2026-11-19): metrics sample off the main thread once per
+  second while Home is visible, and every 5 seconds while the panel is
+  closed or on another tab, so the charts open with recent history. The
+  first sample on open comes at once. Charts space samples by index, so
+  the slow samples show a longer stretch of time. The process list
+  refreshes every 2 seconds, only while Home is visible. Text is formatted
+  off the main thread, only while Home is visible. Only the chart ticker
+  moves.
 - Other tabs (RSync UI, Input Devices) keep their version 14 content
   inside the scrolling body; their cards and section headers still draw
   lines until they are converted.

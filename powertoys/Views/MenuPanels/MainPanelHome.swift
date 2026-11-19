@@ -4,7 +4,7 @@ import OnePlusUI
 import SwiftUI
 
 /// The combined panel's Home (DESIGN.md v15): the metric bento, the Fan and Kwake card, the top processes,
-/// and the joined action bar. Sampling and the process refresh run only while Home is visible.
+/// and the joined action bar. 1 s sampling and the process refresh run only while Home is visible.
 struct TrayHomeView: View {
     static let owner = "main-tray-home"
     let toolIDs: [String]
@@ -122,9 +122,25 @@ struct MainPanelProcessDisplay {
     }
 }
 
-/// The combined panel's Home owns the metric sampler only while it is visible.
+/// Home samples every second while visible. While the panel exists but Home is hidden, a background owner
+/// samples every 5 seconds, so the charts open with up to 5 minutes of history.
 struct MenuPanelMetricSampling: ViewModifier {
-    static let metrics: Set<SystemMonitorMetric> = [.cpu, .gpu, .memory, .disk, .network, .battery]
+    static let metrics: Set<SystemMonitorMetric> = {
+        let hardware = MainPanelHardware.current
+        return Set<SystemMonitorMetric>([.cpu, .memory, .disk, .network])
+            .union(hardware.hasGPU ? [.gpu] : []).union(hardware.hasBattery ? [.battery] : [])
+    }()
+    static let backgroundOwner = "main-panel-background"
+    static let backgroundInterval: TimeInterval = 5
+
+    static func setBackground(_ enabled: Bool) {
+        if enabled {
+            SystemMonitorService.shared.startDetailed(owner: backgroundOwner, metrics: metrics, interval: backgroundInterval)
+        } else {
+            SystemMonitorService.shared.stopDetailed(owner: backgroundOwner)
+        }
+    }
+
     let owner: String
     @Environment(\.onePlusIsVisible) private var isVisible
 
@@ -142,13 +158,15 @@ struct MenuPanelMetricSampling: ViewModifier {
 }
 
 /// Formats each new sample off the main thread. Samples arrive once a second, under the 4 per second UI limit.
+/// Hidden Home reads no sample, so background samples never wake the view.
 private struct MainPanelReadingsFeed: View {
     @Binding var readings: MainPanelReadings
+    @Environment(\.onePlusIsVisible) private var isVisible
 
     var body: some View {
         let service = SystemMonitorService.shared
-        Color.clear.task(id: service.snapshot?.id) {
-            guard let sample = service.snapshot else { return }
+        Color.clear.task(id: isVisible ? service.snapshot?.id : nil) {
+            guard isVisible, let sample = service.snapshot else { return }
             let history = service.history
             let hardware = MainPanelHardware.current
             let previous = readings

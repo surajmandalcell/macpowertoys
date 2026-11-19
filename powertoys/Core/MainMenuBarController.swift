@@ -29,6 +29,7 @@ final class MainMenuBarController: NSObject {
 
     func configure(isInserted: Bool, content: @escaping () -> AnyView) {
         self.content = content
+        MenuPanelMetricSampling.setBackground(isInserted)
         guard isInserted else {
             panel.close()
             panel.contentViewController = nil

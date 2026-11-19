@@ -656,7 +656,8 @@ nonisolated struct SystemMonitorHistory {
     }
 }
 
-/// Samples system metrics on a utility queue only while a visible owner, such as the combined panel Home, needs them.
+/// Samples system metrics on a utility queue for its owners, at the fastest interval any owner asks for: the
+/// combined panel keeps a slow background owner so Home's charts open with recent history.
 @Observable
 @MainActor
 final class SystemMonitorService {
@@ -671,8 +672,10 @@ final class SystemMonitorService {
     private let samplingQueue = DispatchQueue(label: "com.surajmandal.macpowertoys.system-monitor", qos: .utility)
     private var timer: DispatchSourceTimer?
     private var wakeObserver: NSObjectProtocol?
-    private var detailedOwners: [String: Set<SystemMonitorMetric>] = [:]
+    private var detailedOwners: [String: (metrics: Set<SystemMonitorMetric>, interval: TimeInterval)] = [:]
     private var generation = 0
+    /// Seconds between samples, or nil while no owner samples.
+    private(set) var sampleInterval: TimeInterval?
 
     init(observesWake: Bool = true) {
         if observesWake {
@@ -697,14 +700,15 @@ final class SystemMonitorService {
         stopTimer()
     }
 
-    func startDetailed(owner: String, metrics: Set<SystemMonitorMetric> = Set(SystemMonitorMetric.allCases)) {
+    func startDetailed(owner: String, metrics: Set<SystemMonitorMetric> = Set(SystemMonitorMetric.allCases),
+                       interval: TimeInterval = 1) {
         guard detailedOwners[owner] == nil else { return }
-        detailedOwners[owner] = metrics
+        detailedOwners[owner] = (metrics, interval)
         reconfigure()
     }
     func updateDetailed(owner: String, metrics: Set<SystemMonitorMetric>) {
-        guard detailedOwners[owner] != nil, detailedOwners[owner] != metrics else { return }
-        detailedOwners[owner] = metrics
+        guard let current = detailedOwners[owner], current.metrics != metrics else { return }
+        detailedOwners[owner] = (metrics, current.interval)
         reconfigure()
     }
     func stopDetailed(owner: String) {
@@ -713,14 +717,19 @@ final class SystemMonitorService {
     }
 
     private func reconfigure() {
+        let wasIdle = timer == nil
         stopTimer()
         generation += 1
-        let detailedMetrics = detailedOwners.values.reduce(into: Set<SystemMonitorMetric>()) { $0.formUnion($1) }
-        guard !detailedMetrics.isEmpty else { return }
+        sampleInterval = nil
+        let detailedMetrics = detailedOwners.values.reduce(into: Set<SystemMonitorMetric>()) { $0.formUnion($1.metrics) }
+        guard !detailedMetrics.isEmpty, let interval = detailedOwners.values.map(\.interval).min() else { return }
+        sampleInterval = interval
         let currentGeneration = generation
-        samplingQueue.async { [sampler] in sampler.reset() }
+        if wasIdle { samplingQueue.async { [sampler] in sampler.reset() } }
+        // Counter baselines survive a cadence change, so the first sample on open already has CPU and network
+        // rates; rates divide by the real elapsed time. The leeway lets macOS coalesce the wakeups.
         let source = DispatchSource.makeTimerSource(queue: samplingQueue)
-        source.schedule(deadline: .now(), repeating: 1, leeway: .milliseconds(150))
+        source.schedule(deadline: .now(), repeating: interval, leeway: .milliseconds(Int(interval * 150)))
         source.setEventHandler { @Sendable [weak self, sampler] in autoreleasepool {
             let sample = sampler.sample(detailedMetrics: detailedMetrics, metrics: [])
             Task { @MainActor [weak self] in
@@ -739,6 +748,7 @@ final class SystemMonitorService {
     }
 
     func refreshAfterWake() {
+        samplingQueue.async { [sampler] in sampler.reset() }
         reconfigure()
     }
 

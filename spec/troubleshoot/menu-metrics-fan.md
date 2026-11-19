@@ -9,23 +9,30 @@ still use `SystemMonitor`. `DESIGN.md` owns every size, color, and type value.
 
 - **Symptom:** Sampling continues after the panel closes, or readings stay
   pending after the panel opens.
-- **Invariant:** One sampler and exactly one utility-queue timer while a
-  visible owner needs data. Main panel Home owns `main-tray-home` through
-  `MenuPanelMetricSampling` and starts or stops it from `onePlusIsVisible`.
-  The first deadline is now. Reset the sampler on its utility queue.
-  Increment a generation before stop; a late sample must not change state.
+- **Invariant:** One sampler and exactly one utility-queue timer at the
+  shortest interval any owner asks for. While the status item exists,
+  `main-panel-background` samples every 5 s (`MenuPanelMetricSampling.setBackground`
+  from `MainMenuBarController.configure`), so charts open with history.
+  Home owns `main-tray-home` at 1 s from `onePlusIsVisible`. Every cadence
+  change restarts the timer with its first deadline now. Battery and GPU are
+  skipped on Macs without them. Increment a generation before stop; a late
+  sample must not change state.
+- **Invariant:** Hidden Home reads no snapshot, so background samples never
+  wake a view or format text.
 - **Invariant:** CPU and network need a prior counter sample. Compute rates
-  over monotonic elapsed time. Reset rate baselines on every wake and keep
-  rates until a fresh valid pair exists. Keep at most 120 timestamped samples
-  per metric.
+  over monotonic elapsed time, so a 5 s gap never shows 5x rates. Keep
+  baselines across cadence changes; reset them only when sampling starts
+  from idle and on wake. Keep rates until a fresh valid pair exists. Keep at
+  most 120 timestamped samples per metric; charts show the last 60 by index.
 - **Invariant:** Home text is formatted off main into `MainPanelReadings`,
   which publishes only when a value changes. Battery and GPU presence is
   probed once per launch (`MainPanelHardware.current`), so the bento never
   changes shape after the first frame.
 - **Check:** `SystemMonitorTests`: Home metrics get samples, 25 start and
   stop cycles return to zero timers, and sampling stays on until every owner
-  stops. `MainPanelTests`: Home samples only while visible and stops on close
-  or tab change; the bento columns stay equal without Battery or GPU.
+  stops. `MainPanelTests`: Home samples at 1 s while visible and falls back
+  to 5 s on close or tab change; the bento columns stay equal without
+  Battery or GPU.
 
 ## Top Processes
 
