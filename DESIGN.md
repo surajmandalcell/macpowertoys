@@ -198,8 +198,10 @@ mockups are in `docs/design/v15/`.
     Dark tabs "Quieter key, fainter dividers", Open App "12 pt,
     centered", and Light buttons "Regular labels", shipped in
     OnePlusUI 1.3.12 (see "Combined panel").
-  - Apps by Sam (owner, 2026-11-19): page "Featured Pro, then a list",
-    sidebar glyph "Heart", shipped in OnePlusUI 1.3.15 (see "Main
+  - Apps by Sam (owner, 2026-11-19, rounds 3-5): layout "Two cover
+    cards side by side", Switch cover "Usage numbers and the chart",
+    Hushpen cover "Blossom Models", the Pro banner with the Paid key,
+    and sidebar glyph "Heart", shipped in OnePlusUI 1.3.26 (see "Main
     window").
   - Open key (owner, 2026-11-19): "Ink key" with the label `Open
     MacPowerToys`, shipped in OnePlusUI 1.3.17 (see "Combined panel").
@@ -1046,11 +1048,21 @@ Version 15 Linear style, built from the OnePlusUI `OnePlusLinear*` parts
   A section title shows only when a tool has more than one section.
   Steps are short, plain sentences. A manual route scrolls to it.
 - Apps by Sam: a sidebar row (SF Symbol `heart`) above Settings opens an
-  editorial page: the title, `OnePlusLinearFeaturedApp` for Task Manager
-  Pro, then "More apps" with one `OnePlusLinearAppRow` per app. Open when
-  installed, else Get to a public page, or Get disabled with "Not
-  available yet". The panel process menu links here when no Task Manager
-  is installed.
+  editorial page laid out by `OnePlusLinearAppShelf`: the title, then
+  the `OnePlusLinearFeaturedApp` banner for Task Manager Pro (a
+  floating `fillGroup` tile, radius 12, 96 pt icon, 20 pt name with the
+  raised `Paid` key, three-line summary). Then "More apps": the Hushpen
+  (left) and Switch (right) `OnePlusLinearAppCoverCard`s, half width
+  and 10 pt apart, each with a 118 pt cover edge to edge across its top
+  (bundled Light and Dark crops at 2x, Switch "Usage numbers and the
+  chart", Hushpen "Blossom Models"), a 40 pt icon, the 15 pt name, and
+  a two-line summary. Then one open `OnePlusLinearAppRow` per other app:
+  a 64 pt icon, the 15 pt name over a two-line summary, and faded
+  `lineSoft` hairlines from the text column. Every app has the App
+  Store style capsule (`OnePlusLinearAppAction`, 22 pt, `fillTrack`,
+  uppercase 11 pt bold): OPEN when installed, else GET to a public
+  page, or GET disabled with "Not available yet". The panel process
+  menu links here when no Task Manager is installed.
 - Settings uses `OnePlusLinearPaneBody`: 14 pt top, 24 pt gutters, 16 pt
   between sections; a 20 pt `muted` caption, then a list with radius 8, a
   1 pt `line` ring, and `lineSoft` separators.
