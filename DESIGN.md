@@ -206,6 +206,9 @@ mockups are in `docs/design/v15/`.
   - Panel motion (owner, 2026-11-19): "Live instrument" (count up,
     draw in then steady scroll, rolling digits, lift and brighten),
     shipped in OnePlusUI 1.3.18 (see "Panel motion").
+  - Main window round 1 (owner, 2026-11-19): How to use "Checklist",
+    Open tile "Key tile", controls "Raised keys", and motion "Soft
+    spring", shipped in OnePlusUI 1.3.23 (see "Main window").
 
 ## Overview
 
@@ -964,7 +967,18 @@ Version 15 Linear style, built from the OnePlusUI `OnePlusLinear*` parts
   switch in both appearances.
 - Editorial body (`OnePlusLinearEditorialBody`, All tools and tool pages):
   one scroll view, 20 pt top, 32 pt gutters, 20 pt between blocks, 24 pt
-  bottom. Its controls use Quiet Raised. Groups have no fill or ring: a
+  bottom. Its controls use "Raised keys" (`OnePlusLinearControlLook
+  .raisedKeys`): every control in a row is 28 pt with radius 7. Fields,
+  steppers, selects, search, and the segmented track are sunken wells
+  (the panel soft-key track); buttons, the segment thumb, and the stepper
+  arrows are raised keys (the panel soft key). The focus line shows only
+  under Full Keyboard Access or VoiceOver, and it goes around the whole
+  control, never one segment. Motion is "Soft spring"
+  (`.onePlusLinearMotion(.spring)`): row hover fades on a 0.12 s spring
+  and nudges the chevron 2 pt; a page switch fades the old page 6 pt up
+  and the new one in from 6 pt below (0.2 s); the switch knob springs
+  (response 0.3, damping 0.72). Reduce Motion makes all of it instant.
+  Groups have no fill or ring: a
   `line` hairline on top and a `lineSoft` hairline between 40 pt rows,
   none under the last row. Each hairline (`OnePlusLinearFadedHairline`)
   keeps its token color at the center and fades to clear over the last
@@ -992,11 +1006,13 @@ Version 15 Linear style, built from the OnePlusUI `OnePlusLinear*` parts
   Favorite.
 - Tool page (`ToolAboutView`): `OnePlusLinearToolHeader`, "Launch tile":
   a 48 pt icon above the 24 pt name and description on the left, and on
-  the right the 176 x 108 soft `OnePlusLinearLaunchTile` (radius 12) that
-  opens the tool. It shows `Open` and an arrow, then the tool's global
-  shortcut (22 pt) over its action name when the shortcut is on (Color
-  Picker, Text Extractor, Portman), else only `Open <Tool>`. Awake has no
-  window and no tile. Then the `Menu bar icon` row (None, Combined,
+  the right the 176 x 108 `OnePlusLinearLaunchTile`, "Key tile": one
+  raised key (radius 12) that opens the tool. It shows `Open` and an
+  arrow, then, when the shortcut is on (Color Picker, Text Extractor,
+  Portman), the shortcut as key caps at 1.2 times over its action name;
+  else the tool name in 20 pt semibold. Hover lifts it 2 pt; press sinks
+  it and scales it to 98%, both on springs. Awake has no window and no
+  tile. Then the `Menu bar icon` row (None, Combined,
   Separate) for tools that support placement, then the tool's settings
   inline in the editorial look. Ruler shows its defaults for new rulers
   inline, bound to FreeRuler `prefs`, with Open Ruler Settings. A reset
@@ -1004,9 +1020,13 @@ Version 15 Linear style, built from the OnePlusUI `OnePlusLinear*` parts
   Colors, Text Extractor Clear History) is `OnePlusLinearButtonStyle(
   .resetBlock)`: one full-width 32 pt button, 1 pt `line` border, radius
   8, no fill until hover, red medium text, its own block after the last
-  group. `How to use` is the footer: a caption, then one
-  group per manual section with one numbered row per point. A manual route
-  scrolls to it.
+  group. `How to use` is the footer, "Checklist": a caption, then one
+  `OnePlusLinearChecklist` card per manual section (radius 12,
+  `fillGroup`, the tile shadows): 40 pt step rows with a 13 pt accent
+  glyph, then 36 pt shortcut rows with a keyboard glyph and the key caps
+  (`OnePlusLinearKeyCap`) trailing, then note rows with an info glyph.
+  A section title shows only when a tool has more than one section.
+  Steps are short, plain sentences. A manual route scrolls to it.
 - Apps by Sam: a sidebar row (SF Symbol `heart`) above Settings opens an
   editorial page: the title, `OnePlusLinearFeaturedApp` for Task Manager
   Pro, then "More apps" with one `OnePlusLinearAppRow` per app. Open when

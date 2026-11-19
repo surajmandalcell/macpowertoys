@@ -33,9 +33,10 @@ struct HomeView: View {
                     toolbarTabs
                 }
                 .accessibilityIdentifier("main.toolbar")
-                content
+                OnePlusLinearPageSwitch(selectedTool) { content }
             }
         }
+        .onePlusLinearMotion(.spring)
         .modifier(MainPageStorage(save: saveSelectedPage))
         .onePlusLiveUpdates()
         .onChange(of: storedPage) { _, page in selectedPage = page }

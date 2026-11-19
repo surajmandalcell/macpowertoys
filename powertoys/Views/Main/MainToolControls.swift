@@ -75,7 +75,8 @@ struct MainLaunchTile: View {
     var body: some View {
         let active = Self.action(for: tool.id).flatMap { shortcuts.isEnabled($0) && shortcuts.shortcut(for: $0).isSet ? $0 : nil }
         OnePlusLinearLaunchTile(shortcut: active.map { shortcuts.shortcut(for: $0).display },
-                                caption: active.map { $0 == .portman ? "Open \(tool.name)" : $0.title } ?? "Open \(tool.name)") {
+                                caption: active.map { $0 == .portman ? "Open \(tool.name)" : $0.title } ?? "Open \(tool.name)",
+                                name: tool.name) {
             ToolActionRouter.shared.open(toolID: tool.id)
         }
         .disabled(!settings.isToolEnabled(tool.id) || settings.isToolTransitioning(tool.id))

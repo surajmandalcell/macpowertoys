@@ -157,7 +157,7 @@ struct TextExtractorSettingsView: View {
                 .accessibilityIdentifier("text-extractor.clear-history")
                 .padding(.top, OnePlusLinearMetrics.appletFooterGap)
         }
-        .environment(\.onePlusLinearControlLook, .quietRaised)
+        .transformEnvironment(\.onePlusLinearControlLook) { if $0 == nil { $0 = .quietRaised } }
         .confirmationDialog("Clear text extraction history?", isPresented: $confirmingClear) {
             Button("Clear History", role: .destructive) { service.clearHistory(undoManager: undoManager) }
             Button("Cancel", role: .cancel) {}

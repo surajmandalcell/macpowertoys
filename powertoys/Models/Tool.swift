@@ -6,6 +6,7 @@
 //
 
 import Foundation
+import OnePlusUI
 
 // MARK: - Tool Protocol
 
@@ -32,12 +33,18 @@ extension Tool {
 
 // MARK: - Manual
 
+/// One How to use checklist: steps, then shortcuts, then notes. The title shows only when a tool has more than one.
 struct ToolManualSection: Identifiable {
     let title: String
-    let points: [String]
+    var steps: [OnePlusLinearChecklistStep] = []
+    var keys: [OnePlusLinearChecklistKey] = []
+    var notes: [String] = []
 
     var id: String { title }
 }
+
+private typealias Step = OnePlusLinearChecklistStep
+private typealias Key = OnePlusLinearChecklistKey
 
 // MARK: - Tool Category
 
@@ -75,35 +82,27 @@ struct RcloneTool: Tool {
     let hasTrayTab = true
 
     let manual: [ToolManualSection] = [
-        ToolManualSection(title: "Connect Cloud Storage", points: [
-            "Click + next to Remotes in the RSync UI sidebar.",
-            "Choose any connector offered by your installed rclone version, enter its required settings, and press Connect.",
-            "For OAuth connectors, complete the provider's browser sign-in. rclone stores and refreshes the resulting credentials."
+        ToolManualSection(title: "Connect storage", steps: [
+            Step("plus.circle", "Click + next to Remotes in the sidebar."),
+            Step("server.rack", "Pick a storage type, fill in its settings, and click Connect."),
+            Step("person.badge.key", "For Google Drive, Dropbox, and similar, sign in when the browser opens."),
         ]),
-        ToolManualSection(title: "Transfers", points: [
-            "Press ⌘N or click New Transfer.",
-            "Copy adds and updates files. Sync mirrors the source exactly, deleting extras. Move removes files from the source.",
-            "Watch overall and per-file progress live. Failed transfers retry automatically with backoff."
+        ToolManualSection(title: "Move files", steps: [
+            Step("arrow.left.arrow.right", "Click New Transfer and pick the source and the target."),
+            Step("doc.on.doc", "Copy adds new files. Sync makes the target match the source and deletes extras. Move deletes the source files."),
+            Step("chart.bar", "Watch the progress live. A failed transfer tries again by itself."),
+            Step("folder", "Click a remote to browse it. Drag files in to upload them, or out to download them."),
+        ], keys: [
+            Key(["⌘", "N"], "New transfer"), Key(["Space"], "Quick Look the selected file"),
+            Key(["⌘", ","], "Ignore rules, speed limits, and retries"),
         ]),
-        ToolManualSection(title: "Browse & Preview", points: [
-            "Click a remote in the sidebar to browse its files.",
-            "Double-click folders to navigate. Press Space or click the eye to Quick Look a file.",
-            "Drag files out to your Mac to download them, or drop local files into the folder to upload."
-        ]),
-        ToolManualSection(title: "Activity & Details", points: [
-            "Every finished transfer is recorded in Activity with sizes and timing.",
-            "Select ⓘ on a transfer to view paths, ignore rules, speed, attempts, and errors."
-        ]),
-        ToolManualSection(title: "Ignore Rules & Limits", points: [
-            "Open Settings from the sidebar (⌘,) to edit ignore patterns. Add one glob per line. MacPowerToys applies each pattern to every transfer.",
-            "System junk like .DS_Store, .fseventsd, and System Volume Information is ignored by default.",
-            "Parallel transfers, bandwidth limits, and retry counts live on the same page."
-        ]),
-        ToolManualSection(title: "Dev Sync", points: [
-            "Open Dev Sync in the sidebar and choose Set Up Dev Sync. Pick your internal dev folder and the matching folder on an external drive.",
-            "Dev One-Way copies internal projects to the drive. Dev Bidirectional syncs changes both ways. Projects that live only on the drive stay there and appear as links in your internal folder.",
-            "Review the preview before anything changes. Git ignore rules decide what is copied; ignored secrets such as .env files are still backed up unless you turn that off.",
-            "Every overwrite and deletion is kept in the safety store for a retention period. Conflicts never pick a winner; resolve them from the pair page."
+        ToolManualSection(title: "Dev Sync", steps: [
+            Step("externaldrive", "Open Dev Sync and click Set Up Dev Sync. Pick your dev folder and a folder on an external drive."),
+            Step("arrow.right", "One-Way copies your projects to the drive. Two-Way syncs changes both ways."),
+            Step("eye", "Check the preview. Nothing changes until you confirm it."),
+        ], notes: [
+            "Files that Git ignores are not copied, but .env files are still backed up unless you turn that off.",
+            "Every overwritten or deleted file is kept for a while, so you can get it back.",
         ])
     ]
 
@@ -122,17 +121,14 @@ struct LogsTool: Tool {
     let category = ToolCategory.system
 
     let manual: [ToolManualSection] = [
-        ToolManualSection(title: "Reading Logs", points: [
-            "Internal Logs contains MacPowerToys errors, warnings, info, and debug messages.",
-            "System Issues reads recent macOS errors and faults on demand without saving them in the app.",
-            "Choose a source in the sidebar, then filter internal levels or search messages and sources.",
-            "Log text is fully selectable for copying into bug reports."
-        ]),
-        ToolManualSection(title: "Housekeeping", points: [
-            "Internal logs are kept for two days, then pruned automatically.",
-            "Clear Internal Logs empties the app's in-memory view.",
-            "System Issues keeps at most 500 rows in memory and fetches them again when requested.",
-            "Press ⌘, inside the window to change the log font size."
+        ToolManualSection(title: "Read logs", steps: [
+            Step("sidebar.left", "Pick Internal Logs for MacPowerToys, or System Issues for recent macOS errors."),
+            Step("line.3.horizontal.decrease", "Filter by level, or search the messages."),
+            Step("text.cursor", "Select any text to copy it into a bug report."),
+        ], keys: [
+            Key(["⌘", "F"], "Search"), Key(["⌘", ","], "Change the font size"),
+        ], notes: [
+            "Internal logs are deleted after two days. System Issues are read fresh each time and never saved.",
         ])
     ]
 
@@ -151,14 +147,17 @@ struct RulerTool: Tool {
     let category = ToolCategory.dev
 
     let manual = [
-        ToolManualSection(title: "Rulers", points: [
-            "Drag a ruler to move it and drag an end or corner to resize it.",
-            "Press ⌘N for another ruler. Use H or V to show or hide a wing, and ⌘` to cycle rulers.",
-            "Use U for units, F for floating, S for shadow, G for grouping, and O to align at the pointer."
-        ]),
-        ToolManualSection(title: "Settings", points: [
-            "Press ⌘, to edit the active ruler. Press ⌥⌘, to edit defaults for new rulers.",
-            "Choose color, foreground and background opacity, dimensions, float, and shadow."
+        ToolManualSection(title: "Rulers", steps: [
+            Step("hand.draw", "Drag the ruler to move it."),
+            Step("arrow.up.left.and.arrow.down.right", "Drag an end or a corner to make it longer or shorter."),
+            Step("arrow.left.and.right", "Press the arrow keys to move 1 pixel. Hold Shift to move 10."),
+        ], keys: [
+            Key(["⌘", "N"], "New ruler"), Key(["⌘", "`"], "Next ruler"),
+            Key(["H"], "Hide or show the top wing"), Key(["V"], "Hide or show the side wing"),
+            Key(["U"], "Change the unit"), Key(["F"], "Float above apps"),
+            Key(["S"], "Shadow on or off"), Key(["G"], "Move both wings together"),
+            Key(["O"], "Line up at the pointer"), Key(["⌘", ","], "Settings for this ruler"),
+            Key(["⌥", "⌘", ","], "Defaults for new rulers"),
         ])
     ]
 
@@ -178,14 +177,15 @@ struct AwakeTool: Tool {
     let hasTrayTab = true
 
     let manual = [
-        ToolManualSection(title: "Modes", points: [
-            "Off uses normal macOS power settings. Indefinite remains active until disabled.",
-            "Timed mode counts down for a duration. Until mode expires at a specific date and time.",
-            "Keep Display On is independent and only applies while an active Awake mode is selected."
-        ]),
-        ToolManualSection(title: "System Behavior", points: [
-            "Awake uses macOS power assertions and never edits your Energy settings.",
-            "Manual sleep, closing a MacBook lid, low power, and thermal protection still take precedence."
+        ToolManualSection(title: "Keep awake", steps: [
+            Step("power", "Turn on Keep awake."),
+            Step("timer", "Pick how long: a set time, until a set hour, or until you turn it off."),
+            Step("display", "Turn on Keep display on to keep the screen lit too."),
+        ], keys: [
+            Key(["⌃", "⌥", "⌘", "A"], "Turn Awake on or off"),
+        ], notes: [
+            "The Mac still sleeps when you close the lid, the battery is low, or it gets too hot.",
+            "Awake never changes your Energy settings.",
         ])
     ]
 
@@ -205,10 +205,13 @@ struct ColorPickerTool: Tool {
     let hasTrayTab = true
 
     let manual = [
-        ToolManualSection(title: "Pick and Copy", points: [
-            "Press Pick Color to start the native macOS sampler immediately.",
-            "The selected color is copied in your default format and saved to history.",
-            "Open Color History to copy HEX, RGB, HSL, CSS, SwiftUI, or NSColor representations."
+        ToolManualSection(title: "Pick a color", steps: [
+            Step("command", "Press ⇧⌘3, or click Pick Color."),
+            Step("eyedropper", "Click any pixel on the screen."),
+            Step("doc.on.clipboard", "The color is copied. It is HEX unless you change Copy format."),
+            Step("clock.arrow.circlepath", "Open History to copy it again as RGB, HSL, CSS, SwiftUI, or NSColor."),
+        ], keys: [
+            Key(["⇧", "⌘", "3"], "Pick a color from anywhere"), Key(["esc"], "Stop picking"),
         ])
     ]
 
@@ -228,10 +231,15 @@ struct TextExtractorTool: Tool {
     let hasTrayTab = true
 
     let manual = [
-        ToolManualSection(title: "Extract Text", points: [
-            "Press Extract Text, drag around a screen region, and release to recognize and copy its text.",
-            "Vision performs recognition locally. Captured pixels are discarded after processing.",
-            "Screen Recording permission is required because macOS protects pixels belonging to other applications."
+        ToolManualSection(title: "Copy text", steps: [
+            Step("command", "Press ⇧⌘2, or click Extract Text."),
+            Step("rectangle.dashed", "Drag a box around the text on the screen."),
+            Step("doc.on.clipboard", "Let go. The text is copied."),
+            Step("lock.shield", "Allow Screen Recording the first time macOS asks."),
+        ], keys: [
+            Key(["⇧", "⌘", "2"], "Copy text from anywhere"), Key(["esc"], "Stop"),
+        ], notes: [
+            "The text is read on this Mac. The screen image is deleted right after.",
         ])
     ]
 
@@ -251,14 +259,13 @@ struct InputDevicesTool: Tool {
     let hasTrayTab = true
 
     let manual = [
-        ToolManualSection(title: "Profiles", points: [
-            "Mouse-like wheel events and precise trackpad events have separate controls.",
-            "Reverse either axis, change speed, disable horizontal motion, or smooth coarse mouse-wheel steps.",
-            "Auto selects the matching profile for wheel or precision scrolling."
-        ]),
-        ToolManualSection(title: "Permission", points: [
-            "Enable Input Control and grant Accessibility permission when macOS asks.",
-            "Input Devices changes only scroll events. It does not record keys, clicks, or pointer movement."
+        ToolManualSection(title: "Scrolling", steps: [
+            Step("switch.2", "Turn on Use custom scrolling."),
+            Step("lock.shield", "Allow Accessibility when macOS asks."),
+            Step("computermouse", "Set the mouse and the trackpad on their own: direction, speed, and sideways scrolling."),
+            Step("wand.and.stars", "Turn on Smoothing to make a mouse wheel scroll smoothly."),
+        ], notes: [
+            "Input Devices changes only scrolling. It never records keys, clicks, or where the pointer goes.",
         ])
     ]
 
@@ -276,14 +283,19 @@ struct PortmanTool: Tool {
     let hasTrayTab = false
 
     let manual = [
-        ToolManualSection(title: "Local servers", points: [
-            "Open Portman from the launcher or its counted menu-bar item. The panel shows listening development ports and their share of Mac memory.",
-            "Select a server for process-tree, memory, CPU, and project details. Clean up previews the memory to free before stopping selected servers."
+        ToolManualSection(title: "Local servers", steps: [
+            Step("menubar.rectangle", "Click Portman in the menu bar to see the dev servers that hold a port."),
+            Step("cursorarrow.click", "Click a server to see its memory, CPU, and project."),
+            Step("stop.circle", "Click Clean up to stop the servers you pick. It first shows how much memory you get back."),
+        ], keys: [
+            Key(["⌥", "⌘", "P"], "Open Portman"),
         ]),
-        ToolManualSection(title: "SSH forwarding", points: [
-            "Enter an SSH host or choose an alias from ~/.ssh/config, then scan its listening ports.",
-            "Select ports and choose local port numbers. Portman binds each tunnel to 127.0.0.1.",
-            "SSH uses your existing keys and known-host policy. A tunnel ends when you stop it or quit MacPowerToys."
+        ToolManualSection(title: "SSH ports", steps: [
+            Step("network", "Type an SSH host, or pick one from your SSH config, and scan it."),
+            Step("checkmark.circle", "Pick the ports and the local port numbers."),
+            Step("arrow.left.arrow.right", "Each port now opens on this Mac at 127.0.0.1."),
+        ], notes: [
+            "SSH uses your own keys. A tunnel ends when you stop it or quit MacPowerToys.",
         ])
     ]
 
@@ -301,39 +313,24 @@ struct MacTweaksTool: Tool {
     let searchKeywords = ["mic lock", "microphone", "bluetooth", "airpods", "audio input"]
 
     let manual = [
-        ToolManualSection(title: "Pages and search", points: [
-            "Enable Mac Tweaks in the launcher, then choose Open Mac Tweaks.",
-            "Choose Input, Dock, Finder, Windows, Screenshots, Apps, Power, or Menu bar in the sidebar.",
-            "Press Cmd-K and type a setting name or behavior to search available controls across pages. Press Escape to clear search.",
-            "Open About to see the app version, keyboard shortcuts, and Copy app details."
+        ToolManualSection(title: "Change a setting", steps: [
+            Step("sidebar.left", "Click Open Mac Tweaks, then pick a page such as Dock, Finder, or Input."),
+            Step("slider.horizontal.3", "Change a control. It saves at once."),
+            Step("arrow.clockwise", "For Dock and Finder changes, click Restart Dock or Restart Finder, or Later."),
+            Step("arrow.uturn.backward", "Click the reset arrow next to a control to get the old value back."),
+        ], keys: [
+            Key(["⌘", "K"], "Search all settings"), Key(["esc"], "Clear the search"),
+        ], notes: [
+            "Mac Tweaks saves the old value before your first change, so every change can be undone.",
+            "Some settings work only on some macOS versions. Those controls are read-only on other versions.",
         ]),
-        ToolManualSection(title: "Preferences and previews", points: [
-            "Change a control to save its value. Default uses the system default. Custom means the current value does not match a listed choice.",
-            "Preference edits are enabled on macOS 15.8, 26.7, and 27.0. Other releases keep controls read-only and allow reset. Finder column sizing and unused app termination are limited to macOS 15.8.",
-            "Previews are static examples of the setting. They do not show the current state of your Mac.",
-            "Managed preferences and values changed elsewhere are protected. If a save fails, read the error before trying again."
-        ]),
-        ToolManualSection(title: "Backups and reset", points: [
-            "Mac Tweaks saves the exact original value before the first change. It also records when the original key was absent.",
-            "Open Modified to compare Current and Original values. Changed settings remain listed while a saved original value can be restored, even at the system default.",
-            "Use the reset arrow beside a control or Modified row to restore its saved original. A setting without a backup returns to the system default.",
-            "Choose Reset all on Modified and confirm to restore every listed preference. If a backup cannot be read, new writes stop until it is recovered."
-        ]),
-        ToolManualSection(title: "Apply saved changes", points: [
-            "Dock and Finder changes show a restart action. Save work, choose that action, then confirm Restart Dock or Restart Finder. Choose Later to keep the saved change and restart when ready.",
-            "Follow the notice for other changes. It can require reopening an app, taking a new screenshot, or signing out and back in.",
-            "A restart failure leaves the setting saved. Read the error and restart the affected app later."
-        ]),
-        ToolManualSection(title: "Mic Lock", points: [
-            "Choose Input and turn on Mic Lock.",
-            "Choose a primary microphone and up to three fallbacks. A disconnected choice stays saved.",
-            "Mic Lock restores the first available choice when macOS changes input. If none is available, it selects a built-in or other non-wireless input.",
-            "Use Test to check the input level. Grant microphone access when macOS asks.",
-            "If Mac audio needs recovery, choose Revive Audio and confirm. macOS requests administrator approval; audio in other apps can stop briefly."
-        ]),
-        ToolManualSection(title: "Power", points: [
-            "Turn on Keep this Mac awake and choose a duration. Keep display on controls display sleep separately.",
-            "Read Status to check whether the Mac stays awake and how much time remains. These controls use the same Awake state as the Awake tool."
+        ToolManualSection(title: "Mic Lock", steps: [
+            Step("mic", "Open Input and turn on Mic Lock."),
+            Step("list.number", "Pick your main microphone and up to three backups."),
+            Step("headphones", "Now Bluetooth headphones no longer take over the microphone and lower the sound."),
+            Step("waveform", "Click Test to check the level. Allow the microphone when macOS asks."),
+        ], notes: [
+            "If the sound breaks, click Revive Audio. macOS asks for your password, and sound in other apps can stop for a moment.",
         ])
     ]
 
@@ -353,7 +350,7 @@ struct MarketplaceTool: Tool {
     var logoAsset: String { "" }
     var category: ToolCategory { receipt.category.toolCategory }
     var manual: [ToolManualSection] {
-        receipt.manual.map { ToolManualSection(title: $0.title, points: $0.points) }
+        receipt.manual.map { ToolManualSection(title: $0.title, steps: $0.points.map { OnePlusLinearChecklistStep("checkmark.circle", $0) }) }
     }
 }
 

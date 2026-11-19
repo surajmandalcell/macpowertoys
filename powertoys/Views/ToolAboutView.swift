@@ -35,7 +35,7 @@ struct ToolAboutView: View {
                     VStack(alignment: .leading, spacing: OnePlusLinearMetrics.sectionCaptionBelow) {
                         OnePlusLinearSectionCaption("How to use")
                         VStack(alignment: .leading, spacing: OnePlusLinearEditorialMetrics.blockGap) {
-                            ForEach(tool.manual) { section in manualSection(section) }
+                            ForEach(tool.manual) { section in manualSection(section, titled: tool.manual.count > 1) }
                         }
                     }
                     .id(Self.guideAnchor)
@@ -64,18 +64,10 @@ struct ToolAboutView: View {
         }
     }
 
-    private func manualSection(_ section: ToolManualSection) -> some View {
-        OnePlusLinearSection(section.title) {
-            ForEach(section.points.indices, id: \.self) { index in
-                HStack(alignment: .firstTextBaseline, spacing: 8) {
-                    Text("\(index + 1).").linearText(color: OnePlusLinearColor.muted).monospacedDigit()
-                    Text(section.points[index]).linearText().textSelection(.enabled)
-                        .fixedSize(horizontal: false, vertical: true)
-                        .frame(maxWidth: .infinity, alignment: .leading)
-                }
-                .padding(.vertical, 11)
-                .frame(minHeight: OnePlusLinearEditorialMetrics.row)
-            }
+    private func manualSection(_ section: ToolManualSection, titled: Bool) -> some View {
+        VStack(alignment: .leading, spacing: OnePlusLinearMetrics.sectionCaptionBelow) {
+            if titled { Text(section.title).linearText(color: OnePlusLinearColor.secondary) }
+            OnePlusLinearChecklist(steps: section.steps, keys: section.keys, notes: section.notes)
         }
     }
 }
