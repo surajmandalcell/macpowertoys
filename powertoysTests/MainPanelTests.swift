@@ -40,23 +40,36 @@ final class MainPanelTests: XCTestCase {
     }
 
     @MainActor
-    func testHomeSamplesOnlyWhileVisibleAndStopsOnCloseOrTabChange() async throws {
+    func testHomeSamplesEverySecondWhileVisibleAndEveryFiveSecondsInTheBackground() async throws {
         let service = SystemMonitorService.shared
         let host = NSHostingView(rootView: AnyView(home(visible: false)))
         let window = offscreenWindow(host, height: 700)
         defer { window.close(); window.contentView = nil }
-        let steps: [(String, AnyView, Int)] = [
-            ("hidden", AnyView(home(visible: false)), 0),
+        let steps: [(String, AnyView, TimeInterval?)] = [
+            ("hidden, no panel", AnyView(home(visible: false)), nil),
             ("visible", AnyView(home(visible: true)), 1),
-            ("panel closed", AnyView(home(visible: false)), 0),
-            ("reopened", AnyView(home(visible: true)), 1),
-            ("other tab", AnyView(Color.clear.frame(width: 338, height: 100)), 0),
+            ("panel closed", AnyView(home(visible: false)), nil),
         ]
-        for (name, root, timers) in steps {
+        for (name, root, interval) in steps {
             host.rootView = root
             host.layoutSubtreeIfNeeded()
             try await Task.sleep(for: .milliseconds(50))
-            XCTAssertEqual(service.timerOwnerCount, timers, name)
+            XCTAssertEqual(service.sampleInterval, interval, name)
+        }
+        MenuPanelMetricSampling.setBackground(true)
+        defer { MenuPanelMetricSampling.setBackground(false) }
+        let background: [(String, AnyView, TimeInterval)] = [
+            ("panel exists, closed", AnyView(home(visible: false)), 5),
+            ("opened", AnyView(home(visible: true)), 1),
+            ("closed", AnyView(home(visible: false)), 5),
+            ("other tab", AnyView(Color.clear.frame(width: 338, height: 100)), 5),
+        ]
+        for (name, root, interval) in background {
+            host.rootView = root
+            host.layoutSubtreeIfNeeded()
+            try await Task.sleep(for: .milliseconds(50))
+            XCTAssertEqual(service.sampleInterval, interval, name)
+            XCTAssertEqual(service.timerOwnerCount, 1, name)
         }
         XCTAssertEqual(FanControlService.shared.pollOwnerCount, 0)
     }
