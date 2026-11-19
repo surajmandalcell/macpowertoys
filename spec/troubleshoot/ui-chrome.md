@@ -1,1439 +1,635 @@
 # UI Chrome Troubleshooting
 
+Each entry gives the symptom, cause, rule, and check. `DESIGN.md` wins over
+any value here. Signed-build review of every entry stays an open item with the
+orchestrator; see "Open signed checks" at the end.
+
 ## Scene Canvas Overrides The View Canvas
 
-- **Symptom:** The installed main window opens at 1240 x 840 and Input
-  Devices at 1080 x 660, although both views ask for 820 x 660.
+- **Symptom:** The installed main window opens at 1240 x 840 and Input Devices
+  at 1080 x 660, although both views ask for 820 x 660.
 - **Cause:** `MacPowerToysApp.windowContent(id:)` applies its own
-  `onePlusFixedCanvas`. The outer canvas wins, and every inner canvas
-  modifier is skipped. Offscreen view renders do not use this wrapper.
-- **Invariant:** The scene wrapper, the scene `defaultSize`, and
+  `onePlusFixedCanvas`. The outer canvas wins. Offscreen renders skip the wrapper.
+- **Rule:** The scene wrapper, the scene `defaultSize`, and
   `OnePlusWindowCanvas.appTool(_:)` name the same canvas for each window.
-- **Check:** `WindowAccessorTests.testSceneContentUsesTheSameCanvasAsTheWindowLookup`
-  measures the wrapped content for main and Input Devices. It fails on the
-  old wrapper. Capture the installed windows with `winlist` and compare sizes.
+- **Check:** `WindowAccessorTests.testSceneContentUsesTheSameCanvasAsTheWindowLookup`.
+  Compare installed window sizes with `winlist`.
 
-## Stat Cell Height Check, Run 74, 2026-10-02
+## Panel Glyphs And Disclosure Captions
 
-- **Symptom:** Compact StatCell measures 46pt against a 44pt test ceiling.
-- **Cause:** The ceiling predates `68c91bf`, which changed default compact
-  card padding from 12pt to the approved 16pt. StatCell has one baseline
-  row with caption and card-title type; it does not use metric type.
-- **Invariant:** Keep 16pt card padding in both densities. Keep trait A's
-  27pt metric type, weight 550, and 30.24pt line. Correct stale checks.
-- **Check:** OnePlusUI `ad42789` checks the 32pt total vertical inset and
-  52pt single-line ceiling in both densities. All 148 package tests pass.
-  Report: `tmp/redesign/logs/w13-statcell.md`.
+- **Symptom:** The Input Devices count drops toward the header divider. Main
+  panel tab glyphs use the 12pt role.
+- **Cause:** A clear Refresh placeholder supplies a bottom baseline. Tabs copy an old size.
+- **Rule:** Center the disclosure accessory group in the 40pt header; keep
+  Refresh's own target. Tabs, headers, and status items use each tool's template
+  asset. Tab glyphs use the 13pt token in 26pt targets. A status canvas is 14pt
+  with 11.2pt centered ink.
+- **Check:** Glyph tests cover status bounds at 1x, 2x, 4x. The Input Devices
+  header test measures title, count, Refresh, and disclosure centers in both
+  appearances, using a light-ink threshold that includes the thin Refresh glyph.
 
-## Panel Identity Glyphs And Disclosure Captions, Run 68, 2026-10-01
+## Deferred Chrome Checks Miss Their Main-Queue Pass
 
-- **Symptom:** Input Devices count drops toward the header divider.
-  Main panel tab glyphs use the 12pt role.
-- **Cause:** A clear Refresh placeholder supplies a bottom baseline.
-  Tabs copy an old size.
-- **Invariant:** Center the disclosure accessory group inside the 40pt
-  header. Keep Refresh's separate target and the single body gutter.
-  Use each tool's template asset in tabs, headers and status items.
-  All main tabs use the existing 13pt token within 26pt targets.
-  A status canvas is 14pt with 11.2pt centered ink.
-- **Check:** `34c24557` passes all five glyph tests, including status bounds
-  at 1x, 2x and 4x. Shared `10b09f5` passes both-appearance named-artwork
-  rendering. Adopt the next shared tag before installed identity review.
-  `7c2a8222` passes all 16 Input Devices tests. Its offscreen header check
-  measures title, count, Refresh and disclosure centers in both appearances.
-  Use a light-ink threshold that includes the thin Refresh glyph's gray
-  pixels. A 0.45 red threshold sees one pixel and gives a false center.
-  Report: `tmp/redesign/logs/w10-fix17-panels.md`.
+- **Symptom:** The full package suite sees close x9 and centerline y16 while
+  focused chrome checks pass at x13.
+- **Cause:** Nested run-loop waits use their deadline before queued chrome work
+  runs after a large bitmap sweep; some test windows stay open.
+- **Rule:** Yield the main actor during a bounded wait, close offscreen windows,
+  drain each large bitmap case, wait for scene size (no fixed sleep). Keep the
+  13pt inset and native hover and hit-test assertions.
+- **Check:** The full package suite and the focused chrome checks agree.
 
-## Deferred Chrome Checks Miss Their Main-Queue Pass, 2026-10-01
+## Scroll Edges
 
-- **Symptom:** The full package suite sees close x9 and centerline y16,
-  while focused chrome checks pass at x13 and the requested centerline.
-- **Cause:** Nested run-loop waits can use their deadline before queued chrome
-  work runs after the large bitmap sweep. Some test windows also stay open.
-- **Invariant:** Keep the 13pt inset and native hover and hit-test assertions.
-  Yield the main actor during a bounded wait. Close offscreen windows and drain
-  each large bitmap case. Wait for scene size instead of a fixed sleep.
-- **Check:** `f3337f89` passes all 145 package tests. The hover check takes
-  0.337 seconds, down from 24.315 seconds with only resource cleanup.
-  It covers both appearances, six native events, and both centerlines.
-  No production chrome change was needed. Log:
-  `tmp/redesign/logs/local-tests-package-final.log`.
+- **Symptom:** The lower cards of a page cut off above the window bottom.
+- **Cause:** Fixed page bodies had bottom padding outside the scroll view, and
+  scrolling-page footers sat in a separate row below the viewport.
+- **Rule:** A page-owned scroll viewport reaches the window bottom; card
+  scrollers clip at the card edge. The 24pt gutter and footer clearance live
+  inside scroll content. Fixed headers, table headers, inspectors, and card-page
+  footers stay fixed. Consume the inset once so nested editors and strips do not
+  inherit it. Empty footer slots take no height.
+- **Check:** OnePlusPageTests: clip geometry at all shared canvas sizes, footer
+  clearance, fixed regions, applet scroll end at every height bound.
 
-## Scroll edges
+## Fixed Controls Around Scrolling Rows
 
-- **Symptom:** Task Manager Overview cuts off its lower cards above the
-  window bottom.
-- **Cause:** Fixed OnePlusPage bodies had bottom padding outside their scroll
-  view. Scrolling page footers occupied a separate row below the viewport.
-- **Invariant:** A page-owned scroll viewport reaches the window bottom.
-  Card scrollers clip at the card edge. Put the 24pt page gutter, in
-  workspaces and applets alike, and measured scrolling-page footer clearance
-  inside scroll content. Keep fixed headers, table headers, inspectors, and
-  card-page footers. Consume the inset once so nested editors and horizontal
-  strips do not inherit it. Empty footer slots consume no height. Stack
-  multiple footer views before measuring them.
-- **Check:** OnePlusPageTests cover native clip geometry at all 13 shared
-  canvas sizes, scrolling-page footer clearance, fixed regions, and applet
-  scroll end at every applet height bound. Ruler's native overlay and settings
-  have no shared page scroll host.
+- **Symptom:** A title, search field, status card, inspector, or footer moves
+  when a table scrolls. Page switches pause while rows format.
+- **Cause:** One scroll view wraps the whole page, or row presentation sorts,
+  formats, or scans files in `body`.
+- **Rule:** Page controls stay outside the scrolling region; only rows scroll.
+  Prepare row data in a cancellable task off the main actor. Use stable row IDs;
+  no per-cell help, geometry readers, or file checks in row bodies.
+- **Check:** Scroll each populated page; controls do not move. Page switches show
+  content within 100ms. No synchronous file or process scan on the main actor.
 
-## Task Manager Home Labels And Host Actions, 2026-10-01
+## Tab Paint And Complete Row Hover
 
-- **Symptom:** Signed `198055e4` uses uppercase Home labels and splits
-  Network and Disk inside words. A large Connect row puts remote actions
-  below the panel edge. The history lines are too faint.
-  Round 11 also finds duplicate zero rate ticks, clipped RAM capacity,
-  and truncated long Network readings. Signed `43ce0eb9` then shows bright
-  coral CPU, GPU, and Memory histories that compete with the values.
-  Round 12 finds repeated GPU/Network detail readings and small heading
-  and control-row glyphs.
-- **Cause:** Home labels use the uppercase table-header role without a
-  one-line limit. The host card stacks actions below disk content, and its
-  detail adds a separate connection button. Whole-chart opacity is 0.18.
-  Rate ticks round to one decimal. RAM repeats the unit, and flexible rate
-  text competes with the Network label and wide gaps. The later history
-  shares one 0.45 opacity across a strong fill and stroke over the full height.
-  Detail preparation repeats hero readings. Metric glyphs inherit row type;
-  Battery uses the table-header role and control rows use compact row size.
-- **Invariant:** Home labels preserve Title Case, use one line, and truncate
-  at the end. Give labels priority so Disk fits at the standard width.
-  Keep full-width background history in the lower 60 percent of each tile.
-  CPU and GPU use neutral chart ink; Memory keeps coral ink. Use a smooth
-  1pt line at 35 percent opacity and a 7 percent area fill. Values stay strongest.
-  Host cards follow the reference: 20pt header, 36pt metric row with labels
-  above readings, then disk content beside the 84pt action column. Normal
-  cards measure 109pt; taller details can grow. Both actions stay inside
-  the card. Connect and Disconnect use its native context menu. Put a
-  connection reason in the info glyph's tooltip and accessibility label.
-  Use significant digits for low-rate ticks and show MB/s once above the
-  plot. Keep captions and the time axis outside it. RAM uses one shared
-  binary unit; keep full readings and stale status in help. Allocate its
-  trailing width. Network rate text stays complete on one 34pt row.
-  CPU, GPU, and Memory titles use compact card-title type. Metric and
-  control-row glyphs share the 13pt menu token. Keep action glyph sizes,
-  30pt control rows, 34pt short tiles and 109.33pt columns. Detail rows omit
-  repeated hero readings but keep memory, thermal, connection and stale facts.
-- **Check:** The nine affected package checks pass. Offscreen renders use
-  the actual Home tile and remote card source with fixed readings in Light
-  and Dark. They cover connected, offline, and error cards. The action
-  geometry check fails on the signed `198055e4` source. Captures are in
-  `tmp/redesign/captures/panel-tm/`. The orchestrator must verify the exact
-  installed build, both appearances, context actions, SSH, and Open App.
-  The round 11 source check covers zero, low and high rates, compact RAM,
-  full help, stale help and the 4 Hz publication limit. Actual-source
-  offscreen renders cover 120-point histories, complete RAM at the 109.33pt
-  cell token, and both 12.35 GB/s rates. The shared history pixel check passes
-  in both appearances. `5075da8e` applies the signed history correction.
-  Three focused package checks pass for quiet paint, protected label space,
-  extreme samples, finite curves and cache modes. Actual-source Home renders
-  in `tmp/redesign/captures/panel-tm/r11-quiet-source-*.png` pass visual review
-  in both appearances. The single quiet-chart compile gate passes.
-  `bb62bd07` fixes Round 12 detail rows and glyphs. Ten focused package
-  checks pass. Actual-source content shrinks GPU from 281pt to 253pt and
-  Network from 324pt to 268pt in both appearances. Hero histories and stale
-  rows remain. See `tmp/redesign/logs/panel-tm-r12-render.py`.
-  Signed live acceptance remains with the orchestrator.
+- **Symptom:** Tab hover hugs the label. Row hover stops before values, charts,
+  or nested actions. Single-row tile content starts at the top.
+- **Cause:** Hover uses a label-sized background or padded content instead of
+  the complete row. Tile frames use top alignment.
+- **Rule:** Page tabs paint a raised radius-5 surface 8pt past the label and
+  count horizontally and 4pt vertically; frames and underlines stay fixed.
+  Shared row hover covers the full rectangle and leaves nested controls active.
+  Center a single row in its tile.
+- **Check:** `OnePlusRowAndTabGeometryTests`: fixed frames, extended paint,
+  complete native table rows, disabled hover, centered tiles.
 
-## Tab Paint And Complete Row Hover, 2026-10-01
+## Header Top Line And Native Hover Containers
 
-- **Symptom:** Tab hover hugs the label. A row hover stops before its values,
-  chart, or nested action. Single-row tile content starts at the top.
-- **Cause:** Hover uses a label-sized button background or padded content
-  instead of the complete row. Tile frames use top alignment.
-- **Invariant:** Page tabs paint a raised radius-5 surface 8pt beyond the
-  label and count horizontally and 4pt vertically. Keep tab frames and
-  underlines fixed. Keep counts muted. Shared row hover covers the complete
-  rectangle and leaves nested controls active. Caption blocks use a 2pt
-  gap and one leading edge. Center a single row in its tile.
-- **Check:** `OnePlusRowAndTabGeometryTests` checks fixed tab and action
-  frames, extended paint, complete native table rows, disabled hover, and
-  centered menu tiles. Removing the horizontal extension makes the tab
-  regression fail. Tile history uses the shared area chart under the
-  content with low-contrast metric ink and the existing radius clip.
-  Hover paint is immediate. Metric values and statuses stay trailing on the
-  label row. Host item actions use the reference 84pt trailing column.
-  Signed visual review and nested control interaction remain with the
-  orchestrator. Report: `tmp/redesign/logs/w1-components.md`.
+- **Symptom:** Header icons and controls start at y16 while native lights start
+  at y20. Close starts at x9. Status text sits above button labels.
+- **Cause:** Header actions center on the title line box. Native chrome lacked an
+  x inset.
+- **Rule:** Follow `DESIGN.md` "The content top line". Use `OnePlusHeaderActions`
+  in shared headers and nested toolbars. Preserve native button frames, move the
+  enclosing titlebar container, refresh ancestor tracking, repair late resets.
+- **Check:** OnePlusHeaderRowTests (centers within 0.5pt) and
+  OnePlusChromeAlignmentTests (all canvas recipes, x13, zoom gap, hit tests).
 
-## Page Cap Tops And Native Hover Containers, 2026-10-01
+## Menu Hosts Ignore App Appearance
 
-- **Symptom:** Header icons and controls start at y16 while native lights
-  start at y20. Close starts at x9. Applet controls use a different top line.
-  The first Top B fix then put MAC access and device counts above button labels.
-- **Cause:** Header actions center on the title line box. Switches center
-  their 17pt paint within a 24pt hit frame. Native chrome lacks an x inset.
-  The first Top B action stack top-aligned captions and controls of every size.
-- **Invariant:** Owner Top B puts title caps, tool icons, and the tallest
-  header action control at y20. The 2026-10-01 row amendment centers captions,
-  status dots, switches, and smaller controls on that control, with one text
-  baseline and 12pt item gaps. Use `OnePlusHeaderActions` in shared headers
-  and nested toolbars. Status dots use the existing optical content layout.
-  Inset B puts close at x13, with the title 14pt after zoom. Preserve the
-  native button frames, move the enclosing titlebar container, and refresh
-  ancestor tracking. Keep deferred coalescing and repair late x/y resets.
-  Workspace and sheet headers retain Top B. Round 17 restores the applet
-  exception: 40pt row, lights and title caps centered on C=22, with 24pt
-  action frames at y10..34. The 16pt body gap puts untabbed content at y56.
-  Shared sheet rows remain 44pt. Switches keep their centered 17pt capsule.
-- **Check:** OnePlusHeaderRowTests measures caption/button painted centers
-  within 0.5pt in both appearances at 1x/2x. Mixed rows cover both densities,
-  status dots, switches, selects, native fields, progress, and smaller buttons.
-  Three focused package checks pass. OnePlusChromeAlignmentTests renders
-  shared page, main tool,
-  all three applets, and sheet headers in both appearances at 1x and 2x.
-  It measures cap strokes in linear light, actual control paint, and view
-  geometry. Native checks cover all 13 canvas recipes, x13, the applet C22
-  and workspace y20 light positions, the 14pt
-  zoom gap, all light tracking areas, native hit tests, and late resets.
-  The exact Task Manager scene keeps its 660pt canvas and first row at
-  y79.8. Signed installed captures and real hover remain with the
-  orchestrator. Report: `tmp/redesign/logs/w4-chrome.md`.
-
-## Menu Hosts Ignore App Appearance, 2026-09-30
-
-- **Symptom:** Round 6 dark captures show light main and Task Manager panels.
-  The tool windows in the same pass are dark.
-- **Cause:** Diagnostics copy the app-level environment, including its light
-  color scheme. Independent native hosts can also retain an appearance set
-  when they open. Setting only `NSApp.appearance` does not replace these values.
-- **Invariant:** Shared window, panel, popup, and sheet roots use
-  `onePlusAppAppearance()`. It observes the app's effective appearance, sets
-  the SwiftUI scheme, clears pinned ancestor-view overrides, and updates native
-  windows. Automatic follows system changes. Keep diagnostic action routing.
-  Configure native hosts on attachment. Let the app observer update live
-  windows. Do not configure again from native appearance-change callbacks
-  or add a competing preferred color scheme. Both can keep a popover busy.
-  Use app-lifetime observers and weak window references. Do not poll.
+- **Symptom:** Dark captures show light panels while tool windows are dark.
+- **Cause:** Diagnostics copy the app-level environment with its color scheme.
+  Independent native hosts retain the appearance set when they open. Setting only
+  `NSApp.appearance` replaces neither.
+- **Rule:** Shared window, panel, popup, and sheet roots use
+  `onePlusAppAppearance()`: it sets the SwiftUI scheme, clears pinned
+  ancestor-view overrides, and updates native windows. Configure native hosts on
+  attachment; the app observer updates live windows. Never reconfigure from
+  appearance callbacks or add a competing preferred color scheme (a popover can
+  stay busy). App-lifetime observers, weak window references, no polling.
   Register accessibility display changes on the workspace notification center.
-  Invalidate each registered native root once per display notification and
-  preserve the app appearance. The offscreen notification check fails before
-  this observer and passes after it. Contrast palette values belong to the
-  components lane; signed Increase Contrast changes remain with the orchestrator.
-- **Check:** `testPresentationRootsFollowAppAppearanceAndLiveChanges` failed
-  before the fix. It now passes for dark, light, dark again, and Automatic.
-  It checks native appearances, rendered pixels, and nested menu-body schemes.
-  All 73 package tests pass. Hosted `36741797887` at `b3d55c3c` also
-  passes 995 units, including native popover measurement, and all UI jobs.
-  Signed status-item, diagnostic, popup, and sheet checks remain with the
-  orchestrator.
+  Native panel hosts stay independent of `MacPowerToysApp`'s full scene
+  environment; copying it rebuilt the bridge and cost 36-56ms per tab switch.
+  Main Open App uses `ToolActionRouter`, so no host needs a copied `openWindow`.
+- **Check:** `testPresentationRootsFollowAppAppearanceAndLiveChanges` (dark,
+  light, dark, Automatic). An offscreen probe shows an unused environment change
+  does not rebuild the host.
 
-Round 49 performance check, 2026-10-01: keep native panel hosts independent
-from `MacPowerToysApp`'s full scene environment. The installed Task Manager
-panel trace spends 36-56ms per tab in native scene-root updates. An offscreen
-probe shows that an unused environment change rebuilds the full-environment
-bridge, while the independent host does not rebuild. Reintroducing the copy
-fails the same check. Main Open App now uses `ToolActionRouter`, so capture
-hosts need no copied `openWindow` action. Shared appearance roots still own
-color scheme and native appearance. This source fix is compiled; its signed
-latency benefit still needs measurement. See `tmp/redesign/logs/w4-perf-windows.md`.
+## Nested Menu Body Accessibility
 
-## Key Notifications Interrupt Text Editing, 2026-09-30
-
-- **Symptom:** Portman retains only the first typed SSH host character.
-  Reactivation also drops valid keyboard and accessibility responders.
-- **Cause:** The focus policy resets nontext responders on each key-window
-  notification and reads the app key window instead of the notification object.
-- **Invariant:** Use the notification window. Clear ordinary opening focus
-  once; preserve active text editors and native selection controls. On later
-  key and display updates, clear only detached, hidden, disabled, or fully
-  clipped responders. Intersect visibleRect with bounds because a nonclipping
-  parent can return a visible rectangle outside the responder's bounds.
-- **Check:** Round 11 adds three native offscreen regressions. All six focus
-  checks and all 17 focused chrome, appearance, and visibility checks pass.
-  The original policy fails the regressions. Signed keyboard, VoiceOver,
-  scroll, tab-change, and reactivation checks remain with the orchestrator.
-
-## Nested Menu Body Accessibility, 2026-09-30
-
-- **Symptom:** Portman paints its empty state, but XCTest cannot find it.
-  Task Manager reopens on CPU with an empty accessibility body.
+- **Symptom:** Portman paints its empty state but XCTest cannot find it. A panel
+  reopens with an empty accessibility body.
 - **Cause:** The nested `NSHostingView` copies the outer representable
-  environment in full. The body paints, but its AX group has no children.
-- **Invariant:** Give the nested host its own environment. Forward the used
+  environment in full; the AX group then has no children.
+- **Rule:** Give the nested host its own environment. Forward only the used
   public panel settings. Use the existing router for body window actions.
-- **Check:** `dd204b20` restores CPU reopen and all Tray Fan checks in
-  `36726827473`. The corrected exact StaticText value predicate passes in
-  `36727981386`. `36731756842` passes every UI job on the current app source.
-
-## Shared Table Geometry And Row Surfaces, 2026-10-01
-
-- **Symptom:** Compact tables have shorter rows, or custom data lists omit
-  stripes and leave hover/selection inside only one cell.
-- **Cause:** Callers keep raw heights or omit a current display-row index.
-  SwiftUI Table supplies its own selection painting and reused row views.
-- **Invariant:** Use the DESIGN H/I table tokens in every density. Pass the
-  current row position with stable record identity. Refresh reused native
-  row indexes. Keep SwiftUI's table style, grid color, delegate, and cells;
-  paint row backgrounds and separators through the shared skin. Update
-  only available rows. Hover and selection paint over the entire stripe.
-  Keep metadata on the trailing side; preserve full values in help or
-  accessibility text when visual text is truncated.
-- **Check:** Run OnePlusTableTests. The offscreen render checks cover both
-  native implementations, GridTable, both densities and appearances, full
-  row paint, hover exit, and emphasized/unemphasized selection. All 13 pass.
-  Use an independent captured sRGB swatch for bitmap color checks because
-  cache-display bitmaps carry the display profile. Installed scroll/reuse,
-  sorting, keyboard, focus, and pointer checks remain with the orchestrator.
-
-## Portman Requested Page And Retained State, 2026-09-30
-
-- **Symptom:** A diagnostic request for Servers showed the saved Settings tab.
-  Switching away from Settings also repeated editor discovery.
-- **Cause:** Diagnostics wrote the page preference after presentation. The
-  panel held its page in local State. The Settings branch owned its editor
-  list and confirmation state, so replacing the branch discarded both.
-- **Invariant:** Select the requested page before constructing the panel host.
-  Consume queued tool-page requests before presentation. Deliver requests to
-  the existing view when it is already visible. Keep Settings state in the
-  panel owner and reuse its completed editor discovery. Release the native
-  hosted content on close so its hidden root cannot observe snapshots or
-  consume page links. Keep Forward's required scan cancellation and
-  pending-selection reset on exit.
-- **Check:** Compile the Portman page-routing and Settings-state regressions.
-  Execute them on hosted CI. Compare every requested tab with the first
-  signed rendered frame. Native tab latency still needs measurement.
-
-## Portman Server Row Identity, 2026-09-30
-
-- **Symptom:** A server row repeats node as its title and subtitle prefix.
-  Round 17 listener rows also omit process artwork and its fixed slot.
-- **Cause:** The title selects branch or process name, while the subtitle
-  repeats project or process name before uptime. The listener projection
-  also drops the executable identity needed by the process icon loader.
-- **Invariant:** Use the project folder or launch command as the title. If
-  neither exists, keep the process name. Use uptime in the subtitle and
-  include a branch only when it is nonempty and distinct from the title.
-  Prepare these strings in the existing background overview projection.
-  Read the executable path during the existing background process scan.
-  Reuse System Monitor's bundle artwork loader. Show the terminal glyph
-  only for confirmed absolute executable paths outside app bundles.
-  Reserve a 15pt slot for unknown processes or unavailable artwork. Keep
-  the 44pt port lane, 52pt row, 134pt metrics slot, and complete-row hover.
-- **Check:** Verify project titles, command fallback, root-folder fallback,
-  and duplicate branch names. Compare both signed appearances without
-  changing the port lane, sparkline, memory slot, or row height.
-  Run PortmanTests for app bundles, nested helpers, command-line paths,
-  unknown paths, missing artwork, cache reuse, and cache eviction.
-
-## Portman Identity Colors, 2026-09-30
-
-- **Symptom:** The owner reports that Portman lost its color and looks stale.
-  Round 5 shows gray port numbers beside restored colored bars and sparklines.
-  Round 17 memory legends use brighter secondary ink instead of caption ink.
-- **Cause:** The redesign replaced the five-color server palette with the
-  shared neutral chart series. The port's mono text role also sets its own
-  secondary color, which overrides the enclosing row's identity color.
-- **Invariant:** Port labels, memory segments, and server sparklines use the
-  same stable port-to-color mapping from `OnePlusColor.portmanSeries`.
-  Pass that color to the port text's `onePlusText` modifier itself.
-  Detail plots and process bars retain data color. Light inks are darker
-  versions of the original hues. The approved Servers composition stays.
-  Tabs and ordinary controls keep neutral chrome.
-  Memory legends keep mono type with explicit `OnePlusColor.metricCaption`
-  ink. The ordinary mono role uses secondary ink and is too bright here.
-- **Check:** Compare one-server and multi-server views in both appearances,
-  then inspect segment hover, row hover, and detail charts. Palette inks reach
-  at least 4.5:1 on their resting and hover backgrounds.
-
-## Mac Tweaks Has No Previews, 2026-10-01
-
-- **Symptom:** Mac Tweaks pages paired each settings card with a large mock
-  desktop, Dock, or Finder preview. The window was 1120pt wide and the
-  previews needed crop and hover fixes.
-- **Cause:** Decorative preview artwork competed with the settings and
-  forced a two-column layout with fixed card heights.
-- **Invariant:** The owner removed every preview and texture. Mac Tweaks is
-  an 820 x 660 window with one full-width column of cards, like macOS
-  System Settings. Pages and search results never use fixed heights or a
-  second column. Do not reintroduce `MacTweaksPreviewView` or preview assets.
-- **Check:** `rg -n "MacTweaksPreview|MacTweaksGrain|MacTweaksRibbon"
-  powertoys` returns nothing. Each category page shows only cards in one
-  column at 820pt.
-  Round 18 still showed the shared root ribbon. OnePlusUI `0516519`
-  omits `OnePlusWindowTexture()` only for `.macTweaks`. The offscreen
-  regression fails before the fix and passes across all 13 canvases in both
-  appearances, preserving opaque flat fills and the other ribbons.
-  Tagged adoption and signed page/search captures remain with the orchestrator.
-
-## Mac Tweaks Shared Control Callers, 2026-09-30
-
-- **Symptom:** Dock and Screenshots segments start 17pt to 19pt after their
-  select controls. The System sidebar caption remains too close to Apps.
-- **Cause:** The card width reached the select but not the segmented wrapper.
-  The sidebar still used standard caption spacing after a completed group.
-  Both shared APIs existed, but the callers did not adopt them.
-- **Invariant:** Pass the card width to `OnePlusSegmented(width:)` through
-  `MacTweaksSegmentedControl`. Use the shared section-start caption for System
-  only. Do not add transparent control frames or a custom sidebar spacer.
-- **Check:** Compare painted select and segment edges in Dock and Screenshots
-  in both appearances. Verify the System section gap and keyboard controls in
-  the next signed build. The existing package width regression covers 160pt
-  and 180pt tracks in both densities and enabled states.
-
-## Mac Tweaks Modified Column Edges, 2026-09-30
-
-- **Symptom:** Modified headings sit 4pt away from their row value edges.
-- **Cause:** The shared table header supplied 12pt insets while the owned
-  setting rows supplied 16pt. The header also left its gaps implicit.
-- **Invariant:** Header and rows use 16pt total insets, 8pt gaps, 170pt value
-  columns, and a 28pt reset lane. Derive any extra header padding from the
-  difference between card padding and the shared table cell inset.
-- **Check:** Compare Setting, Current, and Original text-frame edges in both
-  appearances. Keep the header fixed while only the setting rows scroll.
-
-## Color Picker Settings Natural Height, 2026-09-30
-
-- **Symptom:** Round 6 Settings stays 460pt tall with a large gap after its
-  final card. Projects already fits its shorter content.
-- **Cause:** The applet's page switch returns the maximum canvas height for
-  Settings. The cards' natural height never reaches that decision.
-- **Invariant:** Use the Settings stack's measured height, the titlebar,
-  the shared top gap, and the floating-settings reserve. Clamp the result
-  to the Color Picker canvas range. Keep measurement in the applet host so
-  embedded Settings still inherits its caller's geometry and density.
-- **Check:** The 296pt card stack requests a 404pt window. Empty and long
-  content stay within 250 to 460pt. Check both appearances, permission
-  notices, the gear's 8pt edge inset, and scrolling at the upper cap.
-
-## Applet Settings Embedding, 2026-09-29
-
-- **Symptom:** Embedded settings collapse or have extra gutters when the
-  main tool page and its settings content both own scrolling and padding.
-- **Invariant:** Awake, Color Picker, Text Extractor, and Portman each expose
-  one cards-only settings stack with 16pt gaps and inherited density. Only
-  the main tool page renders it. Awake has no window; every Awake open
-  route selects its main tool page. An applet or Portman panel gear and
-  Command-comma call `ToolActionRouter.openMainPage(toolID:)`; applets keep
-  only their work pages (owner pick 2026-11-18).
-- **Check:** Dispatch directly to the shared settings types. Check every
-  card and the last control on the main tool page.
-
-## Applet And Portman Screenshot Review, 2026-09-29
-
-- **Symptom:** Round 1 applet captures show gears crossing card borders,
-  a faint Awake status, and unequal Settings gutters. Portman's Sort by
-  action looks like text beside the bordered Clean up button.
-- **Invariant:** All applet pages reserve the shared floating-settings area.
-  Settings cards fill the width between 16pt gutters. Overlay scrollers must
-  not consume an extra side gutter. Awake uses the regular row role for its
-  status. Routine copy and shortcut controls use shared neutral colors.
-  Portman's sort menu has the same small neutral geometry as Clean up and
-  a chevron. Memory and port values use mono type.
-- **Check:** Capture all seven applet pages in both appearances. Scroll long
-  bodies to the end and check the gear area. Inspect Portman's footer, sort
-  menu, Forward forms, and 160pt Settings control column in the signed build.
-
-## OnePlusUI Compact Applets And Portman, 2026-09-29
-
-- **Invariant:** DESIGN.md v14 replaces the older applet material, two-light,
-  and 24pt content-control rules below. Awake, Color Picker, and Text Extractor
-  use `OnePlusWindowRoot` and `OnePlusAppletTitlebar`. All three native lights
-  remain visible; zoom stays disabled. Applet body gutters are 16pt.
-- **Invariant:** Portman uses the 356pt menu shell. Its compact text stays
-  compact while form controls use the 28pt height override. Servers retains
-  its memory summary, usage bar, rows, sparklines, and footer. Settings search
-  exposes First port and Last port; cleanup mode uses segmented buttons.
-- **Check:** The Debug build passes. Installed screenshots, focus checks,
-  panel scrolling, and scan-lifetime checks remain with the orchestrator.
-
-## Portman Menu-Bar Workflow
-
-- **Symptom:** The Portman tray showed a short list of unrelated listeners and
-  an Open button while the useful server, cleanup, and forwarding controls
-  lived in a separate window.
-- **Cause:** The initial implementation split one task across a reduced
-  combined-menu tab and a compact applet window, and counted system listeners
-  as development servers.
-- **Invariant:** Portman has one full menu-bar panel, a count-bearing status
-  item, and one route from the launcher, Raycast, Spotlight shortcut, and deep
-  link. The default list focuses on user-owned development listeners; Settings
-  can include other listeners. The panel contains overview, detail, cleanup,
-  searchable settings, and SSH forwarding. Alerts and notification delivery
-  are absent by owner choice.
-- **Check:** Compile the current source without launching on the owner's
-  desktop. In an isolated macOS session, open every entry route and inspect
-  overview, selected server, cleanup, settings, and SSH
-  tunnel states at the real menu-bar width.
-
-## Portman Reopened Tab And Panel Height
-
-- **Symptom:** Reopening Portman returned to Servers, a running tunnel's Link
-  button was smaller than Stop, and short Forward pages left blank space below
-  the last row.
-- **Cause:** Every open made a new panel whose selected page was transient
-  `@State` initialized to Servers. Link used a regular-size icon button beside
-  a small Stop button. The panel height used page-specific estimates instead
-  of the rendered content height.
-- **Invariant:** Save the selected page across panel recreation while keeping
-  Forward's pending scan selection transient. Give Link and Stop equal native
-  button dimensions. Measure the active page's content, retain the compact
-  empty-Servers minimum, and cap long pages to the visible screen.
-- **Check:** Hosted run `36211479231` clicked the real Portman status item to
-  close and reopen the popup, then passed its saved-Forward assertion. Its
-  400pt Forward capture has no large blank tail. The combined tray and Monitor
-  already persist their tab selection; an earlier tray UI run passed reopen.
-  Run `36212055219` passed the Portman UI job and exported dark and light
-  active-forward renders. Both show Link and Stop at the same visible width
-  and height after matching their 28pt labels and small native control size.
-
-## Portman Cold Menu-Bar Launch
-
-- **Symptom:** A fresh hosted `--open portman` launch displayed no panel even
-  though the app started and the menu-bar item existed. In run `36207736000`,
-  the first normal-mode UI test saw no Portman controls; later test-mode tab
-  navigation passed.
-- **Cause:** Scene-driven routing could run before the item had a usable window
-  anchor. A nonnil window and nonzero button width can precede a visible
-  status-item view. AppKit then ignores the show request. The old loop
-  returned after that rejected request.
-- **Invariant:** Route the startup argument from the app delegate and present
-  Portman once after normal initialization. Wait for a visible button window,
-  a nonempty visible rect, and nonzero width. Keep checking for up to ten
-  seconds until the popover is shown. Never poll while the panel is idle.
-- **Check:** A fresh hosted Mac UI run opens `--open portman`, finds the Forward
-  tab, and clicks blank edges of Forward and Settings. Its first normal-mode
-  test must find the Servers tab before checking listener rows, so a missing
-  panel is reported separately from a missing listener. Run `36138020899`
-  passed the earlier route. Run `36208481934` passed the first normal-mode
-  cold-launch case after the longer wait without owner-desktop UI interaction.
-  Run `36709666460` passes all four Portman UI cases after the visible-anchor
-  check and confirmed-presentation retry. It also requires the explicit tool
-  route to keep the launcher closed.
-
-## Portman Server Overview Height
-
-- **Symptom:** The Memory scope label wraps vertically and the live server row
-  falls below the visible menu-bar panel. The next render shows the server row
-  but clips the CPU summary and Clean up control.
-- **Cause:** The segmented picker renders its redundant visible label inside a
-  narrow slot, while the overview height budgets too little space for the
-  memory summary, server rows, and footer.
-- **Invariant:** Show listening-process memory, the server rows, and the footer
-  within the screen-height cap. Keep the memory bar and row hover surfaces on
-  the same horizontal edges.
-- **Check:** Review a 400pt-wide hosted render with one live server, then one
-  with several servers. Confirm the memory legend, server rows, Sort by, and
-  cleanup footer remain readable without clipping.
-
-## Portman Empty Servers Layout
-
-- **Symptom:** With no listeners, the empty-state explanation was clipped below
-  the menu-bar panel; a taller fix left a large blank area below the card.
-- **Cause:** The original 200pt empty placeholder and then a 375pt fixed panel
-  did not match the compact empty card's height.
-- **Invariant:** The 300pt empty overview shows both lines of the card, a small
-  bottom inset, and numeric `0 KB` while retaining equal-width tabs.
-- **Check:** Hosted run `36140052984` passed the empty-text visibility assertion.
-  Its 400pt capture shows the complete card and a small bottom inset; check the
-  same state in the final signed app when focus-safe inspection is available.
-
-## Portman Menu Hit Targets And Detail Charts
-
-- **Symptom:** The owner could switch tabs only by clicking text, row hover
-  covered only the port and title, and the detail CPU chart spilled past its
-  plot while a hover timestamp moved the layout. Extra space remained below
-  the overview and detail, and the more-actions menu showed a second chevron.
-- **Cause:** The tab and row labels did not claim their full available width;
-  the chart assumed a 100% CPU ceiling and conditionally inserted its time
-  label; and the panel height and footer controls reserved too much space.
-- **Invariant:** Tabs and server rows use full-width hit and hover regions.
-  Detail charts use a shared hover, a CPU ceiling that includes all samples,
-  fixed-width trailing axes, and a permanent timestamp row. The detail header
-  holds localhost and more-actions controls, with no menu indicator, and the
-  panel uses the shortest height that fits its content up to the screen cap.
-- **Check:** In a hosted 400pt render, inspect tab and row hover, a CPU sample
-  above 100%, chart alignment before and during hover, the detail header, and
-  remaining space at the bottom. In an isolated UI session, click blank parts
-  of tabs and rows and confirm the expected navigation.
-
-## Portman Forward Selection And Scan Lifetime
-
-- **Symptom:** Discovered remote ports required one-at-a-time selection, had
-  no Clear scan action, and old selection could persist after changing tabs.
-  Leaving Servers could continue its fast monitoring cadence.
-- **Cause:** Forward kept form selection in panel state without a tab-exit
-  reset, and the panel held a monitoring owner regardless of its active tab.
-- **Invariant:** Scan results support checkbox, Shift-click range, Select all,
-  and Clear scan. Return submits the host scan, manual port, and local mapping.
-  Leaving Forward cancels its scan and clears pending selection; only Servers
-  owns fast monitoring, while the menu-bar status item uses its idle cadence.
-- **Check:** In hosted tests, select and deselect a range, then navigate away
-  and back. Verify scan cancellation and the monitoring interval, and inspect
-  the full-width form and Clear scan control in the 400pt render.
-
-## Portman Forward Scan Progress
-
-- **Symptom:** During an SSH scan, the spinner floated above its message while
-  Forward already claimed it was listening on the host and exposed empty
-  result controls.
-- **Cause:** The panel set `discoveredHost` before the SSH request completed,
-  and the labeled native progress view used a vertical layout. Starting a new
-  scan also left the previous result in the shared service until it finished.
-- **Invariant:** Show one inline progress row with a Cancel action. Clear the
-  previous result at scan start; set the discovered host only after a successful
-  response for the current host and page. A failed or canceled scan must not
-  show a completed result. Hide the unrelated empty-forwards card while loading.
-- **Check:** Capture Forward loading in light and dark appearances on a hosted
-  Mac. Exercise success, empty, invalid-host failure, and Cancel. Confirm that
-  changing host or leaving Forward clears pending discovery.
-
-## Portman Dense Menu-Bar Rows And SSH Host Context
-
-- **Symptom:** After the first refinement, server hover still sat too far inside
-  the 400pt panel, the graph remained visible beside the hover actions, the
-  Whole Mac memory scope showed unrelated processes, and tab changes felt
-  awkward. A direct `user@IP` host previously lacked password login.
-- **Cause:** The overview and row each added a horizontal gutter, hover actions
-  were inserted beside the metrics rather than replacing them, the memory
-  breakdown used whole-Mac statistics, and a conditional matched-geometry line
-  moved while the page body faded. Both SSH paths originally forced key login.
-- **Invariant:** Use the shared Portman SF identity for its status image, with
-  the 14pt canvas and 11.2pt maximum ink span measured from the old socket.
-  This follows the 2026-10-01 shared tool-glyph requirement.
-  Give rows a wider inset hover surface and preserve inner text padding. Keep
-  one fixed trailing slot: graph plus memory at rest, link plus stop on hover,
-  with blue/red action feedback and no width shift. Show only listening-process
-  memory. Equal tab cells each own a bottom line that changes at once on
-  selection. Tab content changes at once in both Reduce Motion modes.
-  Accept `user@IP`; use the in-memory SSH askpass channel for a password and
-  retry, then clear it on exit. Show the remote process name, with command and
-  Docker context only when the row is opened.
-- **Check:** Compile without launching on the owner's desktop. On a hosted Mac,
-  inspect Servers at rest, row hover, link hover, tab changes, the listener-only
-  memory bar, SSH password retry, remote-port disclosure, and Forward exit.
-  A rejected password must allow retry while Forward is open; leaving Forward
-  or closing the panel must dismiss that sheet and clear the in-memory secret.
-  The sheet is modal, so Cancel precedes tab navigation. Authentication errors
-  must not expose askpass paths or expand the panel beneath the sheet.
-
-## Portman Bar-Aligned Rows And Searchable Settings
-
-- **Symptom:** The server hover surface stops inside the memory bar's edges,
-  the footer leaves extra height, the underline arrives from an unexpected
-  direction, and Alerts takes a tab that the owner does not use. Replacing the
-  travelling underline with an instant opacity change removed all tab motion.
-- **Cause:** Each row added six points of horizontal padding inside the
-  overview gutter, rows and footer used the overview's loose section spacing,
-  and the underline animated a conditional positioned rectangle. The fixed
-  replacement omitted an animation modifier. The alert tab also retained
-  notification work and a chart threshold.
-- **Invariant:** The memory bar and server hover surfaces share the same outer
-  edges, with padding inside each row for its text. The compact footer contains
-  server count, CPU, Sort by Port/Memory/Name/CPU, and Clean up. Port sorts
-  ascending by default; resource sorts descend. Servers, Forward, and Settings
-  are equal-width tabs whose fixed underlines and label emphasis change at
-  once in both Reduce Motion modes.
-  Settings uses the shared native small search field to filter
-  individual controls. No Portman alert page, notifications, tray tint, or
-  chart threshold remain; automatic cleanup still excludes high-usage servers.
-- **Check:** Compile locally without launching XCTest. On a hosted Mac, inspect
-  a four-server panel, compare row and bar frames, open Sort by, select Memory,
-  switch Servers → Forward → Settings → Servers at their blank edges, and verify
-  the active underline and label change at once at each fixed tab position
-  in both Reduce Motion modes.
-  Search for Scan in Settings and confirm unrelated controls disappear. Inspect
-  the final signed installed stamp before a background launch on the owner's Mac.
-  Hosted run `36208481934` passed tab navigation; its captures prove the
-  endpoints. The newer owner rule requires instant changes in both modes.
-
-## Portman Cleanup Number Editing
-
-- **Symptom:** Clicking the idle threshold `4`, sending Delete, then typing
-  `6` produced `64` in the hosted Settings panel.
-- **Cause:** The test did not select the existing value. A click can put the
-  caret before the digit, where Backspace cannot remove it; typing `6` then
-  prepends to `4`. This failure alone does not establish a storage-binding
-  defect.
-- **Invariant:** Keep the cleanup threshold as a text draft while editing.
-  On Return, save only an integer inside that setting's range. Invalid text
-  stays visible with an error, as DESIGN.md requires. The three cleanup
-  number fields share this behavior.
-- **Check:** Select the existing value, replace `4` with `6`, and press Return; the
-  displayed and saved value must be `6`. Enter `99` for the idle threshold;
-  the draft and range error must remain without changing the saved value.
-
-## Portman Port Numbers And Initial Charts
-
-- **Symptom:** Hosted renders showed `:9,000` and `localhost:49,194`, while a
-  newly opened server detail had no memory or CPU chart.
-- **Cause:** SwiftUI's integer interpolation localized identifiers with
-  thousands separators. The detail hid both charts until a second scan.
-- **Invariant:** Render ports and PIDs as literal strings in labels, actions,
-  tooltips, and accessibility names. Show chart context from the first sample
-  and mark the latest memory value.
-- **Check:** Inspect four- and five-digit ports in hosted overview, detail,
-  and active-forward renders. Capture detail after one and multiple samples
-  and confirm the plots remain visible.
-
-## Portman Forward Results After Reopening
-
-- **Symptom:** An active-forward render showed `Listening on` with no host and
-  remote ports from an earlier scan below a blank host field.
-- **Cause:** Scan results live in the shared service, while a new panel starts
-  with empty local host and discovery state; both empty strings compared equal.
-- **Invariant:** Show and size the discovered-port list only when a nonempty
-  host matches the panel's last scan. Keep active tunnel mappings visible
-  independently of the current scan form.
-- **Check:** Scan a host, start a tunnel, close the panel, then reopen Forward.
-  Its mapping remains visible, and no unnamed remote-port list appears until
-  a host is scanned again.
-
-## Portman Failed Forward Message
-
-- **Symptom:** The Failed Forward row clips the SSH error after a few words
-  beside Retry and Stop, so the reason for failure is unreadable.
-- **Cause:** The remote endpoint and failure message shared a single-line label
-  in the narrow 400pt menu-bar panel.
-- **Invariant:** Keep the local endpoint and actions in the row, then give the
-  remote endpoint and error separate lines. The row tooltip contains the full
-  mapping and error when a long SSH message still needs truncation.
-- **Check:** Capture Failed Forward in light and dark appearances at the real
-  panel width after terminating an active SSH tunnel. Read the error and reach
-  Retry and Stop without horizontal clipping.
-
-## Portman Cleanup And Detail On Short Screens
-
-- **Symptom:** The selected-cleanup Stop button rendered gray, and a 488pt-high
-  hosted detail panel ended above its Open localhost action.
-- **Cause:** The destructive button role did not give the bordered macOS
-  control red prominence. Detail spacing and chart heights consumed the
-  available vertical space before its footer.
-- **Invariant:** Give the selected-cleanup Stop action an explicit prominent
-  red style. Keep the detail charts readable while fitting more of the route
-  into the screen-height-capped popover; retain scrolling when necessary.
-- **Check:** Inspect 400pt-wide light and dark cleanup and detail renders at
-  the hosted screen's actual height. The selected Stop action is visibly red,
-  and the detail's Open localhost action is visible or reachable by scrolling.
-
-## Portman Closed-Menu Scan Cost
-
-- **Symptom:** The menu-only Portman owner starts a full socket and process
-  scan every two seconds while the panel is closed.
-- **Cause:** The live panel's scan interval was also used for the persistent
-  status item. Two `lsof` scans and a process table read used about 0.08 CPU
-  seconds in a read-only local probe.
-- **Invariant:** Use the chosen interval while the panel is open and at least
-  30 seconds between scans while only the status item is visible. Opening the
-  panel triggers a fresh scan, and disabling Portman releases its monitor.
-- **Check:** Run the interval-policy regression, then inspect live status and
-  idle CPU in the final signed app with the panel open, closed, and disabled.
-
-## Tool Icon Tile Template
-
-- **Symptom:** One tool icon has sharper corners, different cutoffs, or a
-  different tile silhouette from the other tool icons.
-- **Cause:** One SVG appearance bypassed the shared outer tile template, or a
-  rendering path trusted asset clipping instead of applying the shared mask.
-  A stale installed build can preserve the same defect after source changes.
-- **Invariant:** Every active light and dark tool-icon SVG uses a `512 × 512`
-  view box, a full-canvas `clipPath id="tile"` rectangle with `rx="112"`, and a
-  group that clips the ground and all artwork to that path. This rule applies to
-  every SVG tool. Approved bitmap tool icons are 512px RGBA sources with
-  transparent rounded corners. Every launcher, sidebar, grid, and tray
-  rendering path also uses `toolIconTile(size:)`, with a corner radius of
-  `size × 112 ÷ 512`. No tool,
-  appearance, or rendering path is a special case.
-- **Check:** Enumerate every active named tool-logo asset, each referenced PNG,
-  and every active SVG. The source-template, asset-corner, and shared-renderer
-  tests must pass.
-  Confirm the installed source commit equals `HEAD`, then inspect the launcher,
-  sidebar, tray, and Dock at normal and small sizes.
-
-## Compact Workspace Hierarchy
-
-- **Symptom:** Workspace sidebars, selected rows, page headings, buttons, and
-  option cards look like oversized web controls and hide the primary action.
-- **Cause:** New workspaces copied local 22pt scroll-body headers and custom
-  card controls instead of the shared compact workspace shell.
-- **Invariant:** Use 220pt simple or 240pt data sidebars.
-  Use 28pt full-width rows with native emphasized or unemphasized selection;
-  labels and SF Symbols use the native selected foreground, while branded icon
-  artwork keeps its original colors. Use the shared 40pt page strip, 13pt
-  destination title, optional 11pt subtitle, 12pt body inset, native controls,
-  related multi-column rows, and one accent primary action.
-- **Check:** Inspect launcher, Logs, Cloud Sync, and Input Devices at default and minimum widths. No workspace has
-  a 22pt body title, a second 32pt top gap, or mismatched selected icon and text.
-
-## Workspace Actions And Bottom Status
-
-- **Symptom:** A menu and adjacent button have different visible heights or
-  baselines, or a work-status card floats above a large empty area.
-- **Cause:** Controls relied on different intrinsic sizes, or a status card was
-  appended to scroll content instead of anchored to the content pane.
-- **Invariant:** Give every workspace top-strip action the native small control
-  size and a shared 24pt minimum height. Put pane-wide work status in one bottom
-  safe-area inset. Do not repeat it inside page scroll content.
-- **Check:** Inspect every workspace top strip at minimum and default widths.
-  Menus and buttons share one centerline. Start work on every page
-  and confirm the status stays at the bottom without unused space below it.
-
-## Workspace Minimum Window Sizes
-
-- **Symptom:** A newly added workspace can be resized until its sidebar,
-  controls, or content clips.
-- **Cause:** SwiftUI's default scene size is an initial size, not a minimum.
-- **Invariant:** `WindowAccessor` applies the shared minimum content size before
-  restoring a saved frame. The launcher uses 1,200 by 720 points, which is the
-  220-point sidebar plus a 980-point content pane that fits four 220-point cards
-  with 16-point gaps inside 24-point padding. The launcher also restores position
-  only, so a frame saved at an older size never reopens at that size. Logs, Cloud
-  Sync and Input Devices use their
-  sidebar family plus a 640-point content minimum and a 600-point height.
-  Compact applets and Ruler
-  retain their existing fixed or overlay-specific sizing.
-- **Check:** Unit-check every workspace identifier and confirm restoration
-  cannot produce a frame below its family minimum.
-
-## Inline Metadata And Sparse Pages
-
-- **Symptom:** A short category, path, count, kind, time, or total consumes a
-  second row, while independent cards occupy one narrow column in a wide pane.
-- **Cause:** Every secondary value used a vertical stack, and card groups used
-  a fixed single-column layout.
-- **Invariant:** Put short related title and metadata pairs in a first-baseline
-  row with a 6pt to 8pt gap. Give the primary text truncation priority and keep
-  the short secondary value fixed. Use a trailing spacer when the value belongs
-  at the far edge. Use an adaptive grid with a 320pt minimum for independent
-  cards. Keep help text, errors, previews, commands, and long paths on their own
-  lines.
-- **Check:** Audit every leading stack with 0pt to 4pt spacing. Inspect launcher
-  details, page strips, devices, projects, history, sources, storage rows, and
-  sparse settings at default and minimum widths. Wide panes use two columns
-  where useful. Narrow panes use one column without clipping.
+- **Check:** Tray Fan and Portman UI jobs find the body controls.
+
+## Shared Table Geometry And Row Surfaces
+
+- **Symptom:** Compact tables have short rows, or custom lists omit stripes and
+  paint hover and selection in only one cell.
+- **Cause:** Callers keep raw heights or omit the display-row index. SwiftUI
+  Table paints its own selection and reuses row views.
+- **Rule:** Use the DESIGN H and I table tokens in every density. Pass the
+  current row position with stable record identity and refresh reused native row
+  indexes. Keep SwiftUI's table style, grid color, delegate, and cells; paint row
+  backgrounds and separators through the shared skin; hover and selection paint
+  over the full stripe. Full values stay in help or accessibility text when truncated.
+- **Check:** OnePlusTableTests (both native implementations, GridTable, both
+  densities and appearances, hover exit, emphasized selection). Compare bitmaps
+  to an independent captured sRGB swatch; cache-display bitmaps carry the display profile.
+
+## Shared Native Control State And Paint
+
+- **Symptom:** Selected table metadata loses ink. Popup key monitors consume
+  modified input. External text changes break marked text or undo. Field errors
+  move controls in fixed rows.
+- **Cause:** AppKit propagates cell backgroundStyle. Monitors skip the owning
+  window check. Text assignment bypasses editing. Captions share the control column.
+- **Rule:** Selected metadata uses ink and restores its role on deselect;
+  warning and error ink stay semantic. Draw row fills from `isEmphasized`. Read
+  the native contrast preference (this macOS normalizes high-contrast appearance
+  names while it is off). Filter action modifiers and popup windows before
+  dispatch. Defer text replacement during marked text; clear undo on resource
+  change. Fields stay centered in 44 and 56pt rows; recovery messages go to the
+  group banner. Textures stay below content.
+- **Check:** OnePlusUI offscreen suites for native input, search, popup,
+  contrast, table, setting row, native form, and texture. Selected paint reaches
+  4.5:1; native small steppers measure 17x20 in 24 and 28pt hosts.
+
+## Button Caps And Glyph Centers
+
+- **Symptom:** Button text sits above or below frame center. Action glyphs look
+  larger than the adjacent text.
+- **Cause:** SwiftUI centers the full line box including descender space. Local
+  icon and arrow fonts override the control text role.
+- **Rule:** Shared controls center the label cap bounds and glyph visual bounds.
+  A native Label inherits one size and weight; icon variants show the icon only.
+  A 32pt action `OnePlusMenuTile` uses compact control type and centers its Label
+  with no caller font or frame overrides. Keep symbol rotation inside the icon.
+- **Check:** In `Packages/OnePlusUI`, run
+  `swift test --filter OnePlusButtonAlignmentTests` (painted centers within 0.5pt,
+  both appearances, 1x and 2x, no window ordered). Measure glyph masks as
+  blue-minus-green coverage; an absolute blue cutoff drops faint dark-mode pin edges.
+
+## Focus Chrome And Responders
+
+- **Symptom:** A custom control shows a large blue rectangle, or an outline stays
+  after clicking elsewhere. Portman keeps only the first typed SSH host character.
+  Reactivation drops valid keyboard and accessibility responders.
+- **Cause:** Plain SwiftUI controls keep the default focus effect. AppKit keeps
+  the old first responder on a click that cannot take focus. The policy reset
+  nontext responders on every key-window notification and read the app key window.
+- **Rule:** Apply `onePlusFocusPolicy()` at the shared root; draw focus only when
+  Full Keyboard Access or VoiceOver is on (`OnePlusFocusPolicy.shared.showsFocus`).
+  No local unconditional `focusEffectDisabled()`; keep controls named and keyboard
+  operable. Register each native window once and use the notification window.
+  Clear ordinary opening focus once. Preserve active text editors, native
+  selection controls, and valid visible responders; clear only detached, hidden,
+  disabled, or fully clipped ones (intersect `visibleRect` with bounds). A pointer
+  click outside text editors and selection controls clears the old first
+  responder first; native tables and lists keep focus after a row click. Text
+  clicks keep only the caret. Every compact applet initially focuses its invisible
+  window accessor.
+- **Check:** `OnePlusFocusPolicyTests` and the three native offscreen
+  regressions. Fresh-open each applet: no outline; Tab still activates controls.
+  `OnePlusMenuLabel` focus paint still needs its owner's policy gate.
+
+## Custom Selectable Interaction States
+
+- **Symptom:** A custom row, card, or tab looks inert under the pointer.
+- **Cause:** A plain SwiftUI button removed the native surface without
+  replacement hover and pressed states.
+- **Rule:** Custom selectable rows, cards, and tabs use
+  `UtilityInteractionButtonStyle` (0.06 hover, 0.1 pressed; disabled does not
+  react). Native controls, icon actions, disclosures, breadcrumbs, and destructive
+  text actions keep their own treatment; informational rows get none. A filled
+  selected tab keeps its accent opaque with 0.10 hover and 0.18 pressed overlays.
+- **Check:** Every enabled custom item shows hover and pressed feedback.
+
+## Search Mouse-Down Responder Cycle
+
+- **Symptom:** The app hangs after a search click; the sample repeats
+  NSTextField, NSView, and OnePlusSearchView `mouseDown` 494 times.
+- **Cause:** An unhandled child event returns to the wrapper through
+  `nextResponder`, and the wrapper sends it back to the same child. Removing
+  `makeFirstResponder` alone still loops.
+- **Rule:** Native field clicks stay in AppKit. A search wrapper may focus its
+  field but never sends `mouseDown` back to that child. Keep Find selection
+  separate from pointer dispatch.
+- **Check:** The bounded offscreen native-click regression fails on the old
+  source without hanging. An Xcode "Abort trap: 6" after a `DARWIN_USER_CACHE_DIR`
+  I/O error is an environment failure, not a code result.
+
+## Search Field Density
+
+- **Symptom:** A content search looks like the larger padded sidebar search.
+- **Cause:** Content searches reused the sidebar component or its padding.
+- **Rule:** `SidebarSearchField` only in workspace sidebars. Content, toolbar,
+  sheet, and popover searches use the native small `NSSearchField` in the shared
+  slot, with progress beside it when loading.
+- **Check:** Only the launcher and Logs sidebar searches use the padded style.
+
+## Thin Scroll Indicators
+
+- **Symptom:** A scroll view reserves a thick track or shows a full-size
+  indicator.
+- **Cause:** A surface bypassed the shared configuration, the bridge picked the
+  first sibling or an ancestor scroll view, or the lookup ran only in a deferred
+  block before AppKit finalized geometry.
+- **Rule:** Every SwiftUI `ScrollView`, `Form`, `TextEditor`, `List`, and `Table`
+  uses `.thinScrollIndicators()`; native scroll views call
+  `configureThinScrollIndicators()`. The shared scroller draws a 4pt thumb (6pt
+  with Increased Contrast) over content, no track, hidden when idle, hidden after
+  0.9 seconds with no fade, native-width hit region. Resolve the sibling that
+  hosts the modified view synchronously and again from AppKit layout; skip every
+  ancestor scroll view (a `TextEditor` in a scrolling page configures its own);
+  `enclosingScrollView` is the last fallback.
+- **Rule (Cloud Sync):** The ignore-pattern editor viewport is 128pt, with the
+  shared 11pt vertical inset, so the resting lower edge cuts no line.
+- **Check:** `rg` count of scrolling sources equals the shared-modifier count;
+  `showsIndicators: false` is absent. `ScrollIndicatorTests` cover the two-sibling
+  and modifier lookups with no fixed main-queue delay.
+
+## Workspace Pane Seams
+
+- **Symptom:** A line or gap appears between a workspace sidebar and its body.
+- **Cause:** A root inserted a divider between panes that already meet.
+- **Rule:** Sidebar and opaque body sit directly together in a zero-spacing
+  stack. No divider or spacer at the boundary.
+- **Check:** Inspect each sidebar workspace root.
 
 ## Quiet Structural Separators
 
 - **Symptom:** Hairlines divide the interface more strongly than the content.
-- **Cause:** Visual `Divider` views used the full native separator strength.
-- **Invariant:** Route visual pane, card, row, tab, header, and sheet hairlines
-  through `QuietDivider`. Use 0.35 opacity normally and 0.55 with Increased
-  Contrast. Keep command-menu and context-menu dividers native.
-- **Check:** Search every SwiftUI view for `Divider()`. Only the shared divider
-  implementation and native menu or command separators can remain.
-
-## Interaction And Layout Motion, 2026-10-01
-
-- **Symptom:** The owner reports that hover and content motion feels bad.
-- **Cause:** Shared tokens and helpers still return animations after callers
-  remove local modifiers. Custom fades also bypass Reduce Motion.
-- **Invariant:** Hover and press change color at once. Keep geometry fixed.
-  Pages, tabs, content, and selection change at once in both accessibility
-  modes. OnePlusMotion returns nil, even with an explicit duration. Utility
-  animation helpers are no-ops. Native presentations and real work indicators
-  keep system behavior. The overlay scroller hides at once after its existing
-  delay in both Reduce Motion modes; no custom fade remains.
-- **Check:** OnePlusMotionTests checks both modes and rejects animation,
-  offset, and scale effects in shared hover sources. The source check passes
-  and rejects all three isolated mutations. Ruler hotkey feedback shows and
-  hides at once. Signed hover, press, navigation, progress, and presentation
-  checks remain with the orchestrator. See tmp/redesign/logs/w1-motion-sweep.md.
-
-## RSync UI Connector Labels
-
-- **Symptom:** Long connector names scroll continuously while Add Remote is
-  open and idle.
-- **Cause:** The label uses a repeating marquee animation.
-- **Invariant:** Truncate a long label at the available width and expose its
-  complete name through the existing tooltip and accessibility value. The
-  picker runs no animation while idle. Hover and auth-state changes are instant.
-- **Check:** Leave Add Remote open with a long connector name and confirm no
-  label moves. Hover and change auth state in normal and Reduce Motion modes;
-  require instant feedback in both modes.
+- **Cause:** Visual `Divider` views used full native separator strength.
+- **Rule:** Pane, card, row, tab, header, and sheet hairlines use `QuietDivider`
+  (0.35 opacity, 0.55 with Increased Contrast). Menu and command separators stay native.
+- **Check:** `rg "Divider()"` finds only the shared implementation and native menus.
 
 ## Settings Row Alignment
 
-- **Symptom:** Toggles, pickers, and option groups float in the middle of a card
-  or start on different horizontal edges from one row to the next.
-- **Cause:** Intrinsic-width controls were placed in a centered stack or grid
-  cells retained their default alignment.
-- **Invariant:** Settings stacks align leading. A labeled settings row spans the
-  card with its control trailing, or every control starts on one shared leading
-  grid column. Center only deliberate empty states and hero compositions.
-- **Check:** Inspect every settings card and workspace form at default and
-  minimum widths. Labels share a leading edge, controls share their row or
-  control-column edge, and no compact control floats at the card midpoint.
+- **Symptom:** Toggles, pickers, and option groups float mid-card or start on
+  different edges row to row.
+- **Cause:** Intrinsic-width controls sat in a centered stack, or grid cells kept
+  default alignment.
+- **Rule:** Settings stacks align leading. A labeled row spans the card with its
+  control trailing, or all controls share one leading grid column. Center only
+  deliberate empty states and heroes.
+- **Check:** At default and minimum widths, labels share an edge, controls share
+  the control-column edge, nothing floats at the card midpoint.
 
-## Product Copy Boundary
+## Inline Metadata And Sparse Pages
 
-- **Symptom:** A task screen shows implementation tradeoffs, API limits,
-  research notes, or text copied from a design conversation.
-- **Cause:** Engineering rationale was used as persistent interface help.
-- **Invariant:** Task screens show names, values, state, and recovery actions.
-  Put a technical limit in About only when it changes a person's decision.
-- **Check:** Search visible strings for rationale terms such as `public API`,
-  `does not expose`, `not bundled`, `intentionally`, and `never captures`.
+- **Symptom:** A short category, path, count, kind, time, or total takes a second
+  row, or independent cards fill one narrow column of a wide pane.
+- **Cause:** Every secondary value used a vertical stack; card groups used a
+  fixed single column.
+- **Rule:** Short title and metadata pairs share a first-baseline row with a 6 to
+  8pt gap; the primary text truncates first. Independent cards use an adaptive
+  grid with a 320pt minimum. Help, errors, previews, commands, and long paths
+  keep their own lines.
+- **Check:** Audit leading stacks with 0 to 4pt spacing at default and minimum
+  widths.
 
-## Workspace Traffic-Light Spacing
+## Workspace Actions And Bottom Status
 
-- **Symptom:** Workspace traffic lights sit off-center, the sidebar title feels
-  detached from them, or the search/navigation leaves a second titlebar gap.
-- **Cause:** AppKit kept its native 32pt titlebar centerline while the sidebar
-  used a 40pt visual strip and a title inset sized only to clear the buttons.
-- **Invariant:** Center all three workspace traffic lights at 20pt in the 40pt
-  strip. `UtilityLayout` is the single source for the 84pt title leading edge
-  and 44pt content top edge, leaving at least 12pt after the zoom button and one
-  4pt gap below the strip. Reapply the vertical offset when the window becomes
-  key and never move the native horizontal button positions.
-- **Check:** In every workspace, compare the top and bottom traffic-light gaps
-  and the gap before the title. Unit-check all workspace window identifiers.
-
-## Workspace Sidebar Geometry
-
-- **Symptom:** A sidebar is too narrow for its navigation, rows touch the pane
-  edge, or one app invents different title, control, and content offsets.
-- **Cause:** A workspace chose local width or padding literals instead of its
-  shared sidebar family and layout metrics.
-- **Invariant:** The main window uses its own 215pt System Settings sidebar
-  (`DESIGN.md`, Main window). Logs, Input Devices, and Task Manager use the
-  220pt compact family; Cloud Sync uses
-  the 240pt data family.
-  Navigation groups have 12pt horizontal
-  pane padding. All workspace titles and first controls use the shared 84pt and
-  44pt edges.
-- **Check:** Search the complete workspace class for sidebar width, top padding,
-  and title-leading literals. Open all six sidebars at default and minimum
-  sizes; selected rows keep equal left and right pane clearance.
-
-## Content Action Button Density
-
-- **Symptom:** Disconnect and other content actions look too thin or leave
-  uneven space around their labels.
-- **Cause:** Native text and system-image button initializers plus mixed control
-  sizes made the visible label bounds depend on each call site.
-- **Invariant:** Regular content actions put equal 14pt leading and trailing
-  padding inside their native button and provide at least 36pt label height.
-  Keep compact title-bar actions and card controls at their own density.
-- **Check:** Compare Remote Stats Connect and Disconnect, process detail
-  actions, and launcher detail Open in the signed
-  build. Confirm even label space, visible focus, and usable disabled states.
-
-## Launcher Detail Geometry
-
-- **Symptom:** Tool names are small or heavy, Open is undersized, tabs begin on
-  the wrong edge, an empty settings page floats in the middle, a description is
-  bottom-anchored below a large blank area, or a sidebar double-click only
-  selects a tool.
-- **Cause:** Launcher detail controls used compact defaults and empty settings
-  content was allowed to choose its own vertical placement.
-- **Invariant:** Tool pages follow the v15 header row in `DESIGN.md`
-  (Main window): a 32pt icon, the name, the description, then the switch and
-  the raised `Open <Tool>` button on the same row. Settings sections begin
-  directly below the header; an empty settings body adds no space. A
-  double-click on an enabled sidebar tool row opens that tool; one click only
-  selects it.
-- **Check:** Inspect every built-in tool page, then single- and double-click
-  sidebar rows. Confirm Input Devices keeps its settings directly below the
-  header with no large unused space.
-
-## Applet Settings Placement
-
-- **Symptom:** A compact applet shows a round settings button floating over
-  its content, and the last card touches the window bottom.
-- **Cause:** An older rule kept the gear at the bottom-right and reserved 52pt
-  of scroll space for it. The owner then moved the gear into the titlebar.
-- **Invariant:** The settings gear is the `OnePlusAppletSettingsButton` ghost
-  icon button in the titlebar action row, left of the primary action. It stays
-  visible on the settings page with a selected fill, toggles back to home, and
-  answers Command-comma. Nothing floats over content. Scrolling applet content
-  ends 24pt above the window bottom as padding inside the scroll content.
-- **Check:** Inventory compact titlebar actions with `rg` and confirm no
-  `onePlusFloatingSettings` call remains. Open every applet that owns settings
-  and confirm the gear sits left of the primary action on home and settings
-  pages, and the last card clears the window bottom when scrolled to the end.
-
-## Compact Titlebar Structure
-
-- **Symptom:** Title text becomes large, grouped, gains a redundant icon, leaves
-  an empty zoom-button gap, or actions differ in size, radius, or focus chrome.
-- **Cause:** Native toolbar defaults and locally styled menus bypassed the shared
-  titlebar control label, while the title still reserved all three traffic-light
-  positions after zoom was hidden.
-- **Invariant:** Use the shared custom compact titlebar. Titles are text-only,
-  13pt medium and begin 60pt from the left when traffic lights are present.
-  Actions are flat, discrete, 24pt high, and use the titlebar-only 6pt radius;
-  only the primary action receives accent fill. Compact titlebars have no
-  bottom separator.
-- **Check:** Inspect initial focus, hover, disabled, and active states in the
-  running app. Confirm the title uses the former zoom space and every action
-  retains a separate boundary without transient or persistent focus chrome.
-
-## Compact Titlebar Vertical Alignment
-
-- **Symptom:** Compact titlebar items sit too high, traffic lights initially
-  align but later jump 6pt upward, the app name appears independently padded,
-  the green zoom control remains, or an applet can be resized.
-- **Cause:** The title used its intrinsic text height while actions used 24pt
-  frames inside a taller row. Separately, AppKit can restore its native 16pt
-  traffic-light centerline after the two startup alignment passes.
-- **Invariant:** Use one 40pt titlebar. Apply one 4pt top inset to the complete
-  row and no vertical padding to individual row items. Give the title and
-  action container equal 24pt frames. They share a 22pt centerline. Move close
-  and minimize controls 6pt down to that centerline, hide zoom, and remove the
-  resizable window style for every compact applet. Give each applet an explicit
-  fixed root frame and use SwiftUI content-size window resizability. Reapply the
-  traffic-light offset after delayed layout and whenever the window becomes
-  key; never stack relative offsets.
-- **Check:** Compare accessibility frame midpoints for the close button, title,
-  and actions in every compact applet before and after switching focus. They
-  stay within 1pt of window-top + 22pt. In the unit seam, restore the native
-  16pt centerline after startup, post the key-window transition, and confirm the
-  22pt centerline is restored. Confirm only close and minimize are visible and
-  manual resizing fails.
-
-## Compact Titlebar Initial Focus
-
-- **Symptom:** A titlebar button or menu opens with an outline that persists
-  after the window or control loses focus.
-- **Cause:** Only Awake redirected initial focus, and locally styled titlebar
-  menus did not consistently disable the SwiftUI focus effect.
-- **Invariant:** Every compact applet initially focuses its invisible window
-  accessor. Every titlebar button, menu, and switch disables its focus effect
-  without disabling keyboard interaction.
-- **Check:** Fresh-open Awake, Text Extractor, and Color Picker. Before
-  interaction and after changing window focus, confirm no titlebar outline is
-  visible. Tab to each control and confirm keyboard activation still works.
-
-## Custom Control Focus Chrome
-
-- **Symptom:** A custom sidebar row, card, icon action, or borderless menu shows
-  a large blue rectangular outline that does not match its shape.
-- **Cause:** A plain or borderless SwiftUI control kept the default focus effect
-  after it replaced the native control surface.
-- **Invariant:** Apply `onePlusFocusPolicy()` at the shared root. Gate custom
-  focus paint on `OnePlusFocusPolicy.shared.showsFocus`. Do not add local
-  unconditional `focusEffectDisabled()` overrides. Keep controls named and
-  keyboard operable. Text clicks keep only the caret when accessibility focus
-  modes are off.
-- **Check:** `OnePlusFocusPolicyTests` checks mode changes, native rings,
-  hidden-host responder ownership, pointer rules, and button paint. Run signed
-  interaction checks with both modes off, Full Keyboard Access on, and
-  VoiceOver on. The protected `OnePlusMenuLabel` focus paint still needs its
-  owning worker's policy gate.
-
-## Pointer Click Focus Release
-
-- **Symptom:** A keyboard focus outline remains on a control after the user
-  clicks an unrelated part of the same app window or menu-bar popover.
-- **Cause:** AppKit keeps the old first responder when the click target does not
-  accept focus.
-- **Invariant:** A pointer click outside text editors and native selection
-  controls clears the old first responder before the target handles the click.
-  Text fields keep editing intact. Native tables and lists keep keyboard focus
-  after a row click. Tab still operates controls. Focus indicators appear only
-  with Full Keyboard Access or VoiceOver.
-- **Check:** Tab to a control in a workspace, compact applet, and tray. Click
-  blank content and another button; the old outline disappears. Click and edit
-  a search field without losing its insertion point.
-
-## Shared Focus Effects
-
-- **Symptom:** Mismatched rectangular focus outlines remain in other workspaces
-  and menu-bar popups even after clearing the clicked window's first responder.
-- **Cause:** SwiftUI focus effects are controlled by the view environment and
-  may remain on descendants regardless of the AppKit click-time responder reset.
-- **Invariant:** The shared root policy enables focus visuals only when Full
-  Keyboard Access or VoiceOver is on. Refresh on keyboard-mode notifications,
-  VoiceOver observation, app activation, defaults changes, and input events.
-  Register each native window once. Clear ordinary opening focus once and
-  preserve valid responders on reactivation. Allow text and native selection
-  controls to take pointer focus without focus paint. Other controls take
-  pointer focus when Full Keyboard Access or VoiceOver is on.
-- **Check:** All 72 package tests pass at foundation round 10. Debug and desktop
-  build-for-testing pass. Signed window, sheet, popup, and panel checks remain
-  with the orchestrator. Selection and tab strip overrides are protected by
-  the worker prompt and still need the first foundation worker's review.
-
-## Menu Panel First Layout, 2026-09-30
-
-- **Symptom:** Portman first appeared at 74pt, then grew to 977pt. Tab changes
-  first used the prior content height.
-- **Cause:** Visibility mounted the body later. Geometry preferences changed
-  height in a later SwiftUI update. Requested pages were selected after show.
-- **Invariant:** Keep layout mounted. Visibility gates live work only. Measure
-  natural body height synchronously with fixed regions outside the scroller.
-  Cap scrolling at 90 percent of the visible screen. Disable layout animation.
-  Native hosts consume `onOnePlusMenuHeightChange` in the final layout pass.
-  Select pages and measure the native host before presentation. Diagnostic
-  Portman opens use `activateApp: false` and deliver pages to the live host.
-- **Check:** `testTabSwitchCommitsOnlyTheDestinationHeight` switches between
-  short, tall, and empty bodies. Every native resize callback equals the
-  destination height without a settling delay. Hidden layout, fixed regions,
-  and screen-cap tests pass. App-hosted routing tests compile. Signed first
-  rendered frames, live tab latency, and foreground preservation remain open.
-
-## Panel Tab Icons Roll On Switch, 2026-11-19
-
-- **Symptom:** Switching combined panel tabs makes the tab icons and key
-  roll for about 170 ms.
-- **Cause:** `OnePlusLinearIconTabs` set a 180 ms animation on every
-  selection change, overriding the host's disabled transaction. The soft key
-  used `matchedGeometryEffect`, which moves in window coordinates. The new
-  tab changes the panel height, so the bar shifts until the window resizes
-  and the key flies vertically as well as sideways.
-- **Invariant:** Panel tab key, glyph colors, and dividers change at once
-  (OnePlusUI 1.3.13). No matched geometry or animation on the panel tabs.
-- **Check:** An offscreen frame probe (hosting controller plus the app's
-  resize callback, 460 to 180 pt) compared the tab bar each 16 ms with the
-  final frame: about 1,900 changed pixels up to 169 ms before, zero from the
-  first frame after.
-
-## Custom Selectable Interaction States
-
-- **Symptom:** A custom row, card, or tab looks inert when the pointer moves
-  over it.
-- **Cause:** A plain SwiftUI button removed the native control surface without
-  adding replacement hover and pressed states.
-- **Invariant:** Custom selectable rows, cards, and tabs use
-  `UtilityInteractionButtonStyle`. The shared style uses a 0.06 primary hover
-  fill and a 0.1 pressed fill. Disabled controls do not react. Native controls,
-  icon actions, disclosure controls, breadcrumbs, and destructive text actions
-  keep their purpose-specific interaction treatment. Informational rows do not
-  use a button style. A filled selected tab keeps its accent opaque, applies a
-  0.10 primary hover overlay and a 0.18 pressed overlay, and uses the system's
-  contrast-aware selected-control text color.
-- **Check:** Inspect Color Picker tabs and projects, Awake modes, transfer-detail tabs, and AI
-  History bookmark chips. Every enabled item shows hover and pressed feedback.
-
-## Search Field Density
-
-- **Symptom:** A search field inside a toolbar, page, or popover looks like the
-  larger padded search field used in workspace sidebars.
-- **Cause:** Content searches reused the sidebar search component or recreated
-  its padding and background locally.
-- **Invariant:** Use `SidebarSearchField` only in workspace sidebars. Use the
-  native small `NSSearchField` in a 24pt slot for every search inside app and
-  sub-app content, toolbars, sheets, and popovers. Put progress beside the
-  native field when a content search needs a loading state.
-- **Check:** Inspect the launcher and Logs sidebars, then inspect Color Picker
-  history and Cloud Sync files and connector
-  picker. Only the two sidebar searches use the larger padded style.
-
-## Permission-Dependent Features
-
-- **Symptom:** A feature silently falls back, appears broken, or tells the user
-  to change System Settings without first asking for the permission it needs.
-- **Invariant:** The process that uses a protected API owns and retains its
-  permission manager, requests access at the first eligible in-context use,
-  and starts the native service when macOS requires that to show the prompt.
-  Every affected feature surface and its Settings page show Not Requested,
-  Denied, Restricted, Allowed, or Needs Attention, with the matching request or
-  System Settings recovery action. Background helpers request and publish their
-  own state. An Allowed state with protected data still unavailable is Needs
-  Attention, not success. Apply this rule to every current and future
-  permission-dependent feature.
-- **Check:** Reset each permission under test, enter the feature, and confirm
-  macOS asks at the correct time. Test denial, restriction, later approval, and
-  an allowed-but-unavailable API result. Confirm both the feature and Settings
-  always explain the state and provide the next action.
-
-## Compact Applet Window Height
-
-- **Symptom:** Every compact applet has a 32pt material strip below its fixed
-  root, leaving a bottom-right floating control 40pt above the window edge.
-- **Cause:** SwiftUI composites a hidden-titlebar window with the native 32pt
-  titled-frame height below its fixed root. Because the root ignores the top
-  safe area, the surplus appears below it. `NSWindow.frame` and Accessibility
-  can report only the root height, so clamping that logical frame does not move
-  the visible bottom edge.
-- **Invariant:** Position bottom overlays through the composited surplus using
-  the native titled-frame height from `NSWindow.frameRect`, rather than trusting
-  the logical window frame or repeatedly resizing the window.
-- **Check:** Screenshot the installed window itself, not only its Accessibility
-  bounds. On Color Picker and Text Extractor, the 24pt settings button must be
-  8pt from the visible material's bottom and right edges on both pages.
-
-## Body Gutters and Floating Controls
-
-- **Symptom:** Tabs, cards, fields, or a floating control start on different
-  horizontal edges.
-- **Cause:** A global inset was assumed without checking the applet's local
-  layout token, or label text was aligned instead of the control boundary.
-- **Invariant:** Inspect the current applet layout token first. Align tab pill
-  boundaries and content surfaces to the same body gutter. Anchor the floating
-  settings control 8pt from the bottom-right window edges. Reserve enough
-  scroll-bottom space that it never covers the final row or card.
-- **Check:** Compare rendered boundaries, not source padding. Scroll to the last
-  item and confirm it remains fully readable and clickable above the control.
-
-## Thin Scroll Indicators
-
-- **Symptom:** A scrollable view reserves a thick track or shows a full-size
-  indicator while the rest of the app uses thin overlay scrollbars.
-- **Cause:** A scrolling surface bypassed the shared configuration, the SwiftUI
-  bridge selected the first sibling scroll view instead of the surface under
-  its own frame, sibling lookup ran only in a deferred main-queue block before
-  AppKit finalized sibling geometry, or the implementation assumed `.mini`
-  reduced the current macOS overlay thumb below its 15pt native width.
-- **Invariant:** Every SwiftUI `ScrollView`, `Form`, `TextEditor`, `List`, and
-  `Table` uses `.thinScrollIndicators()`. Native scroll views call
-  `configureThinScrollIndicators()`. The shared AppKit scroller draws a 4pt
-  thumb, or 6pt with Increased Contrast, over the content with no track. It
-  stays hidden while idle, appears during scrolling or edge hover, and hides
-  at once after 0.9 seconds in both Reduce Motion modes. Keep its native-width
-  hit region. Do not remove the indicator or disable scrolling. Resolve the
-  matching sibling synchronously when possible and again from AppKit layout;
-  use a deferred lookup only as a fallback.
-- **Check:** Inventory every scrolling source with `rg`. The surface count must
-  equal the shared-modifier count, and `showsIndicators: false` must be absent.
-  Exercise long content in every app family, sheet, editor, and horizontal
-  strip. In a signed installed launcher, confirm no idle thumb, a thin thumb
-  during scrolling, and no thumb after the hide delay. Use a two-sibling hosted
-  test to confirm immediately after layout that the modifier configures the
-  surface under its own frame. Do not make this regression depend on a fixed
-  main-queue delay.
-
-### Nested editor inside a scrolling page
-
-- **Symptom:** A `TextEditor` inside a scrolling surface, such as the Cloud
-  Sync ignore-pattern editor in its settings page, keeps a legacy scroller
-  with a visible track while the page scroller stays thin.
-- **Cause:** `thinScrollIndicators()` configured the first scroll view it
-  found. With the editor inside an enclosing settings `ScrollView`, that was
-  the page scroll view, so the editor's own scroll view never received the
-  overlay configuration.
-- **Invariant:** The configurator looks for the sibling scroll view that hosts
-  the modified view and skips every ancestor scroll view; `enclosingScrollView`
-  is only the fallback when no sibling exists.
-- **Check:** Open Cloud Sync settings in the installed build and confirm
-  the ignore-pattern editor shows no scroller track at rest. The
-  `ScrollIndicatorTests` sibling and modifier tests cover the lookup.
-
-### Cloud Sync ignore-pattern viewport
-
-- **Symptom:** The signed `3e33de2` dark and light settings captures show
-  only the top of the next pattern at the editor's lower bezel.
-- **Cause:** `RcloneSettingsView` gives the shared editor a 120pt viewport.
-  Both settings hosts use that implementation.
-- **Invariant:** Use the 128pt viewport with the shared 11pt vertical text
-  inset and overlay scroller. Do not change the native editor to fit this page.
-- **Check:** Recapture both settings hosts in both appearances. Confirm that
-  the resting lower edge does not cut a line. Check editing, undo, scrolling,
-  and persistence. The source height is corrected; signed checks remain open.
-
-
-## Workspace Pane Seams
-
-- **Symptom:** A line or clear-looking gap appears between a workspace sidebar
-  and its body.
-- **Cause:** A workspace root inserted a divider between two panes that already
-  meet with zero stack spacing.
-- **Invariant:** Workspace roots place the sidebar and opaque body directly next
-  to each other in a zero-spacing stack. Do not add a divider or spacer at the
-  pane boundary.
-- **Check:** Inspect every sidebar workspace root. The sidebar and body are
-  adjacent, and no window background appears between them.
-
-## Settings Page Replacement
-
-- **Symptom:** Home tabs remain above settings or settings gains a false top
-  margin.
-- **Cause:** Home navigation was rendered outside the page switch.
-- **Invariant:** Settings replaces applet home navigation and begins directly
-  below the titlebar. The floating settings control remains available to exit.
-- **Check:** Enter settings from every home page, confirm home navigation is
-  absent, then toggle back and confirm home state returns.
-
-## Fixed Controls Around Scrolling Rows
-
-- **Symptom:** A page title, search field, status card, inspector, or footer
-  moves when the user scrolls a table or list. Switching pages can also pause
-  while rows format or scan local state.
-- **Cause:** The page shell owns one scroll view around all content, or row
-  presentation performs sorting, formatting, file checks, or app discovery in
-  `body`.
-- **Invariant:** Keep page controls outside the scrolling region. Only the rows
-  inside the list or table card scroll. Prepare noninteractive row data in a
-  cancellable task outside the main actor. Use stable row IDs and keep row
-  bodies free of per-cell help, geometry readers, and file checks.
-- **Check:** Scroll each populated page and confirm its controls do not move.
-  Switch between pages in the signed build and confirm content appears within
-  100ms. Profile a populated list and confirm no synchronous file or process
-  scan runs on the main actor.
-
-## Global Shortcut Recording
-
-- **Symptom:** Recording Command-Shift-3 appears as `⇧⌘#`, or displays correctly
-  but macOS takes the screenshot and the app action never runs.
-- **Cause:** `charactersIgnoringModifiers` preserves Shift for number-row keys.
-  Separately, macOS reserves Command-Shift-3 through its screenshot service, so
-  a normal Carbon hotkey cannot reliably override it.
-- **Invariant:** Every custom shortcut flow uses `ShortcutRecorderField`, which
-  normalizes number-row key codes to `0` through `9` before persisting and
-  displaying the shortcut. Color Picker defaults to `⇧⌘3`; Text Extractor
-  defaults to `⇧⌘2`. Reserved screenshot chords use a suppressing session event
-  tap and never register through Carbon. When Accessibility permission is
-  missing, show an explicit access action beside the recorder, leave the native
-  screenshot action unchanged, and do not run the app shortcut. If macOS sends
-  either tap-disabled event, re-enable the retained event tap before the
-  callback returns.
-- **Check:** Feed the shared recorder a Command-Shift key event whose characters
-  contain the shifted symbol and confirm its shortcut retains the physical
-  number label. Then record shortcuts in both applet settings pages and invoke
-  Command-Shift-3 from another app. Color Picker must open without taking a
-  screenshot.
-
-## Shortcut Tap Requests Event Access At Launch
-
-- **Symptom:** A normally launched app window opens behind a macOS Device
-  Control and Data Access prompt, before the user uses any shortcut.
-- **Cause:** Launch initializes `GlobalShortcutManager`; its default reserved
-  screenshot shortcut tries to create a suppressing event tap immediately.
-- **Invariant:** Check Accessibility trust without prompting before creating a
-  reserved-shortcut tap. Keep the explicit access action in shortcut settings.
-- **Check:** Hosted normal-launch captures before the guard showed the
-  prompt; run `36171513372` passed and its normal-launch capture showed no
-  permission dialog.
-
-## Awake Healthy Status Ink, 2026-10-01
-
-- **Symptom:** Signed `43ce0eb9` shows the steady running sentence in green
-  in both appearances.
-- **Cause:** AwakeStatusRow maps an active session to the success state.
-- **Invariant:** Map steady healthy sessions to the existing online state.
-  Keep neutral row text, the 4pt filled dot, trailing Turn Off, and existing
-  geometry. Off is hollow and muted. Actual assertion errors keep error ink.
-- **Check:** Shared state mapping and both signed Home captures reviewed.
-  Parsing and the single combined gate pass at `7a8a6c41`. Updated signed
-  active/off/error recapture remains with the orchestrator.
-
-## Awake Window Controls
-
-- **Symptom:** The Awake window can be enlarged, the off state is exposed as
-  `Passive`, or `Keep Display On` cannot be changed while Awake is off.
-- **Cause:** The scene was freely resizable and the display option was disabled
-  whenever Awake was not actively holding a power assertion.
-- **Invariant:** Awake has a fixed 560pt by 500pt content size. The persisted
-  internal `.passive` case is always labeled `Off` in user-facing copy. Its
-  existing `Keep Display On` titlebar switch remains configurable while off;
-  do not add a separate titlebar on/off action. The tray's four modes fill the
-  available width at regular native control size. Selecting Timed or Until
-  activates the current interval or date. A zero timed interval disables both
-  the Timed row and Start.
-- **Check:** With Off selected, toggle `Keep Display On` on and off, confirm all
-  four tray segments share the available width, then drag a
-  window edge and confirm the content size remains unchanged.
-
-## Awake Titlebar Appearance
-
-- **Symptom:** Awake opens with a large focus outline around `Keep Display On`,
-  a bottom titlebar rule, or a title that lacks the requested emphasis.
-- **Cause:** macOS selected the titlebar switch as the first responder, the
-  shared titlebar retained a separator, or Awake inherited the default weight.
-- **Invariant:** Awake uses a bold 13pt title, no titlebar bottom separator, and
-  no transient focus outline around its existing display switch.
-- **Check:** Open Awake from a fresh launch and inspect the titlebar before
-  interacting with it. Tab to and toggle `Keep Display On` to confirm keyboard
-  control still works.
+- **Symptom:** A menu and adjacent button differ in height or baseline, or a
+  status card floats above empty space.
+- **Cause:** Controls relied on different intrinsic sizes; a status card was
+  appended to scroll content.
+- **Rule:** Top-strip actions use the native small size and a 24pt minimum.
+  Pane-wide work status sits in one bottom safe-area inset, never in scroll content.
+- **Check:** Menus and buttons share one centerline on every workspace; status
+  stays at the bottom while work runs.
 
 ## Sidebar Status And Version Chrome
 
-- **Symptom:** A workspace sidebar shows a build version string or a colored
-  online/offline dot beside its title or in its footer.
-- **Cause:** Daemon and sampler state was surfaced as sidebar chrome instead of
-  in the content that owns the work.
-- **Invariant:** No sidebar, sidebar footer, or menu-bar tab summary shows a
-  version number or a status dot. Keep a recovery action such as Cloud Sync `Reconnect`, and keep
-  operational state in content rows (Dev Sync drive state).
-  The About and Settings surfaces may still show the app version.
-- **Check:** Grep every sidebar view for `CFBundleShortVersionString`, a version
-  label, and `Circle()` fills tinted green, orange, or red. Inspect the
-  launcher, Cloud Sync, and System Monitor sidebars and the Cloud Sync menu-bar
-  tab in the installed build.
+- **Symptom:** A sidebar shows a build version or a colored online or offline dot.
+- **Cause:** Daemon and sampler state was surfaced as sidebar chrome.
+- **Rule:** No sidebar, sidebar footer, or menu-bar tab summary shows a version
+  or status dot. Keep recovery actions (Cloud Sync `Reconnect`) and put state in
+  content rows. About and Settings may show the version.
+- **Check:** `rg` sidebar views for `CFBundleShortVersionString`, version labels,
+  and tinted `Circle()` fills.
 
+## Product Copy Boundary
 
-## Shared Control Accessibility After The Redesign, 2026-09-30
+- **Symptom:** A task screen shows tradeoffs, API limits, research notes, or
+  design-conversation text.
+- **Cause:** Engineering rationale became persistent interface help.
+- **Rule:** Task screens show names, values, state, and recovery actions. A
+  technical limit goes in About only when it changes a decision.
+- **Check:** Search visible strings for `public API`, `does not expose`,
+  `not bundled`, `intentionally`, `never captures`.
 
-- **Symptom:** Task Manager lost its title identifier. Segment clicks missed
-  the visible choice, and Mac Tweaks choices lost their identifiers.
+## Permission-Dependent Features
+
+- **Symptom:** A feature silently falls back or tells the user to open System
+  Settings without first asking for its permission.
+- **Rule:** The process that uses a protected API owns its permission manager
+  (`PermissionCenter`), requests at the first eligible in-context use, and starts
+  the native service when macOS needs that to show the prompt. Each feature and
+  its Settings page show Not Requested, Denied, Restricted, Allowed, or Needs
+  Attention with the matching action. Helpers publish their own state. Allowed
+  with data still unavailable is Needs Attention.
+- **Check:** Reset each permission and enter the feature; test denial,
+  restriction, later approval, and allowed-but-unavailable.
+
+## Global Shortcut Recording
+
+- **Symptom:** Recording Command-Shift-3 shows `⇧⌘#`, or shows correctly but
+  macOS takes the screenshot and the app action never runs. A launch opens behind
+  a Device Control and Data Access prompt.
+- **Cause:** `charactersIgnoringModifiers` keeps Shift for number-row keys. macOS
+  reserves Command-Shift-3, so a Carbon hotkey cannot override it. Launch created
+  the reserved-shortcut event tap at once.
+- **Rule:** Every custom shortcut uses `ShortcutRecorderField`, which normalizes
+  number-row key codes to `0` through `9`. Defaults: Color Picker `⇧⌘3`, Text
+  Extractor `⇧⌘2`. Reserved screenshot chords use a suppressing session event
+  tap, never Carbon, created only after a prompt-free Accessibility trust check.
+  Without access, show an access action beside the recorder, leave the screenshot
+  unchanged, and do not run the shortcut. Re-enable the retained tap inside the
+  callback on either tap-disabled event.
+- **Check:** A Command-Shift event with the shifted symbol records the physical
+  number label. Command-Shift-3 from another app opens Color Picker, no screenshot.
+  A normal launch shows no permission dialog.
+
+## Tool Icon Tile Template
+
+- **Symptom:** One tool icon has sharper corners or a different tile silhouette.
+- **Cause:** An SVG appearance bypassed the shared tile template, or a render path
+  trusted asset clipping, or a stale installed build kept the defect.
+- **Rule:** Every light and dark SVG tool icon uses a `512 x 512` view box and a
+  full-canvas `clipPath id="tile"` rectangle (`rx="112"`) clipping ground and art.
+  Bitmap icons are 512px RGBA with transparent rounded corners. Every launcher,
+  sidebar, grid, and tray path uses `toolIconTile(size:)`, radius `size x 112 / 512`.
+  No special cases. See `spec/icons.md`.
+- **Check:** Template, corner, and shared-renderer tests pass over every tool-logo
+  asset, PNG, and SVG. The installed commit equals `HEAD`.
+
+## Mac Tweaks Has No Previews
+
+- **Symptom:** Mac Tweaks paired each card with a mock desktop, Dock, or Finder
+  preview, forcing two columns and fixed card heights.
+- **Rule:** The owner removed every preview and texture. Mac Tweaks is 820 x 660
+  with one full-width column of cards, like System Settings, on every page and in
+  search. No fixed heights or second column. Never reintroduce
+  `MacTweaksPreviewView` or preview assets. OnePlusUI omits `OnePlusWindowTexture()`
+  for `.macTweaks`.
+- **Check:** `rg -n "MacTweaksPreview|MacTweaksGrain|MacTweaksRibbon" powertoys`
+  returns nothing. Each page shows one column at 820pt, no ribbon.
+
+## Mac Tweaks Shared Control Callers And Column Edges
+
+- **Symptom:** Dock and Screenshots segments start 17 to 19pt after their
+  selects. The System sidebar caption sits too close to Apps. Modified headings
+  sit 4pt from their row values.
+- **Cause:** The card width reached the select but not the segmented wrapper.
+  The sidebar used standard caption spacing.
+- **Rule:** Pass the card width to `OnePlusSegmented(width:)` through
+  `MacTweaksSegmentedControl`. Use the shared section-start caption for System
+  only. No transparent control frames or custom sidebar spacers. A Modified table
+  (if shown) uses 16pt insets, 8pt gaps, 170pt value columns, a 28pt reset lane,
+  and a fixed header.
+- **Check:** Select and segment edges match in Dock and Screenshots in both
+  appearances (package width regression: 160 and 180pt tracks). Setting, Current,
+  and Original text edges align.
+
+## Color Picker Settings Natural Height
+
+- **Symptom:** Applet Settings stays 460pt tall with a gap after the last card.
+- **Cause:** The page switch returned the maximum canvas height for Settings.
+- **Rule:** Height is the measured card stack plus the 40pt titlebar, 16pt top
+  gap, and 24pt bottom gutter, clamped to 250 to 460pt. Measure in the applet
+  host so embedded Settings inherits its caller's geometry and density.
+- **Check:** A 296pt stack requests 376pt; empty and long content stay in range.
+  Check permission notices and scrolling at the cap.
+
+## Applet Settings Embedding And Placement
+
+- **Symptom:** Embedded settings collapse or gain extra gutters when page and
+  settings both own scrolling and padding.
+- **Rule:** Awake, Color Picker, Text Extractor, and Portman each expose one
+  cards-only settings stack with 16pt gaps and inherited density. Only the main
+  tool page renders it. Awake has no window; every Awake open route selects its
+  main tool page. An applet or Portman gear and Command-comma call
+  `ToolActionRouter.openMainPage(toolID:)`; applets keep only work pages (owner,
+  2026-11-18). Where an applet still shows Settings, the gear is
+  `OnePlusAppletSettingsButton` in the titlebar, left of the primary action,
+  selected while open; Settings replaces the body from directly below the
+  titlebar. Nothing floats over content; scrolling content ends 24pt above the
+  window bottom as scroll padding. Cards fill the width between 16pt gutters.
+- **Check:** `rg onePlusFloatingSettings` returns nothing. Check every card and
+  the last control on the main tool page; the last card clears the bottom when
+  scrolled to the end.
+
+## Compact Applet Titlebar
+
+- **Symptom:** Titlebar items sit high, actions differ in size, traffic lights
+  align then jump 6pt up, or an applet can be resized.
+- **Cause:** Native toolbar defaults bypassed the shared titlebar. AppKit restores
+  its 16pt centerline after the startup passes. The title used its intrinsic
+  height while actions used 24pt frames.
+- **Rule:** Use the shared compact titlebar (`DESIGN.md` "Compact applets"): one
+  40pt row, one 4pt top inset on the row and none on items, title and action
+  frames both 24pt on the 22pt centerline, text-only title 60pt from the left,
+  flat 24pt actions with the 6pt radius, accent fill on the primary only, no
+  bottom separator. Hide zoom, remove the resizable style, give each applet a
+  fixed root frame. Reapply the traffic-light offset after delayed layout and on
+  every key-window change; never stack relative offsets.
+- **Check:** Accessibility midpoints of close, title, and actions stay within 1pt
+  of top + 22pt before and after a focus switch. The unit seam restores 22pt
+  after a native reset to 16pt. Manual resizing fails.
+
+## Settings Page Replacement
+
+- **Symptom:** Home tabs stay above settings, or settings gains a false top margin.
+- **Cause:** Home navigation rendered outside the page switch.
+- **Rule:** Settings replaces applet home navigation and begins directly below
+  the titlebar. The gear remains available to exit.
+- **Check:** Enter settings from every home page; home navigation is absent, then
+  returns on toggle.
+
+## Menu Panel First Layout
+
+- **Symptom:** Portman first appeared at 74pt then grew to 977pt. Tab changes
+  first used the prior content height.
+- **Cause:** Visibility mounted the body later. Geometry preferences changed
+  height in a later SwiftUI update. Requested pages were selected after show.
+- **Rule:** Keep layout mounted; visibility gates live work only. Measure the
+  natural body height synchronously with fixed regions outside the scroller, cap
+  scrolling at 90 percent of the visible screen, no layout animation. Native
+  hosts consume `onOnePlusMenuHeightChange` in the final layout pass. Select
+  pages and measure before presentation. Diagnostic Portman opens use
+  `activateApp: false`.
+- **Check:** `testTabSwitchCommitsOnlyTheDestinationHeight`, plus the hidden
+  layout, fixed-region, and screen-cap tests.
+
+## Panel Tab Icons Roll On Switch
+
+- **Symptom:** Switching combined panel tabs rolls the icons and key for about
+  170 ms.
+- **Cause:** `OnePlusLinearIconTabs` set a 180 ms animation that overrode the
+  host's disabled transaction, and the soft key used `matchedGeometryEffect`,
+  which moves in window coordinates while the panel height changes.
+- **Rule:** Panel tab key, glyph colors, and dividers change at once (OnePlusUI
+  1.3.13). No matched geometry or animation on panel tabs.
+- **Check:** An offscreen probe (hosting controller plus the resize callback,
+  460 to 180 pt) comparing the tab bar every 16 ms shows zero changed pixels
+  from the first frame.
+
+## Awake Healthy Status Ink
+
+- **Symptom:** The steady running sentence shows green.
+- **Cause:** `AwakeStatusRow` maps an active session to the success state.
+- **Rule:** Map steady healthy sessions to the online state: neutral row text,
+  4pt filled dot, trailing Turn Off. Off is hollow and muted. Assertion errors
+  keep error ink.
+- **Check:** Recapture active, off, and error Home states in both appearances.
+
+## Shared Control Accessibility
+
+- **Symptom:** A sidebar lost its title identifier. Segment clicks missed the
+  visible choice. Mac Tweaks choices lost identifiers.
 - **Cause:** The sidebar's parent identifier replaced child metadata. A fake
   accessibility Picker used geometry different from the visible buttons.
-- **Invariant:** Make the sidebar a child-containing accessibility group.
-  Preserve each title and choice identifier. Expose the real segment buttons
-  with selected traits, a group label, and the existing arrow-key behavior.
-- **Check:** Hosted run `36705631910` passes Mac Tweaks and Tray Fan UI.
+- **Rule:** Make the sidebar a child-containing accessibility group. Keep each
+  title and choice identifier. Expose the real segment buttons with selected
+  traits, a group label, and arrow-key behavior.
+- **Check:** Mac Tweaks and Tray Fan UI jobs pass.
 
-## Button Caps And Glyph Centers, 2026-10-01
+## RSync UI Connector Labels
 
-- **Symptom:** Button text sits above or below its frame center, and action
-  glyphs look larger than the adjacent text.
-- **Cause:** SwiftUI centers the full text line box, which includes descender
-  space. Local icon and arrow fonts also override the control text role.
-- **Invariant:** Shared controls center the label cap bounds and glyph visual
-  bounds. A native Label inherits one point size and weight. Icon variants
-  display the Label icon only. A 32pt action `OnePlusMenuTile` uses compact
-  control type and centers its native Label without caller font or frame
-  overrides. Preserve symbol rotation inside the Label icon. Hover, press,
-  and segment selection change color at once.
-- **Check:** From `Packages/OnePlusUI`, run
-  `swift test --filter OnePlusButtonAlignmentTests`. Offscreen bitmap checks cover both appearances
-  at 1x and 2x and require each painted cap/glyph center within 0.5pt of the
-  control frame center. They never order a window or take keyboard focus.
-  The round 11 sweep includes 25 caller symbols and 26pt headers. Its glyph
-  mask measures blue-minus-green coverage on neutral fills. An absolute blue
-  cutoff discards faint pin edges in dark mode and gives a false offset.
-  Signed caller interaction remains an orchestrator check.
+- **Symptom:** Long connector names scroll continuously while Add Remote is idle.
+- **Cause:** The label used a repeating marquee animation.
+- **Rule:** Truncate at the available width; expose the full name through the
+  tooltip and accessibility value. The picker animates nothing while idle.
+- **Check:** Leave Add Remote open with a long name: no label moves.
 
-## Shared native control state and paint, 2026-10-01
+## Portman Panel Routing And Launch
 
-- **Symptom:** Selected table metadata loses readable ink. Popup key monitors
-  consume modified input. External text changes interrupt marked text or undo.
-  Field errors move controls inside fixed rows. Grain changes content pixels.
-- **Cause:** AppKit propagates cell backgroundStyle, monitors do not check the
-  owning window, text assignment bypasses editing, and captions share the
-  fixed control column. Grain was a content overlay.
-- **Invariant:** Selected ordinary metadata uses ink and restores its role
-  on deselection. Warning and error ink stays semantic. Draw active/inactive
-  row fills from isEmphasized. Use the native contrast preference because this
-  macOS normalizes requested high-contrast appearance names while it is off.
-  Filter action modifiers and popup windows before dispatch. Keep popup AX
-  objects by ID and convert clipped row geometry to screen coordinates.
-  Defer replacement during marked text. Use native same-resource edits and
-  clear undo on resource changes. Keep fields centered in 44/56pt rows and
-  send recovery messages to the existing group banner. Draw 200x125 grain
-  above fill and below content. Keep reset beside the label and help available
-  to keyboard and VoiceOver users.
-- **Check:** OnePlusNativeInputTests, OnePlusSearchTests, OnePlusPopupTests,
-  OnePlusContrastTests, OnePlusTableTests, OnePlusSettingRowTests,
-  OnePlusNativeFormTests, and OnePlusTextureTests run in offscreen package
-  hosts. Selected ordinary/warning/error paint reaches 4.5:1. The palette
-  reaches at least 4.59:1 through permitted grain extremes. Native small
-  steppers measure 17x20 in both 24/28pt hosts. Value-ink tests keep the blank
-  glyph line box and compare native coverage; nearest-token classification
-  gives a false failure after the palette change. Signed interaction remains
-  an orchestrator check. Report: `tmp/redesign/logs/w3-components.md`.
+- **Symptom:** A reopen returns to Servers. A diagnostic request for Servers shows
+  the saved Settings tab. A cold `--open portman` launch shows no panel.
+- **Cause:** The page lived in transient `@State`; diagnostics wrote the page
+  preference after presentation. Scene routing ran before the status item had a
+  visible window, and AppKit ignored the early show.
+- **Rule:** One full menu-bar panel and a count-bearing status item, one route
+  from the launcher, Raycast, Spotlight shortcut, and deep link. The default list
+  shows user-owned development listeners; Settings can include others. Pages:
+  overview, detail, cleanup, searchable settings, SSH forwarding. No alerts or
+  notifications (owner choice). Save the selected page across panel recreation
+  (Forward's pending scan selection stays transient); select the requested page
+  and consume queued requests before building the host; deliver to a visible
+  view. Settings state and editor discovery live in the panel owner; hosted
+  content is released on close. Route the startup argument from the app delegate
+  and present once after normal initialization: wait for a visible button window,
+  a nonempty visible rect, and nonzero width, retry up to ten seconds, never poll
+  while idle. An explicit tool route keeps the launcher closed.
+- **Check:** Page-routing and Settings-state regressions on hosted CI. The hosted
+  UI run opens `--open portman`, finds Servers before checking rows, and passes
+  all four Portman cases. Open every entry route.
 
-## Portman Rest Metrics And Row Focus, 2026-10-01
+## Portman Overview Layout
 
-- **Symptom:** Signed `43ce0eb9` shows Link and Stop on every server row,
-  hiding each row's memory, uptime, and sparkline.
-- **Cause:** The action condition treats the global focus-paint policy as
-  focus ownership for every row.
-- **Invariant:** Only hover or actual keyboard/accessibility focus on that
-  row exposes actions. Keep the fixed 134pt slot and instant paint. Preserve
-  memory and uptime in the details button's accessibility value in both states.
-- **Check:** The extracted production condition passes all 200 combinations
-  of hover, cleanup, keyboard focus, accessibility focus, and global policy.
-  The prior condition fails. The hosted hover test checks absent rest actions,
-  preserved metric values, and fixed bounds. Signed rest and one hovered or
-  focused row in both appearances remain with the orchestrator.
+- **Symptom:** The Memory scope label wraps. A server row, CPU summary, or Clean
+  up clips below the panel; the empty overview clips or leaves a blank tail. Tabs
+  and rows react only on their text.
+- **Cause:** The segmented picker rendered a redundant label in a narrow slot.
+  Height budgets were guesses. Each row added padding inside the overview gutter.
+- **Rule:** Show listening-process memory (never whole-Mac), server rows, and the
+  footer within the screen-height cap. The empty overview is 300pt with both card
+  lines and `0 KB`. The memory bar and row hover share outer edges; rows pad their
+  own text. Tabs and rows have full-width hit and hover regions. Servers, Forward,
+  Settings are equal-width tabs; underline and label change at once. The footer
+  holds server count, CPU, Sort by (Port ascending by default, Memory, Name, CPU
+  descending), and Clean up. Settings uses the shared native small search field.
+- **Check:** At 400pt with one, four, and many servers and the empty state: no
+  clipping, row and bar frames match, Sort by works, searching Scan in Settings
+  hides unrelated controls.
 
-## Search mouse-down responder cycle, 2026-10-01
+## Portman Rows, Hover, And Identity
 
-- **Symptom:** Signed 43ce0eb9 hangs after a search click. The sampled stack
-  repeats NSTextField, NSView and OnePlusSearchView mouseDown 494 times.
-- **Cause:** An unhandled child event returns to the wrapper through
-  nextResponder. The wrapper sends it back to the same child and repeats.
-  Removing makeFirstResponder alone still reproduces the cycle.
-- **Invariant:** Native field clicks stay in AppKit. A search wrapper may
-  focus its field but must not send mouseDown back to that child. Keep
-  explicit Find selection separate from pointer event dispatch.
-- **Check:** cb3292da adds a bounded offscreen native-click regression that
-  fails on the old source without hanging. All ten search/focus checks pass.
-  Main resolves the initial Switch caller/API build break in 5ef050e8.
-  One authorized rerun aborts in Xcode before compilation with Abort trap: 6
-  after a DARWIN_USER_CACHE_DIR Input/output error. No compiler diagnostic
-  appears. Keep this environment failure separate from the passing package
-  regression. Chrome relays the fix to perf-windows. Signed installation,
-  caret and CPU/footprint acceptance remain with the orchestrator.
-  Report: `tmp/redesign/logs/w3-components.md`.
+- **Symptom:** A row repeats the node in title and subtitle, lacks process
+  artwork, and shows gray port numbers beside colored bars. Link and Stop show on
+  every row. Ports show as `:9,000`.
+- **Cause:** Title and subtitle read the same fields; the projection dropped the
+  executable identity. The mono text role overrides row color. The action
+  condition treated the global focus policy as per-row focus. SwiftUI localized
+  integer interpolation.
+- **Rule:** Title is the project folder or launch command (process name if
+  neither exists); subtitle is uptime plus a branch only when nonempty and
+  distinct. Prepare strings in the background projection; read the executable
+  path in the existing process scan; reuse the bundle artwork loader. Terminal
+  glyph only for absolute executable paths outside app bundles; reserve a 15pt
+  slot otherwise. Keep the 44pt port lane, 52pt row, 134pt metrics slot, and
+  complete-row hover. One fixed trailing slot: graph plus memory at rest, link
+  plus stop only on hover or that row's own keyboard or accessibility focus
+  (memory and uptime stay in the details button's accessibility value). Port
+  labels, memory segments, and sparklines use `OnePlusColor.portmanSeries`,
+  passed to the port text's own `onePlusText` modifier. Memory legends use mono
+  type with `OnePlusColor.metricCaption`. Render ports and PIDs as literal strings.
+- **Check:** PortmanTests (app bundles, nested helpers, command-line and unknown
+  paths, missing artwork, cache reuse and eviction), the action-condition test,
+  and both appearances with one and many servers and four- and five-digit ports.
+
+## Portman Detail Charts And Short Screens
+
+- **Symptom:** The detail CPU chart spills past its plot and a hover timestamp
+  moves the layout. A new detail has no chart until a second scan. Selected-cleanup
+  Stop renders gray. A short-screen detail ends above Open localhost.
+- **Cause:** The chart assumed a 100 percent ceiling and inserted its time label
+  conditionally. The destructive role gave no red prominence.
+- **Rule:** Detail charts use shared hover, a CPU ceiling covering all samples,
+  fixed trailing axes, and a permanent timestamp row; show context from the first
+  sample. The header holds localhost and more-actions with no menu chevron.
+  Selected-cleanup Stop has an explicit prominent red style. Scroll when the
+  screen-capped popover cannot fit the route.
+- **Check:** At 400pt in both appearances: a CPU sample above 100 percent, chart
+  alignment during hover, one and several samples, red Stop, Open localhost reachable.
+
+## Portman Forward
+
+- **Symptom:** Stale or false scan state: `Listening on` with no host, a port
+  list under a blank host after reopen, a floating spinner, selection kept across
+  tabs. The Failed row clips the SSH error. A `user@IP` host lacks password login.
+- **Cause:** `discoveredHost` was set before the request finished, the previous
+  result stayed in the shared service, and empty strings compared equal. Selection
+  had no tab-exit reset. Both SSH paths forced key login.
+- **Rule:** Results support checkbox, Shift-click range, Select all, Clear scan.
+  Leaving Forward cancels the scan and clears selection; only Servers owns fast
+  monitoring. One inline progress row with Cancel; clear the old result at scan
+  start; set the host only after a successful response for the current host; show
+  the port list only when a nonempty host matches the last scan. Active mappings
+  stay visible. A failed row keeps the local endpoint and actions, with remote
+  endpoint and error on separate lines (full text in the tooltip). Accept
+  `user@IP`; use the in-memory askpass channel for a password, allow retry, clear
+  the secret when Forward or the panel closes, never expose askpass paths. Link
+  and Stop share native button dimensions.
+- **Check:** Hosted: range select, leave and return; success, empty, invalid
+  host, Cancel; scan, tunnel, close, reopen Forward; Failed Forward at real width.
+
+## Portman Cleanup Settings
+
+- **Symptom:** Clicking the idle threshold `4`, Delete, then `6` gave `64`.
+- **Cause:** The test did not select the value; the caret sat before the digit.
+  This alone does not prove a binding defect.
+- **Rule:** Keep the cleanup threshold as a text draft while editing. On Return
+  save only an integer in that setting's range; invalid text stays visible with an
+  error. The three cleanup number fields share this. Automatic cleanup excludes
+  high-usage servers.
+- **Check:** Select `4`, type `6`, Return: shown and saved value is `6`. Enter
+  `99`: draft and range error stay, saved value unchanged.
+
+## Portman Closed-Menu Scan Cost
+
+- **Symptom:** The menu-only owner ran a full socket and process scan every two
+  seconds while the panel was closed.
+- **Cause:** The live interval also drove the persistent status item.
+- **Rule:** Use the chosen interval while the panel is open and at least 30
+  seconds while only the status item shows. Opening triggers a fresh scan;
+  disabling Portman releases its monitor.
+- **Check:** Interval-policy regression; idle CPU with the panel open, closed,
+  and disabled.
+
+## Open signed checks
+
+The signed build still needs review in both appearances: canvas sizes, header
+top lines and x13, hover paint, table scroll and reuse, applet centerline, focus
+modes (none, Full Keyboard Access, VoiceOver), panel tab latency, Portman routes
+and Forward, Mac Tweaks pages, the Cloud Sync editor, and Command-Shift-3.
