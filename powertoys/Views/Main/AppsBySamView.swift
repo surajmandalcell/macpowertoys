@@ -12,29 +12,32 @@ nonisolated struct SamApp: Identifiable, Sendable {
     var download: URL?
     var id: String { bundleID }
 
+    static let pro = Self(name: "Task Manager Pro", bundleID: MainPanelTaskManager.pro.rawValue,
+                          summary: "See every process, its graphs, and startup items, laid out like Windows 11.",
+                          icon: "AppBySamTaskManagerPro", price: "Paid")
+    static let covered: [(app: Self, cover: String)] = [
+        (Self(name: "Hushpen", bundleID: "io.github.surajmandalcell.hushpen",
+              summary: "Free dictation with no account and no word limit", icon: "AppBySamHushpen",
+              download: URL(string: "https://hushpen.mandalsuraj.com/")), "AppBySamHushpenCover"),
+        (Self(name: "Switch", bundleID: "com.mandalsuraj.ai-manager",
+              summary: "Coding accounts and usage in your menu bar", icon: "AppBySamSwitch",
+              download: URL(string: "https://github.com/surajmandalcell/switch/releases/latest")), "AppBySamSwitchCover"),
+    ]
     // shortcut: only Hushpen, Switch, and NetToys have a public download page; add each app's link when it ships one.
-    static let all: [Self] = [
-        Self(name: "Task Manager Pro", bundleID: MainPanelTaskManager.pro.rawValue,
-             summary: "See every process, its graphs, and startup items, laid out like Windows 11.",
-             icon: "AppBySamTaskManagerPro", price: "Paid"),
+    static let listed: [Self] = [
         Self(name: "Task Manager Classic", bundleID: MainPanelTaskManager.classic.rawValue,
-             summary: "A small task manager in the Windows 7 layout", icon: "AppBySamTaskManagerClassic", price: "Free"),
-        Self(name: "Sam's Partition Manager", bundleID: "com.surajmandal.samspartitionmanager",
-             summary: "Format and check external drives and SD cards", icon: "AppBySamPartitionManager"),
+             summary: "A small task manager in the Windows 7 layout", icon: "AppBySamTaskManagerClassic"),
         Self(name: "Sam's System Cleaner", bundleID: "com.surajmandal.samscc",
              summary: "Find caches and leftovers to move to Trash", icon: "AppBySamSystemCleaner"),
+        Self(name: "Sam's Partition Manager", bundleID: "com.surajmandal.samspartitionmanager",
+             summary: "Format and check external drives and SD cards", icon: "AppBySamPartitionManager"),
         Self(name: "Sam's NetToys", bundleID: "com.surajmandal.nettoys",
              summary: "Scan networks and keep SSH hosts reachable", icon: "AppBySamNetToys",
              download: URL(string: "https://github.com/surajmandalcell/nettoys/releases/latest")),
-        Self(name: "Hushpen", bundleID: "io.github.surajmandalcell.hushpen",
-             summary: "Free dictation with no account and no word limit", icon: "AppBySamHushpen",
-             download: URL(string: "https://hushpen.mandalsuraj.com/")),
-        Self(name: "Switch", bundleID: "com.mandalsuraj.ai-manager",
-             summary: "Coding accounts and usage in your menu bar", icon: "AppBySamSwitch",
-             download: URL(string: "https://github.com/surajmandalcell/switch/releases/latest")),
         Self(name: "ThrottleControl", bundleID: "io.github.surajmandalcell.ThrottleControl",
              summary: "Share a background traffic budget and keep games unthrottled", icon: "AppBySamThrottleControl"),
     ]
+    static let all: [Self] = [pro] + covered.map(\.app) + listed
 
     var image: Image { Image(icon) }
 
@@ -56,21 +59,29 @@ nonisolated struct SamApp: Identifiable, Sendable {
     }
 }
 
-/// The Apps by Sam page (owner pick "Featured Pro, then a list", 2026-11-19).
+/// The Apps by Sam page (owner picks, rounds 3-5, 2026-11-19): the Pro banner, the Hushpen and Switch cover cards,
+/// then the list of the other apps.
 struct AppsBySamView: View {
     static let pageID = "apps-by-sam"
     static let title = "Apps by Sam"
     @State private var installed: Set<String> = []
 
     var body: some View {
-        let featured = SamApp.all[0]
+        let pro = SamApp.pro
         OnePlusLinearEditorialBody {
             OnePlusLinearPageTitle(Self.title, subtitle: "My other Mac apps. Each one runs on its own.")
-            OnePlusLinearFeaturedApp(featured.name, detail: featured.summary, icon: featured.image, price: featured.price,
-                                     action: featured.action(installed: installed.contains(featured.bundleID)))
-            OnePlusLinearSection("More apps") {
-                ForEach(SamApp.all.dropFirst()) { app in
-                    OnePlusLinearAppRow(app.name, summary: app.summary, icon: app.image, price: app.price,
+            OnePlusLinearAppShelf {
+                OnePlusLinearFeaturedApp(pro.name, detail: pro.summary, icon: pro.image, price: pro.price,
+                                         action: pro.action(installed: installed.contains(pro.bundleID)))
+            } covers: {
+                ForEach(SamApp.covered, id: \.app.id) { app, cover in
+                    OnePlusLinearAppCoverCard(app.name, summary: app.summary, icon: app.image, cover: Image(cover),
+                                              action: app.action(installed: installed.contains(app.bundleID)))
+                }
+            } rows: {
+                ForEach(SamApp.listed) { app in
+                    OnePlusLinearAppRow(app.name, summary: app.summary, icon: app.image,
+                                        separator: app.id != SamApp.listed.first?.id,
                                         action: app.action(installed: installed.contains(app.bundleID)))
                 }
             }
