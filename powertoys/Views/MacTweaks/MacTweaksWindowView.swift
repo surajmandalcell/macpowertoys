@@ -114,9 +114,9 @@ struct MacTweaksSettingsContent: View {
                     }
                 }
                 OnePlusLinearAppletSection("Safety") {
-                    OnePlusLinearAppletRow("Keep original values", value: "On")
-                    OnePlusLinearAppletRow("Managed preferences", value: "Protected")
-                    OnePlusLinearAppletRow("Changes made elsewhere", value: "Protected")
+                    OnePlusLinearAppletRow("Keep original values", value: "On", systemImage: "clock.arrow.circlepath")
+                    OnePlusLinearAppletRow("Managed preferences", value: "Protected", systemImage: "building.columns")
+                    OnePlusLinearAppletRow("Changes made elsewhere", value: "Protected", systemImage: "lock")
                 }
             }
             Button("Review changes") {

@@ -32,29 +32,30 @@ struct RulerLauncherSettingsView: View {
         let _ = revision
         VStack(alignment: .leading, spacing: OnePlusLinearEditorialMetrics.blockGap) {
             OnePlusLinearAppletSection("Defaults for new rulers") {
-                OnePlusLinearAppletRow("Unit") {
+                OnePlusLinearAppletRow("Unit", systemImage: "ruler") {
                     OnePlusLinearSegmented(choices: [(Unit.pixels, "px"), (.millimeters, "mm"), (.inches, "in")],
                                            selection: binding(\.unit), accessibilityLabel: "Unit")
                 }
-                OnePlusLinearAppletRow("Dimensions") {
+                OnePlusLinearAppletRow("Dimensions", systemImage: "arrow.up.left.and.arrow.down.right") {
                     HStack(spacing: 6) {
                         OnePlusStepperField("Width", value: length(horizontal: true), in: 1...10000)
                         Text("×").linearText(color: OnePlusLinearColor.muted)
                         OnePlusStepperField("Height", value: length(horizontal: false), in: 1...10000)
                     }
                 }
-                OnePlusLinearAppletRow("Ruler color") { OnePlusLinearColorWell("Ruler color", color: binding(\.rulerColor)) }
-                OnePlusLinearAppletSliderRow("Foreground opacity", value: percent(\.foregroundOpacity), in: 0.05...1)
-                OnePlusLinearAppletSliderRow("Background opacity", value: percent(\.backgroundOpacity), in: 0.05...1)
-                OnePlusLinearAppletSliderRow("Border opacity", value: percent(\.borderOpacity))
+                OnePlusLinearAppletRow("Ruler color", systemImage: "paintpalette") { OnePlusLinearColorWell("Ruler color", color: binding(\.rulerColor)) }
+                OnePlusLinearAppletSliderRow("Foreground opacity", value: percent(\.foregroundOpacity), in: 0.05...1, systemImage: "circle.lefthalf.filled")
+                OnePlusLinearAppletSliderRow("Background opacity", value: percent(\.backgroundOpacity), in: 0.05...1, systemImage: "square.lefthalf.filled")
+                OnePlusLinearAppletSliderRow("Border opacity", value: percent(\.borderOpacity), systemImage: "square.dashed")
             }
             OnePlusLinearAppletSection("Behavior") {
-                toggleRow("Float ruler above other applications", \.floatRulers)
-                toggleRow("Show ruler shadow", \.rulerShadow)
-                toggleRow("Move both wings together", \.groupRulers)
+                toggleRow("Float ruler above other applications", \.floatRulers, glyph: "square.stack.3d.up")
+                toggleRow("Show ruler shadow", \.rulerShadow, glyph: "shadow")
+                toggleRow("Move both wings together", \.groupRulers, glyph: "link")
             }
             OnePlusLinearAppletGroup {
-                OnePlusLinearAppletRow("Settings for the active rulers", detail: "Each ruler keeps its own color, size, and opacity.") {
+                OnePlusLinearAppletRow("Settings for the active rulers", detail: "Each ruler keeps its own color, size, and opacity.",
+                                       systemImage: "rectangle.on.rectangle") {
                     Button("Open Ruler Settings") {
                         ToolActionRouter.shared.execute(ToolActionRequest(action: .rulerSettings))
                     }
@@ -69,8 +70,8 @@ struct RulerLauncherSettingsView: View {
         .onReceive(NotificationCenter.default.publisher(for: UserDefaults.didChangeNotification)) { _ in revision &+= 1 }
     }
 
-    private func toggleRow(_ label: String, _ key: ReferenceWritableKeyPath<Prefs, Bool>) -> some View {
-        OnePlusLinearAppletRow(label) {
+    private func toggleRow(_ label: String, _ key: ReferenceWritableKeyPath<Prefs, Bool>, glyph: String) -> some View {
+        OnePlusLinearAppletRow(label, systemImage: glyph) {
             Toggle(label, isOn: binding(key)).toggleStyle(OnePlusLinearSwitchStyle()).labelsHidden()
         }
     }

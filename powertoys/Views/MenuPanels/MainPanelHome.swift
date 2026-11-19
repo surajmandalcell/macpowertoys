@@ -459,12 +459,22 @@ struct MainPanelAwakeRow: View {
     }
 }
 
+/// Set by the Awake page tile; the Awake row shows its mark once after the panel opens.
+@MainActor @Observable
+final class MainPanelAwakeMark {
+    static let shared = MainPanelAwakeMark()
+    var pending = false
+}
+
 private struct MainPanelAwakeControl: View {
+    @Bindable private var mark = MainPanelAwakeMark.shared
+
     var body: some View {
         let service = AwakeService.shared
         MainPanelAwakeRow(isOn: Binding(get: { service.configuration.mode != .passive },
                                         set: { service.setMode($0 ? .indefinite : .passive) }),
                           status: Self.status(service))
+            .onePlusLinearRowMark(pending: $mark.pending)
     }
 
     static func status(_ service: AwakeService) -> String {

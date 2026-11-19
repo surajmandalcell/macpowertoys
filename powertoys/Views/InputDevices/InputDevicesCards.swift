@@ -219,35 +219,36 @@ struct InputScrollProfileCard: View {
     /// The v15 window and main-page form; the menu panel keeps the collapsible v14 rows.
     private var linearContent: some View {
         OnePlusLinearAppletSection(title) {
-            OnePlusLinearAppletRow("Use this profile", detail: deviceDetail) {
+            OnePlusLinearAppletRow("Use this profile", detail: deviceDetail, systemImage: "power") {
                 Toggle("Use \(title.lowercased()) profile", isOn: $profile.enabled).toggleStyle(OnePlusLinearSwitchStyle())
             }
             .help("Apply this profile to \(title.lowercased()) scroll events.")
-            OnePlusLinearAppletRow("Direction") {
+            OnePlusLinearAppletRow("Direction", systemImage: "arrow.up.arrow.down") {
                 OnePlusLinearSegmented(choices: [(false, "System"), (true, "Reversed")], selection: $profile.reverseVertical,
                                        accessibilityLabel: "\(title) scroll direction", sizing: .fitted)
             }
             .help("Keep the macOS scroll direction or reverse it.")
             .disabled(!profile.enabled)
-            OnePlusLinearAppletSliderRow("Scroll speed", value: $profile.speed, in: 0.35...3, step: 0.05) {
+            OnePlusLinearAppletSliderRow("Scroll speed", value: $profile.speed, in: 0.35...3, step: 0.05,
+                                         systemImage: "speedometer") {
                 $0.formatted(.number.precision(.fractionLength(2)))
             }
             .help("Multiply every scroll delta from this device type.")
             .disabled(!profile.enabled)
-            linearSwitch("Horizontal scrolling", "\(title) horizontal scrolling", $profile.horizontalEnabled,
+            linearSwitch("Horizontal scrolling", "\(title) horizontal scrolling", $profile.horizontalEnabled, glyph: "arrow.left.arrow.right",
                          help: "Pass horizontal scroll events through.", enabled: profile.enabled)
-            linearSwitch("Reverse horizontal", "\(title) reverse horizontal", $profile.reverseHorizontal,
+            linearSwitch("Reverse horizontal", "\(title) reverse horizontal", $profile.reverseHorizontal, glyph: "arrow.uturn.left",
                          help: "Invert left and right scrolling.", enabled: profile.enabled && profile.horizontalEnabled)
-            linearSwitch("Shift scrolls sideways", "\(title) Shift scrolls sideways", $profile.shiftScrollsHorizontally,
+            linearSwitch("Shift scrolls sideways", "\(title) Shift scrolls sideways", $profile.shiftScrollsHorizontally, glyph: "shift",
                          help: "Hold Shift and use the wheel to move sideways.", enabled: profile.enabled && profile.horizontalEnabled)
-            linearSwitch("Smoothing", "\(title) smoothing", $profile.smooth,
+            linearSwitch("Smoothing", "\(title) smoothing", $profile.smooth, glyph: "water.waves",
                          help: "Split a coarse wheel notch into smaller steps.", enabled: profile.enabled)
         }
     }
 
-    private func linearSwitch(_ label: String, _ accessibilityLabel: String, _ isOn: Binding<Bool>, help: String,
+    private func linearSwitch(_ label: String, _ accessibilityLabel: String, _ isOn: Binding<Bool>, glyph: String, help: String,
                               enabled: Bool) -> some View {
-        OnePlusLinearAppletRow(label) {
+        OnePlusLinearAppletRow(label, systemImage: glyph) {
             Toggle(accessibilityLabel, isOn: isOn).toggleStyle(OnePlusLinearSwitchStyle())
         }
         .help(help)

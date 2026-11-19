@@ -43,30 +43,30 @@ struct RcloneSettingsView: View {
 
     private var syncEngineSection: some View {
         OnePlusLinearAppletSection("Sync engine") {
-            OnePlusLinearAppletRow("Start at launch", detail: "Ready after sign-in.") {
+            OnePlusLinearAppletRow("Start at launch", detail: "Ready after sign-in.", systemImage: "power") {
                 Toggle("Start at launch", isOn: $startAtLaunch).labelsHidden().toggleStyle(OnePlusLinearSwitchStyle())
             }
-            OnePlusLinearAppletRow("Show transfer status", detail: "In the MacPowerToys menu bar.") {
+            OnePlusLinearAppletRow("Show transfer status", detail: "In the MacPowerToys menu bar.", systemImage: "menubar.rectangle") {
                 Toggle("Show transfer status", isOn: $showTray).labelsHidden().toggleStyle(OnePlusLinearSwitchStyle())
             }
-            OnePlusLinearAppletRow("Retry interrupted transfers", value: "On")
+            OnePlusLinearAppletRow("Retry interrupted transfers", value: "On", systemImage: "arrow.clockwise")
                 .help("Always on; unfinished transfers resume.")
         }
     }
 
     private var transfersSection: some View {
         OnePlusLinearAppletSection("Transfers") {
-            OnePlusLinearAppletRow("Parallel transfers", detail: "Files copied at the same time.") {
+            OnePlusLinearAppletRow("Parallel transfers", detail: "Files copied at the same time.", systemImage: "square.stack") {
                 OnePlusStepperField("Parallel transfers", value: $transfers, in: 1...64)
             }
-            OnePlusLinearAppletRow("Checkers", detail: "Remote checks at the same time.") {
+            OnePlusLinearAppletRow("Checkers", detail: "Remote checks at the same time.", systemImage: "checkmark.circle") {
                 OnePlusStepperField("Checkers", value: $checkers, in: 1...128)
             }
-            OnePlusLinearAppletRow("Bandwidth limit", detail: "Leave blank or enter off for no limit.") {
+            OnePlusLinearAppletRow("Bandwidth limit", detail: "Leave blank or enter off for no limit.", systemImage: "speedometer") {
                 OnePlusLinearTextField("10M, 1.5GiB, or off", text: $bandwidthLimit, error: RcloneBandwidthInput.error(for: bandwidthLimit))
                     .frame(width: OnePlusMetrics.wideControlColumn)
             }
-            OnePlusLinearAppletRow("Default operation") {
+            OnePlusLinearAppletRow("Default operation", systemImage: "arrow.left.arrow.right") {
                 OnePlusLinearSelect(
                     choices: RcloneOperation.allCases.map { ($0.rawValue, $0.displayName) },
                     selection: $defaultOperation,
@@ -88,10 +88,10 @@ struct RcloneSettingsView: View {
 
     private var retriesSection: some View {
         OnePlusLinearAppletSection("Retries") {
-            OnePlusLinearAppletRow("Max retries") {
+            OnePlusLinearAppletRow("Max retries", systemImage: "arrow.counterclockwise") {
                 OnePlusStepperField("Max retries", value: $maxRetries, in: 0...20)
             }
-            OnePlusLinearAppletRow("Retry backoff", detail: "The wait doubles after each failed try.") {
+            OnePlusLinearAppletRow("Retry backoff", detail: "The wait doubles after each failed try.", systemImage: "hourglass") {
                 OnePlusStepperField(
                     "Retry backoff",
                     value: Binding(get: { Int(retryBackoff) }, set: { retryBackoff = Double($0) }),
@@ -99,10 +99,10 @@ struct RcloneSettingsView: View {
                     unit: "s"
                 )
             }
-            OnePlusLinearAppletRow("Low-level retries") {
+            OnePlusLinearAppletRow("Low-level retries", systemImage: "arrow.triangle.2.circlepath") {
                 OnePlusStepperField("Low-level retries", value: $lowLevelRetries, in: 1...50)
             }
-            OnePlusLinearAppletRow("Concurrent jobs") {
+            OnePlusLinearAppletRow("Concurrent jobs", systemImage: "square.3.layers.3d") {
                 OnePlusStepperField("Concurrent jobs", value: $maxConcurrentJobs, in: 1...16)
             }
         }
@@ -110,7 +110,7 @@ struct RcloneSettingsView: View {
 
     private var binarySection: some View {
         OnePlusLinearAppletSection("rclone binary") {
-            OnePlusLinearAppletRow("rclone binary path", detail: "Leave blank to use the detected binary.") {
+            OnePlusLinearAppletRow("rclone binary path", detail: "Leave blank to use the detected binary.", systemImage: "terminal") {
                 OnePlusLinearTextField("Auto-detected", text: $binaryPath)
                     .frame(width: OnePlusMetrics.wideControlColumn)
                     .accessibilityLabel("rclone binary path")

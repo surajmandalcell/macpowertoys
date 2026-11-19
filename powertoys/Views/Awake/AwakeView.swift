@@ -60,19 +60,20 @@ struct SleepTimerCard: View {
 
     @ViewBuilder
     private var idle: some View {
-        OnePlusLinearAppletRow("Sleep after") {
+        OnePlusLinearAppletRow("Sleep after", systemImage: "moon") {
             OnePlusLinearSegmented(choices: SleepTimerPreset.allCases.map { ($0, $0.title) },
                                    selection: $preset, accessibilityLabel: "Sleep after", sizing: .fitted)
                 .accessibilityIdentifier("awake.sleep-timer.preset")
         }
         if preset == .custom {
-            OnePlusLinearAppletRow("Custom time") {
+            OnePlusLinearAppletRow("Custom time", systemImage: "clock") {
                 OnePlusStepperField("Minutes", value: $customMinutes,
                                     in: 1...SleepTimerService.maximumMinutes, step: 5, unit: "min")
             }
         }
         OnePlusLinearAppletRow("Sleep the Mac",
-                               detail: awake.isActive ? "Starting this turns keep awake off." : "The Mac sleeps when the time ends.") {
+                               detail: awake.isActive ? "Starting this turns keep awake off." : "The Mac sleeps when the time ends.",
+                               systemImage: "powersleep") {
             Button("Start Timer") { service.start(minutes: minutes) }
                 .accessibilityIdentifier("awake.sleep-timer.start")
         }
@@ -81,7 +82,8 @@ struct SleepTimerCard: View {
     private func running(until deadline: Date) -> some View {
         TimelineView(.periodic(from: .now, by: 1)) { context in
             OnePlusLinearAppletRow(AwakeService.duration(service.remaining(at: context.date) ?? 0),
-                                   detail: "Mac sleeps at \(deadline.formatted(date: .omitted, time: .shortened))") {
+                                   detail: "Mac sleeps at \(deadline.formatted(date: .omitted, time: .shortened))",
+                                   systemImage: "timer") {
                 Button("Cancel") { service.cancel() }
                     .accessibilityIdentifier("awake.sleep-timer.cancel")
             }
@@ -153,21 +155,21 @@ struct AwakeSettingsView: View {
 
     private var modes: some View {
         OnePlusLinearAppletSection("Session") {
-            OnePlusLinearAppletRow("Keep awake") {
+            OnePlusLinearAppletRow("Keep awake", systemImage: "cup.and.saucer") {
                 OnePlusLinearSelect(choices: [(AwakeMode.passive, "Off"), (.indefinite, "Indefinitely"),
                                               (.timed, "For a duration"), (.until, "Until a time")],
                                     selection: Binding(get: { service.configuration.mode }, set: selectMode),
                                     accessibilityLabel: "Keep awake", width: AwakeLayout.selectWidth)
                     .accessibilityIdentifier("awake.mode")
             }
-            OnePlusLinearAppletRow("Keep display on") {
+            OnePlusLinearAppletRow("Keep display on", systemImage: "display") {
                 Toggle("Keep Display On", isOn: Binding(
                     get: { service.configuration.keepDisplayOn }, set: service.setKeepDisplayOn
                 )).toggleStyle(OnePlusLinearSwitchStyle())
                 .accessibilityIdentifier("awake.keep-display-on")
             }
             if service.configuration.mode == .timed || duration == 0 {
-                OnePlusLinearAppletRow("Duration") {
+                OnePlusLinearAppletRow("Duration", systemImage: "hourglass") {
                     HStack(spacing: OnePlusLinearMetrics.appletActionGap) {
                         OnePlusStepperField("Hours", value: $hours, in: 0...168, unit: "h")
                         OnePlusStepperField("Minutes", value: $minutes, in: 0...59, step: 5, unit: "min")
@@ -176,7 +178,7 @@ struct AwakeSettingsView: View {
                 }
             }
             if service.configuration.mode == .until {
-                OnePlusLinearAppletRow("End time") {
+                OnePlusLinearAppletRow("End time", systemImage: "calendar.badge.clock") {
                     HStack(spacing: OnePlusLinearMetrics.appletActionGap) {
                         DatePicker("End time", selection: $expiration, in: Date()...)
                             .labelsHidden().datePickerStyle(.field).controlSize(.small)
@@ -201,7 +203,7 @@ struct AwakeSettingsView: View {
                 .frame(minHeight: OnePlusLinearMetrics.appletRow)
             }
             .onePlusScrollIndicators()
-            OnePlusLinearAppletRow("New preset", detail: "Save up to eight durations.") {
+            OnePlusLinearAppletRow("New preset", detail: "Save up to eight durations.", systemImage: "plus.circle") {
                 HStack(spacing: OnePlusLinearMetrics.appletActionGap) {
                     OnePlusStepperField("Preset minutes", value: $presetMinutes, in: 1...10_080, unit: "min")
                     Button("Add") {
@@ -217,7 +219,7 @@ struct AwakeSettingsView: View {
     private var process: some View {
         VStack(alignment: .leading, spacing: OnePlusLinearMetrics.appletCaptionBelow) {
             OnePlusLinearAppletSection("Attach to a process") {
-                OnePlusLinearAppletRow("Process ID", detail: processHelp) {
+                OnePlusLinearAppletRow("Process ID", detail: processHelp, systemImage: "number") {
                     HStack(spacing: OnePlusLinearMetrics.appletActionGap) {
                         OnePlusLinearTextField("Process ID", text: $processID, onSubmit: attach)
                             .frame(width: AwakeLayout.processFieldWidth)

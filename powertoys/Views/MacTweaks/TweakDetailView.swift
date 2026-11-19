@@ -79,7 +79,7 @@ struct MacTweaksPreferenceRow: View {
     }
 
     var body: some View {
-        OnePlusLinearAppletRow(field.label) {
+        OnePlusLinearAppletRow(field.label, systemImage: itemID.hasPrefix("dialogs.") ? "doc.badge.ellipsis" : "macwindow") {
             HStack(spacing: OnePlusLinearMetrics.appletActionGap) {
                 if let resetAction {
                     OnePlusLinearIconButton(systemImage: "arrow.counterclockwise", help: "Reset \(field.label)",

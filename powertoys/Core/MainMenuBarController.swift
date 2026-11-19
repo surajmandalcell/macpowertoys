@@ -42,6 +42,14 @@ final class MainMenuBarController: NSObject {
         panel.close()
     }
 
+    /// The Awake page tile: opens the panel on Home through the status-item click route, never activating the app,
+    /// and marks the Awake row for a moment.
+    func showAwakeRow() {
+        UserDefaults.standard.set(TrayTab.home.rawValue, forKey: "tray.selectedTab.v2")
+        MainPanelAwakeMark.shared.pending = true
+        if !panel.isShown { toggle() }
+    }
+
     @objc private func toggle() {
         if panel.isShown {
             panel.close()
