@@ -109,15 +109,10 @@ struct TrayPopoverView: View {
         case .home:
             TrayHomeView(toolIDs: preparedHomeTools)
         case .cloudSync:
-            v14Tab { CloudSyncTrayView(jobs: $cloudJobs) }
+            CloudSyncTrayView(jobs: $cloudJobs)
         case .inputDevices:
-            v14Tab { InputDevicesTrayView() }
+            InputDevicesTrayView()
         }
-    }
-
-    /// Tool tabs keep their version 14 content and its 5 pt rhythm inside the version 15 shell.
-    private func v14Tab<Content: View>(@ViewBuilder _ content: () -> Content) -> some View {
-        VStack(alignment: .leading, spacing: OnePlusMenuMetrics.tileGap) { content() }
     }
 
     private func openApp() {
@@ -280,7 +275,7 @@ struct IndividualToolMenuPanel: View {
                 ToolActionRouter.shared.open(toolID: tool.id)
             }
         } content: {
-            content
+            content.environment(\.onePlusLinearPanelStyle, TrayPopoverLayout.style)
         }
         .onePlusPanelTimings(panel: tool.id, tab: tool.id)
         .focusedValue(\.appOpenSettings) {
@@ -292,7 +287,7 @@ struct IndividualToolMenuPanel: View {
     private var content: some View {
         switch tool {
         case .cloudSync:
-            CloudSyncTrayView(jobs: $cloudJobs, showsHeader: false)
+            CloudSyncTrayView(jobs: $cloudJobs, showsOpenKey: false)
         case .awake:
             AwakeTrayRow()
         case .colorPicker:
@@ -300,16 +295,13 @@ struct IndividualToolMenuPanel: View {
         case .textExtractor:
             quickAction("Extract Text", symbol: ToolGlyph.textExtractor.symbol, action: .textExtractorCapture)
         case .inputDevices:
-            InputDevicesTrayView(showsHeader: false)
+            InputDevicesTrayView(showsOpenKey: false)
         }
     }
 
     private func quickAction(_ title: String, symbol: String, action: ToolActionID) -> some View {
-        OnePlusMenuTile(span: 3, height: 32, textured: false, action: {
+        OnePlusLinearActionBar([OnePlusLinearAction(title, systemImage: symbol) {
             ToolActionRouter.shared.execute(ToolActionRequest(action: action))
-        }) {
-            Label(title, systemImage: symbol)
-        }
-        .accessibilityLabel(title)
+        }])
     }
 }

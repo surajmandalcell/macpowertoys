@@ -77,35 +77,3 @@ enum TrayPopoverLayout {
     }
 
 }
-
-struct TrayQuietActionButton: View {
-    let title: String
-    let symbol: String
-    var disabled = false
-    let action: () -> Void
-
-    var body: some View {
-        Button(action: action) {
-            Label(title, systemImage: symbol)
-        }
-        .buttonStyle(OnePlusButtonStyle(.ghost, size: .small))
-        .disabled(disabled)
-    }
-}
-
-struct TrayToolHeader: View {
-    let tab: TrayTab
-
-    var body: some View {
-        OnePlusMenuControlRow(tab.title, systemImage: tab.symbol) {
-            Button {
-                ToolActionRouter.shared.open(toolID: tab.rawValue)
-            } label: {
-                Image(systemName: "arrow.up.right")
-            }
-            .buttonStyle(OnePlusButtonStyle(.icon, size: .small))
-            .accessibilityLabel("Open \(tab.title)")
-            .help("Open \(tab.title)")
-        }
-    }
-}
