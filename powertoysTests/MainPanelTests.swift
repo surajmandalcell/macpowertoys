@@ -75,7 +75,7 @@ final class MainPanelTests: XCTestCase {
     }
 
     @MainActor
-    func testTopProcessesRefreshEveryTwoSecondsAndReleaseAfterClose() async {
+    func testTopProcessesRefreshEveryTwoSeconds() async {
         var refreshes = 0
         var delays: [Duration] = []
         await MainPanelProcessCadence.run(refresh: { refreshes += 1 }, sleep: { delay in
@@ -84,13 +84,6 @@ final class MainPanelTests: XCTestCase {
         })
         XCTAssertEqual(delays, [.milliseconds(500), .seconds(2), .seconds(2), .seconds(2)])
         XCTAssertEqual(refreshes, 4, "A cancelled sleep stops the loop before another refresh.")
-
-        let release = MenuPanelRelease.shared
-        let before = release.pendingCount
-        MenuPanelTopProcesses().scheduleRelease()
-        XCTAssertEqual(release.pendingCount, before + 1)
-        release.cancel("menu-panel-top-processes")
-        XCTAssertEqual(release.pendingCount, before)
     }
 
     @MainActor

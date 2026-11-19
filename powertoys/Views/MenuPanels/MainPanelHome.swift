@@ -8,16 +8,16 @@ import SwiftUI
 struct TrayHomeView: View {
     static let owner = "main-tray-home"
     let toolIDs: [String]
-    @State private var readings = MainPanelReadings(hardware: .current)
     @State private var taskManager: MainPanelTaskManager?
     @Environment(\.onePlusIsVisible) private var isVisible
 
     var body: some View {
-        MainPanelHomeContent(readings: readings, processes: MainPanelProcessDisplay.rows(MenuPanelTopProcesses.shared),
+        MainPanelHomeContent(readings: MainPanelReadingsModel.shared.readings,
+                             processes: MainPanelProcessDisplay.rows(MenuPanelTopProcesses.shared),
                              actions: actions, taskManager: taskManager) {
             MainPanelControlCard(showsAwake: toolIDs.contains("awake"))
         }
-        .background { MainPanelReadingsFeed(readings: $readings) }
+        .background { MainPanelReadingsFeed(model: .shared) }
         .task(id: isVisible) { if isVisible { taskManager = .installed() } }
         .modifier(MenuPanelProcessRefresh())
         .modifier(MenuPanelMetricSampling(owner: Self.owner))
@@ -160,7 +160,7 @@ struct MenuPanelMetricSampling: ViewModifier {
 /// Formats each new sample off the main thread. Samples arrive once a second, under the 4 per second UI limit.
 /// Hidden Home reads no sample, so background samples never wake the view.
 private struct MainPanelReadingsFeed: View {
-    @Binding var readings: MainPanelReadings
+    let model: MainPanelReadingsModel
     @Environment(\.onePlusIsVisible) private var isVisible
 
     var body: some View {
@@ -169,13 +169,28 @@ private struct MainPanelReadingsFeed: View {
             guard isVisible, let sample = service.snapshot else { return }
             let history = service.history
             let hardware = MainPanelHardware.current
-            let previous = readings
+            let previous = model.readings
             let prepared = await Task.detached(priority: .userInitiated) {
                 MainPanelReadings(sample: sample, history: history, hardware: hardware, previous: previous)
             }.value
-            guard !Task.isCancelled, prepared != readings else { return }
-            readings = prepared
+            guard !Task.isCancelled, prepared != model.readings else { return }
+            model.readings = prepared
         }
+    }
+}
+
+/// Home's readings outlive the view tree, so the opener formats the newest background sample before the first
+/// frame. Without this, a panel closed for minutes showed its old values, then jumped (or empty tiles, then filled).
+@Observable
+final class MainPanelReadingsModel {
+    static let shared = MainPanelReadingsModel()
+    var readings = MainPanelReadings(hardware: .current)
+
+    func prepareForOpening() {
+        let service = SystemMonitorService.shared
+        guard let sample = service.snapshot else { return }
+        let prepared = MainPanelReadings(sample: sample, history: service.history, hardware: .current, previous: readings)
+        if prepared != readings { readings = prepared }
     }
 }
 

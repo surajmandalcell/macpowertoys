@@ -8,24 +8,10 @@ final class MainMenuBarController: NSObject {
     private var item: NSStatusItem?
     private let panel = OnePlusMenuPresenter()
     private var content: (() -> AnyView)?
+    // Kept while the status item exists (about 3 MB): rebuilding it after a long close took 116 ms instead of 15-37 ms
+    // and opened with an empty process list.
     private var hosting: NSHostingController<AnyView>?
     private var maximumHeight: CGFloat?
-
-    override init() {
-        super.init()
-        panel.onClose = { [weak self] in self?.panelDidClose() }
-    }
-
-    private func panelDidClose() {
-        MenuPanelTopProcesses.shared.scheduleRelease()
-        // The selected tab lives in AppStorage, so the released tree reopens on the same tab.
-        MenuPanelRelease.shared.schedule("main") { [weak self] in
-            guard let self, !self.panel.isShown else { return }
-            self.panel.contentViewController = nil
-            self.hosting = nil
-            self.maximumHeight = nil
-        }
-    }
 
     func configure(isInserted: Bool, content: @escaping () -> AnyView) {
         self.content = content
@@ -63,8 +49,8 @@ final class MainMenuBarController: NSObject {
             return
         }
         guard let button = item?.button, let content else { return }
-        MenuPanelRelease.shared.cancel("main")
         OnePlusPanelTimings.shared.beginOpenIfNeeded(panel: "main")
+        MainPanelReadingsModel.shared.prepareForOpening()
         let ceiling = (button.window?.screen?.visibleFrame.height ?? 800) * OnePlusMenuMetrics.heightFraction
         if hosting == nil || maximumHeight != ceiling {
             // The panel root has a fixed natural height, so its geometry is the panel's content height.
