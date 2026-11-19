@@ -46,6 +46,28 @@ final class AppDelegateTests: XCTestCase {
         XCTAssertFalse(delegate.opensMainWindowOnLaunchActivation)
     }
 
+    func testBackgroundReopenNeverOpensMainUntilMacOSActivatesTheApp() {
+        let delegate = AppDelegate()
+        var opens = 0
+        delegate.openMainWindowAfterLaunch = { opens += 1 }
+
+        // `open -g -a` on a running app: reopen arrives while inactive and no activation follows.
+        XCTAssertFalse(delegate.handleReopen(hasVisibleWindows: false, isActive: false))
+        delegate.endLaunchActivationWindow()
+        delegate.openMainWindowIfLaunchActivated()
+        XCTAssertEqual(opens, 0)
+
+        // Dock click while inactive: macOS activates the app after the reopen.
+        XCTAssertFalse(delegate.handleReopen(hasVisibleWindows: false, isActive: false))
+        delegate.openMainWindowIfLaunchActivated()
+        XCTAssertEqual(opens, 1)
+
+        XCTAssertTrue(delegate.handleReopen(hasVisibleWindows: false, isActive: true))
+        XCTAssertEqual(opens, 2)
+        XCTAssertTrue(delegate.handleReopen(hasVisibleWindows: true, isActive: false))
+        XCTAssertEqual(opens, 2)
+    }
+
     func testUnitTestHostCannotActivateOrReopenMainWindow() {
         XCTAssertTrue(AppRuntime.isRunningUnitTests)
         XCTAssertEqual(NSApp.activationPolicy(), .prohibited)
