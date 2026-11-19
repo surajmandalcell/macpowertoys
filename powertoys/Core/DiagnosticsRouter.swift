@@ -129,6 +129,7 @@ final class DiagnosticsMenuPanels: NSObject {
             return
         }
         panel.selectTab(tab, defaults: defaults)
+        if panel == .main { MainPanelReadingsModel.shared.prepareForOpening() }
         presentCapturePanel(panel, tab: tab)
     }
 

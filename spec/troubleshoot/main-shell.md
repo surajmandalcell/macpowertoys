@@ -360,12 +360,14 @@ References: [suppressed launch](https://developer.apple.com/documentation/swiftu
   the whole session. Menu metrics sampled while the menu bar was hidden.
 - **Cause:** Presenters and controllers held the outer hosting controller. The
   sampling timer had no visibility check.
-- **Invariant:** On close, sampling stops at once. `MenuPanelRelease` frees the
-  root and the snapshot after 60 seconds, and a reopen cancels that. Status
+- **Invariant:** On close, sampling stops at once. `MenuPanelRelease` frees
+  the Portman and separate tool panel roots after 60 seconds, and a reopen
+  cancels that. The combined panel keeps its host (see menu-metrics-fan.md,
+  Sampling Lifecycle). Status
   items whose window is not visible are not sampled or redrawn. A panel shown
   while the app is inactive arms its dismissal monitors and closes on the next
   outside click or Space change.
-- **Check:** A reopen within 60 seconds is warm. In a full-screen Space, the
+- **Check:** A separate panel reopen within 60 seconds is warm. In a full-screen Space, the
   System Monitor timer owner count is 0.
 
 ### Retained Menu Tabs Stop Hidden Work

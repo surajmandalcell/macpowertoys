@@ -154,11 +154,10 @@ final class SystemMonitorProcessIcons {
 }
 
 /// The busiest processes by CPU for the combined menu panel, with app icons.
-/// Samples off the main thread and drops its list after the panel stays closed.
+/// Samples off the main thread. Keeps its five rows while closed, so a reopen never starts with an empty list.
 @Observable
 final class MenuPanelTopProcesses {
     static let shared = MenuPanelTopProcesses()
-    private static let releaseKey = "menu-panel-top-processes"
 
     @ObservationIgnored let sampler = SystemMonitorProcessSampler()
     private(set) var icons = SystemMonitorProcessIcons()
@@ -167,7 +166,6 @@ final class MenuPanelTopProcesses {
 
     /// The first sample sets the CPU baseline, so CPU readings start with the second call.
     func refresh(limit: Int = 3) async {
-        MenuPanelRelease.shared.cancel(Self.releaseKey)
         if let refreshTask { await refreshTask.value; return }
         let task = Task {
             let processes = await sampler.sample()
@@ -180,13 +178,5 @@ final class MenuPanelTopProcesses {
         refreshTask = task
         await task.value
         refreshTask = nil
-    }
-
-    func scheduleRelease() {
-        MenuPanelRelease.shared.schedule(Self.releaseKey) { [weak self] in
-            guard let self, self.refreshTask == nil else { return }
-            self.rows = []
-            self.icons = SystemMonitorProcessIcons()
-        }
     }
 }

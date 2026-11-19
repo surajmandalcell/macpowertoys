@@ -28,6 +28,22 @@ still use `SystemMonitor`. `DESIGN.md` owns every size, color, and type value.
   which publishes only when a value changes. Battery and GPU presence is
   probed once per launch (`MainPanelHardware.current`), so the bento never
   changes shape after the first frame.
+- **Symptom:** The first click after the panel was closed for a while was
+  slow and glitched: 116 ms instead of 15-37 ms, the five process rows empty
+  for 3 frames, then filled; within the old 60 s window, minutes-old values
+  showed first and then jumped.
+- **Cause:** `MainMenuBarController` released its hosting tree and
+  `MenuPanelTopProcesses` its rows 60 s after close, so the next open rebuilt
+  the whole tree and the process list. Home kept readings in view `@State`
+  and formatted the newest sample only after the deferred visibility change,
+  so the first frames showed old or empty tiles.
+- **Invariant:** The main panel keeps its host while the status item exists
+  (about 3 MB). `MainPanelReadingsModel` holds Home readings outside the
+  tree; every opener calls `prepareForOpening()` before the first frame, which
+  formats the newest background sample on main.
+- **Check:** Close the panel for 150 s, open it from the status item with
+  AXPress, and record a screen video: the first frame has current values and
+  five rows, and the ledger stays near the warm time.
 - **Check:** `SystemMonitorTests`: Home metrics get samples, 25 start and
   stop cycles return to zero timers, and sampling stays on until every owner
   stops. `MainPanelTests`: Home samples at 1 s while visible and falls back
@@ -42,8 +58,9 @@ still use `SystemMonitor`. `DESIGN.md` owns every size, color, and type value.
   actor and sorts off main. Unavailable readings sort last. Real bundle icons
   load off main and are cached by bundle path; command-line executables use
   the terminal glyph. The `ps` fallback uses the cancellable runner with a
-  5 s deadline and a 2 MB cap; keep libproc rows if it fails. The panel
-  release clears rows and icons. Home refreshes three rows while visible:
+  5 s deadline and a 2 MB cap; keep libproc rows if it fails. Rows stay
+  while the panel is closed (icons stay only for running apps), so a reopen
+  never starts with an empty list. Home refreshes five rows while visible:
   a CPU baseline, 500 ms later the first rows, then every 2 s
   (`MainPanelProcessCadence`).
 - **Invariant:** Row selection is kept by PID and clears when the PID
