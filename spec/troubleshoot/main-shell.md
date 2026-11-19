@@ -289,16 +289,23 @@ capture) must never activate the app or take key focus.
 ### Background Launch Takes Focus
 
 - **Symptom:** `open -g` or a login-item start brought MacPowerToys to the
-  front and opened Main after about 4 s.
-- **Cause:** macOS marks background starts as default launches too, so the
-  app opened Main with activation.
-- **Invariant:** Main opens at launch only when the app is active, or when the
-  launch activation arrives within 3 s. A background launch opens nothing and
-  calls no activating API.
-- **Check:** Run
-  `AppDelegateTests.testBackgroundDefaultLaunchNeverActivatesOrOrdersMainFront`.
-  After a background start, read the frontmost app at 2, 5, and 10 s. It must
-  not be MacPowerToys.
+  front and opened Main. A second `open -g -a` on the running app did the
+  same: the activation log showed Main key with no URL route and no logged
+  ordering.
+- **Cause:** macOS marks background starts as default launches too. On a
+  running app, `open -g -a` sends a reopen event without activation, and
+  `applicationShouldHandleReopen` opened Main with activation.
+- **Invariant:** Main opens at launch or reopen only when the app is active,
+  or when macOS activates it within 3 s (Finder, Dock click). An inactive
+  reopen returns false, so AppKit does nothing either. A background launch
+  or reopen opens nothing and calls no activating API.
+- **Not our cause:** when the front app quits, macOS activates the next app
+  itself. If that is MacPowerToys, `lsappinfo front` shows it, but no window
+  opens unless the 3 s window is still armed.
+- **Check:** `AppDelegateTests.testBackgroundDefaultLaunchNeverActivatesOrOrdersMainFront`
+  and `testBackgroundReopenNeverOpensMainUntilMacOSActivatesTheApp`. After a
+  background start, and after `open -g -a` on the running app, read the
+  frontmost app at 2, 5, and 10 s. It must not be MacPowerToys.
 
 ### Early Plugin Requests And Launch Failures
 

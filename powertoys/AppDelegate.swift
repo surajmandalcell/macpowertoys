@@ -206,6 +206,20 @@ class AppDelegate: NSObject, NSApplicationDelegate {
                                isRunningUnitTests: Bool = AppRuntime.isRunningUnitTests) {
         guard Self.shouldOpenMainWindowAfterLaunch(userInfo: userInfo, isRunningUnitTests: isRunningUnitTests) else { return }
         guard !isActive else { openMainWindowAfterLaunch(); return }
+        openMainWindowOnNextActivation()
+    }
+
+    // `open -g -a` on a running app sends a reopen without activation; only a reopen macOS activates (Dock click) opens Main.
+    @MainActor
+    func handleReopen(hasVisibleWindows: Bool, isActive: Bool) -> Bool {
+        guard !hasVisibleWindows else { return true }
+        guard isActive else { openMainWindowOnNextActivation(); return false }
+        openMainWindowAfterLaunch()
+        return true
+    }
+
+    @MainActor
+    private func openMainWindowOnNextActivation() {
         opensMainWindowOnLaunchActivation = true
         DispatchQueue.main.asyncAfter(deadline: .now() + Self.launchActivationWindow) { [weak self] in
             self?.endLaunchActivationWindow()
@@ -429,10 +443,7 @@ class AppDelegate: NSObject, NSApplicationDelegate {
 
     func applicationShouldHandleReopen(_ sender: NSApplication, hasVisibleWindows flag: Bool) -> Bool {
         guard !AppRuntime.isRunningUnitTests else { return false }
-        if !flag {
-            ToolActionRouter.shared.open(toolID: "main")
-        }
-        return true
+        return handleReopen(hasVisibleWindows: flag, isActive: NSApp.isActive)
     }
 
     func applicationDidBecomeActive(_ notification: Notification) {
