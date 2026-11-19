@@ -10,10 +10,13 @@ struct MainToolRow: View {
     let typeSelect: (String) -> Void
     let open: () -> Void
     @State private var settings = SettingsManager.shared
+    @State private var shortcuts = GlobalShortcutManager.shared
 
     var body: some View {
         OnePlusLinearEditorialToolRow(tool.name, summary: tool.summary, icon: MainToolIcon.image(for: tool),
-                                      isOn: settings.isToolEnabled(tool.id), isFavorite: $favorite, open: open)
+                                      isOn: settings.isToolEnabled(tool.id),
+                                      shortcut: MainLaunchTile.activeShortcut(for: tool.id, in: shortcuts),
+                                      isFavorite: $favorite, open: open)
             .focused(focus, equals: tool.id)
             .onKeyPress(.return) { open(); return .handled }
             .onMoveCommand(perform: move)

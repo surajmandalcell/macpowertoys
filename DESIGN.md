@@ -162,8 +162,9 @@ mockups are in `docs/design/v15/`.
     Every tool page matches the picked Ruler page with its settings
     inline.
   - All tools rows: no enable switch. A tool that is off shows a quiet
-    "Off" word with a muted name. The favorite star sits beside it, at
-    the trailing edge; when the tool is on, the star takes that space.
+    "Off" word with a muted name; a tool that is on shows its shortcut
+    chip there. The favorite star column follows, then the chevron (see
+    "Main window").
   - Enable control: a switch at the right edge of the pane toolbar on
     each tool page.
   - Simple applet settings live on the tool's main window page. An
@@ -915,7 +916,9 @@ Version 15 Linear style, built from the OnePlusUI `OnePlusLinear*` parts
   one scroll view, 20 pt top, 32 pt gutters, 20 pt between blocks, 24 pt
   bottom. Its controls use Quiet Raised. Groups have no fill or ring: a
   `line` hairline on top and a `lineSoft` hairline between 40 pt rows,
-  none under the last row. Setting rows, the Menu bar icon row, red text
+  none under the last row. Each hairline (`OnePlusLinearFadedHairline`)
+  keeps its token color at the center and fades to clear over the last
+  12% at both ends. Setting rows, the Menu bar icon row, red text
   actions, and How to use rows start on the header's leading edge; only
   hover rows (tool rows) keep their own inset. Group captions are 13 pt
   semibold `ink`. An optional footer ends the page: on a short page the
@@ -923,10 +926,18 @@ Version 15 Linear style, built from the OnePlusUI `OnePlusLinear*` parts
 - All tools: `OnePlusLinearPageTitle` ("All tools", 24 pt semibold, and
   "N tools, M on" in `secondary`), then one captioned group per category.
   Each `OnePlusLinearEditorialToolRow` is 48 pt: a 24 pt icon (45% opacity
-  when off), the 13 pt medium name over a one-line caption summary, a quiet
-  `Off` for a tool that is off (name `secondary`, summary `muted`), the star
-  slot at one fixed x (shown on hover, focus, or when set; accent when
-  set), and a 10 pt chevron. No switch. Hover fills the whole row. A row
+  when off), the 13 pt medium name over a one-line caption summary, then
+  the trailing items, 12 pt apart: a quiet `Off` for a tool that is off
+  (name `secondary`, summary `muted`), or else the tool's current global
+  shortcut in one `OnePlusLinearKeyChip` (all keys in an 18 pt chip with
+  the `kbd` fill, 1 pt `line`, radius 4, and 11 pt `muted` text, like the
+  sidebar `⌘K` chip; none when the shortcut is off or unset; Awake shows
+  its fixed `⌃⌥⌘A`); then the 16 pt star column at one fixed x on every
+  row (shown on hover, focus, or when set; accent when set); then a 10 pt
+  chevron. `Off` and the chip right-align against the star. No switch.
+  Hover paints a radius 8 `hover` fill 8 pt past the content on each side
+  and 2 pt inside the row top and bottom, so fills of two rows never
+  touch; nothing moves on hover. A row
   opens the tool page; its context menu has Settings, Open, Enable, and
   Favorite.
 - Tool page (`ToolAboutView`): `OnePlusLinearToolHeader`, "Launch tile":
