@@ -174,12 +174,12 @@ struct TextExtractorSettingsView: View {
 
     @ViewBuilder private var shortcutSettings: some View {
         OnePlusLinearAppletSection("Global shortcut") {
-            OnePlusLinearAppletRow("Enable shortcut") {
+            OnePlusLinearAppletRow("Enable shortcut", systemImage: "power") {
                 Toggle("Enable Extract Text shortcut", isOn: Binding(
                     get: { shortcuts.isEnabled(.textExtractor) }, set: { shortcuts.setEnabled($0, for: .textExtractor) }
                 )).toggleStyle(OnePlusLinearSwitchStyle())
             }
-            OnePlusLinearAppletRow("Keyboard shortcut", detail: "Works in every app.") {
+            OnePlusLinearAppletRow("Keyboard shortcut", detail: "Works in every app.", systemImage: "keyboard") {
                 ShortcutRecorderField(action: .textExtractor)
                     .disabled(!shortcuts.isEnabled(.textExtractor))
             }
@@ -190,20 +190,20 @@ struct TextExtractorSettingsView: View {
 
     private var recognitionSettings: some View {
         OnePlusLinearAppletSection("Recognition") {
-            OnePlusLinearAppletRow("Recognition quality") {
+            OnePlusLinearAppletRow("Recognition quality", systemImage: "gauge.with.dots.needle.50percent") {
                 OnePlusLinearSegmented(choices: TextRecognitionSpeed.allCases.map { ($0, $0.title) },
                                        selection: $service.settings.speed, accessibilityLabel: "Recognition quality",
                                        sizing: .fitted)
             }
-            OnePlusLinearAppletRow("Language correction") {
+            OnePlusLinearAppletRow("Language correction", systemImage: "textformat.abc") {
                 Toggle("Use language correction", isOn: $service.settings.languageCorrection)
                     .toggleStyle(OnePlusLinearSwitchStyle())
             }
-            OnePlusLinearAppletRow("QR codes and barcodes") {
+            OnePlusLinearAppletRow("QR codes and barcodes", systemImage: "qrcode") {
                 Toggle("Detect QR codes and barcodes", isOn: $service.settings.detectCodes)
                     .toggleStyle(OnePlusLinearSwitchStyle())
             }
-            OnePlusLinearAppletRow("Preferred languages", detail: "Empty means automatic.") {
+            OnePlusLinearAppletRow("Preferred languages", detail: "Empty means automatic.", systemImage: "globe") {
                 OnePlusLinearTextField("en-US, fr-FR", text: $languages, onSubmit: applyLanguages)
                     .frame(width: OnePlusMetrics.controlColumn)
                     .accessibilityLabel("Preferred languages")

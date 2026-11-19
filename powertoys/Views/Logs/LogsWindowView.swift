@@ -793,7 +793,7 @@ struct LogsSettingsView: View {
 
     var body: some View {
         OnePlusLinearAppletSection("Event Viewer") {
-            OnePlusLinearAppletRow("Font size") {
+            OnePlusLinearAppletRow("Font size", systemImage: "textformat.size") {
                 OnePlusLinearSelect(
                     choices: [(10, "Small"), (11, "Medium"), (12, "Default"), (14, "Large")],
                     selection: $fontSize,
@@ -802,9 +802,9 @@ struct LogsSettingsView: View {
                 )
             }
             .help("Used for selectable log detail text.")
-            OnePlusLinearAppletRow("Retention", value: "\(LogManager.retentionDays) days")
+            OnePlusLinearAppletRow("Retention", value: "\(LogManager.retentionDays) days", systemImage: "calendar")
                 .help("Fixed policy for internal logs.")
-            OnePlusLinearAppletRow("System issues", value: "Not stored")
+            OnePlusLinearAppletRow("System issues", value: "Not stored", systemImage: "exclamationmark.triangle")
                 .help("Read from macOS only when requested.")
         }
     }

@@ -74,10 +74,13 @@ struct MainLaunchTile: View {
 
     var body: some View {
         let active = Self.action(for: tool.id).flatMap { shortcuts.isEnabled($0) && shortcuts.shortcut(for: $0).isSet ? $0 : nil }
-        OnePlusLinearLaunchTile(shortcut: active.map { shortcuts.shortcut(for: $0).display },
-                                caption: active.map { $0 == .portman ? "Open \(tool.name)" : $0.title } ?? "Open \(tool.name)",
+        let isAwake = tool.id == "awake"
+        OnePlusLinearLaunchTile(shortcut: isAwake ? Self.activeShortcut(for: tool.id, in: shortcuts) : active.map { shortcuts.shortcut(for: $0).display },
+                                caption: isAwake ? "Show in menu bar"
+                                    : active.map { $0 == .portman ? "Open \(tool.name)" : $0.title } ?? "Open \(tool.name)",
                                 name: tool.name) {
-            ToolActionRouter.shared.open(toolID: tool.id)
+            // Awake has no window: its tile opens the menu panel and marks the Awake row.
+            if isAwake { MainMenuBarController.shared.showAwakeRow() } else { ToolActionRouter.shared.open(toolID: tool.id) }
         }
         .disabled(!settings.isToolEnabled(tool.id) || settings.isToolTransitioning(tool.id))
         .accessibilityIdentifier("tool.\(tool.id).launch")

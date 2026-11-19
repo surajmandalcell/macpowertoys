@@ -209,6 +209,9 @@ mockups are in `docs/design/v15/`.
   - Main window round 1 (owner, 2026-11-19): How to use "Checklist",
     Open tile "Key tile", controls "Raised keys", and motion "Soft
     spring", shipped in OnePlusUI 1.3.23 (see "Main window").
+  - Main window round 2 (owner, 2026-11-19): settings grouping "Inset,
+    gray glyphs" and Awake highlight "Dotted border and faint fill",
+    shipped in OnePlusUI 1.3.25 (see "Main window").
 
 ## Overview
 
@@ -979,15 +982,22 @@ Version 15 Linear style, built from the OnePlusUI `OnePlusLinear*` parts
   and nudges the chevron 2 pt; a page switch fades the old page 6 pt up
   and the new one in from 6 pt below (0.2 s); the switch knob springs
   (response 0.3, damping 0.72). Reduce Motion makes all of it instant.
-  Groups have no fill or ring: a
-  `line` hairline on top and a `lineSoft` hairline between 40 pt rows,
-  none under the last row. Each hairline (`OnePlusLinearFadedHairline`)
-  keeps its token color at the center and fades to clear over the last
-  12% at both ends. Setting rows, the Menu bar icon row, red text
-  actions, and How to use rows start on the header's leading edge; only
-  hover rows (tool rows) keep their own inset. Group captions are 13 pt
-  semibold `ink`. An optional footer ends the page: on a short page the
-  free space sits above it.
+  All tools groups have no fill or ring: a `line` hairline on top and a
+  `lineSoft` hairline between rows, none under the last row. Each
+  hairline (`OnePlusLinearFadedHairline`) keeps its token color at the
+  center and fades to clear over the last 12% at both ends. Their
+  captions are 13 pt semibold `ink`. An optional footer ends the page:
+  on a short page the free space sits above it.
+- Tool page settings, "Inset, gray glyphs" (`OnePlusLinearInsetGroup`,
+  used by `OnePlusLinearAppletSection` and `OnePlusLinearAppletGroup` in
+  the editorial body): each group is a `fillGroup` surface, radius 10,
+  with a 1 pt `line` ring. Rows are at least 40 pt with 12 pt side
+  padding. A row may lead with a glyph (`systemImage:`): a 13 pt regular
+  SF Symbol in `secondary`, in a 20 pt slot, never colored and never on a
+  tile. A `lineSoft` separator sits between rows and starts at the
+  label, after the glyph slot. A section caption is 12 pt semibold
+  `secondary`, 12 pt in from the group edge and 6 pt above it. Applet
+  and panel rows ignore the glyph.
 - All tools: `OnePlusLinearPageTitle` ("All tools", 24 pt semibold, and
   "N tools, M on" in `secondary`), then one captioned group per category.
   Each `OnePlusLinearEditorialToolRow` is 48 pt: a 24 pt icon (45% opacity
@@ -1012,16 +1022,23 @@ Version 15 Linear style, built from the OnePlusUI `OnePlusLinear*` parts
   arrow, then, when the shortcut is on (Color Picker, Text Extractor,
   Portman), the shortcut as key caps at 1.2 times over its action name;
   else the tool name in 20 pt semibold. Hover lifts it 2 pt; press sinks
-  it and scales it to 98%, both on springs. Awake has no window and no
-  tile. Then the `Menu bar icon` row (None, Combined,
+  it and scales it to 98%, both on springs. Awake has no window: its tile
+  shows `⌃⌥⌘A` over "Show in menu bar" and opens the combined panel on
+  Home through the status-item click route, without activating the app.
+  The panel's Awake row then shows the row mark ("Dotted border and faint
+  fill", `onePlusLinearRowMark`): a radius 6 shape 4 pt inside the row,
+  a 1 pt accent line dotted 2 on 2 at 40%, and an accent fill at 5%. It
+  fades in over 0.2 s after 0.3 s, holds 1.2 s, and fades out over
+  0.5 s; Reduce Motion shows it without fades. Then the `Menu bar icon`
+  row (None, Combined,
   Separate) for tools that support placement, then the tool's settings
   inline in the editorial look. Ruler shows its defaults for new rulers
   inline, bound to FreeRuler `prefs`, with Open Ruler Settings. A reset
   or clear (Ruler Reset to Factory Defaults, Color Picker Clear All Saved
   Colors, Text Extractor Clear History) is `OnePlusLinearButtonStyle(
-  .resetBlock)`: one full-width 32 pt button, 1 pt `line` border, radius
-  8, no fill until hover, red medium text, its own block after the last
-  group. `How to use` is the footer, "Checklist": a caption, then one
+  .resetBlock)`: one full-width 40 pt inset row, like a one-row group
+  (`fillGroup`, radius 10, 1 pt `line` ring), red text 12 pt from the
+  leading edge, its own block after the last group. `How to use` is the footer, "Checklist": a caption, then one
   `OnePlusLinearChecklist` card per manual section (radius 12,
   `fillGroup`, the tile shadows): 40 pt step rows with a 13 pt accent
   glyph, then 36 pt shortcut rows with a keyboard glyph and the key caps

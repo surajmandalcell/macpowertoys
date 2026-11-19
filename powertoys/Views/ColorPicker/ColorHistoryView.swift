@@ -327,19 +327,19 @@ struct ColorPickerSettingsView: View {
         VStack(alignment: .leading, spacing: 0) {
             VStack(alignment: .leading, spacing: OnePlusLinearMetrics.appletSectionGap) {
                 OnePlusLinearAppletSection("Global shortcut") {
-                    OnePlusLinearAppletRow("Enable shortcut") {
+                    OnePlusLinearAppletRow("Enable shortcut", systemImage: "power") {
                         Toggle("Enable Pick Color shortcut", isOn: Binding(
                             get: { shortcuts.isEnabled(.colorPicker) }, set: { shortcuts.setEnabled($0, for: .colorPicker) }
                         )).toggleStyle(OnePlusLinearSwitchStyle())
                     }
-                    OnePlusLinearAppletRow("Keyboard shortcut", detail: "Works in every app.") {
+                    OnePlusLinearAppletRow("Keyboard shortcut", detail: "Works in every app.", systemImage: "keyboard") {
                         ShortcutRecorderField(action: .colorPicker).disabled(!shortcuts.isEnabled(.colorPicker))
                     }
                 }
                 ShortcutPermissionNotice(action: .colorPicker)
                     .padding(.horizontal, OnePlusLinearMetrics.appletRowPadding)
                 OnePlusLinearAppletSection("Saved colors") {
-                    OnePlusLinearAppletRow("Copy format") {
+                    OnePlusLinearAppletRow("Copy format", systemImage: "doc.on.doc") {
                         OnePlusLinearSelect(choices: ColorCopyFormat.allCases.map { ($0, $0.title) },
                                             selection: $service.defaultFormat, accessibilityLabel: "Copy format",
                                             width: ColorPickerLayout.formatSelectWidth)

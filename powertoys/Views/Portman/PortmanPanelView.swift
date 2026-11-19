@@ -1388,10 +1388,10 @@ struct PortmanSettingsView: View {
     private var generalSettings: some View {
         OnePlusLinearAppletSection("General") {
             if shows("Keyboard shortcut") {
-                OnePlusLinearAppletRow("Shortcut") { ShortcutRecorderField(action: .portman) }
+                OnePlusLinearAppletRow("Shortcut", systemImage: "keyboard") { ShortcutRecorderField(action: .portman) }
             }
             if shows("Open folders in", "editor") {
-                OnePlusLinearAppletRow("Open folders in") {
+                OnePlusLinearAppletRow("Open folders in", systemImage: "folder") {
                     OnePlusLinearSelect(choices: [("auto", "Automatic")] + (state.installedEditors ?? []).map { ($0.id, $0.name) } + [("finder", "Finder")],
                                         selection: $editor, accessibilityLabel: "Open folders in", width: portControlWidth)
                         .accessibilityIdentifier("portman.settings.editor")
@@ -1403,30 +1403,31 @@ struct PortmanSettingsView: View {
     private var portSettings: some View {
         OnePlusLinearAppletSection("Ports & processes") {
             if shows("Ports & processes", "All listeners", "Include other listening processes") {
-                OnePlusLinearAppletRow("All listeners", detail: "Include other listening processes") {
+                OnePlusLinearAppletRow("All listeners", detail: "Include other listening processes",
+                                       systemImage: "antenna.radiowaves.left.and.right") {
                     Toggle("Include other listening processes", isOn: $showAllListeners)
                         .labelsHidden().toggleStyle(OnePlusLinearSwitchStyle())
                 }
             }
             if shows("Ports & processes", "First port", "Scan ports") {
-                OnePlusLinearAppletRow("First port") {
+                OnePlusLinearAppletRow("First port", systemImage: "arrow.down.to.line") {
                     OnePlusStepperField("First scan port", value: $lowerPort, in: 1...max(1, min(upperPort, 65535)))
                 }
             }
             if shows("Ports & processes", "Last port", "Scan ports") {
-                OnePlusLinearAppletRow("Last port") {
+                OnePlusLinearAppletRow("Last port", systemImage: "arrow.up.to.line") {
                     OnePlusStepperField("Last scan port", value: $upperPort, in: max(1, min(lowerPort, 65535))...65535)
                 }
             }
             if shows("Ports & processes", "Scan every") {
-                OnePlusLinearAppletRow("Scan every") {
+                OnePlusLinearAppletRow("Scan every", systemImage: "arrow.clockwise") {
                     OnePlusLinearSelect(choices: [2.0, 5.0, 10.0, 30.0].map { ($0, "\(Int($0)) seconds") },
                                         selection: $scanInterval, accessibilityLabel: "Scan every", width: portControlWidth)
                         .accessibilityIdentifier("portman.settings.interval")
                 }
             }
             if shows("Ports & processes", "Protected apps", "Extra protected process names") {
-                OnePlusLinearAppletRow("Protected apps") {
+                OnePlusLinearAppletRow("Protected apps", systemImage: "lock.shield") {
                     OnePlusLinearTextField("Process names", text: $protectedCommands)
                         .frame(width: portControlWidth)
                 }
@@ -1438,7 +1439,7 @@ struct PortmanSettingsView: View {
     private var cleanupSettings: some View {
         OnePlusLinearAppletSection("Clean up") {
             if shows("Clean up", "Cleanup mode") {
-                OnePlusLinearAppletRow("Mode", detail: cleanupHelp) {
+                OnePlusLinearAppletRow("Mode", detail: cleanupHelp, systemImage: "sparkles") {
                     OnePlusLinearSegmented(choices: [("off", "Off"), ("ask", "Ask"), ("automatic", "Auto")],
                                            selection: Binding(get: { cleanupMode }, set: { value in
                         if value == PortmanCleanupMode.automatic.rawValue && cleanupMode != value {
@@ -1449,23 +1450,23 @@ struct PortmanSettingsView: View {
                 }
             }
             if shows("Clean up", "Include deleted folders") {
-                OnePlusLinearAppletRow("Deleted folders") {
+                OnePlusLinearAppletRow("Deleted folders", systemImage: "folder.badge.minus") {
                     Toggle("Include deleted folders", isOn: $includeDeletedFolders)
                         .labelsHidden().toggleStyle(OnePlusLinearSwitchStyle())
                 }
             }
             if shows("Clean up", "Idle for", "Suggest after idle hours") {
-                OnePlusLinearAppletRow("Idle for") {
+                OnePlusLinearAppletRow("Idle for", systemImage: "zzz") {
                     OnePlusStepperField("Idle hours", value: integer($idleHours), in: 1...72, unit: "hours")
                 }
             }
             if shows("Clean up", "Running for", "Suggest after running days") {
-                OnePlusLinearAppletRow("Running for") {
+                OnePlusLinearAppletRow("Running for", systemImage: "clock") {
                     OnePlusStepperField("Running days", value: integer($runningDays), in: 1...30, unit: "days")
                 }
             }
             if shows("Clean up", "Force quit after seconds") {
-                OnePlusLinearAppletRow("Force quit after") {
+                OnePlusLinearAppletRow("Force quit after", systemImage: "xmark.octagon") {
                     OnePlusStepperField("Force quit seconds", value: integer($forceQuitSeconds), in: 1...30, unit: "sec")
                 }
             }
@@ -1476,14 +1477,16 @@ struct PortmanSettingsView: View {
         OnePlusLinearAppletSection("Integrations") {
             if shows("Integrations", "Link coding sessions") {
                 OnePlusLinearAppletRow("Coding sessions",
-                                       detail: "Copy a resume command for a matching Claude Code or Codex session.") {
+                                       detail: "Copy a resume command for a matching Claude Code or Codex session.",
+                                       systemImage: "terminal") {
                     Toggle("Link coding sessions", isOn: $sessionLinksEnabled)
                         .labelsHidden().toggleStyle(OnePlusLinearSwitchStyle())
                 }
             }
             if shows("Integrations", "Find public GitHub links") {
                 OnePlusLinearAppletRow("GitHub links",
-                                       detail: "Find public pull requests and previews. Private repositories are excluded.") {
+                                       detail: "Find public pull requests and previews. Private repositories are excluded.",
+                                       systemImage: "link") {
                     Toggle("Find public GitHub links", isOn: $publicGitHubLinksEnabled)
                         .labelsHidden().toggleStyle(OnePlusLinearSwitchStyle())
                 }

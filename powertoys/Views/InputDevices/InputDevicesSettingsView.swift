@@ -9,7 +9,7 @@ struct InputScrollDeviceBar: View {
     var body: some View {
         if isExpanded == nil {
             OnePlusLinearAppletGroup {
-                OnePlusLinearAppletRow("Scroll device") { scrollDeviceSelect }
+                OnePlusLinearAppletRow("Scroll device", systemImage: "computermouse") { scrollDeviceSelect }
                     .help("Automatic separates continuous trackpad events from mouse wheel steps.")
             }
         } else {
@@ -122,7 +122,7 @@ struct InputDevicesSettingsContent: View {
     private var linearScrollControl: some View {
         VStack(alignment: .leading, spacing: OnePlusLinearMetrics.appletSectionGap) {
             OnePlusLinearAppletSection("Scrolling") {
-                OnePlusLinearAppletRow("Use custom scrolling") {
+                OnePlusLinearAppletRow("Use custom scrolling", systemImage: "scroll") {
                     Toggle("Use custom scrolling", isOn: setting(
                         get: { $0.scrollControlEnabled },
                         set: { $0.scrollControlEnabled = $1 }
@@ -131,7 +131,8 @@ struct InputDevicesSettingsContent: View {
                 }
                 .help("Apply these profiles in every app.")
                 if !manager.permissionGranted {
-                    OnePlusLinearAppletRow("Accessibility", detail: "Allow MacPowerToys to adjust scroll events.") {
+                    OnePlusLinearAppletRow("Accessibility", detail: "Allow MacPowerToys to adjust scroll events.",
+                                           systemImage: "accessibility") {
                         HStack(spacing: OnePlusLinearMetrics.appletActionGap) {
                             Button("Settings") { manager.openPrivacySettings() }
                                 .buttonStyle(OnePlusLinearButtonStyle(.soft))

@@ -59,8 +59,7 @@ struct ToolAboutView: View {
         OnePlusLinearToolHeader(tool.name, detail: tool.description) {
             ToolIconView(tool: tool, size: OnePlusLinearEditorialMetrics.headerIcon)
         } actions: {
-            // Awake has no window: its routes open this page, so Open would only reselect it.
-            if tool.id != "awake" { MainLaunchTile(tool: tool) }
+            MainLaunchTile(tool: tool)
         }
     }
 
@@ -82,7 +81,7 @@ private struct MainMenuBarPlacement: View {
     }
 
     var body: some View {
-        OnePlusLinearAppletRow("Menu bar icon") {
+        OnePlusLinearAppletRow("Menu bar icon", systemImage: "menubar.rectangle") {
             OnePlusLinearSegmented(choices: MenuBarDisplayMode.allCases.map { ($0, $0.title) },
                                    selection: $mode, accessibilityLabel: "Menu bar placement", sizing: .fitted)
                 .accessibilityIdentifier("tool.\(tool.id).menu-bar-icon")
