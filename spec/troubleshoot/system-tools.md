@@ -168,16 +168,14 @@ processes, and Fan are in [Menu metrics and Fan](menu-metrics-fan.md).
 
 `PermissionCenter` is the only reader of permission state. It reads without a
 prompt (`AXIsProcessTrusted`, `CGPreflightScreenCaptureAccess`, the
-`AVCaptureDevice` and notification status, `SMAppService` status), refreshes
+`AVCaptureDevice` and notification status, the fan helper status), refreshes
 on app activation and on the system Accessibility-list notification, and
 posts `.permissionsChanged`. A row that shows a missing permission adds
 `.permissionWatch(kind)`; only then, and only while it is visible, a 2 s poll
 runs. Prompts come only from a user action.
 
-- **Symptom:** Fan "Check Again" kept showing "needs approval" after the
-  owner approved Login Items. **Cause:** it re-read fan data, not the
-  `SMAppService` status. **Check:** Check Again awaits
-  `PermissionCenter.refresh()`, which awaits `FanHelperService.refresh()`.
+- **Check Again:** it awaits `PermissionCenter.refresh()`, which awaits
+  `FanHelperService.refresh()`, not only a fan data read.
 - **Symptom:** The Command-Shift-3 shortcut stayed dead after a later
   Accessibility grant. **Cause:** one re-check ran 1 s after the prompt, and
   activation only stopped the tap. **Invariant:** `GlobalShortcutManager`
@@ -193,21 +191,44 @@ runs. Prompts come only from a user action.
   the quit error never showed. **Invariant:** `PermissionCenter.allowNotifications()`
   asks once, at the first notification, and never at launch.
 - **Symptom:** Restart audio asked for the admin password on every click.
-  **Invariant:** with the helper enabled, the daemon's `restartAudio` (no
+  **Invariant:** with the helper installed, the daemon's `restartAudio` (no
   arguments, runs `/usr/bin/killall coreaudiod`, 5 s deadline) does it; any
   helper error falls back to the osascript prompt.
-- **Symptom:** Every launch after an update unregistered and re-registered the
-  daemon. **Cause:** a stale-daemon check restarted it. **Invariant:** launchd
-  starts the daemon on demand from the bundle's current binary, and an old
-  daemon exits 30 s after its last connection, so an update needs no
-  re-registration. Only "Update Fan Helper" re-registers, and only when the
-  running helper reports another source commit.
 - **Check:** `PermissionCenterTests` (no watcher, no timer; a missing row
   polls; a grant or hiding stops it). A real grant and a real helper audio
   restart need the owner's Mac.
-- The `nettoys-neighbor` launchd label, mach service, plist, and the
-  `nettoys-helper` bundle id stay (owner decision): they are the registered,
-  approved Login Items identity, and a rename makes macOS ask for approval
-  again, which is worse than an old internal name.
+
+### Helper install (SMJobBless)
+
+The owner types the admin password once; nothing goes through System
+Settings or Login Items (owner decision 2026-11-19, the way Mole does it).
+
+- Names: label, Mach service, signing identifier, and file name are all
+  `com.surajmandal.macpowertoys.helper`. The tool sits in the app at
+  `Contents/Library/LaunchServices/` and macOS copies it to
+  `/Library/PrivilegedHelperTools/`. Its Info.plist and `launchd.plist` are
+  linked into the binary (`__TEXT,__info_plist`, `__TEXT,__launchd_plist`).
+- Requirements: the app's `SMPrivilegedExecutables` equals
+  `MacPowerToysHelperContract.helperRequirement`, and the helper's
+  `SMAuthorizedClients` equals `mainAppRequirement` (team `GF57JXJF5A`).
+  The daemon keeps `setConnectionCodeSigningRequirement`.
+  `FanControlTests` checks the plists against the contract; `make install`
+  refuses a product whose signatures do not satisfy both strings.
+- Install: `FanHelperService.install()` (AuthorizationCreate with
+  `kSMRightBlessPrivilegedHelper`, then `SMJobBless`). It runs on the first
+  Cool or Max click, or on "Install Helper" in the fan popover. Auto with no
+  manual mode never installs. Tests never install.
+- Version: the helper's `CFBundleVersion` is an integer. `neighborSnapshot`
+  returns it. A lower running version shows "outdated" and the next write
+  blesses again. Raise `NetToysHelper/Info.plist` `CFBundleVersion` when
+  helper code changes; a normal app update with the same version asks for
+  nothing.
+- Unsigned builds (`ADHOC=1`): the app fails its own team requirement, so the
+  status is `unsupported`, fans stay read only, and the row says why.
+- Migration: every launch, `retireLegacyRegistrations()` unregisters the old
+  SMAppService daemon (`com.surajmandal.macpowertoys.nettoys-neighbor`) and
+  the old `nettoys-helper` login item, but only while they are registered.
+  The old daemon plist stays in `Contents/Library/LaunchDaemons` so macOS can
+  find the job to remove.
 - Mac Tweaks' microphone Test reads and asks through
   `PermissionCenter.microphoneStatus` and `requestMicrophone()`.

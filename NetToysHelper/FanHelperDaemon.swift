@@ -31,7 +31,7 @@ nonisolated final class FanHelperXPCService: NSObject, MacPowerToysHelperXPCProt
     let fanLease = FanManualLease()
 
     func neighborSnapshot(reply: @escaping (Data?, String) -> Void) {
-        reply(nil, Bundle.main.object(forInfoDictionaryKey: "MPTSourceCommit") as? String ?? "")
+        reply(nil, Bundle.main.object(forInfoDictionaryKey: "CFBundleVersion") as? String ?? "")
     }
 
     func applyFanPreset(_ preset: String, reply: @escaping (String) -> Void) {

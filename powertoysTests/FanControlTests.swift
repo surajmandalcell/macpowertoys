@@ -10,13 +10,26 @@ import XCTest
 @testable import powertoys
 
 final class FanControlTests: XCTestCase {
-    func testFanCommandsStayOnTheApprovedHostDaemon() {
-        // These names carry the owner's macOS approval of the helper; they must not change.
-        XCTAssertEqual(MacPowerToysHelperContract.machServiceName, "com.surajmandal.macpowertoys.nettoys-neighbor")
-        XCTAssertEqual(MacPowerToysHelperContract.daemonPlistName, "com.surajmandal.macpowertoys.nettoys-neighbor.plist")
-        XCTAssertTrue(MacPowerToysHelperContract.helperRequirement.contains("\"com.surajmandal.macpowertoys.nettoys-helper\""))
-        XCTAssertTrue(MacPowerToysHelperContract.mainAppRequirement.contains("\"com.surajmandal.macpowertoys\""))
-        XCTAssertTrue(MacPowerToysHelperContract.helperRequirement.contains("GF57JXJF5A"))
+    func testBlessedHelperNamesAndRequirementsMatchBothInfoPlists() throws {
+        // SMJobBless refuses the install when the label, the app's SMPrivilegedExecutables, and the helper's
+        // SMAuthorizedClients disagree with the requirements the XPC peers check.
+        let contract = MacPowerToysHelperContract.self
+        XCTAssertEqual(contract.machServiceName, contract.label)
+        XCTAssertEqual(contract.installedPath, "/Library/PrivilegedHelperTools/" + contract.label)
+        let root = URL(fileURLWithPath: #filePath).deletingLastPathComponent().deletingLastPathComponent()
+        func plist(_ path: String) throws -> [String: Any] {
+            let data = try Data(contentsOf: root.appendingPathComponent(path))
+            return try XCTUnwrap(PropertyListSerialization.propertyList(from: data, format: nil) as? [String: Any])
+        }
+        let app = try plist("powertoys/Info.plist")
+        XCTAssertEqual(app["SMPrivilegedExecutables"] as? [String: String], [contract.label: contract.helperRequirement])
+        let helper = try plist("NetToysHelper/Info.plist")
+        XCTAssertEqual(helper["CFBundleIdentifier"] as? String, contract.label)
+        XCTAssertEqual(helper["SMAuthorizedClients"] as? [String], [contract.mainAppRequirement])
+        XCTAssertNotNil((helper["CFBundleVersion"] as? String).flatMap(Int.init))
+        let launchd = try plist("NetToysHelper/launchd.plist")
+        XCTAssertEqual(launchd["Label"] as? String, contract.label)
+        XCTAssertEqual(launchd["MachServices"] as? [String: Bool], [contract.machServiceName: true])
         for name in ["applyFanPreset:reply:", "neighborSnapshotWithReply:", "restartAudioWithReply:"] {
             XCTAssertNotNil(protocol_getMethodDescription(MacPowerToysHelperXPCProtocol.self,
                                                           NSSelectorFromString(name), true, true).name, name)
@@ -27,7 +40,7 @@ final class FanControlTests: XCTestCase {
     func testFanHelperAndFanRowWorkWithoutNetToys() async throws {
         XCTAssertNil(ToolRegistry.tool(for: "nettoys"))
         // Registration follows the helper's own status, not a tool switch.
-        let helper = FanHelperService(refreshOnInit: false, readStatus: { .enabled })
+        let helper = FanHelperService(refreshOnInit: false, readStatus: { _ in .ready })
         XCTAssertFalse(helper.isEnabled)
         await helper.refresh()
         XCTAssertTrue(helper.isEnabled)

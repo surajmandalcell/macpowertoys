@@ -4,9 +4,10 @@ import Foundation
 @main
 struct MacPowerToysHelperApp {
     static func main() {
-        if geteuid() == 0 { FanHelperDaemon.run() }
-        // A login item from an older build has no work; stay idle so launchd does not relaunch it
-        // until the app unregisters it.
-        dispatchMain()
+        guard geteuid() == 0 else {
+            fputs("This helper runs only as the MacPowerToys launch daemon.\n", stderr)
+            exit(1)
+        }
+        FanHelperDaemon.run()
     }
 }

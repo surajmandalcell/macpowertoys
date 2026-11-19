@@ -106,9 +106,9 @@ still use `SystemMonitor`. `DESIGN.md` owns every size, color, and type value.
   ignored its result.
 - **Invariant:** The helper writes Auto when the connection that set a manual
   mode ends (`FanManualLease`). The app holds that connection only while the
-  mode is manual. A failed revert retries 3 times, then shows an error. The
-  helper-commit poll backs off. A disabled Awake refuses external actions.
-- **Check:** `FanControlTests` lease test. Then, with the new helper approved,
+  mode is manual. A failed revert retries 3 times, then shows an error.
+  A disabled Awake refuses external actions.
+- **Check:** `FanControlTests` lease test. Then, with the new helper installed,
   set Max, send SIGKILL, and confirm Auto returns on real hardware.
 
 ## Fan
@@ -120,9 +120,10 @@ still use `SystemMonitor`. `DESIGN.md` owns every size, color, and type value.
   until success, and propagates failure so termination can cancel.
 - **Invariant:** The signed daemon accepts only Auto, Cool, or Max from the
   signed app, validates SMC keys and the hardware maximum, and restores Auto
-  on a failed write. macOS owns Background App Activity approval; never
-  approve it on the owner's desktop. Check the running daemon's source stamp
-  before using a new XPC method. The in-app SMC reader is read-only, runs
+  on a failed write. The helper installs with SMJobBless (see
+  `system-tools.md`, Helper install); never type the admin password on the
+  owner's behalf. Raise the helper `CFBundleVersion` before using a new XPC
+  method. The in-app SMC reader is read-only, runs
   only while a fan view owns the poller, and bounds indices and lengths.
   Fan commands drain output with a cap and hard-kill after a short grace.
 - **Invariant:** Fan is the first row of the Home control card, above
@@ -137,5 +138,5 @@ still use `SystemMonitor`. `DESIGN.md` owns every size, color, and type value.
   gets a fake `applyPreset`, and no test selects on the shared service.
 - **Check:** `FanControlTests` covers ordering, awaited restore, failure, and
   retry. Run `testFanViewStopsPollingWhileItsLayoutStaysMounted` and
-  `MainPanelTests.testNoTestSendsAFanWrite`. Test helper approval, Max, and
+  `MainPanelTests.testNoTestSendsAFanWrite`. Test the helper install, Max, and
   Auto on an isolated Mac.

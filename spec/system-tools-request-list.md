@@ -108,14 +108,16 @@ Done:
 
 Design (owner pick, "Fan daemon + Permission center"): one root daemon for
 privileged work only (fan presets and Restart audio), and one
-`PermissionCenter` as the single source of permission state. Details and
-checks: `spec/troubleshoot/system-tools.md`.
+`PermissionCenter` as the single source of permission state. The daemon
+installs with SMJobBless: one admin password, no Login Items (owner,
+2026-11-19). Details and checks: `spec/troubleshoot/system-tools.md`.
 
 | Status | Request | Evidence | Remaining work |
 |---|---|---|---|
-| Verify | Restart audio through the daemon, no password; osascript fallback when the daemon is off or fails. | `restartAudio` XPC call, no arguments; helper target compiles. | A real Restart audio with the approved new helper. |
+| Verify | Install the helper with SMJobBless on the first Cool or Max click (or Install Helper): one password, no System Settings; bless again only when the bundled `CFBundleVersion` is newer; unsigned builds stay read only; launch removes the old SMAppService daemon and login item. | Signed `make build`: the helper satisfies `SMPrivilegedExecutables`, the app satisfies `SMAuthorizedClients`, a wrong team fails; both plist sections are in the binary. | The owner's first real install, Cool, Max, and Auto, then `launchctl print system/com.surajmandal.macpowertoys.helper`. |
+| Verify | Restart audio through the daemon, no password; osascript fallback when the daemon is off or fails. | `restartAudio` XPC call, no arguments; helper target compiles. | A real Restart audio with the blessed helper. |
 | Verify | `PermissionCenter`: prompt-free reads, refresh on activation and the Accessibility-list notification, 2 s poll only while a visible row shows a missing permission. | `PermissionCenterTests` compiles. | Run the test; a real Accessibility grant with Settings, Input Devices, and Command-Shift-3. |
-| Verify | Fan Check Again re-reads the Login Items approval. | Awaits `FanHelperService.refresh()`. | Approve in Login Items, then Check Again. |
+| Verify | Fan Check Again re-reads the helper status. | Awaits `FanHelperService.refresh()`. | Check Again after the install. |
 | Verify | Input Devices asks only for Accessibility and updates by itself after a grant. | No Input Monitoring call or usage string. | Real grant. |
 | Verify | Notifications asked once, at the first sleep warning or quit error. | `allowNotifications()`. | First real notification. |
 | Done | Remove the Location entitlement and the smctl path; no re-registration on update. | Grep found no live use. | None. |

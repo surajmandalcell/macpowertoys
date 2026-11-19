@@ -1,103 +1,125 @@
 import Foundation
 import Observation
+import Security
 import ServiceManagement
 
-/// Registers the privileged helper daemon (fan presets and Restart audio). An app update needs no
-/// re-registration: launchd starts the daemon on demand from the bundle's current binary, and a daemon
-/// still running the replaced binary exits 30 s after its last connection.
+/// Installs the privileged helper daemon (fan presets and Restart audio) with SMJobBless. macOS asks for an
+/// admin password once, copies the helper to /Library/PrivilegedHelperTools, and loads it as a launch daemon.
+/// An app update reinstalls it only when the bundled helper's CFBundleVersion is newer than the running one.
 @Observable
 @MainActor
 final class FanHelperService {
+    nonisolated enum Status: Equatable, Sendable {
+        case unknown
+        /// This build is not signed by the team, so SMJobBless and the helper's caller check would refuse it.
+        case unsupported
+        case notInstalled
+        case outdated
+        /// The helper file exists but did not answer the version check; reinstalling reloads it.
+        case notResponding
+        case ready
+    }
+
     static let shared = FanHelperService(refreshOnInit: !AppRuntime.isRunningTests)
 
-    private(set) var status: SMAppService.Status?
-    @ObservationIgnored private let service: SMAppService
-    @ObservationIgnored private let readStatus: @Sendable () -> SMAppService.Status
+    private(set) var status = Status.unknown
+    @ObservationIgnored private let readStatus: @Sendable (Status) -> Status
     @ObservationIgnored private var statusGeneration = 0
-    @ObservationIgnored private var checkedPendingRegistration = false
-    private static let pendingRegistrationKey = "nettoys.neighbor.pendingRegistration"
     nonisolated static let legacyLoginItemIdentifier = "com.surajmandal.macpowertoys.nettoys-helper"
 
-    init(refreshOnInit: Bool, readStatus: (@Sendable () -> SMAppService.Status)? = nil) {
-        let plistName = MacPowerToysHelperContract.daemonPlistName
-        service = .daemon(plistName: plistName)
-        // An injected status reader never registers the real daemon.
-        checkedPendingRegistration = readStatus != nil
-        self.readStatus = readStatus ?? { SMAppService.daemon(plistName: plistName).status }
+    init(refreshOnInit: Bool, readStatus: (@Sendable (Status) -> Status)? = nil) {
+        self.readStatus = readStatus ?? Self.readStatus(previous:)
         if refreshOnInit { Task { await refresh() } }
     }
 
-    var isEnabled: Bool { status == .enabled }
+    var isEnabled: Bool { status == .ready }
+    /// A fan write may install the helper first; this never includes an unsupported build.
+    var canInstall: Bool { [.notInstalled, .outdated, .notResponding].contains(status) }
 
-    @discardableResult
-    func enable(openSettings: Bool = true) -> Bool {
-        statusGeneration &+= 1
-        do {
-            let current = service.status
-            if current == .notRegistered || current == .notFound { try service.register() }
-        } catch {
-            LogManager.shared.warning("Fan helper registration failed: \(error.localizedDescription)", source: "FanHelper")
-        }
-        status = service.status
-        guard status == .enabled else {
-            if openSettings { SMAppService.openSystemSettingsLoginItems() }
-            return false
-        }
-        return true
-    }
-
-    /// Re-reads the Login Items approval. A read that an enable or restart overtook is dropped.
     func refresh() async {
         let generation = statusGeneration
-        let status = await Task.detached(priority: .utility, operation: readStatus).value
+        let previous = status
+        let next = await Task.detached(priority: .utility) { [readStatus] in readStatus(previous) }.value
         guard generation == statusGeneration else { return }
-        if self.status != status { self.status = status }
-        if status == .notRegistered { await finishPendingRegistrationOnce() }
+        if status != next { status = next }
     }
 
-    /// Re-registers the daemon. Call only when the running helper reports another build than this app:
-    /// macOS can show the Background Items notice again on every register.
-    func restart() async throws {
+    /// Shows the macOS admin password prompt and installs the helper. Returns an error message, or nil on success.
+    func install() async -> String? {
+        guard !AppRuntime.isRunningTests else { return "Tests never install the fan helper." }
+        guard status != .unsupported else { return Self.unsupportedMessage }
         statusGeneration &+= 1
-        defer { Task { await refresh() } }
-        UserDefaults.standard.set(true, forKey: Self.pendingRegistrationKey)
-        try await service.unregister()
-        try await registerAfterUnregister()
+        let message = await Task.detached(priority: .userInitiated) { Self.bless() }.value
+        if let message { LogManager.shared.warning("Fan helper install failed: \(message)", source: "FanHelper") }
+        statusGeneration &+= 1
+        status = .unknown
+        await refresh()
+        if message == nil, status != .ready { return "The fan helper was installed but did not answer. Try again." }
+        return message
     }
 
-    /// The NetToys tool registered the same helper as a login item for its background work. That work
-    /// left with the tool, so remove a login item that an older build left registered.
-    nonisolated static func retireLegacyLoginItem() async {
-        guard !AppRuntime.isRunningTests else { return }
-        let item = SMAppService.loginItem(identifier: legacyLoginItemIdentifier)
-        guard item.status == .enabled || item.status == .requiresApproval else { return }
-        do { try await item.unregister() } catch {
-            await LogManager.shared.warning("Old helper login item stays registered: \(error.localizedDescription)",
-                                            source: "FanHelper")
-        }
+    nonisolated static let unsupportedMessage = "This build is not signed by the MacPowerToys team, so fans stay read only."
+
+    nonisolated private static func readStatus(previous: Status) -> Status {
+        guard isTeamSigned() else { return .unsupported }
+        guard FileManager.default.fileExists(atPath: MacPowerToysHelperContract.installedPath) else { return .notInstalled }
+        // A helper confirmed in this launch stays confirmed; only an install changes it.
+        if previous == .ready { return .ready }
+        guard let bundled = bundledHelperVersion() else { return .unsupported }
+        guard let running = FanCommand.helperVersion() else { return .notResponding }
+        return running >= bundled ? .ready : .outdated
     }
 
-    /// A restart that macOS refused to re-register leaves a pending flag; finish it on the next launch.
-    private func finishPendingRegistrationOnce() async {
-        guard !checkedPendingRegistration, UserDefaults.standard.bool(forKey: Self.pendingRegistrationKey) else { return }
-        checkedPendingRegistration = true
-        do { try await registerAfterUnregister() } catch {
-            LogManager.shared.warning("Fan helper registration failed: \(error.localizedDescription)", source: "FanHelper")
-        }
-        status = service.status
+    nonisolated private static func isTeamSigned() -> Bool {
+        var code: SecCode?
+        var requirement: SecRequirement?
+        guard SecCodeCopySelf([], &code) == errSecSuccess, let code,
+              SecRequirementCreateWithString(MacPowerToysHelperContract.mainAppRequirement as CFString, [], &requirement)
+                == errSecSuccess, let requirement else { return false }
+        return SecCodeCheckValidity(code, [], requirement) == errSecSuccess
     }
 
-    /// macOS can refuse a register that follows an unregister until it finishes the removal, so retry briefly.
-    private func registerAfterUnregister() async throws {
-        var lastError: (any Error)?
-        for attempt in 0..<6 {
-            if attempt > 0 { try? await Task.sleep(for: .seconds(1)) }
-            do { try service.register() } catch { lastError = error }
-            if service.status == .enabled || service.status == .requiresApproval {
-                UserDefaults.standard.removeObject(forKey: Self.pendingRegistrationKey)
-                return
+    nonisolated static func bundledHelperVersion() -> Int? {
+        let url = Bundle.main.bundleURL
+            .appendingPathComponent("Contents/Library/LaunchServices/" + MacPowerToysHelperContract.label)
+        guard let info = CFBundleCopyInfoDictionaryForURL(url as CFURL) as? [String: Any] else { return nil }
+        return (info["CFBundleVersion"] as? String).flatMap(Int.init)
+    }
+
+    // SMJobBless is deprecated since macOS 13 but still installs helpers; SMAppService needs a Login Items trip.
+    nonisolated private static func bless() -> String? {
+        var authorization: AuthorizationRef?
+        let created = kSMRightBlessPrivilegedHelper.withCString { name -> OSStatus in
+            var item = AuthorizationItem(name: name, valueLength: 0, value: nil, flags: 0)
+            return withUnsafeMutablePointer(to: &item) { pointer in
+                var rights = AuthorizationRights(count: 1, items: pointer)
+                return AuthorizationCreate(&rights, nil, [.interactionAllowed, .extendRights, .preAuthorize],
+                                           &authorization)
             }
         }
-        if let lastError { throw lastError }
+        defer { if let authorization { AuthorizationFree(authorization, []) } }
+        if created == errAuthorizationCanceled { return "Fan helper install was canceled." }
+        guard created == errAuthorizationSuccess, let authorization else {
+            return "macOS did not authorize the fan helper install (\(created))."
+        }
+        var error: Unmanaged<CFError>?
+        guard SMJobBless(kSMDomainSystemLaunchd, MacPowerToysHelperContract.label as CFString, authorization, &error) else {
+            return error?.takeRetainedValue().localizedDescription ?? "macOS could not install the fan helper."
+        }
+        return nil
+    }
+
+    /// Older builds registered the helper as an SMAppService daemon and as a NetToys login item. Remove both
+    /// once, so only the blessed daemon runs. Safe to call on every launch.
+    nonisolated static func retireLegacyRegistrations() async {
+        guard !AppRuntime.isRunningTests else { return }
+        let items = [SMAppService.daemon(plistName: MacPowerToysHelperContract.legacyDaemonPlistName),
+                     SMAppService.loginItem(identifier: legacyLoginItemIdentifier)]
+        for item in items where item.status == .enabled || item.status == .requiresApproval {
+            do { try await item.unregister() } catch {
+                await LogManager.shared.warning("Old helper registration stays: \(error.localizedDescription)",
+                                                source: "FanHelper")
+            }
+        }
     }
 }

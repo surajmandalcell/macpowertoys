@@ -4,6 +4,11 @@
 <dict>
 	<key>MPTSourceCommit</key>
 	<string>$(MPT_SOURCE_COMMIT)</string>
+	<key>SMPrivilegedExecutables</key>
+	<dict>
+		<key>com.surajmandal.macpowertoys.helper</key>
+		<string>identifier "com.surajmandal.macpowertoys.helper" and anchor apple generic and certificate leaf[subject.OU] = "GF57JXJF5A"</string>
+	</dict>
 	<key>NSScreenCaptureUsageDescription</key>
 	<string>Text Extractor captures only the region you select so Apple Vision can recognize its text locally.</string>
 	<key>NSLocalNetworkUsageDescription</key>
