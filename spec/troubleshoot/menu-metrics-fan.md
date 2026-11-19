@@ -124,9 +124,14 @@ still use `SystemMonitor`. `DESIGN.md` owns every size, color, and type value.
   Mn at 55 °C or less, Mx at 75 °C or more, linear between (70 °C is 75%);
   a tick rises at most 800 RPM and falls at most 250 RPM. Auto writes every
   `F<n>Md = 0`, then `Ftst = 0`.
+- **Invariant:** `macpowertoys://fan/...` links work only while the user
+  default `MPTAllowFanLinks` is true, because any web page can open a URL.
+  Off, the route logs one line and does nothing.
 - **Check:** after the owner approves helper 2, run
-  `open -g "macpowertoys://fan/max"`, then `/cool`, then `/auto`; read
-  `F0Ac`/`F0Md`/`Ftst` and the Fan log lines. End on Auto.
+  `defaults write com.surajmandal.macpowertoys MPTAllowFanLinks -bool true`,
+  then `open -g "macpowertoys://fan/max"`, `/cool`, `/auto`; read
+  `F0Ac`/`F0Md`/`Ftst` and the Fan log lines. End on Auto, then
+  `defaults delete com.surajmandal.macpowertoys MPTAllowFanLinks`.
 
 ## Fan Stays Forced After The App Dies
 
