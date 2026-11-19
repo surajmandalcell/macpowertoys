@@ -84,6 +84,11 @@ still use `SystemMonitor`. `DESIGN.md` owns every size, color, and type value.
   reused PID is never hit. Apps use `terminate`/`forceTerminate`, others
   SIGTERM/SIGKILL. The panel closes before the alert, which runs without
   activating the app.
+- **Symptom:** A process CPU such as "101.2 %" wrapped to two lines.
+  **Cause:** process CPU sums all cores and can pass 100%, and the 40 pt
+  column could not hold it. **Invariant:** from 100 on the value is whole
+  percent with no grouping (`SystemMonitorProcessRows`), and the OnePlusUI
+  1.3.20 CPU column grows instead of wrapping.
 - **Check:** `SystemMonitorTests` process sorting, protected fallback, and
   top-processes tests. `MainPanelTests` cadence and release test, and
   `testQuitProcessMapsPermissionExitAndReusedPIDs` (signal 0 only).
