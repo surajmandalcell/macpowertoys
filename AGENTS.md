@@ -6,10 +6,6 @@ SwiftUI macOS utility app with pluggable tools.
 @spec/troubleshoot/troubleshoot.md
 @.agents/rules/vorssaint-utils-reference.md
 @.agents/rules/window-experience.md
-@spec/ruler-request-list.md
-@spec/color-picker-request-list.md
-@spec/system-tools-request-list.md
-@DESIGN.md
 @.agents/rules/code-style.md
 @.agents/rules/architecture.md
 @.agents/rules/design-tokens.md
@@ -25,6 +21,9 @@ inspecting or changing implementation files.
 `spec/troubleshoot/troubleshoot.md` is the only troubleshooting entry point.
 Keep all troubleshooting knowledge under `spec/troubleshoot/`; do not add
 compatibility shims or alternate troubleshooting rule files.
+
+Read `DESIGN.md` before any UI or design work. Read a tool's request list
+(below) before work on that tool.
 
 Keep `spec/color-picker-request-list.md` current when Color Picker
 requirements or verification results change.
