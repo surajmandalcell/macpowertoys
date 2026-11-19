@@ -61,6 +61,7 @@ final class AppInitializer {
         _ = ColorPickerService.shared
         let textExtractor = TextExtractorService.shared
         if SettingsManager.shared.isToolEnabled("text-extractor") { textExtractor.prewarm() }
+        _ = PermissionCenter.shared
         _ = GlobalShortcutManager.shared
         IndividualMenuBarController.shared.start()
         PortmanMenuController.shared.start()
