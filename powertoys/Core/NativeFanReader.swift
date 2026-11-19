@@ -105,15 +105,13 @@ nonisolated enum FanKeyPolicy {
         }
     }
 
-    /// Hands every fan back to macOS: each manual mode key to 0, then the unlock key to 0.
+    /// Hands every fan back to macOS: each mode key to 0, then the unlock key to 0. It writes without reading
+    /// first, because SMC reads lag a write by up to about 0.7 s and would skip a key that was just set.
     static func restoreAutomatic(_ store: FanKeyStore) -> String? {
         for index in 0..<fanCount(store) {
-            if let key = modeKey(index, store), store.number(key) == 1, let failure = store.write(key, value: 0) {
-                return failure
-            }
+            if let key = modeKey(index, store), let failure = store.write(key, value: 0) { return failure }
         }
-        if store.number("Ftst") == 1, let failure = store.write("Ftst", value: 0) { return failure }
-        return nil
+        return store.number("Ftst") == nil ? nil : store.write("Ftst", value: 0)
     }
 }
 
@@ -145,15 +143,19 @@ nonisolated final class FanManualLease: @unchecked Sendable {
                 Self.logger.error("Refused \(key, privacy: .public) = \(value): \(refusal, privacy: .public)")
                 return refusal
             }
-            let failure = store.write(key, value: value)
-            if let failure { Self.logger.error("\(failure, privacy: .public)") }
-            if FanKeyPolicy.isAutomatic(store) {
+            if let failure = store.write(key, value: value) {
+                Self.logger.error("\(failure, privacy: .public)")
+                return failure
+            }
+            // Ftst = 0 is the last step of Auto. Every other write leaves the fans manual for this client.
+            // Reads would lag the write, so ownership follows the write itself.
+            if key == "Ftst", value == 0 {
                 owner = nil
             } else {
                 owner = client
                 lastTouch = now()
             }
-            return failure ?? ""
+            return ""
         }
     }
 
@@ -175,7 +177,7 @@ nonisolated final class FanManualLease: @unchecked Sendable {
 
     private func restoreLocked() {
         for attempt in 0..<3 {
-            if let store = openStore(), FanKeyPolicy.restoreAutomatic(store) == nil, FanKeyPolicy.isAutomatic(store) {
+            if let store = openStore(), FanKeyPolicy.restoreAutomatic(store) == nil {
                 owner = nil
                 return
             }
