@@ -30,7 +30,7 @@ final class FanControlTests: XCTestCase {
         let launchd = try plist("NetToysHelper/launchd.plist")
         XCTAssertEqual(launchd["Label"] as? String, contract.label)
         XCTAssertEqual(launchd["MachServices"] as? [String: Bool], [contract.machServiceName: true])
-        for name in ["applyFanPreset:reply:", "neighborSnapshotWithReply:", "restartAudioWithReply:"] {
+        for name in ["writeFanKey:value:reply:","neighborSnapshotWithReply:", "restartAudioWithReply:"] {
             XCTAssertNotNil(protocol_getMethodDescription(MacPowerToysHelperXPCProtocol.self,
                                                           NSSelectorFromString(name), true, true).name, name)
         }
@@ -71,22 +71,34 @@ final class FanControlTests: XCTestCase {
         XCTAssertEqual(service.selectedPreset, .max)
     }
 
-    func testHelperRestoresAutoOnlyWhenTheManualClientIsLost() throws {
-        let writes = Mutex<[FanPreset]>([])
-        let lease = FanManualLease(write: { preset in writes.withLock { $0.append(preset) } })
-        let app = NSObject()
-        let probe = NSObject()
+    func testHelperRestoresAutoWhenTheManualClientIsLostOrSilent() {
+        let store = FakeFanKeys()
+        let clock = Mutex(0.0)
+        let lease = FanManualLease(openStore: { store }, now: { clock.withLock { $0 } })
+        let app = ObjectIdentifier(NSObject())
+        let probe = ObjectIdentifier(NSObject())
 
-        try lease.apply(.auto, client: ObjectIdentifier(app))
-        lease.clientEnded(ObjectIdentifier(app))
-        XCTAssertEqual(writes.withLock { $0 }, [.auto], "A client lost while Auto must cause no write")
+        lease.clientEnded(app)
+        XCTAssertTrue(store.writes.isEmpty, "A client lost while Auto must cause no write")
 
-        try lease.apply(.max, client: ObjectIdentifier(app))
-        lease.clientEnded(ObjectIdentifier(probe))
-        XCTAssertEqual(writes.withLock { $0 }, [.auto, .max], "Another client ending must not touch the fans")
-        lease.clientEnded(ObjectIdentifier(app))
-        lease.clientEnded(ObjectIdentifier(app))
-        XCTAssertEqual(writes.withLock { $0 }, [.auto, .max, .auto], "Losing the manual client restores Auto once")
+        XCTAssertEqual(lease.write("Ftst", value: 1, client: app), "")
+        XCTAssertEqual(lease.write("F0Md", value: 1, client: app), "")
+        XCTAssertNotEqual(lease.write("F0Tg", value: 9_000, client: app), "")
+        lease.clientEnded(probe)
+        XCTAssertTrue(lease.hasOwner, "Another client ending must not touch the fans")
+        lease.clientEnded(app)
+        XCTAssertFalse(lease.hasOwner)
+        XCTAssertEqual(store.values["F0Md"], 0)
+        XCTAssertEqual(store.values["Ftst"], 0)
+
+        XCTAssertEqual(lease.write("Ftst", value: 1, client: app), "")
+        clock.withLock { $0 = FanManualLease.timeout - 1 }
+        lease.expireIfIdle()
+        XCTAssertTrue(lease.hasOwner)
+        clock.withLock { $0 = FanManualLease.timeout + 1 }
+        lease.expireIfIdle()
+        XCTAssertFalse(lease.hasOwner, "A silent client loses manual control")
+        XCTAssertEqual(store.values["Ftst"], 0)
     }
 
     @MainActor
@@ -321,9 +333,34 @@ final class FanControlTests: XCTestCase {
         XCTAssertNil(NativeFanReader.encodeNumber(100_000, type: "fpe2"))
     }
 
-    func testFanWritesRejectAnUnprivilegedProcess() {
-        guard geteuid() != 0 else { return }
-        XCTAssertThrowsError(try NativeFanReader.apply(.max))
+    func testHelperWritesOnlyFanKeysInsideTheFanRange() {
+        let store = FakeFanKeys()
+        XCTAssertNil(FanKeyPolicy.refusal(for: "Ftst", value: 1, store: store))
+        XCTAssertNil(FanKeyPolicy.refusal(for: "F1Md", value: 1, store: store))
+        XCTAssertNil(FanKeyPolicy.refusal(for: "F0Tg", value: 5_777, store: store))
+        XCTAssertNotNil(FanKeyPolicy.refusal(for: "F0Tg", value: 5_778, store: store))
+        XCTAssertNotNil(FanKeyPolicy.refusal(for: "F0Tg", value: 1_000, store: store))
+        XCTAssertNotNil(FanKeyPolicy.refusal(for: "F2Md", value: 1, store: store), "Only fans below FNum")
+        XCTAssertNotNil(FanKeyPolicy.refusal(for: "F0Md", value: 2, store: store))
+        XCTAssertNotNil(FanKeyPolicy.refusal(for: "Ftst", value: .nan, store: store))
+        for key in ["CHTE", "F0Mx", "F0Mn", "BCLM", "Ftst0"] {
+            XCTAssertNotNil(FanKeyPolicy.refusal(for: key, value: 0, store: store), key)
+        }
+        XCTAssertEqual(NativeFanReader.encodeNumber(1, type: "ui8 "), [1])
+        XCTAssertNil(NativeFanReader.encodeNumber(1.5, type: "ui8 "))
+    }
+
+    func testCoolRampsBetweenFanMinimumAndMaximumWithSmoothSteps() {
+        let target = { (hottest: Double, previous: Double?) in
+            FanDriver.coolTarget(hottest: hottest, previous: previous, minimum: 1_350, maximum: 5_777)
+        }
+        XCTAssertEqual(target(40, nil), 1_350)
+        XCTAssertEqual(target(55, nil), 1_350)
+        XCTAssertEqual(target(70, nil), (1_350 + 4_427 * 0.75).rounded())
+        XCTAssertEqual(target(90, nil), 5_777)
+        XCTAssertEqual(target(90, 1_350), 2_150, "Rises at most 800 RPM per tick")
+        XCTAssertEqual(target(40, 5_777), 5_527, "Falls at most 250 RPM per tick")
+        XCTAssertEqual(target(40, 1_400), 1_350)
     }
 
     func testFanCommandBoundsProcessOutputWithoutHardwareAccess() {
@@ -356,5 +393,20 @@ private actor FanExitWrites {
     }
     private struct Failure: LocalizedError {
         var errorDescription: String? { "Auto failed" }
+    }
+}
+
+/// Two fans with this Mac's real ranges (M4 Pro: 1350-5777 RPM), all in Auto.
+private final class FakeFanKeys: FanKeyStore, @unchecked Sendable {
+    var values: [String: Double] = ["FNum": 2, "Ftst": 0, "F0Md": 0, "F1Md": 0, "F0Tg": 1_350, "F1Tg": 1_350,
+                                    "F0Mn": 1_350, "F1Mn": 1_350, "F0Mx": 5_777, "F1Mx": 5_777]
+    var writes: [String] = []
+
+    func number(_ key: String) -> Double? { values[key] }
+
+    func write(_ key: String, value: Double) -> String? {
+        writes.append(key)
+        values[key] = value
+        return nil
     }
 }

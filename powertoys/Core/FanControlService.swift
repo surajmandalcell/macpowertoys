@@ -4,7 +4,7 @@ import Observation
 import ServiceManagement
 
 nonisolated enum FanCommand {
-    private final class HelperReply: @unchecked Sendable {
+    final class HelperReply: @unchecked Sendable {
         private let lock = NSLock()
         private let semaphore = DispatchSemaphore(value: 0)
         private var result: String?
@@ -28,7 +28,7 @@ nonisolated enum FanCommand {
     }
 
     private static let statsPath = "/Applications/Stats.app/Contents/Resources/smc"
-    private static let controlQueue = DispatchQueue(label: "com.surajmandal.macpowertoys.fan-control")
+    static let controlQueue = DispatchQueue(label: "com.surajmandal.macpowertoys.fan-control")
 
     static func read() -> FanSnapshot? {
         if let snapshot = NativeFanReader.snapshot() { return snapshot }
@@ -66,7 +66,7 @@ nonisolated enum FanCommand {
     static func apply(_ preset: FanPreset, completion: @escaping @Sendable (String?) -> Void) {
         controlQueue.async {
             do {
-                try applyBuiltIn(preset)
+                try FanDriver.apply(preset)
                 completion(nil)
             } catch {
                 completion(error.localizedDescription)
@@ -74,63 +74,47 @@ nonisolated enum FanCommand {
         }
     }
 
-    private static func applyBuiltIn(_ preset: FanPreset) throws {
-        let reply = HelperReply()
-        let (connection, proxy) = helperConnection(reply: reply)
-        proxy?.applyFanPreset(preset.rawValue) { reply.finish($0) }
-        if proxy == nil { reply.finish("The built-in fan helper is unavailable.") }
-        let message = reply.wait()
-        // The helper restores Auto when the connection that set Cool or Max closes, so hold it while manual.
-        let previous = manualConnection
-        if message.isEmpty && preset != .auto {
-            manualConnection = connection
-        } else {
-            manualConnection = nil
-            connection.invalidate()
-        }
-        if previous !== manualConnection { previous?.invalidate() }
-        if !message.isEmpty { throw FanError(message) }
+    /// Called on the control queue when Cool or Max ends without a request (macOS took control, the helper stopped).
+    static func setManualLostHandler(_ handler: @escaping @Sendable (String) -> Void) {
+        controlQueue.async { FanDriver.onManualLost = handler }
     }
-
-    // Touched only on controlQueue.
-    nonisolated(unsafe) private static var manualConnection: NSXPCConnection?
 
     /// The running helper's CFBundleVersion, or nil when it does not answer. Blocks; call off main.
     static func helperVersion() -> Int? {
-        let reply = HelperReply()
-        let (connection, proxy) = helperConnection(reply: reply)
-        proxy?.neighborSnapshot { _, version in reply.finish(version) }
-        if proxy == nil { reply.finish("") }
-        let version = reply.wait(seconds: 5)
-        connection.invalidate()
+        let connection = helperConnection()
+        defer { connection.invalidate() }
+        let version = request(on: connection, seconds: 5) { helper, reply in
+            helper.neighborSnapshot { _, version in reply(version) }
+        }
         return Int(version)
     }
 
     /// Asks the root helper to restart Core Audio. Returns an empty string on success. Blocks; call off main.
     static func restartAudio() -> String {
-        let reply = HelperReply()
-        let (connection, proxy) = helperConnection(reply: reply)
-        proxy?.restartAudio { reply.finish($0) }
-        if proxy == nil { reply.finish("The built-in helper is unavailable.") }
-        let message = reply.wait(seconds: 10)
-        connection.invalidate()
-        return message
+        let connection = helperConnection()
+        defer { connection.invalidate() }
+        return request(on: connection, seconds: 10) { helper, reply in helper.restartAudio(reply: reply) }
     }
 
-    private static func helperConnection(reply: HelperReply) -> (NSXPCConnection, MacPowerToysHelperXPCProtocol?) {
+    static func helperConnection() -> NSXPCConnection {
         let connection = NSXPCConnection(
             machServiceName: MacPowerToysHelperContract.machServiceName,
             options: .privileged
         )
         connection.remoteObjectInterface = NSXPCInterface(with: MacPowerToysHelperXPCProtocol.self)
         connection.setCodeSigningRequirement(MacPowerToysHelperContract.helperRequirement)
-        connection.interruptionHandler = { reply.finish("The built-in fan helper stopped.") }
-        connection.invalidationHandler = { reply.finish("The built-in fan helper is unavailable.") }
         connection.resume()
-        let proxy = connection.remoteObjectProxyWithErrorHandler {
-            reply.finish($0.localizedDescription)
-        } as? MacPowerToysHelperXPCProtocol
-        return (connection, proxy)
+        return connection
+    }
+
+    /// One blocking helper call. The error handler covers a helper that stops or refuses the connection.
+    static func request(on connection: NSXPCConnection, seconds: Double = 8,
+                        _ send: (MacPowerToysHelperXPCProtocol, @escaping @Sendable (String) -> Void) -> Void) -> String {
+        let reply = HelperReply()
+        guard let helper = connection.remoteObjectProxyWithErrorHandler({ reply.finish($0.localizedDescription) })
+                as? MacPowerToysHelperXPCProtocol else { return "The built-in fan helper is unavailable." }
+        send(helper) { reply.finish($0) }
+        return reply.wait(seconds: seconds)
     }
 
     static func run(_ executable: String, _ arguments: [String]) throws -> String {
@@ -171,7 +155,7 @@ nonisolated enum FanCommand {
     }
 }
 
-nonisolated private struct FanError: LocalizedError {
+nonisolated struct FanError: LocalizedError {
     let message: String
     init(_ message: String) { self.message = message }
     var errorDescription: String? { message }
@@ -258,7 +242,7 @@ nonisolated struct FanControlPresentation: Equatable, Sendable {
         }
         switch selectedPreset {
         case .auto: return "Controlled by macOS"
-        case .cool: return "Cooling boost · Auto in 10 minutes"
+        case .cool: return "Cool · fans follow the chip temperature"
         case .max: return "Maximum cooling"
         case nil: return "Manual control active"
         }
@@ -286,7 +270,6 @@ final class FanControlService {
     @ObservationIgnored private let applyPreset: @Sendable (FanPreset, @escaping @Sendable (String?) -> Void) -> Void
     private var owners = Set<String>()
     private var pollTask: Task<Void, Never>?
-    private var coolResetTask: Task<Void, Never>?
     private var ownsManualControl = false
     private var hasPendingManualCommand = false
     private var isRestoringOnExit = false
@@ -296,6 +279,40 @@ final class FanControlService {
     private convenience init() {
         self.init(readSnapshot: FanCommand.read)
         Self.current = self
+        FanCommand.setManualLostHandler { reason in
+            Task { @MainActor in FanControlService.shared.manualControlLost(reason) }
+        }
+    }
+
+    private func manualControlLost(_ reason: String) {
+        guard ownsManualControl else { return }
+        ownsManualControl = false
+        selectedPreset = nil
+        errorMessage = reason
+        LogManager.shared.warning("Fan: \(reason)", source: "Fan")
+        Task { await refresh() }
+    }
+
+    /// `macpowertoys://fan/<auto|cool|max>`: applies a preset with no window, for tests and scripts. It never
+    /// installs the helper, so it never shows a password prompt.
+    func selectFromLink(_ preset: FanPreset) async {
+        let owner = "deep-link"
+        start(owner: owner)
+        defer { stop(owner: owner) }
+        await refresh()
+        guard FanHelperService.shared.isEnabled else {
+            LogManager.shared.warning("Fan link \(preset.rawValue) skipped: the fan helper is not installed or is outdated.",
+                                      source: "Fan")
+            return
+        }
+        select(preset)
+        while isChanging { try? await Task.sleep(for: .milliseconds(100)) }
+        let rpm = snapshot?.fans.map { Int($0.actualRPM ?? 0) } ?? []
+        if let errorMessage {
+            LogManager.shared.warning("Fan link \(preset.rawValue) failed: \(errorMessage)", source: "Fan")
+        } else {
+            LogManager.shared.info("Fan link \(preset.rawValue) applied, fans now \(rpm) RPM", source: "Fan")
+        }
     }
 
     init(readSnapshot: @escaping @Sendable () -> FanSnapshot?,
@@ -392,17 +409,10 @@ final class FanControlService {
                 self.hasPendingManualCommand = false
                 if let commandError {
                     self.errorMessage = commandError
+                    LogManager.shared.warning("Fan \(preset.rawValue) failed: \(commandError)", source: "Fan")
                 } else {
-                    self.coolResetTask?.cancel()
-                    self.coolResetTask = nil
                     self.ownsManualControl = preset != .auto
                     self.selectedPreset = preset
-                    if preset == .cool {
-                        self.coolResetTask = Task { [weak self] in
-                            try? await Task.sleep(for: .seconds(600))
-                            await self?.revertCoolToAutomatic()
-                        }
-                    }
                 }
                 done?.resume(returning: commandError == nil)
                 await self.refresh()
@@ -412,18 +422,6 @@ final class FanControlService {
         }
     }
 
-    // Skips the UI gate and retries, so a failed revert shows an error instead of a stale Cool countdown.
-    private func revertCoolToAutomatic() async {
-        for delay in [0, 30, 120] {
-            if delay > 0 { try? await Task.sleep(for: .seconds(delay)) }
-            guard !Task.isCancelled, !isRestoringOnExit, selectedPreset == .cool else { return }
-            if isChanging { continue }
-            if await withCheckedContinuation({ send(.auto, done: $0) }) { return }
-        }
-        guard !Task.isCancelled, selectedPreset == .cool else { return }
-        errorMessage = "Cool could not return to Auto. Select Auto to retry."
-    }
-
     func restoreAutomaticOnExit() async throws {
         guard !isRestoringOnExit else { throw FanError("Automatic fan restoration is already in progress.") }
         guard ownsManualControl || hasPendingManualCommand else { return }
@@ -431,8 +429,6 @@ final class FanControlService {
         revision &+= 1
         isChanging = true
         commandRevision &+= 1
-        coolResetTask?.cancel()
-        coolResetTask = nil
         defer {
             revision &+= 1
             isRestoringOnExit = false

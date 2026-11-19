@@ -130,7 +130,7 @@ struct MainPanelFanRow<Setup: View>: View {
                 setup
                 OnePlusLinearSegmented(choices: Self.choices, selection: $selection, accessibilityLabel: "Fan preset",
                                        isChoiceEnabled: { $0.map(isChoiceEnabled) ?? false })
-                    .help("Auto follows macOS. Cool boosts cooling for 10 minutes. Max runs fans at their hardware maximum.")
+                    .help("Auto follows macOS. Cool raises fan speed as the chip warms, full speed at 75 °C. Max runs fans at their hardware maximum.")
             }
         }
     }
