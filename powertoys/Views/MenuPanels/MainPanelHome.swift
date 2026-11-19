@@ -3,7 +3,7 @@ import IOKit.ps
 import OnePlusUI
 import SwiftUI
 
-/// The combined panel's Home (DESIGN.md v15): the metric bento, the Fan and Kwake card, the top processes,
+/// The combined panel's Home (DESIGN.md v15): the metric bento, the Fan and Awake card, the top processes,
 /// and the joined action bar. 1 s sampling and the process refresh run only while Home is visible.
 struct TrayHomeView: View {
     static let owner = "main-tray-home"
@@ -15,7 +15,7 @@ struct TrayHomeView: View {
     var body: some View {
         MainPanelHomeContent(readings: readings, processes: MainPanelProcessDisplay.rows(MenuPanelTopProcesses.shared),
                              actions: actions, taskManager: taskManager) {
-            MainPanelControlCard(showsKwake: toolIDs.contains("awake"))
+            MainPanelControlCard(showsAwake: toolIDs.contains("awake"))
         }
         .background { MainPanelReadingsFeed(readings: $readings) }
         .task(id: isVisible) { if isVisible { taskManager = .installed() } }
@@ -403,39 +403,39 @@ struct MainPanelBento: View {
     }
 }
 
-/// One card with the Fan row and the Kwake row. A Mac without fans shows only Kwake; with neither, no card.
+/// One card with the Fan row and the Awake row. A Mac without fans shows only Awake; with neither, no card.
 private struct MainPanelControlCard: View {
-    let showsKwake: Bool
+    let showsAwake: Bool
 
     var body: some View {
         let showsFan = !FanControlService.shared.display.hasNoFans
-        if showsFan || showsKwake {
+        if showsFan || showsAwake {
             OnePlusLinearList(style: .panel) {
                 if showsFan { FanControlView(owner: TrayHomeView.owner) }
-                if showsKwake { MainPanelKwakeControl() }
+                if showsAwake { MainPanelAwakeControl() }
             }
         }
     }
 }
 
-/// The Kwake switch row. On keeps the Mac awake with no end time; the Kwake applet sets timed modes.
-struct MainPanelKwakeRow: View {
+/// The Awake switch row. On keeps the Mac awake with no end time; the Awake applet sets timed modes.
+struct MainPanelAwakeRow: View {
     @Binding var isOn: Bool
     let status: String
 
     var body: some View {
-        OnePlusLinearControlRow("Kwake", systemImage: ToolGlyph.awake.symbol, status: status) {
-            Toggle("Kwake", isOn: $isOn)
+        OnePlusLinearControlRow("Awake", systemImage: ToolGlyph.awake.symbol, status: status) {
+            Toggle("Awake", isOn: $isOn)
                 .toggleStyle(OnePlusLinearSwitchStyle())
                 .accessibilityIdentifier("awake.toggle")
         }
     }
 }
 
-private struct MainPanelKwakeControl: View {
+private struct MainPanelAwakeControl: View {
     var body: some View {
         let service = AwakeService.shared
-        MainPanelKwakeRow(isOn: Binding(get: { service.configuration.mode != .passive },
+        MainPanelAwakeRow(isOn: Binding(get: { service.configuration.mode != .passive },
                                         set: { service.setMode($0 ? .indefinite : .passive) }),
                           status: Self.status(service))
     }
@@ -504,7 +504,7 @@ struct AwakeTrayRow: View {
 
     var body: some View {
         VStack(alignment: .leading, spacing: 2) {
-            OnePlusMenuControlRow("Kwake",systemImage: ToolGlyph.awake.symbol, status: status) {
+            OnePlusMenuControlRow("Awake",systemImage: ToolGlyph.awake.symbol, status: status) {
                 OnePlusSegmented(
                     choices: [
                         (AwakeQuickMode?.some(.off), "Off"),
@@ -514,7 +514,7 @@ struct AwakeTrayRow: View {
                     ],
                     selection: quickMode
                 )
-                .accessibilityLabel("Kwake duration")
+                .accessibilityLabel("Awake duration")
             }
             OnePlusMenuControlRow("Keep display on", systemImage: "display") {
                 Toggle("Keep display on", isOn: Binding(

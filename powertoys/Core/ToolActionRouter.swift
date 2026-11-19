@@ -97,7 +97,7 @@ final class ToolActionRouter {
         open(toolID: resolved, activateApp: activateApp)
     }
 
-    /// These tools keep their settings on the main window tool page. Kwake has no window at all.
+    /// These tools keep their settings on the main window tool page. Awake has no window at all.
     nonisolated static let mainPageSettingsToolIDs: Set<String> = ["color-picker", "text-extractor", "portman"]
 
     func openMainPage(toolID: String, activateApp: Bool = true) {

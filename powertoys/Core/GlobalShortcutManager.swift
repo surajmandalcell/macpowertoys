@@ -320,7 +320,7 @@ final class GlobalShortcutManager {
         shortcuts: [GlobalShortcutAction: GlobalShortcut], enabled: Set<GlobalShortcutAction>, awakeEnabled: Bool
     ) -> String? {
         guard shortcut.isSet else { return nil }
-        if awakeEnabled && shortcut.hasSameChord(as: awakeShortcut) { return "Already used for Kwake." }
+        if awakeEnabled && shortcut.hasSameChord(as: awakeShortcut) { return "Already used for Awake." }
         if let other = GlobalShortcutAction.allCases.first(where: {
             $0 != action && enabled.contains($0) && shortcuts[$0]?.hasSameChord(as: shortcut) == true
         }) { return "Already used for \(other.title)." }

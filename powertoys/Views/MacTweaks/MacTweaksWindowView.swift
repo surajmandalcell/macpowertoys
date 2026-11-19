@@ -901,7 +901,7 @@ struct MacTweaksWindowView: View {
                     }
                 }
             ),
-            accessibilityLabel: "Kwake duration"
+            accessibilityLabel: "Awake duration"
         )
     }
 

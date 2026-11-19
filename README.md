@@ -18,7 +18,7 @@
 </p>
 
 <p align="center">
-  <img src="docs/screenshots/menu-home.png" width="49%" alt="The menu bar popup with Pick Color, Extract Text, and Ruler actions, Kwake duration, and fan mode">
+  <img src="docs/screenshots/menu-home.png" width="49%" alt="The menu bar popup with Pick Color, Extract Text, and Ruler actions, Awake duration, and fan mode">
   <img src="docs/screenshots/menu-portman.png" width="49%" alt="The Portman menu bar popup listing local listening servers with their memory use">
 </p>
 
@@ -27,7 +27,7 @@
 | | Tool | What it does |
 |:--:|---|---|
 | <img src="powertoys/Assets.xcassets/RulerLogo.imageset/icon.svg" width="28" alt=""> | **Ruler** | Measure the screen with movable rulers in pixels, millimeters, or inches. |
-| <img src="powertoys/Assets.xcassets/AwakeLogo.imageset/icon.svg" width="28" alt=""> | **Kwake** | Keep the Mac or display awake for a duration, until a time, or while a process runs. |
+| <img src="powertoys/Assets.xcassets/AwakeLogo.imageset/icon.svg" width="28" alt=""> | **Awake** | Keep the Mac or display awake for a duration, until a time, or while a process runs. |
 | <img src="powertoys/Assets.xcassets/ColorPickerLogo.imageset/icon.png" width="28" alt=""> | **Color Picker** | Sample any pixel, copy it in nine formats, and keep colors in projects. |
 | <img src="powertoys/Assets.xcassets/TextExtractorLogo.imageset/icon.png" width="28" alt=""> | **Text Extractor** | Select a screen region and copy its text. Apple Vision runs on the Mac. |
 | <img src="powertoys/Assets.xcassets/CloudSyncLogo.imageset/icon.svg" width="28" alt=""> | **RSync UI** | Plan and run copy, move, mirror, and two-way rclone transfers. |

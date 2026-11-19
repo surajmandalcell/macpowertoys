@@ -29,7 +29,7 @@ final class AwakeProcessTests: XCTestCase {
         XCTAssertFalse(AwakeService.processIsRunning(process.processIdentifier))
     }
 
-    func testDisabledKwakeRefusesExternalActions() {
+    func testDisabledAwakeRefusesExternalActions() {
         let service = AwakeService.shared
         let mode = service.configuration.mode
         let assertions = service.assertionOwnerCount

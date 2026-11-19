@@ -59,7 +59,7 @@ struct ToolAboutView: View {
         OnePlusLinearToolHeader(tool.name, detail: tool.description) {
             ToolIconView(tool: tool, size: OnePlusLinearEditorialMetrics.headerIcon)
         } actions: {
-            // Kwake has no window: its routes open this page, so Open would only reselect it.
+            // Awake has no window: its routes open this page, so Open would only reselect it.
             if tool.id != "awake" { MainLaunchTile(tool: tool) }
         }
     }

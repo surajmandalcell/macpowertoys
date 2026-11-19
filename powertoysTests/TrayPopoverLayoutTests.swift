@@ -104,7 +104,7 @@ final class TrayPopoverLayoutTests: XCTestCase {
         XCTAssertEqual(TrayTab.cloudSync.symbol, ToolGlyph.cloudSync.symbol)
         XCTAssertTrue(source.contains("TrayToolHeader"))
         XCTAssertTrue(source.contains("OnePlusLinearActionBar"))
-        XCTAssertTrue(source.contains("OnePlusLinearControlRow(\"Kwake\""))
+        XCTAssertTrue(source.contains("OnePlusLinearControlRow(\"Awake\""))
         XCTAssertFalse(source.contains("TrayTabStrip"))
         XCTAssertFalse(source.contains("LogsTrayView"))
         XCTAssertFalse(source.contains("ToolSettingsContent"))

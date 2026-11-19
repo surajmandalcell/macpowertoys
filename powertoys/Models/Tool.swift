@@ -169,7 +169,7 @@ struct RulerTool: Tool {
 
 struct AwakeTool: Tool {
     let id = "awake"
-    let name = "Kwake"
+    let name = "Awake"
     let summary = "Keep your Mac awake for a set time"
     let description = "Keep your Mac awake indefinitely, for a duration, or until a chosen time without changing Energy settings."
     let icon = ToolGlyph.awake.symbol
@@ -181,10 +181,10 @@ struct AwakeTool: Tool {
         ToolManualSection(title: "Modes", points: [
             "Off uses normal macOS power settings. Indefinite remains active until disabled.",
             "Timed mode counts down for a duration. Until mode expires at a specific date and time.",
-            "Keep Display On is independent and only applies while an active Kwake mode is selected."
+            "Keep Display On is independent and only applies while an active Awake mode is selected."
         ]),
         ToolManualSection(title: "System Behavior", points: [
-            "Kwake uses macOS power assertions and never edits your Energy settings.",
+            "Awake uses macOS power assertions and never edits your Energy settings.",
             "Manual sleep, closing a MacBook lid, low power, and thermal protection still take precedence."
         ])
     ]
@@ -333,7 +333,7 @@ struct MacTweaksTool: Tool {
         ]),
         ToolManualSection(title: "Power", points: [
             "Turn on Keep this Mac awake and choose a duration. Keep display on controls display sleep separately.",
-            "Read Status to check whether the Mac stays awake and how much time remains. These controls use the same Kwake state as the Kwake tool."
+            "Read Status to check whether the Mac stays awake and how much time remains. These controls use the same Awake state as the Awake tool."
         ])
     ]
 

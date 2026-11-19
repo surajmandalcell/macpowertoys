@@ -18,7 +18,7 @@ Each command opens the matching utility or menu-bar panel through the local
 | ----------------- | ----------------------------------- |
 | App               | MacPowerToys                        |
 | Screen            | Ruler, Color Picker, Text Extractor |
-| System            | Kwake, Input Devices, Event Viewer  |
+| System            | Awake, Input Devices, Event Viewer  |
 | Files and network | RSync UI, Portman                   |
 
 ## Local installation

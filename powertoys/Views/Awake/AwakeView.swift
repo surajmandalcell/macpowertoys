@@ -112,7 +112,7 @@ private struct AwakeStatusRow: View {
     }
 }
 
-/// The whole Kwake tool: the main window page hosts it, since Kwake has no window.
+/// The whole Awake tool: the main window page hosts it, since Awake has no window.
 struct AwakeSettingsView: View {
     @State private var service = AwakeService.shared
     @State private var hours = 0

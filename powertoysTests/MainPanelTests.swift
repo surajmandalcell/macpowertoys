@@ -116,7 +116,7 @@ final class MainPanelTests: XCTestCase {
     func testHomeHasItsNaturalHeightAndTheBodyScrollsOnlyAtTheCeiling() {
         let content = NSHostingView(rootView: Self.homeContent().frame(width: TrayPopoverLayout.bodyWidth)
             .environment(\.onePlusLinearPanelStyle, TrayPopoverLayout.style))
-        // Bento, Fan and Kwake group, process header and group, actions, 10 pt apart.
+        // Bento, Fan and Awake group, process header and group, actions, 10 pt apart.
         XCTAssertEqual(content.fittingSize.height, 266 + 10 + 72 + 10 + 24 + 158 + 10 + 32, accuracy: 0.5)
         let panel = NSHostingView(rootView: Self.panel(maximumHeight: 2_000))
         XCTAssertEqual(panel.fittingSize.width, OnePlusLinearMetrics.panelWidth, accuracy: 0.5)
@@ -234,7 +234,7 @@ final class MainPanelTests: XCTestCase {
         ) {
             OnePlusLinearList(style: .panel) {
                 MainPanelFanRow(status: "3,472 RPM", selection: .constant(.auto), isChoiceEnabled: { _ in true }) { EmptyView() }
-                MainPanelKwakeRow(isOn: .constant(true), status: "Indefinite")
+                MainPanelAwakeRow(isOn: .constant(true), status: "Indefinite")
             }
         }
     }
