@@ -385,6 +385,7 @@ private struct LogsSidebar: View {
             }
                 .keyboardShortcut(",")
         }
+        .linearSidebarTitle("Event Viewer")
         .task { rebuildCounts() }
         .onChange(of: version) { rebuildCounts() }
         .onDisappear {

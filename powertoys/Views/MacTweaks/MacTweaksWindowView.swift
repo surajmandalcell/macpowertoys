@@ -286,6 +286,7 @@ struct MacTweaksWindowView: View {
             ) { navigate(to: "about") }
             .accessibilityIdentifier("mac-tweaks.about")
         }
+        .linearSidebarTitle("Mac Tweaks")
     }
 
     private func sidebarGroup(_ name: String) -> some View {
