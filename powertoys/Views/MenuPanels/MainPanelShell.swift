@@ -96,6 +96,7 @@ struct TrayPopoverView: View {
             if let tab = TrayTab(panelID: id), tabs.contains(tab) { select(tab) }
         }
         .onAppear(perform: prepareTabs)
+        .onChange(of: MainPanelAwakeMark.shared.pending) { _, pending in if pending && !diagnostic { select(.home) } }
         .onChange(of: storedTabOrder) { prepareTabs() }
         .onReceive(NotificationCenter.default.publisher(for: UserDefaults.didChangeNotification)) { _ in
             prepareTabs()
