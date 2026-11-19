@@ -19,7 +19,7 @@ struct RemoteSettingsSheet: View {
     }
 
     var body: some View {
-        OnePlusSheet("\(remote.displayName) Settings", width: .small, close: { dismiss() }) {
+        OnePlusLinearSheet("\(remote.displayName) Settings", width: .medium, close: { dismiss() }) {
             OnePlusLinearAppletGroup {
                 OnePlusLinearAppletRow("Parallel transfers", detail: helpText(transfers, global: globalTransfers)) {
                     OnePlusStepperField("Parallel transfers", value: $transfers, in: 0...64)

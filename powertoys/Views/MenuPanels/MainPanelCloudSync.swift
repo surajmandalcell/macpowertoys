@@ -77,7 +77,8 @@ struct CloudSyncTrayView: View {
 }
 
 /// Home-style short tiles: bytes moved by the active transfers, and their summed speed with the file count.
-private struct CloudSyncTiles: View {
+/// The Transfers and Speed tiles, shared by the Cloud Sync panel and the RSync UI Transfers page.
+struct CloudSyncTiles: View {
     let active: [TransferJob]
 
     var body: some View {

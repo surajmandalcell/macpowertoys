@@ -198,7 +198,7 @@ struct RemoteBrowserView: View {
     private var contentArea: some View {
         VStack(spacing: OnePlusLinearMetrics.sectionGap) {
             if let folderCreationError {
-                OnePlusBanner(folderCreationError, tone: .error) {
+                OnePlusLinearBanner(.error, title: folderCreationError) {
                     Button("Dismiss") { self.folderCreationError = nil }
                 }
             }
@@ -250,7 +250,7 @@ struct RemoteBrowserView: View {
         let onPreview: ((Set<String>) -> Void)? = canQuickLook ? { quickLookSelection($0) } : nil
         return OnePlusNativeTable(
             columns: [
-                OnePlusGridColumn("Name", width: 240, textColor: OnePlusColor.ink),
+                OnePlusGridColumn("Name", width: 240, textColor: OnePlusLinearColor.ink),
                 OnePlusGridColumn("Size", width: 92, trailing: true, textRole: .mono),
                 OnePlusGridColumn("Modified", width: 116, trailing: true, textRole: .mono)
             ],
@@ -316,21 +316,21 @@ struct RemoteBrowserView: View {
     // MARK: Drop feedback
 
     private var dropOverlay: some View {
-        RoundedRectangle(cornerRadius: OnePlusMetrics.panelRadius)
-            .fill(OnePlusColor.selection)
+        RoundedRectangle(cornerRadius: OnePlusLinearMetrics.appletGroupRadius)
+            .fill(OnePlusLinearColor.fillRowHover)
             .overlay(
-                RoundedRectangle(cornerRadius: OnePlusMetrics.panelRadius)
-                    .strokeBorder(OnePlusColor.focus, style: StrokeStyle(lineWidth: 1, dash: [6, 4]))
+                RoundedRectangle(cornerRadius: OnePlusLinearMetrics.appletGroupRadius)
+                    .strokeBorder(OnePlusLinearColor.lineStrong, style: StrokeStyle(lineWidth: 1, dash: [6, 4]))
             )
             .overlay(
-                VStack(spacing: OnePlusMetrics.spacing[3]) {
+                VStack(spacing: OnePlusLinearSpace.row) {
                     Image(systemName: "arrow.down.circle")
-                        .foregroundStyle(OnePlusColor.ink)
+                        .foregroundStyle(OnePlusLinearColor.ink)
                     Text("Drop Finder files or folders to upload to \(remote.name):\(path)")
-                        .onePlusText(.cardTitle)
+                        .linearText(weight: .semibold)
                 }
             )
-            .padding(OnePlusMetrics.spacing[4])
+            .padding(OnePlusLinearMetrics.appletRowGap)
             .allowsHitTesting(false)
     }
 

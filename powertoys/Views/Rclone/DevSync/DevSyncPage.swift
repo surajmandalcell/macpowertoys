@@ -45,12 +45,10 @@ struct DevSyncStateBadge: View {
     var body: some View {
         HStack(spacing: 4) {
             Image(systemName: icon)
-                .onePlusText(.caption)
+                .linearText(OnePlusLinearMetrics.control, color: tint)
             Text(title)
-                .onePlusText(.caption)
+                .linearText(OnePlusLinearMetrics.control, color: tint)
         }
-        .foregroundStyle(tint)
-
         .fixedSize()
         .accessibilityElement(children: .combine)
     }
@@ -84,21 +82,19 @@ struct DevSyncValueRow: View {
     var body: some View {
         HStack(alignment: .firstTextBaseline, spacing: 8) {
             Text(label)
-                .onePlusText(.caption)
-                .foregroundStyle(OnePlusColor.secondary)
+                .linearText(OnePlusLinearMetrics.control, color: OnePlusLinearColor.secondary)
             Spacer(minLength: 8)
             HStack(spacing: 4) {
                 if let icon {
                     Image(systemName: icon)
-                        .onePlusText(.caption)
+                        .linearText(OnePlusLinearMetrics.control, color: tint)
                 }
                 Text(value)
-                    .onePlusText(.caption)
+                    .linearText(OnePlusLinearMetrics.control, color: tint)
                     .monospacedDigit()
                     .lineLimit(1)
                     .truncationMode(.middle)
             }
-            .foregroundStyle(tint)
         }
         .accessibilityElement(children: .combine)
         .accessibilityLabel("\(label): \(value)")
@@ -133,30 +129,34 @@ struct DevSyncPage: View {
             DevSyncSetupSheet()
         }
         .sheet(item: $manager.previewPlan) { plan in
-            OnePlusSheet("Pending Changes", width: .medium, close: { manager.previewPlan = nil }) {
+            OnePlusLinearSheet("Pending Changes", width: .medium, close: { manager.previewPlan = nil }) {
                 Text(plan.summary.primaryActionTitle)
                     .font(.system(size: OnePlusLinearMetrics.body, weight: .semibold))
                     .foregroundStyle(OnePlusLinearColor.ink)
                 if !plan.scanComplete {
-                    Text("The scan is incomplete. Deletions are blocked.").onePlusText(.caption, color: OnePlusColor.warn)
+                    Text("The scan is incomplete. Deletions are blocked.").linearText(OnePlusLinearMetrics.control, color: OnePlusLinearColor.warning)
                 }
                 ScrollView {
                     LazyVStack(alignment: .leading, spacing: 0) {
                         if plan.actions.isEmpty {
-                            Text("No pending changes.").onePlusText(.row)
+                            Text("No pending changes.").linearText()
                         }
                         ForEach(Array(zip(plan.actions.indices, plan.actions)), id: \.1.id) { index, action in
-                            HStack(spacing: OnePlusMetrics.actionSpacing) {
-                                Text(action.relativePath).onePlusText(.mono).lineLimit(1).truncationMode(.middle)
+                            HStack(spacing: OnePlusLinearMetrics.appletActionGap) {
+                                Text(action.relativePath)
+                                    .font(.system(size: OnePlusLinearMetrics.control, design: .monospaced))
+                                    .foregroundStyle(OnePlusLinearColor.secondary)
+                                    .lineLimit(1).truncationMode(.middle)
+                                    .textSelection(.enabled)
                                     .frame(maxWidth: .infinity, alignment: .leading).help(action.relativePath)
-                                Text(action.reason).onePlusText(.caption).lineLimit(1).help(action.reason)
+                                Text(action.reason).linearText(OnePlusLinearMetrics.control, color: OnePlusLinearColor.secondary).lineLimit(1).help(action.reason)
                             }
                             .onePlusTableRow(index: index)
                         }
                     }
                 }
                 .onePlusScrollIndicators()
-                .frame(height: OnePlusMetrics.spacing[8] * 12)
+                .frame(height: OnePlusLinearSpace.page * 12)
             } footer: {
                 Button("Done") { manager.previewPlan = nil }
                     .buttonStyle(OnePlusLinearButtonStyle(.soft))
@@ -251,30 +251,34 @@ private struct DevSyncProjectsList: View {
 
     var body: some View {
         ScrollView {
-            LazyVStack(alignment: .leading, spacing: 0) {
-                DevSyncSectionHeader(title: "Projects")
+            LazyVStack(alignment: .leading, spacing: OnePlusLinearEditorialMetrics.blockGap) {
                 if projection.groups.isEmpty {
-                    Text("No projects discovered yet.")
-                        .onePlusText(.caption)
-                        .foregroundStyle(OnePlusColor.secondary)
+                    OnePlusLinearAppletSection("Projects") {
+                        OnePlusLinearAppletRow("No projects discovered yet.") { EmptyView() }
+                    }
                 } else {
                     ForEach(projection.groups) { group in
-                        if !group.title.isEmpty {
-                            DevSyncSectionHeader(title: group.title)
-                        }
-                        ForEach(group.projects) { project in
-                            DevSyncProjectRow(pair: pair, project: project, manager: manager)
+                        OnePlusLinearAppletSection(group.title.isEmpty ? "Projects" : group.title) {
+                            ForEach(group.projects) { project in
+                                DevSyncProjectRow(pair: pair, project: project, manager: manager)
+                            }
                         }
                     }
                 }
 
                 if !projection.conflicts.isEmpty {
-                    DevSyncSectionHeader(title: "Conflicts")
-                    ForEach(projection.conflicts) { conflict in
-                        DevSyncConflictCard(pair: pair, conflict: conflict, manager: manager)
+                    VStack(alignment: .leading, spacing: OnePlusLinearSpace.group) {
+                        Text("Conflicts")
+                            .linearText(OnePlusLinearMetrics.control, weight: .semibold, color: OnePlusLinearColor.secondary)
+                            .padding(.leading, OnePlusLinearMetrics.appletRowPadding)
+                            .accessibilityAddTraits(.isHeader)
+                        ForEach(projection.conflicts) { conflict in
+                            DevSyncConflictCard(pair: pair, conflict: conflict, manager: manager)
+                        }
                     }
                 }
             }
+            .padding(.bottom, OnePlusLinearEditorialMetrics.bottom)
         }
         .onePlusScrollIndicators()
         .task(id: pair.id) { rebuildProjection() }
@@ -325,7 +329,7 @@ private struct DevSyncPairActions: View {
                 choices: manager.pairs.map { (Optional($0.id), $0.displayName) },
                 selection: $manager.selectedPairID,
                 accessibilityLabel: "Selected pair",
-                width: OnePlusMetrics.wideControlColumn
+                width: OnePlusLinearControlWidth.wide
             )
         }
 
@@ -373,7 +377,7 @@ private struct DevSyncStatusCard: View {
 
     var body: some View {
         OnePlusLinearAppletGroup {
-            VStack(alignment: .leading, spacing: OnePlusMetrics.spacing[3]) {
+            VStack(alignment: .leading, spacing: OnePlusLinearSpace.row) {
             LazyVGrid(columns: columns, alignment: .leading, spacing: 8) {
                 DevSyncValueRow(
                     label: "Drive",
@@ -419,8 +423,7 @@ private struct DevSyncStatusCard: View {
 
             if let error = status.lastError {
                 Label(error, systemImage: "exclamationmark.triangle.fill")
-                    .onePlusText(.caption)
-                    .foregroundStyle(OnePlusColor.warn)
+                    .linearText(OnePlusLinearMetrics.control, color: OnePlusLinearColor.warning)
                     .textSelection(.enabled)
             }
             }
@@ -436,7 +439,7 @@ struct DevSyncProgressCapsule: View {
     var body: some View {
         GeometryReader { geo in
             ZStack(alignment: .leading) {
-                Capsule().fill(OnePlusColor.track)
+                Capsule().fill(OnePlusLinearColor.barTrack)
                 Capsule()
                     .fill(tint)
                     .frame(width: max(0, min(1, fraction)) * geo.size.width)
@@ -450,20 +453,9 @@ struct DevSyncErrorBanner: View {
     let dismiss: () -> Void
 
     var body: some View {
-        HStack(spacing: 8) {
-            Image(systemName: "exclamationmark.triangle.fill")
-                .foregroundStyle(OnePlusColor.danger)
-            Text(message)
-                .onePlusText(.row)
-                .foregroundStyle(.red.opacity(0.9))
-                .textSelection(.enabled)
-            Spacer()
+        OnePlusLinearBanner(.error, title: message) {
             DevSyncIconButton(icon: "xmark", label: "Dismiss", action: dismiss)
         }
-        .padding(.horizontal, 12)
-        .padding(.vertical, 8)
-        .frame(maxWidth: .infinity, alignment: .leading)
-        .background(RoundedRectangle(cornerRadius: 8).fill(OnePlusColor.dangerFill))
     }
 }
 

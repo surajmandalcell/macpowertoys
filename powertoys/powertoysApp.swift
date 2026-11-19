@@ -336,16 +336,19 @@ private struct AppStorageContent<Content: View>: View {
             if let container = store.container {
                 content().modelContainer(container)
             } else if let error = store.errorMessage {
-                VStack(spacing: OnePlusMetrics.contentGap) {
-                    Text("Cannot open saved data").onePlusText(.sectionTitle)
-                    Text(error).onePlusText(.row).textSelection(.enabled)
-                    HStack {
+                VStack(spacing: OnePlusLinearSpace.group) {
+                    Text("Cannot open saved data").linearText(weight: .semibold)
+                    Text(error).linearText(color: OnePlusLinearColor.secondary).textSelection(.enabled)
+                    HStack(spacing: OnePlusLinearMetrics.appletActionGap) {
                         Button("Retry") { Task { await AppInitializer.shared.openStorage() } }
                         Button("Reveal Data Folder") { NSWorkspace.shared.open(AppDataLocation.directory) }
                     }
-                    .buttonStyle(OnePlusButtonStyle(.neutral))
+                    .buttonStyle(OnePlusLinearButtonStyle(.soft))
                 }
-                .padding(OnePlusMetrics.gutter)
+                .padding(OnePlusLinearEditorialMetrics.gutter)
+                .frame(maxWidth: .infinity, maxHeight: .infinity)
+                .background(OnePlusLinearColor.window)
+                .onePlusLinearEditorialPage()
             } else {
                 ProgressView("Opening saved data")
             }

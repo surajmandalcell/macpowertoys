@@ -30,7 +30,7 @@ struct NewTransferSheet: View {
     }
 
     var body: some View {
-        OnePlusSheet("New Transfer", width: .medium, close: { dismiss() }) {
+        OnePlusLinearSheet("New Transfer", width: .medium, close: { dismiss() }) {
             ScrollView {
                 VStack(alignment: .leading, spacing: OnePlusLinearMetrics.appletSectionGap) {
                     operationSection
@@ -41,7 +41,7 @@ struct NewTransferSheet: View {
                 }
             }
             .onePlusScrollIndicators()
-            .frame(height: OnePlusMetrics.spacing[8] * 17)
+            .frame(height: OnePlusLinearSpace.page * 17)
         } footer: {
             Button("Cancel") { dismiss() }
                 .keyboardShortcut(.cancelAction)
@@ -76,28 +76,26 @@ struct NewTransferSheet: View {
                 ) {
                     OnePlusLinearSelect(choices: RcloneOperation.allCases.map { ($0, $0.displayName) },
                                         selection: $operation, accessibilityLabel: "Operation",
-                                        width: OnePlusMetrics.wideControlColumn)
+                                        width: OnePlusLinearControlWidth.wide)
                 }
             }
 
             if operation.isDestructive {
                 HStack(spacing: 8) {
                     Image(systemName: "exclamationmark.triangle.fill")
-                        .onePlusText(.row)
-                        .foregroundStyle(OnePlusColor.warn)
+                        .linearText(color: OnePlusLinearColor.warning)
                     Text(operation == .sync
                          ? "Sync deletes files at the destination that no longer exist in the source."
                          : "Move removes files from the source after they are transferred.")
-                        .onePlusText(.caption)
-                        .foregroundStyle(OnePlusColor.warn)
+                        .linearText(OnePlusLinearMetrics.control, color: OnePlusLinearColor.warning)
                         .fixedSize(horizontal: false, vertical: true)
                 }
                 .padding(.horizontal, 10)
                 .padding(.vertical, 8)
                 .frame(maxWidth: .infinity, alignment: .leading)
                 .background(
-                    RoundedRectangle(cornerRadius: 8)
-                        .fill(OnePlusColor.warn.opacity(0.12))
+                    RoundedRectangle(cornerRadius: OnePlusLinearMetrics.appletGroupRadius)
+                        .fill(OnePlusLinearColor.warning.opacity(0.12))
                 )
             }
         }
@@ -218,12 +216,12 @@ private struct EndpointCard: View {
                             choices: remotes.map { ($0.name, "\($0.name) · \($0.typeLabel)") },
                             selection: $config.remoteName,
                             accessibilityLabel: "Remote",
-                            width: OnePlusMetrics.wideControlColumn
+                            width: OnePlusLinearControlWidth.wide
                         )
                     }
                     OnePlusLinearAppletRow("Path within remote") {
                         OnePlusLinearTextField("Optional", text: $config.remotePath)
-                            .frame(width: OnePlusMetrics.wideControlColumn)
+                            .frame(width: OnePlusLinearControlWidth.wide)
                     }
                 }
             }

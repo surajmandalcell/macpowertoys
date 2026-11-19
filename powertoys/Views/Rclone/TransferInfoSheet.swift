@@ -15,7 +15,8 @@ struct TransferInfoSheet: View {
     @AppStorage("cloudsync.details.selectedTab") private var selectedTab: InfoTab = .overview
     @State private var showTransferPlanInfo = false
 
-    private static let gutter = OnePlusMetrics.spacing[7]
+    /// The tab row's own inset, so each tab's groups line up under the tabs.
+    private static let gutter = OnePlusLinearSpace.section
 
     init(details: TransferDetails) {
         self.recordDetails = details
@@ -58,7 +59,7 @@ struct TransferInfoSheet: View {
     }
 
     var body: some View {
-        OnePlusSheet("Transfer Info", width: .large, close: { dismiss() }) {
+        OnePlusLinearSheet("Transfer Info", width: .large, close: { dismiss() }) {
             OnePlusLinearAppletTabRow(tabs: infoTabs, selection: $selectedTab) { EmptyView() }
             Group {
                 switch visibleTab {
@@ -75,7 +76,7 @@ struct TransferInfoSheet: View {
                     settingsContent
                 }
             }
-            .frame(minHeight: OnePlusMetrics.spacing[8] * 18)
+            .frame(minHeight: OnePlusLinearSpace.page * 18)
         } footer: {
             Button("Done") { dismiss() }
                 .keyboardShortcut(.defaultAction)
@@ -125,7 +126,7 @@ struct TransferInfoSheet: View {
                                 choices: TransferOrder.allCases.map { ($0, $0.displayName) },
                                 selection: settingBinding(job, \.transferOrder),
                                 accessibilityLabel: "Transfer order",
-                                width: OnePlusMetrics.controlColumn
+                                width: OnePlusLinearControlWidth.regular
                             )
                         }
                     }
@@ -176,11 +177,10 @@ struct TransferInfoSheet: View {
     private func row(_ label: String, value: String) -> some View {
         HStack(alignment: .firstTextBaseline) {
             Text(label)
-                .onePlusText(.row)
-                .foregroundStyle(OnePlusColor.secondary)
+                .linearText(color: OnePlusLinearColor.secondary)
             Spacer(minLength: 12)
             Text(value)
-                .onePlusText(.row)
+                .linearText()
                 .multilineTextAlignment(.trailing)
                 .textSelection(.enabled)
         }
@@ -189,11 +189,11 @@ struct TransferInfoSheet: View {
     private func monoRow(_ label: String, value: String) -> some View {
         HStack(alignment: .firstTextBaseline) {
             Text(label)
-                .onePlusText(.row)
-                .foregroundStyle(OnePlusColor.secondary)
+                .linearText(color: OnePlusLinearColor.secondary)
             Spacer(minLength: 12)
             Text(value)
-                .onePlusText(.mono)
+                .font(.system(size: OnePlusLinearMetrics.control, design: .monospaced))
+                .foregroundStyle(OnePlusLinearColor.secondary)
                 .multilineTextAlignment(.trailing)
                 .textSelection(.enabled)
         }
@@ -208,14 +208,13 @@ struct TransferInfoSheet: View {
                 .lineLimit(1)
                 .truncationMode(.middle)
             Image(systemName: "arrow.right")
-                .onePlusText(.caption)
-                .foregroundStyle(OnePlusColor.muted)
+                .linearText(OnePlusLinearMetrics.control, color: OnePlusLinearColor.muted)
             Text(details.destinationDisplay)
                 .lineLimit(1)
                 .truncationMode(.middle)
             Spacer(minLength: 0)
         }
-        .onePlusText(.row)
+        .linearText()
 
         row("Kind", value: details.kind == .directory ? "Folder" : "Single file")
         monoRow("Source", value: details.sourceFs)
@@ -226,14 +225,13 @@ struct TransferInfoSheet: View {
     private var resultRows: some View {
         HStack(alignment: .firstTextBaseline) {
             Text("State")
-                .onePlusText(.row)
-                .foregroundStyle(OnePlusColor.secondary)
+                .linearText(color: OnePlusLinearColor.secondary)
             Spacer(minLength: 12)
             HStack(spacing: 4) {
                 Image(systemName: details.state.icon)
-                    .onePlusText(.caption)
+                    .font(.system(size: OnePlusLinearMetrics.control))
                 Text(details.state.displayName)
-                    .onePlusText(.row)
+                    .font(.system(size: OnePlusLinearMetrics.body))
             }
             .foregroundStyle(details.state.tint)
         }
@@ -250,23 +248,20 @@ struct TransferInfoSheet: View {
             HStack {
                 HStack(spacing: 2) {
                     Text("Transfer plan")
-                        .onePlusText(.row)
-                        .foregroundStyle(OnePlusColor.secondary)
+                        .linearText(color: OnePlusLinearColor.secondary)
 
                     Button {
                         showTransferPlanInfo.toggle()
                     } label: {
                         Image(systemName: "info.circle")
-                            .onePlusText(.caption)
-                            .foregroundStyle(OnePlusColor.secondary)
+                            .linearText(OnePlusLinearMetrics.control, color: OnePlusLinearColor.secondary)
                     }
                     .buttonStyle(OnePlusLinearButtonStyle())
                     .accessibilityLabel("About transfer plan")
                     .help("About the transfer plan")
                     .popover(isPresented: $showTransferPlanInfo) {
                         Text("Runs an rclone dry comparison. The total only grows when new work is found.")
-                            .onePlusText(.caption)
-                            .foregroundStyle(OnePlusColor.secondary)
+                            .linearText(OnePlusLinearMetrics.control, color: OnePlusLinearColor.secondary)
                             .frame(width: 220, alignment: .leading)
                             .padding(12)
                     }
@@ -277,8 +272,7 @@ struct TransferInfoSheet: View {
                         ProgressView()
                             .controlSize(.small)
                         Text("Comparing")
-                            .onePlusText(.row)
-                            .foregroundStyle(OnePlusColor.secondary)
+                            .linearText(color: OnePlusLinearColor.secondary)
                     }
                     .fixedSize()
                 } else {
@@ -289,8 +283,8 @@ struct TransferInfoSheet: View {
             }
             if let error = job.recalculationError {
                 Text(error)
-                    .onePlusText(.caption)
-                    .foregroundStyle(OnePlusColor.danger)
+                    .linearText(OnePlusLinearMetrics.control, color: OnePlusLinearColor.destructiveText)
+                    .textSelection(.enabled)
             }
         }
 
@@ -300,8 +294,7 @@ struct TransferInfoSheet: View {
 
         if let message = details.errorMessage {
             Text(message)
-                .onePlusText(.caption)
-                .foregroundStyle(OnePlusColor.danger)
+                .linearText(OnePlusLinearMetrics.control, color: OnePlusLinearColor.destructiveText)
                 .textSelection(.enabled)
         }
 
@@ -319,12 +312,12 @@ struct TransferInfoSheet: View {
     private var ignoreRuleRows: some View {
         if details.excludePatterns.isEmpty {
             Text("None")
-                .onePlusText(.row)
-                .foregroundStyle(OnePlusColor.muted)
+                .linearText(color: OnePlusLinearColor.muted)
         } else {
             ForEach(details.excludePatterns, id: \.self) { pattern in
                 Text(pattern)
-                    .onePlusText(.mono)
+                    .font(.system(size: OnePlusLinearMetrics.control, design: .monospaced))
+                    .foregroundStyle(OnePlusLinearColor.secondary)
                     .textSelection(.enabled)
             }
         }
@@ -351,8 +344,7 @@ private struct TransferChangesTab: View {
                 }
                 Spacer()
                 Text("\(entries.count) / 100")
-                    .onePlusText(.caption)
-                    .foregroundStyle(OnePlusColor.muted)
+                    .linearText(OnePlusLinearMetrics.control, color: OnePlusLinearColor.muted)
                     .monospacedDigit()
             }
 
@@ -382,33 +374,31 @@ private struct TransferChangesTab: View {
     private func changeRow(_ entry: LocalChangeRecord) -> some View {
         HStack(alignment: .top, spacing: 10) {
             Image(systemName: entry.kind.icon)
-                .onePlusText(.cardTitle)
-                .foregroundStyle(changeTint(entry.kind))
+                .linearText(weight: .semibold, color: changeTint(entry.kind))
                 .frame(width: 24, height: 24)
                 .background(changeTint(entry.kind).opacity(0.1))
                 .clipShape(RoundedRectangle(cornerRadius: 6))
 
             VStack(alignment: .leading, spacing: 3) {
                 Text(entry.relativePath)
-                    .onePlusText(.mono)
+                    .font(.system(size: OnePlusLinearMetrics.control, design: .monospaced))
+                    .foregroundStyle(OnePlusLinearColor.secondary)
                     .lineLimit(2)
                     .textSelection(.enabled)
                 Text("\(entry.kind.displayName) · \(entry.operation.displayName) · \(entry.sourceDisplay)")
-                    .onePlusText(.caption)
-                    .foregroundStyle(OnePlusColor.secondary)
+                    .linearText(OnePlusLinearMetrics.control, color: OnePlusLinearColor.secondary)
                     .lineLimit(1)
             }
 
             Spacer(minLength: 12)
 
             Text(entry.timestamp.formatted(date: .abbreviated, time: .shortened))
-                .onePlusText(.caption)
-                .foregroundStyle(OnePlusColor.muted)
+                .linearText(OnePlusLinearMetrics.control, color: OnePlusLinearColor.muted)
                 .multilineTextAlignment(.trailing)
                 .fixedSize(horizontal: true, vertical: false)
         }
         .padding(10)
-        .background(OnePlusColor.track)
+        .background(OnePlusLinearColor.barTrack)
         .clipShape(RoundedRectangle(cornerRadius: 10))
     }
 

@@ -8,23 +8,29 @@ extension OnePlusWindowCanvas {
 }
 
 /// A v15 sidebar tool window: the Linear sidebar and one pane on the window surface, no texture,
-/// the Quiet Raised control look, and Quiet motion.
+/// the Quiet Raised control look, and Quiet motion. `editorial` gives the pane and its sheets the main-window
+/// language instead: editorial groups and tables, and raised keys.
 struct LinearToolWindow<Sidebar: View, Content: View>: View {
     let canvas: OnePlusWindowCanvas
+    var editorial = false
     @ViewBuilder let sidebar: Sidebar
     @ViewBuilder let content: Content
 
     var body: some View {
         HStack(spacing: 0) {
             sidebar.frame(maxHeight: .infinity).clipped()
-            content.frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topLeading).clipped()
+            pane.frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topLeading).clipped()
         }
         .background(OnePlusLinearColor.window)
         .ignoresSafeArea()
         .onePlusFixedCanvas(canvas.linear)
         .onePlusNeutralControls()
-        .environment(\.onePlusLinearControlLook, .quietRaised)
+        .environment(\.onePlusLinearControlLook, editorial ? .raisedKeys : .quietRaised)
         .onePlusLinearMotion(.quiet)
+    }
+
+    @ViewBuilder private var pane: some View {
+        if editorial { content.onePlusLinearEditorialPage() } else { content }
     }
 }
 

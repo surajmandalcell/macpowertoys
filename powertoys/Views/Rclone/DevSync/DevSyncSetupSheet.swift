@@ -212,7 +212,7 @@ struct DevSyncSetupSheet: View {
     @State private var model: DevSyncSetupModel?
 
     var body: some View {
-        OnePlusSheet("Dev Sync Setup", width: .medium, close: { dismiss() }) {
+        OnePlusLinearSheet("Dev Sync Setup", width: .medium, close: { dismiss() }) {
             if let model {
                 VStack(alignment: .leading, spacing: 16) {
                     stepLabel(model)
@@ -226,7 +226,7 @@ struct DevSyncSetupSheet: View {
                     .onePlusScrollIndicators()
                     .frame(maxHeight: .infinity)
                 }
-                .frame(height: OnePlusMetrics.spacing[8] * 16)
+                .frame(height: OnePlusLinearSpace.page * 16)
             }
         } footer: {
             if let model {
@@ -295,12 +295,12 @@ private struct DevSyncSetupRootsStep: View {
             OnePlusLinearAppletGroup {
                 OnePlusLinearAppletRow("Pair name") {
                     OnePlusLinearTextField("Pair name", text: $model.draft.displayName)
-                        .frame(width: OnePlusMetrics.wideControlColumn)
+                        .frame(width: OnePlusLinearControlWidth.wide)
                 }
                 OnePlusLinearAppletRow("Mode", detail: model.draft.mode.summary) {
                     OnePlusLinearSelect(choices: DevSyncMode.allCases.map { ($0, $0.displayName) },
                                         selection: $model.draft.mode, accessibilityLabel: "Mode",
-                                        width: OnePlusMetrics.wideControlColumn)
+                                        width: OnePlusLinearControlWidth.wide)
                 }
                 rootRow(title: "Internal root", url: model.draft.internalURL) { model.draft.internalURL = $0 }
                 rootRow(title: "External root", url: model.draft.externalURL) { model.draft.externalURL = $0 }
@@ -376,8 +376,7 @@ private struct DevSyncSetupCompatibilityStep: View {
             }
             ForEach(model.compatibilityNotes, id: \.self) { note in
                 Label(note, systemImage: "info.circle")
-                    .onePlusText(.caption)
-                    .foregroundStyle(OnePlusColor.secondary)
+                    .linearText(OnePlusLinearMetrics.control, color: OnePlusLinearColor.secondary)
             }
             if capabilities.fidelity == .blocked {
                 DevSyncIssueStrip(message: "This pair cannot sync until both drives support the required file features.")
@@ -404,8 +403,7 @@ private struct DevSyncSetupCompatibilityStep: View {
                 DevSyncValueRow(label: "Time precision", value: "\(volume.modifyWindowSeconds)s")
             } else {
                 Text("Not probed")
-                    .onePlusText(.caption)
-                    .foregroundStyle(OnePlusColor.muted)
+                    .linearText(OnePlusLinearMetrics.control, color: OnePlusLinearColor.muted)
             }
         }
         .frame(maxWidth: .infinity, alignment: .leading)
@@ -420,13 +418,12 @@ private struct DevSyncSetupProjectsStep: View {
     var body: some View {
         LazyVStack(alignment: .leading, spacing: 16) {
             Image(systemName: "info.circle")
-                .foregroundStyle(OnePlusColor.secondary)
+                .foregroundStyle(OnePlusLinearColor.secondary)
                 .help("Everything under the internal root syncs. Repositories sync as units; other files and folders sync as one unit. The skip list excludes caches, dependencies, build outputs and tmp. Git-tracked files still sync.")
                 .accessibilityLabel("About project discovery")
             if model.groups.isEmpty {
                 Text(model.isWorking ? "Looking for repositories…" : "No repositories found in these roots.")
-                    .onePlusText(.caption)
-                    .foregroundStyle(OnePlusColor.secondary)
+                    .linearText(OnePlusLinearMetrics.control, color: OnePlusLinearColor.secondary)
             }
             ForEach(model.groups) { group in
                 LazyVStack(alignment: .leading, spacing: 8) {
@@ -449,32 +446,30 @@ private struct DevSyncSetupProjectItemRow: View {
         VStack(alignment: .leading, spacing: 6) {
             HStack(spacing: 8) {
                 Text(item.relativePath.isEmpty ? "Everything else" : item.name)
-                    .onePlusText(.row)
+                    .linearText()
 
                 Spacer(minLength: 8)
 
                 if item.includedBytes + item.excludedBytes > 0 {
                     Text("\(RcloneFormat.bytes(item.includedBytes)) included · \(RcloneFormat.bytes(item.excludedBytes)) excluded")
-                        .onePlusText(.mono)
-                        .foregroundStyle(OnePlusColor.secondary)
+                        .linearText(OnePlusLinearMetrics.control, color: OnePlusLinearColor.secondary)
                 }
 
                 Text(item.residency?.displayName ?? item.candidateKind?.displayName ?? item.kind.displayName)
-                    .onePlusText(.caption)
-                    .foregroundStyle(OnePlusColor.secondary)
+                    .linearText(OnePlusLinearMetrics.control, color: OnePlusLinearColor.secondary)
             }
 
             Text(item.relativePath.isEmpty ? "loose files and folders outside repositories" : item.relativePath)
-                .onePlusText(.mono)
-                .foregroundStyle(OnePlusColor.secondary)
+                .font(.system(size: OnePlusLinearMetrics.control, design: .monospaced))
+                .foregroundStyle(OnePlusLinearColor.secondary)
                 .lineLimit(1)
                 .truncationMode(.middle)
+                .textSelection(.enabled)
 
 
             ForEach(item.warnings, id: \.self) { warning in
                 Label(warning.displayName, systemImage: "exclamationmark.triangle.fill")
-                    .onePlusText(.caption)
-                    .foregroundStyle(OnePlusColor.warn)
+                    .linearText(OnePlusLinearMetrics.control, color: OnePlusLinearColor.warning)
             }
 
             if let target = item.adoptableLinkTarget {
@@ -489,9 +484,9 @@ private struct DevSyncSetupProjectItemRow: View {
                 }
             }
         }
-        .padding(OnePlusMetrics.cardPadding)
-        .onePlusRowHover()
-        .overlay(alignment: .bottom) { OnePlusColor.lineSoft.frame(height: 1) }
+        .padding(OnePlusLinearSpace.section)
+        .linearGroupRowHover()
+        .overlay(alignment: .bottom) { OnePlusLinearColor.lineSoft.frame(height: 1) }
     }
 }
 
@@ -510,16 +505,14 @@ private struct DevSyncSetupPreviewStep: View {
                 }
                 ForEach(preview.warnings, id: \.self) { warning in
                     Label(warning, systemImage: "exclamationmark.triangle.fill")
-                        .onePlusText(.caption)
-                        .foregroundStyle(OnePlusColor.warn)
+                        .linearText(OnePlusLinearMetrics.control, color: OnePlusLinearColor.warning)
                 }
                 if !preview.scanComplete {
                     DevSyncIssueStrip(message: "Some folders could not be read. Deletions stay disabled until a complete scan succeeds.")
                 }
             } else {
                 Text("Building the preview…")
-                    .onePlusText(.caption)
-                    .foregroundStyle(OnePlusColor.secondary)
+                    .linearText(OnePlusLinearMetrics.control, color: OnePlusLinearColor.secondary)
             }
         }
     }
@@ -565,10 +558,11 @@ private struct DevSyncSetupPreviewStep: View {
             DevSyncSectionHeader(title: "Sensitive files included")
             ForEach(paths.prefix(20), id: \.self) { path in
                 Text(path)
-                    .onePlusText(.mono)
-                    .foregroundStyle(OnePlusColor.secondary)
+                    .font(.system(size: OnePlusLinearMetrics.control, design: .monospaced))
+                    .foregroundStyle(OnePlusLinearColor.secondary)
                     .lineLimit(1)
                     .truncationMode(.middle)
+                    .textSelection(.enabled)
             }
         }
         .devSyncGroup()
@@ -581,19 +575,7 @@ struct DevSyncIssueStrip: View {
     let message: String
 
     var body: some View {
-        HStack(spacing: 8) {
-            Image(systemName: "exclamationmark.triangle.fill")
-                .onePlusText(.row)
-                .foregroundStyle(OnePlusColor.warn)
-            Text(message)
-                .onePlusText(.caption)
-                .foregroundStyle(OnePlusColor.warn)
-                .fixedSize(horizontal: false, vertical: true)
-        }
-        .padding(.horizontal, 10)
-        .padding(.vertical, 8)
-        .frame(maxWidth: .infinity, alignment: .leading)
-        .background(RoundedRectangle(cornerRadius: 8).fill(OnePlusColor.warn.opacity(0.12)))
+        OnePlusLinearBanner(.warning, title: message) { EmptyView() }
     }
 }
 

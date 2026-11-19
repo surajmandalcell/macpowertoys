@@ -64,14 +64,14 @@ struct RcloneSettingsView: View {
             }
             OnePlusLinearAppletRow("Bandwidth limit", detail: "Leave blank or enter off for no limit.", systemImage: "speedometer") {
                 OnePlusLinearTextField("10M, 1.5GiB, or off", text: $bandwidthLimit, error: RcloneBandwidthInput.error(for: bandwidthLimit))
-                    .frame(width: OnePlusMetrics.wideControlColumn)
+                    .frame(width: OnePlusLinearControlWidth.wide)
             }
             OnePlusLinearAppletRow("Default operation", systemImage: "arrow.left.arrow.right") {
                 OnePlusLinearSelect(
                     choices: RcloneOperation.allCases.map { ($0.rawValue, $0.displayName) },
                     selection: $defaultOperation,
                     accessibilityLabel: "Default operation",
-                    width: OnePlusMetrics.wideControlColumn
+                    width: OnePlusLinearControlWidth.wide
                 )
             }
         }
@@ -80,7 +80,7 @@ struct RcloneSettingsView: View {
     private var ignorePatternsSection: some View {
         OnePlusLinearAppletSection("Ignore patterns") {
             OnePlusTextEditor("Ignore patterns", text: $ignorePatterns)
-                .frame(height: OnePlusMetrics.spacing[6] * 8)
+                .frame(height: OnePlusLinearSpace.section * 8)
                 .help("One glob per line. Used as an exclude rule.")
                 .padding(OnePlusLinearMetrics.appletRowPadding)
         }
@@ -112,7 +112,7 @@ struct RcloneSettingsView: View {
         OnePlusLinearAppletSection("rclone binary") {
             OnePlusLinearAppletRow("rclone binary path", detail: "Leave blank to use the detected binary.", systemImage: "terminal") {
                 OnePlusLinearTextField("Auto-detected", text: $binaryPath)
-                    .frame(width: OnePlusMetrics.wideControlColumn)
+                    .frame(width: OnePlusLinearControlWidth.wide)
                     .accessibilityLabel("rclone binary path")
             }
         }

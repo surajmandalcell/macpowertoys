@@ -1,16 +1,12 @@
 import OnePlusUI
 import SwiftUI
 
-/// A fixed RSync UI page on the v15 pane gutters, for pages whose table or list scrolls inside the page.
+/// A fixed RSync UI page on the editorial insets, for pages whose table or list scrolls inside the page.
 struct RSyncFixedPane<Content: View>: View {
     @ViewBuilder let content: Content
 
     var body: some View {
-        VStack(alignment: .leading, spacing: OnePlusLinearMetrics.sectionGap) { content }
-            .padding(.top, OnePlusLinearMetrics.bodyTop)
-            .padding(.horizontal, OnePlusLinearMetrics.gutter)
-            .padding(.bottom, OnePlusLinearMetrics.gutter)
-            .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topLeading)
+        OnePlusLinearEditorialFixedBody { content }
     }
 }
 

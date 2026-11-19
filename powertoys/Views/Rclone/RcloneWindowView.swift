@@ -27,7 +27,7 @@ struct RcloneWindowView: View {
     var body: some View {
         @Bindable var manager = manager
 
-        LinearToolWindow(canvas: .rclone) {
+        LinearToolWindow(canvas: .rclone, editorial: true) {
             RcloneSidebarView(content: $content, showAddRemote: $showAddRemote)
         } content: {
             LinearToolPane(page: $content, title: paneTitle) {
