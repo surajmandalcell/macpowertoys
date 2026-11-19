@@ -6,19 +6,16 @@ import AppKit
 final class MicInputLevelMonitor {
     private var engine: AVAudioEngine?
     private(set) var level: Float = 0
-    private(set) var permission = AVCaptureDevice.authorizationStatus(for: .audio)
+    var permission: AVAuthorizationStatus { PermissionCenter.shared.microphoneStatus }
     private(set) var error: String?
 
     func requestAndStart() async {
-        if permission == .notDetermined {
-            _ = await AVCaptureDevice.requestAccess(for: .audio)
-            permission = AVCaptureDevice.authorizationStatus(for: .audio)
-        }
+        if permission == .notDetermined { await PermissionCenter.shared.requestMicrophone() }
         if permission == .authorized { start() }
     }
 
     func refreshPermission() {
-        permission = AVCaptureDevice.authorizationStatus(for: .audio)
+        PermissionCenter.shared.refreshMicrophone()
         if permission == .authorized { start() } else { stop() }
     }
 

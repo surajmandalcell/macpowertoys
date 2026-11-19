@@ -206,5 +206,8 @@ runs. Prompts come only from a user action.
   polls; a grant or hiding stops it). A real grant and a real helper audio
   restart need the owner's Mac.
 - The `nettoys-neighbor` launchd label, mach service, plist, and the
-  `nettoys-helper` bundle id stay: they are the registered, approved Login
-  Items identity, and a rename forces a new approval.
+  `nettoys-helper` bundle id stay (owner decision): they are the registered,
+  approved Login Items identity, and a rename makes macOS ask for approval
+  again, which is worse than an old internal name.
+- Mac Tweaks' microphone Test reads and asks through
+  `PermissionCenter.microphoneStatus` and `requestMicrophone()`.

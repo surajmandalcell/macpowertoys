@@ -25,6 +25,8 @@ final class PermissionCenter {
     static let shared = PermissionCenter(read: nil)
 
     private(set) var granted: Set<PermissionKind>
+    /// Kept as the full status so a view can tell "never asked" from "denied".
+    private(set) var microphoneStatus = AVAuthorizationStatus.notDetermined
     @ObservationIgnored private let read: Reader
     @ObservationIgnored private let readsFanHelper: Bool
     @ObservationIgnored private let pollInterval: Duration
@@ -40,6 +42,7 @@ final class PermissionCenter {
         self.pollInterval = pollInterval
         granted = observesSystem ? Self.readGrantedWithoutWaiting() : []
         guard observesSystem else { return }
+        refreshMicrophone()
         NotificationCenter.default.addObserver(forName: NSApplication.didBecomeActiveNotification,
                                                object: nil, queue: .main) { _ in
             Task { @MainActor in await PermissionCenter.shared.refresh() }
@@ -66,6 +69,7 @@ final class PermissionCenter {
 
     func refresh() async {
         let next = await read()
+        if readsFanHelper { refreshMicrophone() }
         let daemonBefore = readsFanHelper ? FanHelperService.shared.status : nil
         if readsFanHelper { await FanHelperService.shared.refresh() }
         let changed = next != granted || (readsFanHelper && daemonBefore != FanHelperService.shared.status)
@@ -79,6 +83,21 @@ final class PermissionCenter {
         let options = [kAXTrustedCheckOptionPrompt.takeUnretainedValue() as String: true] as CFDictionary
         _ = AXIsProcessTrustedWithOptions(options)
         Task { await refresh() }
+    }
+
+    /// Prompt-free; updates the microphone status at once.
+    func refreshMicrophone() {
+        let status = AVCaptureDevice.authorizationStatus(for: .audio)
+        if microphoneStatus != status { microphoneStatus = status }
+    }
+
+    /// Call only from an explicit user action. macOS shows the prompt only while undetermined.
+    func requestMicrophone() async {
+        if AVCaptureDevice.authorizationStatus(for: .audio) == .notDetermined {
+            _ = await AVCaptureDevice.requestAccess(for: .audio)
+        }
+        refreshMicrophone()
+        await refresh()
     }
 
     /// A visible row that shows `kind` registers here; nil unregisters it.
