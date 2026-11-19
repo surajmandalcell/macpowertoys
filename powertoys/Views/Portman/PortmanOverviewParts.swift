@@ -122,7 +122,7 @@ struct PortmanPortChip: View {
 }
 
 /// A 40 pt server row: port chip, app icon, name over branch and uptime, then a sparkline and memory. On hover the
-/// sparkline gives way to Open and Stop, and the row rises 1 pt.
+/// sparkline gives way to Open and Stop. Hover is a fill step only; nothing moves.
 struct PortmanServerRow: View {
     let row: PortmanOverviewRow
     let icon: NSImage?
@@ -132,7 +132,6 @@ struct PortmanServerRow: View {
     let openLocal: () -> Void
     let stop: () -> Void
     @State private var hover = false
-    @Environment(\.accessibilityReduceMotion) private var reduceMotion
 
     var body: some View {
         let port = row.port
@@ -175,7 +174,6 @@ struct PortmanServerRow: View {
             if !cleanupMode { open() } else if row.canStop { selected.toggle() }
         }
         .linearRowHover($hover, sample: .rest, enabled: true, panelStyle: .fillSteps, selected: cleanupMode && selected)
-        .offset(y: hover && !reduceMotion ? -OnePlusMotion.tileLift : 0)
         .accessibilityElement(children: .contain)
         .accessibilityAddTraits(.isButton)
         .accessibilityLabel(cleanupMode ? "Select port \(String(port.port)) for cleanup" : "Show port \(String(port.port)) details")
