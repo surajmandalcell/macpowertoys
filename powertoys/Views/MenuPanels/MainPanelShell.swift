@@ -183,7 +183,7 @@ struct MainPanelFrame<Regions: View>: View {
                 OnePlusLinearIconTabs(tabs: menuTabs, selection: $selection, onMove: onMove)
             } trailing: {
                 OnePlusLinearIconButton(systemImage: "gearshape", help: "Open Settings", action: openSettings)
-                Button("Open App", action: openApp)
+                Button("Open MacPowerToys", action: openApp)
                     .buttonStyle(OnePlusLinearButtonStyle(.filled))
                     .accessibilityIdentifier("tray.open-app")
             }
