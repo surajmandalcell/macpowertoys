@@ -125,7 +125,7 @@ mockups are in `docs/design/v15/`.
   panel and status items, its tool page, and its routes. The combined
   panel keeps the metric tiles, the top processes, and the Fan row on a
   small sampler that runs only while the panel is open. The product
-  continues as Task Manager X (`../task_manager_x`).
+  continues as Task Manager Pro (paid) and Task Manager Classic (free) in `../task_manager_x`.
 - Tools that move out (owner, 2026-11-16): Partition Manager, System
   Cleaner, and NetToys leave the app and continue as their own apps:
   Sam's Partition Manager (`../sams_partition_manager`), Sam's System
