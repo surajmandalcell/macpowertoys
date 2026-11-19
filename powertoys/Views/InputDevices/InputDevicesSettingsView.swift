@@ -111,6 +111,7 @@ struct InputDevicesSettingsContent: View {
                     }
                 }
                 .onePlusRowHover()
+                .permissionWatch(.accessibility)
             }
             if let errorMessage = manager.errorMessage {
                 OnePlusBanner(errorMessage, tone: .error)
@@ -138,6 +139,7 @@ struct InputDevicesSettingsContent: View {
                                 .buttonStyle(OnePlusLinearButtonStyle(.soft))
                         }
                     }
+                    .permissionWatch(.accessibility)
                 }
             }
             if let errorMessage = manager.errorMessage {

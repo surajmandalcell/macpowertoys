@@ -323,7 +323,7 @@ final class InputDevicesManager {
 
     private(set) var settings: InputDevicesSettings
     private(set) var devices: [InputDeviceDescriptor] = []
-    private(set) var permissionGranted = AXIsProcessTrusted()
+    private(set) var permissionGranted = PermissionCenter.shared.isGranted(.accessibility)
     private(set) var interceptionActive = false
     private(set) var errorMessage: String?
 
@@ -337,6 +337,16 @@ final class InputDevicesManager {
     private init() {
         settings = .decoded(from: UserDefaults.standard.data(forKey: Self.settingsKey))
         Self.current = self
+        NotificationCenter.default.addObserver(forName: .permissionsChanged, object: nil, queue: .main) { _ in
+            Task { @MainActor in InputDevicesManager.current?.followPermission() }
+        }
+    }
+
+    private func followPermission() {
+        let granted = PermissionCenter.shared.isGranted(.accessibility)
+        guard granted != permissionGranted else { return }
+        permissionGranted = granted
+        applyInterceptionState()
     }
 
     var eventTapOwnerCount: Int { eventTap == nil ? 0 : 1 }
@@ -347,7 +357,7 @@ final class InputDevicesManager {
     }
 
     func refresh() {
-        permissionGranted = AXIsProcessTrusted()
+        permissionGranted = PermissionCenter.shared.isGranted(.accessibility)
         applyInterceptionState()
         guard refreshTask == nil else { return }
         refreshTask = Task {
@@ -366,12 +376,9 @@ final class InputDevicesManager {
         applyInterceptionState()
     }
 
+    /// The scroll tap modifies events, which needs Accessibility only; it never needs Input Monitoring.
     func requestPermission() {
-        let options = [kAXTrustedCheckOptionPrompt.takeUnretainedValue() as String: true] as CFDictionary
-        _ = AXIsProcessTrustedWithOptions(options)
-        _ = CGRequestListenEventAccess()
-        permissionGranted = AXIsProcessTrusted()
-        applyInterceptionState()
+        PermissionCenter.shared.requestAccessibility()
     }
 
     func openPrivacySettings() {
@@ -465,6 +472,7 @@ final class InputDevicesManager {
         guard !trusted else { return }
         permissionGranted = false
         applyInterceptionState()
+        Task { await PermissionCenter.shared.refresh() }
     }
 
     nonisolated private static func connectedDevices() -> [InputDeviceDescriptor] {
