@@ -56,6 +56,11 @@ final class DeepLinkHandler {
         }
 
         if url.host == "fan" {
+            // Any web page can open a URL; only a local shell can set this default.
+            guard UserDefaults.standard.bool(forKey: "MPTAllowFanLinks") else {
+                LogManager.shared.warning("Fan link ignored: MPTAllowFanLinks is off.", source: "DeepLinkHandler")
+                return
+            }
             if let preset = FanPreset.allCases.first(where: { "/" + $0.rawValue.lowercased() == url.path.lowercased() }) {
                 Task { await FanControlService.shared.selectFromLink(preset) }
             } else {
