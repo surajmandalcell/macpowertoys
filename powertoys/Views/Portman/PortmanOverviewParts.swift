@@ -9,7 +9,8 @@ enum PortmanOverviewMetrics {
     static let ringWidth: CGFloat = 9
     static let chipColumn: CGFloat = 50
     static let memoryColumn: CGFloat = 52
-    static let statColumn: CGFloat = 64
+    static let ringToStats: CGFloat = 20
+    static let statDividerHeight: CGFloat = 30
 }
 
 /// The first Servers open after launch counts the ring and numbers up; later opens show values as is.
@@ -59,7 +60,7 @@ struct PortmanHeroRing: View {
     let caption: String
 
     var body: some View {
-        VStack(spacing: 12) {
+        VStack(spacing: PortmanOverviewMetrics.ringToStats) {
             ZStack {
                 PortmanShareRing(segments: presentation.segments)
                 VStack(spacing: 1) {
@@ -72,11 +73,14 @@ struct PortmanHeroRing: View {
                 }
             }
             .help("Memory used only by processes listening on scanned ports")
-            HStack(spacing: 18) {
-                stat(String(presentation.uniquePortCount), "servers", pace: .memory)
-                stat(String(format: "%.1f%%", presentation.cpuPercent), "CPU", pace: .cpu)
-                stat(longestUptime, "longest up", pace: .memory)
+            HStack(spacing: 0) {
+                stat(String(presentation.uniquePortCount), "Servers", color: OnePlusLinearColor.ink, pace: .memory)
+                statDivider
+                stat(String(format: "%.1f%%", presentation.cpuPercent), "CPU", color: OnePlusLinearColor.cpuText, pace: .cpu)
+                statDivider
+                stat(longestUptime, "Longest up", color: OnePlusLinearColor.ink, pace: .memory)
             }
+            .padding(.horizontal, OnePlusLinearMetrics.panelRowInset)
         }
         .frame(maxWidth: .infinity)
         .padding(.vertical, 16)
@@ -89,12 +93,20 @@ struct PortmanHeroRing: View {
         presentation.rows.map(\.port).filter { $0.started > 0 }.min { $0.started < $1.started }?.uptime ?? "–"
     }
 
-    private func stat(_ value: String, _ label: String, pace: OnePlusNumberPace) -> some View {
-        VStack(spacing: 1) {
-            OnePlusLinearNumberText(value, pace: pace).linearText(13, weight: .medium, color: OnePlusLinearColor.ink)
+    /// Three equal columns: a value in its data color or ink over a muted caption.
+    private func stat(_ value: String, _ label: String, color: Color, pace: OnePlusNumberPace) -> some View {
+        VStack(spacing: 2) {
+            OnePlusLinearNumberText(value, pace: pace).font(.system(size: 15, weight: .medium)).monospacedDigit()
+                .foregroundStyle(color)
             Text(label).linearText(OnePlusLinearMetrics.caption, color: OnePlusLinearColor.panelMuted)
         }
-        .frame(minWidth: PortmanOverviewMetrics.statColumn)
+        .frame(maxWidth: .infinity)
+    }
+
+    /// A faint divider that fades out at both ends, like the soft-key dividers.
+    private var statDivider: some View {
+        LinearGradient(colors: [.clear, OnePlusLinearColor.line, .clear], startPoint: .top, endPoint: .bottom)
+            .frame(width: 1, height: PortmanOverviewMetrics.statDividerHeight)
     }
 }
 
