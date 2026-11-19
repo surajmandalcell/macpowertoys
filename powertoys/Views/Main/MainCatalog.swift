@@ -13,7 +13,7 @@ struct MainToolGroup: Identifiable {
 }
 
 enum MainPageRoute: Equatable {
-    case catalog(MainCatalogFilter), settings(MainSettingsTab), tool(String), manual(String)
+    case catalog(MainCatalogFilter), settings(MainSettingsTab), tool(String), manual(String), appsBySam
 
     static func resolve(_ page: String, toolIDs: [String], savedSettingsTab: String = MainSettingsTab.general.rawValue) -> Self? {
         switch page {
@@ -23,6 +23,7 @@ enum MainPageRoute: Equatable {
         case "settings-general": return .settings(.general)
         case "settings-marketplace": return .settings(.marketplace)
         case "settings-about": return .settings(.about)
+        case AppsBySamView.pageID: return .appsBySam
         default:
             if page.hasPrefix("manual/") {
                 let id = String(page.dropFirst(7))

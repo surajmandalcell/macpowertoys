@@ -105,6 +105,10 @@ final class ToolActionRouter {
     }
 
     func open(toolID: String, activateApp: Bool = true) {
+        if toolID == AppsBySamView.pageID {
+            open(toolID: "main", page: toolID, activateApp: activateApp)
+            return
+        }
         let resolved = Self.resolvedWindowID(toolID)
         guard resolved == "main" || SettingsManager.shared.isToolEnabled(resolved) else {
             LogManager.shared.info("Ignored disabled tool: \(resolved)", source: "ToolActionRouter")

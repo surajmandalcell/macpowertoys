@@ -2,7 +2,7 @@ import AppKit
 import Darwin
 
 /// The installed Task Manager a top-process row can open: Pro first, then Classic.
-enum MainPanelTaskManager: String, CaseIterable {
+nonisolated enum MainPanelTaskManager: String, CaseIterable {
     // shortcut: Pro has no Xcode project yet, so its bundle id follows Classic's pattern; confirm it when Pro builds.
     // shortcut: an installed Pro counts as paid; add the license check once Pro has licensing.
     case pro = "com.surajmandal.taskmanager.pro"

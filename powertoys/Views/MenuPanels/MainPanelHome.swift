@@ -85,6 +85,15 @@ struct MainPanelHomeContent<Controls: View>: View {
                     MainMenuBarController.shared.closePanel()
                     taskManager.open()
                 }
+            } else {
+                Menu(AppsBySamView.title) {
+                    ForEach(["Task Manager Pro", "Task Manager Classic"], id: \.self) { name in
+                        Button(name) {
+                            MainMenuBarController.shared.closePanel()
+                            ToolActionRouter.shared.open(toolID: AppsBySamView.pageID)
+                        }
+                    }
+                }
             }
         }
     }

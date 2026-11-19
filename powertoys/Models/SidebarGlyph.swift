@@ -5,6 +5,8 @@ import SwiftUI
 /// Template SVG assets `SidebarGlyph<Name>`; the sidebar tints them `secondary`, `ink` when selected.
 enum SidebarGlyph {
     static let allTools = "SidebarGlyphAllTools"
+    /// The Apps by Sam row's SF Symbol (owner pick "Heart", 2026-11-19).
+    static let appsBySam = "heart"
 
     /// The template glyph for a built-in tool; marketplace tools have none and keep their artwork.
     static func glyph(for toolID: String) -> Image? { assetName(for: toolID).map { Image($0) } }
