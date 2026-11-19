@@ -118,13 +118,12 @@ enum SystemSleep {
 
 enum SleepTimerNotice {
     static func postWarning() {
-        UNUserNotificationCenter.current().getNotificationSettings { settings in
-            guard settings.authorizationStatus == .authorized
-                    || settings.authorizationStatus == .provisional else { return }
+        Task {
+            guard await PermissionCenter.allowNotifications() else { return }
             let content = UNMutableNotificationContent()
             content.title = "Your Mac sleeps in 1 minute"
             content.body = "Cancel the sleep timer to keep it awake."
-            UNUserNotificationCenter.current().add(
+            try? await UNUserNotificationCenter.current().add(
                 UNNotificationRequest(identifier: "sleep-timer.warning", content: content, trigger: nil)
             )
         }

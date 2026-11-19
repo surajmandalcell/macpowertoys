@@ -481,8 +481,7 @@ class AppDelegate: NSObject, NSApplicationDelegate {
 
     private func reportBackgroundQuitRefusal(_ message: String) async {
         let center = UNUserNotificationCenter.current()
-        let status = await center.notificationSettings().authorizationStatus
-        guard status == .authorized || status == .provisional else {
+        guard await PermissionCenter.allowNotifications() else {
             pendingQuitRefusal = message
             return
         }
