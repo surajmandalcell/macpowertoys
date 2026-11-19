@@ -94,6 +94,8 @@ struct HomeView: View {
                              focusedToolID: $focusedToolID)
         case "settings":
             MainSettingsView(tab: settingsTab, showManual: { openPage("manual/" + $0) })
+        case AppsBySamView.pageID:
+            AppsBySamView()
         case let toolID?:
             // One identity per tool: a reused pane keeps the last tool's scroll offset and tab key.
             ToolAboutView(toolId: toolID).id(toolID)
@@ -141,6 +143,7 @@ struct HomeView: View {
         case .settings(let tab): storedSettingsTab = tab.rawValue; selectedTool = "settings"
         case .tool(let id): selectedTool = id
         case .manual(let id): MainToolTab.select(.guide, for: id); selectedTool = id
+        case .appsBySam: selectedTool = AppsBySamView.pageID
         }
     }
 
@@ -152,6 +155,7 @@ struct HomeView: View {
     private var pageTitle: String {
         switch selectedTool {
         case "settings": "Settings"
+        case AppsBySamView.pageID: AppsBySamView.title
         default: ""
         }
     }

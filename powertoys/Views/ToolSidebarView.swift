@@ -22,6 +22,11 @@ struct ToolSidebarView: View {
                 ForEach(group.tools, id: \.id) { toolRow($0) }
             }
         } bottom: {
+            OnePlusLinearNavRow(AppsBySamView.title, glyph: Image(systemName: SidebarGlyph.appsBySam), symbol: true,
+                                selected: selectedTool == AppsBySamView.pageID) {
+                selectedTool = AppsBySamView.pageID
+            }
+            .accessibilityIdentifier("main.sidebar.apps-by-sam")
             OnePlusLinearNavRow("Settings", glyph: Image(systemName: "gearshape"), symbol: true, selected: selectedTool == "settings", shortcut: "⌘,") {
                 selectedTool = "settings"
             }
