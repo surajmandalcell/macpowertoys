@@ -64,7 +64,7 @@ struct RulerLauncherSettingsView: View {
             Button("Reset to Factory Defaults", role: .destructive) { prefs.resetRulerDefaultsToFactoryDefaults() }
                 .buttonStyle(OnePlusLinearButtonStyle(.resetBlock))
         }
-        .environment(\.onePlusLinearControlLook, .quietRaised)
+        .transformEnvironment(\.onePlusLinearControlLook) { if $0 == nil { $0 = .quietRaised } }
         .disabled(!settings.isToolEnabled("ruler") || settings.isToolTransitioning("ruler"))
         .onReceive(NotificationCenter.default.publisher(for: UserDefaults.didChangeNotification)) { _ in revision &+= 1 }
     }
