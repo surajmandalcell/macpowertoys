@@ -6,8 +6,8 @@
       "kind" : "remoteSourceControl",
       "location" : "https://github.com/surajmandalcell/oneplus-ui.git",
       "state" : {
-        "revision" : "96c8ca43b025643860747f66c006a0a2c9f5353c",
-        "version" : "1.3.20"
+        "revision" : "09d819de0f37ba07c1875aa464a194800706b0b4",
+        "version" : "1.3.22"
       }
     }
   ],
