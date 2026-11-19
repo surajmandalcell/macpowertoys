@@ -977,6 +977,12 @@ enum RcloneFormat {
         return bytes(Int64(bytesPerSecond)) + "/s"
     }
 
+    /// The ETA text, or nil while rclone has no estimate.
+    static func knownETA(_ seconds: Double?) -> String? {
+        guard let seconds, seconds.isFinite, seconds > 0 else { return nil }
+        return eta(seconds)
+    }
+
     static func eta(_ seconds: Double?) -> String {
         guard let seconds, seconds.isFinite, seconds > 0 else { return "Not available" }
         let total = Int(seconds)

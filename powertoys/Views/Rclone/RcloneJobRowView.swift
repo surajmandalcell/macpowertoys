@@ -55,15 +55,31 @@ struct TransferJobRow: View {
             Spacer(minLength: OnePlusLinearSpace.small)
             Text("\(RcloneFormat.bytes(job.progressBytes)) / \(RcloneFormat.bytes(job.effectiveTotalBytes))\(job.isSizing ? "~" : "") · \(job.progressFiles)/\(job.effectiveTotalFiles) files")
                 .linearText(OnePlusLinearMetrics.control, color: OnePlusLinearColor.secondary).monospacedDigit().lineLimit(1)
-            if job.state == .running {
-                Text(RcloneFormat.speed(job.stats.speed))
-                    .linearText(OnePlusLinearMetrics.control, color: OnePlusLinearColor.secondary).monospacedDigit()
-            }
-            if job.state == .retrying { retryHint } else { stateBadge }
+            statusColumn
             if job.kind == .file { priorityMenu }
             actionButtons
-            if hasFiles || job.isExpanded { disclosureButton }
+                .frame(width: Self.keySlot * 3 + OnePlusLinearSpace.tight * 2, alignment: .trailing)
+            disclosureButton
+                .opacity(hasFiles || job.isExpanded ? 1 : 0)
+                .disabled(!(hasFiles || job.isExpanded))
+                .accessibilityHidden(!(hasFiles || job.isExpanded))
         }
+    }
+
+    private static let keySlot = OnePlusLinearMetrics.toolbarButton
+
+    /// Fixed-width status column (state, then speed while running), so every row's text lines up.
+    private var statusColumn: some View {
+        HStack(spacing: OnePlusLinearSpace.small) {
+            if job.state == .retrying { retryHint } else { stateBadge }
+            Spacer(minLength: 0)
+            if job.state == .running, job.stats.speed > 0 {
+                Text(RcloneFormat.speed(job.stats.speed))
+                    .linearText(OnePlusLinearMetrics.control, color: OnePlusLinearColor.secondary)
+                    .monospacedDigit().lineLimit(1)
+            }
+        }
+        .frame(width: OnePlusLinearControlWidth.wide)
     }
 
     private func pathChip(_ value: String, color: Color) -> some View {
@@ -77,7 +93,8 @@ struct TransferJobRow: View {
     private var stateBadge: some View {
         HStack(spacing: OnePlusLinearSpace.tight) {
             Image(systemName: job.state.icon).accessibilityHidden(true)
-            Text(job.state == .running ? "ETA \(RcloneFormat.eta(job.displayEta))" : job.state.displayName)
+            Text(job.state == .running ? RcloneFormat.knownETA(job.displayEta).map { "ETA \($0)" } ?? job.state.displayName
+                                       : job.state.displayName)
                 .monospacedDigit()
         }
         .font(.system(size: OnePlusLinearMetrics.control, weight: .medium))
