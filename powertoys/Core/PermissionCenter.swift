@@ -4,12 +4,11 @@ import AVFoundation
 import CoreGraphics
 import Observation
 import OnePlusUI
-import ServiceManagement
 import SwiftUI
 import UserNotifications
 
 nonisolated enum PermissionKind: CaseIterable, Sendable {
-    case accessibility, screenRecording, microphone, notifications, backgroundDaemon
+    case accessibility, screenRecording, microphone, notifications
 }
 
 extension Notification.Name {
@@ -58,14 +57,9 @@ final class PermissionCenter {
         Task { await refresh() }
     }
 
-    func isGranted(_ kind: PermissionKind) -> Bool {
-        kind == .backgroundDaemon ? FanHelperService.shared.isEnabled : granted.contains(kind)
-    }
+    func isGranted(_ kind: PermissionKind) -> Bool { granted.contains(kind) }
 
-    /// A daemon that was never enabled is not missing; only one that waits for Login Items approval is.
-    func isMissing(_ kind: PermissionKind) -> Bool {
-        kind == .backgroundDaemon ? FanHelperService.shared.status == .requiresApproval : !granted.contains(kind)
-    }
+    func isMissing(_ kind: PermissionKind) -> Bool { !granted.contains(kind) }
 
     func refresh() async {
         let next = await read()

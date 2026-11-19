@@ -2,25 +2,20 @@
 <!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
 <plist version="1.0">
 <dict>
-	<key>CFBundleDisplayName</key>
-	<string>NetToys Helper</string>
-	<key>CFBundleExecutable</key>
-	<string>$(EXECUTABLE_NAME)</string>
 	<key>CFBundleIdentifier</key>
-	<string>$(PRODUCT_BUNDLE_IDENTIFIER)</string>
+	<string>com.surajmandal.macpowertoys.helper</string>
 	<key>CFBundleInfoDictionaryVersion</key>
 	<string>6.0</string>
 	<key>CFBundleName</key>
-	<string>$(PRODUCT_NAME)</string>
-	<key>CFBundlePackageType</key>
-	<string>APPL</string>
-	<key>CFBundleShortVersionString</key>
-	<string>$(MARKETING_VERSION)</string>
+	<string>MacPowerToys Helper</string>
+	<!-- Raise CFBundleVersion whenever the helper's code changes; the app reinstalls an older helper. -->
 	<key>CFBundleVersion</key>
-	<string>$(CURRENT_PROJECT_VERSION)</string>
-	<key>LSUIElement</key>
-	<true/>
+	<string>1</string>
 	<key>MPTSourceCommit</key>
 	<string>$(MPT_SOURCE_COMMIT)</string>
+	<key>SMAuthorizedClients</key>
+	<array>
+		<string>identifier "com.surajmandal.macpowertoys" and anchor apple generic and certificate leaf[subject.OU] = "GF57JXJF5A"</string>
+	</array>
 </dict>
 </plist>

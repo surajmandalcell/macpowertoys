@@ -95,14 +95,15 @@ nonisolated enum FanCommand {
     // Touched only on controlQueue.
     nonisolated(unsafe) private static var manualConnection: NSXPCConnection?
 
-    static func helperSourceCommit() -> String? {
+    /// The running helper's CFBundleVersion, or nil when it does not answer. Blocks; call off main.
+    static func helperVersion() -> Int? {
         let reply = HelperReply()
         let (connection, proxy) = helperConnection(reply: reply)
-        proxy?.neighborSnapshot { _, commit in reply.finish(commit) }
+        proxy?.neighborSnapshot { _, version in reply.finish(version) }
         if proxy == nil { reply.finish("") }
-        let commit = reply.wait(seconds: 2)
+        let version = reply.wait(seconds: 5)
         connection.invalidate()
-        return commit.count == 40 && commit.allSatisfy(\.isHexDigit) ? commit : nil
+        return Int(version)
     }
 
     /// Asks the root helper to restart Core Audio. Returns an empty string on success. Blocks; call off main.
@@ -186,14 +187,14 @@ nonisolated struct FanControlPresentation: Equatable, Sendable {
     var selectedPreset: FanPreset?
     var canControl = false
     var canRestoreAutomatic = false
-    var needsApproval = false
-    var needsHelperUpdate = false
+    var canInstallHelper = false
+    var isUnsupportedBuild = false
     var isChanging = false
     var hasCompletedRead = false
     var hasError = false
 
     init(snapshot: FanSnapshot? = nil, selectedPreset: FanPreset? = nil, errorMessage: String? = nil,
-         canRestoreAutomatic: Bool = false, needsApproval: Bool = false, needsHelperUpdate: Bool = false,
+         canRestoreAutomatic: Bool = false, canInstallHelper: Bool = false, isUnsupportedBuild: Bool = false,
          isChanging: Bool = false, hasCompletedRead: Bool = false) {
         rpm = snapshot?.averageRPM.map { $0.formatted() + " RPM" } ?? "— RPM"
         let utilization = snapshot?.utilization.map { "\($0)%" } ?? "—%"
@@ -203,15 +204,14 @@ nonisolated struct FanControlPresentation: Equatable, Sendable {
         activePreset = Self.reportedPreset(snapshot, selectedPreset: selectedPreset)
         canControl = snapshot?.canControl == true
         self.canRestoreAutomatic = canRestoreAutomatic
-        self.needsApproval = needsApproval
-        self.needsHelperUpdate = needsHelperUpdate
+        self.canInstallHelper = canInstallHelper
+        self.isUnsupportedBuild = isUnsupportedBuild
         self.isChanging = isChanging
         self.hasCompletedRead = hasCompletedRead
         hasError = errorMessage != nil
         detail = Self.detail(snapshot: snapshot, selectedPreset: selectedPreset, errorMessage: errorMessage,
                              canControl: canControl, canRestoreAutomatic: canRestoreAutomatic,
-                             needsApproval: needsApproval, needsHelperUpdate: needsHelperUpdate,
-                             activePreset: activePreset)
+                             isUnsupportedBuild: isUnsupportedBuild, activePreset: activePreset)
     }
 
     static func canSelect(_ preset: FanPreset, canControl: Bool, canRestoreAutomatic: Bool, isChanging: Bool) -> Bool {
@@ -231,8 +231,8 @@ nonisolated struct FanControlPresentation: Equatable, Sendable {
     }
 
     private static func detail(snapshot: FanSnapshot?, selectedPreset: FanPreset?, errorMessage: String?,
-                               canControl: Bool, canRestoreAutomatic: Bool, needsApproval: Bool,
-                               needsHelperUpdate: Bool, activePreset: FanPreset?) -> String {
+                               canControl: Bool, canRestoreAutomatic: Bool, isUnsupportedBuild: Bool,
+                               activePreset: FanPreset?) -> String {
         if let error = errorMessage { return error }
         guard let snapshot = snapshot else { return "Fan data unavailable" }
         guard !snapshot.fans.isEmpty else { return "No fans detected" }
@@ -248,14 +248,13 @@ nonisolated struct FanControlPresentation: Equatable, Sendable {
                     ? "Manual control active · Auto restores macOS"
                     : "Fan helper unavailable · try Auto"
             }
-            if needsApproval { return "Allow MacPowerToys in Login Items" }
-            if needsHelperUpdate { return "Update the built-in fan helper" }
+            if isUnsupportedBuild { return FanHelperService.unsupportedMessage }
             if snapshot.fans.contains(where: { $0.mode?.hasPrefix("unknown") == true }) {
                 return "Fan control unavailable on this Mac"
             }
             return snapshot.hasExternalManualControl
                 ? "Manual fan speed set elsewhere · read only"
-                : "Read only · enable built-in fan control"
+                : "Read only · install the fan helper"
         }
         switch selectedPreset {
         case .auto: return "Controlled by macOS"
@@ -292,9 +291,6 @@ final class FanControlService {
     private var hasPendingManualCommand = false
     private var isRestoringOnExit = false
     private var commandRevision = 0
-    private var helperCommit: String?
-    private var helperCommitRetryDelay: Duration = .zero
-    private var helperCommitRetryAt: ContinuousClock.Instant?
     private var revision = 0
 
     private convenience init() {
@@ -315,28 +311,16 @@ final class FanControlService {
         (ownsManualControl || hasPendingManualCommand || snapshot?.hasExternalManualControl == true)
             && FanHelperService.shared.isEnabled
     }
-    var needsApproval: Bool { FanHelperService.shared.status == .requiresApproval }
-    var needsHelperUpdate: Bool {
-        guard let helperCommit else { return false }
-        return helperCommit != Bundle.main.object(forInfoDictionaryKey: "MPTSourceCommit") as? String
-    }
+    var canInstallHelper: Bool { FanHelperService.shared.canInstall }
+    var isUnsupportedBuild: Bool { FanHelperService.shared.status == .unsupported }
 
+    /// Installs the helper (one macOS admin password prompt) without changing the fans.
     func enableControl() async {
-        let manager = FanHelperService.shared
-        if needsHelperUpdate {
-            do { try await manager.restart() }
-            catch { errorMessage = error.localizedDescription; return }
-            helperCommit = nil
-        }
-        helperCommitRetryAt = nil
-        guard manager.enable(openSettings: false) else {
-            errorMessage = needsApproval
-                ? "Allow MacPowerToys under Background App Activity in Login Items."
-                : "macOS could not enable the built-in fan helper."
-            return
-        }
-        errorMessage = nil
+        guard !isChanging else { return }
+        isChanging = true
+        errorMessage = await FanHelperService.shared.install()
         await refresh()
+        isChanging = false
     }
 
     func start(owner: String) {
@@ -364,19 +348,11 @@ final class FanControlService {
         let readSnapshot = readSnapshot
         let result = await Task.detached(priority: .utility) { readSnapshot() }.value
         guard currentRevision == revision, !owners.isEmpty, !isRestoringOnExit else { return }
-        if result?.canControl != true, FanHelperService.shared.isEnabled, helperCommit == nil,
-           helperCommitRetryAt.map({ ContinuousClock.now >= $0 }) ?? true {
-            helperCommit = await Task.detached(priority: .utility) { FanCommand.helperSourceCommit() }.value
-            // Back off from 10 s to 5 min while the helper commit cannot be read; Enable retries at once.
-            helperCommitRetryDelay = helperCommit == nil
-                ? min(max(helperCommitRetryDelay * 2, .seconds(10)), .seconds(300)) : .zero
-            helperCommitRetryAt = helperCommit == nil ? ContinuousClock.now.advanced(by: helperCommitRetryDelay) : nil
-        }
-        guard currentRevision == revision, !owners.isEmpty, !isRestoringOnExit else { return }
         hasCompletedRead = true
         if let result {
-            let nativeControl = FanHelperService.shared.isEnabled
-                && !needsHelperUpdate && helperCommit != nil
+            // A helper that is missing or older still allows a choice: the first write installs it.
+            let helper = FanHelperService.shared
+            let nativeControl = (helper.isEnabled || helper.canInstall)
                 && !result.fans.isEmpty
                 && (!result.hasExternalManualControl || ownsManualControl)
                 && result.fans.allSatisfy { ["auto", "manual", "system"].contains($0.mode ?? "") }
@@ -392,7 +368,16 @@ final class FanControlService {
         guard !isRestoringOnExit else { return }
         guard FanControlPresentation.canSelect(preset, canControl: canControl,
                                               canRestoreAutomatic: canRestoreAutomatic, isChanging: isChanging) else { return }
-        send(preset)
+        let helper = FanHelperService.shared
+        guard helper.canInstall else { send(preset); return }
+        // Auto while macOS already runs the fans needs no helper, so it never asks for a password.
+        guard preset != .auto || snapshot?.hasExternalManualControl == true else { return }
+        isChanging = true
+        Task {
+            let message = await helper.install()
+            isChanging = false
+            if let message { errorMessage = message } else { send(preset) }
+        }
     }
 
     private func send(_ preset: FanPreset, done: CheckedContinuation<Bool, Never>? = nil) {
@@ -484,14 +469,14 @@ final class FanControlService {
             let selectedPreset = selectedPreset
             let errorMessage = errorMessage
             let canRestoreAutomatic = canRestoreAutomatic
-            let needsApproval = needsApproval
-            let needsHelperUpdate = needsHelperUpdate
+            let canInstallHelper = canInstallHelper
+            let isUnsupportedBuild = isUnsupportedBuild
             let isChanging = isChanging
             let hasCompletedRead = hasCompletedRead
             let next = await Task.detached(priority: .utility) {
                 FanControlPresentation(snapshot: snapshot, selectedPreset: selectedPreset, errorMessage: errorMessage,
-                                       canRestoreAutomatic: canRestoreAutomatic, needsApproval: needsApproval,
-                                       needsHelperUpdate: needsHelperUpdate, isChanging: isChanging,
+                                       canRestoreAutomatic: canRestoreAutomatic, canInstallHelper: canInstallHelper,
+                                       isUnsupportedBuild: isUnsupportedBuild, isChanging: isChanging,
                                        hasCompletedRead: hasCompletedRead)
             }.value
             guard !Task.isCancelled, !owners.isEmpty else { return }

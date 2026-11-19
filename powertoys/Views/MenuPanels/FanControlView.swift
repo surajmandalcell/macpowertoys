@@ -1,6 +1,5 @@
 import AppKit
 import OnePlusUI
-import ServiceManagement
 import SwiftUI
 
 struct FanControlView: View {
@@ -51,7 +50,6 @@ struct FanControlView: View {
         .accessibilityHint(detail)
         .accessibilityIdentifier("fan-control.setup")
         .help(detail)
-        .permissionWatch(.backgroundDaemon)
     }
 
     private var setupPopover: some View {
@@ -62,10 +60,12 @@ struct FanControlView: View {
                 .font(.system(size: 11))
                 .foregroundStyle(.secondary)
                 .fixedSize(horizontal: false, vertical: true)
-            Text("Enable the helper, then allow MacPowerToys under Background App Activity in Login Items.")
-                .font(.system(size: 11))
-                .foregroundStyle(.secondary)
-                .fixedSize(horizontal: false, vertical: true)
+            if display.canInstallHelper {
+                Text("Fan control uses a small helper. macOS asks for your password once to install it.")
+                    .font(.system(size: 11))
+                    .foregroundStyle(.secondary)
+                    .fixedSize(horizontal: false, vertical: true)
+            }
             if display.canRestoreAutomatic && !display.canControl {
                 Button("Restore Auto") { service.select(.auto) }
                     .onePlusControl()
@@ -73,14 +73,12 @@ struct FanControlView: View {
                     .help("Return fan control to macOS")
             }
             HStack(spacing: 8) {
-                if display.needsApproval {
-                    Button("Open Login Items") { SMAppService.openSystemSettingsLoginItems() }
-                        .onePlusControl(.primary)
-                } else if !display.canControl {
-                    Button(display.needsHelperUpdate ? "Update Fan Helper" : "Enable Fan Control") {
+                if display.canInstallHelper {
+                    Button("Install Helper") {
                         Task { await service.enableControl() }
                     }
                     .onePlusControl(.primary)
+                    .disabled(display.isChanging)
                 }
                 Button("Check Again") {
                     Task {

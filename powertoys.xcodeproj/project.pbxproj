@@ -9,7 +9,7 @@
 /* Begin PBXBuildFile section */
 		B30000000000000000000001 /* OnePlusUI in Frameworks */ = {isa = PBXBuildFile; productRef = B30000000000000000000003 /* OnePlusUI */; };
 		C40000000000000000000004 /* MacPowerToysHelperXPC.swift in Sources */ = {isa = PBXBuildFile; fileRef = C40000000000000000000014 /* MacPowerToysHelperXPC.swift */; };
-		A10000000000000000000005 /* MacPowerToysNetHelper.app in Embed Login Items */ = {isa = PBXBuildFile; fileRef = A10000000000000000000006 /* MacPowerToysNetHelper.app */; settings = {ATTRIBUTES = (CodeSignOnCopy, ); }; };
+		A10000000000000000000005 /* com.surajmandal.macpowertoys.helper in Copy LaunchServices */ = {isa = PBXBuildFile; fileRef = A10000000000000000000006 /* com.surajmandal.macpowertoys.helper */; settings = {ATTRIBUTES = (CodeSignOnCopy, ); }; };
 		A10000000000000000000021 /* com.surajmandal.macpowertoys.nettoys-neighbor.plist in Copy LaunchDaemons */ = {isa = PBXBuildFile; fileRef = A10000000000000000000022 /* com.surajmandal.macpowertoys.nettoys-neighbor.plist */; };
 		A10000000000000000000024 /* NativeFanReader.swift in Sources */ = {isa = PBXBuildFile; fileRef = A10000000000000000000025 /* NativeFanReader.swift */; };
 /* End PBXBuildFile section */
@@ -39,7 +39,7 @@
 /* End PBXContainerItemProxy section */
 
 /* Begin PBXFileReference section */
-		A10000000000000000000006 /* MacPowerToysNetHelper.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = MacPowerToysNetHelper.app; sourceTree = BUILT_PRODUCTS_DIR; };
+		A10000000000000000000006 /* com.surajmandal.macpowertoys.helper */ = {isa = PBXFileReference; explicitFileType = "compiled.mach-o.executable"; includeInIndex = 0; path = com.surajmandal.macpowertoys.helper; sourceTree = BUILT_PRODUCTS_DIR; };
 		C40000000000000000000014 /* MacPowerToysHelperXPC.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = powertoys/Core/MacPowerToysHelperXPC.swift; sourceTree = SOURCE_ROOT; };
 		A10000000000000000000022 /* com.surajmandal.macpowertoys.nettoys-neighbor.plist */ = {isa = PBXFileReference; lastKnownFileType = text.plist.xml; path = "com.surajmandal.macpowertoys.nettoys-neighbor.plist"; sourceTree = SOURCE_ROOT; };
 		A10000000000000000000025 /* NativeFanReader.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = powertoys/Core/NativeFanReader.swift; sourceTree = SOURCE_ROOT; };
@@ -53,6 +53,7 @@
 			isa = PBXFileSystemSynchronizedBuildFileExceptionSet;
 			membershipExceptions = (
 				Info.plist,
+				launchd.plist,
 			);
 			target = A10000000000000000000010 /* MacPowerToysNetHelper */;
 		};
@@ -151,7 +152,7 @@
 			isa = PBXGroup;
 			children = (
 				1BDFA94E2F08A44C009A9009 /* powertoys.app */,
-				A10000000000000000000006 /* MacPowerToysNetHelper.app */,
+				A10000000000000000000006 /* com.surajmandal.macpowertoys.helper */,
 				1BDFA95B2F08A44C009A9009 /* powertoysTests.xctest */,
 				1BDFA9652F08A44C009A9009 /* powertoysUITests.xctest */,
 			);
@@ -178,8 +179,8 @@
 			);
 			name = MacPowerToysNetHelper;
 			productName = MacPowerToysNetHelper;
-			productReference = A10000000000000000000006 /* MacPowerToysNetHelper.app */;
-			productType = "com.apple.product-type.application";
+			productReference = A10000000000000000000006 /* com.surajmandal.macpowertoys.helper */;
+			productType = "com.apple.product-type.tool";
 		};
 		1BDFA94D2F08A44C009A9009 /* powertoys */ = {
 			isa = PBXNativeTarget;
@@ -188,7 +189,7 @@
 				1BDFA94A2F08A44C009A9009 /* Sources */,
 				1BDFA94B2F08A44C009A9009 /* Frameworks */,
 				1BDFA94C2F08A44C009A9009 /* Resources */,
-				A10000000000000000000011 /* Embed Login Items */,
+				A10000000000000000000011 /* Copy LaunchServices */,
 				A10000000000000000000023 /* Copy LaunchDaemons */,
 			);
 			buildRules = (
@@ -305,15 +306,15 @@
 /* End PBXProject section */
 
 /* Begin PBXCopyFilesBuildPhase section */
-		A10000000000000000000011 /* Embed Login Items */ = {
+		A10000000000000000000011 /* Copy LaunchServices */ = {
 			isa = PBXCopyFilesBuildPhase;
 			buildActionMask = 2147483647;
-			dstPath = Contents/Library/LoginItems;
+			dstPath = Contents/Library/LaunchServices;
 			dstSubfolderSpec = 1;
 			files = (
-				A10000000000000000000005 /* MacPowerToysNetHelper.app in Embed Login Items */,
+				A10000000000000000000005 /* com.surajmandal.macpowertoys.helper in Copy LaunchServices */,
 			);
-			name = "Embed Login Items";
+			name = "Copy LaunchServices";
 			runOnlyForDeploymentPostprocessing = 0;
 		};
 		A10000000000000000000023 /* Copy LaunchDaemons */ = {
@@ -423,8 +424,15 @@
 				GENERATE_INFOPLIST_FILE = NO;
 				INFOPLIST_FILE = NetToysHelper/Info.plist;
 				MARKETING_VERSION = 1.9.4;
-				PRODUCT_BUNDLE_IDENTIFIER = "com.surajmandal.macpowertoys.nettoys-helper";
-				PRODUCT_NAME = MacPowerToysNetHelper;
+				CREATE_INFOPLIST_SECTION_IN_BINARY = YES;
+				OTHER_LDFLAGS = (
+					"-sectcreate",
+					__TEXT,
+					__launchd_plist,
+					"$(SRCROOT)/NetToysHelper/launchd.plist",
+				);
+				PRODUCT_BUNDLE_IDENTIFIER = com.surajmandal.macpowertoys.helper;
+				PRODUCT_NAME = com.surajmandal.macpowertoys.helper;
 				SKIP_INSTALL = YES;
 				SWIFT_APPROACHABLE_CONCURRENCY = YES;
 				SWIFT_DEFAULT_ACTOR_ISOLATION = MainActor;
@@ -444,8 +452,15 @@
 				GENERATE_INFOPLIST_FILE = NO;
 				INFOPLIST_FILE = NetToysHelper/Info.plist;
 				MARKETING_VERSION = 1.9.4;
-				PRODUCT_BUNDLE_IDENTIFIER = "com.surajmandal.macpowertoys.nettoys-helper";
-				PRODUCT_NAME = MacPowerToysNetHelper;
+				CREATE_INFOPLIST_SECTION_IN_BINARY = YES;
+				OTHER_LDFLAGS = (
+					"-sectcreate",
+					__TEXT,
+					__launchd_plist,
+					"$(SRCROOT)/NetToysHelper/launchd.plist",
+				);
+				PRODUCT_BUNDLE_IDENTIFIER = com.surajmandal.macpowertoys.helper;
+				PRODUCT_NAME = com.surajmandal.macpowertoys.helper;
 				SKIP_INSTALL = YES;
 				SWIFT_APPROACHABLE_CONCURRENCY = YES;
 				SWIFT_DEFAULT_ACTOR_ISOLATION = MainActor;
