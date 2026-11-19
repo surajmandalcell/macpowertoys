@@ -17,7 +17,7 @@ final class AudioReviveService {
 
     func restart(completion: @escaping @MainActor (AudioReviveResult) -> Void) {
         cancel()
-        let process = AudioReviveProcess()
+        let process = AudioReviveProcess(usesHelper: FanHelperService.shared.isEnabled)
         self.process = process
         isRunning = true
         task = Task { [weak self] in
@@ -43,8 +43,14 @@ nonisolated final class AudioReviveProcess: @unchecked Sendable {
     static let stderrLimit = 16 * 1_024
     static let deadline: TimeInterval = 60
 
+    private let usesHelper: Bool
     private let lock = NSLock()
     private var activeProcess: Process?
+
+    /// With the enabled root helper, no password is asked; otherwise osascript asks for an admin password.
+    init(usesHelper: Bool = false) {
+        self.usesHelper = usesHelper
+    }
     private var stderr = Data()
     private var cancelled = false
     private var timedOut = false
@@ -75,6 +81,12 @@ nonisolated final class AudioReviveProcess: @unchecked Sendable {
     }
 
     private func execute() -> AudioReviveResult {
+        if usesHelper {
+            let message = FanCommand.restartAudio()
+            if message.isEmpty { return .init(succeeded: true, message: "Audio restarted. Devices refreshed.") }
+            // An older or still-starting helper lacks the call; fall back to the password prompt.
+            Task { @MainActor in LogManager.shared.warning("Helper audio restart failed: \(message)", source: "AudioRevive") }
+        }
         let process = Process()
         process.executableURL = URL(fileURLWithPath: "/usr/bin/osascript")
         process.arguments = [

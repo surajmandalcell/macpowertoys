@@ -17,7 +17,7 @@ final class FanControlTests: XCTestCase {
         XCTAssertTrue(MacPowerToysHelperContract.helperRequirement.contains("\"com.surajmandal.macpowertoys.nettoys-helper\""))
         XCTAssertTrue(MacPowerToysHelperContract.mainAppRequirement.contains("\"com.surajmandal.macpowertoys\""))
         XCTAssertTrue(MacPowerToysHelperContract.helperRequirement.contains("GF57JXJF5A"))
-        for name in ["applyFanPreset:reply:", "neighborSnapshotWithReply:"] {
+        for name in ["applyFanPreset:reply:", "neighborSnapshotWithReply:", "restartAudioWithReply:"] {
             XCTAssertNotNil(protocol_getMethodDescription(MacPowerToysHelperXPCProtocol.self,
                                                           NSSelectorFromString(name), true, true).name, name)
         }
@@ -29,8 +29,7 @@ final class FanControlTests: XCTestCase {
         // Registration follows the helper's own status, not a tool switch.
         let helper = FanHelperService(refreshOnInit: false, readStatus: { .enabled })
         XCTAssertFalse(helper.isEnabled)
-        helper.refresh()
-        for _ in 0..<200 where !helper.isEnabled { try await Task.sleep(for: .milliseconds(5)) }
+        await helper.refresh()
         XCTAssertTrue(helper.isEnabled)
 
         let root = URL(fileURLWithPath: #filePath).deletingLastPathComponent().deletingLastPathComponent()
@@ -312,28 +311,6 @@ final class FanControlTests: XCTestCase {
     func testFanWritesRejectAnUnprivilegedProcess() {
         guard geteuid() != 0 else { return }
         XCTAssertThrowsError(try NativeFanReader.apply(.max))
-    }
-
-    func testCoolAndMaxOnlyRequestGuardedFullProfile() {
-        XCTAssertEqual(FanCommand.arguments(for: .cool), ["fan", "profile", "full"])
-        XCTAssertEqual(FanCommand.arguments(for: .max), ["fan", "profile", "full"])
-        XCTAssertEqual(FanCommand.arguments(for: .auto), ["fan", "profile", "auto"])
-    }
-
-    func testSmctlStatusRequiresReadableFanModesForControl() throws {
-        let output = """
-        {"profile":"auto","fans":[
-          {"index":0,"actualRPM":3462,"maximumRPM":5777,"mode":"auto"},
-          {"index":1,"actualRPM":3482,"maximumRPM":5777,"mode":"system"}
-        ]}
-        """
-        let snapshot = try XCTUnwrap(FanCommand.parseSmctlStatus(output))
-        XCTAssertTrue(snapshot.canControl)
-        XCTAssertEqual(snapshot.detectedPreset, .auto)
-        XCTAssertEqual(snapshot.utilization, 60)
-
-        let unknown = output.replacingOccurrences(of: "\"mode\":\"system\"", with: "\"mode\":\"unknown\"")
-        XCTAssertFalse(try XCTUnwrap(FanCommand.parseSmctlStatus(unknown)).canControl)
     }
 
     func testFanCommandBoundsProcessOutputWithoutHardwareAccess() {

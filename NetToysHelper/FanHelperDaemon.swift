@@ -46,6 +46,24 @@ nonisolated final class FanHelperXPCService: NSObject, MacPowerToysHelperXPCProt
             reply(error.localizedDescription)
         }
     }
+
+    func restartAudio(reply: @escaping (String) -> Void) {
+        let process = Process()
+        process.executableURL = URL(fileURLWithPath: "/usr/bin/killall")
+        process.arguments = ["coreaudiod"]
+        process.standardInput = FileHandle.nullDevice
+        process.standardOutput = FileHandle.nullDevice
+        process.standardError = FileHandle.nullDevice
+        do { try process.run() } catch {
+            reply(error.localizedDescription)
+            return
+        }
+        DispatchQueue.global(qos: .utility).asyncAfter(deadline: .now() + 5) { [weak process] in
+            if process?.isRunning == true { process?.terminate() }
+        }
+        process.waitUntilExit()
+        reply(process.terminationStatus == 0 ? "" : "Core Audio did not restart (killall exit \(process.terminationStatus)).")
+    }
 }
 
 /// Ends the on-demand daemon after it served no connection for `delay` seconds. launchd starts it

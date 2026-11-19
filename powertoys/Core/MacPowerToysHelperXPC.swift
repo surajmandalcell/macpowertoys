@@ -17,4 +17,6 @@ nonisolated enum MacPowerToysHelperContract {
     /// Replies with the helper's source commit. The data is always nil; the selector stays for older helpers.
     func neighborSnapshot(reply: @escaping (Data?, String) -> Void)
     func applyFanPreset(_ preset: String, reply: @escaping (String) -> Void)
+    /// Restarts coreaudiod. Takes no input, so no caller can choose a command or path. Replies "" on success.
+    func restartAudio(reply: @escaping (String) -> Void)
 }
