@@ -43,7 +43,7 @@ describes.
 
 | Task or symptom | Required topic |
 |---|---|
-| Tray icon, launcher shell, window persistence | [Main shell](main-shell.md) |
+| Tray icon, launcher shell, window persistence, blank windows, Mac Tweaks rows | [Main shell](main-shell.md) |
 | Applet UI, titlebars, settings placement, gutters, tabs | [UI chrome](ui-chrome.md) |
 | Ruler behavior, windows, settings, or FreeRuler parity | [Ruler](ruler.md) |
 | Text Extractor UI or behavior | [Text Extractor](text-extractor.md) |

@@ -72,6 +72,7 @@ struct InputDevicesWindowView: View {
         } bottom: {
             navRow(.about)
         }
+        .linearSidebarTitle("Input Devices")
     }
 
     private func navRow(_ destination: InputDevicesPage) -> some View {

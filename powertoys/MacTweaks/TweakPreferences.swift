@@ -62,9 +62,8 @@ enum TweakPreferences {
     private static let capture = "com.apple.screencapture"
 
     static func supportsWrites(for id: String, on version: OperatingSystemVersion = ProcessInfo.processInfo.operatingSystemVersion) -> Bool {
-        guard (version.majorVersion == 15 && version.minorVersion == 8) ||
-              (version.majorVersion == 26 && version.minorVersion == 7) ||
-              (version.majorVersion == 27 && version.minorVersion == 0) else { return false }
+        // Gate on the major release only; a point update (27.0 to 27.2) hid every row.
+        guard [15, 26, 27].contains(version.majorVersion) else { return false }
         if id == "finder.column-sizing" || id == "apps.automatic-termination" {
             return version.majorVersion == 15
         }

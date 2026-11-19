@@ -34,6 +34,7 @@ struct ToolSidebarView: View {
             OnePlusLinearNavRow("Exit", glyph: Image(systemName: "power"), symbol: true, shortcut: "⌘Q") { NSApp.terminate(nil) }
                 .accessibilityIdentifier("main.sidebar.exit")
         }
+        .linearSidebarTitle(AppIdentity.displayName)
         .onChange(of: searchText, initial: true) { _, _ in refreshVisibleTools() }
         .onReceive(NotificationCenter.default.publisher(for: .marketplaceReceiptsChanged)) { _ in refreshVisibleTools() }
     }

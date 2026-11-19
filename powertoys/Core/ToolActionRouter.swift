@@ -239,6 +239,7 @@ final class ToolActionRouter {
                 && !WindowStateManager.shared.isClosedSceneWindow($0)
         })
         if existing == nil, activateApp {
+            windows.first { Self.windowIdentifier($0.identifier?.rawValue, matches: id) }?.onePlusPrepareForOpening()
             openWindow(id)
             activate()
             return

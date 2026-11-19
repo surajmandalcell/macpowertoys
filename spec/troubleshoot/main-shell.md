@@ -84,6 +84,29 @@ capture) must never activate the app or take key focus.
 
 ## Main Window
 
+### Sidebar Window Title Missing
+
+- **Symptom:** The main window and the sidebar tool windows lost their
+  title beside the traffic lights; the sidebar started with Search.
+- **Cause:** The v15 `OnePlusLinearSidebar` draws an empty 44 pt top row.
+- **Invariant:** Every sidebar window applies `linearSidebarTitle(_:)`
+  (`LinearToolWindow.swift`): `MacPowerToys`, `Mac Tweaks`,
+  `Input Devices`, `RSync UI`, and `Event Viewer`, centered on C = 22,
+  14 pt after the zoom button.
+- **Check:** Capture each window on the installed build in both
+  appearances.
+
+### Mac Tweaks Pages Show Only Their Caption
+
+- **Symptom:** Menu bar and other Mac Tweaks pages showed a caption and no
+  rows.
+- **Cause:** `TweakPreferences.supportsWrites` pinned exact releases
+  (15.8, 26.7, 27.0); macOS 27.2.1 hid every row.
+- **Invariant:** Gate writes on the major release (15, 26, 27) only.
+  Keep the per-key exceptions.
+- **Check:** `MacTweaksCatalogTests`; every page lists rows on the
+  installed build.
+
 ### Sidebar Last Row Hidden Behind Fixed Settings Group
 
 - **Symptom:** The last tool row was half hidden behind Settings and Exit.
@@ -353,6 +376,23 @@ References: [suppressed launch](https://developer.apple.com/documentation/swiftu
 - **Check:** `OnePlusWindowContentTests` and `BackgroundToolWindowTests`.
 - **Open:** Signed full route matrix, close all, wait 30 s; footprint under
   250 MB with fast reopen.
+
+### Reopened Window Stays Blank
+
+- **Symptom:** Open App, launcher Open, or a sidebar tool window showed only
+  the traffic lights on an empty 820 x 690 body.
+- **Cause:** `OnePlusWindowContent` keeps the closed-size `Color.clear`
+  placeholder in scene state, but SwiftUI can rebuild its observer on
+  reopen. The new observer never saw the close, so its `isClosed` guard
+  skipped the restore. 690 = 660 plus the titlebar inset the chrome no
+  longer removes.
+- **Invariant:** OnePlusUI 1.3.19 clears the placeholder on every
+  will-open, key, or visible occlusion signal, with no closed-state guard.
+  The explicit presenter path also calls `onePlusPrepareForOpening` on the
+  closed scene window before `openWindow`.
+- **Check:** `OnePlusWindowContentTests`. On the installed build, close and
+  reopen main, Mac Tweaks, Input Devices, RSync UI, and Event Viewer from
+  the panel, launcher, and Dock; each shows its content.
 
 ### Closed Menu Panels Keep Memory And Work
 

@@ -74,6 +74,13 @@ struct LinearToolPane<Page: Hashable, Trailing: View, Content: View>: View {
     }
 }
 
+extension View {
+    /// The window name beside the traffic lights: on their centerline, 14 pt after the zoom button.
+    func linearSidebarTitle(_ title: String) -> some View {
+        overlay(alignment: .topLeading) { OnePlusSidebarTitle(title, height: OnePlusLinearMetrics.sidebarTop) }
+    }
+}
+
 /// Quiet status or metadata text for a pane toolbar or a group row.
 struct LinearCaption: View {
     let text: String

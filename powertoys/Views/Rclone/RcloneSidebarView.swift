@@ -72,6 +72,7 @@ struct RcloneSidebarView: View {
             }
             .keyboardShortcut(",")
         }
+        .linearSidebarTitle("RSync UI")
     }
 
     private var remotesHeader: some View {
