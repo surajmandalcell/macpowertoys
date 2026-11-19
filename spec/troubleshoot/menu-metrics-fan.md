@@ -144,7 +144,7 @@ still use `SystemMonitor`. `DESIGN.md` owns every size, color, and type value.
 - **Invariant:** `macpowertoys://fan/...` links work only while the user
   default `MPTAllowFanLinks` is true, because any web page can open a URL.
   Off, the route logs one line and does nothing.
-- **Check:** after the owner approves helper 2, run
+- **Check:** after the owner approves helper 3, run
   `defaults write com.surajmandal.macpowertoys MPTAllowFanLinks -bool true`,
   then `open -g "macpowertoys://fan/max"`, `/cool`, `/auto`; read
   `F0Ac`/`F0Md`/`Ftst` and the Fan log lines. End on Auto, then
