@@ -2,7 +2,9 @@ import Foundation
 import Observation
 import ServiceManagement
 
-/// Registers and repairs the privileged fan helper daemon. Fan control is its only client.
+/// Registers the privileged helper daemon (fan presets and Restart audio). An app update needs no
+/// re-registration: launchd starts the daemon on demand from the bundle's current binary, and a daemon
+/// still running the replaced binary exits 30 s after its last connection.
 @Observable
 @MainActor
 final class FanHelperService {
@@ -11,8 +13,7 @@ final class FanHelperService {
     private(set) var status: SMAppService.Status?
     @ObservationIgnored private let service: SMAppService
     @ObservationIgnored private let readStatus: @Sendable () -> SMAppService.Status
-    @ObservationIgnored private var refreshTask: Task<Void, Never>?
-    @ObservationIgnored private var checkedForStaleDaemon = false
+    @ObservationIgnored private var statusGeneration = 0
     @ObservationIgnored private var checkedPendingRegistration = false
     private static let pendingRegistrationKey = "nettoys.neighbor.pendingRegistration"
     nonisolated static let legacyLoginItemIdentifier = "com.surajmandal.macpowertoys.nettoys-helper"
@@ -20,19 +21,17 @@ final class FanHelperService {
     init(refreshOnInit: Bool, readStatus: (@Sendable () -> SMAppService.Status)? = nil) {
         let plistName = MacPowerToysHelperContract.daemonPlistName
         service = .daemon(plistName: plistName)
-        // An injected status reader never repairs or registers the real daemon.
-        checkedForStaleDaemon = readStatus != nil
+        // An injected status reader never registers the real daemon.
         checkedPendingRegistration = readStatus != nil
         self.readStatus = readStatus ?? { SMAppService.daemon(plistName: plistName).status }
-        if refreshOnInit { refresh() }
+        if refreshOnInit { Task { await refresh() } }
     }
 
     var isEnabled: Bool { status == .enabled }
 
     @discardableResult
     func enable(openSettings: Bool = true) -> Bool {
-        refreshTask?.cancel()
-        refreshTask = nil
+        statusGeneration &+= 1
         do {
             let current = service.status
             if current == .notRegistered || current == .notFound { try service.register() }
@@ -47,23 +46,20 @@ final class FanHelperService {
         return true
     }
 
-    func refresh() {
-        guard refreshTask == nil else { return }
-        let readStatus = readStatus
-        refreshTask = Task { [weak self] in
-            let status = await Task.detached(priority: .utility, operation: readStatus).value
-            guard !Task.isCancelled, let self else { return }
-            self.status = status
-            self.refreshTask = nil
-            if status == .enabled { await self.repairStaleDaemonOnce() }
-            if status == .notRegistered { await self.finishPendingRegistrationOnce() }
-        }
+    /// Re-reads the Login Items approval. A read that an enable or restart overtook is dropped.
+    func refresh() async {
+        let generation = statusGeneration
+        let status = await Task.detached(priority: .utility, operation: readStatus).value
+        guard generation == statusGeneration else { return }
+        if self.status != status { self.status = status }
+        if status == .notRegistered { await finishPendingRegistrationOnce() }
     }
 
+    /// Re-registers the daemon. Call only when the running helper reports another build than this app:
+    /// macOS can show the Background Items notice again on every register.
     func restart() async throws {
-        refreshTask?.cancel()
-        refreshTask = nil
-        defer { refresh() }
+        statusGeneration &+= 1
+        defer { Task { await refresh() } }
         UserDefaults.standard.set(true, forKey: Self.pendingRegistrationKey)
         try await service.unregister()
         try await registerAfterUnregister()
@@ -89,17 +85,6 @@ final class FanHelperService {
             LogManager.shared.warning("Fan helper registration failed: \(error.localizedDescription)", source: "FanHelper")
         }
         status = service.status
-    }
-
-    /// An approved daemon keeps running across app updates, and its replaced binary then fails the
-    /// code-signing check. Restart it once per launch.
-    private func repairStaleDaemonOnce() async {
-        guard !checkedForStaleDaemon else { return }
-        checkedForStaleDaemon = true
-        guard await Task.detached(priority: .utility, operation: { FanCommand.helperIsStale() }).value else { return }
-        do { try await restart() } catch {
-            LogManager.shared.warning("Fan helper restart failed: \(error.localizedDescription)", source: "FanHelper")
-        }
     }
 
     /// macOS can refuse a register that follows an unregister until it finishes the removal, so retry briefly.

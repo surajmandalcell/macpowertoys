@@ -51,6 +51,7 @@ struct FanControlView: View {
         .accessibilityHint(detail)
         .accessibilityIdentifier("fan-control.setup")
         .help(detail)
+        .permissionWatch(.backgroundDaemon)
     }
 
     private var setupPopover: some View {
@@ -81,7 +82,12 @@ struct FanControlView: View {
                     }
                     .onePlusControl(.primary)
                 }
-                Button("Check Again") { Task { await service.refresh() } }
+                Button("Check Again") {
+                    Task {
+                        await PermissionCenter.shared.refresh()
+                        await service.refresh()
+                    }
+                }
                     .onePlusControl()
             }
             .frame(minHeight: 34)

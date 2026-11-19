@@ -27,50 +27,16 @@ nonisolated enum FanCommand {
         }
     }
 
-    private struct JSONStatus: Decodable {
-        let profile: String?
-        let fans: [FanReading]
-    }
-
-    private static let smctlPaths = ["/opt/homebrew/bin/smctl", "/usr/local/bin/smctl"]
     private static let statsPath = "/Applications/Stats.app/Contents/Resources/smc"
     private static let controlQueue = DispatchQueue(label: "com.surajmandal.macpowertoys.fan-control")
 
-    static var smctlPath: String? {
-        smctlPaths.first { FileManager.default.isExecutableFile(atPath: $0) }
-    }
-
     static func read() -> FanSnapshot? {
-        if let smctlPath {
-            if let output = try? run(smctlPath, ["fan", "status", "--json"]),
-               let snapshot = parseSmctlStatus(output) {
-                return snapshot
-            }
-            if let output = try? run(smctlPath, ["sensors", "--json"]),
-               let status = try? JSONDecoder().decode(JSONStatus.self, from: Data(output.utf8)) {
-                return FanSnapshot(fans: status.fans, profile: nil, canControl: false)
-            }
-        }
         if let snapshot = NativeFanReader.snapshot() { return snapshot }
         if FileManager.default.isExecutableFile(atPath: statsPath),
            let output = try? run(statsPath, ["fans"]) {
             return parseStatsFans(output)
         }
         return nil
-    }
-
-    static func parseSmctlStatus(_ output: String) -> FanSnapshot? {
-        guard let status = try? JSONDecoder().decode(JSONStatus.self, from: Data(output.utf8)) else {
-            return nil
-        }
-        let knownModes = ["auto", "manual", "system"]
-        return FanSnapshot(
-            fans: status.fans,
-            profile: status.profile,
-            canControl: !status.fans.isEmpty && status.fans.allSatisfy {
-                knownModes.contains($0.mode?.lowercased() ?? "")
-            }
-        )
     }
 
     static func parseStatsFans(_ output: String) -> FanSnapshot? {
@@ -97,26 +63,14 @@ nonisolated enum FanCommand {
         return FanSnapshot(fans: fans, profile: nil, canControl: false)
     }
 
-    static func arguments(for preset: FanPreset) -> [String] {
-        ["fan", "profile", preset == .auto ? "auto" : "full"]
-    }
-
     static func apply(_ preset: FanPreset, completion: @escaping @Sendable (String?) -> Void) {
         controlQueue.async {
             do {
-                try applyOnQueue(preset)
+                try applyBuiltIn(preset)
                 completion(nil)
             } catch {
                 completion(error.localizedDescription)
             }
-        }
-    }
-
-    private static func applyOnQueue(_ preset: FanPreset) throws {
-        if let smctlPath {
-            _ = try run(smctlPath, arguments(for: preset))
-        } else {
-            try applyBuiltIn(preset)
         }
     }
 
@@ -151,22 +105,15 @@ nonisolated enum FanCommand {
         return commit.count == 40 && commit.allSatisfy(\.isHexDigit) ? commit : nil
     }
 
-    /// A running helper whose binary an app update replaced fails the code-signing check.
-    static func helperIsStale() -> Bool {
+    /// Asks the root helper to restart Core Audio. Returns an empty string on success. Blocks; call off main.
+    static func restartAudio() -> String {
         let reply = HelperReply()
-        let connection = NSXPCConnection(machServiceName: MacPowerToysHelperContract.machServiceName, options: .privileged)
-        connection.remoteObjectInterface = NSXPCInterface(with: MacPowerToysHelperXPCProtocol.self)
-        connection.setCodeSigningRequirement(MacPowerToysHelperContract.helperRequirement)
-        connection.invalidationHandler = { reply.finish("") }
-        connection.resume()
-        let proxy = connection.remoteObjectProxyWithErrorHandler { error in
-            reply.finish((error as NSError).code == NSXPCConnectionCodeSigningRequirementFailure ? "stale" : "")
-        } as? MacPowerToysHelperXPCProtocol
-        proxy?.neighborSnapshot { _, _ in reply.finish("") }
-        if proxy == nil { reply.finish("") }
-        let result = reply.wait(seconds: 2)
+        let (connection, proxy) = helperConnection(reply: reply)
+        proxy?.restartAudio { reply.finish($0) }
+        if proxy == nil { reply.finish("The built-in helper is unavailable.") }
+        let message = reply.wait(seconds: 10)
         connection.invalidate()
-        return result == "stale"
+        return message
     }
 
     private static func helperConnection(reply: HelperReply) -> (NSXPCConnection, MacPowerToysHelperXPCProtocol?) {
@@ -366,7 +313,7 @@ final class FanControlService {
     var canControl: Bool { snapshot?.canControl == true }
     var canRestoreAutomatic: Bool {
         (ownsManualControl || hasPendingManualCommand || snapshot?.hasExternalManualControl == true)
-            && (FanCommand.smctlPath != nil || FanHelperService.shared.isEnabled)
+            && FanHelperService.shared.isEnabled
     }
     var needsApproval: Bool { FanHelperService.shared.status == .requiresApproval }
     var needsHelperUpdate: Bool {
