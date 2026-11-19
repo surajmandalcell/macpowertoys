@@ -56,8 +56,8 @@ struct MainLaunchTile: View {
     @State private var settings = SettingsManager.shared
     @State private var shortcuts = GlobalShortcutManager.shared
 
-    private var action: GlobalShortcutAction? {
-        switch tool.id {
+    static func action(for toolID: String) -> GlobalShortcutAction? {
+        switch toolID {
         case "color-picker": .colorPicker
         case "text-extractor": .textExtractor
         case "portman": .portman
@@ -65,8 +65,15 @@ struct MainLaunchTile: View {
         }
     }
 
+    /// The tool's current global shortcut, or nil when it is off or unset. Awake's menu command is fixed.
+    static func activeShortcut(for toolID: String, in shortcuts: GlobalShortcutManager) -> String? {
+        if toolID == "awake" { return "⌃⌥⌘A" }
+        return action(for: toolID).flatMap { shortcuts.isEnabled($0) && shortcuts.shortcut(for: $0).isSet
+            ? shortcuts.shortcut(for: $0).display : nil }
+    }
+
     var body: some View {
-        let active = action.flatMap { shortcuts.isEnabled($0) && shortcuts.shortcut(for: $0).isSet ? $0 : nil }
+        let active = Self.action(for: tool.id).flatMap { shortcuts.isEnabled($0) && shortcuts.shortcut(for: $0).isSet ? $0 : nil }
         OnePlusLinearLaunchTile(shortcut: active.map { shortcuts.shortcut(for: $0).display },
                                 caption: active.map { $0 == .portman ? "Open \(tool.name)" : $0.title } ?? "Open \(tool.name)") {
             ToolActionRouter.shared.open(toolID: tool.id)
