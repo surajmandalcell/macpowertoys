@@ -269,7 +269,8 @@ struct PortmanPanelView: View {
                     OnePlusMenuTab(.forward, "Forward", systemImage: "arrow.left.arrow.right", accessibilityIdentifier: "portman.page.Forward")
                 ], selection: Binding(get: { page }, set: navigate))
             } trailing: {
-                OnePlusLinearIconButton(systemImage: "gearshape", help: "Portman settings") {
+                OnePlusLinearIconButton(systemImage: "gearshape", help: "Portman settings",
+                                        busy: service.isLoadingRemote ? "Scanning" : nil) {
                     ToolActionRouter.shared.openMainPage(toolID: "portman")
                 }
                 .accessibilityIdentifier("portman.settings")
@@ -286,7 +287,7 @@ struct PortmanPanelView: View {
                         case .local:
                             if let selectedPort { localDetail(selectedPort) }
                             else { localOverview }
-                        case .forward: forwardingPage.portmanAppletLook()
+                        case .forward: forwardResults.portmanForwardLook()
                         }
                     }
                     .frame(maxWidth: .infinity, alignment: .topLeading)
@@ -314,7 +315,10 @@ struct PortmanPanelView: View {
         if page == .local, let selectedPort {
             localDetailHeader(selectedPort)
         } else if page == .forward {
-            forwardToolbar.portmanAppletLook()
+            PortmanForwardInputs(host: $host, manualPort: $manualPort, aliases: aliases,
+                                 scanning: service.isLoadingRemote, scan: scanRemote,
+                                 cancel: clearRemoteScan, addPort: addManualPort)
+                .portmanForwardLook()
         }
     }
 
@@ -909,94 +913,54 @@ struct PortmanPanelView: View {
         }
     }
 
-    private var forwardingPage: some View {
-        VStack(alignment: .leading, spacing: OnePlusMetrics.cardGap) {
-            forwardResults
-        }
-    }
-
-    private var forwardToolbar: some View {
-        VStack(alignment: .leading, spacing: OnePlusMetrics.actionSpacing) {
-            OnePlusHeaderActions {
-                OnePlusLinearTextField("alias or user@IP", text: $host, onSubmit: scanRemote)
-                    .accessibilityLabel("SSH alias or username at IP address")
-                    .help(host.isEmpty ? "SSH alias or username at IP address" : host)
-                if !aliases.isEmpty {
-                    OnePlusLinearSelect(
-                        choices: [("", "Hosts")] + aliases.map { ($0, $0) },
-                        selection: Binding(
-                            get: { aliases.contains(host) ? host : "" },
-                            set: { if !$0.isEmpty { host = $0 } }
-                        ),
-                        accessibilityLabel: "Choose an SSH host",
-                        width: OnePlusMenuMetrics.actionColumn
-                    )
-                }
-                if service.isLoadingRemote {
-                    ProgressView().controlSize(.small)
-                        .accessibilityLabel("Scanning ports on \(host)")
-                    Button("Cancel", action: clearRemoteScan)
-                        .buttonStyle(OnePlusLinearButtonStyle(.soft))
-                } else {
-                    Button("Scan", action: scanRemote)
-                        .buttonStyle(OnePlusLinearButtonStyle(.soft))
-                        .disabled(host.isEmpty)
+    /// Scan results and added ports in one group (status, rows, Forward), then the forwarded ports in another.
+    private var forwardResults: some View {
+        VStack(alignment: .leading, spacing: OnePlusLinearPanelStyle.fillSteps.blockGap) {
+            let scanned = !host.isEmpty && discoveredHost == host
+            if scanned || !manualRemotePorts.isEmpty {
+                OnePlusLinearList(style: .panel) {
+                    PortmanForwardRow {
+                        let ports = (scanned ? service.remotePorts : []) + manualRemotePorts
+                        Toggle(isOn: Binding(
+                            get: { !ports.isEmpty && ports.allSatisfy(selectedRemotePorts.contains) },
+                            set: { all in
+                                if all { selectedRemotePorts.formUnion(ports) } else { selectedRemotePorts = [] }
+                                lastSelectedRemotePort = nil
+                            }
+                        )) { EmptyView() }
+                        .labelsHidden().toggleStyle(OnePlusCheckboxStyle()).disabled(ports.isEmpty)
+                        .accessibilityLabel("Select all ports")
+                        PortmanForwardStatus(scanned ? "\(host) · \(service.remotePorts.count) ports" : "\(host) · added ports")
+                        if scanned { PortmanForwardKey("Clear", action: clearRemoteScan).help("Clear scan results") }
+                    }
+                    if scanned {
+                        if service.remotePorts.isEmpty {
+                            PortmanForwardRow {
+                                Text("No listening ports found").linearText(OnePlusLinearMetrics.control, color: OnePlusLinearColor.secondary)
+                                    .frame(maxWidth: .infinity, alignment: .leading)
+                            }
+                            .help("You can add a remote port manually.")
+                        }
+                        ForEach(service.remotePorts, id: \.self) { remoteRow($0) }
+                    }
+                    ForEach(manualRemotePorts, id: \.self) { remoteRow($0) }
+                    PortmanForwardRow {
+                        Text(selectedRemotePorts.isEmpty ? "No ports selected" : "\(selectedRemotePorts.count) selected")
+                            .linearText(OnePlusLinearMetrics.control, color: OnePlusLinearColor.secondary)
+                            .frame(maxWidth: .infinity, alignment: .leading)
+                        PortmanForwardKey("Forward", action: forwardSelected)
+                            .disabled(host.isEmpty || selectedRemotePorts.isEmpty)
+                    }
                 }
             }
-            OnePlusHeaderActions {
-                OnePlusLinearTextField("Remote port", text: $manualPort, onSubmit: addManualPort)
-                    .accessibilityLabel("Remote port to add")
-                Button("Add port", action: addManualPort).disabled(host.isEmpty)
-                    .buttonStyle(OnePlusLinearButtonStyle(.soft))
-            }
-        }
-    }
-
-    @ViewBuilder private var forwardResults: some View {
             if !service.tunnels.isEmpty {
-                OnePlusLinearAppletSection("Forwarded ports · \(activeTunnelCount) active") {
+                OnePlusLinearList(style: .panel) {
+                    PortmanForwardRow { PortmanForwardStatus("Forwarded ports · \(activeTunnelCount) active") }
                     ForEach(service.tunnels) { tunnelRow($0) }
                 }
             }
-            if !host.isEmpty && discoveredHost == host {
-                VStack(alignment: .leading, spacing: OnePlusMetrics.actionSpacing) {
-                    HStack(spacing: OnePlusMetrics.actionSpacing) {
-                        if !service.remotePorts.isEmpty {
-                            Button("Select all") {
-                                selectedRemotePorts.formUnion(service.remotePorts)
-                                lastSelectedRemotePort = nil
-                            }
-                            Button("Clear selection") {
-                                selectedRemotePorts = []
-                                lastSelectedRemotePort = nil
-                            }
-                            .disabled(selectedRemotePorts.isEmpty)
-                        }
-                        Spacer(minLength: 0)
-                        Button("Clear scan", action: clearRemoteScan)
-                    }
-                    .buttonStyle(OnePlusLinearButtonStyle(.soft))
-                    OnePlusLinearAppletSection("\(host) · \(service.remotePorts.count) ports") {
-                        if service.remotePorts.isEmpty {
-                            OnePlusLinearAppletRow("No listening ports found") { EmptyView() }
-                                .help("You can add a remote port manually.")
-                        } else {
-                            ForEach(service.remotePorts, id: \.self) { port in remoteRow(port) }
-                        }
-                    }
-                }
-            }
-            if !manualRemotePorts.isEmpty {
-                OnePlusLinearAppletGroup {
-                    ForEach(manualRemotePorts, id: \.self) { remoteRow($0) }
-                }
-            }
-            if !selectedRemotePorts.isEmpty {
-                Button("Forward \(selectedRemotePorts.count) selected") { forwardSelected() }
-                    .buttonStyle(OnePlusLinearButtonStyle(.soft))
-                    .disabled(host.isEmpty)
-            }
             if passwordPromptHost == nil, let error = service.forwardingError { errorText(error) }
+        }
     }
 
     private var manualRemotePorts: [UInt16] {
@@ -1006,7 +970,7 @@ struct PortmanPanelView: View {
     private func remoteRow(_ port: UInt16) -> some View {
         let detail = service.remoteDetails[port]
         return VStack(alignment: .leading, spacing: 0) {
-            HStack(spacing: OnePlusMetrics.actionSpacing) {
+            PortmanForwardRow {
                 Toggle(isOn: Binding(
                     get: { selectedRemotePorts.contains(port) },
                     set: { selected in
@@ -1033,33 +997,30 @@ struct PortmanPanelView: View {
                         remoteDetailTask?.cancel()
                     }
                 } label: {
-                    HStack(spacing: OnePlusMetrics.spacing[2]) {
-                        Text(":\(String(port))")
-                            .onePlusText(.mono)
+                    HStack(spacing: OnePlusLinearMetrics.rowGap) {
+                        PortmanPortChip(port: port)
                         Text(detail?.displayName ?? "Unknown service")
-                            .onePlusText(.row)
+                            .linearText(OnePlusLinearMetrics.control)
                             .lineLimit(1)
                         Spacer(minLength: 0)
                         Image(systemName: "chevron.right")
-                            .onePlusText(.caption)
+                            .font(.system(size: 9, weight: .semibold))
                             .rotationEffect(.degrees(expandedRemotePort == port ? 90 : 0))
-                            .foregroundStyle(OnePlusColor.secondary)
+                            .foregroundStyle(OnePlusLinearColor.secondary)
                     }
-                    .frame(maxWidth: .infinity, minHeight: OnePlusMetrics.compactControlHeight)
+                    .frame(maxWidth: .infinity, minHeight: PortmanForwardMetrics.rowHeight)
                     .contentShape(Rectangle())
                 }
-                .buttonStyle(OnePlusInteractionStyle())
+                .buttonStyle(.plain)
                 .accessibilityLabel("Details for remote port \(String(port))")
                 OnePlusLinearTextField(String(port), text: Binding(
                     get: { localPortInputs[port] ?? String(port) },
                     set: { localPortInputs[port] = $0; selectedRemotePorts.insert(port) }
                 ), onSubmit: forwardSelected)
-                .frame(width: OnePlusMenuMetrics.actionColumn)
+                .frame(width: PortmanForwardMetrics.column)
                 .accessibilityLabel("Local port for remote port \(String(port))")
                 .help("Local port")
             }
-            .padding(.horizontal, OnePlusLinearMetrics.appletRowPadding)
-            .frame(minHeight: OnePlusLinearMetrics.appletRow)
             if expandedRemotePort == port {
                 HStack(alignment: .firstTextBaseline, spacing: OnePlusMetrics.actionSpacing) {
                     if let command = detail?.command {
@@ -1074,7 +1035,7 @@ struct PortmanPanelView: View {
                 }
                 .onePlusText(.mono)
                 .frame(maxWidth: .infinity, alignment: .leading)
-                .padding(.horizontal, OnePlusLinearMetrics.appletRowPadding)
+                .padding(.horizontal, OnePlusLinearMetrics.panelRowInset)
                 .padding(.bottom, OnePlusMetrics.actionSpacing)
                 if let container = detail?.container { 
                     OnePlusLinearAppletRow("Container") {
@@ -1118,11 +1079,20 @@ struct PortmanPanelView: View {
             })
         }
         actions.append(OnePlusLinearAction("Stop forwarding", systemImage: "stop.fill") { service.stopTunnel(tunnel.id) })
-        return OnePlusLinearAppletListRow(":\(String(tunnel.localPort)) → \(tunnel.host):\(String(tunnel.remotePort))",
-                                          monospaced: true, metadata: tunnelStateLabel(tunnel.state), actions: actions) {
+        return PortmanForwardRow {
             Image(systemName: tunnelSymbol(tunnel.state))
+                .font(.system(size: 11))
                 .foregroundStyle(tunnelColor(tunnel.state))
                 .accessibilityHidden(true)
+            Text(":\(String(tunnel.localPort)) → \(tunnel.host):\(String(tunnel.remotePort))")
+                .font(.system(size: OnePlusLinearMetrics.control, design: .monospaced)).foregroundStyle(OnePlusLinearColor.ink)
+                .lineLimit(1).truncationMode(.middle)
+                .frame(maxWidth: .infinity, alignment: .leading)
+            Text(tunnelStateLabel(tunnel.state)).linearText(OnePlusLinearMetrics.control, color: OnePlusLinearColor.secondary)
+                .lineLimit(1).fixedSize()
+            ForEach(actions) { action in
+                OnePlusLinearIconButton(systemImage: action.systemImage, help: action.title, size: 22, action: action.action)
+            }
         }
         .help("localhost:\(String(tunnel.localPort)) → \(tunnel.host):\(String(tunnel.remotePort)) · \(tunnelStatus(tunnel.state))")
         .contextMenu {
@@ -1496,12 +1466,6 @@ struct PortmanSettingsView: View {
 
     private func integer(_ value: Binding<Double>) -> Binding<Int> {
         Binding(get: { Int(value.wrappedValue) }, set: { value.wrappedValue = Double($0) })
-    }
-}
-
-private extension View {
-    func portmanAppletLook() -> some View {
-        environment(\.onePlusLinearControlLook, .quietRaised).onePlusLinearMotion(.quiet)
     }
 }
 

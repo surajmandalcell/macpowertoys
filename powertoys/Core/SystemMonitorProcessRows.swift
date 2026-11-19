@@ -108,6 +108,20 @@ nonisolated enum SystemMonitorProcessRows {
 
 @MainActor @Observable
 final class SystemMonitorProcessIcons {
+    /// macOS 26 draws an app with only a legacy `.icns` icon inside a padded gray tile. Such apps get their own
+    /// `.icns` art, so every row shows the real icon at the full slot. Apps with an asset-catalog icon keep the
+    /// system image.
+    nonisolated static func icon(forBundle path: String) -> NSImage {
+        let bundle = Bundle(path: path)
+        if bundle?.object(forInfoDictionaryKey: "CFBundleIconName") == nil,
+           let name = bundle?.object(forInfoDictionaryKey: "CFBundleIconFile") as? String,
+           let file = bundle?.path(forResource: (name as NSString).deletingPathExtension, ofType: "icns"),
+           let image = NSImage(contentsOfFile: file) {
+            return image
+        }
+        return NSWorkspace.shared.icon(forFile: path)
+    }
+
     private(set) var images: [String: NSImage] = [:]
     private var loaded = Set<String>()
 
@@ -136,8 +150,9 @@ final class SystemMonitorProcessIcons {
                 autoreleasepool {
                     var isDirectory: ObjCBool = false
                     if FileManager.default.fileExists(atPath: path, isDirectory: &isDirectory), isDirectory.boolValue {
-                        images[path] = NSWorkspace.shared.icon(forFile: path)
-                            .cgImage(forProposedRect: nil, context: nil, hints: nil)
+                        var pixels = NSRect(x: 0, y: 0, width: 64, height: 64)
+                        images[path] = SystemMonitorProcessIcons.icon(forBundle: path)
+                            .cgImage(forProposedRect: &pixels, context: nil, hints: nil)
                     }
                 }
             }
