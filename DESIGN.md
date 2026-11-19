@@ -119,7 +119,7 @@ mockups are in `docs/design/v15/`.
   Fan row and the Awake row; five top processes (icon, name, CPU percent
   in the data color with its percent sign, memory; no bar); one action
   toolbar for Pick Color, Extract Text, and Ruler. A top bar holds the
-  panel tabs as icons on the left and the gear and `Open App` on the
+  panel tabs as icons on the left and the gear and `Open MacPowerToys` on the
   right (see "Combined panel").
 - Task Manager left the app on 2026-11-16: its window, its own menu
   panel and status items, its tool page, and its routes. The combined
@@ -201,6 +201,8 @@ mockups are in `docs/design/v15/`.
   - Apps by Sam (owner, 2026-11-19): page "Featured Pro, then a list",
     sidebar glyph "Heart", shipped in OnePlusUI 1.3.15 (see "Main
     window").
+  - Open key (owner, 2026-11-19): "Ink key" with the label `Open
+    MacPowerToys`, shipped in OnePlusUI 1.3.17 (see "Combined panel").
 
 ## Overview
 
@@ -711,10 +713,14 @@ Built from the OnePlusUI `OnePlusLinear` panel parts with
   two unselected tabs only. Home first
   (`square.grid.2x2`), then the tool tabs in the saved order. Context menu Move
   Left and Move Right reorder the tool tabs. Trailing, 2 pt apart: the
-  28 pt gear (13 pt glyph, opens Settings), then `Open App`: a 26 pt
-  coral soft key (`openKey*` gradient, lit top edge, short drop), radius
-  8, 10 pt side padding, 12 pt medium white text centered on its cap
-  height. Quit stays in the status item's right-click menu.
+  28 pt gear (13 pt glyph, opens Settings), then `Open MacPowerToys`:
+  a 26 pt "Ink key" (`openKey*` gradient: `#34343A` to `#1C1D22` with a
+  white label in Light, `#EDEDEF` to `#D2D2D7` with a `#141416` label in
+  Dark; lit top edge, short drop; hover and pressed are one lighter step
+  in Light and one darker step in Dark), radius 8, 10 pt side padding,
+  12 pt medium text centered on its cap height. It fits beside all three
+  tabs with 79 pt to spare. Quit stays in the status item's right-click
+  menu.
 - Home, top to bottom, with no header row:
   - Bento, "Floating tiles with wash": six separate `fillGroup` tiles,
     radius 8, 7 pt apart, 10 pt tile padding, 266 pt tall. One shadow
