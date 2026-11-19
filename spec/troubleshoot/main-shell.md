@@ -397,7 +397,7 @@ References: [suppressed launch](https://developer.apple.com/documentation/swiftu
 - **Invariant:** The combined panel has no top bar. Its footer leads with
   the icon tabs (Home first; tool tabs reorder through Move Left and Move
   Right) and ends with the gear and Open App. Quit lives in the status
-  item's right-click menu. Home is the bento, the Fan and Kwake card, three
+  item's right-click menu. Home is the bento, the Fan and Awake card, three
   top processes, then the Pick Color, Extract Text, and Ruler action bar.
   The body is the only scroller: `MainPanelBodyLayout` gives it its natural
   height up to the ceiling minus the shell chrome, and the hosts resize the
@@ -434,7 +434,7 @@ References: [suppressed launch](https://developer.apple.com/documentation/swiftu
   batteries, and profile values before controls.
 - **Check:** Run the remote-activity regression. Check unloaded usage.
 
-### Fan And Kwake Rows
+### Fan And Awake Rows
 
 - **Invariant:** Only main Home shows `FanControlView`, with its own
   visibility owner; other pages omit Fan.

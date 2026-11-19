@@ -402,7 +402,7 @@ latency benefit still needs measurement. See `tmp/redesign/logs/w4-perf-windows.
   main tool page and its settings content both own scrolling and padding.
 - **Invariant:** Awake, Color Picker, Text Extractor, and Portman each expose
   one cards-only settings stack with 16pt gaps and inherited density. Only
-  the main tool page renders it. Kwake has no window; every Kwake open
+  the main tool page renders it. Awake has no window; every Awake open
   route selects its main tool page. An applet or Portman panel gear and
   Command-comma call `ToolActionRouter.openMainPage(toolID:)`; applets keep
   only their work pages (owner pick 2026-11-18).
@@ -1285,7 +1285,7 @@ latency benefit still needs measurement. See `tmp/redesign/logs/w4-perf-windows.
   prompt; run `36171513372` passed and its normal-launch capture showed no
   permission dialog.
 
-## Kwake Healthy Status Ink, 2026-10-01
+## Awake Healthy Status Ink, 2026-10-01
 
 - **Symptom:** Signed `43ce0eb9` shows the steady running sentence in green
   in both appearances.
@@ -1297,7 +1297,7 @@ latency benefit still needs measurement. See `tmp/redesign/logs/w4-perf-windows.
   Parsing and the single combined gate pass at `7a8a6c41`. Updated signed
   active/off/error recapture remains with the orchestrator.
 
-## Kwake Window Controls
+## Awake Window Controls
 
 - **Symptom:** The Awake window can be enlarged, the off state is exposed as
   `Passive`, or `Keep Display On` cannot be changed while Awake is off.
@@ -1314,7 +1314,7 @@ latency benefit still needs measurement. See `tmp/redesign/logs/w4-perf-windows.
   four tray segments share the available width, then drag a
   window edge and confirm the content size remains unchanged.
 
-## Kwake Titlebar Appearance
+## Awake Titlebar Appearance
 
 - **Symptom:** Awake opens with a large focus outline around `Keep Display On`,
   a bottom titlebar rule, or a title that lacks the requested emphasis.

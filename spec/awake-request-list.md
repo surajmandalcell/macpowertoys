@@ -1,4 +1,4 @@
-# Kwake Request List
+# Awake Request List
 
 Round 17 applet correction, run 68, 2026-10-01: OnePlusUI `a02d43d`
 restores the 40pt row and C22. The title and display switch share that

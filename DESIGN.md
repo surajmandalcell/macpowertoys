@@ -116,7 +116,7 @@ mockups are in `docs/design/v15/`.
 - Combined menu panel, top to bottom: the two-column bento of metric
   tiles (CPU with its history, Disk, and Battery on the left; GPU, Memory,
   and Network on the right, each in its data color); one card with the
-  Fan row and the Kwake row; five top processes (icon, name, CPU percent
+  Fan row and the Awake row; five top processes (icon, name, CPU percent
   in the data color with its percent sign, memory; no bar); one action
   toolbar for Pick Color, Extract Text, and Ruler. A top bar holds the
   panel tabs as icons on the left and the gear and `Open App` on the
@@ -131,7 +131,7 @@ mockups are in `docs/design/v15/`.
   Sam's Partition Manager (`../sams_partition_manager`), Sam's System
   Cleaner (`../sams_system_cleaner`), and Sam's NetToys (`../nettoys`).
   RSync UI and Event Viewer stay for now. Nine tools stay: Color Picker,
-  Text Extractor, Ruler, Kwake, Mac Tweaks, Input Devices, Portman,
+  Text Extractor, Ruler, Awake, Mac Tweaks, Input Devices, Portman,
   RSync UI, and Event Viewer.
 - Applets (owner, 2026-11-16): the small tool and settings windows are
   called applets, and every applet gets the version 15 look:
@@ -169,7 +169,7 @@ mockups are in `docs/design/v15/`.
   - Simple applet settings live on the tool's main window page. An
     applet's gear opens that page. An applet keeps only its real work
     (Color Picker keeps History and Projects).
-  - Kwake has no separate window: its menu panel row and its main
+  - Awake has no separate window: its menu panel row and its main
     window page are enough.
   - `How to use` sits at the bottom of the page, below the space left
     by short content.
@@ -741,7 +741,7 @@ Built from the OnePlusUI `OnePlusLinear` panel parts with
     from the group sides and 1 pt from the row edges.
   - One group with the Fan row (32 pt: RPM status and the Auto, Cool,
     Max segmented control: a `fillTrack` track, radius 7, 2 pt inset, a
-    radius 5 `fillThumb` thumb, no dividers) and the Kwake row (state text
+    radius 5 `fillThumb` thumb, no dividers) and the Awake row (state text
     and a 32 x 18 switch: `accent` on, `fillTrack` off, 14 pt knob). A Mac
     with no fans hides the Fan row; the group hides when both rows are
     absent. Only a click on a segment sends a fan write.
@@ -847,7 +847,7 @@ Built from the OnePlusUI `OnePlusLinear` panel parts with
 
 ## Compact applets
 
-Kwake, Color Picker, and Text Extractor stay compact applets with the same
+Awake, Color Picker, and Text Extractor stay compact applets with the same
 tokens, fixed sizes, and components.
 
 - One `window` surface with the ribbon texture, and a 40 pt custom titlebar:
@@ -934,7 +934,7 @@ Version 15 Linear style, built from the OnePlusUI `OnePlusLinear*` parts
   the right the 176 x 108 soft `OnePlusLinearLaunchTile` (radius 12) that
   opens the tool. It shows `Open` and an arrow, then the tool's global
   shortcut (22 pt) over its action name when the shortcut is on (Color
-  Picker, Text Extractor, Portman), else only `Open <Tool>`. Kwake has no
+  Picker, Text Extractor, Portman), else only `Open <Tool>`. Awake has no
   window and no tile. Then the `Menu bar icon` row (None, Combined,
   Separate) for tools that support placement, then the tool's settings
   inline in the editorial look. Ruler shows its defaults for new rulers

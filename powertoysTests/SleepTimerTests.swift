@@ -140,7 +140,7 @@ final class SleepTimerTests: XCTestCase {
                 let bitmap = try XCTUnwrap(host.bitmapImageRepForCachingDisplay(in: host.bounds))
                 host.cacheDisplay(in: host.bounds, to: bitmap)
                 let png = try XCTUnwrap(bitmap.representation(using: .png, properties: [:]))
-                try png.write(to: directory.appendingPathComponent("kwake-sleep-timer-\(running ? "running" : "idle")-\(name).png"))
+                try png.write(to: directory.appendingPathComponent("awake-sleep-timer-\(running ? "running" : "idle")-\(name).png"))
                 XCTAssertLessThan(height, OnePlusWindowCanvas.awake.size.height)
             }
         }

@@ -44,7 +44,7 @@ variant weakens the deliberate temperature and contrast difference.
 | RSync UI | Midnight | Chosen Color | Preserve the blue cloud echo in dark mode |
 | Event Viewer | Chosen Color | Chosen Color | Ceramic log tablet with a coral warning badge |
 | Ruler | Chosen Color | Chosen Color | Orange identity is fixed in both appearances |
-| Kwake | Chosen Color | Chosen Color | Yellow eye identity is fixed in both appearances |
+| Awake | Chosen Color | Chosen Color | Yellow eye identity is fixed in both appearances |
 | Color Picker | Chosen Color | Chosen Color | Eyedropper with attached color samples |
 | Text Extractor | Chosen Color | Chosen Color | Capture card with a selected text strip |
 | Input Devices | Chosen Color | Chosen Color | Ivory mouse with a violet scroll wheel |
@@ -147,7 +147,7 @@ has been changed.
 |---|---|---|---|
 | RSync UI | `#1C1D22` | `#FFFFFF` at `.92` | `#5B8DEF` cloud echo at `.30` |
 | Ruler | `#F04E23` | `#23272E` | Cream graduation cutouts |
-| Kwake | `#F5B71E` | `#23272E`, `#F7F5F0` | Cream eye catchlight |
+| Awake | `#F5B71E` | `#23272E`, `#F7F5F0` | Cream eye catchlight |
 | Task Manager | `#002B26` | `#E0FFF8` | M02 Scope trace identity |
 
 The five bitmap identities in the appearance matrix take their colors from

@@ -44,8 +44,8 @@
     },
     {
       "name": "awake",
-      "title": "Kwake",
-      "description": "Open Kwake controls",
+      "title": "Awake",
+      "description": "Open Awake controls",
       "icon": "awake.png",
       "mode": "no-view"
     },

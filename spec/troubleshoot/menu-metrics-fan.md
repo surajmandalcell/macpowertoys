@@ -70,7 +70,7 @@ still use `SystemMonitor`. `DESIGN.md` owns every size, color, and type value.
 - **Invariant:** The helper writes Auto when the connection that set a manual
   mode ends (`FanManualLease`). The app holds that connection only while the
   mode is manual. A failed revert retries 3 times, then shows an error. The
-  helper-commit poll backs off. A disabled Kwake refuses external actions.
+  helper-commit poll backs off. A disabled Awake refuses external actions.
 - **Check:** `FanControlTests` lease test. Then, with the new helper approved,
   set Max, send SIGKILL, and confirm Auto returns on real hardware.
 
@@ -89,7 +89,7 @@ still use `SystemMonitor`. `DESIGN.md` owns every size, color, and type value.
   only while a fan view owns the poller, and bounds indices and lengths.
   Fan commands drain output with a cap and hard-kill after a short grace.
 - **Invariant:** Fan is the first row of the Home control card, above
-  Kwake. It shows the RPM and Auto, Cool, and Max. A read that finds no fans
+  Awake. It shows the RPM and Auto, Cool, and Max. A read that finds no fans
   hides the row. Fan starts and stops its service from `onePlusIsVisible`;
   hiding dismisses setup. Only a click on a segment the helper can apply
   writes (`canSelect`); the whole control dims while none can apply. A

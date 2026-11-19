@@ -21,7 +21,7 @@ final class AwakeService {
 
     var isActive: Bool { configuration.mode != .passive && assertionID != 0 }
     var statusText: String {
-        guard configuration.mode != .passive else { return "Kwake is off" }
+        guard configuration.mode != .passive else { return "Awake is off" }
         if let remaining { return "\(configuration.mode.title) · \(Self.duration(remaining)) remaining" }
         return configuration.mode.title
     }
@@ -148,7 +148,7 @@ final class AwakeService {
         let result = IOPMAssertionCreateWithName(
             assertionType as CFString,
             IOPMAssertionLevel(kIOPMAssertionLevelOn),
-            "MacPowerToys Kwake is active" as CFString,
+            "MacPowerToys Awake is active" as CFString,
             &assertionID
         )
         if result != kIOReturnSuccess {
@@ -229,7 +229,7 @@ final class AwakeService {
     }
 
     func handle(_ action: ToolActionID, parameters: [String: String], toolEnabled: Bool? = nil) {
-        // A disabled Kwake must never hold a power assertion, whatever URL or Raycast asks.
+        // A disabled Awake must never hold a power assertion, whatever URL or Raycast asks.
         guard toolEnabled ?? SettingsManager.shared.isToolEnabled("awake") else { return }
         switch action {
         case .awakeToggle: toggle()

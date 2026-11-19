@@ -27,7 +27,7 @@ final class AppCommandTests: XCTestCase {
                                    carbonModifiers: UInt32(controlKey | optionKey | cmdKey), keyLabel: "A")
         XCTAssertEqual(GlobalShortcutManager.conflictMessage(
             for: awake, action: .mainPanel, shortcuts: [:], enabled: [], awakeEnabled: true
-        ), "Already used for Kwake.")
+        ), "Already used for Awake.")
     }
 
     func testRecorderRejectsOtherWindowEvents() throws {
