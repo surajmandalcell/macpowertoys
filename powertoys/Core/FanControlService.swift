@@ -117,7 +117,7 @@ nonisolated enum FanCommand {
         return reply.wait(seconds: seconds)
     }
 
-    static func run(_ executable: String, _ arguments: [String]) throws -> String {
+    static func run(_ executable: String, _ arguments: [String], seconds: Double = 5) throws -> String {
         let process = Process()
         process.executableURL = URL(fileURLWithPath: executable)
         process.arguments = arguments
@@ -133,7 +133,7 @@ nonisolated enum FanCommand {
                 if process.isRunning { Darwin.kill(process.processIdentifier, SIGKILL) }
             }
         }
-        DispatchQueue.global(qos: .utility).asyncAfter(deadline: .now() + 5, execute: timeout)
+        DispatchQueue.global(qos: .utility).asyncAfter(deadline: .now() + seconds, execute: timeout)
         var data = Data()
         var exceeded = false
         while true {
@@ -271,6 +271,7 @@ final class FanControlService {
     private var owners = Set<String>()
     private var pollTask: Task<Void, Never>?
     private var ownsManualControl = false
+    private var lastRequested: FanPreset?
     private var hasPendingManualCommand = false
     private var isRestoringOnExit = false
     private var commandRevision = 0
@@ -331,13 +332,10 @@ final class FanControlService {
     var canInstallHelper: Bool { FanHelperService.shared.canInstall }
     var isUnsupportedBuild: Bool { FanHelperService.shared.status == .unsupported }
 
-    /// Installs the helper (one macOS admin password prompt) without changing the fans.
-    func enableControl() async {
-        guard !isChanging else { return }
-        isChanging = true
-        errorMessage = await FanHelperService.shared.install()
-        await refresh()
-        isChanging = false
+    /// Tries the last chosen mode again. It asks for the password only when the helper is missing or older.
+    func retry() {
+        errorMessage = nil
+        select(lastRequested ?? .auto)
     }
 
     func start(owner: String) {
@@ -369,7 +367,7 @@ final class FanControlService {
         if let result {
             // A helper that is missing or older still allows a choice: the first write installs it.
             let helper = FanHelperService.shared
-            let nativeControl = (helper.isEnabled || helper.canInstall)
+            let nativeControl = (helper.isEnabled || helper.canInstall || helper.status == .notResponding)
                 && !result.fans.isEmpty
                 && (!result.hasExternalManualControl || ownsManualControl)
                 && result.fans.allSatisfy { ["auto", "manual", "system"].contains($0.mode ?? "") }
@@ -385,13 +383,20 @@ final class FanControlService {
         guard !isRestoringOnExit else { return }
         guard FanControlPresentation.canSelect(preset, canControl: canControl,
                                               canRestoreAutomatic: canRestoreAutomatic, isChanging: isChanging) else { return }
+        lastRequested = preset
         let helper = FanHelperService.shared
-        guard helper.canInstall else { send(preset); return }
+        guard !helper.isEnabled else { send(preset); return }
         // Auto while macOS already runs the fans needs no helper, so it never asks for a password.
         guard preset != .auto || snapshot?.hasExternalManualControl == true else { return }
         isChanging = true
         Task {
-            let message = await helper.install()
+            if [.notResponding, .unknown].contains(helper.status) { await helper.refresh() }
+            var message: String?
+            if helper.canInstall {
+                message = await helper.install()
+            } else if !helper.isEnabled {
+                message = "The fan helper did not answer. Click Retry."
+            }
             isChanging = false
             if let message { errorMessage = message } else { send(preset) }
         }

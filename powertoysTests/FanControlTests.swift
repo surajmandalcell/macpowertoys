@@ -355,12 +355,14 @@ final class FanControlTests: XCTestCase {
             FanDriver.coolTarget(hottest: hottest, previous: previous, minimum: 1_350, maximum: 5_777)
         }
         XCTAssertEqual(target(40, nil), 1_350)
-        XCTAssertEqual(target(55, nil), 1_350)
-        XCTAssertEqual(target(70, nil), (1_350 + 4_427 * 0.75).rounded())
-        XCTAssertEqual(target(90, nil), 5_777)
-        XCTAssertEqual(target(90, 1_350), 2_150, "Rises at most 800 RPM per tick")
-        XCTAssertEqual(target(40, 5_777), 5_527, "Falls at most 250 RPM per tick")
+        XCTAssertEqual(target(65, 1_350), 1_350, "65 °C and below stays at the fan minimum")
+        XCTAssertEqual(target(77.5, 3_500), 3_564, "Halfway between 65 and 90 °C is half the range")
+        XCTAssertEqual(target(95, 5_700), 5_777)
+        XCTAssertEqual(target(90, 1_350), 1_650, "Rises at most 300 RPM per tick")
+        XCTAssertEqual(target(40, 5_777), 5_627, "Falls at most 150 RPM per tick")
         XCTAssertEqual(target(40, 1_400), 1_350)
+        XCTAssertEqual(FanDriver.step(toward: 5_777, from: 1_350, rise: FanDriver.maxRise, fall: FanDriver.maxRise,
+                                      minimum: 1_350, maximum: 5_777), 2_850, "Max climbs 1500 RPM per tick")
     }
 
     func testFanCommandBoundsProcessOutputWithoutHardwareAccess() {

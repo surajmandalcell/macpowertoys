@@ -60,33 +60,19 @@ struct FanControlView: View {
                 .font(.system(size: 11))
                 .foregroundStyle(.secondary)
                 .fixedSize(horizontal: false, vertical: true)
-            if display.canInstallHelper {
-                Text("Fan control uses a small helper. macOS asks for your password once to install it.")
-                    .font(.system(size: 11))
-                    .foregroundStyle(.secondary)
-                    .fixedSize(horizontal: false, vertical: true)
-            }
-            if display.canRestoreAutomatic && !display.canControl {
-                Button("Restore Auto") { service.select(.auto) }
-                    .onePlusControl()
-                    .disabled(display.isChanging)
-                    .help("Return fan control to macOS")
-            }
             HStack(spacing: 8) {
-                if display.canInstallHelper {
-                    Button("Install Helper") {
-                        Task { await service.enableControl() }
-                    }
-                    .onePlusControl(.primary)
-                    .disabled(display.isChanging)
+                if display.canRestoreAutomatic && !display.canControl {
+                    Button("Restore Auto") { service.select(.auto) }
+                        .onePlusControl()
+                        .disabled(display.isChanging)
+                        .help("Return fan control to macOS")
                 }
-                Button("Check Again") {
-                    Task {
-                        await PermissionCenter.shared.refresh()
-                        await service.refresh()
-                    }
+                Button("Retry") {
+                    showsSetup = false
+                    service.retry()
                 }
-                    .onePlusControl()
+                .onePlusControl(.primary)
+                .disabled(display.isChanging)
             }
             .frame(minHeight: 34)
         }
@@ -130,7 +116,7 @@ struct MainPanelFanRow<Setup: View>: View {
                 setup
                 OnePlusLinearSegmented(choices: Self.choices, selection: $selection, accessibilityLabel: "Fan preset",
                                        isChoiceEnabled: { $0.map(isChoiceEnabled) ?? false })
-                    .help("Auto follows macOS. Cool raises fan speed as the chip warms, full speed at 75 °C. Max runs fans at their hardware maximum.")
+                    .help("Auto follows macOS. Cool speeds the fans up as the CPU passes 65 °C, full speed at 90 °C. Max runs fans at their hardware maximum.")
             }
         }
     }

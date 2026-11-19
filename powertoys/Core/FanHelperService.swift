@@ -33,8 +33,9 @@ final class FanHelperService {
     }
 
     var isEnabled: Bool { status == .ready }
-    /// A fan write may install the helper first; this never includes an unsupported build.
-    var canInstall: Bool { [.notInstalled, .outdated, .notResponding].contains(status) }
+    /// Only a missing or older helper asks for the password. A helper that did not answer shows an error and a
+    /// Retry, never a new prompt.
+    var canInstall: Bool { [.notInstalled, .outdated].contains(status) }
 
     func refresh() async {
         let generation = statusGeneration
@@ -86,44 +87,53 @@ final class FanHelperService {
         return (info["CFBundleVersion"] as? String).flatMap(Int.init)
     }
 
-    // SMJobBless is deprecated since macOS 13 but still installs helpers; SMAppService needs a Login Items trip.
     nonisolated static let installPrompt = "MacPowerToys needs your approval once to control fan speed."
 
-    // Touch ID: SecurityAgent logs "AEWP notarized 0, biometry prohibited 1" for this app, so it offers Touch ID
-    // only once the app is Developer ID signed and notarized. Until then the prompt asks for the password.
+    /// The root install script. It takes one argument, the helper inside this app bundle, copies it as
+    /// root:wheel, checks its team signature after the copy, writes the launchd plist, and replaces any older
+    /// registration (SMJobBless or an earlier run), so running it twice gives the same result.
+    nonisolated static var installScript: String {
+        let label = MacPowerToysHelperContract.label
+        let tool = MacPowerToysHelperContract.installedPath
+        let plist = "/Library/LaunchDaemons/\(label).plist"
+        return """
+        set -e
+        /bin/launchctl bootout system/\(label) 2>/dev/null || true
+        /bin/mkdir -p /Library/PrivilegedHelperTools
+        /usr/bin/install -o root -g wheel -m 544 "$1" \(tool)
+        /usr/bin/codesign --verify --strict -R='\(MacPowerToysHelperContract.helperRequirement)' \(tool) \
+          || { /bin/rm -f \(tool); exit 3; }
+        /bin/rm -f \(plist)
+        /usr/bin/plutil -create xml1 \(plist)
+        /usr/bin/plutil -insert Label -string \(label) \(plist)
+        /usr/bin/plutil -insert Program -string \(tool) \(plist)
+        /usr/bin/plutil -insert MachServices -json '{"\(MacPowerToysHelperContract.machServiceName)":true}' \(plist)
+        /usr/sbin/chown root:wheel \(plist)
+        /bin/chmod 644 \(plist)
+        for attempt in 1 2 3 4 5; do /bin/launchctl bootstrap system \(plist) && exit 0; /bin/sleep 1; done
+        exit 4
+        """
+    }
+
+    /// Runs the install through /usr/bin/osascript. The admin prompt then comes from an Apple-signed requester,
+    /// which macOS lets use Touch ID; our own unnotarized app gets "biometry prohibited" from SecurityAgent.
     nonisolated private static func bless() -> String? {
-        var authorization: AuthorizationRef?
-        guard AuthorizationCreate(nil, nil, [], &authorization) == errAuthorizationSuccess, let authorization else {
-            return "macOS could not start the fan helper install."
+        let source = Bundle.main.bundleURL
+            .appendingPathComponent("Contents/Library/LaunchServices/" + MacPowerToysHelperContract.label).path
+        let appleScript = """
+        on run argv
+            do shell script "/bin/sh -c " & quoted form of (item 1 of argv) & " sh " & quoted form of (item 2 of argv) \
+        with administrator privileges with prompt "\(installPrompt)"
+        end run
+        """
+        do {
+            _ = try FanCommand.run("/usr/bin/osascript", ["-e", appleScript, installScript, source], seconds: 300)
+            return nil
+        } catch {
+            let message = error.localizedDescription
+            if message.contains("-128") { return "Fan helper install was canceled." }
+            return "The fan helper did not install: \(message)"
         }
-        defer { AuthorizationFree(authorization, []) }
-        let icon = Bundle.main.path(forResource: "AppIcon", ofType: "icns")
-        // C copies that outlive every AuthorizationItem pointing at them.
-        let strings = [kSMRightBlessPrivilegedHelper, kAuthorizationEnvironmentPrompt, installPrompt,
-                       kAuthorizationEnvironmentIcon, icon ?? ""].map { strdup($0)! }
-        defer { strings.forEach { free($0) } }
-        var right = AuthorizationItem(name: strings[0], valueLength: 0, value: nil, flags: 0)
-        var environment = [
-            AuthorizationItem(name: strings[1], valueLength: strlen(strings[2]), value: strings[2], flags: 0),
-            AuthorizationItem(name: strings[3], valueLength: strlen(strings[4]), value: strings[4], flags: 0)
-        ]
-        let created = withUnsafeMutablePointer(to: &right) { rightPointer in
-            environment.withUnsafeMutableBufferPointer { items in
-                var rights = AuthorizationRights(count: 1, items: rightPointer)
-                var context = AuthorizationEnvironment(count: icon == nil ? 1 : 2, items: items.baseAddress)
-                return AuthorizationCopyRights(authorization, &rights, &context,
-                                               [.interactionAllowed, .extendRights, .preAuthorize], nil)
-            }
-        }
-        if created == errAuthorizationCanceled { return "Fan helper install was canceled." }
-        guard created == errAuthorizationSuccess else {
-            return "macOS did not authorize the fan helper install (\(created))."
-        }
-        var error: Unmanaged<CFError>?
-        guard SMJobBless(kSMDomainSystemLaunchd, MacPowerToysHelperContract.label as CFString, authorization, &error) else {
-            return error?.takeRetainedValue().localizedDescription ?? "macOS could not install the fan helper."
-        }
-        return nil
     }
 
     /// Older builds registered the helper as an SMAppService daemon and as a NetToys login item. Remove both
