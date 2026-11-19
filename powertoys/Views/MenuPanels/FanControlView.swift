@@ -35,11 +35,15 @@ struct FanControlView: View {
         .popover(isPresented: $showsSetup, arrowEdge: .bottom) { setupPopover }
     }
 
+    private static let glyphOpticalOffset: CGFloat = 0.5
+
     private var setupButton: some View {
         Button { showsSetup = true } label: {
             Image(systemName: "exclamationmark.triangle")
                 .font(.system(size: OnePlusLinearMetrics.caption))
                 .foregroundStyle(OnePlusColor.warn)
+                // The symbol box sits 0.5 pt above the row's cap center; this centers its ink on the "Fan" caps.
+                .offset(y: Self.glyphOpticalOffset)
                 .frame(width: OnePlusLinearMetrics.segment.height + 4, height: OnePlusLinearMetrics.segment.height + 4)
         }
         .buttonStyle(OnePlusLinearButtonStyle())
