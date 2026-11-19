@@ -1,5 +1,4 @@
 import AppKit
-import Charts
 import Observation
 import SwiftUI
 import OnePlusUI
@@ -186,8 +185,6 @@ struct PortmanPanelView: View {
     @State private var pendingCleanupPorts: [PortmanLocalPort] = []
     @State private var pendingStop: PortmanLocalPort?
     @State private var pendingRestart: PortmanLocalPort?
-    @State private var hoveredTime: Date?
-    @State private var hoveredStopPortID: String?
     @State private var reveal: Double = PortmanEntrance.pending && !OnePlusMotion.reducesMotion ? 0 : 1
     @Environment(\.onePlusMenuMaximumHeight) private var suppliedCeiling
     @State private var showingMore = false
@@ -385,7 +382,6 @@ struct PortmanPanelView: View {
         .onChange(of: selectedPortID) {
             showingMore = false
             showingProcesses = false
-            hoveredStopPortID = nil
         }
         .onChange(of: host) {
             remoteScanTask?.cancel()
@@ -468,7 +464,6 @@ struct PortmanPanelView: View {
     }
 
     private func loadSelectedPortDetails() async {
-        hoveredTime = nil
         guard let selectedPort else { return }
         await service.loadMetadata(for: selectedPort)
         await service.loadRestartAvailability(for: selectedPort)
@@ -526,13 +521,9 @@ struct PortmanPanelView: View {
                 }
                 if cleanupMode { cleanupActions }
             } else {
-                HStack(spacing: OnePlusMetrics.spacing[4]) {
-                    Image(systemName: "network").foregroundStyle(OnePlusColor.secondary)
-                    Text("No servers listening").onePlusText(.cardTitle)
-                    Spacer()
+                OnePlusLinearList(style: .panel) {
+                    OnePlusLinearControlRow("No servers listening", systemImage: "network", titleWidth: nil) { EmptyView() }
                 }
-                .padding(OnePlusMetrics.actionSpacing)
-                .frame(maxWidth: .infinity, alignment: .leading)
                 .help("Local development ports \(overviewPresentation.scanRangeText) will appear here.")
             }
             if let error = service.localError { errorText(error) }
@@ -556,16 +547,20 @@ struct PortmanPanelView: View {
 
     /// Only while Clean up is on: Cancel and the confirmed stop of the selected processes.
     private var cleanupActions: some View {
-        HStack(spacing: OnePlusMetrics.actionSpacing) {
-            Button("Cancel") { cleanupMode = false; selectedCleanupProcesses = [] }
-                .buttonStyle(OnePlusLinearButtonStyle(.ghost))
-            Spacer(minLength: 0)
-            Button("Stop \(selectedCleanupProcesses.count) · free \(portmanMemoryString(overviewPresentation.memoryBytes))", role: .destructive) {
-                pendingCleanupPorts = service.localPorts.filter { selectedCleanupProcesses.contains($0.processID) }
+        OnePlusLinearList(style: .panel) {
+            OnePlusLinearControlRow("\(selectedCleanupProcesses.count) selected", systemImage: "sparkles",
+                                    status: "frees \(portmanMemoryString(overviewPresentation.memoryBytes))", titleWidth: nil) {
+                HStack(spacing: OnePlusLinearMetrics.rowGap / 2) {
+                    Button("Cancel") { cleanupMode = false; selectedCleanupProcesses = [] }
+                        .buttonStyle(OnePlusLinearKeyButtonStyle.compact)
+                    Button("Stop", role: .destructive) {
+                        pendingCleanupPorts = service.localPorts.filter { selectedCleanupProcesses.contains($0.processID) }
+                    }
+                    .buttonStyle(OnePlusLinearKeyButtonStyle.compact)
+                    .disabled(selectedCleanupProcesses.isEmpty)
+                    .accessibilityIdentifier("portman.cleanup.stop")
+                }
             }
-            .buttonStyle(OnePlusButtonStyle(.destructive, size: .small))
-            .disabled(selectedCleanupProcesses.isEmpty)
-            .accessibilityIdentifier("portman.cleanup.stop")
         }
     }
 
@@ -613,304 +608,150 @@ struct PortmanPanelView: View {
         portColors[(Int(port.port) * 7 / 11) % portColors.count]
     }
 
+    /// The detail header row: back, server name and port, and the open-in-browser key.
     private func localDetailHeader(_ port: PortmanLocalPort) -> some View {
-        let canStop = overviewPresentation.rows.first { $0.id == port.id }?.canStop ?? false
-        return OnePlusHeaderActions {
-            Button { selectedPortID = nil } label: { Label("Servers", systemImage: "chevron.left") }
-                .buttonStyle(OnePlusButtonStyle(.ghost, size: .small))
-            Spacer()
-            Text(portmanServerName(project: service.metadata[port.id]?.project,
-                                   processName: port.command))
-                .onePlusText(.sectionTitle).lineLimit(1)
-            Spacer()
-            Button { openLocal(port.port) } label: {
-                Image(systemName: "link")
-            }
-            .buttonStyle(OnePlusButtonStyle(.icon, size: .small))
-            .help("Open localhost:\(String(port.port))")
-            .accessibilityLabel("Open localhost port \(String(port.port))")
-            OnePlusMenuButton("More actions for port \(String(port.port))", variant: .borderedIcon) {
-                var items: [OnePlusPopupMenuEntry] = [.item(OnePlusPopupMenuItem("Copy URL") {
-                    NSPasteboard.general.clearContents()
-                    NSPasteboard.general.setString("http://127.0.0.1:\(port.port)/", forType: .string)
-                }), .item(OnePlusPopupMenuItem("Copy command") {
-                    NSPasteboard.general.clearContents()
-                    NSPasteboard.general.setString(port.launchCommand, forType: .string)
-                })]
-                if let details = service.metadata[port.id] {
-                    items.append(.item(OnePlusPopupMenuItem("Open in editor") {
-                        PortmanEditor.open(details.root ?? details.folder, preferred: editor)
-                    }))
-                    items.append(.item(OnePlusPopupMenuItem("Show folder in Finder") {
-                        NSWorkspace.shared.selectFile(
-                            nil, inFileViewerRootedAtPath: details.root ?? details.folder
-                        )
-                    }))
-                }
-                if canStop {
-                    items.append(.item(OnePlusPopupMenuItem("Restart with saved command…",
-                        isEnabled: service.restartableIDs.contains(port.id)) { pendingRestart = port }))
-                    items.append(.item(OnePlusPopupMenuItem("Stop process tree…", role: .destructive) {
-                        pendingStop = port
-                    }))
-                }
-                return items
-            }
-            .accessibilityLabel("More actions for port \(String(port.port))")
+        HStack(spacing: OnePlusLinearMetrics.rowGap) {
+            OnePlusLinearIconButton(systemImage: "chevron.left", help: "Back to Servers") { selectedPortID = nil }
+                .accessibilityIdentifier("portman.detail.back")
+            Text(portmanServerName(project: service.metadata[port.id]?.project, processName: port.command))
+                .linearText(weight: .semibold).lineLimit(1).truncationMode(.middle)
+            Text(":\(String(port.port))").linearText(weight: .semibold, color: portColor(port)).fixedSize()
+            Spacer(minLength: 0)
+            OnePlusLinearIconButton(systemImage: "link", help: "Open localhost:\(String(port.port))") { openLocal(port.port) }
         }
     }
 
-    private func localDetail(_ port: PortmanLocalPort) -> some View {
-        let samples = service.history[port.id] ?? []
-        let chartEnd = (samples.last?.date ?? Date()).addingTimeInterval(10)
-        let chartStart = chartEnd.addingTimeInterval(-600)
-        let hovered = hoveredTime.flatMap { time in
-            samples.min { abs($0.date.timeIntervalSince(time)) < abs($1.date.timeIntervalSince(time)) }
-        }
-        let cpuCeiling = max(100, ceil((samples.map(\.cpuPercent).max() ?? 0) / 50) * 50)
-        let canStop = overviewPresentation.rows.first { $0.id == port.id }?.canStop ?? false
-        return VStack(alignment: .leading, spacing: OnePlusMetrics.spacing[4]) {
-            HStack(alignment: .firstTextBaseline) {
-                Text(":\(String(port.port))")
-                    .monospaced()
-                    .onePlusText(.metric).onePlusDensity(.regular)
-                    .foregroundStyle(portColor(port))
-                Spacer()
-                Text("up \(port.uptime)")
-                    .onePlusText(.mono)
-                if canStop {
-                    Button { pendingRestart = port } label: {
-                        Image(systemName: "arrow.clockwise")
-                    }
-                    .buttonStyle(OnePlusButtonStyle(.icon, size: .small))
-                    .disabled(!service.restartableIDs.contains(port.id)
-                              || service.restartingIDs.contains(port.id))
-                    .help(service.restartableIDs.contains(port.id)
-                          ? "Restart with the original command and environment"
-                          : "Restart requires the original command, environment, and folder")
-                    .accessibilityLabel("Restart process for port \(String(port.port))")
-                    Button { pendingStop = port } label: {
-                        Image(systemName: "stop.circle")
-                    }
-                    .buttonStyle(OnePlusButtonStyle(.icon, size: .small))
-                    .foregroundStyle(hoveredStopPortID == port.id ? OnePlusColor.danger : OnePlusColor.secondary)
-                    .onHover { inside in OnePlusMotion.withHover(inside) { hoveredStopPortID = inside ? port.id : nil } }
-                    .help("Stop port \(String(port.port)) process tree")
-                    .accessibilityLabel("Stop process tree for port \(String(port.port))")
-                }
-            }
-            if let metadata = service.metadata[port.id], let branch = metadata.branch {
-                detailRow("Branch", branch)
-            }
-            if let session = service.sessions[port.id] {
-                HStack {
-                    Text("Session").foregroundStyle(OnePlusColor.secondary).frame(width: 72, alignment: .leading)
-                    Spacer()
-                    Text(session.label).lineLimit(1).help(session.label)
-                    Button {
-                        NSPasteboard.general.clearContents()
-                        NSPasteboard.general.setString(session.resumeCommand, forType: .string)
-                    } label: { Image(systemName: "doc.on.doc") }
-                    .buttonStyle(OnePlusButtonStyle(.icon, size: .small))
-                    .help("Copy \(session.label) resume command")
-                    .accessibilityLabel("Copy \(session.label) resume command")
-                }
-                .onePlusText(.row)
-                .onePlusRowHover()
-            }
-            if let links = service.githubLinks[port.id],
-               let url = links.pullRequestURL, let number = links.pullRequestNumber {
-                HStack {
-                    Text("Pull request").foregroundStyle(OnePlusColor.secondary).frame(width: 72, alignment: .leading)
-                    Spacer(minLength: 0)
-                    Button("#\(String(number)) ↗") { NSWorkspace.shared.open(url) }
-                        .buttonStyle(OnePlusButtonStyle(.ghost, size: .small))
-                        .help(url.absoluteString)
-                }
-                .onePlusText(.row)
-                .onePlusRowHover()
-            }
-            Button(showingMore ? "Less" : "More details") { showingMore.toggle() }
-                .buttonStyle(OnePlusButtonStyle(.ghost, size: .small))
-                .foregroundStyle(OnePlusColor.secondary)
-            if showingMore {
-                detailRow("Process", "\(port.pid)")
-                detailRow("Address", port.address)
-                if let metadata = service.metadata[port.id] {
-                    detailRow("Project", metadata.project)
-                    detailRow("Folder", metadata.folder)
-                }
-                detailRow("Command", port.launchCommand)
-                if let session = service.sessions[port.id] {
-                    detailRow("Session ID", session.id.uuidString.lowercased())
-                }
-                detailRow("Running", port.uptime)
-                if let note = service.githubLinks[port.id]?.note {
-                    Image(systemName: "info.circle").foregroundStyle(OnePlusColor.secondary)
-                        .help(note).accessibilityLabel(note)
-                }
-            }
-            OnePlusColor.lineSoft.frame(height: 1)
-            HStack(alignment: .firstTextBaseline) {
-                Text("Memory").onePlusText(.sectionTitle)
-                Spacer()
-                Text(memoryString(hovered?.memoryBytes ?? port.memoryBytes))
-                    .onePlusText(.mono)
-                    .monospacedDigit()
-            }
-            if !samples.isEmpty {
-                Chart {
-                    ForEach(samples) { sample in
-                        LineMark(x: .value("Time", sample.date),
-                                 y: .value("Memory", sample.memoryBytes))
-                            .foregroundStyle(portColor(port))
-                    }
-                    if let latest = samples.last {
-                        PointMark(x: .value("Time", latest.date),
-                                  y: .value("Memory", latest.memoryBytes))
-                            .foregroundStyle(portColor(port))
-                            .symbolSize(25)
-                    }
-                    if let hovered {
-                        RuleMark(x: .value("Time", hovered.date))
-                            .foregroundStyle(OnePlusColor.secondary)
-                        PointMark(x: .value("Time", hovered.date),
-                                  y: .value("Memory", hovered.memoryBytes))
-                            .foregroundStyle(portColor(port))
-                    }
-                }
-                .chartXScale(domain: chartStart...chartEnd)
-                .chartYScale(domain: 0...max(1, (samples.map(\.memoryBytes).max() ?? 1) * 12 / 10))
-                .chartXAxis(.hidden)
-                .chartYAxis {
-                    AxisMarks(position: .trailing, values: .automatic(desiredCount: 3)) { value in
-                        AxisGridLine()
-                        AxisValueLabel {
-                            if let bytes = value.as(Int64.self) {
-                                Text(bytes == 0 ? "0" : memoryString(bytes))
-                                    .frame(width: 56, alignment: .leading)
-                            }
-                        }
-                    }
-                }
-                .chartPlotStyle { $0.clipped() }
-                .chartOverlay { proxy in chartHover(proxy) }
-                .frame(height: 100)
-                .accessibilityLabel("Memory history for port \(String(port.port))")
+    private func copy(_ text: String) {
+        NSPasteboard.general.clearContents()
+        NSPasteboard.general.setString(text, forType: .string)
+    }
 
-                HStack {
-                    Text("CPU").onePlusText(.sectionTitle)
-                    Spacer()
-                    Text(String(format: "%.1f%%", hovered?.cpuPercent ?? port.cpuPercent))
-                        .onePlusText(.mono)
-                }
-                Chart {
-                    ForEach(samples) { sample in
-                        BarMark(x: .value("Time", sample.date),
-                                y: .value("CPU", sample.cpuPercent),
-                                width: .fixed(2))
-                            .foregroundStyle(hovered?.date == sample.date ? OnePlusColor.ink : portColor(port))
-                    }
-                    if let hovered {
-                        RuleMark(x: .value("Time", hovered.date))
-                            .foregroundStyle(OnePlusColor.secondary)
-                    }
-                }
-                .chartXScale(domain: chartStart...chartEnd)
-                .chartYScale(domain: 0...cpuCeiling)
-                .chartXAxis(.hidden)
-                .chartYAxis {
-                    AxisMarks(position: .trailing, values: [0, cpuCeiling / 2, cpuCeiling]) { value in
-                        AxisGridLine()
-                        AxisValueLabel {
-                            if let cpu = value.as(Double.self) {
-                                Text(String(format: "%.0f", cpu))
-                                    .frame(width: 56, alignment: .leading)
-                            }
-                        }
-                    }
-                }
-                .chartPlotStyle { $0.clipped() }
-                .chartOverlay { proxy in chartHover(proxy) }
-                .frame(height: 50)
-                .accessibilityLabel("CPU history for port \(String(port.port))")
-            }
-            HStack {
-                Text("10m history")
-                Spacer()
-                Text((hovered?.date ?? samples.last?.date)?.formatted(date: .omitted, time: .standard) ?? "—")
-                    .monospacedDigit()
-            }
-            .onePlusText(.mono)
-            .frame(height: 14)
-            OnePlusColor.lineSoft.frame(height: 1)
-            DisclosureGroup(isExpanded: $showingProcesses) {
-                processRow(pid: port.pid, command: port.command,
-                           memoryBytes: max(0, port.memoryBytes - port.processes.reduce(0) { $0 + $1.memoryBytes }),
-                           totalBytes: port.memoryBytes)
-                ForEach(port.processes) { process in
-                    processRow(pid: process.pid, command: process.command,
-                               memoryBytes: process.memoryBytes, totalBytes: port.memoryBytes)
-                }
-            } label: {
-                HStack {
-                    Text("Processes").onePlusText(.sectionTitle)
-                    Spacer()
-                    Text("\(port.processes.count + 1) · \(memoryString(port.memoryBytes))")
-                        .onePlusText(.mono)
-                }
-            }
-            if let preview = service.githubLinks[port.id]?.previewURL {
-                Button("Open preview") { NSWorkspace.shared.open(preview) }
-                    .buttonStyle(OnePlusButtonStyle())
-                    .help(preview.absoluteString)
-            }
+    /// Server details in Home's parts: the Memory and CPU tiles, the server group, the processes group, the action bar.
+    private func localDetail(_ port: PortmanLocalPort) -> some View {
+        VStack(alignment: .leading, spacing: TrayPopoverLayout.style.blockGap) {
+            detailBento(port)
+            serverGroup(port)
+            processGroup(port)
+            OnePlusLinearActionBar(detailActions(port))
             if let error = service.controlError { errorText(error) }
         }
+        .environment(\.onePlusLinearReveal, reveal)
     }
 
-    private func processRow(pid: Int32, command: String, memoryBytes: Int64, totalBytes: Int64) -> some View {
-        VStack(spacing: OnePlusMetrics.spacing[1]) {
-            HStack {
-                Text(command).lineLimit(1)
-                Spacer()
-                Text(String(pid)).foregroundStyle(OnePlusColor.secondary)
-                Text(memoryString(memoryBytes)).frame(width: 68, alignment: .trailing)
+    private func detailBento(_ port: PortmanLocalPort) -> some View {
+        let samples = service.history[port.id] ?? []
+        let color = portColor(port)
+        let memory = samples.map { Double($0.memoryBytes) }
+        let cpu = samples.map(\.cpuPercent)
+        let (memoryValue, memoryUnit) = Self.valueAndUnit(memoryString(port.memoryBytes))
+        return OnePlusLinearBento(style: .instrument) {
+            OnePlusLinearTile(chart: OnePlusLinearChart([OnePlusLinearSeries(memory, color: color)],
+                                                        range: 0...max(1, (memory.max() ?? 1) * 1.2)), tint: color) {
+                OnePlusLinearTileLabel("Memory", systemImage: "memorychip", color: color, meta: "10 min")
+                OnePlusLinearTileValue(memoryValue, unit: memoryUnit, color: color, pace: .memory)
             }
-            .onePlusText(.mono)
-            ProgressView(value: min(1, Double(memoryBytes) / Double(max(1, totalBytes))))
-                .progressViewStyle(.linear)
-                .tint(OnePlusColor.portmanSeries[0])
-            .frame(height: 3)
+        } trailing: {
+            OnePlusLinearTile(chart: OnePlusLinearChart([OnePlusLinearSeries(cpu, color: color)],
+                                                        range: 0...max(100, ceil((cpu.max() ?? 0) / 50) * 50), order: 1), tint: color) {
+                OnePlusLinearTileLabel("CPU", systemImage: "cpu", color: color, meta: "up \(port.uptime)")
+                OnePlusLinearTileValue(String(format: "%.1f", port.cpuPercent), unit: "%", color: color, pace: .cpu)
+            }
         }
-        .padding(.vertical, OnePlusMetrics.spacing[1])
-        .onePlusRowHover()
+        .accessibilityLabel("Memory and CPU history for port \(String(port.port))")
     }
 
-    private func detailRow(_ label: String, _ value: String) -> some View {
-        HStack(alignment: .firstTextBaseline) {
-            Text(label).foregroundStyle(OnePlusColor.secondary).frame(width: 72, alignment: .leading)
-            Spacer(minLength: 0)
-            Text(value).textSelection(.enabled).lineLimit(2).multilineTextAlignment(.trailing).help(value)
-        }
-        .onePlusText(.row)
-        .onePlusRowHover()
+    /// "312.4 MB" -> ("312.4", "MB").
+    private static func valueAndUnit(_ text: String) -> (String, String) {
+        guard let space = text.lastIndex(of: " ") else { return (text, "") }
+        return (String(text[..<space]), String(text[text.index(after: space)...]))
     }
 
-    private func chartHover(_ proxy: ChartProxy) -> some View {
-        GeometryReader { geometry in
-            Rectangle().fill(.clear).contentShape(Rectangle())
-                .onContinuousHover { phase in
-                    switch phase {
-                    case .active(let location):
-                        guard let plotFrame = proxy.plotFrame else { return }
-                        let x = location.x - geometry[plotFrame].origin.x
-                        hoveredTime = (0...proxy.plotSize.width).contains(x) ? proxy.value(atX: x) : nil
-                    case .ended:
-                        hoveredTime = nil
+    private func serverGroup(_ port: PortmanLocalPort) -> some View {
+        let canStop = overviewPresentation.rows.first { $0.id == port.id }?.canStop ?? false
+        let metadata = service.metadata[port.id]
+        let session = service.sessions[port.id]
+        return OnePlusLinearList(style: .panel) {
+            OnePlusLinearControlRow("Server", systemImage: "server.rack", status: "up \(port.uptime)", titleWidth: nil) {
+                if canStop {
+                    HStack(spacing: OnePlusLinearMetrics.rowGap / 2) {
+                        Button("Restart") { pendingRestart = port }
+                            .buttonStyle(OnePlusLinearKeyButtonStyle.compact)
+                            .disabled(!service.restartableIDs.contains(port.id) || service.restartingIDs.contains(port.id))
+                            .help(service.restartableIDs.contains(port.id)
+                                  ? "Restart with the original command and environment"
+                                  : "Restart requires the original command, environment, and folder")
+                        Button("Stop") { pendingStop = port }
+                            .buttonStyle(OnePlusLinearKeyButtonStyle.compact)
+                            .help("Stop port \(String(port.port)) process tree")
                     }
                 }
+            }
+            if let branch = metadata?.branch { PortmanDetailRow("Branch", branch) }
+            if let session {
+                PortmanDetailRow("Session", session.label) {
+                    OnePlusLinearIconButton(systemImage: "doc.on.doc", help: "Copy \(session.label) resume command",
+                                            size: OnePlusLinearMetrics.panelAccessory) { copy(session.resumeCommand) }
+                }
+            }
+            if let links = service.githubLinks[port.id], let url = links.pullRequestURL, let number = links.pullRequestNumber {
+                PortmanDetailRow("Pull request", "#\(String(number))") {
+                    OnePlusLinearIconButton(systemImage: "arrow.up.right", help: url.absoluteString,
+                                            size: OnePlusLinearMetrics.panelAccessory) { NSWorkspace.shared.open(url) }
+                }
+            }
+            OnePlusLinearDisclosureRow("Details", systemImage: "info.circle", isExpanded: $showingMore)
+            if showingMore {
+                PortmanDetailRow("Process", "\(port.pid)")
+                PortmanDetailRow("Address", port.address)
+                if let metadata {
+                    PortmanDetailRow("Project", metadata.project)
+                    PortmanDetailRow("Folder", metadata.folder)
+                }
+                PortmanDetailRow("Command", port.launchCommand) {
+                    OnePlusLinearIconButton(systemImage: "doc.on.doc", help: "Copy command",
+                                            size: OnePlusLinearMetrics.panelAccessory) { copy(port.launchCommand) }
+                }
+                if let session { PortmanDetailRow("Session ID", session.id.uuidString.lowercased()) }
+                if let note = service.githubLinks[port.id]?.note { PortmanDetailRow("GitHub", note) }
+            }
         }
+    }
+
+    private func processGroup(_ port: PortmanLocalPort) -> some View {
+        let color = portColor(port)
+        let rootBytes = max(0, port.memoryBytes - port.processes.reduce(0) { $0 + $1.memoryBytes })
+        let total = Double(max(1, port.memoryBytes))
+        return OnePlusLinearList(style: .panel) {
+            OnePlusLinearDisclosureRow("Processes", systemImage: "square.stack.3d.up",
+                                       detail: "\(port.processes.count + 1) · \(memoryString(port.memoryBytes))",
+                                       isExpanded: $showingProcesses)
+            if showingProcesses {
+                PortmanProcessRow(command: port.command, pid: port.pid, memory: memoryString(rootBytes),
+                                  fraction: Double(rootBytes) / total, color: color)
+                ForEach(port.processes) { process in
+                    PortmanProcessRow(command: process.command, pid: process.pid, memory: memoryString(process.memoryBytes),
+                                      fraction: Double(process.memoryBytes) / total, color: color)
+                }
+            }
+        }
+    }
+
+    private func detailActions(_ port: PortmanLocalPort) -> [OnePlusLinearAction] {
+        var actions: [OnePlusLinearAction] = []
+        if let details = service.metadata[port.id] {
+            let folder = details.root ?? details.folder
+            actions.append(OnePlusLinearAction("Editor", systemImage: "chevron.left.forwardslash.chevron.right") {
+                PortmanEditor.open(folder, preferred: editor)
+            })
+            actions.append(OnePlusLinearAction("Finder", systemImage: "folder") {
+                NSWorkspace.shared.selectFile(nil, inFileViewerRootedAtPath: folder)
+            })
+        }
+        actions.append(OnePlusLinearAction("Copy URL", systemImage: "link") { copy("http://127.0.0.1:\(port.port)/") })
+        if let preview = service.githubLinks[port.id]?.previewURL {
+            actions.append(OnePlusLinearAction("Preview", systemImage: "safari") { NSWorkspace.shared.open(preview) })
+        }
+        return actions
     }
 
     /// Scan results and added ports in one group (status, rows, Forward), then the forwarded ports in another.
@@ -1213,7 +1054,7 @@ struct PortmanPanelView: View {
     }
 
     private func errorText(_ message: String) -> some View {
-        OnePlusBanner(message, tone: .error).textSelection(.enabled)
+        OnePlusLinearBanner(.warning, title: message).textSelection(.enabled)
             .accessibilityIdentifier("portman.forwarding.error")
     }
 

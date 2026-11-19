@@ -511,10 +511,15 @@ final class TransferJob: Identifiable {
         networkBaselineBytes + stats.bytes
     }
 
+    /// Progress captions: a completed job shows its full size, because rclone skips files that already match
+    /// (a finished sync can copy 1.7 GB of a 4.1 GB plan). History keeps the copied `displayBytes`.
+    var progressBytes: Int64 { state == .completed ? effectiveTotalBytes : displayBytes }
+    var progressFiles: Int { state == .completed ? effectiveTotalFiles : displayFiles }
+
     var progressFraction: Double {
         let total = effectiveTotalBytes
         guard total > 0 else { return 0 }
-        return min(1.0, Double(displayBytes) / Double(total))
+        return min(1.0, Double(progressBytes) / Double(total))
     }
 
     func captureAttemptPlan(force: Bool = false) {

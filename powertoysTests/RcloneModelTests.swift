@@ -154,6 +154,13 @@ final class RcloneModelTests: XCTestCase {
         job.stats.bytes = 1_500
         XCTAssertEqual(job.displayBytes, 1_000)
         XCTAssertEqual(job.progressFraction, 1)
+
+        job.stats.bytes = 250
+        job.state = .completed
+        XCTAssertEqual(job.displayBytes, 650)
+        XCTAssertEqual(job.progressBytes, 1_000)
+        XCTAssertEqual(job.progressFiles, 10)
+        XCTAssertEqual(job.progressFraction, 1)
     }
 
     func testRetryBytesDoNotInflateLogicalProgressOrTotal() {

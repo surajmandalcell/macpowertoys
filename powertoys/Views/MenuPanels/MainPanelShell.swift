@@ -263,19 +263,24 @@ struct IndividualToolMenuPanel: View {
     }
 
     var body: some View {
-        OnePlusMenuPanel {
-            HStack(spacing: 7) {
-                Image(systemName: tool.symbol).font(.system(size: 13))
-                Text(tool.title).onePlusText(.cardTitle)
+        OnePlusLinearMenuPanel {
+            HStack(spacing: OnePlusLinearMetrics.rowGap) {
+                OnePlusLinearIconTabs(tabs: [OnePlusMenuTab(tool, tool.title, systemImage: tool.symbol,
+                                                            image: ToolGlyph(rawValue: tool.id)?.assetImage)],
+                                      selection: .constant(tool))
+                Text(tool.title).linearText(weight: .semibold).lineLimit(1)
             }
             .accessibilityElement(children: .combine)
             .accessibilityAddTraits(.isHeader)
-        } actions: {
-            OnePlusMenuOpenApp {
-                ToolActionRouter.shared.open(toolID: tool.id)
+        } trailing: {
+            OnePlusLinearIconButton(systemImage: "gearshape", help: "Open Settings") {
+                ToolActionRouter.shared.open(toolID: tool.id, page: "settings")
             }
+            Button("Open App") { ToolActionRouter.shared.open(toolID: tool.id) }
+                .buttonStyle(OnePlusLinearButtonStyle(.filled))
+                .accessibilityIdentifier("tray.\(tool.id).open-app")
         } content: {
-            content.environment(\.onePlusLinearPanelStyle, TrayPopoverLayout.style)
+            content
         }
         .onePlusPanelTimings(panel: tool.id, tab: tool.id)
         .focusedValue(\.appOpenSettings) {

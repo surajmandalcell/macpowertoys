@@ -54,7 +54,7 @@ struct TransferJobRow: View {
                 pathChip(job.destinationDisplay).foregroundStyle(OnePlusColor.secondary)
             }
             Spacer(minLength: OnePlusMetrics.spacing[2])
-            Text("\(RcloneFormat.bytes(job.displayBytes)) / \(RcloneFormat.bytes(job.effectiveTotalBytes))\(job.isSizing ? "~" : "") · \(job.displayFiles)/\(job.effectiveTotalFiles) files")
+            Text("\(RcloneFormat.bytes(job.progressBytes)) / \(RcloneFormat.bytes(job.effectiveTotalBytes))\(job.isSizing ? "~" : "") · \(job.progressFiles)/\(job.effectiveTotalFiles) files")
                 .onePlusText(.mono).lineLimit(1)
             if job.state == .running {
                 Text(RcloneFormat.speed(job.stats.speed)).onePlusText(.mono)

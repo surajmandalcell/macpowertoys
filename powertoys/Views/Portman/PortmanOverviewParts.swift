@@ -242,3 +242,71 @@ struct PortmanRowPresence: ViewModifier, Animatable {
     private static func ramp(_ t: Double, _ start: Double, _ length: Double) -> Double { min(1, max(0, (t - start) / length)) }
     private static func easeOut(_ x: Double) -> Double { 1 - pow(1 - x, 3) }
 }
+
+/// The server detail parts (DESIGN.md "Portman"): Home's floating groups, label-value rows, and process rows.
+enum PortmanDetailMetrics {
+    static let label: CGFloat = 72
+    static let rowPadding: CGFloat = 7
+    static let processBarGap: CGFloat = 6
+}
+
+/// A label-value row in a detail group: muted label, selectable value on the right, an optional 22 pt accessory.
+struct PortmanDetailRow<Accessory: View>: View {
+    private let label: String
+    private let value: String
+    private let accessory: Accessory
+    @State private var hover = false
+    @Environment(\.onePlusControlState) private var sample
+    @Environment(\.onePlusLinearPanelStyle) private var panelStyle
+    init(_ label: String, _ value: String, @ViewBuilder accessory: () -> Accessory) {
+        self.label = label; self.value = value; self.accessory = accessory()
+    }
+    var body: some View {
+        HStack(spacing: OnePlusLinearMetrics.rowGap) {
+            Text(label).linearText(color: OnePlusLinearColor.panelMuted).lineLimit(1)
+                .frame(width: PortmanDetailMetrics.label, alignment: .leading)
+            Text(value).linearText(OnePlusLinearMetrics.control).textSelection(.enabled)
+                .lineLimit(2).truncationMode(.middle).multilineTextAlignment(.trailing)
+                .frame(maxWidth: .infinity, alignment: .trailing).help(value)
+            if Accessory.self != EmptyView.self { accessory.frame(width: OnePlusLinearMetrics.panelAccessory) }
+        }
+        .padding(.horizontal, OnePlusLinearMetrics.panelRowInset)
+        .padding(.vertical, PortmanDetailMetrics.rowPadding)
+        .frame(minHeight: OnePlusLinearMetrics.controlRow)
+        .linearRowHover($hover, sample: sample, enabled: true, panelStyle: panelStyle)
+        .accessibilityElement(children: .contain)
+    }
+}
+
+extension PortmanDetailRow where Accessory == EmptyView {
+    init(_ label: String, _ value: String) { self.init(label, value) { EmptyView() } }
+}
+
+/// A 40 pt process row: command, PID, and memory over its share of the server's memory.
+struct PortmanProcessRow: View {
+    let command: String
+    let pid: Int32
+    let memory: String
+    let fraction: Double
+    let color: Color
+    @State private var hover = false
+    @Environment(\.onePlusControlState) private var sample
+    @Environment(\.onePlusLinearPanelStyle) private var panelStyle
+    var body: some View {
+        VStack(spacing: PortmanDetailMetrics.processBarGap) {
+            HStack(spacing: OnePlusLinearMetrics.rowGap) {
+                Text(command).linearText(OnePlusLinearMetrics.control).lineLimit(1).truncationMode(.middle)
+                    .frame(maxWidth: .infinity, alignment: .leading)
+                Text(String(pid)).linearText(OnePlusLinearMetrics.caption, color: OnePlusLinearColor.panelMuted)
+                Text(memory).linearText(OnePlusLinearMetrics.control, color: OnePlusLinearColor.secondary)
+                    .frame(width: OnePlusLinearMetrics.memoryColumn, alignment: .trailing)
+            }
+            OnePlusLinearUsageBar(fraction, color: color)
+        }
+        .padding(.horizontal, OnePlusLinearMetrics.panelRowInset)
+        .frame(height: OnePlusLinearMetrics.panelTwoLineRow)
+        .linearRowHover($hover, sample: sample, enabled: true, panelStyle: panelStyle)
+        .accessibilityElement(children: .ignore)
+        .accessibilityLabel("\(command), process \(pid), \(memory)")
+    }
+}
