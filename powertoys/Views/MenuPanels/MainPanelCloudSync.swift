@@ -195,13 +195,17 @@ private struct TrayTransferRow: View {
                 } else {
                     stateText
                 }
-                if job.canPause {
-                    transferButton("Pause transfer", symbol: "pause.fill") { manager.pause(job) }
-                } else if job.canResume {
-                    transferButton("Resume transfer", symbol: "play.fill") { manager.resume(job) }
-                } else if job.canRetry {
-                    transferButton("Retry transfer", symbol: "arrow.clockwise") { manager.retry(job) }
-                }
+                // One fixed key slot, so the state text lines up in rows with and without a key.
+                Color.clear.frame(width: OnePlusLinearMetrics.panelAccessory, height: OnePlusLinearMetrics.panelAccessory)
+                    .overlay {
+                        if job.canPause {
+                            transferButton("Pause transfer", symbol: "pause.fill") { manager.pause(job) }
+                        } else if job.canResume {
+                            transferButton("Resume transfer", symbol: "play.fill") { manager.resume(job) }
+                        } else if job.canRetry {
+                            transferButton("Retry transfer", symbol: "arrow.clockwise") { manager.retry(job) }
+                        }
+                    }
             }
             .frame(height: OnePlusLinearMetrics.panelAccessory)
             if job.effectiveTotalBytes > 0 || job.state.isActive { progress }
@@ -221,9 +225,9 @@ private struct TrayTransferRow: View {
             HStack(spacing: OnePlusLinearMetrics.rowGap) {
                 Text("\(RcloneFormat.bytes(job.progressBytes)) of \(RcloneFormat.bytes(job.effectiveTotalBytes))")
                 Spacer(minLength: OnePlusLinearMetrics.rowGap)
-                if job.stats.speed > 0 || job.displayEta != nil {
+                if job.stats.speed > 0 || RcloneFormat.knownETA(job.displayEta) != nil {
                     if job.stats.speed > 0 { Text(RcloneFormat.speed(job.stats.speed)) }
-                    if job.displayEta != nil { Text("ETA \(RcloneFormat.eta(job.displayEta))") }
+                    if let eta = RcloneFormat.knownETA(job.displayEta) { Text("ETA \(eta)") }
                 } else if job.effectiveTotalFiles > 0 {
                     Text("\(job.progressFiles) of \(job.effectiveTotalFiles) files")
                 }
@@ -288,7 +292,7 @@ private struct TrayTransferFileRow: View {
                 Text("\(RcloneFormat.bytes(file.bytes)) of \(RcloneFormat.bytes(file.size))")
                 Spacer()
                 if file.speed > 0 { Text(RcloneFormat.speed(file.speed)) }
-                if file.eta != nil { Text("ETA \(RcloneFormat.eta(file.eta))") }
+                if let eta = RcloneFormat.knownETA(file.eta) { Text("ETA \(eta)") }
             }
             .linearText(OnePlusLinearMetrics.caption, color: OnePlusLinearColor.panelMuted)
             .monospacedDigit()
