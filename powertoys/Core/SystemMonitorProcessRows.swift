@@ -62,7 +62,10 @@ nonisolated enum SystemMonitorProcessHierarchy {
 
         init(process: SystemMonitorProcess, parentName: String? = nil) {
             self.process = process
-            cpuValueText = process.cpuPercent.map { $0.formatted(.number.precision(.fractionLength(1))) } ?? "—"
+            // Process CPU sums all cores and can pass 100%; from 100 on, whole percent ("101", "1250") keeps it short.
+            cpuValueText = process.cpuPercent.map {
+                $0.formatted(.number.grouping(.never).precision(.fractionLength($0 >= 99.95 ? 0 : 1)))
+            } ?? "—"
             cpuText = process.cpuPercent == nil ? cpuValueText : cpuValueText + "%"
             memoryText = process.residentBytes == 0 && process.started == 0
                 ? "—"
