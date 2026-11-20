@@ -19,8 +19,7 @@ struct ToolSidebarView: View {
             .accessibilityIdentifier("main.sidebar.all-tools")
             ForEach(groups) { group in
                 OnePlusLinearNavCaption(group.category.rawValue)
-                ForEach(group.tools, id: \.id) { toolRow($0) }
-                // Owner, 2026-11-20: Fan is a system control, so it sits last in System, not at the bottom.
+                // Owner, 2026-11-21: Fan is the first item in System.
                 if group.category == .system, searchText.isEmpty || FanPageView.title.localizedCaseInsensitiveContains(searchText) {
                     OnePlusLinearNavRow(FanPageView.title, glyph: Image(SidebarGlyph.fan),
                                         selected: selectedTool == FanPageView.pageID) {
@@ -28,6 +27,7 @@ struct ToolSidebarView: View {
                     }
                     .accessibilityIdentifier("main.sidebar.fan")
                 }
+                ForEach(group.tools, id: \.id) { toolRow($0) }
             }
         } bottom: {
             OnePlusLinearNavRow(AppsBySamView.title, glyph: Image(systemName: SidebarGlyph.appsBySam), symbol: true,
