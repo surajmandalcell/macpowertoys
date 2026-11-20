@@ -502,6 +502,8 @@ the Open key. Parts: `PortmanOverviewParts.swift`,
     and fades in after 70 ms; a removed row fades 150 ms and closes 250 ms.
 - Forward: every control is a 28 pt "Raised keys" control (radius 7):
   sunken wells for fields and the Hosts select, raised keys for buttons.
+  In Dark, raised text buttons have no lit edge and no drop shadow, like
+  the menu panel's row keys (owner, 2026-11-20: they looked too raised).
   Every row is 40 pt on the 10 pt row inset. All right-hand keys and the
   local-port fields share one 88 pt column and one right edge; the fields
   share one left edge.
