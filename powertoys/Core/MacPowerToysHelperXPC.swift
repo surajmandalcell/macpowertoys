@@ -1,6 +1,6 @@
 import Foundation
 
-/// The privileged helper, installed once by `FanHelperService.installScript`. The label is also the Mach service, the
+/// The privileged helper, installed once with SMJobBless. The label is also the Mach service, the
 /// helper's code-signing identifier, and its file name in Contents/Library/LaunchServices and
 /// /Library/PrivilegedHelperTools. The same requirement strings sit in the app's
 /// SMPrivilegedExecutables and the helper's SMAuthorizedClients.

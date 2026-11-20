@@ -117,7 +117,7 @@ nonisolated enum FanCommand {
         return reply.wait(seconds: seconds)
     }
 
-    static func run(_ executable: String, _ arguments: [String], seconds: Double = 5) throws -> String {
+    static func run(_ executable: String, _ arguments: [String]) throws -> String {
         let process = Process()
         process.executableURL = URL(fileURLWithPath: executable)
         process.arguments = arguments
@@ -133,7 +133,7 @@ nonisolated enum FanCommand {
                 if process.isRunning { Darwin.kill(process.processIdentifier, SIGKILL) }
             }
         }
-        DispatchQueue.global(qos: .utility).asyncAfter(deadline: .now() + seconds, execute: timeout)
+        DispatchQueue.global(qos: .utility).asyncAfter(deadline: .now() + 5, execute: timeout)
         var data = Data()
         var exceeded = false
         while true {

@@ -21,6 +21,14 @@ SIGNING := CODE_SIGNING_ALLOWED=YES CODE_SIGN_STYLE=Manual CODE_SIGN_IDENTITY="A
 ifeq ($(ADHOC),1)
 SIGNING := CODE_SIGNING_ALLOWED=YES CODE_SIGN_IDENTITY=- CODE_SIGN_ENTITLEMENTS=$(LOCAL_ENTITLEMENTS)
 endif
+# NOTARIZE=1 signs with Developer ID and notarizes before install, so macOS offers Touch ID for the helper
+# install. It needs the notarytool profile the owner stores once with
+# `xcrun notarytool store-credentials MacPowerToysNotary`.
+NOTARY_PROFILE := MacPowerToysNotary
+NOTARY_ZIP := $(DERIVED_DATA)/MacPowerToys-notarize.zip
+ifeq ($(NOTARIZE),1)
+SIGNING := CODE_SIGNING_ALLOWED=YES CODE_SIGN_STYLE=Manual CODE_SIGN_IDENTITY="Developer ID Application" DEVELOPMENT_TEAM=GF57JXJF5A CODE_SIGN_ENTITLEMENTS=$(LOCAL_ENTITLEMENTS) PROVISIONING_PROFILE_SPECIFIER= ENABLE_HARDENED_RUNTIME=YES OTHER_CODE_SIGN_FLAGS=--timestamp
+endif
 
 build:
 	$(XCODEBUILD) -scheme $(SCHEME) -configuration Release $(SIGNING) build
@@ -46,6 +54,9 @@ raycast-install: raycast
 install-preflight:
 	@test "$(ALLOW_INSTALL)" = "1" || (echo "Refusing to install. Re-run with ALLOW_INSTALL=1 after all RSync UI transfers finish." && exit 1)
 	@test -z "$$(git status --porcelain)" || (echo "Refusing to install from a dirty worktree. Commit the complete source state first." && exit 1)
+ifeq ($(NOTARIZE),1)
+	@xcrun notarytool history --keychain-profile $(NOTARY_PROFILE) >/dev/null 2>&1 || (echo "No notary profile. Run once: xcrun notarytool store-credentials $(NOTARY_PROFILE)" && exit 1)
+endif
 
 install: raycast-assets install-preflight raycast-install $(INSTALL_BUILD)
 	@test -z "$$(git status --porcelain)" || (echo "Refusing to install because the worktree changed during the build." && exit 1)
@@ -53,6 +64,14 @@ install: raycast-assets install-preflight raycast-install $(INSTALL_BUILD)
 	@codesign --verify --deep --strict "$(INSTALL_APP)"
 	@test "$$(codesign -dv --verbose=4 "$(INSTALL_APP)" 2>&1 | sed -n 's/^TeamIdentifier=//p')" = "GF57JXJF5A" || (echo "Refusing to install an app without the configured signing team." && exit 1)
 	@HELPER="$(INSTALL_APP)/Contents/Library/LaunchServices/com.surajmandal.macpowertoys.helper"; launchctl plist __TEXT,__info_plist "$$HELPER" 2>/dev/null | grep -q "\"MPTSourceCommit\" = \"$(SOURCE_COMMIT)\"" && codesign --verify --strict -R='identifier "com.surajmandal.macpowertoys.helper" and anchor apple generic and certificate leaf[subject.OU] = "GF57JXJF5A"' "$$HELPER" && codesign --verify --strict -R='identifier "com.surajmandal.macpowertoys" and anchor apple generic and certificate leaf[subject.OU] = "GF57JXJF5A"' "$(INSTALL_APP)" || (echo "Refusing to install a stale helper or one whose signature does not match SMPrivilegedExecutables and SMAuthorizedClients." && exit 1)
+ifeq ($(NOTARIZE),1)
+	@codesign -dv --verbose=4 "$(INSTALL_APP)" 2>&1 | grep -q '^Authority=Developer ID Application' || (echo "Refusing to notarize an app without a Developer ID signature." && exit 1)
+	ditto -c -k --keepParent "$(INSTALL_APP)" "$(NOTARY_ZIP)"
+	xcrun notarytool submit "$(NOTARY_ZIP)" --keychain-profile $(NOTARY_PROFILE) --wait 2>&1 | tee "$(NOTARY_ZIP).log"; grep -q 'status: Accepted' "$(NOTARY_ZIP).log" || (echo "Notarization was not accepted. Read the log with: xcrun notarytool log <id> --keychain-profile $(NOTARY_PROFILE)" && exit 1)
+	xcrun stapler staple "$(INSTALL_APP)"
+	xcrun stapler validate "$(INSTALL_APP)"
+	rm -f "$(NOTARY_ZIP)" "$(NOTARY_ZIP).log"
+endif
 	@! pgrep -f '^/Applications/MacPowerToys.app/Contents/MacOS/MacPowerToys$$' >/dev/null || (echo "Refusing to replace the running installed MacPowerToys app." && exit 1)
 	rm -rf /Applications/MacPowerToys.app
 	ditto "$(INSTALL_APP)" /Applications/MacPowerToys.app
