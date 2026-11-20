@@ -5,8 +5,8 @@ import Foundation
 ///
 /// Both manual presets start from the fans' current speed and move the target once per second. Max climbs at most
 /// 1500 RPM a second. Cool follows the hottest CPU die sensor (`Tp*` P-cores, `Te*` E-cores), smoothed so a
-/// one-core spike does not reach the fans: Mn at 65 °C or less, Mx at 90 °C or more, linear between; it rises at
-/// most 300 RPM and falls at most 150 RPM a second.
+/// one-core spike does not reach the fans, along the saved `FanCurve` (by default Mn at 65 °C or less, Mx at 90 °C
+/// or more, linear between); it rises at most 300 RPM and falls at most 150 RPM a second.
 ///
 /// SMC reads lag a write by up to about 0.7 s, so every check reads keys written at least one tick earlier.
 nonisolated enum FanDriver {
@@ -21,8 +21,6 @@ nonisolated enum FanDriver {
     static let tick: TimeInterval = 1
     static let settle: TimeInterval = 1.5
     static let unlockDeadline: TimeInterval = 10
-    static let coolStart = 65.0
-    static let coolFull = 90.0
     static let coolRise = 300.0
     static let coolFall = 150.0
     static let maxRise = 1_500.0
@@ -60,9 +58,9 @@ nonisolated enum FanDriver {
     }
 
     /// One tick of Cool: the speed the smoothed CPU temperature asks for, reached in limited steps.
-    static func coolTarget(hottest: Double, previous: Double?, minimum: Double, maximum: Double) -> Double {
-        let fraction = min(max((hottest - coolStart) / (coolFull - coolStart), 0), 1)
-        let desired = (minimum + (maximum - minimum) * fraction).rounded()
+    static func coolTarget(hottest: Double, previous: Double?, minimum: Double, maximum: Double,
+                           curve: FanCurve = .standard) -> Double {
+        let desired = (minimum + (maximum - minimum) * curve.speed(at: hottest)).rounded()
         return step(toward: desired, from: previous ?? minimum, rise: coolRise, fall: coolFall,
                     minimum: minimum, maximum: maximum)
     }
@@ -108,10 +106,11 @@ nonisolated enum FanDriver {
 
     private static func writeTargets(_ preset: FanPreset, fans: [Fan], keys: HelperFanKeys, smc: SMCSession) throws {
         let temperature: Double? = if preset == .cool { try cpuTemperature(smc) } else { nil }
+        let curve = temperature == nil ? FanCurve.standard : FanCurve.load()
         for fan in fans {
             let previous = targets[fan.index] ?? fan.minimum
             let target = temperature.map {
-                coolTarget(hottest: $0, previous: previous, minimum: fan.minimum, maximum: fan.maximum)
+                coolTarget(hottest: $0, previous: previous, minimum: fan.minimum, maximum: fan.maximum, curve: curve)
             } ?? step(toward: fan.maximum, from: previous, rise: maxRise, fall: maxRise,
                       minimum: fan.minimum, maximum: fan.maximum)
             if let failure = keys.write(fan.targetKey, value: target) { throw FanError(failure) }
