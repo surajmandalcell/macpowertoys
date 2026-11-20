@@ -10,6 +10,7 @@ nonisolated enum DiagnosticsRoute: Equatable, Sendable {
     case nativeClose(String)
     case timings
     case openIndividualPanel(String)
+    case openAttention(sample: Bool)
 
     static func parse(_ url: URL) -> Self? {
         guard DeepLinkHandler.isSupportedScheme(url.scheme), url.host == "diagnostics",
@@ -30,6 +31,9 @@ nonisolated enum DiagnosticsRoute: Equatable, Sendable {
         case "open-tool-panel":
             guard url.query == nil, IndividualMenuBarTool(rawValue: String(parts[2])) != nil else { return nil }
             return .openIndividualPanel(String(parts[2]))
+        case "popover":
+            guard parts[2] == "attention", url.query == nil || url.query == "sample" else { return nil }
+            return .openAttention(sample: url.query == "sample")
         case "appearance":
             guard url.query == nil else { return nil }
             return AppAppearance(rawValue: String(parts[2])).map(Self.appearance)

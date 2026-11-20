@@ -91,6 +91,10 @@ final class DeepLinkHandler {
                 }
             }
             return
+        case .openAttention(let sample):
+            AttentionBell.diagnosticSample = sample
+            NotificationCenter.default.post(name: AttentionBell.openNotification, object: nil)
+            return
         case .openIndividualPanel(let id):
             if let tool = IndividualMenuBarTool(rawValue: id) {
                 IndividualMenuBarController.shared.show(tool: tool, diagnostic: true)
