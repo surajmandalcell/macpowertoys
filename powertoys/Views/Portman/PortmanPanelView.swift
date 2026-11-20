@@ -1089,9 +1089,7 @@ private struct PortmanPasswordSheet: View {
         OnePlusSheet("SSH password for \(host)", width: .small, close: onCancel) {
             VStack(alignment: .leading, spacing: OnePlusMetrics.actionSpacing) {
             HStack(spacing: OnePlusMetrics.actionSpacing) {
-                SecureField("Password", text: $password)
-                    .textFieldStyle(.roundedBorder)
-                    .onSubmit(submit)
+                OnePlusLinearTextField("Password", text: $password, secure: true, onSubmit: submit)
                 Image(systemName: "info.circle").foregroundStyle(OnePlusColor.secondary)
                     .help("The password stays in memory until you leave Forward. Portman uses it for the scan and selected forwards.")
                     .accessibilityLabel("The password stays in memory until you leave Forward.")

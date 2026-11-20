@@ -107,11 +107,11 @@ struct FanCurveEditor: View {
                         + (Self.domain.upperBound - Self.domain.lowerBound) * Double((x - plot.minX) / plot.width)
                     return position(.init(celsius: celsius, speed: shown.curveSpeed(at: celsius)), plot)
                 }, plot: plot)
+                ForEach(shown.points.indices, id: \.self) { index in knob(index, plot: plot) }
                 if let nowCelsius {
                     FanCurveNow(point: position(.init(celsius: min(max(nowCelsius, Self.domain.lowerBound), Self.domain.upperBound),
-                                                      speed: shown.speed(at: nowCelsius)), plot), plot: plot)
+                                                      speed: shown.speed(at: nowCelsius)), plot), plot: plot, ring: Self.knob + 8)
                 }
-                ForEach(shown.points.indices, id: \.self) { index in knob(index, plot: plot) }
                 if let dragging, shown.points.indices.contains(dragging) {
                     bubble(shown.points[dragging], at: position(shown.points[dragging], plot))
                 }
@@ -344,17 +344,19 @@ private struct FanSafetyBand: View {
     }
 }
 
-/// The current CPU temperature on the curve: an accent dot with a dashed guide down to the axis.
+/// The current CPU temperature: a dashed accent line through the whole plot and a hollow accent ring on the
+/// curve, drawn above the points with a group-colored halo, so a point under it stays visible inside the ring.
 private struct FanCurveNow: View {
     let point: CGPoint
     let plot: CGRect
+    let ring: CGFloat
 
     var body: some View {
         ZStack(alignment: .topLeading) {
-            Path { $0.move(to: CGPoint(x: point.x, y: plot.maxY)); $0.addLine(to: point) }
+            Path { $0.move(to: CGPoint(x: point.x, y: plot.maxY)); $0.addLine(to: CGPoint(x: point.x, y: plot.minY)) }
                 .stroke(OnePlusLinearColor.accent.opacity(0.5), style: StrokeStyle(lineWidth: 1, dash: [3, 3]))
-            Circle().fill(OnePlusLinearColor.accent.opacity(0.22)).frame(width: 16, height: 16).position(point)
-            Circle().fill(OnePlusLinearColor.accent).frame(width: 8, height: 8).position(point)
+            Circle().strokeBorder(OnePlusLinearColor.fillGroup, lineWidth: 5).frame(width: ring + 4, height: ring + 4).position(point)
+            Circle().strokeBorder(OnePlusLinearColor.accent, lineWidth: 2).frame(width: ring, height: ring).position(point)
         }
         .allowsHitTesting(false)
         .accessibilityHidden(true)
