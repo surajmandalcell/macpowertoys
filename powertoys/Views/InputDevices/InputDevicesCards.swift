@@ -24,7 +24,7 @@ enum InputControlState {
     var title: String {
         switch self {
         case .disabled: "Not controlled"
-        case .permissionNeeded: "Permission needed"
+        case .permissionNeeded: "No access"
         case .passthrough: "Passthrough"
         case .active: "Controlled"
         case .unavailable: "Control inactive"

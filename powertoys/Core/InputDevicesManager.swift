@@ -331,6 +331,8 @@ final class InputDevicesManager {
     private var runLoopSource: CFRunLoopSource?
     private var refreshTask: Task<Void, Never>?
     private var screenObserver: NSObjectProtocol?
+    private var tapRetries = 0
+    private static let permissionWatchID = UUID()
     nonisolated private static let scrollTap = ScrollEventTap()
     private var scrollTap: ScrollEventTap { Self.scrollTap }
 
@@ -376,16 +378,6 @@ final class InputDevicesManager {
         applyInterceptionState()
     }
 
-    /// The scroll tap modifies events, which needs Accessibility only; it never needs Input Monitoring.
-    func requestPermission() {
-        PermissionCenter.shared.requestAccessibility()
-    }
-
-    func openPrivacySettings() {
-        guard let url = URL(string: "x-apple.systempreferences:com.apple.preference.security?Privacy_Accessibility") else { return }
-        NSWorkspace.shared.open(url)
-    }
-
     func stop() {
         refreshTask?.cancel()
         refreshTask = nil
@@ -398,8 +390,11 @@ final class InputDevicesManager {
         let anyProfileEnabled = [InputDeviceDescriptor.Kind.mouse, .trackpad].contains {
             InputScrollPolicy.profile(for: $0, settings: current).enabled
         }
-        guard current.scrollControlEnabled, anyProfileEnabled,
-              SettingsManager.shared.isToolEnabled("input-devices"), permissionGranted else {
+        let wantsTap = current.scrollControlEnabled && anyProfileEnabled
+            && SettingsManager.shared.isToolEnabled("input-devices")
+        // While scrolling waits for Accessibility, re-read it every 2 s even with no window open (only while missing).
+        PermissionCenter.shared.watch(Self.permissionWatchID, kind: wantsTap ? .accessibility : nil)
+        guard wantsTap, permissionGranted else {
             stopInterception()
             errorMessage = nil
             return
@@ -420,9 +415,11 @@ final class InputDevicesManager {
             callback: ScrollEventTap.callback,
             userInfo: Unmanaged.passUnretained(scrollTap).toOpaque()
         ) else {
-            errorMessage = "macOS did not allow scroll control. Re-enable Accessibility permission, then try again."
+            errorMessage = "macOS did not allow scroll control yet. Trying again."
+            scheduleTapRetry()
             return
         }
+        tapRetries = 0
 
         let source: CFRunLoopSource = CFMachPortCreateRunLoopSource(kCFAllocatorDefault, tap, 0)
         scrollTap.snapshot.withLockUnchecked { $0.tap = tap }
@@ -437,6 +434,27 @@ final class InputDevicesManager {
         ) { _ in
             Task { @MainActor in InputDevicesManager.current?.installDisplayLinks() }
         }
+    }
+
+    /// A grant can reach `AXIsProcessTrusted` a moment before the window server accepts a new tap, so a failed
+    /// create retries every second for 30 s instead of waiting for the next permission change.
+    private func scheduleTapRetry() {
+        guard tapRetries < 30 else {
+            errorMessage = "macOS did not allow scroll control. Click Fix in Accessibility, then try again."
+            return
+        }
+        tapRetries += 1
+        Task { @MainActor [weak self] in
+            try? await Task.sleep(for: .seconds(1))
+            guard let self, eventTap == nil else { return }
+            permissionGranted = PermissionCenter.shared.isGranted(.accessibility)
+            applyInterceptionState()
+        }
+    }
+
+    func fixAccessibility() {
+        tapRetries = 0
+        PermissionCenter.shared.fixAccessibility()
     }
 
     private func installDisplayLinks() {
@@ -472,7 +490,11 @@ final class InputDevicesManager {
         guard !trusted else { return }
         permissionGranted = false
         applyInterceptionState()
-        Task { await PermissionCenter.shared.refresh() }
+        // The shared state may not change (a brief false read), so follow it after the refresh either way.
+        Task {
+            await PermissionCenter.shared.refresh()
+            followPermission()
+        }
     }
 
     nonisolated private static func connectedDevices() -> [InputDeviceDescriptor] {

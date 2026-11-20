@@ -172,7 +172,8 @@ prompt (`AXIsProcessTrusted`, `CGPreflightScreenCaptureAccess`, the
 on app activation and on the system Accessibility-list notification, and
 posts `.permissionsChanged`. A row that shows a missing permission adds
 `.permissionWatch(kind)`; only then, and only while it is visible, a 2 s poll
-runs. Prompts come only from a user action.
+runs; Input Devices also watches while scrolling waits for Accessibility.
+Prompts come only from a user action.
 
 - **Check Again:** it awaits `PermissionCenter.refresh()`, which awaits
   `FanHelperService.refresh()`, not only a fan data read.
@@ -187,6 +188,20 @@ runs. Prompts come only from a user action.
   Accessibility (no listen-only tap or HID open exists), and nothing re-read
   trust. **Check:** `rg "CGRequestListenEventAccess|IOHIDManagerOpen|NSInputMonitoring"`
   finds nothing; `InputDevicesManager` follows `.permissionsChanged`.
+- **Symptom:** Reverse scroll stopped and the row said permission was
+  missing while MacPowerToys was switched on in Accessibility. **Cause:**
+  TCC keeps the approval per code signature. A NOTARIZE install changed the
+  designated requirement from Apple Development to Developer ID, so the
+  switch belonged to the old signature and `AXIsProcessTrusted` was false.
+  **Invariant:** every `make install` signs with Developer ID (hardened
+  runtime, no get-task-allow) and refuses any other identity, so grants
+  survive installs. A missing grant shows one plain line and Fix
+  (`tccutil reset Accessibility com.surajmandal.macpowertoys`, the prompt,
+  then the Accessibility pane). Once trusted before, the line names the old
+  approval. While scrolling is on and trust is missing, the 2 s poll runs
+  with no window open; a failed tap create retries every second for 30 s.
+  **Check:** after a grant, the scroll tap starts within 2 s without a
+  restart (`InputDevicesManager.interceptionActive`).
 - **Symptom:** Notifications were never asked for, so the sleep warning and
   the quit error never showed. **Invariant:** `PermissionCenter.allowNotifications()`
   asks once, at the first notification, and never at launch.

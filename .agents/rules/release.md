@@ -45,9 +45,7 @@ Make embeds the source commit in the app and refuses installation if the
 worktree is dirty or `HEAD` changes during the build. Do not copy a product
 from older DerivedData.
 
-The default build uses the Apple Development identity in the local login keychain for team `GF57JXJF5A`. `ADHOC=1` is the explicit fallback for Macs without that identity. Both modes use `powertoys/Local.entitlements` so provisioning-only entitlements, including iCloud, stay omitted and builds do not require automatic profile creation.
-
-An Apple Development signature is for local development. Distribution to other Macs without Gatekeeper warnings requires a paid Apple Developer membership, a Developer ID Application certificate, and Apple notarization.
+Every build and install uses the Developer ID Application identity for team `GF57JXJF5A`, with the hardened runtime and no get-task-allow; `make install` refuses any other identity, because macOS ties privacy grants to the signature. `make install ALLOW_INSTALL=1 NOTARIZE=1` also notarizes with the `MacPowerToysNotary` profile and staples. `make test` keeps Apple Development. `ADHOC=1` is the explicit fallback for Macs without these identities. All modes use `powertoys/Local.entitlements` so provisioning-only entitlements, including iCloud, stay omitted and builds do not require automatic profile creation.
 
 ## Developer ID release procedure
 

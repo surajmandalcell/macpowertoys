@@ -19,6 +19,7 @@ struct InputDevicesTrayView: View {
                 InputDeviceKindTile(kind: .trackpad, devices: devices(.trackpad), state: state(.trackpad))
             }
             scrollingGroup
+            accessibilityBanner
             if let errorMessage = manager.errorMessage { OnePlusLinearBanner(.warning, title: errorMessage) }
             InputPanelProfileGroup(title: "Mouse", kind: .mouse, deviceCount: devices(.mouse).count,
                                    profile: profileBinding(\.mouse), isExpanded: $mouseExpanded)
@@ -48,13 +49,16 @@ struct InputDevicesTrayView: View {
                 .toggleStyle(OnePlusLinearSwitchStyle())
             }
             .help("Apply these profiles in every app.")
-            if !manager.permissionGranted {
-                OnePlusLinearControlRow("Accessibility", systemImage: "accessibility", status: "Not allowed", titleWidth: nil) {
-                    Button("Grant") { manager.requestPermission() }.buttonStyle(OnePlusLinearKeyButtonStyle.compact)
-                }
-                .help("Allow MacPowerToys to adjust scroll events.")
-                .permissionWatch(.accessibility)
+        }
+    }
+
+    @ViewBuilder
+    private var accessibilityBanner: some View {
+        if let problem = PermissionCenter.shared.accessibilityProblem {
+            OnePlusLinearBanner(.warning, title: "Scrolling is off", message: problem) {
+                Button("Fix") { manager.fixAccessibility() }.buttonStyle(OnePlusLinearKeyButtonStyle.compact)
             }
+            .permissionWatch(.accessibility)
         }
     }
 
