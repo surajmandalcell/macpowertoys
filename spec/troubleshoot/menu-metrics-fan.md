@@ -188,6 +188,17 @@ still use `SystemMonitor`. `DESIGN.md` owns every size, color, and type value.
   warning glyph owns helper setup and Restore Auto. Fan text is prepared off
   main, equal results do not publish, and publications stay at least 250 ms
   apart.
+- **Symptom:** After quit and relaunch the fans were back on Auto.
+- **Cause:** The chosen mode lived only in memory; quit and the helper lease
+  both restore Auto, and nothing applied the choice again.
+- **Invariant:** Every click or link saves the mode in `fan.savedPreset`.
+  Launch (`restoreServices`) and wake (when the fans read Auto) call
+  `restoreSavedPreset()`, which shows the saved mode at once and writes it
+  only when the helper answers ready. It never installs: a missing or old
+  helper leaves Auto and adds the bell item "Fans stay on Auto". Quit still
+  restores Auto and keeps the saved mode.
+- **Check:** link Cool, quit, relaunch: `Ftst=1`, `F0Md=1` within 10 s. Link
+  Auto, quit, relaunch: stays Auto.
 - **Invariant:** No test reaches the real fan helper: every test service
   gets a fake `applyPreset`, and no test selects on the shared service.
 - **Check:** `FanControlTests` covers ordering, awaited restore, failure, and
