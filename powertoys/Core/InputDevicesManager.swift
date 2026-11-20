@@ -384,14 +384,18 @@ final class InputDevicesManager {
         stopInterception()
     }
 
+    /// Custom scrolling is on for at least one profile, so it needs Accessibility.
+    var wantsScrollTap: Bool {
+        settings.scrollControlEnabled && SettingsManager.shared.isToolEnabled("input-devices")
+            && [InputDeviceDescriptor.Kind.mouse, .trackpad].contains {
+                InputScrollPolicy.profile(for: $0, settings: settings).enabled
+            }
+    }
+
     private func applyInterceptionState() {
         let current = settings
         scrollTap.snapshot.withLockUnchecked { $0.settings = current }
-        let anyProfileEnabled = [InputDeviceDescriptor.Kind.mouse, .trackpad].contains {
-            InputScrollPolicy.profile(for: $0, settings: current).enabled
-        }
-        let wantsTap = current.scrollControlEnabled && anyProfileEnabled
-            && SettingsManager.shared.isToolEnabled("input-devices")
+        let wantsTap = wantsScrollTap
         // While scrolling waits for Accessibility, re-read it every 2 s even with no window open (only while missing).
         PermissionCenter.shared.watch(Self.permissionWatchID, kind: wantsTap ? .accessibility : nil)
         guard wantsTap, permissionGranted else {

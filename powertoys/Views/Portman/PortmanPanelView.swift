@@ -266,6 +266,7 @@ struct PortmanPanelView: View {
                     OnePlusMenuTab(.forward, "Forward", systemImage: "arrow.left.arrow.right", accessibilityIdentifier: "portman.page.Forward")
                 ], selection: Binding(get: { page }, set: navigate))
             } trailing: {
+                AttentionBell()
                 OnePlusLinearIconButton(systemImage: "gearshape", help: "Portman settings",
                                         busy: service.isLoadingRemote ? "Scanning" : nil) {
                     ToolActionRouter.shared.openMainPage(toolID: "portman")
