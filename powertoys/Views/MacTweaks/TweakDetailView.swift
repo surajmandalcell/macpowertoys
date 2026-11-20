@@ -151,7 +151,8 @@ private struct MacTweaksSegmentedControl: View {
             choices: choices,
             selection: Binding(get: { selection }, set: onSelection),
             accessibilityLabel: field.label,
-            sizing: .fitted
+            sizing: .fitted,
+            width: controlWidth
         )
         .accessibilityIdentifier("mac-tweaks.choice.\(field.key)")
     }
@@ -214,6 +215,7 @@ private struct MacTweaksTimingField: View {
                     .linearText().monospacedDigit().lineLimit(1)
                 Text("s").linearText(color: OnePlusLinearColor.secondary)
             }
+            .frame(maxWidth: .infinity, alignment: .trailing)
         }
         .accessibilityElement(children: .ignore)
         .accessibilityAdjustableAction { $0 == .increment ? step(5) : step(-5) }

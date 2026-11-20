@@ -21,12 +21,14 @@ struct FanPageView: View {
                 FanPageIcon(size: OnePlusLinearEditorialMetrics.headerIcon)
             } actions: { EmptyView() }
             OnePlusLinearAppletSection("Cool curve") {
-                FanCurveEditor(curve: curve, nowCelsius: service.display.cpuCelsius.map(Double.init)) { $0.save() }
-                    .padding(.horizontal, 4).padding(.top, 12)
-                Text("Drag points · double-click to edit · right-click to add or remove")
-                    .linearText(OnePlusLinearMetrics.caption, color: OnePlusLinearColor.tertiary)
-                    .frame(maxWidth: .infinity)
-                    .padding(.bottom, 10)
+                VStack(spacing: 0) {
+                    FanCurveEditor(curve: curve, nowCelsius: service.display.cpuCelsius.map(Double.init)) { $0.save() }
+                        .padding(.top, 12)
+                    Text("Drag points · double-click to edit · right-click to add or remove")
+                        .linearText(OnePlusLinearMetrics.caption, color: OnePlusLinearColor.tertiary)
+                        .frame(maxWidth: .infinity)
+                        .padding(.bottom, 10)
+                }
                 OnePlusLinearAppletRow("Now", value: nowText, systemImage: "thermometer.medium")
             }
             Button("Reset to the standard curve", role: .destructive) { FanCurve.standard.save() }
@@ -72,7 +74,8 @@ struct FanCurveEditor: View {
     @State private var keyMonitor: Any?
 
     private static let domain = FanCurve.temperatureRange
-    private static let inset = EdgeInsets(top: 22, leading: 40, bottom: 22, trailing: 14)
+    /// The plot runs to the card's left and right edges; its labels sit inside, `appletRowPadding` from each edge.
+    private static let inset = EdgeInsets(top: 22, leading: 0, bottom: 22, trailing: 0)
     private static let height: CGFloat = 240
     private static let hitTarget: CGFloat = 24
     private static let knob: CGFloat = 12
@@ -86,7 +89,7 @@ struct FanCurveEditor: View {
                               width: geo.size.width - Self.inset.leading - Self.inset.trailing,
                               height: geo.size.height - Self.inset.top - Self.inset.bottom)
             ZStack(alignment: .topLeading) {
-                FanCurveGrid(plot: plot, domain: Self.domain, labelSize: Self.labelSize, labelWidth: Self.inset.leading - 6)
+                FanCurveGrid(plot: plot, domain: Self.domain, labelSize: Self.labelSize)
                 FanSafetyBand(points: [FanCurve.safetyStart, FanCurve.safetyFull, Self.domain.upperBound].map {
                     position(.init(celsius: $0, speed: FanCurve.safetyFloor(at: $0)), plot)
                 }, plot: plot)
@@ -256,7 +259,7 @@ private struct FanCurveGrid: View {
     let plot: CGRect
     let domain: ClosedRange<Double>
     let labelSize: CGFloat
-    let labelWidth: CGFloat
+    private let pad = OnePlusLinearMetrics.appletRowPadding
 
     private func x(_ celsius: Double) -> CGFloat {
         plot.minX + plot.width * (celsius - domain.lowerBound) / (domain.upperBound - domain.lowerBound)
@@ -277,14 +280,15 @@ private struct FanCurveGrid: View {
             .stroke(OnePlusLinearColor.line, lineWidth: 1)
             ForEach([0.0, 0.5, 1.0], id: \.self) { speed in
                 Text("\(Int(speed * 100))%").linearText(labelSize, color: OnePlusLinearColor.secondary).monospacedDigit()
-                    .fixedSize().frame(width: labelWidth, alignment: .trailing)
-                    .position(x: labelWidth / 2, y: y(speed))
+                    .fixedSize().frame(width: 0, alignment: .leading)
+                    .position(x: plot.minX + pad, y: y(speed) - labelSize * 0.8)
             }
             ForEach(Array(stride(from: domain.lowerBound, through: domain.upperBound, by: 10)), id: \.self) { celsius in
-                Text(celsius == domain.upperBound ? "100 °C" : "\(Int(celsius))")
+                let first = celsius == domain.lowerBound, last = celsius == domain.upperBound
+                Text(last ? "100 °C" : "\(Int(celsius))")
                     .linearText(labelSize, color: OnePlusLinearColor.secondary).monospacedDigit()
-                    .fixedSize()
-                    .position(x: min(x(celsius), plot.maxX - 14), y: plot.maxY + 12)
+                    .fixedSize().frame(width: 0, alignment: first ? .leading : last ? .trailing : .center)
+                    .position(x: first ? plot.minX + pad : last ? plot.maxX - pad : x(celsius), y: plot.maxY + 12)
             }
         }
         .allowsHitTesting(false)
@@ -332,7 +336,7 @@ private struct FanSafetyBand: View {
                 .linearText(OnePlusLinearMetrics.caption, color: OnePlusLinearColor.temperatureCritical)
                 .fixedSize()
                 .frame(width: 0, alignment: .trailing)
-                .position(x: plot.maxX, y: plot.minY - 11)
+                .position(x: plot.maxX - OnePlusLinearMetrics.appletRowPadding, y: plot.minY - 11)
         }
         .allowsHitTesting(false)
         .accessibilityElement()

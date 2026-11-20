@@ -173,11 +173,9 @@ private struct MainAboutSettings: View {
             }
             MainSection(title: "Using MacPowerToys") {
                 OnePlusSettingRow("Tool manuals", controlWidth: OnePlusCatalogMetrics.placementWidth, separator: false) {
-                    Menu("Open a manual") {
-                        ForEach(ToolRegistry.allTools, id: \.id) { tool in
-                            Button(tool.name) { showManual(tool.id) }
-                        }
-                    }.menuStyle(.borderlessButton).fixedSize()
+                    OnePlusMenuButton("Open a manual", variant: .raised, items: ToolRegistry.allTools.map { tool in
+                        .item(OnePlusPopupMenuItem(tool.name) { showManual(tool.id) })
+                    })
                 }
             }
             Text("Closing a window leaves enabled background tools running. Choose Quit MacPowerToys to stop them. Each tool's How to use section explains its actions and background work.")
