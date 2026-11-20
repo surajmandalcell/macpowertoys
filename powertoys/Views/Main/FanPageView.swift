@@ -198,7 +198,39 @@ enum FanHeat {
     ], startPoint: .leading, endPoint: .trailing)
 }
 
-/// A small reading above a chart point, such as "64 °C · 3,039 RPM".
+/// Where a chart chip goes so it never covers another label or point: above its dot, else below, left, right, or a
+/// far-side diagonal, kept inside the chart. With no clear spot it takes the one with the least overlap.
+enum FanChipPlacement {
+    static let gap: CGFloat = 4
+
+    static func center(size: CGSize, dot: CGPoint, dotRadius: CGFloat, avoiding obstacles: [CGRect], in bounds: CGRect) -> CGPoint {
+        let up = dot.y - dotRadius - gap - size.height / 2, down = dot.y + dotRadius + gap + size.height / 2
+        let side = dotRadius + gap + size.width / 2
+        let candidates = [CGPoint(x: dot.x, y: up), CGPoint(x: dot.x, y: down),
+                          CGPoint(x: dot.x - side, y: dot.y), CGPoint(x: dot.x + side, y: dot.y),
+                          CGPoint(x: dot.x - size.width / 2, y: down), CGPoint(x: dot.x - size.width / 2, y: up),
+                          CGPoint(x: dot.x + size.width / 2, y: down), CGPoint(x: dot.x + size.width / 2, y: up)]
+        let blocked = obstacles + [CGRect(x: dot.x - dotRadius, y: dot.y - dotRadius, width: dotRadius * 2, height: dotRadius * 2)]
+        let placed = candidates.map { clamp(rect(size, at: $0), into: bounds) }
+        let overlaps = placed.map { chip in blocked.reduce(0) { total, rect in
+            let cut = chip.intersection(rect.insetBy(dx: -gap / 2, dy: -gap / 2))
+            return total + (cut.isNull ? 0 : cut.width * cut.height)
+        } }
+        let best = overlaps.firstIndex(of: 0) ?? overlaps.indices.min { overlaps[$0] < overlaps[$1] }!
+        return CGPoint(x: placed[best].midX, y: placed[best].midY)
+    }
+
+    static func rect(_ size: CGSize, at center: CGPoint) -> CGRect {
+        CGRect(x: center.x - size.width / 2, y: center.y - size.height / 2, width: size.width, height: size.height)
+    }
+
+    private static func clamp(_ rect: CGRect, into bounds: CGRect) -> CGRect {
+        rect.offsetBy(dx: min(max(rect.minX, bounds.minX), bounds.maxX - rect.width) - rect.minX,
+                      dy: min(max(rect.minY, bounds.minY), bounds.maxY - rect.height) - rect.minY)
+    }
+}
+
+/// A small reading next to a chart point, such as "64 °C · 3,039 RPM".
 private struct FanChip: View {
     let text: String
 
@@ -286,8 +318,29 @@ struct FanCurveEditor: View {
     @State private var selected: Int?
     @State private var pointer: CGPoint?
     @State private var keyMonitor: Any?
+    @State private var captionWidth = FanLockedEnd.estimatedCaptionWidth
+    @State private var nowChipSize = CGSize(width: 130, height: 20)
+    @State private var dragChipSize = CGSize(width: 90, height: 20)
+    static let chipMargin: CGFloat = 8
 
     private static let domain = FanCurve.temperatureRange
+
+    /// What a chip must not cover: the user's points, the locked end with its caption, and the axis labels.
+    static func obstacles(plot: CGRect, knobs: [CGPoint], captionWidth: CGFloat) -> [CGRect] {
+        let lock = CGPoint(x: plot.minX + plot.width * (FanCurve.lockedEnd.celsius - domain.lowerBound)
+                               / (domain.upperBound - domain.lowerBound),
+                           y: plot.maxY - plot.height * FanCurve.lockedEnd.speed)
+        let knobRects = knobs.map { CGRect(x: $0.x - knob / 2, y: $0.y - knob / 2, width: knob, height: knob) }
+        let lockSize = FanLockedEnd.size
+        let percentLabels = [0.0, 0.5, 1.0].map { speed in
+            CGRect(x: plot.minX + OnePlusLinearMetrics.appletRowPadding, y: plot.maxY - plot.height * speed - 15, width: 30, height: 14)
+        }
+        return knobRects + percentLabels + [
+            CGRect(x: lock.x - lockSize / 2, y: lock.y - lockSize / 2, width: lockSize, height: lockSize),
+            CGRect(x: lock.x - lockSize - captionWidth, y: plot.minY - 18, width: captionWidth, height: 14),
+            CGRect(x: plot.minX, y: plot.maxY + 5, width: plot.width, height: 14),
+        ]
+    }
     /// The plot runs to the card's left and right edges; its labels sit inside, `appletRowPadding` from each edge.
     static let inset = EdgeInsets(top: 22, leading: 0, bottom: 22, trailing: 0)
     static let height: CGFloat = 240
@@ -314,14 +367,25 @@ struct FanCurveEditor: View {
                     }
                 FanCurveLine(plot: FanPlot(rect: plot), curve: shown)
                 ForEach(shown.points.indices, id: \.self) { index in knob(index, plot: plot) }
-                FanLockedEnd(point: position(FanCurve.lockedEnd, plot), plot: plot)
+                FanLockedEnd(point: position(FanCurve.lockedEnd, plot), plot: plot) { captionWidth = $0 }
+                let bounds = CGRect(origin: .zero, size: geo.size).insetBy(dx: Self.chipMargin, dy: 0)
                 if let now = nowPoint(plot), let nowCelsius {
                     FanCurveNow(point: now, color: FanHeat.color(nowCelsius))
-                    if let nowChip, dragging == nil { FanChip(text: nowChip).position(x: now.x, y: now.y - 22) }
+                    if let nowChip, dragging == nil {
+                        let obstacles = Self.obstacles(plot: plot, knobs: shown.points.map { position($0, plot) }, captionWidth: captionWidth)
+                        FanChip(text: nowChip).onGeometryChange(for: CGSize.self, of: { $0.size }) { nowChipSize = $0 }
+                            .position(FanChipPlacement.center(size: nowChipSize, dot: now, dotRadius: FanCurveNow.size / 2,
+                                                              avoiding: obstacles, in: bounds))
+                    }
                 }
                 if let dragging, shown.points.indices.contains(dragging) {
                     let point = shown.points[dragging], at = position(shown.points[dragging], plot)
-                    FanChip(text: "\(Int(point.celsius)) °C · \(Int((point.speed * 100).rounded()))%").position(x: at.x, y: at.y - 22)
+                    let others = shown.points.indices.filter { $0 != dragging }.map { position(shown.points[$0], plot) }
+                    FanChip(text: "\(Int(point.celsius)) °C · \(Int((point.speed * 100).rounded()))%")
+                        .onGeometryChange(for: CGSize.self, of: { $0.size }) { dragChipSize = $0 }
+                        .position(FanChipPlacement.center(size: dragChipSize, dot: at, dotRadius: Self.knob / 2,
+                                                          avoiding: Self.obstacles(plot: plot, knobs: others, captionWidth: captionWidth),
+                                                          in: bounds))
                 }
             }
             .coordinateSpace(name: Self.space)
@@ -514,13 +578,16 @@ private struct FanCurveLine: View {
 private struct FanLockedEnd: View {
     let point: CGPoint
     let plot: CGRect
-    private static let size: CGFloat = 16
+    var measured: (CGFloat) -> Void = { _ in }
+    static let size: CGFloat = 16
+    static let estimatedCaptionWidth: CGFloat = 130
 
     var body: some View {
         ZStack(alignment: .topLeading) {
             Text("Full speed from \(Int(FanCurve.lockedEnd.celsius)) °C")
                 .linearText(OnePlusLinearMetrics.caption, color: OnePlusLinearColor.secondary)
                 .fixedSize()
+                .onGeometryChange(for: CGFloat.self, of: { $0.size.width }, action: measured)
                 .frame(width: 0, alignment: .trailing)
                 .position(x: point.x - Self.size, y: plot.minY - 11)
                 .allowsHitTesting(false)
@@ -542,11 +609,12 @@ private struct FanLockedEnd: View {
 private struct FanCurveNow: View {
     let point: CGPoint
     let color: Color
+    static let size: CGFloat = 15
 
     var body: some View {
         Circle().fill(color).overlay(Circle().strokeBorder(OnePlusLinearColor.window, lineWidth: 2.5))
             .shadow(color: color.opacity(0.5), radius: 4)
-            .frame(width: 15, height: 15)
+            .frame(width: Self.size, height: Self.size)
             .position(point)
             .allowsHitTesting(false)
             .accessibilityHidden(true)
