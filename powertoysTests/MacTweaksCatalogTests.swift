@@ -122,6 +122,8 @@ final class MacTweaksCatalogTests: XCTestCase {
         XCTAssertTrue(store.hasBackup(for: [field]))
         XCTAssertEqual(store.storedOriginalChoices(for: [field])[field.identity], -1)
         XCTAssertEqual(TweakPreferenceStore.readSelectedChoice(for: field), 0)
+        let music = try XCTUnwrap(TweakPreferences.fields(for: "music.half-stars").first)
+        XCTAssertEqual(TweakPreferenceStore.readSelectedChoice(for: music), -1, "Page load must not read Apple Music")
         try store.apply([field], selections: [field.identity: -1])
         XCTAssertNil(store.value(for: field))
         XCTAssertFalse(store.hasBackup(for: [field]), "Returning to the original value must clear recovery state")

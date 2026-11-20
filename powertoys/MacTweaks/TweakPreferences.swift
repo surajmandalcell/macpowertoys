@@ -32,6 +32,15 @@ nonisolated struct TweakPreferenceField: @unchecked Sendable {
 
     var identity: String { "\(domain)/\(key)" }
 
+    /// Reading these apps' settings shows a macOS privacy prompt (Apple Music: "media library"), so they are
+    /// read only after the user changes that tweak, never on page load or search.
+    static let privacyPromptDomains: Set<String> = [
+        "com.apple.Music", "com.apple.TV", "com.apple.Photos", "com.apple.mail", "com.apple.Safari",
+        "com.apple.MobileSMS", "com.apple.iChat", "com.apple.Notes", "com.apple.podcasts", "com.apple.iCal",
+        "com.apple.AddressBook", "com.apple.reminders",
+    ]
+    var readNeedsUserAction: Bool { Self.privacyPromptDomains.contains(domain) }
+
     func differsFromDefault(_ selection: Int) -> Bool {
         guard selection != -1 else { return false }
         guard let defaultSelection else { return true }
@@ -210,10 +219,13 @@ nonisolated final class TweakPreferenceStore {
 
     func selectedChoice(for field: TweakPreferenceField) -> Int {
         try? reconcilePendingWrite(for: field)
-        return Self.readSelectedChoice(for: field)
+        return Self.readSelectedChoice(for: field, userChanged: records[field.identity] != nil)
     }
 
-    nonisolated static func readSelectedChoice(for field: TweakPreferenceField) -> Int {
+    /// `userChanged`: the user changed this tweak here (it has a backup), so a privacy-prompt domain may be read.
+    /// Until then such a field shows Default.
+    nonisolated static func readSelectedChoice(for field: TweakPreferenceField, userChanged: Bool = false) -> Int {
+        guard userChanged || !field.readNeedsUserAction else { return -1 }
         guard let current = CFPreferencesCopyValue(
             field.key as CFString,
             field.domain == ".GlobalPreferences" ? kCFPreferencesAnyApplication : field.domain as CFString,
