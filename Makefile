@@ -2,7 +2,7 @@ PROJECT := powertoys.xcodeproj
 SCHEME := powertoys
 TEST_SCHEME := powertoys-desktop-tests
 TEST_ARGS ?= -only-testing:powertoysTests
-DERIVED_DATA ?= /tmp/macpowertoys-derived
+DERIVED_DATA ?= $(CURDIR)/build/DerivedData
 SOURCE_COMMIT := $(shell git rev-parse HEAD)
 XCODEBUILD := taskpolicy -c utility nice -n 10 xcodebuild -project $(PROJECT) -jobs 4 -derivedDataPath $(DERIVED_DATA) MPT_SOURCE_COMMIT=$(SOURCE_COMMIT)
 LOCAL_ENTITLEMENTS := $(abspath powertoys/Local.entitlements)
@@ -82,7 +82,6 @@ install: raycast-assets install-preflight raycast-install $(INSTALL_BUILD) verif
 
 # make release: a notarized, stapled MacPowerToys-<version>.dmg and its .sha256 in RELEASE_DIR, built from a clean HEAD.
 RELEASE_DIR ?= $(CURDIR)/release
-DMG_STAGE := $(DERIVED_DATA)/dmg-stage
 
 release-preflight:
 	@test "$(ADHOC)" != "1" || (echo "A release needs the Developer ID signature, not ADHOC=1." && exit 1)
@@ -95,11 +94,16 @@ release: release-preflight build verify-app notarize-app
 	VERSION="$$(plutil -extract CFBundleShortVersionString raw "$(INSTALL_APP)/Contents/Info.plist")"; \
 	DMG="$(RELEASE_DIR)/MacPowerToys-$$VERSION.dmg"; \
 	IDENTITY="$$(codesign -dv --verbose=4 "$(INSTALL_APP)" 2>&1 | sed -n 's/^Authority=\(Developer ID Application.*\)/\1/p')"; \
-	rm -rf "$(DMG_STAGE)"; rm -f "$$DMG" "$$DMG.sha256"; mkdir -p "$(DMG_STAGE)" "$(RELEASE_DIR)"; \
-	ditto "$(INSTALL_APP)" "$(DMG_STAGE)/MacPowerToys.app"; \
-	ln -s /Applications "$(DMG_STAGE)/Applications"; \
-	hdiutil create -volname MacPowerToys -srcfolder "$(DMG_STAGE)" -format UDZO -ov "$$DMG"; \
-	rm -rf "$(DMG_STAGE)"; \
+	mkdir -p "$(DERIVED_DATA)" "$(RELEASE_DIR)"; rm -f "$$DMG" "$$DMG.sha256"; \
+	STAGE="$$(mktemp -d "$(DERIVED_DATA)/dmg-stage.XXXXXX")"; MOUNT="$$(mktemp -d "$(DERIVED_DATA)/dmg-mount.XXXXXX")"; \
+	trap 'hdiutil detach -quiet "$$MOUNT" 2>/dev/null; for d in "$$STAGE" "$$MOUNT"; do case "$$d" in "$(DERIVED_DATA)"/dmg-stage.??????|"$(DERIVED_DATA)"/dmg-mount.??????) rm -rf "$$d";; esac; done' EXIT; \
+	ditto "$(INSTALL_APP)" "$$STAGE/MacPowerToys.app"; \
+	ln -s /Applications "$$STAGE/Applications"; \
+	hdiutil create -volname MacPowerToys -srcfolder "$$STAGE" -format UDZO -ov "$$DMG"; \
+	hdiutil attach -readonly -nobrowse -noautoopen -mountpoint "$$MOUNT" "$$DMG" >/dev/null; \
+	test "$$(ls -A "$$MOUNT" | tr '\n' ' ')" = "Applications MacPowerToys.app " && test "$$(readlink "$$MOUNT/Applications")" = /Applications \
+		|| (echo "The DMG must hold only MacPowerToys.app and the Applications link; it holds: $$(ls -A "$$MOUNT" | tr '\n' ' ')" && exit 1); \
+	hdiutil detach -quiet "$$MOUNT"; \
 	codesign --sign "$$IDENTITY" --timestamp "$$DMG"; \
 	xcrun notarytool submit "$$DMG" --keychain-profile $(NOTARY_PROFILE) --wait 2>&1 | tee "$$DMG.log"; \
 	grep -q 'status: Accepted' "$$DMG.log" || (echo "The DMG was not notarized. Read the log with: xcrun notarytool log <id> --keychain-profile $(NOTARY_PROFILE)" && exit 1); \
