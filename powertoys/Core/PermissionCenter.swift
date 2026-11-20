@@ -72,6 +72,30 @@ final class PermissionCenter {
         if changed { NotificationCenter.default.post(name: .permissionsChanged, object: self) }
     }
 
+    /// What a missing Accessibility approval means. macOS keeps an approval per code signature, so after a signing
+    /// change the switch in Settings stays on while `AXIsProcessTrusted` is false.
+    var accessibilityProblem: String? {
+        guard isMissing(.accessibility) else { return nil }
+        return UserDefaults.standard.bool(forKey: Self.accessibilityWasGrantedKey)
+            ? "macOS has an old approval for MacPowerToys. Turn it off and on again in Accessibility, or click Fix."
+            : "MacPowerToys needs Accessibility to change scrolling. Click Fix, then switch MacPowerToys on."
+    }
+
+    /// Fix: drops this app's Accessibility rows (stale signatures included), asks again so macOS lists the current
+    /// build, and opens the Accessibility pane. Call only from a click.
+    func fixAccessibility() {
+        Task {
+            let bundleID = Bundle.main.bundleIdentifier ?? "com.surajmandal.macpowertoys"
+            _ = try? await Task.detached { try FanCommand.run("/usr/bin/tccutil", ["reset", "Accessibility", bundleID]) }.value
+            requestAccessibility()
+            if let url = URL(string: "x-apple.systempreferences:com.apple.preference.security?Privacy_Accessibility") {
+                NSWorkspace.shared.open(url)
+            }
+        }
+    }
+
+    nonisolated static let accessibilityWasGrantedKey = "permissions.accessibilityWasGranted"
+
     /// Call only from an explicit user action or when the user turns on a tool that needs `kind`.
     func requestAccessibility() {
         let options = [kAXTrustedCheckOptionPrompt.takeUnretainedValue() as String: true] as CFDictionary
@@ -131,7 +155,10 @@ final class PermissionCenter {
 
     nonisolated private static func readGrantedWithoutWaiting() -> Set<PermissionKind> {
         var granted = Set<PermissionKind>()
-        if AXIsProcessTrusted() { granted.insert(.accessibility) }
+        if AXIsProcessTrusted() {
+            granted.insert(.accessibility)
+            if !AppRuntime.isRunningTests { UserDefaults.standard.set(true, forKey: accessibilityWasGrantedKey) }
+        }
         if CGPreflightScreenCaptureAccess() { granted.insert(.screenRecording) }
         if AVCaptureDevice.authorizationStatus(for: .audio) == .authorized { granted.insert(.microphone) }
         return granted

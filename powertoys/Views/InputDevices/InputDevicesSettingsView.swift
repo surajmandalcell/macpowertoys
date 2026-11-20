@@ -46,18 +46,12 @@ struct InputDevicesSettingsContent: View {
                     .toggleStyle(OnePlusLinearSwitchStyle())
                 }
                 .help("Apply these profiles in every app.")
-                if !manager.permissionGranted {
-                    OnePlusLinearAppletRow("Accessibility", detail: "Allow MacPowerToys to adjust scroll events.",
-                                           systemImage: "accessibility") {
-                        HStack(spacing: OnePlusLinearMetrics.appletActionGap) {
-                            Button("Settings") { manager.openPrivacySettings() }
-                                .buttonStyle(OnePlusLinearButtonStyle(.soft))
-                            Button("Grant") { manager.requestPermission() }
-                                .buttonStyle(OnePlusLinearButtonStyle(.soft))
-                        }
-                    }
-                    .permissionWatch(.accessibility)
+            }
+            if let problem = PermissionCenter.shared.accessibilityProblem {
+                OnePlusLinearBanner(.warning, title: "Scrolling is off", message: problem) {
+                    Button("Fix") { manager.fixAccessibility() }.buttonStyle(OnePlusLinearButtonStyle(.soft))
                 }
+                .permissionWatch(.accessibility)
             }
             if let errorMessage = manager.errorMessage {
                 OnePlusBanner(errorMessage, tone: .error)

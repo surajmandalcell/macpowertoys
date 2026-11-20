@@ -140,7 +140,7 @@ struct InputDevicesWindowView: View {
                     "System control",
                     detail: "Accessibility permission is required only for system-wide scrolling."
                 ) {
-                    OnePlusStatus(manager.permissionGranted ? "Allowed" : "Permission needed",
+                    OnePlusStatus(manager.permissionGranted ? "Allowed" : "No access",
                                   state: manager.permissionGranted ? .online : .warning)
                 }
             }
