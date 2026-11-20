@@ -20,13 +20,16 @@ struct ToolSidebarView: View {
             ForEach(groups) { group in
                 OnePlusLinearNavCaption(group.category.rawValue)
                 ForEach(group.tools, id: \.id) { toolRow($0) }
+                // Owner, 2026-11-20: Fan is a system control, so it sits last in System, not at the bottom.
+                if group.category == .system, searchText.isEmpty || FanPageView.title.localizedCaseInsensitiveContains(searchText) {
+                    OnePlusLinearNavRow(FanPageView.title, glyph: Image(SidebarGlyph.fan),
+                                        selected: selectedTool == FanPageView.pageID) {
+                        selectedTool = FanPageView.pageID
+                    }
+                    .accessibilityIdentifier("main.sidebar.fan")
+                }
             }
         } bottom: {
-            OnePlusLinearNavRow(FanPageView.title, glyph: Image(SidebarGlyph.fan),
-                                selected: selectedTool == FanPageView.pageID) {
-                selectedTool = FanPageView.pageID
-            }
-            .accessibilityIdentifier("main.sidebar.fan")
             OnePlusLinearNavRow(AppsBySamView.title, glyph: Image(systemName: SidebarGlyph.appsBySam), symbol: true,
                                 selected: selectedTool == AppsBySamView.pageID) {
                 selectedTool = AppsBySamView.pageID
