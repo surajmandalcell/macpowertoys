@@ -181,7 +181,11 @@ still use `SystemMonitor`. `DESIGN.md` owns every size, color, and type value.
   only while a fan view owns the poller, and bounds indices and lengths.
   Fan commands drain output with a cap and hard-kill after a short grace.
 - **Invariant:** Fan is the first row of the Home control card, above
-  Awake. It shows the RPM and Auto, Cool, and Max. A read that finds no fans
+  Awake. It shows the RPM, the CPU thermometer (`CPUHeat`, the same sensor as
+  Cool, read on the 5 s poll and reset when the row hides), and Auto, Cool
+  (or Custom), and Max with `.snug` segments so the RPM never truncates.
+  `MPTDiagnosticCPUCelsius` replaces the reading for screenshot checks;
+  delete it after. A read that finds no fans
   hides the row. Fan starts and stops its service from `onePlusIsVisible`;
   hiding dismisses setup. Only a click on a segment the helper can apply
   writes (`canSelect`); the whole control dims while none can apply. A

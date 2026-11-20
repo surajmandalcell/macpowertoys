@@ -31,7 +31,6 @@ nonisolated enum FanDriver {
     nonisolated(unsafe) private static var targets: [Int: Double] = [:]
     nonisolated(unsafe) private static var smoothed: Double?
     nonisolated(unsafe) private static var mismatches = 0
-    nonisolated(unsafe) private static var temperatureKeys: [String]?
     nonisolated(unsafe) static var onManualLost: (@Sendable (String) -> Void)?
 
     static func apply(_ preset: FanPreset) throws {
@@ -167,14 +166,7 @@ nonisolated enum FanDriver {
 
     /// The hottest CPU die sensor, smoothed over about 5 s.
     private static func cpuTemperature(_ smc: SMCSession) throws -> Double {
-        if temperatureKeys == nil {
-            temperatureKeys = smc.keyNames().filter { name in
-                ["Tp", "Te"].contains(String(name.prefix(2))) && smc.read(name)?.type == "flt "
-            }
-        }
-        // Idle or power-gated cores read 0 and some keys hold constants below 20, so only 20-110 °C counts.
-        let readings = (temperatureKeys ?? []).compactMap { smc.number($0) }.filter { (20..<110).contains($0) }
-        guard let hottest = readings.max() else { throw FanError("No CPU temperature sensor was found.") }
+        guard let hottest = CPUTemperatureSensor.hottest(smc) else { throw FanError("No CPU temperature sensor was found.") }
         let next = smoothed.map { $0 + smoothing * (hottest - $0) } ?? hottest
         smoothed = next
         return next

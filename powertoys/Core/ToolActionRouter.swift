@@ -105,7 +105,7 @@ final class ToolActionRouter {
     }
 
     func open(toolID: String, activateApp: Bool = true) {
-        if toolID == AppsBySamView.pageID {
+        if [AppsBySamView.pageID, FanPageView.pageID].contains(toolID) {
             open(toolID: "main", page: toolID, activateApp: activateApp)
             return
         }

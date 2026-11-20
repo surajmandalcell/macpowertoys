@@ -37,6 +37,11 @@ colors:
   danger: { dark: "#FFB6AC", light: "#872E25" }
   danger-fill: { dark: "#382624", light: "#FBE9E7" }
   danger-line: { dark: "#6D4541", light: "#E3B3AD" }
+  temperature-warm: { dark: "#F2C94C", light: "#A67C00" }     # CPU 56-69 °C
+  temperature-hot: { dark: "#F59A4A", light: "#CC610C" }      # CPU 70-84 °C
+  temperature-very-hot: { dark: "#FF7466", light: "#D03A2C" } # CPU 85-94 °C
+  temperature-critical: { dark: "#FF3B30", light: "#9A1717" } # CPU 95 °C and up
+  fan-tile: { dark: "#3A82D6", light: "#2F7FD8" }             # Fan page icon tile, white glyph
 high-contrast:
   ink: { dark: "#FFFFFF", light: "#000000" }
   secondary-and-muted: { dark: "#DADADA", light: "#444444" }
@@ -118,10 +123,11 @@ All shipped; the rules live in the sections below.
 - Portman "Hero ring", "Two lines with a port chip", "Right-click only".
 - Panel bars "A. Bell with a red dot" attention key.
 - Apps by Sam: two cover cards, the Pro banner, sidebar glyph "Heart".
-- Removed tools: Task Manager (now Task Manager Pro and Classic in
-  `../task_manager_x`), Partition Manager, System Cleaner, and NetToys (their
-  own "Sam's" apps). Nine tools stay: Color Picker, Text Extractor, Ruler,
-  Awake, Mac Tweaks, Input Devices, Portman, RSync UI, Event Viewer.
+- Fan: row thermometer "Five shades, before the switch", page "Big chart",
+  label "Cool until edited, then Custom".
+- Nine tools: Color Picker, Text Extractor, Ruler, Awake, Mac Tweaks, Input
+  Devices, Portman, RSync UI, Event Viewer. Task Manager, Partition Manager,
+  System Cleaner, and NetToys are separate "Sam's" apps.
 
 ## Overview
 
@@ -391,15 +397,12 @@ ease-in cubic-bezier(0.4, 0, 1, 1)):
 - Busy work (such as a Portman scan) shows on the top-bar gear: the gear
   becomes a spinner in the same frame. Body controls never move aside for a
   spinner.
-- Attention bell (owner pick 2026-11-20, "A. Bell with a red dot";
-  `AttentionBell`): a `bell` icon button just left of the gear in every
-  panel bar. A 7 pt red dot (`destructiveText`), inset 4 pt from the key's
-  top right corner, shows only while an item needs attention. A click opens
-  a popover, 312 pt wide: a "Needs attention" caption, then one warning
-  banner per item with one plain line and a compact `Fix` key. Items in
-  order: Accessibility for custom scrolling, then the fan helper not
-  responding. Windows have no header gear (Settings is a sidebar row), so
-  they carry no bell.
+- Attention bell (`AttentionBell`): a `bell` icon button left of the gear
+  in every panel bar. A 7 pt `destructiveText` dot, 4 pt in from the top
+  right, shows while an item needs attention. A click opens a 312 pt
+  popover: a "Needs attention" caption, then one warning banner per item
+  with one plain line and a compact `Fix` key (Accessibility for custom
+  scrolling, then the fan helper). Windows have no gear, so no bell.
 
 ### Fill steps shell (combined panel and Portman)
 
@@ -436,10 +439,17 @@ ease-in cubic-bezier(0.4, 0, 1, 1)):
     current point, a gradient fade, the left edge fading over 16 pt.
   - A missing battery or GPU hides its tile; the column's chart tile takes
     the height. Missing readings show a dash.
-  - One group with the Fan row (32 pt, RPM and the Auto, Cool, Max
-    segmented control: `fillTrack` radius 7, `fillThumb` radius 5) and the
-    Awake row (state text and a 32 x 18 switch, accent on). No fans hides
-    the Fan row; only a segment click writes.
+  - One group with the Fan row (32 pt, RPM, a CPU thermometer, and the
+    Auto, Cool, Max segmented control: `fillTrack` radius 7, `fillThumb`
+    radius 5) and the Awake row (state text and a 32 x 18 switch, accent
+    on). No fans hides the Fan row; only a segment click writes.
+  - Fan segments are `.snug` (40 pt; a longer label widens only its own
+    segment), so "Custom" never cuts the RPM. Cool reads "Custom" while the
+    saved curve differs from the standard one.
+  - The 12 pt `thermometer.medium` before the segments follows Apple
+    silicon thermals (idle 35-55 °C, long loads 70-85 °C, throttling near
+    100-105 °C): under 56 `panelMuted` normal, 56-69 warm, 70-84 hot, 85-94
+    very hot, 95+ critical ("near the limit"). Help "CPU 62 °C · warm".
   - "Top processes": five 30 pt rows, 12 pt text: icon (16 pt), name, CPU
     percent in `cpuText` (40 pt column), memory (68 pt column). A click
     selects by PID. Right-click: Quit Process… (Quit, Force Quit, Cancel),
@@ -561,8 +571,8 @@ Linear style, OnePlusUI `OnePlusLinear*` parts. Reference:
   (11.5 pt medium `muted`). 28 pt rows: 16 pt one-color `SidebarGlyph`
   (`secondary`, `ink` when selected; marketplace tools use their art), 8 pt
   gap, 13 pt name. A disabled tool name is `muted`. Selection: `selection`
-  fill, radius 6, medium `ink` name, no movement. Bottom group: Apps by Sam
-  (`heart`), Settings (`⌘,`), Exit (`⌘Q`), 13 pt medium symbols and
+  fill, radius 6, medium `ink` name, no movement. Bottom group: Fan
+  (`fanblades`), Apps by Sam (`heart`), Settings (`⌘,`), Exit (`⌘Q`), 13 pt medium symbols and
   shortcut hints.
 - Command-1 All tools; Command-2 to 9 follow the sidebar; Command-[ and
   Command-] go back and forward; Command-O opens the selected tool.
@@ -619,6 +629,13 @@ Linear style, OnePlusUI `OnePlusLinear*` parts. Reference:
   covers, 40 pt icon, 15 pt name), then one open row per other app (64 pt
   icon). Every app has the App Store capsule: OPEN when installed, else GET,
   or GET disabled with "Not available yet".
+- Fan page: tool header with a 56 pt `fan-tile` icon (white
+  `fanblades.fill`), then "Cool curve": a 240 pt chart (30-100 °C, 0-100%,
+  `line` grid, 10 pt `secondary` labels, 1.75 pt `ink` line, accent dot at
+  the current CPU temperature), a "Now" row, and the reset block. Points are
+  12 pt quiet knobs, 24 pt hit targets, `ink` ring on hover. Drag stays
+  between neighbors; double-click a point opens Temperature and Speed
+  steppers, clamped so the curve keeps rising; double-click space adds one.
 - Settings uses `OnePlusLinearPaneBody`: 14 pt top, 24 pt gutters, 16 pt
   between sections, 20 pt `muted` captions, lists with radius 8, a 1 pt
   ring, and `lineSoft` separators. General: Appearance and windows, Launch
