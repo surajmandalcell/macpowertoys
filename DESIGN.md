@@ -116,6 +116,7 @@ All shipped; the rules live in the sections below.
 - Applets "Filled groups" shell, "Quiet Raised" controls, plain red
   destructive text, "Native snap" motion.
 - Portman "Hero ring", "Two lines with a port chip", "Right-click only".
+- Panel bars "A. Bell with a red dot" attention key.
 - Apps by Sam: two cover cards, the Pro banner, sidebar glyph "Heart".
 - Removed tools: Task Manager (now Task Manager Pro and Classic in
   `../task_manager_x`), Partition Manager, System Cleaner, and NetToys (their
@@ -388,6 +389,15 @@ ease-in cubic-bezier(0.4, 0, 1, 1)):
 - Busy work (such as a Portman scan) shows on the top-bar gear: the gear
   becomes a spinner in the same frame. Body controls never move aside for a
   spinner.
+- Attention bell (owner pick 2026-11-20, "A. Bell with a red dot";
+  `AttentionBell`): a `bell` icon button just left of the gear in every
+  panel bar. A 7 pt red dot (`destructiveText`), inset 4 pt from the key's
+  top right corner, shows only while an item needs attention. A click opens
+  a popover, 312 pt wide: a "Needs attention" caption, then one warning
+  banner per item with one plain line and a compact `Fix` key. Items in
+  order: Accessibility for custom scrolling, then the fan helper not
+  responding. Windows have no header gear (Settings is a sidebar row), so
+  they carry no bell.
 
 ### Fill steps shell (combined panel and Portman)
 

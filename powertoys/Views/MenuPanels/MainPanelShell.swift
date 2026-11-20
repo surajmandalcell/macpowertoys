@@ -178,6 +178,7 @@ struct MainPanelFrame<Regions: View>: View {
             OnePlusLinearPanelFooter(edge: .top) {
                 OnePlusLinearIconTabs(tabs: menuTabs, selection: $selection, onMove: onMove)
             } trailing: {
+                AttentionBell()
                 OnePlusLinearIconButton(systemImage: "gearshape", help: "Open Settings", action: openSettings)
                 Button("Open MacPowerToys", action: openApp)
                     .buttonStyle(OnePlusLinearButtonStyle(.filled))
@@ -273,6 +274,7 @@ struct IndividualToolMenuPanel: View {
             .accessibilityElement(children: .combine)
             .accessibilityAddTraits(.isHeader)
         } trailing: {
+            AttentionBell()
             OnePlusLinearIconButton(systemImage: "gearshape", help: "Open Settings") {
                 ToolActionRouter.shared.open(toolID: tool.id, page: "settings")
             }
