@@ -108,7 +108,8 @@ struct RemoteBrowserView: View {
     }
 
     private var newFolderMessage: String {
-        RemoteFolderName.error(for: newFolderName) ?? "Create this folder in \(remote.name):\(path)."
+        let typed = !newFolderName.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty
+        return (typed ? RemoteFolderName.error(for: newFolderName) : nil) ?? "Create this folder in \(remote.name):\(path)."
     }
 
     private var newFolderSheet: some View {
@@ -117,7 +118,7 @@ struct RemoteBrowserView: View {
         let create = { guard canCreate else { return }; createFolder(); isShowingNewFolder = false }
         return OnePlusSheet("New Folder", width: .small, close: cancel) {
             VStack(alignment: .leading, spacing: OnePlusMetrics.actionSpacing) {
-                OnePlusLinearTextField("Folder name", text: $newFolderName, onSubmit: create)
+                OnePlusLinearTextField("Folder name", text: $newFolderName, autofocus: true, onSubmit: create)
                 Text(newFolderMessage).linearText(OnePlusLinearMetrics.caption, color: OnePlusLinearColor.secondary)
             }
         } footer: {

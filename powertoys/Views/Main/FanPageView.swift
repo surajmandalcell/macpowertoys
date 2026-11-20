@@ -102,12 +102,12 @@ struct FanCurveEditor: View {
                         Button("Add point here") { if let pointer { addPoint(at: pointer, plot: plot) } }
                             .disabled(pointer == nil || curve.points.count >= FanCurve.maxPoints)
                     }
+                if let now = nowPoint(plot) { FanCurveNow(point: now, plot: plot, ring: Self.knob + 8, layer: .halo) }
                 FanCurveLine(points: (Array(stride(from: plot.minX, to: plot.maxX, by: 2)) + [plot.maxX]).map { x in
                     let celsius = Self.domain.lowerBound
                         + (Self.domain.upperBound - Self.domain.lowerBound) * Double((x - plot.minX) / plot.width)
                     return position(.init(celsius: celsius, speed: shown.curveSpeed(at: celsius)), plot)
                 }, plot: plot)
-                if let now = nowPoint(plot) { FanCurveNow(point: now, plot: plot, ring: Self.knob + 8, layer: .halo) }
                 ForEach(shown.points.indices, id: \.self) { index in knob(index, plot: plot) }
                 if let now = nowPoint(plot) { FanCurveNow(point: now, plot: plot, ring: Self.knob + 8, layer: .ring) }
                 if let dragging, shown.points.indices.contains(dragging) {
@@ -349,8 +349,8 @@ private struct FanSafetyBand: View {
 }
 
 /// The current CPU temperature: a dashed accent line through the whole plot and a hollow accent ring on the
-/// curve. The line and the group-colored halo sit under the points and the ring above them, so the halo never
-/// covers a point and a point under the ring stays visible inside it.
+/// curve. The dashed line and the group-colored halo sit under the curve and the points, and the ring above them,
+/// so the halo never cuts the curve or covers a point.
 private struct FanCurveNow: View {
     enum Layer { case halo, ring }
     let point: CGPoint
