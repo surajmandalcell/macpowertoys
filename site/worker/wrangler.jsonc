@@ -1,8 +1,16 @@
 {
-  // Static assets only. Deploy with `npx wrangler deploy` from this folder, after the owner approves.
+  // Static assets plus a small worker that writes the latest release version into the HTML (src/index.js).
+  // Deploy with `npx wrangler deploy` from this folder, after the owner approves.
   "name": "macpowertoys-site",
+  "main": "src/index.js",
   "compatibility_date": "2026-11-01",
-  "assets": { "directory": "../public", "not_found_handling": "404-page", "html_handling": "auto-trailing-slash" },
+  "assets": {
+    "directory": "../public",
+    "binding": "ASSETS",
+    "not_found_handling": "404-page",
+    "html_handling": "auto-trailing-slash",
+    "run_worker_first": ["/", "/index.html"]
+  },
   "routes": [{ "pattern": "macpowertoys.samhq.app", "custom_domain": true }],
   "workers_dev": false
 }
