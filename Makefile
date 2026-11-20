@@ -113,6 +113,7 @@ release: release-preflight build verify-app notarize-app
 	xcrun stapler staple "$$DMG"; \
 	xcrun stapler validate "$$DMG"; \
 	spctl -a -vv -t open --context context:primary-signature "$$DMG"; \
-	cd "$(RELEASE_DIR)" && shasum -a 256 "MacPowerToys-$$VERSION.dmg" | tee "MacPowerToys-$$VERSION.dmg.sha256"
+	cd "$(RELEASE_DIR)" && shasum -a 256 "MacPowerToys-$$VERSION.dmg" | tee "MacPowerToys-$$VERSION.dmg.sha256"; \
+	printf '{"version":"%s","notarized":true}\n' "$$VERSION" > release.json
 
 .PHONY: build build-for-testing test raycast-assets raycast raycast-install install install-preflight verify-app notarize-app release release-preflight
