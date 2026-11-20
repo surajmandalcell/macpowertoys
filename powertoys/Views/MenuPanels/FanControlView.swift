@@ -13,7 +13,7 @@ struct FanControlView: View {
     private var detail: String { display.detail }
 
     var body: some View {
-        MainPanelFanRow(status: display.rpm, selection: presetBinding,
+        MainPanelFanRow(status: display.rpm, cpuCelsius: display.cpuCelsius, selection: presetBinding,
                                 isChoiceEnabled: { !display.isChanging && display.canSelect($0) }) {
             if display.hasError || (display.hasCompletedRead && !display.canControl) {
                 setupButton
@@ -102,22 +102,56 @@ struct FanControlView: View {
 
 }
 
-/// The Fan row: RPM and the Auto, Cool, Max control. Only a click on a choice changes `selection`.
+/// The Fan row: RPM, the CPU thermometer, and the Auto, Cool, Max control. Cool reads "Custom" once the curve is
+/// edited on the Fan page. Only a click on a choice changes `selection`.
 struct MainPanelFanRow<Setup: View>: View {
-    private static var choices: [(FanPreset?, String)] { FanPreset.allCases.map { (Optional($0), $0.rawValue) } }
     let status: String
+    var cpuCelsius: Int?
     @Binding var selection: FanPreset?
     let isChoiceEnabled: (FanPreset) -> Bool
     @ViewBuilder let setup: Setup
+    @AppStorage(FanCurve.storageKey) private var curveData: Data?
+
+    private var choices: [(FanPreset?, String)] {
+        FanPreset.allCases.map { (Optional($0), $0 == .cool && curveData != nil ? "Custom" : $0.rawValue) }
+    }
 
     var body: some View {
         OnePlusLinearControlRow("Fan", systemImage: "fanblades", status: status) {
             HStack(spacing: 4) {
                 setup
-                OnePlusLinearSegmented(choices: Self.choices, selection: $selection, accessibilityLabel: "Fan preset",
-                                       isChoiceEnabled: { $0.map(isChoiceEnabled) ?? false })
-                    .help("Auto follows macOS. Cool speeds the fans up as the CPU passes 65 °C, full speed at 90 °C. Max runs fans at their hardware maximum.")
+                if let cpuCelsius { CPUThermometer(celsius: cpuCelsius) }
+                // Snug keeps Auto and Max at the fixed width and widens only "Custom", so the RPM is never cut.
+                OnePlusLinearSegmented(choices: choices, selection: $selection, accessibilityLabel: "Fan preset",
+                                       sizing: .snug, isChoiceEnabled: { $0.map(isChoiceEnabled) ?? false })
+                    .help(curveData != nil
+                          ? "Auto follows macOS. Custom follows your curve on the Fan page. Max runs fans at their hardware maximum."
+                          : "Auto follows macOS. Cool speeds the fans up as the CPU passes 65 °C, full speed at 90 °C. Max runs fans at their hardware maximum.")
             }
+        }
+    }
+}
+
+/// A thermometer tinted by `CPUHeat`: gray while the CPU is at normal temperatures, then yellow, orange, and red.
+struct CPUThermometer: View {
+    let celsius: Int
+
+    var body: some View {
+        Image(systemName: "thermometer.medium")
+            .font(.system(size: OnePlusLinearMetrics.caption + 1, weight: .medium))
+            .foregroundStyle(Self.color(CPUHeat(celsius: Double(celsius))))
+            .frame(width: OnePlusLinearMetrics.segment.height - 4, height: OnePlusLinearMetrics.segment.height)
+            .help(CPUHeat.help(celsius))
+            .accessibilityLabel(CPUHeat.help(celsius))
+    }
+
+    static func color(_ heat: CPUHeat) -> Color {
+        switch heat {
+        case .normal: OnePlusLinearColor.panelMuted
+        case .warm: OnePlusLinearColor.temperatureWarm
+        case .hot: OnePlusLinearColor.temperatureHot
+        case .veryHot: OnePlusLinearColor.temperatureVeryHot
+        case .nearLimit: OnePlusLinearColor.temperatureCritical
         }
     }
 }

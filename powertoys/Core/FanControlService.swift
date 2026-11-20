@@ -177,10 +177,12 @@ nonisolated struct FanControlPresentation: Equatable, Sendable {
     var isChanging = false
     var hasCompletedRead = false
     var hasError = false
+    var cpuCelsius: Int?
 
     init(snapshot: FanSnapshot? = nil, selectedPreset: FanPreset? = nil, errorMessage: String? = nil,
          canRestoreAutomatic: Bool = false, canInstallHelper: Bool = false, isUnsupportedBuild: Bool = false,
-         isChanging: Bool = false, hasCompletedRead: Bool = false) {
+         isChanging: Bool = false, hasCompletedRead: Bool = false, cpuCelsius: Double? = nil) {
+        self.cpuCelsius = cpuCelsius.map { Int($0.rounded()) }
         rpm = snapshot?.averageRPM.map { $0.formatted() + " RPM" } ?? "— RPM"
         let utilization = snapshot?.utilization.map { "\($0)%" } ?? "—%"
         status = "\(rpm) · \(utilization)"
@@ -263,11 +265,14 @@ final class FanControlService {
     private(set) var selectedPreset: FanPreset? { didSet { scheduleDisplay() } }
     private(set) var errorMessage: String? { didSet { scheduleDisplay() } }
     private(set) var isChanging = false { didSet { scheduleDisplay() } }
+    /// The hottest CPU sensor, smoothed across polls so one busy core does not flash the thermometer.
+    private(set) var cpuCelsius: Double? { didSet { scheduleDisplay() } }
     private(set) var display = FanControlPresentation()
     @ObservationIgnored private var displayTask: Task<Void, Never>?
     @ObservationIgnored private var lastDisplayPublication: ContinuousClock.Instant?
     @ObservationIgnored private var displayRevision = 0
     @ObservationIgnored private let readSnapshot: @Sendable () -> FanSnapshot?
+    @ObservationIgnored private let readTemperature: @Sendable () -> Double?
     @ObservationIgnored private let applyPreset: @Sendable (FanPreset, @escaping @Sendable (String?) -> Void) -> Void
     private var owners = Set<String>()
     private var pollTask: Task<Void, Never>?
@@ -286,7 +291,7 @@ final class FanControlService {
     @ObservationIgnored private var wakeObserver: NSObjectProtocol?
 
     private convenience init() {
-        self.init(readSnapshot: FanCommand.read)
+        self.init(readSnapshot: FanCommand.read, readTemperature: CPUTemperatureSensor.read)
         Self.current = self
         FanCommand.setManualLostHandler { reason in
             Task { @MainActor in FanControlService.shared.manualControlLost(reason) }
@@ -359,8 +364,10 @@ final class FanControlService {
     }
 
     init(readSnapshot: @escaping @Sendable () -> FanSnapshot?,
+         readTemperature: @escaping @Sendable () -> Double? = { nil },
          applyPreset: @escaping @Sendable (FanPreset, @escaping @Sendable (String?) -> Void) -> Void = FanCommand.apply) {
         self.readSnapshot = readSnapshot
+        self.readTemperature = readTemperature
         self.applyPreset = applyPreset
     }
 
@@ -398,14 +405,17 @@ final class FanControlService {
         pollTask = nil
         displayTask?.cancel()
         displayTask = nil
+        cpuCelsius = nil
     }
 
     func refresh() async {
         let currentRevision = revision
         let readSnapshot = readSnapshot
-        let result = await Task.detached(priority: .utility) { readSnapshot() }.value
+        let readTemperature = readTemperature
+        let (result, celsius) = await Task.detached(priority: .utility) { (readSnapshot(), readTemperature()) }.value
         guard currentRevision == revision, !owners.isEmpty, !isRestoringOnExit else { return }
         hasCompletedRead = true
+        cpuCelsius = celsius.map { new in cpuCelsius.map { $0 + 0.5 * (new - $0) } ?? new }
         if let result {
             // A helper that is missing or older still allows a choice: the first write installs it.
             let helper = FanHelperService.shared
@@ -517,11 +527,12 @@ final class FanControlService {
             let isUnsupportedBuild = isUnsupportedBuild
             let isChanging = isChanging
             let hasCompletedRead = hasCompletedRead
+            let cpuCelsius = cpuCelsius
             let next = await Task.detached(priority: .utility) {
                 FanControlPresentation(snapshot: snapshot, selectedPreset: selectedPreset, errorMessage: errorMessage,
                                        canRestoreAutomatic: canRestoreAutomatic, canInstallHelper: canInstallHelper,
                                        isUnsupportedBuild: isUnsupportedBuild, isChanging: isChanging,
-                                       hasCompletedRead: hasCompletedRead)
+                                       hasCompletedRead: hasCompletedRead, cpuCelsius: cpuCelsius)
             }.value
             guard !Task.isCancelled, !owners.isEmpty else { return }
             displayTask = nil
