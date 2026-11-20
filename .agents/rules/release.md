@@ -68,13 +68,19 @@ make release DERIVED_DATA=<task-unique path on the data drive>
 It builds from HEAD with Developer ID, checks the source commit, team, and
 helper signature, notarizes and staples the app, then packs, signs,
 notarizes, staples, and checks (`spctl`) `release/MacPowerToys-<version>.dmg`
-and writes its `.sha256`.
+and writes its `.sha256` and `release.json` (`{"version", "notarized": true}`).
 
-Publish: create the GitHub release `v<version>` with the DMG under its
-versioned name and again as `MacPowerToys.dmg` (the website links
-`releases/latest/download/MacPowerToys.dmg`). Then update `version` and
-`sha256` in `Casks/macpowertoys.rb` in `surajmandalcell/homebrew-tap`, and run
-`brew audit --cask --online surajmandalcell/tap/macpowertoys`.
+Publish: create the GitHub release `v<version>` with the DMG, its `.sha256`,
+and `release.json`. The site worker puts that release's DMG into the Download
+buttons, and reads `release.json` to say "Notarized by Apple"; a release
+without it shows the Open Anyway step instead. Then update `version` and
+`sha256` in `Casks/macpowertoys.rb` in `samhqapp/homebrew-tap` (local checkout
+`../homebrew-tap`), and run
+`brew audit --cask --online samhqapp/tap/macpowertoys`.
+
+The release, the tap push, and the site deploy (`cd site/worker && npx wrangler
+deploy`) ship together, in that order: the site's brew command and Download
+buttons work only once the release and the cask exist.
 
 Mount the final disk image on a clean account. Verify the embedded app with
 `codesign --verify --deep --strict` and `spctl -a -vv -t execute` before

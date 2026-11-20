@@ -164,9 +164,19 @@ h2:hover .anchor,h3:hover .anchor,.anchor:focus-visible,.anchor.done{opacity:1}
 .try[data-pick=hold] .curve .line,.try[data-pick=hold] .curve .area{opacity:0}
 .try[data-pick=hold] .curve .hold-mark,.try[data-pick=hold] .curve .lock-line{opacity:1}
 .try[data-pick=hold] .curve .guide{stroke-dasharray:none;stroke-width:1.5}
-.picks{display:grid;grid-template-columns:repeat(5,1fr);gap:6px}
-.picks button{min-height:36px;padding:6px 4px;border:1px solid var(--lit);border-radius:10px;background:var(--bg);color:var(--ink);font:500 13px/1.2 var(--font);letter-spacing:-.01em;cursor:pointer;transition:border-color .2s,box-shadow .2s}
-.picks button[aria-checked=true]{border-color:var(--app-accent);box-shadow:inset 0 0 0 .5px var(--app-accent)}
+/* The Fan page's curve cards: the mini curve on top, the name below at the left, an accent border when picked. */
+.picks{display:grid;grid-template-columns:repeat(5,1fr);gap:8px}
+.picks button{display:flex;flex-direction:column;gap:6px;min-width:0;padding:8px 8px 7px;border:1px solid var(--lit);border-radius:10px;background:var(--bg);color:var(--muted);font:500 13px/1.2 var(--font);letter-spacing:-.01em;text-align:left;white-space:nowrap;cursor:pointer;transition:border-color .2s,box-shadow .2s,color .2s}
+.picks button[aria-checked=true]{color:var(--ink);font-weight:600;border-color:var(--app-accent);box-shadow:inset 0 0 0 .5px var(--app-accent)}
+.picks .mini{display:block;width:100%;height:32px;overflow:visible}
+.picks .mini .fill{fill:var(--ink);opacity:.08}
+.picks .mini .stroke{fill:none;stroke:var(--ink);stroke-width:1.5;opacity:.7;vector-effect:non-scaling-stroke;stroke-linejoin:round}
+.picks .mini .target{stroke:var(--app-accent);stroke-width:1.5;stroke-dasharray:3 2.5;vector-effect:non-scaling-stroke}
+@media (max-width:600px){.picks{grid-template-columns:repeat(6,1fr)}.picks button{grid-column:span 2}.picks button:nth-child(n+4){grid-column:span 3}}
+.try .note{display:grid}
+.try .note>span{grid-area:1/1}
+.try .note .for-hold,.try[data-pick=hold] .note .for-curve{visibility:hidden}
+.try[data-pick=hold] .note .for-hold{visibility:visible}
 .picks button:focus-visible{outline:none;box-shadow:0 0 0 3px color-mix(in srgb,var(--accent) 40%,transparent)}
 .curve .guide{stroke:var(--heat);stroke-width:1.2;stroke-dasharray:3 3;transition:stroke .3s}
 .curve .dot{fill:var(--heat);stroke:var(--surface);stroke-width:3;transition:fill .3s}

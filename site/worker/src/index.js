@@ -1,5 +1,6 @@
 // Serves the static site and writes the latest GitHub release into the page: the version into every
-// [data-version] span and the release's DMG into every [data-download] link.
+// [data-version] span, the release's DMG into every [data-download] link, and "Notarized by Apple" into
+// [data-notary] when the release says so.
 // The HTML keeps the last known release, so a GitHub outage or a missing release changes nothing.
 const REPO = 'surajmandalcell/macpowertoys';
 const TTL = 3600;
@@ -20,6 +21,12 @@ async function latestRelease(ctx) {
       if (/^v?\d+\.\d+\.\d+$/.test(tag)) release.version = tag.replace(/^v/, '');
       const dmg = (body.assets || []).find((a) => /\.dmg$/i.test(a.name || ''));
       if (dmg && /^https:\/\/github\.com\//.test(dmg.browser_download_url)) release.dmg = dmg.browser_download_url;
+      // `make release` writes release.json only for a notarized DMG; without it the page keeps the Open Anyway step.
+      const note = (body.assets || []).find((a) => a.name === 'release.json');
+      if (note && release.version && /^https:\/\/github\.com\//.test(note.browser_download_url)) {
+        const info = await (await fetch(note.browser_download_url, { headers: { 'User-Agent': 'macpowertoys-site' } })).json();
+        release.notarized = info.notarized === true && info.version === release.version;
+      }
     }
   } catch {}
   // An empty entry is cached too, so a missing release costs one GitHub call an hour, not one per visit.
@@ -31,11 +38,12 @@ export default {
   async fetch(request, env, ctx) {
     const res = await env.ASSETS.fetch(request);
     if (!(res.headers.get('Content-Type') || '').includes('text/html')) return res;
-    const { version, dmg } = await latestRelease(ctx);
+    const { version, dmg, notarized } = await latestRelease(ctx);
     if (!version && !dmg) return res;
     const page = new HTMLRewriter();
     if (version) page.on('[data-version]', { element(el) { el.setInnerContent(version); } });
     if (dmg) page.on('a[data-download]', { element(el) { el.setAttribute('href', dmg); } });
+    if (notarized) page.on('[data-notary]', { element(el) { el.setInnerContent('Notarized by Apple'); } });
     return page.transform(res);
   },
 };

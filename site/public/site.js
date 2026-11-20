@@ -64,7 +64,7 @@
     var input = $('heat'), rpmOut = $('fan-rpm'), tempOut = $('fan-temp'), wordOut = $('fan-word');
     var dot = $('fan-dot'), guide = $('fan-guide'), blades = root.querySelector('.blades');
     var X = function (c) { return (c - 30) / 70 * 320; }, Y = function (s) { return 120 - s * 112; };
-    var note = $('fan-note'), noteText = note.textContent, buttons = root.querySelectorAll('[data-pick]');
+    var buttons = root.querySelectorAll('[data-pick]');
     // The curve as 141 speeds, one every 0.5 °C from 30 to 100; a pick morphs from the old list to the new one.
     function samples(points) { var a = []; for (var i = 0; i <= 140; i++) a.push(curveSpeed(points, 30 + i / 2)); return a; }
     function at(list, c) { var i = clamp((c - 30) * 2, 0, 140), k = Math.floor(i), f = i - k; return k >= 140 ? list[140] : list[k] + (list[k + 1] - list[k]) * f; }
@@ -78,12 +78,14 @@
       if (name === pick) return;
       buttons.forEach(function (b) { b.setAttribute('aria-checked', b.dataset.pick === name ? 'true' : 'false'); });
       root.dataset.pick = name;
-      note.textContent = name === 'hold' ? 'Holds 75 °C, give or take 2 °C, with a steady fan speed.' : noteText;
       clearInterval(tick); hold = null;
       if (name === 'hold') {
-        // Bumpless, like FanDriver: the loop starts from the speed the fans already run at.
-        var now = speedNow();
+        // The try-it CPU moves to the target, and the loop starts bumpless from the curve's speed there, like
+        // FanDriver; starting from a drag to 95 °C would show full speed at 75 °C while the loop ramps down.
+        var now = at(cur, HOLD);
         hold = { speed: now, integral: now };
+        target = HOLD; input.value = HOLD;
+        if (calm.matches) shown = HOLD;
         tick = setInterval(function () { if (visible) { holdStep(hold, shown); if (!raf) paint(); } }, 1000);
       } else {
         from = cur; to = samples(PICKS[name]); morph = calm.matches ? 1 : 0;
@@ -94,6 +96,17 @@
     }
     function speedNow() { return hold ? (shown >= 90 ? 1 : hold.speed) : at(cur, shown); }
     drawCurve();
+    // Each pick card shows its curve on the same 30-100 °C scale as the Fan page cards; Hold shows its target.
+    buttons.forEach(function (b) {
+      var svg = b.querySelector('.mini'), x = function (c) { return 4 + (c - 30) / 70 * 92; };
+      if (b.dataset.pick === 'hold') {
+        svg.innerHTML = '<path class="target" d="M' + x(HOLD) + ' 4V40"/>';
+        return;
+      }
+      var s = samples(PICKS[b.dataset.pick]);
+      var d = s.map(function (v, i) { return (i ? 'L' : 'M') + x(30 + i / 2).toFixed(1) + ' ' + (40 - v * 36).toFixed(1); }).join('');
+      svg.innerHTML = '<path class="fill" d="' + d + 'L96 40L4 40Z"/><path class="stroke" d="' + d + '"/>';
+    });
 
     var calm = matchMedia('(prefers-reduced-motion: reduce)');
     var target = +input.value, shown = target, angle = 0, last = 0, raf = 0, visible = false, demo = [], auto = false;

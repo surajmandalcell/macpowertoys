@@ -58,11 +58,11 @@
         <p class="heat-word"><span id="fan-temp">79</span> °C · <span id="fan-word">hot</span></p>
       </div>
       <div class="picks" role="radiogroup" aria-label="Fan page pick">
-        <button type="button" role="radio" aria-checked="false" data-pick="silent">Silent</button>
-        <button type="button" role="radio" aria-checked="false" data-pick="quiet">Quiet</button>
-        <button type="button" role="radio" aria-checked="false" data-pick="steady">Steady</button>
-        <button type="button" role="radio" aria-checked="false" data-pick="hold">Hold 75 °C</button>
-        <button type="button" role="radio" aria-checked="true" data-pick="custom">Custom</button>
+        <button type="button" role="radio" aria-checked="false" data-pick="silent"><svg class="mini" viewBox="0 0 100 44" preserveAspectRatio="none" aria-hidden="true"></svg><span>Silent</span></button>
+        <button type="button" role="radio" aria-checked="false" data-pick="quiet"><svg class="mini" viewBox="0 0 100 44" preserveAspectRatio="none" aria-hidden="true"></svg><span>Quiet</span></button>
+        <button type="button" role="radio" aria-checked="false" data-pick="steady"><svg class="mini" viewBox="0 0 100 44" preserveAspectRatio="none" aria-hidden="true"></svg><span>Steady</span></button>
+        <button type="button" role="radio" aria-checked="false" data-pick="hold"><svg class="mini" viewBox="0 0 100 44" preserveAspectRatio="none" aria-hidden="true"></svg><span>Hold 75 °C</span></button>
+        <button type="button" role="radio" aria-checked="true" data-pick="custom"><svg class="mini" viewBox="0 0 100 44" preserveAspectRatio="none" aria-hidden="true"></svg><span>Custom</span></button>
       </div>
       <svg class="curve" viewBox="0 -16 320 148" aria-hidden="true">
         <defs><linearGradient id="heat-line" gradientUnits="userSpaceOnUse" x1="0" x2="320" y1="0" y2="0"><stop offset=".1" class="s-cool"/><stop offset=".45" class="s-warm"/><stop offset=".7" class="s-hot"/><stop offset=".86" class="s-very-hot"/></linearGradient></defs>
@@ -82,7 +82,7 @@
         <input id="heat" type="range" min="30" max="100" step="1" value="79">
       </div>
       <div class="ticks" aria-hidden="true"><span style="--t:30">30</span><span style="--t:50">50</span><span style="--t:70">70</span><span style="--t:90">90</span><span style="--t:100">100</span></div>
-      <p class="note" id="fan-note">The same picks as the Fan page below, at 1,350 to 5,777 RPM.</p>
+      <p class="note" id="fan-note"><span class="for-curve">The same picks as the Fan page below, at 1,350 to 5,777 RPM.</span><span class="for-hold">Holds 75 °C, give or take 2 °C, with a steady fan speed.</span></p>
     </div>
   </div>
   <div class="desk v fan-desk" style="--wall:url(assets/wall/fur.webp);--nw:820;--zx:229;--zy:181;--zw:577;--zh:371">
@@ -221,7 +221,7 @@
   <h2 class="rv">Install it in one <span class="nw">line.<a class="anchor" href="#install" aria-label="Copy a link to Install"><svg><use href="#i-link"/></svg></a></span></h2>
   <div class="cmd big rv"><code><span>brew install --cask</span> <span>samhqapp/tap/macpowertoys</span></code><button type="button" aria-label="Copy the install command" data-copy="brew install --cask samhqapp/tap/macpowertoys"><svg class="cp"><use href="#i-copy"/></svg><svg class="ok"><use href="#i-ok"/></svg></button></div>
   <p class="rv">Or <a class="btn" data-download href="https://github.com/surajmandalcell/macpowertoys/releases/download/v1.9.4/MacPowerToys-1.9.4-universal.dmg">Download MacPowerToys.dmg</a></p>
-  <p class="fine rv">Version <span data-version>1.9.4</span> · macOS 26.2 or later · Signed, not yet notarized by Apple · No tracking · MIT license</p>
+  <p class="fine rv">Version <span data-version>1.9.4</span> · macOS 26.2 or later · <span data-notary>If macOS blocks it: System Settings › Privacy &amp; Security › Open Anyway</span> · No tracking · MIT license</p>
 </section>
 </main>
 
