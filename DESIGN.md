@@ -41,7 +41,6 @@ colors:
   temperature-hot: { dark: "#F59A4A", light: "#CC610C" }      # CPU 70-84 °C
   temperature-very-hot: { dark: "#FF7466", light: "#D03A2C" } # CPU 85-94 °C
   temperature-critical: { dark: "#FF3B30", light: "#9A1717" } # CPU 95 °C and up
-  fan-tile: { dark: "#3A82D6", light: "#2F7FD8" }             # Fan page icon tile, white glyph
 high-contrast:
   ink: { dark: "#FFFFFF", light: "#000000" }
   secondary-and-muted: { dark: "#DADADA", light: "#444444" }
