@@ -1,0 +1,8 @@
+{
+  // Static assets only. Deploy with `npx wrangler deploy` from this folder, after the owner approves.
+  "name": "macpowertoys-site",
+  "compatibility_date": "2026-11-01",
+  "assets": { "directory": "../public", "not_found_handling": "404-page", "html_handling": "auto-trailing-slash" },
+  "routes": [{ "pattern": "macpowertoys.samhq.app", "custom_domain": true }],
+  "workers_dev": false
+}
