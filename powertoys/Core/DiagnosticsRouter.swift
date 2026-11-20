@@ -8,6 +8,7 @@ nonisolated enum DiagnosticsRoute: Equatable, Sendable {
     case closePanels
     case closeWindow(String)
     case nativeClose(String)
+    case snapshot(String)
     case timings
     case openIndividualPanel(String)
     case openAttention(sample: Bool)
@@ -23,11 +24,15 @@ nonisolated enum DiagnosticsRoute: Equatable, Sendable {
         if parts == ["", "timings"], url.query == nil { return .timings }
         guard parts.count == 3, parts[0].isEmpty else { return nil }
         switch parts[1] {
-        case "close-window", "native-close":
+        case "close-window", "native-close", "snapshot":
             let id = String(parts[2])
             guard url.query == nil, !id.isEmpty, id.utf8.count <= 80,
                   id.utf8.allSatisfy({ (97...122).contains($0) || (48...57).contains($0) || $0 == 45 }) else { return nil }
-            return parts[1] == "native-close" ? .nativeClose(id) : .closeWindow(id)
+            switch parts[1] {
+            case "native-close": return .nativeClose(id)
+            case "snapshot": return .snapshot(id)
+            default: return .closeWindow(id)
+            }
         case "open-tool-panel":
             guard url.query == nil, IndividualMenuBarTool(rawValue: String(parts[2])) != nil else { return nil }
             return .openIndividualPanel(String(parts[2]))
