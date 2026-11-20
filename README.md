@@ -5,16 +5,16 @@
 <h1 align="center">MacPowerToys</h1>
 
 <p align="center">
-  Fourteen small Mac utilities in one native, dark app.<br>
-  Measure, pick colors, read text from the screen, watch your Mac, clean storage, and sync files.
+  Nine small Mac utilities in one native app.<br>
+  Measure, pick colors, read text from the screen, keep your Mac awake, control fans, and sync files.
 </p>
 
 <p align="center">
-  <a href="https://github.com/surajmandalcell/macpowertoys/releases/latest">Download for macOS</a> · Apple Silicon and Intel · macOS 26.2+ · MIT
+  <a href="https://macpowertoys.samhq.app/">Website</a> · <a href="https://github.com/surajmandalcell/macpowertoys/releases/latest">Download for macOS</a> · Apple Silicon and Intel · macOS 26.2+ · MIT
 </p>
 
 <p align="center">
-  <img src="docs/screenshots/macpowertoys-launcher.png" width="100%" alt="The MacPowerToys launcher showing all thirteen tools as cards with enable switches and Open buttons">
+  <img src="docs/screenshots/macpowertoys-launcher.png" width="100%" alt="The MacPowerToys launcher showing its tools as cards with enable switches and Open buttons">
 </p>
 
 <p align="center">
@@ -44,19 +44,23 @@ Partition Manager, System Cleaner, and NetToys are separate apps now.
 
 ## Setup
 
-1. Download the latest release, move **MacPowerToys** to Applications, and open it.
-2. The build is signed with a personal Apple Development identity and is not
-   notarized. If macOS blocks the first launch, open **System Settings →
-   Privacy & Security** and choose **Open Anyway**.
-3. Turn on the tools you want in the launcher.
-4. Grant access only when a tool asks: Screen Recording for Text Extractor,
+1. Install with Homebrew:
+
+   ```bash
+   brew install --cask surajmandalcell/tap/macpowertoys
+   ```
+
+   Or download the latest DMG, move **MacPowerToys** to Applications, and
+   open it. Releases are signed with Developer ID and notarized by Apple.
+2. Turn on the tools you want in the launcher.
+3. Grant access only when a tool asks: Screen Recording for Text Extractor,
    Accessibility for Input Devices and the Pick Color shortcut. Each tool
    shows its access state and a button that opens the right privacy pane.
-5. For RSync UI, install [rclone](https://rclone.org/install/) with
+4. For RSync UI, install [rclone](https://rclone.org/install/) with
    `brew install rclone`.
 
-Fan control in the menu bar panel uses a signed helper. macOS asks you to
-approve it once in **Login Items**.
+Fan control in the menu bar panel uses a signed helper. macOS asks for an
+administrator password once to install it.
 
 ## Keyboard
 
@@ -76,8 +80,6 @@ Change or turn off the global shortcuts in each tool's settings.
 
 ## Limits
 
-- Releases are signed for personal use, not notarized. Developer ID signing
-  and notarization are still open.
 - RSync UI cannot reorder files inside a running directory transfer. A paused
   file can restart; finished files stay complete.
 - Google Drive setup needs your own OAuth client ID.

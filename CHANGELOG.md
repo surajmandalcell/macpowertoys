@@ -4,6 +4,23 @@ Notable changes are documented here. The project follows semantic versioning aft
 
 ## [Unreleased]
 
+## [2.0.0] - 2026-11-20
+
+### Added
+
+- Install with Homebrew: `brew install --cask surajmandalcell/tap/macpowertoys`.
+- Releases are signed with Developer ID and notarized by Apple, so macOS
+  opens them without a Gatekeeper warning.
+- Fan control in the menu bar panel, with presets, a ramp from the current
+  speed, and the chosen mode kept across relaunch and wake.
+- An attention bell in the panel bars and an Apps by Sam page.
+
+### Changed
+
+- New main window, menu panel, and tool panels built on OnePlusUI.
+- Kwake is now Awake.
+- Each tool asks for macOS access only at its first use.
+
 ### Removed
 
 - Removed the Partition Manager, System Cleaner, and NetToys tools: their

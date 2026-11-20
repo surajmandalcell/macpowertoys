@@ -59,52 +59,22 @@ xcrun notarytool store-credentials MacPowerToysNotary
 
 Do not put the Apple ID password, app-specific password, issuer ID, or API key
 in this repository. Confirm that Cloud Sync has no active transfer and that
-`git status --porcelain` is empty. Then archive and export the app:
+`git status --porcelain` is empty. Then run:
 
 ```sh
-mkdir -p tmp/release
-MPT_RELEASE_ROOT=$(mktemp -d "$PWD/tmp/release/macpowertoys.XXXXXX")
-MPT_ARCHIVE="$MPT_RELEASE_ROOT/MacPowerToys.xcarchive"
-MPT_EXPORT="$MPT_RELEASE_ROOT/export"
-MPT_EXPORT_OPTIONS="$MPT_RELEASE_ROOT/ExportOptions.plist"
-MPT_SOURCE_COMMIT=$(git rev-parse HEAD)
-
-plutil -create xml1 "$MPT_EXPORT_OPTIONS"
-plutil -insert method -string developer-id "$MPT_EXPORT_OPTIONS"
-plutil -insert signingStyle -string automatic "$MPT_EXPORT_OPTIONS"
-plutil -insert teamID -string GF57JXJF5A "$MPT_EXPORT_OPTIONS"
-
-xcodebuild -project powertoys.xcodeproj -scheme powertoys \
-  -configuration Release -archivePath "$MPT_ARCHIVE" \
-  -allowProvisioningUpdates MPT_SOURCE_COMMIT="$MPT_SOURCE_COMMIT" archive
-
-xcodebuild -exportArchive -archivePath "$MPT_ARCHIVE" \
-  -exportPath "$MPT_EXPORT" -exportOptionsPlist "$MPT_EXPORT_OPTIONS" \
-  -allowProvisioningUpdates
+make release DERIVED_DATA=<task-unique path on the data drive>
 ```
 
-Confirm that the exported app contains the expected commit and Developer ID
-signature. Then create and notarize the disk image:
+It builds from HEAD with Developer ID, checks the source commit, team, and
+helper signature, notarizes and staples the app, then packs, signs,
+notarizes, staples, and checks (`spctl`) `release/MacPowerToys-<version>.dmg`
+and writes its `.sha256`.
 
-```sh
-MPT_APP="$MPT_EXPORT/MacPowerToys.app"
-MPT_DMG="$MPT_RELEASE_ROOT/MacPowerToys.dmg"
-
-test "$(plutil -extract MPTSourceCommit raw "$MPT_APP/Contents/Info.plist")" \
-  = "$MPT_SOURCE_COMMIT"
-codesign --verify --deep --strict --verbose=2 "$MPT_APP"
-codesign -dv --verbose=4 "$MPT_APP" 2>&1 \
-  | grep 'Authority=Developer ID Application'
-
-hdiutil create -volname MacPowerToys -srcfolder "$MPT_APP" \
-  -format UDZO -ov "$MPT_DMG"
-xcrun notarytool submit "$MPT_DMG" \
-  --keychain-profile MacPowerToysNotary --wait
-xcrun stapler staple "$MPT_DMG"
-xcrun stapler validate "$MPT_DMG"
-spctl -a -vv -t open --context context:primary-signature "$MPT_DMG"
-shasum -a 256 "$MPT_DMG"
-```
+Publish: create the GitHub release `v<version>` with the DMG under its
+versioned name and again as `MacPowerToys.dmg` (the website links
+`releases/latest/download/MacPowerToys.dmg`). Then update `version` and
+`sha256` in `Casks/macpowertoys.rb` in `surajmandalcell/homebrew-tap`, and run
+`brew audit --cask --online surajmandalcell/tap/macpowertoys`.
 
 Mount the final disk image on a clean account. Verify the embedded app with
 `codesign --verify --deep --strict` and `spctl -a -vv -t execute` before
