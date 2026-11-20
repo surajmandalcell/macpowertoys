@@ -135,8 +135,8 @@ h2:hover .anchor,h3:hover .anchor,.anchor:focus-visible,.anchor.done{opacity:1}
 /* Fan */
 .fan-desk{--z:1;--wx:calc(50% - 410px);--wy:52px;--h:calc((var(--wy) + 700px) * var(--z))}
 /* CPU temperature steps from DESIGN.md (CPUHeat.swift): gray, yellow, orange, red, deep red */
-:root{--t-normal:#6e6e76;--t-warm:#a67c00;--t-hot:#cc610c;--t-very-hot:#d03a2c;--t-near-the-limit:#9a1717}
-@media (prefers-color-scheme:dark){:root{--t-normal:#9999a1;--t-warm:#f2c94c;--t-hot:#f59a4a;--t-very-hot:#ff7466;--t-near-the-limit:#ff3b30}}
+:root{--t-normal:#008cbf;--t-warm:#a67c00;--t-hot:#cc610c;--t-very-hot:#d03a2c;--t-near-the-limit:#9a1717;--app-accent:#d94f45}
+@media (prefers-color-scheme:dark){:root{--t-normal:#63d1ff;--app-accent:#ee5b50;--t-warm:#f2c94c;--t-hot:#f59a4a;--t-very-hot:#ff7466;--t-near-the-limit:#ff3b30}}
 .try{--heat:var(--t-warm);--f:.457;display:grid;gap:14px;padding:22px;border-radius:18px;background:var(--surface)}
 .try[data-heat=normal]{--heat:var(--t-normal)}
 .try[data-heat=hot]{--heat:var(--t-hot)}
@@ -151,10 +151,23 @@ h2:hover .anchor,h3:hover .anchor,.anchor:focus-visible,.anchor.done{opacity:1}
 .heat-word{margin-left:auto;font-weight:600;color:var(--heat)!important;font-variant-numeric:tabular-nums;transition:color .3s}
 .curve{width:100%;height:auto;overflow:visible}
 .curve .grid{stroke:var(--lit);stroke-width:1;fill:none}
-.curve .safe{fill:var(--t-near-the-limit);opacity:.1}
-.curve .safe-edge{stroke:var(--t-near-the-limit);stroke-width:1.2;stroke-dasharray:3 3;fill:none}
-.curve .area{fill:var(--ink);opacity:.05}
-.curve .line{stroke:var(--ink);stroke-width:2;fill:none;stroke-linejoin:round}
+.curve .s-cool{stop-color:var(--t-normal)}.curve .s-warm{stop-color:var(--t-warm)}.curve .s-hot{stop-color:var(--t-hot)}.curve .s-very-hot{stop-color:var(--t-very-hot)}
+.curve .area{fill:url(#heat-line);opacity:.14;transition:opacity .3s}
+.curve .line{stroke:url(#heat-line);stroke-width:3;fill:none;stroke-linejoin:round;stroke-linecap:round;transition:opacity .3s}
+.curve .lock-line{stroke:var(--ink);stroke-width:2;opacity:0;transition:opacity .3s}
+.curve .lock{fill:var(--ink);stroke:var(--surface);stroke-width:2.5}
+.curve text{font:500 11px/1 var(--font);fill:var(--muted);letter-spacing:0}
+.curve .hold-mark{opacity:0;transition:opacity .3s}
+.curve .band{fill:var(--ink);opacity:.07}
+.curve .target{stroke:var(--ink);stroke-width:1.5;stroke-dasharray:4 3}
+.curve .hold-word{font-weight:600;fill:var(--ink)}
+.try[data-pick=hold] .curve .line,.try[data-pick=hold] .curve .area{opacity:0}
+.try[data-pick=hold] .curve .hold-mark,.try[data-pick=hold] .curve .lock-line{opacity:1}
+.try[data-pick=hold] .curve .guide{stroke-dasharray:none;stroke-width:1.5}
+.picks{display:grid;grid-template-columns:repeat(5,1fr);gap:6px}
+.picks button{min-height:36px;padding:6px 4px;border:1px solid var(--lit);border-radius:10px;background:var(--bg);color:var(--ink);font:500 13px/1.2 var(--font);letter-spacing:-.01em;cursor:pointer;transition:border-color .2s,box-shadow .2s}
+.picks button[aria-checked=true]{border-color:var(--app-accent);box-shadow:inset 0 0 0 .5px var(--app-accent)}
+.picks button:focus-visible{outline:none;box-shadow:0 0 0 3px color-mix(in srgb,var(--accent) 40%,transparent)}
 .curve .guide{stroke:var(--heat);stroke-width:1.2;stroke-dasharray:3 3;transition:stroke .3s}
 .curve .dot{fill:var(--heat);stroke:var(--surface);stroke-width:3;transition:fill .3s}
 /* One track in the five heat bands (thresholds 56, 70, 85, 95 °C), full color up to the knob, faint after it.
