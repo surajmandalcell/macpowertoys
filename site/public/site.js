@@ -113,6 +113,13 @@
     var root = document.querySelector('[data-walk]');
     if (!root) return;
     var names = root.querySelectorAll('[data-go]');
+    // Load and decode every step's screen while the page is idle, so a click shows it at once.
+    (window.requestIdleCallback || function (f) { setTimeout(f, 1200); })(function () {
+      root.querySelectorAll('[data-stage] img').forEach(function (img) {
+        img.loading = 'eager';
+        if (img.decode) img.decode().catch(function () {});
+      });
+    });
     names.forEach(function (n) {
       n.addEventListener('click', function () {
         var i = +n.dataset.go;

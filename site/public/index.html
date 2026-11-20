@@ -32,7 +32,7 @@
       <a class="btn" href="https://github.com/surajmandalcell/macpowertoys/releases/latest/download/MacPowerToys.dmg">Download for Mac</a>
       <div class="cmd"><code><span>brew install --cask</span> <span>samhqapp/tap/macpowertoys</span></code><button type="button" aria-label="Copy the install command" data-copy="brew install --cask samhqapp/tap/macpowertoys"><svg class="cp"><use href="#i-copy"/></svg><svg class="ok"><use href="#i-ok"/></svg></button></div>
     </div>
-    <p class="fine">Version 2.0.0 for macOS 26.2 or later. Open source under MIT.</p>
+    <p class="fine">Version <span data-version>2.0.0</span> for macOS 26.2 or later. Open source under MIT.</p>
   </div>
   <div class="desk v hero-desk" style="--wall:url(assets/wall/ring.webp)">
     <div class="desk-in">
@@ -66,12 +66,12 @@
         <line class="guide" id="fan-guide" y2="120"/>
         <circle class="dot" id="fan-dot" r="6"/>
       </svg>
-      <label for="heat">Drag the CPU temperature</label>
+      <label for="heat">Drag the CPU temperature, in °C</label>
       <div class="therm">
         <span class="tube" aria-hidden="true"><span class="fill"><i></i></span></span>
         <input id="heat" type="range" min="30" max="100" step="1" value="62">
       </div>
-      <p class="ticks" aria-hidden="true"><span style="left:0">30</span><span style="left:28.571%">50</span><span style="left:57.143%">70</span><span style="left:85.714%">90</span><span style="left:100%">100<small> °C</small></span><i style="left:37.143%"></i><i style="left:57.143%"></i><i style="left:78.571%"></i><i style="left:92.857%"></i></p>
+      <div class="ticks" aria-hidden="true"><span style="--t:30">30</span><span style="--t:50">50</span><span style="--t:70">70</span><span style="--t:90">90</span><span style="--t:100">100</span></div>
       <p class="note">The same curve as the Fan page below, at 1,200 to 4,840 RPM.</p>
     </div>
   </div>
@@ -149,7 +149,7 @@
     </div>
     <p class="rv">Change what System Settings has no switch for, such as the Dock reveal delay or the screenshot format. Every row has a Default choice, and Modified lists what you changed.</p>
   </div>
-  <div class="desk tweaks-desk" style="--wall:url(assets/wall/fur.webp);--nw:820;--zx:227;--zy:52;--zw:582;--zh:219">
+  <div class="desk tweaks-desk" style="--wall:url(assets/wall/grad.webp);--nw:820;--zx:227;--zy:52;--zw:582;--zh:219">
     <div class="desk-in">
       <div class="scr">
         <div class="bar" aria-hidden="true"><span class="apps"><img src="assets/menubar/apple.png" width="12" height="15" alt=""><b>MacPowerToys</b><span>Edit</span><span>View</span><span>Window</span><span>Help</span></span><span class="mbi"><img src="assets/menubar/menubar-white@1x.png" srcset="assets/menubar/menubar-white@2x.png 2x, assets/menubar/menubar-white@4x.png 4x" width="16" height="16" alt=""></span><img src="assets/menubar/battery.png" width="24" height="11" alt=""><img src="assets/menubar/wifi.png" width="17" height="13" alt=""><img class="opt" src="assets/menubar/search.png" width="15" height="15" alt=""><img class="opt" src="assets/menubar/control.png" width="17" height="15" alt=""><span class="clock"><span class="d">Fri Nov 20</span>&ensp;<span class="t">9:41 AM</span></span></div>
@@ -168,11 +168,11 @@
   </div>
   <div class="tiles">
     <figure class="tile rv" id="color-picker">
-      <div class="tile-face" style="--wall:url(assets/wall/fur.webp);--w:420px;--s:1.1;--sp:.8"><picture data-ui><source media="(prefers-color-scheme: dark)" srcset="assets/shots/app-color-picker-dark.webp"><img src="assets/shots/app-color-picker-light.webp" width="420" height="362" loading="lazy" alt="Color Picker with six picked colors"></picture></div>
+      <div class="tile-face" style="--wall:url(assets/wall/blossom.webp);--w:420px;--s:1.1;--sp:.8"><picture data-ui><source media="(prefers-color-scheme: dark)" srcset="assets/shots/app-color-picker-dark.webp"><img src="assets/shots/app-color-picker-light.webp" width="420" height="362" loading="lazy" alt="Color Picker with six picked colors"></picture></div>
       <figcaption><h3>Color Picker<a class="anchor" href="#color-picker" aria-label="Copy a link to Color Picker"><svg><use href="#i-link"/></svg></a></h3><p>Copy any pixel as HEX, RGB, HSL, SwiftUI, and five more.</p></figcaption>
     </figure>
     <figure class="tile rv" id="text-extractor">
-      <div class="tile-face" style="--wall:url(assets/wall/eve.webp);--w:480px;--s:1.1;--sp:.7"><picture data-ui><source media="(prefers-color-scheme: dark)" srcset="assets/shots/app-text-extractor-dark.webp"><img src="assets/shots/app-text-extractor-light.webp" width="480" height="338" loading="lazy" alt="Text Extractor with seven recent captures"></picture></div>
+      <div class="tile-face" style="--wall:url(assets/wall/maze.webp);--w:480px;--s:1.1;--sp:.7"><picture data-ui><source media="(prefers-color-scheme: dark)" srcset="assets/shots/app-text-extractor-dark.webp"><img src="assets/shots/app-text-extractor-light.webp" width="480" height="338" loading="lazy" alt="Text Extractor with seven recent captures"></picture></div>
       <figcaption><h3>Text Extractor<a class="anchor" href="#text-extractor" aria-label="Copy a link to Text Extractor"><svg><use href="#i-link"/></svg></a></h3><p>Draw a box over an image, a video, or an error, and the text goes to your clipboard.</p></figcaption>
     </figure>
     <figure class="tile wide rv" id="event-viewer">
@@ -180,7 +180,7 @@
       <figcaption><h3>Event Viewer<a class="anchor" href="#event-viewer" aria-label="Copy a link to Event Viewer"><svg><use href="#i-link"/></svg></a></h3><p>App activity and recent macOS errors, filtered by level and source.</p></figcaption>
     </figure>
     <figure class="tile rv" id="awake">
-      <div class="tile-face zt" style="--wall:url(assets/wall/maze.webp);--w:820px;--s:.6;--nw:820;--zx:229;--zy:52;--zw:577;--zh:283"><picture data-ui><source media="(prefers-color-scheme: dark)" srcset="assets/shots/main-awake-dark.webp"><img src="assets/shots/main-awake-light.webp" width="820" height="660" loading="lazy" alt="Awake settings with the menu bar icon and its current status"></picture><picture data-ui class="zoom"><source media="(prefers-color-scheme: dark)" srcset="assets/shots/main-awake-dark.webp"><img src="assets/shots/main-awake-light.webp" width="820" height="660" loading="lazy" alt=""></picture></div>
+      <div class="tile-face zt" style="--wall:url(assets/wall/fur.webp);--w:820px;--s:.6;--nw:820;--zx:229;--zy:52;--zw:577;--zh:283"><picture data-ui><source media="(prefers-color-scheme: dark)" srcset="assets/shots/main-awake-dark.webp"><img src="assets/shots/main-awake-light.webp" width="820" height="660" loading="lazy" alt="Awake settings with the menu bar icon and its current status"></picture><picture data-ui class="zoom"><source media="(prefers-color-scheme: dark)" srcset="assets/shots/main-awake-dark.webp"><img src="assets/shots/main-awake-light.webp" width="820" height="660" loading="lazy" alt=""></picture></div>
       <figcaption><h3>Awake<a class="anchor" href="#awake" aria-label="Copy a link to Awake"><svg><use href="#i-link"/></svg></a></h3><p>Keep the Mac awake for 30 minutes, until 6 PM, or until you say stop.</p></figcaption>
     </figure>
     <figure class="tile rv" id="ruler">
@@ -211,7 +211,7 @@
   <h2 class="rv">Install it in one <span class="nw">line.<a class="anchor" href="#install" aria-label="Copy a link to Install"><svg><use href="#i-link"/></svg></a></span></h2>
   <div class="cmd big rv"><code><span>brew install --cask</span> <span>samhqapp/tap/macpowertoys</span></code><button type="button" aria-label="Copy the install command" data-copy="brew install --cask samhqapp/tap/macpowertoys"><svg class="cp"><use href="#i-copy"/></svg><svg class="ok"><use href="#i-ok"/></svg></button></div>
   <p class="rv">Or <a class="btn" href="https://github.com/surajmandalcell/macpowertoys/releases/latest/download/MacPowerToys.dmg">Download MacPowerToys.dmg</a></p>
-  <p class="fine rv">Version 2.0.0 · macOS 26.2 or later · Signed with Developer ID and notarized by Apple · No tracking · MIT license</p>
+  <p class="fine rv">Version <span data-version>2.0.0</span> · macOS 26.2 or later · Signed with Developer ID and notarized by Apple · No tracking · MIT license</p>
 </section>
 </main>
 
