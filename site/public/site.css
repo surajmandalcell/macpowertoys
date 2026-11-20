@@ -77,14 +77,23 @@ h2:hover .anchor,h3:hover .anchor,.anchor:focus-visible,.anchor.done{opacity:1}
 .desk{position:relative;height:var(--h,600px);--z:1.2;--zi:var(--z);--r:24px;--pr:112px;--wx:48px;--wy:56px}
 .desk-in{position:absolute;top:0;right:0;width:calc(100% / var(--zi));height:calc(100% / var(--zi));transform:scale(var(--z));transform-origin:100% 0}
 .scr{position:absolute;inset:0;overflow:hidden;border-radius:calc(var(--r) / var(--z))}
-.scr::before{content:"";position:absolute;inset:0;border-radius:inherit;background:#1d1d1f var(--wall) center/cover}
-.bar{position:absolute;z-index:1;inset:0 0 auto;height:24px;display:flex;align-items:center;gap:14px;padding:0 14px;color:#fff;font:500 13px/1 var(--font);letter-spacing:0;white-space:nowrap;filter:drop-shadow(0 0 3px rgba(0,0,0,.28))} /* taste-skill-ignore: macOS draws this shade under menu bar text on a wallpaper */
+.scr::before{content:"";position:absolute;inset:0;border-radius:inherit;background:#1d1d1f var(--wall) center/cover;box-shadow:inset 0 0 0 1px var(--lit)}
+.bar{position:absolute;z-index:1;inset:0 0 auto;height:24px;display:flex;align-items:center;gap:14px;padding:0 22px;color:#fff;font:500 13px/1 var(--font);letter-spacing:0;white-space:nowrap;filter:drop-shadow(0 0 3px rgba(0,0,0,.28))} /* taste-skill-ignore: macOS draws this shade under menu bar text on a wallpaper */
 .apps{flex:1;min-width:0;height:24px;overflow:hidden;display:flex;flex-wrap:wrap;align-items:center;align-content:flex-start;column-gap:19px}
 .apps>*{height:24px;display:flex;align-items:center} /* a menu that does not fit wraps out of sight, as macOS hides it whole */
 .apps b{font-weight:700}
 .bar img{flex:none}
 .mbi{flex:none;display:grid;place-items:center;width:30px;height:22px;border-radius:7px;background:rgba(255,255,255,.28);transition:background .2s}
 .clock{flex:none;width:118px;text-align:right}
+/* A light wallpaper under the bar: macOS draws the menu bar in black */
+.bar.ink{color:rgba(0,0,0,.85);filter:none}
+.bar.ink img{filter:invert(1)}
+.bar.ink .mbi{background:rgba(0,0,0,.1)}
+/* A hairline round every screen and tile, so a dark wallpaper keeps its edge on a dark page */
+.tile-face::after{content:"";position:absolute;inset:0;z-index:3;border-radius:inherit;box-shadow:inset 0 0 0 1px var(--lit);pointer-events:none}
+/* Phone: a readable zoom of one whole region of a window, cut only on card edges and row gaps.
+   --zx --zy --zw --zh is the region in window points, --nw the window width. */
+.zoom{display:none}
 .dwin{position:absolute;width:820px;left:var(--wx);top:var(--wy)}
 .dwin img,.tile-face img{border-radius:12px;box-shadow:var(--win-shadow)} /* taste-skill-ignore: a real floating window */
 .panel{position:absolute;z-index:2;width:356px;top:29px;right:var(--pr)}
@@ -98,7 +107,6 @@ h2:hover .anchor,h3:hover .anchor,.anchor:focus-visible,.anchor.done{opacity:1}
 .get .cmd{width:auto}
 .fine{font-size:var(--t-small);color:var(--muted);margin-top:20px}
 .hero-desk{--h:clamp(560px,46vw,660px);--z:1.12;--r:24px 0 0 24px}
-.hero-desk .bar{padding-right:24px}
 .hero-desk{--pr:122px}
 .hero+.sec{margin-top:clamp(40px,4vw,64px)}
 .hero-desk .scr{border-radius:22px 0 0 22px}
@@ -140,23 +148,24 @@ h2:hover .anchor,h3:hover .anchor,.anchor:focus-visible,.anchor.done{opacity:1}
 .curve .line{stroke:var(--ink);stroke-width:2;fill:none;stroke-linejoin:round}
 .curve .guide{stroke:var(--heat);stroke-width:1.2;stroke-dasharray:3 3;transition:stroke .3s}
 .curve .dot{fill:var(--heat);stroke:var(--surface);stroke-width:3;transition:fill .3s}
-/* A thermometer: the bulb takes the current step color, the tube fills with every step up to the current one */
-.therm{position:relative;height:28px}
-.bulb{position:absolute;left:0;top:2px;width:24px;height:24px;border-radius:50%;background:var(--heat);box-shadow:0 0 0 3px var(--surface);z-index:1;transition:background .3s}
-.tube{position:absolute;left:12px;right:11px;top:9px;height:10px;border-radius:5px;background:var(--bg);overflow:hidden;container-type:inline-size}
-.tube .fill{position:absolute;inset:0 auto 0 0;width:calc(22px + (100% - 22px) * var(--f));overflow:hidden;border-radius:5px}
-.tube i{position:absolute;inset:0 auto 0 0;width:100cqw;background:linear-gradient(90deg,var(--t-normal) 0 calc(22px + (100% - 22px) * .371),var(--t-warm) 0 calc(22px + (100% - 22px) * .571),var(--t-hot) 0 calc(22px + (100% - 22px) * .786),var(--t-very-hot) 0 calc(22px + (100% - 22px) * .929),var(--t-near-the-limit) 0)}
-.therm input{position:absolute;left:23px;right:0;top:0;width:auto;height:28px;margin:0;background:none;-webkit-appearance:none;appearance:none;cursor:pointer}
+/* One track in the five heat bands (thresholds 56, 70, 85, 95 °C), full color up to the knob, faint after it.
+   The knob center runs from 11 px to the end minus 11 px, so each band edge sits at 11px + (100% - 22px) * p. */
+.therm{position:relative;height:28px;--bands:linear-gradient(90deg,var(--t-normal) 0 calc(11px + (100% - 22px) * .371),var(--t-warm) 0 calc(11px + (100% - 22px) * .571),var(--t-hot) 0 calc(11px + (100% - 22px) * .786),var(--t-very-hot) 0 calc(11px + (100% - 22px) * .929),var(--t-near-the-limit) 0)}
+.tube{position:absolute;left:0;right:0;top:10px;height:8px;border-radius:4px;overflow:hidden;container-type:inline-size}
+.tube::before{content:"";position:absolute;inset:0;background:var(--bands);opacity:.25}
+.tube .fill{position:absolute;inset:0 auto 0 0;width:calc(11px + (100% - 22px) * var(--f));overflow:hidden}
+.tube i{position:absolute;inset:0 auto 0 0;width:100cqw;background:var(--bands)}
+.therm input{position:absolute;left:0;right:0;top:0;width:auto;height:28px;margin:0;background:none;-webkit-appearance:none;appearance:none;cursor:pointer}
 .therm input::-webkit-slider-runnable-track{height:28px;background:none}
 .therm input::-moz-range-track{height:28px;background:none}
 .therm input::-webkit-slider-thumb{-webkit-appearance:none;width:22px;height:22px;margin-top:3px;border-radius:50%;background:#fff;box-shadow:0 1px 3px rgba(0,0,0,.3),0 0 0 .5px rgba(0,0,0,.15)}
 .therm input::-moz-range-thumb{width:22px;height:22px;border:0;border-radius:50%;background:#fff;box-shadow:0 1px 3px rgba(0,0,0,.3),0 0 0 .5px rgba(0,0,0,.15)}
 .therm input:focus-visible{outline:none}
 .therm input:focus-visible::-webkit-slider-thumb{box-shadow:0 0 0 4px color-mix(in srgb,var(--accent) 45%,transparent),0 1px 3px rgba(0,0,0,.3)}
-.ticks{position:relative;height:18px;margin:-8px 11px 0 34px;font-size:13px;color:var(--muted);font-variant-numeric:tabular-nums}
-.ticks span{position:absolute;transform:translateX(-50%)}
-.ticks span:nth-child(1){left:0}.ticks span:nth-child(2){left:37.14%}.ticks span:nth-child(3){left:57.14%}
-.ticks span:nth-child(4){left:78.57%}.ticks span:nth-child(5){left:92.86%}
+.ticks{position:relative;height:24px;margin:-10px 11px 0;font-size:13px;color:var(--muted);font-variant-numeric:tabular-nums}
+.ticks span{position:absolute;top:8px;white-space:nowrap;transform:translateX(-50%)}
+.ticks span:last-of-type{transform:translateX(calc(-100% + 11px))}
+.ticks i{position:absolute;top:0;width:1px;height:5px;background:var(--muted);opacity:.5}
 
 /* Portman: four steps over one screen */
 /* Steps on the left, the screen on the right, framed tight around what each step shows */
@@ -169,6 +178,8 @@ h2:hover .anchor,h3:hover .anchor,.anchor:focus-visible,.anchor.done{opacity:1}
 .port-desk{--h:700px;--z:1.36;--pr:72px}
 [data-step="0"] .port-desk{--z:.98;--wx:calc(50% - 410px);--wy:48px}
 [data-step="0"] .mbi{background:transparent}
+/* The light left part of the mesh wallpaper sits under the whole menu bar */
+.port-desk .scr::before{background-position:0% 50%}
 
 /* RSync: one whole field in the accent */
 .field{max-width:none;padding:clamp(72px,8vw,120px) max(var(--m),calc((100% - 1520px)/2 + var(--m)));background:var(--field);color:var(--field-ink)}
@@ -181,19 +192,17 @@ h2:hover .anchor,h3:hover .anchor,.anchor:focus-visible,.anchor.done{opacity:1}
 /* Mac Tweaks */
 .wide-head{display:grid;grid-template-columns:minmax(0,7fr) minmax(0,5fr);gap:clamp(40px,5vw,96px);align-items:end}
 .wide-head>div{display:flex;flex-direction:column;gap:22px}
-.tweaks-desk{--h:620px;--z:1.15;--wx:calc(50% - 410px);--wy:60px;margin-top:56px}
+.tweaks-desk{--h:calc(595px * 1.15);--z:1.15;--wx:calc(50% - 410px);--wy:60px;margin-top:56px}
 
 /* Small tools: specimens on tiles */
-/* Each tile shows its window at about real size (--s, 1 = macOS points), whole when it fits, else a crop
-   that starts at the window's top-left corner (--x, --y) */
+/* Each tile shows its whole window, at --s (1 = macOS points) or smaller when the tile is narrower */
 .tiles{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:12px}
 .tile{margin:0;min-width:0}
 .tile.wide{grid-column:1/-1}
 .tile-face{position:relative;height:440px;border-radius:20px;overflow:hidden;background:#1d1d1f var(--wall) center/cover;--k:var(--s,1)}
 .tile.wide .tile-face{height:520px}
 .tile-face .bare img{border-radius:0;box-shadow:none;filter:drop-shadow(0 12px 24px rgba(0,0,0,.35))}
-.tile-face picture{position:absolute;left:50%;top:50%;width:calc(var(--w) * var(--k));transform:translate(-50%,-50%)}
-.tile-face.crop picture{left:var(--x);top:var(--y);transform:none}
+.tile-face picture{position:absolute;left:50%;top:50%;width:min(calc(var(--w) * var(--k)),100% - 40px);transform:translate(-50%,-50%)}
 .tile figcaption{padding:16px 2px 32px}
 .tile h3{font-size:20px;display:flex;align-items:center}
 .tile h3 .anchor{width:30px;height:30px;margin-left:6px}
@@ -235,14 +244,18 @@ html[data-v=b] .desk.v{overflow:hidden;border-radius:var(--r);transform:perspect
 html[data-v=b] .hero-desk{--h:calc((29px + 642px + 28px) * var(--z));--r:24px;margin-right:var(--m)}
 html[data-v=b] .hero-desk .scr{border-radius:22px}
 
-/* Look C, Zoom on scroll: the whole desktop first, then the camera moves in on the panel. Without scroll
+/* Look C, Zoom on scroll: the hero and each settings window stay whole; a section panel starts as the whole
+   desktop, then the camera moves in on it. Without scroll
    timelines, or with reduced motion, the whole desktop stays in view. */
 html[data-v=c] .desk.v{overflow:hidden;border-radius:var(--r);--zi:var(--z0,.62)}
 html[data-v=c] .hero-desk{--z0:.6}
+/* A settings window has no panel to move in on: it stays whole and centered, as in Look A */
+html[data-v=c] .fan-desk,html[data-v=c] [data-step="0"] .port-desk{--z0:var(--z)}
 html[data-v=c] .desk.v .desk-in{transform:scale(var(--z0,.62))}
 @supports (animation-timeline:view()){
   html[data-v=c] .desk.v .desk-in{animation:zoom-in linear both;animation-timeline:view();animation-range:entry 20% cover 50%}
-  html[data-v=c] .hero-desk .desk-in{animation-timeline:scroll(root);animation-range:0 70vh}
+  html[data-v=c] .desk.v.hero-desk .desk-in{animation:none}
+  html[data-v=c] .desk.v.fan-desk .desk-in,html[data-v=c] [data-step="0"] .desk.v.port-desk .desk-in{animation:none}
 }
 @keyframes zoom-in{from{transform:scale(var(--z0,.62))}to{transform:scale(var(--z))}}
 
@@ -292,6 +305,7 @@ html[data-v=c] .desk.v .desk-in{transform:scale(var(--z0,.62))}
 }
 /* Phone: a narrower crop, the menu bar loses the items macOS hides first */
 @media (max-width:640px){
+  .ticks small{display:none}
   :root{--t-body:17px}
   .nav nav{gap:18px}
   .nav nav a:nth-child(1),.nav nav a:nth-child(2){display:none}
@@ -300,25 +314,32 @@ html[data-v=c] .desk.v .desk-in{transform:scale(var(--z0,.62))}
   .get{align-self:stretch}
   .get .cmd{width:100%}
   .cmd code{font-size:14px}
-  .desk{--z:.95;--pr:12px;--r:20px;--h:560px}
-  .hero-desk{--h:640px;--z:.95;--r:20px 0 0 20px;--pr:20px}
+  /* Every screen runs edge to edge, so a 356 pt panel shows at its real size */
+  .desk{--z:1;--pr:calc((100vw - 356px) / 2);--r:0px;margin-left:calc(-1 * var(--m));margin-right:calc(-1 * var(--m))}
+  .hero-desk{--h:695px;--r:0px;margin-right:0}
   .bar .apps,.bar .opt,.clock .d{display:none}
   .bar{justify-content:flex-end}
   .clock{width:auto}
-  /* Fan and Portman settings: a crop of the page column at a readable size, starting at its left edge */
-  .fan-desk,[data-step="0"] .port-desk{--z:.8;--wx:-232px;--wy:36px}
-  .fan-desk{--h:480px}
-  [data-step="0"] .port-desk{--h:520px}
-  .port-desk{--h:500px;--z:.95}
-  .input-desk{--h:600px}
-  .rsync-desk{--h:700px}
-  .tweaks-desk{--h:440px;--wx:16px}
+  .port-desk{--h:510px;width:auto}
+  [data-step="2"] .port-desk{--h:441px}
+  [data-step="3"] .port-desk{--h:339px}
+  .rsync-desk{--h:685px}
+  .input-desk{--h:635px}
+  /* A settings window: the whole window small, then a zoom of its main region at a readable size */
+  .fan-desk,[data-step="0"] .port-desk,.tweaks-desk{--z:.43;--wx:calc(50% - 410px);--wy:40px;--zh-px:calc((100vw - 32px) * var(--zh) / var(--zw));--h:calc(329px + var(--zh-px))}
+  .tweaks-desk{margin-top:32px}
+  .desk>.zoom{display:block;position:absolute;left:16px;right:16px;bottom:16px}
+  .zoom{display:block;position:relative;aspect-ratio:var(--zw) / var(--zh);overflow:hidden;border-radius:12px;background:var(--surface);box-shadow:0 0 0 1px var(--lit),0 10px 30px rgba(0,0,0,.3)} /* taste-skill-ignore: a magnified card over the wallpaper */
+  .zoom img{position:absolute;max-width:none;width:calc(var(--nw) / var(--zw) * 100%);left:calc(var(--zx) / var(--zw) * -100%);top:calc(var(--zy) / var(--zh) * -100%);border-radius:0;box-shadow:none}
+  [data-walk]:not([data-step="0"]) .port-desk>.zoom{display:none}
   .steps{grid-template-columns:1fr;gap:6px}
   .steps button{padding:14px}
   .field{padding-left:var(--m);padding-right:var(--m)}
   .tiles{grid-template-columns:1fr;gap:8px}
   .tile-face,.tile.wide .tile-face{height:360px;border-radius:16px;--k:var(--sp,.8)}
-  .tile-face.crop picture{left:var(--xp,var(--x));top:var(--yp,var(--y))}
+  .tile-face.zt,.tile.wide .tile-face.zt{height:auto;display:flex;flex-direction:column;gap:12px;padding:16px}
+  .tile-face.zt picture{position:static;width:100%;transform:none}
+  .tile-face.zt .zoom{position:relative;left:0;top:0}
   .tile h3{font-size:17px}
   .tile p{font-size:15px}
   .row{min-height:56px;padding:6px 10px;gap:12px}
@@ -327,6 +348,7 @@ html[data-v=c] .desk.v .desk-in{transform:scale(var(--z0,.62))}
   .cmd.big code{font-size:13px;white-space:normal;overflow-wrap:anywhere}
   .foot-row .soft{margin-left:0;width:100%}
   html[data-v=b] .desk.v{transform:perspective(1400px) rotateY(-6deg) rotateX(2deg)}
+  html[data-v=b] .desk.v.fan-desk,html[data-v=b] [data-step="0"] .desk.v.port-desk{transform:none}
   html[data-v=b] .hero-desk{margin-right:4px;--r:20px}
   html[data-v=b] .hero-desk .scr{border-radius:18px}
 }

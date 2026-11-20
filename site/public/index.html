@@ -68,21 +68,21 @@
       </svg>
       <label for="heat">Drag the CPU temperature</label>
       <div class="therm">
-        <span class="bulb" aria-hidden="true"></span>
         <span class="tube" aria-hidden="true"><span class="fill"><i></i></span></span>
         <input id="heat" type="range" min="30" max="100" step="1" value="62">
       </div>
-      <p class="ticks" aria-hidden="true"><span>30 °C</span><span>56</span><span>70</span><span>85</span><span>95</span></p>
+      <p class="ticks" aria-hidden="true"><span style="left:0">30</span><span style="left:28.571%">50</span><span style="left:57.143%">70</span><span style="left:85.714%">90</span><span style="left:100%">100<small> °C</small></span><i style="left:37.143%"></i><i style="left:57.143%"></i><i style="left:78.571%"></i><i style="left:92.857%"></i></p>
       <p class="note">The same curve as the Fan page below, at 1,200 to 4,840 RPM.</p>
     </div>
   </div>
-  <div class="desk v fan-desk" style="--wall:url(assets/wall/maze.webp)">
+  <div class="desk v fan-desk" style="--wall:url(assets/wall/fur.webp);--nw:820;--zx:229;--zy:181;--zw:577;--zh:371">
     <div class="desk-in">
       <div class="scr">
         <div class="bar" aria-hidden="true"><span class="apps"><img src="assets/menubar/apple.png" width="12" height="15" alt=""><b>MacPowerToys</b><span>Edit</span><span>View</span><span>Window</span><span>Help</span></span><span class="mbi"><img src="assets/menubar/menubar-white@1x.png" srcset="assets/menubar/menubar-white@2x.png 2x, assets/menubar/menubar-white@4x.png 4x" width="16" height="16" alt=""></span><img src="assets/menubar/battery.png" width="24" height="11" alt=""><img src="assets/menubar/wifi.png" width="17" height="13" alt=""><img class="opt" src="assets/menubar/search.png" width="15" height="15" alt=""><img class="opt" src="assets/menubar/control.png" width="17" height="15" alt=""><span class="clock"><span class="d">Fri Nov 20</span>&ensp;<span class="t">9:41 AM</span></span></div>
         <picture data-ui class="dwin"><source media="(prefers-color-scheme: dark)" srcset="assets/shots/main-fan-dark.webp"><img src="assets/shots/main-fan-light.webp" width="820" height="660" loading="lazy" alt="The Fan page with a drawn Cool curve, the safety zone from 90 to 95 °C, and the CPU at 62 °C and 2,140 RPM"></picture>
       </div>
     </div>
+    <picture data-ui class="zoom"><source media="(prefers-color-scheme: dark)" srcset="assets/shots/main-fan-dark.webp"><img src="assets/shots/main-fan-light.webp" width="820" height="660" loading="lazy" alt=""></picture>
   </div>
 </section>
 
@@ -98,16 +98,17 @@
       <li><button type="button" data-go="2"><b>Open one to check it.</b><span class="d">Live memory and CPU graphs. Restart or stop it, open its folder, or copy its URL.</span></button></li>
       <li><button type="button" data-go="3"><b>Forward a port.</b><span class="d">Pick a host from your SSH config and add a port. The remote server opens here as localhost.</span></button></li>
     </ol>
-    <div class="desk v port-desk" style="--wall:url(assets/wall/mesh.webp)">
+    <div class="desk v port-desk" style="--wall:url(assets/wall/mesh.webp);--nw:820;--zx:229;--zy:318;--zw:577;--zh:249">
       <div class="desk-in">
         <div class="scr">
-          <div class="bar" aria-hidden="true"><span class="apps"><img src="assets/menubar/apple.png" width="12" height="15" alt=""><b>MacPowerToys</b><span>Edit</span><span>View</span><span>Window</span><span>Help</span></span><span class="mbi"><img src="assets/menubar/menubar-white@1x.png" srcset="assets/menubar/menubar-white@2x.png 2x, assets/menubar/menubar-white@4x.png 4x" width="16" height="16" alt=""></span><img src="assets/menubar/battery.png" width="24" height="11" alt=""><img src="assets/menubar/wifi.png" width="17" height="13" alt=""><img class="opt" src="assets/menubar/search.png" width="15" height="15" alt=""><img class="opt" src="assets/menubar/control.png" width="17" height="15" alt=""><span class="clock"><span class="d">Fri Nov 20</span>&ensp;<span class="t">9:41 AM</span></span></div>
+          <div class="bar ink" aria-hidden="true"><span class="apps"><img src="assets/menubar/apple.png" width="12" height="15" alt=""><b>MacPowerToys</b><span>Edit</span><span>View</span><span>Window</span><span>Help</span></span><span class="mbi"><img src="assets/menubar/menubar-white@1x.png" srcset="assets/menubar/menubar-white@2x.png 2x, assets/menubar/menubar-white@4x.png 4x" width="16" height="16" alt=""></span><img src="assets/menubar/battery.png" width="24" height="11" alt=""><img src="assets/menubar/wifi.png" width="17" height="13" alt=""><img class="opt" src="assets/menubar/search.png" width="15" height="15" alt=""><img class="opt" src="assets/menubar/control.png" width="17" height="15" alt=""><span class="clock"><span class="d">Fri Nov 20</span>&ensp;<span class="t">9:41 AM</span></span></div>
           <picture data-ui class="dwin" data-stage="0"><source media="(prefers-color-scheme: dark)" srcset="assets/shots/main-portman-dark.webp"><img src="assets/shots/main-portman-light.webp" width="820" height="660" loading="lazy" alt="Portman settings: ports watched, scan interval, clean up"></picture>
         </div>
         <picture data-ui class="panel" data-stage="1" hidden><source media="(prefers-color-scheme: dark)" srcset="assets/shots/panel-portman-servers-dark.webp"><img src="assets/shots/panel-portman-servers-light.webp" width="356" height="457" loading="lazy" alt="Portman list of four dev servers with memory use"></picture>
         <picture data-ui class="panel" data-stage="2" hidden><source media="(prefers-color-scheme: dark)" srcset="assets/shots/panel-portman-detail-dark.webp"><img src="assets/shots/panel-portman-detail-light.webp" width="356" height="388" loading="lazy" alt="One Portman server with memory and CPU graphs"></picture>
         <picture data-ui class="panel" data-stage="3" hidden><source media="(prefers-color-scheme: dark)" srcset="assets/shots/panel-portman-forward-dark.webp"><img src="assets/shots/panel-portman-forward-light.webp" width="356" height="286" loading="lazy" alt="Portman SSH forwarding with two active ports"></picture>
       </div>
+      <picture data-ui class="zoom"><source media="(prefers-color-scheme: dark)" srcset="assets/shots/main-portman-dark.webp"><img src="assets/shots/main-portman-light.webp" width="820" height="660" loading="lazy" alt=""></picture>
     </div>
   </div>
 </section>
@@ -118,7 +119,7 @@
     <h2 class="rv">RSync UI keeps copies <span class="nw">going.<a class="anchor" href="#rsync" aria-label="Copy a link to RSync UI"><svg><use href="#i-link"/></svg></a></span></h2>
     <p class="rv">Copy, move, or sync files to Google Drive, B2, S3, and 70 more services through rclone. Pause, resume, or retry a copy right from the menu bar while you keep working.</p>
   </div>
-  <div class="desk rsync-desk" style="--wall:url(assets/wall/fur.webp)">
+  <div class="desk rsync-desk" style="--wall:url(assets/wall/ring.webp)">
     <div class="desk-in">
       <div class="scr"><div class="bar" aria-hidden="true"><span class="apps"><img src="assets/menubar/apple.png" width="12" height="15" alt=""><b>MacPowerToys</b><span>Edit</span><span>View</span><span>Window</span><span>Help</span></span><span class="mbi"><img src="assets/menubar/menubar-white@1x.png" srcset="assets/menubar/menubar-white@2x.png 2x, assets/menubar/menubar-white@4x.png 4x" width="16" height="16" alt=""></span><img src="assets/menubar/battery.png" width="24" height="11" alt=""><img src="assets/menubar/wifi.png" width="17" height="13" alt=""><img class="opt" src="assets/menubar/search.png" width="15" height="15" alt=""><img class="opt" src="assets/menubar/control.png" width="17" height="15" alt=""><span class="clock"><span class="d">Fri Nov 20</span>&ensp;<span class="t">9:41 AM</span></span></div></div>
       <picture data-ui class="panel"><source media="(prefers-color-scheme: dark)" srcset="assets/shots/panel-rclone-dark.webp"><img src="assets/shots/panel-rclone-light.webp" width="356" height="632" loading="lazy" alt="RSync UI panel with running, paused, failed, and finished copies"></picture>
@@ -148,13 +149,14 @@
     </div>
     <p class="rv">Change what System Settings has no switch for, such as the Dock reveal delay or the screenshot format. Every row has a Default choice, and Modified lists what you changed.</p>
   </div>
-  <div class="desk tweaks-desk" style="--wall:url(assets/wall/mesh.webp)">
+  <div class="desk tweaks-desk" style="--wall:url(assets/wall/fur.webp);--nw:820;--zx:227;--zy:52;--zw:582;--zh:219">
     <div class="desk-in">
       <div class="scr">
         <div class="bar" aria-hidden="true"><span class="apps"><img src="assets/menubar/apple.png" width="12" height="15" alt=""><b>MacPowerToys</b><span>Edit</span><span>View</span><span>Window</span><span>Help</span></span><span class="mbi"><img src="assets/menubar/menubar-white@1x.png" srcset="assets/menubar/menubar-white@2x.png 2x, assets/menubar/menubar-white@4x.png 4x" width="16" height="16" alt=""></span><img src="assets/menubar/battery.png" width="24" height="11" alt=""><img src="assets/menubar/wifi.png" width="17" height="13" alt=""><img class="opt" src="assets/menubar/search.png" width="15" height="15" alt=""><img class="opt" src="assets/menubar/control.png" width="17" height="15" alt=""><span class="clock"><span class="d">Fri Nov 20</span>&ensp;<span class="t">9:41 AM</span></span></div>
         <picture data-ui class="dwin"><source media="(prefers-color-scheme: dark)" srcset="assets/shots/mac-tweaks-dark.webp"><img src="assets/shots/mac-tweaks-light.webp" width="820" height="660" loading="lazy" alt="Mac Tweaks on the Dock page"></picture>
       </div>
     </div>
+    <picture data-ui class="zoom"><source media="(prefers-color-scheme: dark)" srcset="assets/shots/mac-tweaks-dark.webp"><img src="assets/shots/mac-tweaks-light.webp" width="820" height="660" loading="lazy" alt=""></picture>
   </div>
 </section>
 
@@ -174,11 +176,11 @@
       <figcaption><h3>Text Extractor<a class="anchor" href="#text-extractor" aria-label="Copy a link to Text Extractor"><svg><use href="#i-link"/></svg></a></h3><p>Draw a box over an image, a video, or an error, and the text goes to your clipboard.</p></figcaption>
     </figure>
     <figure class="tile wide rv" id="event-viewer">
-      <div class="tile-face crop" style="--wall:url(assets/wall/ring.webp);--w:1080px;--x:56px;--y:48px;--xp:-180px;--yp:28px"><picture data-ui><source media="(prefers-color-scheme: dark)" srcset="assets/shots/logs-dark.webp"><img src="assets/shots/logs-light.webp" width="1080" height="660" loading="lazy" alt="Event Viewer with twelve app events from the last 45 minutes, filtered by level"></picture></div>
+      <div class="tile-face zt" style="--wall:url(assets/wall/ring.webp);--w:1080px;--s:.72;--nw:1080;--zx:515;--zy:100;--zw:550;--zh:182"><picture data-ui><source media="(prefers-color-scheme: dark)" srcset="assets/shots/logs-dark.webp"><img src="assets/shots/logs-light.webp" width="1080" height="660" loading="lazy" alt="Event Viewer with twelve app events from the last 45 minutes, filtered by level"></picture><picture data-ui class="zoom"><source media="(prefers-color-scheme: dark)" srcset="assets/shots/logs-dark.webp"><img src="assets/shots/logs-light.webp" width="1080" height="660" loading="lazy" alt=""></picture></div>
       <figcaption><h3>Event Viewer<a class="anchor" href="#event-viewer" aria-label="Copy a link to Event Viewer"><svg><use href="#i-link"/></svg></a></h3><p>App activity and recent macOS errors, filtered by level and source.</p></figcaption>
     </figure>
     <figure class="tile rv" id="awake">
-      <div class="tile-face crop" style="--wall:url(assets/wall/maze.webp);--w:820px;--x:-226px;--y:40px;--xp:-178px;--yp:28px"><picture data-ui><source media="(prefers-color-scheme: dark)" srcset="assets/shots/main-awake-dark.webp"><img src="assets/shots/main-awake-light.webp" width="820" height="660" loading="lazy" alt="Awake settings with quick times and a sleep timer"></picture></div>
+      <div class="tile-face zt" style="--wall:url(assets/wall/maze.webp);--w:820px;--s:.6;--nw:820;--zx:229;--zy:52;--zw:577;--zh:283"><picture data-ui><source media="(prefers-color-scheme: dark)" srcset="assets/shots/main-awake-dark.webp"><img src="assets/shots/main-awake-light.webp" width="820" height="660" loading="lazy" alt="Awake settings with the menu bar icon and its current status"></picture><picture data-ui class="zoom"><source media="(prefers-color-scheme: dark)" srcset="assets/shots/main-awake-dark.webp"><img src="assets/shots/main-awake-light.webp" width="820" height="660" loading="lazy" alt=""></picture></div>
       <figcaption><h3>Awake<a class="anchor" href="#awake" aria-label="Copy a link to Awake"><svg><use href="#i-link"/></svg></a></h3><p>Keep the Mac awake for 30 minutes, until 6 PM, or until you say stop.</p></figcaption>
     </figure>
     <figure class="tile rv" id="ruler">
