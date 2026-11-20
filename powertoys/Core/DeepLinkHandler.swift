@@ -122,6 +122,9 @@ final class DeepLinkHandler {
         case .nativeClose(let id):
             Self.nativeCloseWindow(id: id, windows: NSApp.windows)
             return
+        case .snapshot(let id):
+            Self.snapshot(id: id)
+            return
         default: break
         }
 
@@ -134,6 +137,44 @@ final class DeepLinkHandler {
 
         processURL(url)
     }
+
+    /// Website shots on a 1x screen: draws a window's frame view (traffic lights included) at 2x into
+    /// `<MPTDiagnosticSnapshotDir>/<id>-<light|dark>.png`. Any web page can open a URL; only a local shell can set
+    /// that folder, so the route does nothing without it. Nothing is activated or moved.
+    static func snapshot(id: String) {
+        guard let folder = UserDefaults.standard.string(forKey: "MPTDiagnosticSnapshotDir"), folder.hasPrefix("/"),
+              let window = NSApp.windows.first(where: { $0.isVisible && AppDelegate.window($0, belongsTo: id) }),
+              let view = window.contentView?.superview ?? window.contentView else {
+            LogManager.shared.warning("Snapshot skipped: no MPTDiagnosticSnapshotDir or no visible \(id) window.",
+                                      source: "DeepLinkHandler")
+            return
+        }
+        let bounds = view.bounds
+        guard let flat = NSBitmapImageRep(bitmapDataPlanes: nil, pixelsWide: Int(bounds.width * 2), pixelsHigh: Int(bounds.height * 2),
+                                          bitsPerSample: 8, samplesPerPixel: 4, hasAlpha: true, isPlanar: false,
+                                          colorSpaceName: .deviceRGB, bytesPerRow: 0, bitsPerPixel: 0),
+              let rounded = flat.copy() as? NSBitmapImageRep else { return }
+        flat.size = bounds.size
+        view.cacheDisplay(in: bounds, to: flat)
+        // The frame view draws square corners; clip to the window's own corner radius like a screen capture.
+        rounded.size = bounds.size
+        NSGraphicsContext.saveGraphicsState()
+        NSGraphicsContext.current = NSGraphicsContext(bitmapImageRep: rounded)
+        NSColor.clear.set(); bounds.fill(using: .copy)
+        NSBezierPath(roundedRect: bounds, xRadius: Self.windowCornerRadius, yRadius: Self.windowCornerRadius).addClip()
+        flat.draw(in: bounds)
+        NSGraphicsContext.restoreGraphicsState()
+        let dark = window.effectiveAppearance.bestMatch(from: [.aqua, .darkAqua]) == .darkAqua
+        guard let data = rounded.representation(using: .png, properties: [:]) else { return }
+        let url = URL(fileURLWithPath: folder).appendingPathComponent("\(id)-\(dark ? "dark" : "light").png")
+        Task.detached(priority: .utility) {
+            do { try data.write(to: url) } catch {
+                await LogManager.shared.warning("Snapshot not saved: \(error.localizedDescription)", source: "DeepLinkHandler")
+            }
+        }
+    }
+
+    private static let windowCornerRadius: CGFloat = 16
 
     static func nativeCloseWindow(id: String, windows: [NSWindow]) {
         guard OnePlusWindowCanvas.appTool(id) != nil,
