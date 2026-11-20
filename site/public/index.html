@@ -29,10 +29,10 @@
     <h1>Your menu bar, doing more.</h1>
     <p class="lead">One native panel for system stats and fan curves, plus nine free tools: dev server ports, cloud copies, scroll settings for each mouse, and more.</p>
     <div class="get">
-      <a class="btn" href="https://github.com/surajmandalcell/macpowertoys/releases/latest/download/MacPowerToys.dmg">Download for Mac</a>
+      <a class="btn" data-download href="https://github.com/surajmandalcell/macpowertoys/releases/download/v1.9.4/MacPowerToys-1.9.4-universal.dmg">Download for Mac</a>
       <div class="cmd"><code><span>brew install --cask</span> <span>samhqapp/tap/macpowertoys</span></code><button type="button" aria-label="Copy the install command" data-copy="brew install --cask samhqapp/tap/macpowertoys"><svg class="cp"><use href="#i-copy"/></svg><svg class="ok"><use href="#i-ok"/></svg></button></div>
     </div>
-    <p class="fine">Version <span data-version>2.0.0</span> for macOS 26.2 or later. Open source under MIT.</p>
+    <p class="fine">Version <span data-version>1.9.4</span> for macOS 26.2 or later. Open source under MIT.</p>
   </div>
   <div class="desk v hero-desk" style="--wall:url(assets/wall/ring.webp)">
     <div class="desk-in">
@@ -49,37 +49,47 @@
     <div class="head-txt">
       <picture class="rv"><source media="(prefers-color-scheme: dark)" srcset="assets/icons/fan-dark.svg"><img class="ticon" src="assets/icons/fan.svg" alt="" width="52" height="52"></picture>
       <h2 class="rv">Fan curves that stay <span class="nw">quiet.<a class="anchor" href="#fan" aria-label="Copy a link to Fan"><svg><use href="#i-link"/></svg></a></span></h2>
-      <p class="rv">Pick Auto, Cool, or Max right from the panel. Draw your own Cool curve: how fast the fans spin at each CPU temperature, and the panel calls it Custom. Above 90 °C the fans ramp to full speed by 95 °C, whatever you drew.</p>
+      <p class="rv">Pick Auto, Cool, or Max right from the panel. Auto follows macOS. Cool follows your pick on the Fan page: Silent, Quiet, Steady, your own Custom curve, or Hold, which keeps the CPU near one temperature, give or take 2 °C, with a steady fan speed. Every pick runs at full speed from 90 °C.</p>
     </div>
     <div class="try rv" data-fan>
       <div class="fan-now">
         <svg class="blades" viewBox="0 0 16 16" aria-hidden="true"><g fill="none" stroke="currentColor" stroke-width="1.2" stroke-linejoin="round"><path id="blade" d="M8 8C7.2 6.4 7.2 3.6 9.1 2.5 10.9 1.5 13.1 2.9 12.5 5 12 6.7 9.9 7.7 8 8Z"/><use href="#blade" transform="rotate(120 8 8)"/><use href="#blade" transform="rotate(240 8 8)"/></g><circle cx="8" cy="8" r="1.3" fill="currentColor"/></svg>
-        <p><b id="fan-rpm">2,140</b> RPM</p>
-        <p class="heat-word"><span id="fan-temp">62</span> °C · <span id="fan-word">warm</span></p>
+        <p><b id="fan-rpm">3,829</b> RPM</p>
+        <p class="heat-word"><span id="fan-temp">79</span> °C · <span id="fan-word">hot</span></p>
       </div>
-      <svg class="curve" viewBox="0 0 320 132" aria-hidden="true">
+      <div class="picks" role="radiogroup" aria-label="Fan page pick">
+        <button type="button" role="radio" aria-checked="false" data-pick="silent">Silent</button>
+        <button type="button" role="radio" aria-checked="false" data-pick="quiet">Quiet</button>
+        <button type="button" role="radio" aria-checked="false" data-pick="steady">Steady</button>
+        <button type="button" role="radio" aria-checked="false" data-pick="hold">Hold 75 °C</button>
+        <button type="button" role="radio" aria-checked="true" data-pick="custom">Custom</button>
+      </div>
+      <svg class="curve" viewBox="0 -16 320 148" aria-hidden="true">
+        <defs><linearGradient id="heat-line" gradientUnits="userSpaceOnUse" x1="0" x2="320" y1="0" y2="0"><stop offset=".1" class="s-cool"/><stop offset=".45" class="s-warm"/><stop offset=".7" class="s-hot"/><stop offset=".86" class="s-very-hot"/></linearGradient></defs>
         <path class="grid" d="M0 120.5H320M0 64.5H320M0 8.5H320"/>
-        <path class="safe" d="M274.3 120V8H320V120Z"/>
-        <path class="safe-edge" d="M274.3 120L297.1 8"/>
+        <g class="hold-mark" id="hold-mark"><rect class="band" x="196.6" y="8" width="18.3" height="112"/><path class="target" d="M205.7 8V120"/><text class="hold-word" x="192" y="20" text-anchor="end">Hold 75 °C</text></g>
         <path class="area" id="fan-area"/>
         <path class="line" id="fan-line"/>
+        <path class="lock-line" d="M274.3 8H320"/>
+        <text class="lock-word" x="268" y="-4" text-anchor="end">Full speed from 90 °C</text>
+        <circle class="lock" cx="274.3" cy="8" r="5"/>
         <line class="guide" id="fan-guide" y2="120"/>
         <circle class="dot" id="fan-dot" r="6"/>
       </svg>
-      <label for="heat">Drag the CPU temperature, in °C</label>
+      <label for="heat">Drag to try: the CPU temperature, in °C</label>
       <div class="therm">
         <span class="tube" aria-hidden="true"><span class="fill"><i></i></span></span>
-        <input id="heat" type="range" min="30" max="100" step="1" value="62">
+        <input id="heat" type="range" min="30" max="100" step="1" value="79">
       </div>
       <div class="ticks" aria-hidden="true"><span style="--t:30">30</span><span style="--t:50">50</span><span style="--t:70">70</span><span style="--t:90">90</span><span style="--t:100">100</span></div>
-      <p class="note">The same curve as the Fan page below, at 1,200 to 4,840 RPM.</p>
+      <p class="note" id="fan-note">The same picks as the Fan page below, at 1,350 to 5,777 RPM.</p>
     </div>
   </div>
   <div class="desk v fan-desk" style="--wall:url(assets/wall/fur.webp);--nw:820;--zx:229;--zy:181;--zw:577;--zh:371">
     <div class="desk-in">
       <div class="scr">
         <div class="bar" aria-hidden="true"><span class="apps"><img src="assets/menubar/apple.png" width="12" height="15" alt=""><b>MacPowerToys</b><span>Edit</span><span>View</span><span>Window</span><span>Help</span></span><span class="mbi"><img src="assets/menubar/menubar-white@1x.png" srcset="assets/menubar/menubar-white@2x.png 2x, assets/menubar/menubar-white@4x.png 4x" width="16" height="16" alt=""></span><img src="assets/menubar/battery.png" width="24" height="11" alt=""><img src="assets/menubar/wifi.png" width="17" height="13" alt=""><img class="opt" src="assets/menubar/search.png" width="15" height="15" alt=""><img class="opt" src="assets/menubar/control.png" width="17" height="15" alt=""><span class="clock"><span class="d">Fri Nov 20</span>&ensp;<span class="t">9:41 AM</span></span></div>
-        <picture data-ui class="dwin"><source media="(prefers-color-scheme: dark)" srcset="assets/shots/main-fan-dark.webp"><img src="assets/shots/main-fan-light.webp" width="820" height="660" loading="lazy" alt="The Fan page with a drawn Cool curve, the safety zone from 90 to 95 °C, and the CPU at 62 °C and 2,140 RPM"></picture>
+        <picture data-ui class="dwin"><source media="(prefers-color-scheme: dark)" srcset="assets/shots/main-fan-dark.webp"><img src="assets/shots/main-fan-light.webp" width="820" height="660" loading="lazy" alt="The Fan page with a Custom Cool curve that turns from blue to red, locked at full speed from 90 °C, the CPU at 79 °C, and the Silent, Quiet, Steady, Hold 75 °C and Custom cards"></picture>
       </div>
     </div>
     <picture data-ui class="zoom"><source media="(prefers-color-scheme: dark)" srcset="assets/shots/main-fan-dark.webp"><img src="assets/shots/main-fan-light.webp" width="820" height="660" loading="lazy" alt=""></picture>
@@ -210,8 +220,8 @@
 <section class="sec install" id="install">
   <h2 class="rv">Install it in one <span class="nw">line.<a class="anchor" href="#install" aria-label="Copy a link to Install"><svg><use href="#i-link"/></svg></a></span></h2>
   <div class="cmd big rv"><code><span>brew install --cask</span> <span>samhqapp/tap/macpowertoys</span></code><button type="button" aria-label="Copy the install command" data-copy="brew install --cask samhqapp/tap/macpowertoys"><svg class="cp"><use href="#i-copy"/></svg><svg class="ok"><use href="#i-ok"/></svg></button></div>
-  <p class="rv">Or <a class="btn" href="https://github.com/surajmandalcell/macpowertoys/releases/latest/download/MacPowerToys.dmg">Download MacPowerToys.dmg</a></p>
-  <p class="fine rv">Version <span data-version>2.0.0</span> · macOS 26.2 or later · Signed with Developer ID and notarized by Apple · No tracking · MIT license</p>
+  <p class="rv">Or <a class="btn" data-download href="https://github.com/surajmandalcell/macpowertoys/releases/download/v1.9.4/MacPowerToys-1.9.4-universal.dmg">Download MacPowerToys.dmg</a></p>
+  <p class="fine rv">Version <span data-version>1.9.4</span> · macOS 26.2 or later · Signed, not yet notarized by Apple · No tracking · MIT license</p>
 </section>
 </main>
 
