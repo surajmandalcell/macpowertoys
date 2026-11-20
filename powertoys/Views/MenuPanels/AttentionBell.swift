@@ -33,9 +33,14 @@ struct AttentionBell: View {
     private static let dotSize: CGFloat = 7
     private static let dotInset: CGFloat = 4
     static let listWidth: CGFloat = 312
+    static let openNotification = Notification.Name("AttentionBell.open")
+    /// Set by the diagnostics link `popover/attention?sample`: adds a no-op item so a focus check has a Fix key.
+    static var diagnosticSample = false
+    private static let sampleItem = AttentionItem(id: "sample", title: "Sample item",
+                                                  line: "Diagnostics preview. Fix does nothing.") {}
 
     var body: some View {
-        let items = AttentionItem.current
+        let items = AttentionItem.current + (Self.diagnosticSample ? [Self.sampleItem] : [])
         OnePlusLinearIconButton(systemImage: "bell",
                                 help: items.isEmpty ? "Nothing needs attention" : "\(items.count) need attention") {
             isOpen.toggle()
@@ -52,6 +57,8 @@ struct AttentionBell: View {
         .popover(isPresented: $isOpen, arrowEdge: .bottom) {
             AttentionList(items: items) { isOpen = false }.onePlusFocusPolicy()
         }
+        .onReceive(NotificationCenter.default.publisher(for: Self.openNotification)) { _ in isOpen = true }
+        .onChange(of: isOpen) { if !isOpen { Self.diagnosticSample = false } }
     }
 }
 
