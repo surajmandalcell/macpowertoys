@@ -244,7 +244,12 @@ private struct FanHoldChart: View {
                         .stroke(FanHeat.color(nowCelsius), style: StrokeStyle(lineWidth: 1.5, lineCap: .round))
                     Circle().fill(FanHeat.color(nowCelsius)).overlay(Circle().strokeBorder(OnePlusLinearColor.window, lineWidth: 2))
                         .frame(width: 11, height: 11).position(x: x, y: plot.rect.maxY)
-                    if let nowChip { FanChip(text: nowChip).position(x: x, y: plot.rect.minY + 40) }
+                    // The chip sits on the side away from the target, so it never covers the dashed target line.
+                    if let nowChip {
+                        let away = nowCelsius >= target
+                        FanChip(text: nowChip).frame(width: 0, alignment: away ? .leading : .trailing)
+                            .position(x: x + (away ? 6 : -6), y: plot.rect.minY + 52)
+                    }
                 }
             }
         }
