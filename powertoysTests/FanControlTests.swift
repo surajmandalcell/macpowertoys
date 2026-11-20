@@ -373,7 +373,7 @@ final class FanControlTests: XCTestCase {
         XCTAssertEqual(hold.speed, 1, accuracy: 1e-9)
         XCTAssertLessThanOrEqual(hold.integral, 1, "Learning stops at full speed")
         var falls = 0
-        while hold.next(celsius: 69) > 0.5 { falls += 1 }
+        while hold.next(celsius: 60) > 0.5 { falls += 1 }
         XCTAssertLessThan(falls, 40, "No wound-up integral keeps the fans high after the heat drops")
         var cool = FanHold(target: 70)
         for _ in 0..<600 { _ = cool.next(celsius: 50) }
@@ -410,6 +410,34 @@ final class FanControlTests: XCTestCase {
         FanHold.save(72, defaults)
         FanCurve.standard.save(defaults)
         XCTAssertNil(FanHold.savedTarget(defaults), "Resetting to the standard curve also turns Keep off")
+        FanHold.save(72, defaults)
+        FanCurvePreset.quiet.pick(defaults)
+        XCTAssertNil(FanHold.savedTarget(defaults), "Picking a preset card turns Keep off")
+        XCTAssertEqual(FanCurve.load(defaults), FanCurvePreset.quiet.curve, "Cool follows the picked preset")
+        FanCurve(points: [.init(celsius: 55, speed: 0.2)]).save(defaults)
+        XCTAssertEqual(FanCurvePreset.saved(defaults), .custom, "Editing a point turns the pick into Custom")
+        FanCurvePreset.silent.pick(defaults)
+        FanCurvePreset.custom.pick(defaults)
+        XCTAssertEqual(FanCurve.load(defaults).points.first?.celsius, 55, "Custom keeps the user's own curve")
+    }
+
+    func testPresetsStayQuietAtIdleAndRampBeforeTheLockedEnd() throws {
+        for preset in FanCurvePreset.allCases {
+            guard let curve = preset.curve else { continue }
+            XCTAssertEqual(curve.speed(at: 60), 0, "\(preset.name) rests at the minimum at idle")
+            XCTAssertGreaterThan(curve.speed(at: 86), 0.25, "\(preset.name) is well up before 90 °C")
+        }
+    }
+
+    func testKeepNeverChangesSpeedInsideTheBand() {
+        var hold = FanHold(target: 75, speed: 0.4)
+        let (speed, integral) = (hold.speed, hold.integral)
+        var generator = SystemRandomNumberGenerator()
+        for _ in 0..<1_000 {
+            XCTAssertEqual(hold.next(celsius: .random(in: 73...77, using: &generator)), speed, "Inside ±2 °C the fans hold")
+        }
+        XCTAssertEqual(hold.integral, integral, "Inside the band nothing is learned")
+        XCTAssertGreaterThan(hold.next(celsius: 77.5), speed, "Over the band it corrects")
     }
 
     func testKeepSettlesOnASimpleHeatModel() {
@@ -422,8 +450,8 @@ final class FanControlTests: XCTestCase {
             history.append(celsius)
         }
         let last = history.suffix(120)
-        XCTAssertEqual(last.reduce(0, +) / Double(last.count), 70, accuracy: 1, "Settles near the target")
-        XCTAssertLessThan(last.max()! - last.min()!, 1, "Does not hunt once settled")
+        XCTAssertTrue(last.allSatisfy { abs($0 - 70) <= FanHold.band }, "Settles inside the band")
+        XCTAssertLessThan(last.max()! - last.min()!, 0.1, "Does not hunt once settled")
     }
 
     func testCoolCurveKeepsSpeedRisingAndFollowsEditedPoints() {
