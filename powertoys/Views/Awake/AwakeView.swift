@@ -180,8 +180,7 @@ struct AwakeSettingsView: View {
             if service.configuration.mode == .until {
                 OnePlusLinearAppletRow("End time", systemImage: "calendar.badge.clock") {
                     HStack(spacing: OnePlusLinearMetrics.appletActionGap) {
-                        DatePicker("End time", selection: $expiration, in: Date()...)
-                            .labelsHidden().datePickerStyle(.field).controlSize(.small)
+                        OnePlusLinearDateField("End time", selection: $expiration, minimum: Date())
                         Button("Start") { selectMode(.until) }
                     }
                 }

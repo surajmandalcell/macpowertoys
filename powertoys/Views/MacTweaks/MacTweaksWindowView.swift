@@ -608,21 +608,17 @@ struct MacTweaksWindowView: View {
     @ViewBuilder
     private func preferenceRows(_ itemIDs: [String], separator: Bool = false) -> some View {
         let items = itemIDs.map(item(for:)).filter(shouldShow)
-        let controlWidth = items.flatMap { TweakPreferences.fields(for: $0.id) }.contains { $0.choices.count == 2 }
-            ? OnePlusMetrics.wideControlColumn : OnePlusMetrics.controlColumn
         ForEach(Array(items.enumerated()), id: \.element.id) { index, item in
-            preferenceRows(item, controlWidth: controlWidth, separator: separator || index < items.count - 1)
+            preferenceRows(item, separator: separator || index < items.count - 1)
         }
     }
 
-    private func preferenceRows(_ item: TweakItem, controlWidth: CGFloat? = nil, separator: Bool = false) -> some View {
-        let fields = TweakPreferences.fields(for: item.id)
-        let width = controlWidth ?? (fields.contains { $0.choices.count == 2 }
-            ? OnePlusMetrics.wideControlColumn : OnePlusMetrics.controlColumn)
-        return MacTweaksPreferenceRows(
+    /// Every control on a Mac Tweaks page shares one 180 pt column, so their left edges line up.
+    private func preferenceRows(_ item: TweakItem, separator: Bool = false) -> some View {
+        MacTweaksPreferenceRows(
             itemID: item.id,
-            fields: fields,
-            controlWidth: width,
+            fields: TweakPreferences.fields(for: item.id),
+            controlWidth: OnePlusMetrics.wideControlColumn,
             separator: separator,
             summary: item.summary,
             revision: preferenceRevision,

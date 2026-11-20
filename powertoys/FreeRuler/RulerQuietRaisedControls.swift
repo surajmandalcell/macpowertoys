@@ -17,14 +17,23 @@ enum RulerQuietRaised {
     static let knobPressed = NSColor(OnePlusLinearColor.quietKnobPressed)
     static let knobLine = NSColor(OnePlusLinearColor.quietKnobLine)
     static let knobShadow = NSColor(OnePlusLinearColor.quietKnobShadow)
-    static let thumb = NSColor(OnePlusLinearColor.quietThumb)
-    static let thumbPressed = NSColor(OnePlusLinearColor.quietThumbPressed)
-    static let thumbLine = NSColor(OnePlusLinearColor.quietThumbLine)
-    static let divider = NSColor(OnePlusLinearColor.quietDivider)
+    static let fillTrack = NSColor(OnePlusLinearColor.fillTrack)
+    static let fillThumb = NSColor(OnePlusLinearColor.fillThumb)
     static let on = NSColor(OnePlusLinearColor.accent)
     static let pressed = NSColor(OnePlusLinearColor.pressed)
     static let ink = NSColor(OnePlusLinearColor.ink)
     static let secondary = NSColor(OnePlusLinearColor.appletSecondary)
+    static let label = NSColor(OnePlusLinearColor.secondary)
+
+    /// The menu panel's control well, as `OnePlusLinearSegmented` and `OnePlusLinearStepper` draw it on a page:
+    /// a flat `fillTrack` well and flat `fillThumb` parts 2 pt inside it.
+    static let wellInset = look.segmentInset
+    static var innerRadius: CGFloat { look.radius - wellInset }
+
+    static func fill(_ rect: NSRect, radius: CGFloat, _ color: NSColor) {
+        color.setFill()
+        NSBezierPath(roundedRect: rect, xRadius: radius, yRadius: radius).fill()
+    }
     static let focus = NSColor(OnePlusLinearColor.hover)
 
     /// The look's sizes, equal to `OnePlusLinearControlLook.quietRaised`.
@@ -80,21 +89,9 @@ enum RulerQuietRaised {
         NSBezierPath(roundedRect: rect, xRadius: radius, yRadius: radius).fill()
     }
 
-    /// A short vertical divider that fades out at both ends.
-    static func drawDivider(x: CGFloat, centerY: CGFloat) {
-        let rect = NSRect(x: x - hairline / 2, y: centerY - 6, width: hairline, height: 12)
-        NSGradient(colors: [divider.withAlphaComponent(0), divider, divider.withAlphaComponent(0)])?.draw(in: rect, angle: 90)
-    }
-
-    /// A short hairline inside a field, 5 pt from its top and bottom.
-    static func drawColumnLine(x: CGFloat, in rect: NSRect) {
-        fieldLine.setFill()
-        NSRect(x: x - hairline / 2, y: rect.minY + 5, width: hairline, height: rect.height - 10).fill()
-    }
-
-    /// An SF Symbol at `pointSize` semibold in `color`, centered on `center`.
-    static func drawSymbol(_ name: String, pointSize: CGFloat, color: NSColor, center: NSPoint) {
-        let configuration = NSImage.SymbolConfiguration(pointSize: pointSize, weight: .semibold)
+    /// An SF Symbol at `pointSize` and `weight` in `color`, centered on `center`.
+    static func drawSymbol(_ name: String, pointSize: CGFloat, weight: NSFont.Weight = .semibold, color: NSColor, center: NSPoint) {
+        let configuration = NSImage.SymbolConfiguration(pointSize: pointSize, weight: weight)
             .applying(NSImage.SymbolConfiguration(paletteColors: [color]))
         guard let image = NSImage(systemSymbolName: name, accessibilityDescription: nil)?.withSymbolConfiguration(configuration) else { return }
         let size = image.size
@@ -245,10 +242,27 @@ final class RulerQuietRaisedSliderCell: NSSliderCell {
     }
 }
 
-/// Segmented control: a sunken 22 pt track with 2 pt padding, a solid thumb that slides in 140 ms, centered labels,
-/// and faded dividers between unselected segments.
+/// Segmented control, drawn like `OnePlusLinearSegmented`: a flat `fillTrack` well, one flat `fillThumb` thumb
+/// 2 pt inside it that slides in 140 ms, and a `pressed` shade on the hovered segment.
 final class RulerQuietRaisedSegmentedControl: NSSegmentedControl {
     @objc dynamic var thumbPosition: CGFloat = 0 { didSet { needsDisplay = true } }
+    private(set) var hoveredSegment: Int? { didSet { if hoveredSegment != oldValue { needsDisplay = true } } }
+
+    override func updateTrackingAreas() {
+        super.updateTrackingAreas()
+        trackingAreas.forEach(removeTrackingArea)
+        addTrackingArea(NSTrackingArea(rect: .zero, options: [.mouseMoved, .mouseEnteredAndExited, .activeInKeyWindow, .inVisibleRect],
+                                       owner: self))
+    }
+
+    override func mouseMoved(with event: NSEvent) {
+        let x = convert(event.locationInWindow, from: nil).x
+        let track = RulerQuietRaised.controlRect(in: bounds).insetBy(dx: RulerQuietRaised.wellInset, dy: 0)
+        let index = Int((x - track.minX) / (track.width / CGFloat(max(segmentCount, 1))))
+        hoveredSegment = (0..<segmentCount).contains(index) && isEnabled ? index : nil
+    }
+
+    override func mouseExited(with event: NSEvent) { hoveredSegment = nil }
 
     override class func defaultAnimation(forKey key: NSAnimatablePropertyKey) -> Any? {
         key == "thumbPosition" ? CABasicAnimation() : super.defaultAnimation(forKey: key)
@@ -293,21 +307,24 @@ final class RulerQuietRaisedSegmentedCell: NSSegmentedCell {
         let track = RulerQuietRaised.controlRect(in: controlView.bounds)
         let alpha = isEnabled ? 1 : OnePlusMetrics.disabledOpacity
         let count = max(segmentCount, 1)
-        let inset = look.segmentInset
+        let inset = RulerQuietRaised.wellInset
+        let radius = RulerQuietRaised.innerRadius
         let segmentWidth = (track.width - 2 * inset) / CGFloat(count)
+        let segmentRect = { (position: CGFloat) in
+            NSRect(x: track.minX + inset + position * segmentWidth, y: track.minY + inset,
+                   width: segmentWidth, height: track.height - 2 * inset)
+        }
         NSGraphicsContext.saveGraphicsState()
         NSGraphicsContext.current?.cgContext.setAlpha(alpha)
-        RulerQuietRaised.drawWell(track, radius: look.radius)
-        let position = (controlView as? RulerQuietRaisedSegmentedControl)?.thumbPosition ?? CGFloat(max(selectedSegment, 0))
+        RulerQuietRaised.fill(track, radius: look.radius, RulerQuietRaised.fillTrack)
+        let control = controlView as? RulerQuietRaisedSegmentedControl
         if selectedSegment >= 0 {
-            let thumb = NSRect(x: track.minX + inset + position * segmentWidth, y: track.minY + inset,
-                               width: segmentWidth, height: track.height - 2 * inset)
-            RulerQuietRaised.drawCap(thumb, radius: look.segmentRadius,
-                                     fill: isHighlighted ? RulerQuietRaised.thumbPressed : RulerQuietRaised.thumb,
-                                     line: RulerQuietRaised.thumbLine)
+            let thumb = segmentRect(control?.thumbPosition ?? CGFloat(selectedSegment))
+            RulerQuietRaised.fill(thumb, radius: radius, RulerQuietRaised.fillThumb)
+            if isHighlighted { RulerQuietRaised.fill(thumb, radius: radius, RulerQuietRaised.pressed) }
         }
-        for segment in 1..<max(segmentCount, 1) where segment != selectedSegment && segment - 1 != selectedSegment {
-            RulerQuietRaised.drawDivider(x: track.minX + inset + CGFloat(segment) * segmentWidth, centerY: track.midY)
+        if let hovered = control?.hoveredSegment, hovered != selectedSegment {
+            RulerQuietRaised.fill(segmentRect(CGFloat(hovered)), radius: radius, RulerQuietRaised.pressed)
         }
         if controlView.window?.firstResponder === controlView, OnePlusFocusPolicy.shared.showsFocus {
             RulerQuietRaised.drawFocus(track, radius: look.radius)
@@ -317,7 +334,7 @@ final class RulerQuietRaisedSegmentedCell: NSSegmentedCell {
             let selected = segment == selectedSegment
             let attributes: [NSAttributedString.Key: Any] = [
                 .font: NSFont.systemFont(ofSize: OnePlusLinearMetrics.body, weight: selected ? .medium : .regular),
-                .foregroundColor: (selected ? RulerQuietRaised.ink : RulerQuietRaised.secondary).withAlphaComponent(alpha),
+                .foregroundColor: (selected ? RulerQuietRaised.ink : RulerQuietRaised.label).withAlphaComponent(alpha),
             ]
             let label = self.label(forSegment: segment) ?? ""
             let size = (label as NSString).size(withAttributes: attributes)
@@ -331,67 +348,96 @@ final class RulerQuietRaisedSegmentedCell: NSSegmentedCell {
     }
 }
 
-/// Stepper field: one 22 pt field with plain minus and plus columns behind short hairlines, around the centered
-/// value. The text stays a native editable NSTextField (formatter, field editor, undo); Up and Down arrows and the
-/// columns step by 1.
+/// Stepper field, drawn like `OnePlusLinearStepper`: the value trails on a flat `fillTrack` well and a 16 pt
+/// `fillThumb` key on the right holds a chevron up over a chevron down; each half shades on hover and press. The
+/// text stays a native editable NSTextField (formatter, field editor, undo); Up and Down arrows and the key step by 1.
 final class RulerQuietRaisedStepperField: NSTextField {
-    private static let column = RulerQuietRaised.look.stepperButton
-    private var pressedColumn: Int?
+    static let keyWidth: CGFloat = 16
+    static let valuePadding: CGFloat = 8
+    private var pressedHalf: Int?
+    private var hoveredHalf: Int? { didSet { if hoveredHalf != oldValue { needsDisplay = true } } }
 
     override func awakeFromNib() {
         super.awakeFromNib()
         focusRingType = .none
-        alignment = .center
+        alignment = .right
     }
 
     private var fieldRect: NSRect { RulerQuietRaised.controlRect(in: bounds) }
 
-    private func columnRect(_ index: Int) -> NSRect {
+    private var keyRect: NSRect {
+        let inset = RulerQuietRaised.wellInset
         let field = fieldRect
-        return NSRect(x: index < 0 ? field.minX : field.maxX - Self.column, y: field.minY, width: Self.column, height: field.height)
+        return NSRect(x: field.maxX - inset - Self.keyWidth, y: field.minY + inset,
+                      width: Self.keyWidth, height: field.height - 2 * inset)
     }
+
+    /// The key half that steps by `delta`: +1 is the top half, -1 the bottom half.
+    private func halfRect(_ delta: Int) -> NSRect {
+        let key = keyRect
+        let top = (delta > 0) == isFlipped
+        return NSRect(x: key.minX, y: top ? key.minY : key.midY, width: key.width, height: key.height / 2)
+    }
+
+    private func half(at point: NSPoint) -> Int? { [1, -1].first { halfRect($0).contains(point) } }
 
     override func draw(_ dirtyRect: NSRect) {
         let field = fieldRect
-        let radius = RulerQuietRaised.look.radius
+        let key = keyRect
+        let radius = RulerQuietRaised.innerRadius
         let alpha = isEnabled ? 1 : OnePlusMetrics.disabledOpacity
         NSGraphicsContext.saveGraphicsState()
         NSGraphicsContext.current?.cgContext.setAlpha(alpha)
-        RulerQuietRaised.drawWell(field, radius: radius, fill: RulerQuietRaised.field, line: RulerQuietRaised.fieldLine)
-        if let pressedColumn {
-            NSGraphicsContext.saveGraphicsState()
-            NSBezierPath(roundedRect: field, xRadius: radius, yRadius: radius).addClip()
+        RulerQuietRaised.fill(field, radius: RulerQuietRaised.look.radius, RulerQuietRaised.fillTrack)
+        RulerQuietRaised.fill(key, radius: radius, RulerQuietRaised.fillThumb)
+        NSGraphicsContext.saveGraphicsState()
+        NSBezierPath(roundedRect: key, xRadius: radius, yRadius: radius).addClip()
+        for delta in [1, -1] where hoveredHalf == delta || pressedHalf == delta {
             RulerQuietRaised.pressed.setFill()
-            columnRect(pressedColumn).fill()
-            NSGraphicsContext.restoreGraphicsState()
+            halfRect(delta).fill()
+            if pressedHalf == delta { halfRect(delta).fill() }
         }
-        RulerQuietRaised.drawColumnLine(x: field.minX + Self.column, in: field)
-        RulerQuietRaised.drawColumnLine(x: field.maxX - Self.column, in: field)
-        for (index, symbol) in [(-1, "minus"), (1, "plus")] {
-            let rect = columnRect(index)
-            RulerQuietRaised.drawSymbol(symbol, pointSize: 9, color: RulerQuietRaised.secondary, center: NSPoint(x: rect.midX, y: rect.midY))
+        NSGraphicsContext.restoreGraphicsState()
+        for (delta, symbol) in [(1, "chevron.up"), (-1, "chevron.down")] {
+            let rect = halfRect(delta)
+            let lit = hoveredHalf == delta || pressedHalf == delta
+            let nudge: CGFloat = (delta > 0) == isFlipped ? 0.5 : -0.5
+            RulerQuietRaised.drawSymbol(symbol, pointSize: 7, weight: .bold, color: lit ? RulerQuietRaised.ink : RulerQuietRaised.label,
+                                        center: NSPoint(x: rect.midX, y: rect.midY + nudge))
         }
         if currentEditor() != nil, OnePlusFocusPolicy.shared.showsFocus {
-            RulerQuietRaised.drawFocus(field.insetBy(dx: 1, dy: 1), radius: radius - 1)
+            RulerQuietRaised.drawFocus(field, radius: RulerQuietRaised.look.radius)
         }
         NSGraphicsContext.restoreGraphicsState()
         super.draw(dirtyRect)
     }
 
+    override func updateTrackingAreas() {
+        super.updateTrackingAreas()
+        trackingAreas.forEach(removeTrackingArea)
+        addTrackingArea(NSTrackingArea(rect: .zero, options: [.mouseMoved, .mouseEnteredAndExited, .activeInKeyWindow, .inVisibleRect],
+                                       owner: self))
+    }
+
+    override func mouseMoved(with event: NSEvent) {
+        hoveredHalf = isEnabled ? half(at: convert(event.locationInWindow, from: nil)) : nil
+    }
+
+    override func mouseExited(with event: NSEvent) { hoveredHalf = nil }
+
     override func mouseDown(with event: NSEvent) {
-        let point = convert(event.locationInWindow, from: nil)
-        guard isEnabled, let index = [-1, 1].first(where: { columnRect($0).contains(point) }) else {
+        guard isEnabled, let delta = half(at: convert(event.locationInWindow, from: nil)) else {
             super.mouseDown(with: event)
             return
         }
-        pressedColumn = index
+        pressedHalf = delta
         needsDisplay = true
-        step(by: Double(index))
+        step(by: Double(delta))
     }
 
     override func mouseUp(with event: NSEvent) {
-        guard pressedColumn != nil else { return super.mouseUp(with: event) }
-        pressedColumn = nil
+        guard pressedHalf != nil else { return super.mouseUp(with: event) }
+        pressedHalf = nil
         needsDisplay = true
     }
 
@@ -431,12 +477,13 @@ final class RulerQuietRaisedStepperField: NSTextField {
     override func accessibilityPerformDecrement() -> Bool { step(by: -1); return true }
 }
 
-/// Keeps the value between the two columns and vertically centered on one text line.
+/// Keeps the value left of the key, 8 pt from it, and vertically centered on one text line.
 final class RulerQuietRaisedStepperCell: NSTextFieldCell {
     override func drawingRect(forBounds rect: NSRect) -> NSRect {
         let font = self.font ?? .systemFont(ofSize: 13)
         let height = ceil(font.ascender - font.descender + font.leading)
-        let column = RulerQuietRaised.look.stepperButton + 1
-        return NSRect(x: rect.minX + column, y: rect.midY - height / 2, width: max(0, rect.width - 2 * column), height: height)
+        let pad = RulerQuietRaisedStepperField.valuePadding
+        let trailing = RulerQuietRaised.wellInset + RulerQuietRaisedStepperField.keyWidth + pad
+        return NSRect(x: rect.minX + pad, y: rect.midY - height / 2, width: max(0, rect.width - pad - trailing), height: height)
     }
 }
