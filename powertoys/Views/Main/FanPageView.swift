@@ -22,7 +22,11 @@ struct FanPageView: View {
             } actions: { EmptyView() }
             OnePlusLinearAppletSection("Cool curve") {
                 FanCurveEditor(curve: curve, nowCelsius: service.display.cpuCelsius.map(Double.init)) { $0.save() }
-                    .padding(.horizontal, 4).padding(.vertical, 12)
+                    .padding(.horizontal, 4).padding(.top, 12)
+                Text("Drag points · double-click to edit · right-click to add or remove")
+                    .linearText(OnePlusLinearMetrics.caption, color: OnePlusLinearColor.tertiary)
+                    .frame(maxWidth: .infinity)
+                    .padding(.bottom, 10)
                 OnePlusLinearAppletRow("Now", value: nowText, systemImage: "thermometer.medium")
             }
             Button("Reset to the standard curve", role: .destructive) { FanCurve.standard.save() }
@@ -66,9 +70,12 @@ struct FanCurveEditor: View {
     @State private var dragging: Int?
     @State private var hovered: Int?
     @State private var editing: Int?
+    @State private var selected: Int?
+    @State private var pointer: CGPoint?
+    @State private var keyMonitor: Any?
 
     private static let domain = FanCurve.temperatureRange
-    private static let inset = EdgeInsets(top: 12, leading: 40, bottom: 22, trailing: 14)
+    private static let inset = EdgeInsets(top: 22, leading: 40, bottom: 22, trailing: 14)
     private static let height: CGFloat = 240
     private static let hitTarget: CGFloat = 24
     private static let knob: CGFloat = 12
@@ -83,9 +90,23 @@ struct FanCurveEditor: View {
                               height: geo.size.height - Self.inset.top - Self.inset.bottom)
             ZStack(alignment: .topLeading) {
                 FanCurveGrid(plot: plot, domain: Self.domain, labelSize: Self.labelSize, labelWidth: Self.inset.leading - 6)
+                FanSafetyBand(points: [FanCurve.safetyStart, FanCurve.safetyFull, Self.domain.upperBound].map {
+                    position(.init(celsius: $0, speed: FanCurve.safetyFloor(at: $0)), plot)
+                }, plot: plot)
                 Color.clear.contentShape(Rectangle())
+                    .onContinuousHover(coordinateSpace: .named(Self.space)) {
+                        if case .active(let location) = $0 { pointer = location } else { pointer = nil }
+                    }
                     .onTapGesture(count: 2) { addPoint(at: $0, plot: plot) }
-                FanCurveLine(points: shown.points.map { position($0, plot) }, plot: plot)
+                    .contextMenu {
+                        Button("Add point here") { if let pointer { addPoint(at: pointer, plot: plot) } }
+                            .disabled(pointer == nil || curve.points.count >= FanCurve.maxPoints)
+                    }
+                FanCurveLine(points: (Array(stride(from: plot.minX, to: plot.maxX, by: 2)) + [plot.maxX]).map { x in
+                    let celsius = Self.domain.lowerBound
+                        + (Self.domain.upperBound - Self.domain.lowerBound) * Double((x - plot.minX) / plot.width)
+                    return position(.init(celsius: celsius, speed: shown.curveSpeed(at: celsius)), plot)
+                }, plot: plot)
                 if let nowCelsius {
                     FanCurveNow(point: position(.init(celsius: min(max(nowCelsius, Self.domain.lowerBound), Self.domain.upperBound),
                                                       speed: shown.speed(at: nowCelsius)), plot), plot: plot)
@@ -108,6 +129,12 @@ struct FanCurveEditor: View {
             try? await Task.sleep(for: .milliseconds(600))
             let point = UserDefaults.standard.integer(forKey: "MPTDiagnosticFanEditPoint")
             if curve.points.indices.contains(point - 1) { editing = point - 1 }
+        }
+        .onAppear { keyMonitor = NSEvent.addLocalMonitorForEvents(matching: .keyDown, handler: deleteKey) }
+        .onDisappear {
+            keyMonitor.map(NSEvent.removeMonitor)
+            keyMonitor = nil
+            selected = nil
         }
         .accessibilityElement(children: .contain)
         .accessibilityLabel("Cool curve")
@@ -137,7 +164,7 @@ struct FanCurveEditor: View {
 
     private func knob(_ index: Int, plot: CGRect) -> some View {
         let point = shown.points[index]
-        let active = dragging == index || hovered == index || editing == index
+        let active = dragging == index || hovered == index || editing == index || selected == index
         return Circle().fill(OnePlusLinearColor.quietKnob)
             .overlay(Circle().strokeBorder(active ? OnePlusLinearColor.ink : OnePlusLinearColor.quietKnobLine,
                                            lineWidth: active ? 1.5 : 1))
@@ -152,10 +179,16 @@ struct FanCurveEditor: View {
                     if let draft { save(draft) }
                     draft = nil
                     dragging = nil
+                    selected = index
                 })
+            .simultaneousGesture(TapGesture(count: 1).onEnded { selected = index })
             .simultaneousGesture(TapGesture(count: 2).onEnded { editing = index })
+            .contextMenu {
+                Button("Edit…") { editing = index }
+                Button("Remove point", role: .destructive) { remove(index) }.disabled(curve.points.count <= 2)
+            }
             .position(position(point, plot))
-            .help("\(Int(point.celsius)) °C · \(Int((point.speed * 100).rounded()))%. Drag to move, double-click to type values.")
+            .help("\(Int(point.celsius)) °C · \(Int((point.speed * 100).rounded()))%. Drag to move, double-click to type values, right-click to remove.")
             .accessibilityElement()
             .accessibilityLabel("Point \(index + 1): \(Int(point.celsius)) °C, \(Int((point.speed * 100).rounded()))%")
             .accessibilityAction(named: "Edit") { editing = index }
@@ -179,11 +212,31 @@ struct FanCurveEditor: View {
         draft = FanCurve(points: points)
     }
 
+    private func remove(_ index: Int) {
+        let current = FanCurve.load()
+        guard current.points.count > 2, current.points.indices.contains(index) else { return }
+        var points = current.points
+        points.remove(at: index)
+        save(FanCurve(points: points))
+        selected = nil
+        hovered = nil
+    }
+
+    /// Delete or Backspace removes the hovered or selected point, unless a text field or the point editor has the keys.
+    private func deleteKey(_ event: NSEvent) -> NSEvent? {
+        guard [51, 117].contains(event.keyCode),
+              event.modifierFlags.intersection(.deviceIndependentFlagsMask).subtracting([.function, .numericPad]).isEmpty,
+              editing == nil, !(event.window?.firstResponder is NSText),
+              let index = hovered ?? selected, FanCurve.load().points.count > 2 else { return event }
+        remove(index)
+        return nil
+    }
+
     private func addPoint(at location: CGPoint, plot: CGRect) {
-        guard plot.insetBy(dx: -4, dy: -4).contains(location) else { return }
+        guard plot.insetBy(dx: -4, dy: -4).contains(location), curve.points.count < FanCurve.maxPoints else { return }
         let target = value(at: location, plot)
         guard !curve.points.contains(where: { $0.celsius == target.celsius }) else { return }
-        let next = FanCurve(points: curve.points + [.init(celsius: target.celsius, speed: curve.speed(at: target.celsius))])
+        let next = FanCurve(points: curve.points + [.init(celsius: target.celsius, speed: curve.curveSpeed(at: target.celsius))])
         save(next)
         editing = next.points.firstIndex { $0.celsius == target.celsius }
     }
@@ -246,20 +299,47 @@ private struct FanCurveLine: View {
     let plot: CGRect
 
     var body: some View {
-        let knots = points.first.map { [CGPoint(x: plot.minX, y: $0.y)] } ?? []
-        let all = knots + points + (points.last.map { [CGPoint(x: plot.maxX, y: $0.y)] } ?? [])
         ZStack {
+            // `addLines` would start a new subpath, so the fill adds each sample to the bottom-left start instead.
             Path { path in
                 path.move(to: CGPoint(x: plot.minX, y: plot.maxY))
-                path.addLines(all)
+                points.forEach { path.addLine(to: $0) }
                 path.addLine(to: CGPoint(x: plot.maxX, y: plot.maxY))
                 path.closeSubpath()
             }
             .fill(OnePlusLinearColor.ink.opacity(0.06))
-            Path { $0.addLines(all) }
+            Path { $0.addLines(points) }
                 .stroke(OnePlusLinearColor.ink, style: StrokeStyle(lineWidth: 1.75, lineCap: .round, lineJoin: .round))
         }
         .allowsHitTesting(false)
+    }
+}
+
+/// The safety floor (90-95 °C ramp to full speed): a fixed red-tinted band no point can move, with its label above.
+private struct FanSafetyBand: View {
+    let points: [CGPoint]
+    let plot: CGRect
+
+    var body: some View {
+        ZStack(alignment: .topLeading) {
+            Path { path in
+                path.move(to: CGPoint(x: points[0].x, y: plot.maxY))
+                points.forEach { path.addLine(to: $0) }
+                path.addLine(to: CGPoint(x: plot.maxX, y: plot.maxY))
+                path.closeSubpath()
+            }
+            .fill(OnePlusLinearColor.temperatureCritical.opacity(0.1))
+            Path { $0.addLines(points) }
+                .stroke(OnePlusLinearColor.temperatureCritical.opacity(0.55), style: StrokeStyle(lineWidth: 1, dash: [3, 3]))
+            Text("Safety: full speed by 95 °C")
+                .linearText(OnePlusLinearMetrics.caption, color: OnePlusLinearColor.temperatureCritical)
+                .fixedSize()
+                .frame(width: 0, alignment: .trailing)
+                .position(x: plot.maxX, y: plot.minY - 11)
+        }
+        .allowsHitTesting(false)
+        .accessibilityElement()
+        .accessibilityLabel("Safety floor: the fans reach full speed by 95 °C whatever the curve says")
     }
 }
 

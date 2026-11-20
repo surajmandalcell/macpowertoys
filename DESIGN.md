@@ -443,13 +443,11 @@ ease-in cubic-bezier(0.4, 0, 1, 1)):
     Auto, Cool, Max segmented control: `fillTrack` radius 7, `fillThumb`
     radius 5) and the Awake row (state text and a 32 x 18 switch, accent
     on). No fans hides the Fan row; only a segment click writes.
-  - Fan segments are `.snug` (40 pt; a longer label widens only its own
-    segment), so "Custom" never cuts the RPM. Cool reads "Custom" while the
-    saved curve differs from the standard one.
-  - The 12 pt `thermometer.medium` before the segments follows Apple
-    silicon thermals (idle 35-55 °C, long loads 70-85 °C, throttling near
-    100-105 °C): under 56 `panelMuted` normal, 56-69 warm, 70-84 hot, 85-94
-    very hot, 95+ critical ("near the limit"). Help "CPU 62 °C · warm".
+  - Fan segments are `.snug` (40 pt min), so "Custom" never cuts the RPM.
+    Cool reads "Custom" while the curve differs from the standard one.
+  - 12 pt `thermometer.medium` before the segments, by Apple silicon
+    thermals: under 56 °C `panelMuted`, 56-69 warm, 70-84 hot, 85-94 very
+    hot, 95+ critical. Help "CPU 62 °C · warm".
   - "Top processes": five 30 pt rows, 12 pt text: icon (16 pt), name, CPU
     percent in `cpuText` (40 pt column), memory (68 pt column). A click
     selects by PID. Right-click: Quit Process… (Quit, Force Quit, Cancel),
@@ -631,11 +629,13 @@ Linear style, OnePlusUI `OnePlusLinear*` parts. Reference:
   or GET disabled with "Not available yet".
 - Fan page: tool header with a 56 pt `fan-tile` icon (white
   `fanblades.fill`), then "Cool curve": a 240 pt chart (30-100 °C, 0-100%,
-  `line` grid, 10 pt `secondary` labels, 1.75 pt `ink` line, accent dot at
-  the current CPU temperature), a "Now" row, and the reset block. Points are
-  12 pt quiet knobs, 24 pt hit targets, `ink` ring on hover. Drag stays
-  between neighbors; double-click a point opens Temperature and Speed
-  steppers, clamped so the curve keeps rising; double-click space adds one.
+  `line` grid, 10 pt `secondary` labels, 1.75 pt `ink` monotone cubic line,
+  accent dot at the current CPU temperature), a fixed safety band (90 °C
+  ramp to full at 95 °C, `temperature-critical` 10% fill, dashed edge, label
+  above), a `tertiary` hint line, a "Now" row, and the reset block. Points:
+  12 pt quiet knobs, 24 pt hits, `ink` ring on hover or select, 2-8 points.
+  Drag stays between neighbors; double-click a point edits it; right-click
+  adds or removes; Delete removes; double-click space adds.
 - Settings uses `OnePlusLinearPaneBody`: 14 pt top, 24 pt gutters, 16 pt
   between sections, 20 pt `muted` captions, lists with radius 8, a 1 pt
   ring, and `lineSoft` separators. General: Appearance and windows, Launch
