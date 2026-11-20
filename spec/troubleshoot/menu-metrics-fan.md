@@ -217,3 +217,11 @@ still use `SystemMonitor`. `DESIGN.md` owns every size, color, and type value.
   retry. Run `testFanViewStopsPollingWhileItsLayoutStaysMounted` and
   `MainPanelTests.testNoTestSendsAFanWrite`. Test the helper install, Max, and
   Auto on an isolated Mac.
+- **Symptom:** At 89-90 °C the curve's now chip covered "Full speed from
+  90 °C" and the lock point.
+- **Invariant:** Chart labels never overlap. `FanChipPlacement` tries above,
+  below, left, right, then the far diagonals, and avoids the points, the lock
+  point and its caption, the axis labels, and the card's sides (8 pt). The
+  now chip and the drag chip both use it.
+- **Check:** render the page offscreen at 60, 75, 85, 89, 90, and 95 °C in
+  Light and Dark, and assert no chip rect meets `FanCurveEditor.obstacles`.
