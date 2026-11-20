@@ -4,7 +4,8 @@
   --lit:rgba(0,0,0,.14);
   --tile-dark:#1d1d1f;
   --field:#0071e3;--field-ink:#fff;
-  --cmd:#e8e8ed;
+  --cmd:#fff;
+  --cmd-shadow:0 1px 2px rgba(0,0,0,.06),0 6px 16px -8px rgba(0,0,0,.18),0 0 0 .5px rgba(0,0,0,.14);
   --win-shadow:0 32px 64px -24px rgba(0,0,0,.42),0 10px 24px -12px rgba(0,0,0,.22),0 0 0 .5px rgba(0,0,0,.18);
   --deep:0 60px 90px -30px rgba(0,0,0,.6),0 24px 40px -18px rgba(0,0,0,.38),0 0 0 .5px rgba(0,0,0,.22);
   --font:-apple-system,BlinkMacSystemFont,"SF Pro Text","Inter",system-ui,sans-serif;
@@ -20,14 +21,16 @@
     --link:#3d9bff;--lit:rgba(255,255,255,.2);
     --tile-dark:#2a2a2e;
     --field:#0b4fae;
-    --cmd:#232327;
+    --cmd:#1c1c1f;
+    --cmd-shadow:0 1px 2px rgba(0,0,0,.4),0 6px 16px -8px rgba(0,0,0,.7),0 0 0 .5px rgba(255,255,255,.14);
     --win-shadow:0 32px 64px -24px rgba(0,0,0,.85),0 10px 24px -12px rgba(0,0,0,.6),0 0 0 .5px rgba(255,255,255,.14);
     --deep:0 60px 90px -30px rgba(0,0,0,.9),0 24px 40px -18px rgba(0,0,0,.7),0 0 0 .5px rgba(255,255,255,.16);
   }
 }
 *{box-sizing:border-box}
-html{scroll-behavior:smooth;-webkit-text-size-adjust:100%}
-body{margin:0;background:var(--bg);color:var(--ink);font:400 var(--t-body)/1.5 var(--font);letter-spacing:-.01em;-webkit-font-smoothing:antialiased;overflow-x:hidden}
+html{scroll-behavior:smooth;-webkit-text-size-adjust:100%;overflow-x:clip}
+body{margin:0;background:var(--bg);color:var(--ink);font:400 var(--t-body)/1.5 var(--font);letter-spacing:-.01em;-webkit-font-smoothing:antialiased;overflow-x:clip}
+[id]{scroll-margin-top:32px}
 img{display:block;max-width:100%;height:auto}
 a{color:inherit}
 h1,h2,h3{margin:0;font-weight:600;text-wrap:balance}
@@ -36,7 +39,9 @@ h2{font-size:var(--t-h2);line-height:1.04;letter-spacing:-.035em}
 h3{font-size:22px;line-height:1.2;letter-spacing:-.02em}
 p{margin:0}
 .nw{white-space:nowrap}
-:focus-visible{outline:3px solid var(--accent);outline-offset:3px;border-radius:6px}
+/* No focus rings: keyboard focus shows as a fill */
+:focus,:focus-visible{outline:none}
+a:focus-visible,button:focus-visible{background-color:var(--lit);border-radius:8px}
 
 /* Navigation */
 .nav{display:flex;align-items:center;justify-content:space-between;gap:24px;padding:22px var(--m);max-width:1520px;margin:0 auto}
@@ -46,18 +51,21 @@ p{margin:0}
 .nav nav a:hover{color:var(--ink)}
 
 /* Controls */
-.btn{display:inline-flex;align-items:center;height:48px;padding:0 24px;border-radius:999px;background:var(--accent);color:var(--accent-ink);font-weight:600;font-size:17px;text-decoration:none;transition:transform .15s,filter .15s}
+.btn{display:inline-flex;align-items:center;height:48px;padding:0 24px;border-radius:12px;background:var(--accent);color:var(--accent-ink);font-weight:600;font-size:17px;text-decoration:none;transition:transform .15s,filter .15s}
 .btn:hover{filter:brightness(1.08)}
+.btn:focus-visible{background-color:#0058b0;border-radius:12px}
 .btn:active{transform:scale(.97)}
-.cmd{display:flex;align-items:center;gap:8px;height:48px;padding:0 6px 0 18px;border-radius:14px;background:var(--cmd);max-width:100%}
-.cmd code{font:500 15px/1.3 var(--mono);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;min-width:0;flex:1}
+.cmd{display:flex;align-items:center;gap:8px;min-height:48px;padding:6px 6px 6px 18px;border-radius:14px;background:var(--cmd);box-shadow:var(--cmd-shadow);max-width:100%}
+/* The command never cuts off: on a narrow screen it breaks between its two halves */
+.cmd code{font:500 15px/1.4 var(--mono);min-width:0;flex:1}
+.cmd code span{white-space:nowrap}
 .cmd button{flex:none;display:grid;place-items:center;width:36px;height:36px;border:0;border-radius:9px;background:transparent;color:var(--muted);cursor:pointer;transition:background .15s,color .15s,transform .15s}
 .cmd button:hover{background:var(--lit);color:var(--ink)}
 .cmd button:active{transform:scale(.92)}
 .cmd svg{width:19px;height:19px}
 .cmd .ok,.cmd.done .cp{display:none}
 .cmd.done .ok{display:block;color:#28a745}
-.anchor{position:relative;display:inline-grid;place-items:center;width:34px;height:34px;margin-left:10px;vertical-align:middle;border-radius:9px;color:var(--muted);opacity:.4;transition:opacity .15s,background .15s}
+.anchor{position:relative;display:inline-grid;place-items:center;width:34px;height:34px;margin-left:10px;vertical-align:middle;border-radius:9px;color:var(--muted);opacity:.8;transition:opacity .15s,background .15s}
 .anchor svg{width:20px;height:20px}
 h2:hover .anchor,h3:hover .anchor,.anchor:focus-visible,.anchor.done{opacity:1}
 .anchor:hover{background:var(--lit)}
@@ -87,13 +95,15 @@ h2:hover .anchor,h3:hover .anchor,.anchor:focus-visible,.anchor.done{opacity:1}
 .hero-copy{display:flex;flex-direction:column}
 .hero-copy .lead{margin-top:28px;font-size:var(--t-lead);line-height:1.4;max-width:30ch}
 .get{display:flex;flex-direction:column;align-items:flex-start;gap:16px;margin-top:40px}
-.get .cmd{width:min(100%,460px)}
+.get .cmd{width:auto}
 .fine{font-size:var(--t-small);color:var(--muted);margin-top:20px}
 .hero-desk{--h:clamp(560px,46vw,660px);--z:1.12;--r:24px 0 0 24px}
 .hero-desk .bar{padding-right:24px}
 .hero-desk{--pr:122px}
-.hero+.sec{margin-top:clamp(72px,8vw,120px)}
+.hero+.sec{margin-top:clamp(40px,4vw,64px)}
 .hero-desk .scr{border-radius:22px 0 0 22px}
+/* Moves a bright star in the wallpaper off the menu titles */
+.hero-desk .scr::before{background-position:62% 50%}
 
 /* Sections */
 .sec{max-width:1520px;margin:var(--gap) auto 0;padding:0 var(--m)}
@@ -101,14 +111,12 @@ h2:hover .anchor,h3:hover .anchor,.anchor:focus-visible,.anchor.done{opacity:1}
 .ticon{width:52px;height:52px}
 .split{display:grid;grid-template-columns:minmax(0,5fr) minmax(0,7fr);gap:clamp(40px,5vw,96px);align-items:center}
 .split.rev{grid-template-columns:minmax(0,7fr) minmax(0,5fr)}
-.head{display:grid;grid-template-columns:minmax(0,7fr) minmax(0,5fr);gap:clamp(32px,5vw,96px);align-items:end;margin-bottom:48px}
+.head{display:grid;grid-template-columns:minmax(0,7fr) minmax(0,5fr);gap:clamp(32px,5vw,96px);align-items:start;margin-bottom:48px}
 .head p{max-width:46ch}
 .head-txt{display:flex;flex-direction:column;gap:22px}
 
 /* Fan */
-.fan-desk{--h:740px;--z:.95;--wx:40px;--wy:56px}
-/* The panel sits beside the window only where both fit side by side; it never covers the curve */
-@media (max-width:1400px){.fan-desk .panel{display:none}}
+.fan-desk{--z:1;--wx:calc(50% - 410px);--wy:52px;--h:calc((var(--wy) + 700px) * var(--z))}
 /* CPU temperature steps from DESIGN.md (CPUHeat.swift): gray, yellow, orange, red, deep red */
 :root{--t-normal:#6e6e76;--t-warm:#a67c00;--t-hot:#cc610c;--t-very-hot:#d03a2c;--t-near-the-limit:#9a1717}
 @media (prefers-color-scheme:dark){:root{--t-normal:#9999a1;--t-warm:#f2c94c;--t-hot:#f59a4a;--t-very-hot:#ff7466;--t-near-the-limit:#ff3b30}}
@@ -151,12 +159,15 @@ h2:hover .anchor,h3:hover .anchor,.anchor:focus-visible,.anchor.done{opacity:1}
 .ticks span:nth-child(4){left:78.57%}.ticks span:nth-child(5){left:92.86%}
 
 /* Portman: four steps over one screen */
-.steps{list-style:none;margin:0 0 24px;padding:0;display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:12px}
+/* Steps on the left, the screen on the right, framed tight around what each step shows */
+.walk{display:grid;grid-template-columns:minmax(0,4fr) minmax(0,8fr);gap:clamp(24px,3vw,48px);align-items:start}
+.steps{list-style:none;margin:0;padding:0;display:grid;gap:8px}
 .steps button{display:flex;flex-direction:column;gap:6px;width:100%;height:100%;padding:18px 18px 20px;border:0;border-radius:18px;background:transparent;color:var(--muted);text-align:left;font:400 16px/1.4 var(--font);letter-spacing:-.005em;cursor:pointer;transition:background .2s,color .2s}
 .steps button:hover{background:var(--surface)}
 .steps button[aria-current]{background:var(--surface);color:var(--ink)}
 .steps b{font-size:19px;font-weight:600;letter-spacing:-.02em;color:var(--ink)}
-.port-desk{--h:560px;--z:1.3;--wx:40px;--wy:48px}
+.port-desk{--h:700px;--z:1.36;--pr:72px}
+[data-step="0"] .port-desk{--z:.98;--wx:calc(50% - 410px);--wy:48px}
 [data-step="0"] .mbi{background:transparent}
 
 /* RSync: one whole field in the accent */
@@ -173,15 +184,16 @@ h2:hover .anchor,h3:hover .anchor,.anchor:focus-visible,.anchor.done{opacity:1}
 .tweaks-desk{--h:620px;--z:1.15;--wx:calc(50% - 410px);--wy:60px;margin-top:56px}
 
 /* Small tools: specimens on tiles */
-.small{display:grid;grid-template-columns:minmax(0,3fr) minmax(0,9fr);gap:clamp(32px,4vw,64px);align-items:start}
-.small-head{display:flex;flex-direction:column;gap:20px}
-.small-head p{max-width:30ch}
-.tiles{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:12px 12px}
+/* Each tile shows its window at about real size (--s, 1 = macOS points), whole when it fits, else a crop
+   that starts at the window's top-left corner (--x, --y) */
+.tiles{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:12px}
 .tile{margin:0;min-width:0}
-.tile.two{grid-column:span 2}
-.tile-face{display:grid;place-items:center;height:clamp(300px,30vw,440px);border-radius:20px;overflow:hidden;padding:24px;background:#1d1d1f var(--wall) center/cover}
-.tile-face picture{width:92%}
-.tile.two .tile-face picture{width:84%}
+.tile.wide{grid-column:1/-1}
+.tile-face{position:relative;height:440px;border-radius:20px;overflow:hidden;background:#1d1d1f var(--wall) center/cover;--k:var(--s,1)}
+.tile.wide .tile-face{height:520px}
+.tile-face .bare img{border-radius:0;box-shadow:none;filter:drop-shadow(0 12px 24px rgba(0,0,0,.35))}
+.tile-face picture{position:absolute;left:50%;top:50%;width:calc(var(--w) * var(--k));transform:translate(-50%,-50%)}
+.tile-face.crop picture{left:var(--x);top:var(--y);transform:none}
 .tile figcaption{padding:16px 2px 32px}
 .tile h3{font-size:20px;display:flex;align-items:center}
 .tile h3 .anchor{width:30px;height:30px;margin-left:6px}
@@ -193,6 +205,7 @@ h2:hover .anchor,h3:hover .anchor,.anchor:focus-visible,.anchor.done{opacity:1}
 .row{display:flex;align-items:center;gap:14px;min-height:60px;padding:6px 14px;border-radius:14px;text-decoration:none;transition:background .15s}
 .rows li:nth-child(odd) .row{background:var(--surface)}
 a.row:hover{background:var(--lit)}
+.row picture{flex:none;display:flex}
 .row img{width:30px;height:30px;flex:none}
 .row b{font-weight:600;white-space:nowrap}
 .row span{margin-left:auto;color:var(--muted);font-size:16px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;min-width:0;text-align:right}
@@ -207,10 +220,9 @@ a.row:hover{background:var(--lit)}
 .cmd.big svg{width:22px;height:22px}
 .install p{display:flex;align-items:center;justify-content:center;gap:16px;flex-wrap:wrap;color:var(--muted)}
 
-/* Footer */
-.foot{max-width:1520px;margin:var(--gap) auto 0;padding:0 var(--m) 40px}
-.big-mark{font-weight:700;font-size:clamp(56px,14.2vw,216px);line-height:.8;letter-spacing:-.06em;color:var(--surface);margin:0 0 40px -.04em;white-space:nowrap}
-.foot-row{display:flex;flex-wrap:wrap;gap:12px 28px;font-size:15px}
+/* Footer: one plain row under a hairline */
+.foot{max-width:1520px;margin:clamp(72px,8vw,120px) auto 0;padding:0 var(--m) 32px}
+.foot-row{display:flex;flex-wrap:wrap;gap:12px 28px;font-size:15px;padding-top:24px;border-top:.5px solid var(--lit)}
 .foot-row a{color:var(--link);text-decoration:none}
 .foot-row a:hover{text-decoration:underline}
 .foot-row .soft{color:var(--muted);margin-left:auto}
@@ -218,28 +230,31 @@ a.row:hover{background:var(--lit)}
 /* Look A, Break-out (default): the panel hangs past the bottom of the screen crop. Each desk reserves
    room under it for that overhang so nothing below is covered. */
 html[data-v=a] .hero-desk{margin-bottom:max(0px,calc((29px + 642px) * var(--z) - var(--h) + 24px))}
-html[data-v=a] .port-desk{margin-bottom:72px}
+/* Look B, Tilt: the screen turned slightly in perspective, inside the page, tall enough to hold the panel */
+html[data-v=b] .desk.v{overflow:hidden;border-radius:var(--r);transform:perspective(2400px) rotateY(-9deg) rotateX(3deg);transform-origin:100% 50%}
+html[data-v=b] .hero-desk{--h:calc((29px + 642px + 28px) * var(--z));--r:24px;margin-right:var(--m)}
+html[data-v=b] .hero-desk .scr{border-radius:22px}
 
-/* Look B, Tilt: an oversized screen turned in perspective that runs off the right edge of the page */
-html[data-v=b] .desk.v{overflow:hidden;border-radius:var(--r);transform:perspective(2400px) rotateY(-14deg) rotateX(5deg);transform-origin:0 50%;margin-right:calc(-1 * var(--m) - 10vw)}
-html[data-v=b] .hero-desk{margin-right:-12vw;--h:clamp(600px,50vw,720px)}
-html[data-v=b] .desk.v .panel{--pr:112px}
-
-/* Look C, Zoom on scroll: the whole desktop first, then the camera moves in on the panel */
+/* Look C, Zoom on scroll: the whole desktop first, then the camera moves in on the panel. Without scroll
+   timelines, or with reduced motion, the whole desktop stays in view. */
 html[data-v=c] .desk.v{overflow:hidden;border-radius:var(--r);--zi:var(--z0,.62)}
 html[data-v=c] .hero-desk{--z0:.6}
-html[data-v=c] .desk.v{--wx:calc(100% - 1000px)}
+html[data-v=c] .desk.v .desk-in{transform:scale(var(--z0,.62))}
 @supports (animation-timeline:view()){
   html[data-v=c] .desk.v .desk-in{animation:zoom-in linear both;animation-timeline:view();animation-range:entry 20% cover 50%}
   html[data-v=c] .hero-desk .desk-in{animation-timeline:scroll(root);animation-range:0 70vh}
 }
 @keyframes zoom-in{from{transform:scale(var(--z0,.62))}to{transform:scale(var(--z))}}
 
-/* Look D, Layered spill: the window and the panel both hang out of the wallpaper, over the next section */
-html[data-v=d] .desk.v .scr{overflow:visible}
-html[data-v=d] .desk.v{--wx:-56px;--wy:110px}
-html[data-v=d] .hero-desk{margin-bottom:120px}
-html[data-v=d] .fan-desk,html[data-v=d] .port-desk{--h:520px;--wy:80px;margin-bottom:clamp(320px,30vw,460px)}
+/* Look D, Layered spill: the wallpaper is inset, and the window or panel hangs a fixed 48 pt out of its
+   left and bottom edges. The space under each desk is exactly that overhang plus a gap. */
+@media (min-width:641px){
+  html[data-v=d] .desk.v .scr{overflow:visible}
+  html[data-v=d] .desk.v{margin-left:64px}
+  html[data-v=d] .fan-desk,html[data-v=d] [data-step="0"] .port-desk{--wx:-48px;--wy:72px;--h:calc((72px + 612px) * var(--z));margin-bottom:calc(48px * var(--z) + 40px)}
+  html[data-v=d] .hero-desk{--h:calc((29px + 594px) * var(--z));margin-bottom:calc(48px * var(--z) + 24px)}
+  html[data-v=d] .port-desk{margin-bottom:40px}
+}
 
 /* Motion: content shows without script; with it, each section's parts rise in turn */
 .js .rv{opacity:0;transform:translateY(24px);transition:opacity .7s cubic-bezier(.2,.7,.2,1),transform .7s cubic-bezier(.2,.7,.2,1)}
@@ -256,16 +271,20 @@ html[data-v=d] .fan-desk,html[data-v=d] .port-desk{--h:520px;--wy:80px;margin-bo
   html{scroll-behavior:auto}
   .js .rv{opacity:1;transform:none;transition:none}
   .js .hero-desk .panel,.js .hero-desk .panel img,html[data-v=c] .desk.v .desk-in{clip-path:none;transform:none;animation:none}
-  html[data-v=c] .desk.v .desk-in{transform:scale(var(--z))}
+  html[data-v=c] .desk.v .desk-in{transform:scale(var(--z0,.62))}
 }
 
-/* Medium widths */
+/* Medium widths: the Portman steps move above a screen of at most 920 px */
+@media (max-width:1380px){
+  .walk{grid-template-columns:1fr}
+  .steps{grid-template-columns:1fr 1fr}
+  .port-desk{width:100%;max-width:920px;margin-left:auto;margin-right:auto}
+}
 @media (max-width:1100px){
   .hero{grid-template-columns:minmax(0,1fr)}
-  .split,.split.rev,.head,.wide-head,.small,.list{grid-template-columns:1fr}
+  .split,.split.rev,.head,.wide-head,.small,.list{grid-template-columns:minmax(0,1fr)}
   .split.rev .txt{order:-1}
   .small-head,.list-head{position:static}
-  .steps{grid-template-columns:1fr 1fr}
   .txt{max-width:640px}
   .tweaks-desk{--wx:24px}
   .hero-desk{--h:720px}
@@ -278,32 +297,36 @@ html[data-v=d] .fan-desk,html[data-v=d] .port-desk{--h:520px;--wy:80px;margin-bo
   .nav nav a:nth-child(1),.nav nav a:nth-child(2){display:none}
   .hero{padding-top:24px}
   .hero h1{font-size:clamp(40px,11vw,52px)}
+  .get{align-self:stretch}
   .get .cmd{width:100%}
+  .cmd code{font-size:14px}
   .desk{--z:.95;--pr:12px;--r:20px;--h:560px}
   .hero-desk{--h:640px;--z:.95;--r:20px 0 0 20px;--pr:20px}
   .bar .apps,.bar .opt,.clock .d{display:none}
   .bar{justify-content:flex-end}
   .clock{width:auto}
-  .fan-desk{--h:330px;--z:.42;--wx:16px;--wy:44px;--r:14px} /* the whole Fan page, small, instead of a crop that hides the curve */
-  .port-desk,.input-desk{--h:540px}
+  /* Fan and Portman settings: a crop of the page column at a readable size, starting at its left edge */
+  .fan-desk,[data-step="0"] .port-desk{--z:.8;--wx:-232px;--wy:36px}
+  .fan-desk{--h:480px}
+  [data-step="0"] .port-desk{--h:520px}
+  .port-desk{--h:500px;--z:.95}
+  .input-desk{--h:600px}
   .rsync-desk{--h:700px}
   .tweaks-desk{--h:440px;--wx:16px}
-  .steps{gap:8px}
+  .steps{grid-template-columns:1fr;gap:6px}
   .steps button{padding:14px}
-  .steps .d{display:none}
   .field{padding-left:var(--m);padding-right:var(--m)}
-  .tiles{grid-template-columns:1fr 1fr;gap:8px}
-  .tile.two{grid-column:span 2}
-  .tile-face,.tile.two .tile-face{height:auto;aspect-ratio:4/5}
-  .tile.two .tile-face{aspect-ratio:8/5}
-  .tile-face{padding:14px;border-radius:16px}
+  .tiles{grid-template-columns:1fr;gap:8px}
+  .tile-face,.tile.wide .tile-face{height:360px;border-radius:16px;--k:var(--sp,.8)}
+  .tile-face.crop picture{left:var(--xp,var(--x));top:var(--yp,var(--y))}
   .tile h3{font-size:17px}
   .tile p{font-size:15px}
-  .tiles .tile:nth-child(2){order:-1}
   .row{min-height:56px;padding:6px 10px;gap:12px}
-  .row span{font-size:15px}
+  .row span{font-size:15px;white-space:normal}
   .cmd.big{height:60px;padding-left:16px}
   .cmd.big code{font-size:13px;white-space:normal;overflow-wrap:anywhere}
   .foot-row .soft{margin-left:0;width:100%}
-  html[data-v=b] .desk.v{transform:perspective(1400px) rotateY(-10deg) rotateX(4deg)}
+  html[data-v=b] .desk.v{transform:perspective(1400px) rotateY(-6deg) rotateX(2deg)}
+  html[data-v=b] .hero-desk{margin-right:4px;--r:20px}
+  html[data-v=b] .hero-desk .scr{border-radius:18px}
 }
