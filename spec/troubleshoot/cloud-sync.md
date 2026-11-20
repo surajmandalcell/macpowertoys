@@ -20,3 +20,17 @@
 - **Invariant:** Each stream retains its owner until stop, invalidate, release,
   in that order. Delivery runs on a private serial queue.
 - **Check:** `DevSyncEventsTests` stream ownership test.
+
+## Fixture transfers in the owner's store
+
+- **Symptom:** RSync UI lists sample jobs (`~/Desktop/demo.mov`,
+  `~/Pictures/2026`) three times with 0 bytes, and installs refuse.
+- **Cause:** A render harness linked the app code and set
+  `RcloneJobManager.shared.jobs`; `AppDataLocation` pointed it at the real
+  `transfers.json`. Each harness run merged 5 more fixtures.
+- **Invariant:** Any process whose bundle id is not the app's uses the
+  isolated `MacPowerToys-Tests` folder. The install guard
+  `scripts/live-transfers.sh` blocks only on a running job that moved bytes
+  or a busy rclone daemon.
+- **Check:** `zsh scripts/live-transfers.sh` on a store with a 0-byte running
+  entry exits 0.

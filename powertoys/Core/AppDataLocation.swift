@@ -11,8 +11,13 @@ nonisolated enum AppDataLocation {
         let root = FileManager.default.urls(for: .applicationSupportDirectory, in: .userDomainMask)[0]
         return prepareDirectory(
             at: root,
-            isTest: AppRuntime.isRunningTests
+            isTest: isIsolated
         )
+    }
+
+    // Render harnesses and other hosts link the app code; only the real app may touch the owner's data.
+    static var isIsolated: Bool {
+        AppRuntime.isRunningTests || Bundle.main.bundleIdentifier != AppIdentity.bundleIdentifier
     }
 
     static var storeURL: URL {
