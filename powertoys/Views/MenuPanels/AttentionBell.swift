@@ -15,6 +15,15 @@ struct AttentionItem: Identifiable {
                 InputDevicesManager.shared.fixAccessibility()
             })
         }
+        let saved = FanControlService.savedPreset
+        if saved != .auto, FanHelperService.shared.canInstall {
+            items.append(AttentionItem(id: "fan-saved", title: "Fans stay on Auto",
+                                       line: "\(saved.rawValue) needs the fan helper. Click Fix to install it; macOS asks for your password.") {
+                Task {
+                    if await FanHelperService.shared.install() == nil { await FanControlService.shared.restoreSavedPreset() }
+                }
+            })
+        }
         if FanHelperService.shared.status == .notResponding {
             items.append(AttentionItem(id: "fan-helper", title: "Fan helper is not responding",
                                        line: "Fans stay read only. Click Fix to reinstall the helper; macOS asks for your password.") {

@@ -1,3 +1,4 @@
+import AppKit
 import Darwin
 import Foundation
 import Observation
@@ -277,12 +278,53 @@ final class FanControlService {
     private var commandRevision = 0
     private var revision = 0
 
+    nonisolated static let savedPresetKey = "fan.savedPreset"
+    /// The mode the owner last chose. Launch and wake apply it again; the helper's safety reset may have set Auto.
+    static var savedPreset: FanPreset {
+        FanPreset(rawValue: UserDefaults.standard.string(forKey: savedPresetKey) ?? "") ?? .auto
+    }
+    @ObservationIgnored private var wakeObserver: NSObjectProtocol?
+
     private convenience init() {
         self.init(readSnapshot: FanCommand.read)
         Self.current = self
         FanCommand.setManualLostHandler { reason in
             Task { @MainActor in FanControlService.shared.manualControlLost(reason) }
         }
+        wakeObserver = NSWorkspace.shared.notificationCenter.addObserver(
+            forName: NSWorkspace.didWakeNotification, object: nil, queue: .main) { _ in
+                Task { @MainActor in
+                    try? await Task.sleep(for: .seconds(3))
+                    await FanControlService.shared.restoreSavedPreset(afterWake: true)
+                }
+            }
+    }
+
+    /// Applies the saved Cool or Max with no prompt. A missing or outdated helper leaves Auto and shows the bell item.
+    func restoreSavedPreset(afterWake: Bool = false) async {
+        let saved = Self.savedPreset
+        guard saved != .auto, !isRestoringOnExit, !isChanging else { return }
+        let owner = "saved-preset"
+        start(owner: owner)
+        defer { stop(owner: owner) }
+        if !afterWake {
+            selectedPreset = saved
+            hasPendingManualCommand = true
+        }
+        await FanHelperService.shared.refresh()
+        guard FanHelperService.shared.isEnabled else {
+            hasPendingManualCommand = false
+            await refresh()
+            LogManager.shared.warning("Fan: saved \(saved.rawValue) not applied; the fan helper is not ready.", source: "Fan")
+            return
+        }
+        if afterWake {
+            await refresh()
+            guard FanControlPresentation.reportedPreset(snapshot, selectedPreset: nil) == .auto else { return }
+        }
+        send(saved)
+        while isChanging { try? await Task.sleep(for: .milliseconds(100)) }
+        LogManager.shared.info("Fan: saved \(saved.rawValue) applied again\(afterWake ? " after wake" : "").", source: "Fan")
     }
 
     private func manualControlLost(_ reason: String) {
@@ -376,7 +418,7 @@ final class FanControlService {
         } else {
             snapshot = nil
         }
-        if !ownsManualControl { selectedPreset = snapshot?.detectedPreset }
+        if !ownsManualControl, !hasPendingManualCommand { selectedPreset = snapshot?.detectedPreset }
     }
 
     func select(_ preset: FanPreset) {
@@ -384,6 +426,7 @@ final class FanControlService {
         guard FanControlPresentation.canSelect(preset, canControl: canControl,
                                               canRestoreAutomatic: canRestoreAutomatic, isChanging: isChanging) else { return }
         lastRequested = preset
+        if !AppRuntime.isRunningTests { UserDefaults.standard.set(preset.rawValue, forKey: Self.savedPresetKey) }
         let helper = FanHelperService.shared
         guard !helper.isEnabled else { send(preset); return }
         // Auto while macOS already runs the fans needs no helper, so it never asks for a password.

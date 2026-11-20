@@ -89,6 +89,7 @@ final class AppInitializer {
         SettingsSyncManager.shared.startIfEnabled()
         await FanHelperService.retireLegacyRegistrations()
         guard !Task.isCancelled else { return }
+        Task { await FanControlService.shared.restoreSavedPreset() }
         await LocalChangeHistory.shared.restore()
         guard !Task.isCancelled else { return }
         let hasContinuousJobs = await RcloneJobManager.hasPersistedContinuousJobs()
