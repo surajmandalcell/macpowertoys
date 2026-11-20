@@ -34,7 +34,7 @@
     </div>
     <p class="fine">Version 2.0.0 for macOS 26.2 or later. Open source under MIT.</p>
   </div>
-  <div class="desk v hero-desk" style="--wall:url(assets/wall/sky.webp)">
+  <div class="desk v hero-desk" style="--wall:url(assets/wall/ring.webp)">
     <div class="desk-in">
       <div class="scr">
         <div class="bar" aria-hidden="true"><span class="apps"><img src="assets/menubar/apple.png" width="12" height="15" alt=""><b>Finder</b><span>File</span><span>Edit</span><span>View</span><span>Go</span><span>Window</span><span>Help</span></span><span class="mbi"><img src="assets/menubar/menubar-white@1x.png" srcset="assets/menubar/menubar-white@2x.png 2x, assets/menubar/menubar-white@4x.png 4x" width="16" height="16" alt=""></span><img src="assets/menubar/battery.png" width="24" height="11" alt=""><img src="assets/menubar/wifi.png" width="17" height="13" alt=""><img class="opt" src="assets/menubar/search.png" width="15" height="15" alt=""><img class="opt" src="assets/menubar/control.png" width="17" height="15" alt=""><span class="clock"><span class="d">Fri Nov 20</span>&ensp;<span class="t">9:41 AM</span></span></div>
@@ -47,24 +47,42 @@
 <section class="sec" id="fan">
   <div class="head">
     <div class="head-txt">
+      <picture class="rv"><source media="(prefers-color-scheme: dark)" srcset="assets/icons/fan-dark.svg"><img class="ticon" src="assets/icons/fan.svg" alt="" width="52" height="52"></picture>
       <h2 class="rv">Fan curves that stay <span class="nw">quiet.<a class="anchor" href="#fan" aria-label="Copy a link to Fan"><svg><use href="#i-link"/></svg></a></span></h2>
-      <p class="rv">Pick Auto, Cool, or Max right from the panel. In Cool you draw the curve yourself: how fast the fans spin at each CPU temperature. Above 90 °C they ramp to full speed by 95 °C, whatever you drew.</p>
+      <p class="rv">Pick Auto, Cool, or Max right from the panel. Draw your own Cool curve: how fast the fans spin at each CPU temperature, and the panel calls it Custom. Above 90 °C the fans ramp to full speed by 95 °C, whatever you drew.</p>
     </div>
-    <div class="try rv">
+    <div class="try rv" data-fan>
+      <div class="fan-now">
+        <svg class="blades" viewBox="0 0 16 16" aria-hidden="true"><g fill="none" stroke="currentColor" stroke-width="1.2" stroke-linejoin="round"><path id="blade" d="M8 8C7.2 6.4 7.2 3.6 9.1 2.5 10.9 1.5 13.1 2.9 12.5 5 12 6.7 9.9 7.7 8 8Z"/><use href="#blade" transform="rotate(120 8 8)"/><use href="#blade" transform="rotate(240 8 8)"/></g><circle cx="8" cy="8" r="1.3" fill="currentColor"/></svg>
+        <p><b id="fan-rpm">2,140</b> RPM</p>
+        <p class="heat-word"><span id="fan-temp">62</span> °C · <span id="fan-word">warm</span></p>
+      </div>
+      <svg class="curve" viewBox="0 0 320 132" aria-hidden="true">
+        <path class="grid" d="M0 120.5H320M0 64.5H320M0 8.5H320"/>
+        <path class="safe" d="M274.3 120V8H320V120Z"/>
+        <path class="safe-edge" d="M274.3 120L297.1 8"/>
+        <path class="area" id="fan-area"/>
+        <path class="line" id="fan-line"/>
+        <line class="guide" id="fan-guide" y2="120"/>
+        <circle class="dot" id="fan-dot" r="6"/>
+      </svg>
       <label for="heat">Drag the CPU temperature</label>
-      <input id="heat" type="range" min="30" max="100" step="1" value="62">
-      <output for="heat" id="heat-out">At 62 °C the fans stay at their slowest.</output>
-      <div class="meter" aria-hidden="true"><span id="heat-bar"></span></div>
-      <p class="note">This uses the standard Cool curve from the app.</p>
+      <div class="therm">
+        <span class="bulb" aria-hidden="true"></span>
+        <span class="tube" aria-hidden="true"><span class="fill"><i></i></span></span>
+        <input id="heat" type="range" min="30" max="100" step="1" value="62">
+      </div>
+      <p class="ticks" aria-hidden="true"><span>30 °C</span><span>56</span><span>70</span><span>85</span><span>95</span></p>
+      <p class="note">The same curve as the Fan page below, at 1,200 to 4,840 RPM.</p>
     </div>
   </div>
   <div class="desk v fan-desk" style="--wall:url(assets/wall/maze.webp)">
     <div class="desk-in">
       <div class="scr">
         <div class="bar" aria-hidden="true"><span class="apps"><img src="assets/menubar/apple.png" width="12" height="15" alt=""><b>MacPowerToys</b><span>Edit</span><span>View</span><span>Window</span><span>Help</span></span><span class="mbi"><img src="assets/menubar/menubar-white@1x.png" srcset="assets/menubar/menubar-white@2x.png 2x, assets/menubar/menubar-white@4x.png 4x" width="16" height="16" alt=""></span><img src="assets/menubar/battery.png" width="24" height="11" alt=""><img src="assets/menubar/wifi.png" width="17" height="13" alt=""><img class="opt" src="assets/menubar/search.png" width="15" height="15" alt=""><img class="opt" src="assets/menubar/control.png" width="17" height="15" alt=""><span class="clock"><span class="d">Fri Nov 20</span>&ensp;<span class="t">9:41 AM</span></span></div>
-        <picture data-ui class="dwin"><source media="(prefers-color-scheme: dark)" srcset="assets/shots/main-fan-dark.webp"><img src="assets/shots/main-fan-light.webp" width="820" height="660" loading="lazy" alt="The Fan page with the Cool curve and the safety zone from 90 to 95 °C"></picture>
+        <picture data-ui class="dwin"><source media="(prefers-color-scheme: dark)" srcset="assets/shots/main-fan-dark.webp"><img src="assets/shots/main-fan-light.webp" width="820" height="660" loading="lazy" alt="The Fan page with a drawn Cool curve, the safety zone from 90 to 95 °C, and the CPU at 62 °C and 2,140 RPM"></picture>
       </div>
-      <picture data-ui class="panel"><source media="(prefers-color-scheme: dark)" srcset="assets/shots/fan-row-dark.webp"><img src="assets/shots/fan-row-light.webp" width="356" height="80" loading="lazy" alt="The Fan row in the panel: 2,140 RPM, the thermometer, and Auto, Cool, Max"></picture>
+      <picture data-ui class="panel"><source media="(prefers-color-scheme: dark)" srcset="assets/shots/panel-home-dark.webp"><img src="assets/shots/panel-home-light.webp" width="356" height="642" loading="lazy" alt="The panel with the Fan row set to Custom at 2,140 RPM"></picture>
     </div>
   </div>
 </section>
@@ -101,7 +119,7 @@
     <h2 class="rv">RSync UI keeps copies <span class="nw">going.<a class="anchor" href="#rsync" aria-label="Copy a link to RSync UI"><svg><use href="#i-link"/></svg></a></span></h2>
     <p class="rv">Copy, move, or sync files to Google Drive, B2, S3, and 70 more services through rclone. Pause, resume, or retry a copy right from the menu bar while you keep working.</p>
   </div>
-  <div class="desk rsync-desk" style="--wall:url(assets/wall/ring.webp)">
+  <div class="desk rsync-desk" style="--wall:url(assets/wall/sky.webp)">
     <div class="desk-in">
       <div class="scr"><div class="bar" aria-hidden="true"><span class="apps"><img src="assets/menubar/apple.png" width="12" height="15" alt=""><b>MacPowerToys</b><span>Edit</span><span>View</span><span>Window</span><span>Help</span></span><span class="mbi"><img src="assets/menubar/menubar-white@1x.png" srcset="assets/menubar/menubar-white@2x.png 2x, assets/menubar/menubar-white@4x.png 4x" width="16" height="16" alt=""></span><img src="assets/menubar/battery.png" width="24" height="11" alt=""><img src="assets/menubar/wifi.png" width="17" height="13" alt=""><img class="opt" src="assets/menubar/search.png" width="15" height="15" alt=""><img class="opt" src="assets/menubar/control.png" width="17" height="15" alt=""><span class="clock"><span class="d">Fri Nov 20</span>&ensp;<span class="t">9:41 AM</span></span></div></div>
       <picture data-ui class="panel"><source media="(prefers-color-scheme: dark)" srcset="assets/shots/panel-rclone-dark.webp"><img src="assets/shots/panel-rclone-light.webp" width="356" height="632" loading="lazy" alt="RSync UI panel with running, paused, failed, and finished copies"></picture>
