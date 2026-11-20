@@ -3,153 +3,189 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title>MacPowerToys: your menu bar, doing more</title>
-<meta name="description" content="Free, open-source macOS menu bar tools: system stats, fan curves, dev server ports, cloud copies, scroll settings, and hidden Mac settings.">
+<meta name="color-scheme" content="light dark">
+<title>MacPowerToys: free menu bar tools for the Mac</title>
+<meta name="description" content="Free, open-source macOS menu bar tools: system stats, fan curves, dev server ports, cloud copies, scroll settings per device, and hidden Mac settings.">
 <link rel="icon" href="assets/icons/appicon.svg" type="image/svg+xml">
 <link rel="stylesheet" href="site.css">
-<script src="site.js"></script>
+<script>document.documentElement.classList.add('js')</script>
+<script src="site.js" defer></script>
 </head>
 <body>
 <svg width="0" height="0" style="position:absolute" aria-hidden="true">
-  <symbol id="i-link" viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"><path d="M8.5 11.5a3.5 3.5 0 0 0 5 0l2.5-2.5a3.5 3.5 0 0 0-5-5l-1 1"/><path d="M11.5 8.5a3.5 3.5 0 0 0-5 0L4 11a3.5 3.5 0 0 0 5 5l1-1"/></symbol>
-  <symbol id="i-copy" viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.5"><rect x="7" y="7" width="10" height="10" rx="2.2"/><path d="M13 4.5V4.2A1.7 1.7 0 0 0 11.3 2.5H4.7A1.7 1.7 0 0 0 3 4.2v6.6a1.7 1.7 0 0 0 1.7 1.7H5"/></symbol>
+  <symbol id="i-link" viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round"><path d="M8.5 11.5a3.5 3.5 0 0 0 5 0l2.5-2.5a3.5 3.5 0 0 0-5-5l-1 1"/><path d="M11.5 8.5a3.5 3.5 0 0 0-5 0L4 11a3.5 3.5 0 0 0 5 5l1-1"/></symbol>
+  <symbol id="i-copy" viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.6"><rect x="7" y="7" width="10" height="10" rx="2.2"/><path d="M13 4.5V4.2A1.7 1.7 0 0 0 11.3 2.5H4.7A1.7 1.7 0 0 0 3 4.2v6.6a1.7 1.7 0 0 0 1.7 1.7H5"/></symbol>
   <symbol id="i-ok" viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4.5 10.5l3.5 3.5 7.5-8"/></symbol>
+  <symbol id="i-apple" viewBox="0 0 16 16" fill="currentColor"><path d="M11 8.6c0-1.6 1.3-2.3 1.3-2.4-.7-1-1.8-1.2-2.2-1.2-.9-.1-1.8.6-2.3.6s-1.2-.5-2-.5c-1 0-2 .6-2.5 1.5-1.1 1.9-.3 4.6.8 6.1.5.7 1.1 1.6 1.9 1.5.8 0 1.1-.5 2-.5s1.2.5 2 .5 1.3-.8 1.8-1.5c.6-.8.8-1.6.8-1.7 0 0-1.6-.6-1.6-2.4zM9.6 3.9c.4-.5.7-1.2.6-1.9-.6 0-1.3.4-1.8.9-.4.4-.7 1.2-.6 1.8.7.1 1.4-.3 1.8-.8z"/></symbol>
+  <symbol id="i-grid" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.4"><rect x="2" y="2" width="5" height="5" rx="1.2"/><rect x="9" y="2" width="5" height="5" rx="1.2"/><rect x="2" y="9" width="5" height="5" rx="1.2"/><rect x="9" y="9" width="5" height="5" rx="1.2"/></symbol>
+  <symbol id="i-wifi" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"><path d="M2 6.5a9 9 0 0 1 12 0M4.3 9a5.6 5.6 0 0 1 7.4 0"/><circle cx="8" cy="11.8" r="1" fill="currentColor" stroke="none"/></symbol>
+  <symbol id="i-batt" viewBox="0 0 22 12" fill="none" stroke="currentColor" stroke-width="1.2"><rect x="1" y="1.5" width="17" height="9" rx="2.5"/><rect x="3" y="3.5" width="10" height="5" rx="1" fill="currentColor" stroke="none"/><path d="M20 4.5v3" stroke-linecap="round"/></symbol>
 </svg>
-<section class="desk" id="top">
-  <div class="wall"></div><div class="shade"></div>
-  <nav class="mb"><svg class="ico" viewBox="0 0 16 16" fill="currentColor" aria-hidden="true"><path d="M11 8.6c0-1.6 1.3-2.3 1.3-2.4-.7-1-1.8-1.2-2.2-1.2-.9-.1-1.8.6-2.3.6s-1.2-.5-2-.5c-1 0-2 .6-2.5 1.5-1.1 1.9-.3 4.6.8 6.1.5.7 1.1 1.6 1.9 1.5.8 0 1.1-.5 2-.5s1.2.5 2 .5 1.3-.8 1.8-1.5c.6-.8.8-1.6.8-1.7 0 0-1.6-.6-1.6-2.4zM9.6 3.9c.4-.5.7-1.2.6-1.9-.6 0-1.3.4-1.8.9-.4.4-.7 1.2-.6 1.8.7.1 1.4-.3 1.8-.8z"/></svg><b>MacPowerToys</b><a class="hide" href="#tools">Tools</a><a class="hide" href="#install">Install</a><a class="hide" href="https://github.com/surajmandalcell/macpowertoys">GitHub</a><span class="sp"></span><span class="on"><svg class="ico" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.4" aria-hidden="true"><rect x="2" y="2" width="5" height="5" rx="1.2"/><rect x="9" y="2" width="5" height="5" rx="1.2"/><rect x="2" y="9" width="5" height="5" rx="1.2"/><rect x="9" y="9" width="5" height="5" rx="1.2"/></svg></span><span class="clock"></span></nav>
-  <div class="body">
-    <div>
-      <h1 class="h1">Your menu bar,<br>doing more.</h1>
-      <p class="lead">System stats, fan curves, dev server ports, cloud copies, and scroll settings. One native panel, one click away. Free and open source.</p>
-      <div class="actions"><a class="btn" href="https://github.com/surajmandalcell/macpowertoys/releases/latest/download/MacPowerToys.dmg">Download for Mac</a></div>
+
+<header class="nav">
+  <a class="mark" href="#top"><img src="assets/icons/appicon.svg" alt="" width="28" height="28">MacPowerToys</a>
+  <nav aria-label="Main"><a href="#fan">Features</a><a href="#tools">Tools</a><a href="#install">Install</a><a href="https://github.com/surajmandalcell/macpowertoys">GitHub</a></nav>
+</header>
+
+<main>
+<section class="hero" id="top">
+  <div class="hero-copy">
+    <h1>Your menu bar, doing more.</h1>
+    <p class="lead">Nine free tools in one native panel: system stats, fan curves, dev server ports, cloud copies, and scroll settings for each mouse.</p>
+    <div class="get">
+      <a class="btn" href="https://github.com/surajmandalcell/macpowertoys/releases/latest/download/MacPowerToys.dmg">Download for Mac</a>
       <div class="cmd"><code>brew install --cask samhqapp/tap/macpowertoys</code><button type="button" aria-label="Copy the install command" data-copy="brew install --cask samhqapp/tap/macpowertoys"><svg class="cp"><use href="#i-copy"/></svg><svg class="ok"><use href="#i-ok"/></svg></button></div>
     </div>
-    <div class="drop"><img class="panelshot" src="assets/shots/panel-home-dark.webp" width="356" height="642" alt="The MacPowerToys menu bar panel with CPU, GPU, memory, disk, battery, network, fan, and top apps"></div>
+    <p class="fine">Version 2.0.0 for macOS 26.2 or later. Open source under MIT.</p>
+  </div>
+  <div class="screen hero-screen" aria-label="A Mac desktop with the MacPowerToys panel open">
+    <div class="mb" aria-hidden="true"><svg class="g"><use href="#i-apple"/></svg><b>Finder</b><span class="menus">File&ensp;Edit&ensp;View&ensp;Go&ensp;Window</span><i></i><svg class="g"><use href="#i-wifi"/></svg><svg class="g batt"><use href="#i-batt"/></svg><span class="lit"><svg class="g"><use href="#i-grid"/></svg></span><span class="clock">Fri Nov 20&ensp;9:41 AM</span></div>
+    <picture data-ui class="win hero-win"><source media="(prefers-color-scheme: dark)" srcset="assets/shots/mac-tweaks-dark.webp"><img src="assets/shots/mac-tweaks-light.webp" width="820" height="660" alt="The MacPowerToys window open on Mac Tweaks"></picture>
+    <picture data-ui class="drop hero-drop"><source media="(prefers-color-scheme: dark)" srcset="assets/shots/panel-home-dark.webp"><img src="assets/shots/panel-home-light.webp" width="356" height="642" alt="The MacPowerToys panel: CPU, GPU, memory, disk, battery, network, fan, and the busiest apps"></picture>
   </div>
 </section>
 
-<div class="wrap">
-  <nav class="jump" aria-label="Features"><span>Jump to</span><a href="#fan">Fan</a><a href="#portman">Portman</a><a href="#rsync">RSync UI</a><a href="#input-devices">Input Devices</a><a href="#mac-tweaks">Mac Tweaks</a><a href="#color-picker">Color Picker</a><a href="#text-extractor">Text Extractor</a><a href="#awake">Awake</a><a href="#event-viewer">Event Viewer</a><a href="#install">Install</a></nav>
+<section class="sec split" id="fan">
+  <div class="txt">
+    <h2 class="rv">Fan curves that stay <span class="nw">quiet.<a class="anchor" href="#fan" aria-label="Copy a link to Fan"><svg><use href="#i-link"/></svg></a></span></h2>
+    <p class="rv">Pick Auto, Cool, or Max right from the panel. In Cool you draw the curve yourself: how fast the fans spin at each CPU temperature. Above 90 °C they ramp to full speed by 95 °C, whatever you drew.</p>
+    <div class="try rv">
+      <label for="heat">Drag the CPU temperature</label>
+      <input id="heat" type="range" min="30" max="100" step="1" value="62">
+      <output for="heat" id="heat-out">At 62 °C the fans stay at their slowest.</output>
+      <div class="meter" aria-hidden="true"><span id="heat-bar"></span></div>
+      <p class="note">This uses the standard Cool curve from the app.</p>
+    </div>
+  </div>
+  <div class="screen rv">
+    <div class="mb" aria-hidden="true"><svg class="g"><use href="#i-apple"/></svg><b>MacPowerToys</b><i></i><span class="lit"><svg class="g"><use href="#i-grid"/></svg></span><span class="clock">9:41 AM</span></div>
+    <picture data-ui class="win fan-win"><source media="(prefers-color-scheme: dark)" srcset="assets/shots/main-fan-dark.webp"><img src="assets/shots/main-fan-light.webp" width="820" height="660" loading="lazy" alt="The Fan page with the Cool curve and the safety zone from 90 to 95 °C"></picture>
+    <picture data-ui class="drop fan-drop"><source media="(prefers-color-scheme: dark)" srcset="assets/shots/fan-row-dark.webp"><img src="assets/shots/fan-row-light.webp" width="356" height="80" loading="lazy" alt="The Fan row in the panel: 2,140 RPM, the thermometer, and Auto, Cool, Max"></picture>
+  </div>
+</section>
 
-  <section class="split" id="fan">
-    <div class="txt rv">
-      <p class="kicker">Fan<a class="anchor" href="#fan" aria-label="Copy a link to Fan"><svg><use href="#i-link"/></svg></a></p>
-      <h2 class="h2">Quiet when cool.<br>Loud only when hot.</h2>
-      <p>Pick Auto, Cool, or Max right in the panel. The thermometer shows the CPU heat. For Cool, draw your own curve: fan speed for each temperature.</p>
-      <div class="group"><div class="kv"><span>Presets</span><span>Auto · Cool · Max</span></div><div class="kv"><span>Curve</span><span>Drag, double-click, or right-click points</span></div><div class="kv"><span>Safety</span><span>Full speed by 95 °C, whatever the curve</span></div><div class="kv"><span>Setup</span><span>Approve a small helper once</span></div></div>
+<section class="sec walk" id="portman">
+  <div class="walk-head">
+    <h2 class="rv">Portman finds every dev <span class="nw">server.<a class="anchor" href="#portman" aria-label="Copy a link to Portman"><svg><use href="#i-link"/></svg></a></span></h2>
+    <p class="rv">It watches the ports your projects open, shows what each server uses, and brings ports from your SSH hosts to this Mac. Four steps from install to a forwarded port.</p>
+  </div>
+  <div class="walk-body rv" data-walk>
+    <div class="walk-text">
+      <div class="stage-text" data-stage="0"><h3>Turn it on.</h3><p>Open MacPowerToys, pick Portman, and switch it on. Choose the port range it watches, then open it any time with ⌥⌘P.</p></div>
+      <div class="stage-text" data-stage="1" hidden><h3>See every server.</h3><p>Each server shows its project, git branch, uptime, and memory. The ring at the top adds them all up.</p></div>
+      <div class="stage-text" data-stage="2" hidden><h3>Open one to check it.</h3><p>Live memory and CPU graphs. Restart or stop it, open the folder in your editor, or copy its URL.</p></div>
+      <div class="stage-text" data-stage="3" hidden><h3>Forward a port over SSH.</h3><p>Pick a host from your SSH config, scan it, and add a port. The remote server opens here as localhost.</p></div>
     </div>
-    <div class="win rv">
-      <img class="shot tl" src="assets/shots/main-fan-light.webp" width="820" height="660" loading="lazy" alt="The Fan page with the Cool curve editor, Light"><img class="shot td" src="assets/shots/main-fan-dark.webp" width="820" height="660" loading="lazy" alt="The Fan page with the Cool curve editor, Dark">
-      <div class="fanrow"><img class="panelshot tl" src="assets/shots/fan-row-light.webp" width="356" height="80" loading="lazy" alt="The Fan row in the panel: 2,140 RPM, thermometer, Auto, Cool, Max"><img class="panelshot td" src="assets/shots/fan-row-dark.webp" width="356" height="80" loading="lazy" alt="The Fan row in the panel, Dark"></div>
+    <div class="screen walk-screen">
+      <div class="mb" aria-hidden="true"><svg class="g"><use href="#i-apple"/></svg><b>MacPowerToys</b><i></i><span class="lit"><svg class="g"><use href="#i-grid"/></svg></span><span class="clock">9:41 AM</span></div>
+      <picture data-ui class="win walk-win" data-stage="0"><source media="(prefers-color-scheme: dark)" srcset="assets/shots/main-portman-dark.webp"><img src="assets/shots/main-portman-light.webp" width="820" height="660" loading="lazy" alt="Portman settings: ports watched, scan interval, clean up"></picture>
+      <picture data-ui class="drop walk-drop" data-stage="1" hidden><source media="(prefers-color-scheme: dark)" srcset="assets/shots/panel-portman-servers-dark.webp"><img src="assets/shots/panel-portman-servers-light.webp" width="356" height="457" loading="lazy" alt="Portman list of four dev servers with memory use"></picture>
+      <picture data-ui class="drop walk-drop" data-stage="2" hidden><source media="(prefers-color-scheme: dark)" srcset="assets/shots/panel-portman-detail-dark.webp"><img src="assets/shots/panel-portman-detail-light.webp" width="356" height="388" loading="lazy" alt="One Portman server with memory and CPU graphs"></picture>
+      <picture data-ui class="drop walk-drop" data-stage="3" hidden><source media="(prefers-color-scheme: dark)" srcset="assets/shots/panel-portman-forward-dark.webp"><img src="assets/shots/panel-portman-forward-light.webp" width="356" height="286" loading="lazy" alt="Portman SSH forwarding with two active ports"></picture>
     </div>
-  </section>
+    <div class="walk-ctl">
+      <input type="range" min="0" max="3" step="1" value="0" aria-label="Portman setup step" aria-valuetext="Turn it on">
+      <div class="walk-names"><button type="button" data-go="0" aria-current="step">Turn it on</button><button type="button" data-go="1">See servers</button><button type="button" data-go="2">Check one</button><button type="button" data-go="3">Forward a port</button></div>
+    </div>
+  </div>
+</section>
 
-  <section class="walk" id="portman">
-    <div class="rv">
-      <p class="kicker"><img src="assets/icons/portman.png" alt="">Portman<a class="anchor" href="#portman" aria-label="Copy a link to Portman"><svg><use href="#i-link"/></svg></a></p>
-      <h2 class="h2">Every dev server, found.<br>Every remote port, one click.</h2>
-      <p class="lead">Portman watches the ports your dev servers open, shows what each one uses, and forwards ports from your SSH hosts. Here is how to set it up.</p>
-    </div>
-    <div class="split rev">
-      <div class="win rv"><img class="shot tl" src="assets/shots/main-portman-light.webp" width="820" height="660" loading="lazy" alt="Portman settings, Light"><img class="shot td" src="assets/shots/main-portman-dark.webp" width="820" height="660" loading="lazy" alt="Portman settings, Dark"></div>
-      <div class="txt rv">
-        <span class="num">1</span>
-        <h3 class="h3">Turn it on.</h3>
-        <p>Open MacPowerToys, pick Portman, and switch it on. Set the ports it watches, then open it any time with ⌥⌘P.</p>
-        <div class="group"><div class="kv"><span>Ports watched</span><span>3000 to 9999</span></div><div class="kv"><span>Scan</span><span>Every 2 seconds</span></div><div class="kv"><span>Clean up</span><span>Off · Ask · Auto</span></div></div>
-      </div>
-    </div>
-    <div class="steps">
-      <div class="step rv"><span class="num">2</span><h3 class="h3">See every server.</h3><p>Each server shows its project, git branch, uptime, and memory. The ring adds them all up.</p>
-        <div class="win"><div class="narrow"><img class="panelshot tl" src="assets/shots/panel-portman-servers-light.webp" width="356" height="457" loading="lazy" alt="Portman servers list, Light"><img class="panelshot td" src="assets/shots/panel-portman-servers-dark.webp" width="356" height="457" loading="lazy" alt="Portman servers list, Dark"></div></div></div>
-      <div class="step rv"><span class="num">3</span><h3 class="h3">Open one to check it.</h3><p>Live memory and CPU graphs. Restart or stop it, open it in your editor, or copy its URL.</p>
-        <div class="win"><div class="narrow"><img class="panelshot tl" src="assets/shots/panel-portman-detail-light.webp" width="356" height="388" loading="lazy" alt="One Portman server with memory and CPU graphs, Light"><img class="panelshot td" src="assets/shots/panel-portman-detail-dark.webp" width="356" height="388" loading="lazy" alt="One Portman server with memory and CPU graphs, Dark"></div></div></div>
-      <div class="step rv"><span class="num">4</span><h3 class="h3">Forward a port over SSH.</h3><p>Pick a host from your SSH config, scan it, and add a port. It opens here as localhost.</p>
-        <div class="win"><div class="narrow"><img class="panelshot tl" src="assets/shots/panel-portman-forward-light.webp" width="356" height="286" loading="lazy" alt="Portman SSH forwarding with two active ports, Light"><img class="panelshot td" src="assets/shots/panel-portman-forward-dark.webp" width="356" height="286" loading="lazy" alt="Portman SSH forwarding with two active ports, Dark"></div></div></div>
-    </div>
-  </section>
+<section class="sec field split" id="rsync">
+  <div class="txt">
+    <img class="ticon rv" src="assets/icons/rsync.svg" alt="" width="52" height="52">
+    <h2 class="rv">RSync UI keeps copies <span class="nw">going.<a class="anchor" href="#rsync" aria-label="Copy a link to RSync UI"><svg><use href="#i-link"/></svg></a></span></h2>
+    <p class="rv">Copy, move, or sync files to Google Drive, B2, S3, and 70 more services through rclone. Pause, resume, or retry a copy right from the menu bar while you keep working.</p>
+  </div>
+  <div class="screen bare rv">
+    <div class="mb" aria-hidden="true"><svg class="g"><use href="#i-apple"/></svg><b>MacPowerToys</b><i></i><span class="lit"><svg class="g"><use href="#i-grid"/></svg></span><span class="clock">9:41 AM</span></div>
+    <picture data-ui class="drop rsync-drop"><source media="(prefers-color-scheme: dark)" srcset="assets/shots/panel-rclone-dark.webp"><img src="assets/shots/panel-rclone-light.webp" width="356" height="632" loading="lazy" alt="RSync UI panel with running, paused, failed, and finished copies"></picture>
+  </div>
+</section>
 
-  <section class="split" id="rsync">
-    <div class="txt rv">
-      <p class="kicker"><img src="assets/icons/rsync.svg" alt="">RSync UI<a class="anchor" href="#rsync" aria-label="Copy a link to RSync UI"><svg><use href="#i-link"/></svg></a></p>
-      <h2 class="h2">Copies keep going<br>while you work.</h2>
-      <p>Send files to Google Drive, B2, S3, and 70 more through rclone. Pause, resume, or retry a copy right from the menu bar.</p>
-      <div class="group"><div class="kv"><span>Jobs</span><span>Copy · Move · Sync</span></div><div class="kv"><span>Engine</span><span>rclone, on your Mac</span></div></div>
-    </div>
-    <div class="win rv"><div class="narrow"><img class="panelshot tl" src="assets/shots/panel-rclone-light.webp" width="356" height="632" loading="lazy" alt="RSync UI panel with running, paused, failed, and finished copies, Light"><img class="panelshot td" src="assets/shots/panel-rclone-dark.webp" width="356" height="632" loading="lazy" alt="RSync UI panel, Dark"></div></div>
-  </section>
+<section class="sec split rev" id="input-devices">
+  <div class="screen rv">
+    <div class="mb" aria-hidden="true"><svg class="g"><use href="#i-apple"/></svg><b>MacPowerToys</b><i></i><span class="lit"><svg class="g"><use href="#i-grid"/></svg></span><span class="clock">9:41 AM</span></div>
+    <picture data-ui class="drop input-drop"><source media="(prefers-color-scheme: dark)" srcset="assets/shots/panel-input-devices-dark.webp"><img src="assets/shots/panel-input-devices-light.webp" width="356" height="472" loading="lazy" alt="Input Devices panel with a scroll profile for one mouse"></picture>
+  </div>
+  <div class="txt">
+    <img class="ticon rv" src="assets/icons/input.png" alt="" width="52" height="52">
+    <h2 class="rv">Scroll each mouse its own <span class="nw">way.<a class="anchor" href="#input-devices" aria-label="Copy a link to Input Devices"><svg><use href="#i-link"/></svg></a></span></h2>
+    <p class="rv">macOS uses one scroll direction for everything. Input Devices gives each mouse and trackpad its own direction, speed, and smoothing, and Shift scrolls sideways.</p>
+  </div>
+</section>
 
-  <section class="split rev" id="input-devices">
-    <div class="win rv"><div class="narrow"><img class="panelshot tl" src="assets/shots/panel-input-devices-light.webp" width="356" height="472" loading="lazy" alt="Input Devices panel with a mouse scroll profile, Light"><img class="panelshot td" src="assets/shots/panel-input-devices-dark.webp" width="356" height="472" loading="lazy" alt="Input Devices panel, Dark"></div></div>
-    <div class="txt rv">
-      <p class="kicker"><img src="assets/icons/input.png" alt="">Input Devices<a class="anchor" href="#input-devices" aria-label="Copy a link to Input Devices"><svg><use href="#i-link"/></svg></a></p>
-      <h2 class="h2">Mouse one way.<br>Trackpad the other.</h2>
-      <p>macOS uses one scroll direction for everything. Here each mouse and trackpad gets its own scroll profile.</p>
-      <div class="group"><div class="kv"><span>Per device</span><span>Direction · Speed · Smoothing</span></div><div class="kv"><span>Extras</span><span>Shift scrolls sideways</span></div></div>
+<section class="sec wide" id="mac-tweaks">
+  <div class="wide-head">
+    <div>
+      <img class="ticon rv" src="assets/icons/tweaks.png" alt="" width="52" height="52">
+      <h2 class="rv">Mac Tweaks opens hidden <span class="nw">settings.<a class="anchor" href="#mac-tweaks" aria-label="Copy a link to Mac Tweaks"><svg><use href="#i-link"/></svg></a></span></h2>
     </div>
-  </section>
+    <p class="rv">Change what System Settings has no switch for, such as the Dock reveal delay or the screenshot format. Every row has a Default choice, and Modified lists what you changed.</p>
+  </div>
+  <div class="screen wide-screen rv">
+    <div class="mb" aria-hidden="true"><svg class="g"><use href="#i-apple"/></svg><b>MacPowerToys</b><span class="menus">File&ensp;Edit&ensp;View&ensp;Window</span><i></i><span class="lit"><svg class="g"><use href="#i-grid"/></svg></span><span class="clock">9:41 AM</span></div>
+    <picture data-ui class="win tweaks-win"><source media="(prefers-color-scheme: dark)" srcset="assets/shots/mac-tweaks-dark.webp"><img src="assets/shots/mac-tweaks-light.webp" width="820" height="660" loading="lazy" alt="Mac Tweaks on the Dock page"></picture>
+  </div>
+</section>
 
-  <section class="split" id="mac-tweaks">
-    <div class="txt rv">
-      <p class="kicker"><img src="assets/icons/tweaks.png" alt="">Mac Tweaks<a class="anchor" href="#mac-tweaks" aria-label="Copy a link to Mac Tweaks"><svg><use href="#i-link"/></svg></a></p>
-      <h2 class="h2">Hidden macOS settings,<br>with a reset.</h2>
-      <p>Change settings that have no switch in System Settings, such as the Dock reveal delay. Every row has a Default choice.</p>
-      <div class="group"><div class="kv"><span>Areas</span><span>Dock · Finder · Windows · Screenshots · Power</span></div><div class="kv"><span>Undo</span><span>Modified lists what you changed</span></div></div>
-    </div>
-    <div class="win rv"><img class="shot tl" src="assets/shots/mac-tweaks-light.webp" width="820" height="660" loading="lazy" alt="Mac Tweaks Dock settings, Light"><img class="shot td" src="assets/shots/mac-tweaks-dark.webp" width="820" height="660" loading="lazy" alt="Mac Tweaks Dock settings, Dark"></div>
-  </section>
+<section class="sec small" id="small-tools">
+  <div class="small-head">
+    <h2 class="rv">Four small tools.</h2>
+    <p class="rv">Each one opens from the panel or with its own shortcut, and quits its work when you close it.</p>
+  </div>
+  <div class="tiles">
+    <figure class="tile rv" id="color-picker">
+      <div class="tile-face t1"><picture data-ui><source media="(prefers-color-scheme: dark)" srcset="assets/shots/app-color-picker-dark.webp"><img src="assets/shots/app-color-picker-light.webp" width="420" height="362" loading="lazy" alt="Color Picker with six picked colors"></picture></div>
+      <figcaption><h3>Color Picker<a class="anchor" href="#color-picker" aria-label="Copy a link to Color Picker"><svg><use href="#i-link"/></svg></a></h3><p>Copy any pixel as HEX, RGB, HSL, SwiftUI, and five more.</p></figcaption>
+    </figure>
+    <figure class="tile two rv" id="event-viewer">
+      <div class="tile-face t2"><picture data-ui><source media="(prefers-color-scheme: dark)" srcset="assets/shots/logs-dark.webp"><img src="assets/shots/logs-light.webp" width="1080" height="660" loading="lazy" alt="Event Viewer with app activity filtered by level"></picture></div>
+      <figcaption><h3>Event Viewer<a class="anchor" href="#event-viewer" aria-label="Copy a link to Event Viewer"><svg><use href="#i-link"/></svg></a></h3><p>App activity and recent macOS errors, filtered by level and source.</p></figcaption>
+    </figure>
+    <figure class="tile two rv" id="text-extractor">
+      <div class="tile-face t3"><picture data-ui><source media="(prefers-color-scheme: dark)" srcset="assets/shots/app-text-extractor-dark.webp"><img src="assets/shots/app-text-extractor-light.webp" width="480" height="270" loading="lazy" alt="Text Extractor with recent captures"></picture></div>
+      <figcaption><h3>Text Extractor<a class="anchor" href="#text-extractor" aria-label="Copy a link to Text Extractor"><svg><use href="#i-link"/></svg></a></h3><p>Draw a box over an image, a video, or an error, and the text goes to your clipboard.</p></figcaption>
+    </figure>
+    <figure class="tile rv" id="awake">
+      <div class="tile-face t1"><picture data-ui><source media="(prefers-color-scheme: dark)" srcset="assets/shots/main-awake-dark.webp"><img src="assets/shots/main-awake-light.webp" width="820" height="660" loading="lazy" alt="Awake settings with timers"></picture></div>
+      <figcaption><h3>Awake<a class="anchor" href="#awake" aria-label="Copy a link to Awake"><svg><use href="#i-link"/></svg></a></h3><p>Keep the Mac awake for 30 minutes, until 6 PM, or until you say stop.</p></figcaption>
+    </figure>
+  </div>
+</section>
 
-  <section class="small" id="small-tools">
-    <h2 class="h2 rv">Small tools you will<br>reach for every day.</h2>
-    <div class="cards">
-      <div class="card rv" id="color-picker">
-        <p class="kicker"><img src="assets/icons/colorpicker.png" alt="">Color Picker<a class="anchor" href="#color-picker" aria-label="Copy a link to Color Picker"><svg><use href="#i-link"/></svg></a></p>
-        <h3 class="h3">Any pixel, nine formats.</h3>
-        <p>HEX, RGB, HSL, CSS variable, SwiftUI, and NSColor. Pin colors and keep them in projects.</p>
-        <div class="win"><img class="shot tl" src="assets/shots/app-color-picker-light.webp" width="420" height="362" loading="lazy" alt="Color Picker history, Light"><img class="shot td" src="assets/shots/app-color-picker-dark.webp" width="420" height="362" loading="lazy" alt="Color Picker history, Dark"></div>
-      </div>
-      <div class="card rv" id="text-extractor">
-        <p class="kicker"><img src="assets/icons/text.png" alt="">Text Extractor<a class="anchor" href="#text-extractor" aria-label="Copy a link to Text Extractor"><svg><use href="#i-link"/></svg></a></p>
-        <h3 class="h3">Copy text from anything.</h3>
-        <p>Draw a box over an image, a video, or an error dialog. The text goes to your clipboard.</p>
-        <div class="win"><img class="shot tl" src="assets/shots/app-text-extractor-light.webp" width="480" height="270" loading="lazy" alt="Text Extractor history, Light"><img class="shot td" src="assets/shots/app-text-extractor-dark.webp" width="480" height="270" loading="lazy" alt="Text Extractor history, Dark"></div>
-      </div>
-      <div class="card rv" id="awake">
-        <p class="kicker"><img src="assets/icons/awake.svg" alt="">Awake<a class="anchor" href="#awake" aria-label="Copy a link to Awake"><svg><use href="#i-link"/></svg></a></p>
-        <h3 class="h3">Stay awake on your terms.</h3>
-        <p>Keep the Mac awake for 30 minutes, until 6 PM, or forever. Or set it to sleep after a timer.</p>
-        <div class="win"><img class="shot tl" src="assets/shots/main-awake-light.webp" width="820" height="660" loading="lazy" alt="Awake settings, Light"><img class="shot td" src="assets/shots/main-awake-dark.webp" width="820" height="660" loading="lazy" alt="Awake settings, Dark"></div>
-      </div>
-      <div class="card rv" id="event-viewer">
-        <p class="kicker"><img src="assets/icons/events.png" alt="">Event Viewer<a class="anchor" href="#event-viewer" aria-label="Copy a link to Event Viewer"><svg><use href="#i-link"/></svg></a></p>
-        <h3 class="h3">See what went wrong.</h3>
-        <p>App activity and recent macOS errors, filtered by level and source. Copy or export them.</p>
-        <div class="win"><img class="shot tl" src="assets/shots/logs-light.webp" width="1080" height="660" loading="lazy" alt="Event Viewer internal logs, Light"><img class="shot td" src="assets/shots/logs-dark.webp" width="1080" height="660" loading="lazy" alt="Event Viewer internal logs, Dark"></div>
-      </div>
-    </div>
-  </section>
+<section class="sec list" id="tools">
+  <div class="list-head"><h2 class="rv">All nine <span class="nw">tools.<a class="anchor" href="#tools" aria-label="Copy a link to the tool list"><svg><use href="#i-link"/></svg></a></span></h2>
+  <p class="rv">All nine are free, open source, and live behind one menu bar icon.</p></div>
+  <ul class="rows rv">
+    <li><span class="row"><img src="assets/icons/ruler.svg" alt="" width="28" height="28"><b>Ruler</b><span>Measure anything on screen.</span></span></li>
+    <li><a class="row" href="#color-picker"><img src="assets/icons/colorpicker.png" alt="" width="28" height="28"><b>Color Picker</b><span>Copy any pixel in 9 formats.</span></a></li>
+    <li><a class="row" href="#text-extractor"><img src="assets/icons/text.png" alt="" width="28" height="28"><b>Text Extractor</b><span>Copy text from the screen.</span></a></li>
+    <li><a class="row" href="#awake"><img src="assets/icons/awake.svg" alt="" width="28" height="28"><b>Awake</b><span>Keep the Mac awake.</span></a></li>
+    <li><a class="row" href="#input-devices"><img src="assets/icons/input.png" alt="" width="28" height="28"><b>Input Devices</b><span>Scroll settings per device.</span></a></li>
+    <li><a class="row" href="#portman"><img src="assets/icons/portman.png" alt="" width="28" height="28"><b>Portman</b><span>Dev servers and SSH ports.</span></a></li>
+    <li><a class="row" href="#rsync"><img src="assets/icons/rsync.svg" alt="" width="28" height="28"><b>RSync UI</b><span>Cloud copies with rclone.</span></a></li>
+    <li><a class="row" href="#event-viewer"><img src="assets/icons/events.png" alt="" width="28" height="28"><b>Event Viewer</b><span>App logs and macOS errors.</span></a></li>
+    <li><a class="row" href="#mac-tweaks"><img src="assets/icons/tweaks.png" alt="" width="28" height="28"><b>Mac Tweaks</b><span>Hidden macOS settings.</span></a></li>
+  </ul>
+</section>
 
-  <section class="end" id="tools">
-    <h2 class="h2 hl rv">All nine tools.<a class="anchor" href="#tools" aria-label="Copy a link to the tool list"><svg><use href="#i-link"/></svg></a></h2>
-    <div class="tools">
-      <div class="group rv"><div class="item"><img src="assets/icons/ruler.svg" alt=""><div><b>Ruler</b><span>Measure anything on screen.</span></div></div><a class="item" href="#color-picker"><img src="assets/icons/colorpicker.png" alt=""><div><b>Color Picker</b><span>Copy any pixel in 9 formats.</span></div></a><a class="item" href="#text-extractor"><img src="assets/icons/text.png" alt=""><div><b>Text Extractor</b><span>Copy text from the screen.</span></div></a></div>
-      <div class="group rv"><a class="item" href="#awake"><img src="assets/icons/awake.svg" alt=""><div><b>Awake</b><span>Keep the Mac awake.</span></div></a><a class="item" href="#input-devices"><img src="assets/icons/input.png" alt=""><div><b>Input Devices</b><span>Scroll settings per device.</span></div></a><a class="item" href="#portman"><img src="assets/icons/portman.png" alt=""><div><b>Portman</b><span>Dev servers and SSH ports.</span></div></a></div>
-      <div class="group rv"><a class="item" href="#rsync"><img src="assets/icons/rsync.svg" alt=""><div><b>RSync UI</b><span>Cloud copies with rclone.</span></div></a><a class="item" href="#event-viewer"><img src="assets/icons/events.png" alt=""><div><b>Event Viewer</b><span>App logs and macOS errors.</span></div></a><a class="item" href="#mac-tweaks"><img src="assets/icons/tweaks.png" alt=""><div><b>Mac Tweaks</b><span>Hidden macOS settings.</span></div></a></div>
-    </div>
-  </section>
+<section class="sec install" id="install">
+  <h2 class="rv">Install it in one <span class="nw">line.<a class="anchor" href="#install" aria-label="Copy a link to Install"><svg><use href="#i-link"/></svg></a></span></h2>
+  <div class="cmd big rv"><code>brew install --cask samhqapp/tap/macpowertoys</code><button type="button" aria-label="Copy the install command" data-copy="brew install --cask samhqapp/tap/macpowertoys"><svg class="cp"><use href="#i-copy"/></svg><svg class="ok"><use href="#i-ok"/></svg></button></div>
+  <p class="rv">Or <a class="btn" href="https://github.com/surajmandalcell/macpowertoys/releases/latest/download/MacPowerToys.dmg">Download MacPowerToys.dmg</a></p>
+  <p class="fine rv">Version 2.0.0 · macOS 26.2 or later · Signed with Developer ID and notarized by Apple · No tracking · MIT license</p>
+</section>
+</main>
 
-  <section class="end" id="install">
-    <h2 class="h2 hl rv">Install in one line.<a class="anchor" href="#install" aria-label="Copy a link to Install"><svg><use href="#i-link"/></svg></a></h2>
-    <div class="install">
-      <div class="stack rv">
-        <div><p class="label">Homebrew</p><div class="cmd"><code>brew install --cask samhqapp/tap/macpowertoys</code><button type="button" aria-label="Copy the install command" data-copy="brew install --cask samhqapp/tap/macpowertoys"><svg class="cp"><use href="#i-copy"/></svg><svg class="ok"><use href="#i-ok"/></svg></button></div></div>
-        <div><p class="label">Or download</p><a class="btn" href="https://github.com/surajmandalcell/macpowertoys/releases/latest/download/MacPowerToys.dmg">Download MacPowerToys.dmg</a></div>
-      </div>
-      <div class="rv"><p class="label">Details</p><div class="group"><div class="kv"><span>Version</span><span>2.0.0</span></div><div class="kv"><span>Needs</span><span>macOS 26.2 or later</span></div><div class="kv"><span>Signed</span><span>Developer ID, notarized by Apple</span></div><div class="kv"><span>Tracking</span><span>None</span></div><div class="kv"><span>License</span><span>MIT, open source</span></div></div></div>
-    </div>
-  </section>
-  <footer><span>MacPowerToys by Sam</span><a href="https://github.com/surajmandalcell/macpowertoys">GitHub</a><a href="https://github.com/surajmandalcell/macpowertoys/blob/main/PRIVACY.md">Privacy</a><a href="https://github.com/surajmandalcell/macpowertoys/releases">Release notes</a><span>Screens show sample data. Backgrounds are our own gradients.</span></footer>
-</div>
+<footer class="foot">
+  <p class="big-mark" aria-hidden="true">MacPowerToys</p>
+  <div class="foot-row">
+    <span>MacPowerToys by Sam</span>
+    <a href="https://github.com/surajmandalcell/macpowertoys">GitHub</a>
+    <a href="https://github.com/surajmandalcell/macpowertoys/releases">Release notes</a>
+    <a href="https://github.com/surajmandalcell/macpowertoys/blob/main/PRIVACY.md">Privacy</a>
+    <span class="soft">Screens show sample data.</span>
+  </div>
+</footer>
 </body>
 </html>
