@@ -67,6 +67,11 @@ struct ToolSidebarView: View {
     }
 
     private func refreshVisibleTools() {
-        groups = MainCatalog.groups(ToolRegistry.allTools.filter { MainCatalog.matches($0, query: searchText) })
+        var visible = MainCatalog.groups(ToolRegistry.allTools.filter { MainCatalog.matches($0, query: searchText) })
+        // Fan is a page, not a tool, so a search that finds only Fan still needs its System caption.
+        if !visible.contains(where: { $0.category == .system }), FanPageView.title.localizedCaseInsensitiveContains(searchText) {
+            visible.insert(MainToolGroup(category: .system, tools: []), at: 0)
+        }
+        groups = visible
     }
 }

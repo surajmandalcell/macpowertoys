@@ -365,6 +365,67 @@ final class FanControlTests: XCTestCase {
                                       minimum: 1_350, maximum: 5_777), 2_850, "Max climbs 1500 RPM per tick")
     }
 
+    func testKeepHoldsTheTargetWithoutWindupOrHunting() {
+        var hold = FanHold(target: 70)
+        XCTAssertEqual(FanHold(target: 99).target, FanHold.range.upperBound, "Targets stay in the safe range")
+        XCTAssertEqual(hold.next(celsius: 80), FanHold.ramp, accuracy: 1e-9, "Speed moves at most one ramp step a tick")
+        for _ in 0..<600 { _ = hold.next(celsius: 95) }
+        XCTAssertEqual(hold.speed, 1, accuracy: 1e-9)
+        XCTAssertLessThanOrEqual(hold.integral, 1, "Learning stops at full speed")
+        var falls = 0
+        while hold.next(celsius: 69) > 0.5 { falls += 1 }
+        XCTAssertLessThan(falls, 40, "No wound-up integral keeps the fans high after the heat drops")
+        var cool = FanHold(target: 70)
+        for _ in 0..<600 { _ = cool.next(celsius: 50) }
+        XCTAssertEqual(cool.speed, 0, accuracy: 1e-9)
+        XCTAssertEqual(cool.integral, 0, accuracy: 1e-9, "Below the target the fans rest at minimum")
+        XCTAssertEqual(FanDriver.keepTarget(speed: 0, hottest: 91, previous: 5_700, minimum: 1_350, maximum: 5_777),
+                       5_777, "The locked full speed from 90 °C wins over Keep")
+    }
+
+    func testKeepTakesOverHotFansWithoutADip() {
+        let (minimum, maximum) = (1_350.0, 5_777.0)
+        var hold = FanHold(target: 75, speed: (4_000 - minimum) / (maximum - minimum))
+        var rpm = 4_000.0
+        for celsius in stride(from: 85.0, to: 75.5, by: -0.05) {
+            let next = FanDriver.keepTarget(speed: hold.next(celsius: celsius), hottest: celsius, previous: rpm,
+                                            minimum: minimum, maximum: maximum)
+            XCTAssertGreaterThanOrEqual(next, 4_000, "Over the target the fans never drop below where they were (\(celsius) °C)")
+            rpm = next
+        }
+        let learned = hold.integral
+        hold.retarget(80)
+        XCTAssertEqual(hold.integral, learned, "A new target keeps the learned speed")
+        XCTAssertEqual(hold.target, 80)
+    }
+
+    func testCurveAndKeepAreNeverOnTogether() throws {
+        let name = "FanHoldTests.\(UUID().uuidString)"
+        let defaults = try XCTUnwrap(UserDefaults(suiteName: name))
+        defer { defaults.removePersistentDomain(forName: name) }
+        FanHold.save(78, defaults)
+        XCTAssertEqual(FanHold.savedTarget(defaults), 78)
+        FanCurve(points: [.init(celsius: 60, speed: 0.3)]).save(defaults)
+        XCTAssertNil(FanHold.savedTarget(defaults), "Picking a curve turns Keep off")
+        FanHold.save(72, defaults)
+        FanCurve.standard.save(defaults)
+        XCTAssertNil(FanHold.savedTarget(defaults), "Resetting to the standard curve also turns Keep off")
+    }
+
+    func testKeepSettlesOnASimpleHeatModel() {
+        var hold = FanHold(target: 70)
+        var celsius = 80.0
+        var history: [Double] = []
+        for _ in 0..<900 {
+            let speed = hold.next(celsius: celsius)
+            celsius += (85 - celsius) * 0.02 - speed * 0.6 * 0.02 * 40
+            history.append(celsius)
+        }
+        let last = history.suffix(120)
+        XCTAssertEqual(last.reduce(0, +) / Double(last.count), 70, accuracy: 1, "Settles near the target")
+        XCTAssertLessThan(last.max()! - last.min()!, 1, "Does not hunt once settled")
+    }
+
     func testCoolCurveKeepsSpeedRisingAndFollowsEditedPoints() {
         let curve = FanCurve(points: [.init(celsius: 80, speed: 0.4), .init(celsius: 50, speed: 0.6),
                                       .init(celsius: 95, speed: 2), .init(celsius: 50, speed: 0.1)])

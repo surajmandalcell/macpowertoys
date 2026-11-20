@@ -6,7 +6,8 @@ import Foundation
 /// Both manual presets start from the fans' current speed and move the target once per second. Max climbs at most
 /// 1500 RPM a second. Cool follows the hottest CPU die sensor (`Tp*` P-cores, `Te*` E-cores), smoothed so a
 /// one-core spike does not reach the fans, along the saved `FanCurve` (by default Mn at 65 °C or less, Mx at 90 °C
-/// or more, linear between); it rises at most 300 RPM and falls at most 150 RPM a second.
+/// or more, linear between); it rises at most 300 RPM and falls at most 150 RPM a second. When a Keep target is
+/// saved (`FanHold`), Cool holds the CPU at that temperature with a PI loop instead of the curve, in the same steps.
 ///
 /// SMC reads lag a write by up to about 0.7 s, so every check reads keys written at least one tick earlier.
 nonisolated enum FanDriver {
@@ -30,6 +31,7 @@ nonisolated enum FanDriver {
     nonisolated(unsafe) private static var timer: DispatchSourceTimer?
     nonisolated(unsafe) private static var targets: [Int: Double] = [:]
     nonisolated(unsafe) private static var smoothed: Double?
+    nonisolated(unsafe) private static var hold: FanHold?
     nonisolated(unsafe) private static var mismatches = 0
     nonisolated(unsafe) static var onManualLost: (@Sendable (String) -> Void)?
 
@@ -45,6 +47,7 @@ nonisolated enum FanDriver {
                 (fan.index, min(max(smc.number("F\(fan.index)Ac") ?? fan.minimum, fan.minimum), fan.maximum).rounded())
             })
             smoothed = nil
+            hold = nil
             mismatches = 0
             try writeTargets(preset, fans: fans, keys: keys, smc: smc)
             log("Fan \(preset.rawValue): from \(fans.map { Int(smc.number("F\($0.index)Ac") ?? 0) }) RPM"
@@ -62,6 +65,25 @@ nonisolated enum FanDriver {
         let desired = (minimum + (maximum - minimum) * curve.speed(at: hottest)).rounded()
         return step(toward: desired, from: previous ?? minimum, rise: coolRise, fall: coolFall,
                     minimum: minimum, maximum: maximum)
+    }
+
+    /// One tick of Keep for one fan: the controller's speed, the locked full speed from 90 °C on top, in Cool's steps.
+    static func keepTarget(speed: Double, hottest: Double, previous: Double?, minimum: Double, maximum: Double) -> Double {
+        let speed = hottest >= FanCurve.lockedEnd.celsius ? 1 : speed
+        return step(toward: (minimum + (maximum - minimum) * speed).rounded(), from: previous ?? minimum,
+                    rise: coolRise, fall: coolFall, minimum: minimum, maximum: maximum)
+    }
+
+    /// Advances the Keep controller once per tick, or returns nil when no Keep target is saved. It starts from the
+    /// first fan's current speed and keeps its learned speed when only the target changes.
+    private static func keepSpeed(_ hottest: Double, fans: [Fan]) -> Double? {
+        guard let target = FanHold.savedTarget() else { hold = nil; return nil }
+        if hold == nil, let fan = fans.first {
+            let current = targets[fan.index] ?? fan.minimum
+            hold = FanHold(target: target, speed: (current - fan.minimum) / max(fan.maximum - fan.minimum, 1))
+        }
+        hold?.retarget(target)
+        return hold?.next(celsius: hottest)
     }
 
     static func step(toward desired: Double, from previous: Double, rise: Double, fall: Double,
@@ -106,10 +128,14 @@ nonisolated enum FanDriver {
     private static func writeTargets(_ preset: FanPreset, fans: [Fan], keys: HelperFanKeys, smc: SMCSession) throws {
         let temperature: Double? = if preset == .cool { try cpuTemperature(smc) } else { nil }
         let curve = temperature == nil ? FanCurve.standard : FanCurve.load()
+        let holdSpeed = temperature.flatMap { keepSpeed($0, fans: fans) }
         for fan in fans {
             let previous = targets[fan.index] ?? fan.minimum
-            let target = temperature.map {
-                coolTarget(hottest: $0, previous: previous, minimum: fan.minimum, maximum: fan.maximum, curve: curve)
+            let target = temperature.map { hottest in
+                holdSpeed.map { keepTarget(speed: $0, hottest: hottest, previous: previous, minimum: fan.minimum,
+                                           maximum: fan.maximum) }
+                    ?? coolTarget(hottest: hottest, previous: previous, minimum: fan.minimum, maximum: fan.maximum,
+                                  curve: curve)
             } ?? step(toward: fan.maximum, from: previous, rise: maxRise, fall: maxRise,
                       minimum: fan.minimum, maximum: fan.maximum)
             if let failure = keys.write(fan.targetKey, value: target) { throw FanError(failure) }

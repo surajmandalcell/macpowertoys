@@ -99,6 +99,25 @@
   `make test` without the isolated-session flag exits before Xcode starts.
   `build-for-testing` compiles both bundles without launching an app or runner.
 
+## Background AX Presses And Popups
+
+- **Symptom:** During an AX check of Settings > "Open a manual", MacPowerToys
+  was found in front.
+- **Cause:** Not the check. `activations.log` shows one activation 20 s before
+  the press with no mouse event, no deep link, and no window ordering, then real
+  mouse clicks in the main window: the owner switched to the app. A replay of the
+  same AX dump and press from the background left the front app unchanged and
+  logged no activation. `OnePlusPopupPanel` is a non-activating panel that
+  cannot become key, and the manual menu path does not call `NSApp.activate`.
+- **Invariant:** Checks use only AX attribute reads and `AXPress` on controls
+  that open in-window content or `OnePlusPopupPanel` menus. Never press a control
+  whose action opens a tool window or calls `NSApp.activate` (tool openers,
+  Color Picker, Text Extractor, Portman "open app"); test those offscreen or in
+  unit tests. A popup sits at the pop-up menu level above other apps, so close it
+  the same way (press its anchor again) before the check ends.
+- **Check:** Record the front app and the `activations.log` entry count before
+  and after each press; both stay the same.
+
 ## Isolated macOS Unit Tests
 
 - **Symptom:** Executable XCTest verification on the owner's Mac can focus the
