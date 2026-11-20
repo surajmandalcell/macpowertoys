@@ -107,11 +107,9 @@ struct FanCurveEditor: View {
                         + (Self.domain.upperBound - Self.domain.lowerBound) * Double((x - plot.minX) / plot.width)
                     return position(.init(celsius: celsius, speed: shown.curveSpeed(at: celsius)), plot)
                 }, plot: plot)
+                if let now = nowPoint(plot) { FanCurveNow(point: now, plot: plot, ring: Self.knob + 8, layer: .halo) }
                 ForEach(shown.points.indices, id: \.self) { index in knob(index, plot: plot) }
-                if let nowCelsius {
-                    FanCurveNow(point: position(.init(celsius: min(max(nowCelsius, Self.domain.lowerBound), Self.domain.upperBound),
-                                                      speed: shown.speed(at: nowCelsius)), plot), plot: plot, ring: Self.knob + 8)
-                }
+                if let now = nowPoint(plot) { FanCurveNow(point: now, plot: plot, ring: Self.knob + 8, layer: .ring) }
                 if let dragging, shown.points.indices.contains(dragging) {
                     bubble(shown.points[dragging], at: position(shown.points[dragging], plot))
                 }
@@ -160,6 +158,12 @@ struct FanCurveEditor: View {
         let span = Self.domain.upperBound - Self.domain.lowerBound
         let celsius = Self.domain.lowerBound + span * Double((location.x - plot.minX) / plot.width)
         return .init(celsius: celsius.rounded(), speed: (Double((plot.maxY - location.y) / plot.height) * 100).rounded() / 100)
+    }
+
+    private func nowPoint(_ plot: CGRect) -> CGPoint? {
+        nowCelsius.map { now in
+            position(.init(celsius: min(max(now, Self.domain.lowerBound), Self.domain.upperBound), speed: shown.speed(at: now)), plot)
+        }
     }
 
     private func knob(_ index: Int, plot: CGRect) -> some View {
@@ -345,18 +349,25 @@ private struct FanSafetyBand: View {
 }
 
 /// The current CPU temperature: a dashed accent line through the whole plot and a hollow accent ring on the
-/// curve, drawn above the points with a group-colored halo, so a point under it stays visible inside the ring.
+/// curve. The line and the group-colored halo sit under the points and the ring above them, so the halo never
+/// covers a point and a point under the ring stays visible inside it.
 private struct FanCurveNow: View {
+    enum Layer { case halo, ring }
     let point: CGPoint
     let plot: CGRect
     let ring: CGFloat
+    let layer: Layer
 
     var body: some View {
         ZStack(alignment: .topLeading) {
-            Path { $0.move(to: CGPoint(x: point.x, y: plot.maxY)); $0.addLine(to: CGPoint(x: point.x, y: plot.minY)) }
-                .stroke(OnePlusLinearColor.accent.opacity(0.5), style: StrokeStyle(lineWidth: 1, dash: [3, 3]))
-            Circle().strokeBorder(OnePlusLinearColor.fillGroup, lineWidth: 5).frame(width: ring + 4, height: ring + 4).position(point)
-            Circle().strokeBorder(OnePlusLinearColor.accent, lineWidth: 2).frame(width: ring, height: ring).position(point)
+            switch layer {
+            case .halo:
+                Path { $0.move(to: CGPoint(x: point.x, y: plot.maxY)); $0.addLine(to: CGPoint(x: point.x, y: plot.minY)) }
+                    .stroke(OnePlusLinearColor.accent.opacity(0.5), style: StrokeStyle(lineWidth: 1, dash: [3, 3]))
+                Circle().strokeBorder(OnePlusLinearColor.fillGroup, lineWidth: 5).frame(width: ring + 4, height: ring + 4).position(point)
+            case .ring:
+                Circle().strokeBorder(OnePlusLinearColor.accent, lineWidth: 2).frame(width: ring, height: ring).position(point)
+            }
         }
         .allowsHitTesting(false)
         .accessibilityHidden(true)
