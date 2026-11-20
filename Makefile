@@ -81,6 +81,7 @@ install: raycast-assets install-preflight raycast-install $(INSTALL_BUILD) verif
 	ditto "$(INSTALL_APP)" /Applications/MacPowerToys.app
 
 # make release: a notarized, stapled MacPowerToys-<version>.dmg and its .sha256 in RELEASE_DIR, built from a clean HEAD.
+# hdiutil create sometimes fails with "Resource busy" right after the copy, so it gets three tries.
 RELEASE_DIR ?= $(CURDIR)/release
 
 release-preflight:
@@ -96,10 +97,10 @@ release: release-preflight build verify-app notarize-app
 	IDENTITY="$$(codesign -dv --verbose=4 "$(INSTALL_APP)" 2>&1 | sed -n 's/^Authority=\(Developer ID Application.*\)/\1/p')"; \
 	mkdir -p "$(DERIVED_DATA)" "$(RELEASE_DIR)"; rm -f "$$DMG" "$$DMG.sha256"; \
 	STAGE="$$(mktemp -d "$(DERIVED_DATA)/dmg-stage.XXXXXX")"; MOUNT="$$(mktemp -d "$(DERIVED_DATA)/dmg-mount.XXXXXX")"; \
-	trap 'hdiutil detach -quiet "$$MOUNT" 2>/dev/null; for d in "$$STAGE" "$$MOUNT"; do case "$$d" in "$(DERIVED_DATA)"/dmg-stage.??????|"$(DERIVED_DATA)"/dmg-mount.??????) rm -rf "$$d";; esac; done' EXIT; \
+	trap 'hdiutil detach -quiet "$$MOUNT" 2>/dev/null || true; for d in "$$STAGE" "$$MOUNT"; do case "$$d" in "$(DERIVED_DATA)"/dmg-stage.??????|"$(DERIVED_DATA)"/dmg-mount.??????) rm -rf "$$d";; esac; done' EXIT; \
 	ditto "$(INSTALL_APP)" "$$STAGE/MacPowerToys.app"; \
 	ln -s /Applications "$$STAGE/Applications"; \
-	hdiutil create -volname MacPowerToys -srcfolder "$$STAGE" -format UDZO -ov "$$DMG"; \
+	for try in 1 2 3; do hdiutil create -volname MacPowerToys -srcfolder "$$STAGE" -format UDZO -ov "$$DMG" && break; test $$try -lt 3; sleep 5; done; \
 	hdiutil attach -readonly -nobrowse -noautoopen -mountpoint "$$MOUNT" "$$DMG" >/dev/null; \
 	test "$$(ls -A "$$MOUNT" | tr '\n' ' ')" = "Applications MacPowerToys.app " && test "$$(readlink "$$MOUNT/Applications")" = /Applications \
 		|| (echo "The DMG must hold only MacPowerToys.app and the Applications link; it holds: $$(ls -A "$$MOUNT" | tr '\n' ' ')" && exit 1); \
