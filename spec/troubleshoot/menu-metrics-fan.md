@@ -134,11 +134,13 @@ still use `SystemMonitor`. `DESIGN.md` owns every size, color, and type value.
   0.7 s (50 ms polling), `Md` and `Tg` for under 0.1 s. An immediate
   read-back fails, and a read-gated Auto skips keys that were just set.
 - **Invariant:** Cool smooths the hottest `Tp`/`Te` reading in 20-110 °C
-  (EMA 0.2 per 1 s tick). It follows the saved curve (standard: Mn at 65 °C,
-  Mx at 90 °C) as a monotone cubic through the locked full-speed end at
-  90 °C; a tick rises at most 300 RPM and falls at most 150 RPM. With
-  `fan.keepCelsius` saved, the `FanHold` PI loop replaces the curve in the
-  same steps, and 90 °C still forces Mx. Each tick
+  (EMA 0.2 per 1 s tick). It follows `FanCurve.load()`: the `fan.curvePreset`
+  curve, else the user's `fan.coolCurve` (standard: Mn at 65 °C), as a
+  monotone cubic through the locked full-speed end at 90 °C; a tick rises at
+  most 300 RPM and falls at most 150 RPM. Only one pick is on: a preset pick
+  clears `fan.keepCelsius`, Hold sets it, and a curve edit clears both. With
+  `fan.keepCelsius` saved, the `FanHold` PI loop replaces the curve, holds
+  its speed inside target ±2 °C, and 90 °C still forces Mx. Each tick
   reads back the previous tick's `Md` and `Tg`; two mismatches in a row end
   manual control. The helper sets its owner from the write itself
   (`Ftst = 0` clears it), never from a read.

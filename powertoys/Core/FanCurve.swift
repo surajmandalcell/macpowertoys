@@ -81,13 +81,20 @@ nonisolated struct FanCurve: Codable, Equatable, Sendable {
         return m
     }
 
+    /// The curve Cool follows: the picked preset's, else the user's own.
     static func load(_ defaults: UserDefaults = .standard) -> FanCurve {
+        FanCurvePreset.saved(defaults).curve ?? custom(defaults)
+    }
+
+    /// The user's own curve (the Custom card), or the standard one before any edit.
+    static func custom(_ defaults: UserDefaults = .standard) -> FanCurve {
         defaults.data(forKey: storageKey).flatMap { try? JSONDecoder().decode(FanCurve.self, from: $0) } ?? standard
     }
 
-    /// Saving a curve picks it, so it also turns Keep off: a curve and a Keep target are never on together.
+    /// Saving a curve picks Custom, so it also turns Keep and any preset off: only one pick is ever on.
     func save(_ defaults: UserDefaults = .standard) {
         defaults.removeObject(forKey: FanHold.storageKey)
+        defaults.removeObject(forKey: FanCurvePreset.storageKey)
         if isEdited, let data = try? JSONEncoder().encode(self) {
             defaults.set(data, forKey: Self.storageKey)
         } else {
@@ -96,14 +103,48 @@ nonisolated struct FanCurve: Codable, Equatable, Sendable {
     }
 }
 
+/// The fixed Cool curves (owner pick "By sound", 2026-11-20). macOS Auto on this Mac keeps the fans at their minimum
+/// even at 86-96 °C, so each preset rests at the minimum like Auto, then ramps early enough that the CPU never sits
+/// near the locked full speed at 90 °C. Custom is the user's own curve.
+nonisolated enum FanCurvePreset: String, CaseIterable, Sendable {
+    case silent, quiet, steady, custom
+
+    static let storageKey = "fan.curvePreset"
+
+    var name: String { rawValue.capitalized }
+
+    var curve: FanCurve? {
+        switch self {
+        case .silent: FanCurve(points: [.init(celsius: 75, speed: 0), .init(celsius: 85, speed: 0.3)])
+        case .quiet: FanCurve(points: [.init(celsius: 68, speed: 0), .init(celsius: 78, speed: 0.2), .init(celsius: 85, speed: 0.45)])
+        case .steady: FanCurve(points: [.init(celsius: 60, speed: 0), .init(celsius: 70, speed: 0.2),
+                                        .init(celsius: 80, speed: 0.45), .init(celsius: 86, speed: 0.7)])
+        case .custom: nil
+        }
+    }
+
+    static func saved(_ defaults: UserDefaults = .standard) -> FanCurvePreset {
+        FanCurvePreset(rawValue: defaults.string(forKey: storageKey) ?? "") ?? .custom
+    }
+
+    /// Picks this curve and turns Keep off.
+    func pick(_ defaults: UserDefaults = .standard) {
+        defaults.removeObject(forKey: FanHold.storageKey)
+        if self == .custom { defaults.removeObject(forKey: Self.storageKey) } else { defaults.set(rawValue, forKey: Self.storageKey) }
+    }
+}
+
 /// Keep: holds the CPU near one temperature with a PI loop instead of a curve. Each 1 s tick it adds speed for every
 /// degree over the target (`gain`), slowly learns the speed that holds the target (`reset`, frozen while the speed is
-/// pinned at 0 or 1 so it never winds up), and moves the speed at most `ramp` a tick so the fans do not hunt.
+/// pinned at 0 or 1 so it never winds up), and moves the speed at most `ramp` a tick so the fans do not hunt. Inside
+/// the target ± `band` nothing changes, so the fans hold one steady speed.
 nonisolated struct FanHold: Equatable, Sendable {
     static let storageKey = "fan.keepCelsius"
     /// 2026-11-20, normal desktop use: the hottest die read 50-78 °C, median 67 °C, over 2 minutes. A target below
     /// that would hold the fans near full speed all day, so the range starts a few degrees above the median.
     static let range = 70.0...85.0
+    static let defaultTarget = 75.0
+    static let band = 2.0
     static let gain = 0.05
     static let reset = 0.002
     static let ramp = 0.03
@@ -126,6 +167,7 @@ nonisolated struct FanHold: Equatable, Sendable {
 
     mutating func next(celsius: Double) -> Double {
         let error = celsius - target
+        guard abs(error) > Self.band else { return speed }
         let learned = integral + Self.reset * error
         let raw = Self.gain * error + learned
         if (raw < 1 || error < 0) && (raw > 0 || error > 0) { integral = min(max(learned, 0), 1) }

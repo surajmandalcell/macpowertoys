@@ -37,6 +37,7 @@ colors:
   danger: { dark: "#FFB6AC", light: "#872E25" }
   danger-fill: { dark: "#382624", light: "#FBE9E7" }
   danger-line: { dark: "#6D4541", light: "#E3B3AD" }
+  temperature-cool: { dark: "#63D1FF", light: "#008CBF" }     # cool end of a heat scale (Fan chart line)
   temperature-warm: { dark: "#F2C94C", light: "#A67C00" }     # CPU 56-69 °C
   temperature-hot: { dark: "#F59A4A", light: "#CC610C" }      # CPU 70-84 °C
   temperature-very-hot: { dark: "#FF7466", light: "#D03A2C" } # CPU 85-94 °C
@@ -634,12 +635,18 @@ Linear style, OnePlusUI `OnePlusLinear*` parts. Reference:
   or GET disabled with "Not available yet".
 - Fan page: tool header with the 56 pt `FanLogo` icon (owner pick
   "Neutral fan", 2026-11-20: five swept blades, Midnight in Light,
-  Porcelain in Dark), then "Cool curve": a 240 pt chart (30-100 °C, 0-100%,
-  `line` grid, 10 pt `secondary` labels, 1.75 pt `ink` monotone cubic line,
-  accent dot at the current CPU temperature), a fixed safety band (90 °C
-  ramp to full at 95 °C, `temperature-critical` 10% fill, dashed edge, label
-  above), a `tertiary` hint line, a "Now" row, and the reset block. Points:
-  12 pt quiet knobs, 24 pt hits, `ink` ring on hover or select, 2-8 points.
+  Porcelain in Dark), then "Cool curve": a 240 pt "Heat line" chart
+  (30-100 °C, 0-100%, dotted `line` guides at 0, 50 and 100%, 10 pt
+  `tertiary` labels, a 3 pt monotone cubic line in a `temperature-cool` to
+  `temperature-very-hot` gradient over the same gradient fading from 28% to
+  clear, the CPU now as a filled dot in its `CPUHeat` color with an
+  "N °C · N RPM" chip above), the locked end (ink lock dot at 90 °C, 100%),
+  a `tertiary` hint line with the coral `.inlineDestructive` "Reset Curve",
+  and a "Now" row. Hold draws a dashed `ink` target line with a ±2 °C band
+  instead of the curve. Under the card, five preset cards (radius 10,
+  `fillGroup`, 1 pt `line`, 1.5 pt accent when picked, a 30 pt curve picture,
+  caption name): Silent, Quiet, Steady, Hold N °C, Custom. Points: 12 pt
+  knobs in `window` ringed in their temperature color, 24 pt hits, 2-8 points.
   Drag stays between neighbors; double-click a point edits it; right-click
   adds or removes; Delete removes; double-click space adds.
 - Settings uses `OnePlusLinearPaneBody`: 14 pt top, 24 pt gutters, 16 pt
