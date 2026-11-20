@@ -85,11 +85,61 @@ nonisolated struct FanCurve: Codable, Equatable, Sendable {
         defaults.data(forKey: storageKey).flatMap { try? JSONDecoder().decode(FanCurve.self, from: $0) } ?? standard
     }
 
+    /// Saving a curve picks it, so it also turns Keep off: a curve and a Keep target are never on together.
     func save(_ defaults: UserDefaults = .standard) {
+        defaults.removeObject(forKey: FanHold.storageKey)
         if isEdited, let data = try? JSONEncoder().encode(self) {
             defaults.set(data, forKey: Self.storageKey)
         } else {
             defaults.removeObject(forKey: Self.storageKey)
         }
+    }
+}
+
+/// Keep: holds the CPU near one temperature with a PI loop instead of a curve. Each 1 s tick it adds speed for every
+/// degree over the target (`gain`), slowly learns the speed that holds the target (`reset`, frozen while the speed is
+/// pinned at 0 or 1 so it never winds up), and moves the speed at most `ramp` a tick so the fans do not hunt.
+nonisolated struct FanHold: Equatable, Sendable {
+    static let storageKey = "fan.keepCelsius"
+    /// 2026-11-20, normal desktop use: the hottest die read 50-78 °C, median 67 °C, over 2 minutes. A target below
+    /// that would hold the fans near full speed all day, so the range starts a few degrees above the median.
+    static let range = 70.0...85.0
+    static let gain = 0.05
+    static let reset = 0.002
+    static let ramp = 0.03
+
+    private(set) var target: Double
+    private(set) var integral: Double
+    private(set) var speed: Double
+
+    /// Starts bumpless from the fans' current speed (a fraction of their range), so taking over never drops them.
+    init(target: Double, speed: Double = 0) {
+        self.target = Self.clamped(target)
+        self.speed = min(max(speed, 0), 1)
+        integral = self.speed
+    }
+
+    /// A new target keeps the learned speed, so the fans do not restart from the bottom.
+    mutating func retarget(_ celsius: Double) { target = Self.clamped(celsius) }
+
+    private static func clamped(_ celsius: Double) -> Double { min(max(celsius, range.lowerBound), range.upperBound) }
+
+    mutating func next(celsius: Double) -> Double {
+        let error = celsius - target
+        let learned = integral + Self.reset * error
+        let raw = Self.gain * error + learned
+        if (raw < 1 || error < 0) && (raw > 0 || error > 0) { integral = min(max(learned, 0), 1) }
+        let desired = min(max(Self.gain * error + integral, 0), 1)
+        speed += min(max(desired - speed, -Self.ramp), Self.ramp)
+        return speed
+    }
+
+    static func savedTarget(_ defaults: UserDefaults = .standard) -> Double? {
+        (defaults.object(forKey: storageKey) as? Double).map(clamped)
+    }
+
+    /// Picks Keep; the saved curve stays as Custom but is not used while Keep is on.
+    static func save(_ celsius: Double, _ defaults: UserDefaults = .standard) {
+        defaults.set(clamped(celsius), forKey: storageKey)
     }
 }
