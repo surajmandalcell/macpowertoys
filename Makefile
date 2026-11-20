@@ -96,15 +96,15 @@ release: release-preflight build verify-app notarize-app
 	DMG="$(RELEASE_DIR)/MacPowerToys-$$VERSION.dmg"; \
 	IDENTITY="$$(codesign -dv --verbose=4 "$(INSTALL_APP)" 2>&1 | sed -n 's/^Authority=\(Developer ID Application.*\)/\1/p')"; \
 	mkdir -p "$(DERIVED_DATA)" "$(RELEASE_DIR)"; rm -f "$$DMG" "$$DMG.sha256"; \
-	STAGE="$$(mktemp -d "$(DERIVED_DATA)/dmg-stage.XXXXXX")"; MOUNT="$$(mktemp -d "$(DERIVED_DATA)/dmg-mount.XXXXXX")"; \
-	trap 'hdiutil detach -quiet "$$MOUNT" 2>/dev/null || true; for d in "$$STAGE" "$$MOUNT"; do case "$$d" in "$(DERIVED_DATA)"/dmg-stage.??????|"$(DERIVED_DATA)"/dmg-mount.??????) rm -rf "$$d";; esac; done' EXIT; \
+	STAGE="$$(mktemp -d "$(DERIVED_DATA)/dmg-stage.XXXXXX")"; MOUNT=; \
+	trap 'test -z "$$MOUNT" || hdiutil detach -quiet "$$MOUNT" 2>/dev/null || true; case "$$STAGE" in "$(DERIVED_DATA)"/dmg-stage.??????) rm -rf "$$STAGE";; esac' EXIT; \
 	ditto "$(INSTALL_APP)" "$$STAGE/MacPowerToys.app"; \
 	ln -s /Applications "$$STAGE/Applications"; \
 	for try in 1 2 3; do hdiutil create -volname MacPowerToys -srcfolder "$$STAGE" -format UDZO -ov "$$DMG" && break; test $$try -lt 3; sleep 5; done; \
-	hdiutil attach -readonly -nobrowse -noautoopen -mountpoint "$$MOUNT" "$$DMG" >/dev/null; \
+	MOUNT="$$(hdiutil attach -readonly -nobrowse -noautoopen "$$DMG" | awk -F'\t' '/\/Volumes\//{print $$NF}')"; test -d "$$MOUNT"; \
 	test "$$(ls -A "$$MOUNT" | tr '\n' ' ')" = "Applications MacPowerToys.app " && test "$$(readlink "$$MOUNT/Applications")" = /Applications \
 		|| (echo "The DMG must hold only MacPowerToys.app and the Applications link; it holds: $$(ls -A "$$MOUNT" | tr '\n' ' ')" && exit 1); \
-	hdiutil detach -quiet "$$MOUNT"; \
+	hdiutil detach -quiet "$$MOUNT"; MOUNT=; \
 	codesign --sign "$$IDENTITY" --timestamp "$$DMG"; \
 	xcrun notarytool submit "$$DMG" --keychain-profile $(NOTARY_PROFILE) --wait 2>&1 | tee "$$DMG.log"; \
 	grep -q 'status: Accepted' "$$DMG.log" || (echo "The DMG was not notarized. Read the log with: xcrun notarytool log <id> --keychain-profile $(NOTARY_PROFILE)" && exit 1); \
