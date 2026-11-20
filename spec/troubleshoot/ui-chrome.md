@@ -170,14 +170,19 @@ orchestrator; see "Open signed checks" at the end.
 ## Focus Chrome And Responders
 
 - **Symptom:** A custom control shows a large blue rectangle, or an outline stays
-  after clicking elsewhere. Portman keeps only the first typed SSH host character.
+  after clicking elsewhere. A popover's first button (the bell's Fix key) shows the
+  blue ring because the popover makes it key and the owner has keyboard navigation
+  on. Portman keeps only the first typed SSH host character.
   Reactivation drops valid keyboard and accessibility responders.
-- **Cause:** Plain SwiftUI controls keep the default focus effect. AppKit keeps
+- **Cause:** Plain SwiftUI controls keep the default focus effect, and a popover or
+  sheet is its own window outside the panel root. AppKit keeps
   the old first responder on a click that cannot take focus. The policy reset
   nontext responders on every key-window notification and read the app key window.
-- **Rule:** Apply `onePlusFocusPolicy()` at the shared root; draw focus only when
-  Full Keyboard Access or VoiceOver is on (`OnePlusFocusPolicy.shared.showsFocus`).
-  No local unconditional `focusEffectDisabled()`; keep controls named and keyboard
+- **Rule:** No focus ring, ever. `onePlusFocusPolicy()` always disables the focus
+  effect and sets AppKit rings to `.none`; apply it at every scene, panel, popover,
+  and sheet root. Under Full Keyboard Access or VoiceOver
+  (`OnePlusFocusPolicy.shared.showsFocus`) a style shows only its own subtle fill;
+  never a stroke. Keep controls named and keyboard
   operable. Register each native window once and use the notification window.
   Clear ordinary opening focus once. Preserve active text editors, native
   selection controls, and valid visible responders; clear only detached, hidden,

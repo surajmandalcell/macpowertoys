@@ -50,7 +50,7 @@ struct AttentionBell: View {
         }
         .accessibilityIdentifier("panel.attention")
         .popover(isPresented: $isOpen, arrowEdge: .bottom) {
-            AttentionList(items: items) { isOpen = false }
+            AttentionList(items: items) { isOpen = false }.onePlusFocusPolicy()
         }
     }
 }

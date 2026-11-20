@@ -190,7 +190,7 @@ struct RemoteBrowserView: View {
                 .contentShape(Rectangle())
         }
         .buttonStyle(.plain)
-        .focusEffectDisabled(!OnePlusFocusPolicy.shared.showsFocus)
+        .focusEffectDisabled()
     }
 
     // MARK: Content

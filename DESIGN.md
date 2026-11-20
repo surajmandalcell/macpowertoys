@@ -294,8 +294,10 @@ editorial body, "Raised keys" controls, and "Inset, gray glyphs" groups:
   bounds.
 - Every control that sits in one row with others (field, select, stepper,
   button) has one height and one radius from the active look.
-- Focus: no ring, outline, or focus fill unless Full Keyboard Access or
-  VoiceOver is on; then a 1 pt inset neutral line with no layout change.
+- Focus: no focus ring or outline, ever (owner rule). Every scene, panel,
+  popover, and sheet root uses `onePlusFocusPolicy()`. With Full Keyboard
+  Access or VoiceOver on, keyboard focus shows only the style's own subtle
+  fill, with no layout change.
   Tables keep first responder after a row click. Reactivation keeps a valid
   responder; only detached, hidden, disabled, or clipped ones clear.
 
@@ -576,7 +578,7 @@ Linear style, OnePlusUI `OnePlusLinear*` parts. Reference:
   blocks, 24 pt bottom. Controls "Raised keys": every control is 28 pt,
   radius 7; fields, steppers, selects, search, and segment tracks are
   sunken wells; buttons, segment thumbs, and stepper arrows are raised
-  keys. The focus line goes around the whole control. Motion "Soft spring":
+  keys. Keyboard focus fills the whole control softly. Motion "Soft spring":
   row hover fades on a 0.12 s spring and nudges the chevron 2 pt; a page
   switch fades 6 pt up and in (0.2 s); the switch knob springs (0.3, 0.72).
   Reduce Motion makes it instant.

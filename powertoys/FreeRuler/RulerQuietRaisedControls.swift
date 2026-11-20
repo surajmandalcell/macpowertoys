@@ -25,7 +25,7 @@ enum RulerQuietRaised {
     static let pressed = NSColor(OnePlusLinearColor.pressed)
     static let ink = NSColor(OnePlusLinearColor.ink)
     static let secondary = NSColor(OnePlusLinearColor.appletSecondary)
-    static let focus = NSColor(OnePlusColor.focus)
+    static let focus = NSColor(OnePlusLinearColor.hover)
 
     /// The look's sizes, equal to `OnePlusLinearControlLook.quietRaised`.
     static let look = OnePlusLinearControlLook.quietRaised
@@ -74,12 +74,10 @@ enum RulerQuietRaised {
         strokeInside(rect, radius: radius, color: line)
     }
 
-    /// The 1 pt focus line 2 pt outside a control, shown only under the shared keyboard focus policy.
+    /// The subtle keyboard focus fill over a control (never a ring), shown only under the shared focus policy.
     static func drawFocus(_ rect: NSRect, radius: CGFloat) {
-        focus.setStroke()
-        let ring = NSBezierPath(roundedRect: rect.insetBy(dx: -1.5, dy: -1.5), xRadius: radius + 1.5, yRadius: radius + 1.5)
-        ring.lineWidth = 1
-        ring.stroke()
+        focus.setFill()
+        NSBezierPath(roundedRect: rect, xRadius: radius, yRadius: radius).fill()
     }
 
     /// A short vertical divider that fades out at both ends.

@@ -31,7 +31,7 @@ struct FanControlView: View {
         .onChange(of: display.canControl) { _, canControl in
             if canControl { showsSetup = false }
         }
-        .popover(isPresented: $showsSetup, arrowEdge: .bottom) { setupPopover }
+        .popover(isPresented: $showsSetup, arrowEdge: .bottom) { setupPopover.onePlusFocusPolicy() }
     }
 
     private static let glyphOpticalOffset: CGFloat = 0.5
