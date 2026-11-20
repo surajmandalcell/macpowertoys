@@ -103,6 +103,12 @@ struct FanCurveEditor: View {
             }
         }
         .frame(height: Self.height)
+        .task {
+            // Screenshot checks open a point's popover without a click: `MPTDiagnosticFanEditPoint` is the 1-based point.
+            try? await Task.sleep(for: .milliseconds(600))
+            let point = UserDefaults.standard.integer(forKey: "MPTDiagnosticFanEditPoint")
+            if curve.points.indices.contains(point - 1) { editing = point - 1 }
+        }
         .accessibilityElement(children: .contain)
         .accessibilityLabel("Cool curve")
     }
