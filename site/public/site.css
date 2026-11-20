@@ -169,9 +169,13 @@ h2:hover .anchor,h3:hover .anchor,.anchor:focus-visible,.anchor.done{opacity:1}
 .picks button{display:flex;flex-direction:column;gap:6px;min-width:0;padding:8px 8px 7px;border:1px solid var(--lit);border-radius:10px;background:var(--bg);color:var(--muted);font:500 13px/1.2 var(--font);letter-spacing:-.01em;text-align:left;white-space:nowrap;cursor:pointer;transition:border-color .2s,box-shadow .2s,color .2s}
 .picks button[aria-checked=true]{color:var(--ink);font-weight:600;border-color:var(--app-accent);box-shadow:inset 0 0 0 .5px var(--app-accent)}
 .picks .mini{display:block;width:100%;height:32px;overflow:visible}
-.picks .mini .fill{fill:var(--ink);opacity:.08}
-.picks .mini .stroke{fill:none;stroke:var(--ink);stroke-width:1.5;opacity:.7;vector-effect:non-scaling-stroke;stroke-linejoin:round}
-.picks .mini .target{stroke:var(--app-accent);stroke-width:1.5;stroke-dasharray:3 2.5;vector-effect:non-scaling-stroke}
+.picks .mini{--mini:var(--ink)}
+.picks [aria-checked=true] .mini{--mini:var(--app-accent)}
+.picks .mini .fill{fill:var(--mini);opacity:.1}
+.picks .mini .band{fill:var(--mini);opacity:.18}
+.picks .mini .stroke{fill:none;stroke:var(--mini);stroke-width:1.5;vector-effect:non-scaling-stroke;stroke-linejoin:round}
+.picks .mini .target{stroke:var(--mini);stroke-width:1.5;stroke-dasharray:3 2.5;vector-effect:non-scaling-stroke}
+.picks [aria-checked=false] .mini .stroke,.picks [aria-checked=false] .mini .target{opacity:.7}
 @media (max-width:600px){.picks{grid-template-columns:repeat(6,1fr)}.picks button{grid-column:span 2}.picks button:nth-child(n+4){grid-column:span 3}}
 .try .note{display:grid}
 .try .note>span{grid-area:1/1}
@@ -258,7 +262,7 @@ a.row:hover{background:var(--lit)}
 .cmd.big code{font-size:clamp(15px,1.4vw,20px)}
 .cmd.big button{width:46px;height:46px;border-radius:12px}
 .cmd.big svg{width:22px;height:22px}
-.install p{display:flex;align-items:center;justify-content:center;gap:16px;flex-wrap:wrap;color:var(--muted)}
+.install .or{display:flex;align-items:center;justify-content:center;gap:16px;flex-wrap:wrap;color:var(--muted)}
 
 /* Footer: one plain row under a hairline */
 .foot{max-width:1520px;margin:clamp(72px,8vw,120px) auto 0;padding:0 var(--m) 32px}

@@ -100,7 +100,7 @@
     buttons.forEach(function (b) {
       var svg = b.querySelector('.mini'), x = function (c) { return 4 + (c - 30) / 70 * 92; };
       if (b.dataset.pick === 'hold') {
-        svg.innerHTML = '<path class="target" d="M' + x(HOLD) + ' 4V40"/>';
+        svg.innerHTML = '<rect class="band" x="' + x(HOLD - BAND) + '" y="4" width="' + (x(HOLD + BAND) - x(HOLD - BAND)) + '" height="36"/><path class="target" d="M' + x(HOLD) + ' 4V40"/>';
         return;
       }
       var s = samples(PICKS[b.dataset.pick]);
