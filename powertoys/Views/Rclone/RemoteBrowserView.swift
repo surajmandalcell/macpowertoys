@@ -85,15 +85,7 @@ struct RemoteBrowserView: View {
             CleanupRemoteSheet(remote: remote, startPath: path)
         }
         .sheet(isPresented: $isShowingSettings) { RemoteSettingsSheet(remote: remote) }
-        .alert("New Folder", isPresented: $isShowingNewFolder) {
-            TextField("Folder name", text: $newFolderName)
-            Button("Cancel", role: .cancel) { newFolderName = "" }
-            Button("Create Folder") { createFolder() }
-                .keyboardShortcut(.defaultAction)
-                .disabled(RemoteFolderName.error(for: newFolderName) != nil)
-        } message: {
-            Text(newFolderMessage)
-        }
+        .sheet(isPresented: $isShowingNewFolder) { newFolderSheet }
         .onReceive(NotificationCenter.default.publisher(for: .remoteCleanupCompleted)) { notification in
             guard notification.object as? String == remote.name else { return }
             Task { await load() }
@@ -117,6 +109,24 @@ struct RemoteBrowserView: View {
 
     private var newFolderMessage: String {
         RemoteFolderName.error(for: newFolderName) ?? "Create this folder in \(remote.name):\(path)."
+    }
+
+    private var newFolderSheet: some View {
+        let cancel = { newFolderName = ""; isShowingNewFolder = false }
+        let canCreate = RemoteFolderName.error(for: newFolderName) == nil
+        let create = { guard canCreate else { return }; createFolder(); isShowingNewFolder = false }
+        return OnePlusSheet("New Folder", width: .small, close: cancel) {
+            VStack(alignment: .leading, spacing: OnePlusMetrics.actionSpacing) {
+                OnePlusLinearTextField("Folder name", text: $newFolderName, onSubmit: create)
+                Text(newFolderMessage).linearText(OnePlusLinearMetrics.caption, color: OnePlusLinearColor.secondary)
+            }
+        } footer: {
+            Button("Cancel", action: cancel).buttonStyle(OnePlusButtonStyle(.ghost))
+            Button("Create", action: create).buttonStyle(OnePlusButtonStyle(.primary))
+                .keyboardShortcut(.defaultAction).disabled(!canCreate)
+        }
+        .focusEffectDisabled()
+        .onExitCommand(perform: cancel)
     }
 
     // MARK: Toolbar
