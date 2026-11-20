@@ -140,7 +140,7 @@ struct MacTweaksSettingsContent: View {
             let store = TweakPreferenceStore()
             let originals = store.storedOriginalChoices(for: fields)
             let selections = Dictionary(uniqueKeysWithValues: fields.map {
-                ($0.identity, TweakPreferenceStore.readSelectedChoice(for: $0))
+                ($0.identity, TweakPreferenceStore.readSelectedChoice(for: $0, userChanged: originals[$0.identity] != nil))
             })
             return (originals, selections)
         }.value
@@ -683,7 +683,7 @@ struct MacTweaksWindowView: View {
             let store = TweakPreferenceStore()
             let originals = store.storedOriginalChoices(for: fields)
             let selections = Dictionary(uniqueKeysWithValues: fields.map {
-                ($0.identity, TweakPreferenceStore.readSelectedChoice(for: $0))
+                ($0.identity, TweakPreferenceStore.readSelectedChoice(for: $0, userChanged: originals[$0.identity] != nil))
             })
             return (originals, selections)
         }.value

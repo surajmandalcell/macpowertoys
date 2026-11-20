@@ -107,6 +107,19 @@ capture) must never activate the app or take key focus.
 - **Check:** `MacTweaksCatalogTests`; every page lists rows on the
   installed build.
 
+### Opening Mac Tweaks Shows An Apple Music Privacy Prompt
+
+- **Symptom:** Opening Mac Tweaks showed "Allow MacPowerToys.app to access
+  your music ... in Apple Music?" in front of the owner's app.
+- **Cause:** The page and search read every tweak's current value. Reading
+  `com.apple.Music` (Half-star ratings) asks for media library access.
+- **Invariant:** Fields in `TweakPreferenceField.privacyPromptDomains` read
+  only after the user changes that tweak (it has a backup record). Until
+  then they show Default. Add any new app domain that macOS guards.
+- **Check:** `MacTweaksCatalogTests` asserts the Music field reads -1 with
+  no backup; open Mac Tweaks and search "half" on the installed build with
+  no prompt and the front app unchanged.
+
 ### Sidebar Last Row Hidden Behind Fixed Settings Group
 
 - **Symptom:** The last tool row was half hidden behind Settings and Exit.
