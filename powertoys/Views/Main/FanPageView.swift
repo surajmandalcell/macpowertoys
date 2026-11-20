@@ -254,6 +254,7 @@ private struct FanHoldChart: View {
             }
         }
         .frame(height: FanCurveEditor.height)
+        .mask(Rectangle().padding(.vertical, -40))
         .accessibilityElement(children: .ignore)
         .accessibilityLabel("Hold \(Int(target)) °C, give or take \(Int(FanHold.band)) °C")
     }
@@ -331,6 +332,8 @@ struct FanCurveEditor: View {
             }
         }
         .frame(height: Self.height)
+        // The 3 pt line runs edge to edge; clip its round caps at the card's sides, never the chips above.
+        .mask(Rectangle().padding(.vertical, -40))
         .task {
             // Screenshot checks open a point's popover without a click: `MPTDiagnosticFanEditPoint` is the 1-based point.
             try? await Task.sleep(for: .milliseconds(600))
