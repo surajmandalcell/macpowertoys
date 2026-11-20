@@ -203,28 +203,20 @@ private struct MacTweaksTimingField: View {
         )
     }
 
+    private func step(_ delta: Int) { hundredths.wrappedValue = min(max(hundredths.wrappedValue + delta, 0), 300) }
+
     var body: some View {
-        HStack(spacing: 0) {
-            Text(selection == -2 ? "Custom value" : selectedValue.map { String(format: "%.2f", $0) }
-                 ?? "Default (\(field.defaultLabel ?? String(format: "%.2f", defaultValue)))")
-                .onePlusText(.mono, color: OnePlusColor.controlInk)
-                .padding(.horizontal, OnePlusMetrics.spacing[3])
-                .frame(maxWidth: .infinity, alignment: .leading)
-            Text("s").onePlusText(.caption).padding(.trailing, OnePlusMetrics.spacing[3])
-            OnePlusColor.line.frame(width: 1)
-            Stepper(field.label, value: hundredths, in: 0...300, step: 5)
-                .labelsHidden()
-                .controlSize(.small)
-                .frame(width: OnePlusMetrics.spacing[7])
-                .clipped()
+        OnePlusLinearStepper(field.label, canDecrement: hundredths.wrappedValue > 0, canIncrement: hundredths.wrappedValue < 300,
+                             decrement: { step(-5) }, increment: { step(5) }) {
+            HStack(spacing: 3) {
+                Text(selection == -2 ? "Custom value" : selectedValue.map { String(format: "%.2f", $0) }
+                     ?? "Default (\(field.defaultLabel ?? String(format: "%.2f", defaultValue)))")
+                    .linearText().monospacedDigit().lineLimit(1)
+                Text("s").linearText(color: OnePlusLinearColor.secondary)
+            }
         }
-        .frame(height: OnePlusMetrics.controlHeight)
-        .background(OnePlusColor.field, in: RoundedRectangle(cornerRadius: OnePlusMetrics.controlRadius))
-        .overlay {
-            RoundedRectangle(cornerRadius: OnePlusMetrics.controlRadius)
-                .strokeBorder(OnePlusColor.line, lineWidth: 1)
-        }
-        .accessibilityElement(children: .combine)
+        .accessibilityElement(children: .ignore)
+        .accessibilityAdjustableAction { $0 == .increment ? step(5) : step(-5) }
         .accessibilityLabel(field.label)
         .accessibilityValue(selection == -2 ? "Custom value" : selectedValue.map { String(format: "%.2f seconds", $0) }
                             ?? "Default, \(field.defaultLabel ?? String(format: "%.2f", defaultValue)) seconds")
