@@ -376,6 +376,19 @@ final class FanControlTests: XCTestCase {
         XCTAssertFalse(FanCurve.standard.isEdited)
     }
 
+    func testCoolCurveIsSmoothRisingAndKeepsTheSafetyFloor() {
+        let curve = FanCurve(points: [.init(celsius: 40, speed: 0.33), .init(celsius: 60, speed: 0.35),
+                                      .init(celsius: 75, speed: 0.4)])
+        let samples = stride(from: 30.0, through: 100.0, by: 0.5).map(curve.speed(at:))
+        XCTAssertEqual(samples, samples.sorted(), "Never falls")
+        XCTAssertTrue(stride(from: 40.0, through: 75.0, by: 0.5).allSatisfy { (0.33...0.4).contains(curve.curveSpeed(at: $0)) },
+                      "No overshoot between points")
+        XCTAssertEqual(curve.speed(at: 85), 0.4, accuracy: 0.0001)
+        XCTAssertEqual(curve.speed(at: 92.5), 0.5, accuracy: 0.0001, "Safety floor halfway at 92.5 °C")
+        XCTAssertEqual(curve.speed(at: 95), 1, "Full speed at 95 °C whatever the curve says")
+        XCTAssertEqual(FanCurve.standard.speed(at: 77.5), 0.5, accuracy: 0.0001, "Two points stay a straight line")
+    }
+
     func testFanCommandBoundsProcessOutputWithoutHardwareAccess() {
         XCTAssertThrowsError(try FanCommand.run("/usr/bin/printf", ["%262145s", "x"])) { error in
             XCTAssertEqual(error.localizedDescription, "The fan helper returned too much data.")
