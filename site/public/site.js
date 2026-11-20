@@ -39,27 +39,27 @@
     update();
   }
 
-  // Portman: one slider and four names step through the setup.
+  // Portman: four step buttons switch what the screen shows.
   function walk() {
     var root = document.querySelector('[data-walk]');
     if (!root) return;
-    var range = root.querySelector('input[type=range]'), names = root.querySelectorAll('[data-go]');
-    function go(i) {
-      i = +i;
-      range.value = i;
-      range.setAttribute('aria-valuetext', names[i].textContent);
-      root.querySelectorAll('[data-stage]').forEach(function (el) { el.hidden = +el.dataset.stage !== i; });
-      names.forEach(function (n, k) { if (k === i) n.setAttribute('aria-current', 'step'); else n.removeAttribute('aria-current'); });
-    }
-    range.addEventListener('input', function () { go(range.value); });
-    names.forEach(function (n) { n.addEventListener('click', function () { go(n.dataset.go); }); });
+    var names = root.querySelectorAll('[data-go]');
+    names.forEach(function (n) {
+      n.addEventListener('click', function () {
+        var i = +n.dataset.go;
+        root.dataset.step = i;
+        root.querySelectorAll('[data-stage]').forEach(function (el) { el.hidden = +el.dataset.stage !== i; });
+        names.forEach(function (m, k) { if (k === i) m.setAttribute('aria-current', 'step'); else m.removeAttribute('aria-current'); });
+      });
+    });
   }
 
   function clock() {
     var d = new Date();
     var time = d.toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit' });
     var day = d.toLocaleDateString('en-US', { weekday: 'short', month: 'short', day: 'numeric' }).replace(',', '');
-    document.querySelectorAll('.clock').forEach(function (c, i) { c.textContent = i === 0 ? day + ' ' + time : time; });
+    document.querySelectorAll('.clock .d').forEach(function (c) { c.textContent = day; });
+    document.querySelectorAll('.clock .t').forEach(function (c) { c.textContent = time; });
   }
 
   document.addEventListener('DOMContentLoaded', function () {

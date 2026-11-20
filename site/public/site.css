@@ -1,29 +1,28 @@
 :root{
   --bg:#f5f5f7;--surface:#e8e8ed;--ink:#1d1d1f;--muted:#5f5f66;
   --accent:#0071e3;--accent-ink:#fff;--link:#0066cc;
-  --stage:#e3e3e9;--bar:#d6d6de;--bar-ink:#1d1d1f;--lit:rgba(0,0,0,.14);
-  --hero-stage:#0071e3;--hero-bar:#0a5fc0;
+  --lit:rgba(0,0,0,.14);
   --tile-dark:#1d1d1f;
-  --field:#0071e3;--field-ink:#fff;--field-bar:#0a5fc0;
+  --field:#0071e3;--field-ink:#fff;
   --cmd:#e8e8ed;
   --win-shadow:0 32px 64px -24px rgba(0,0,0,.42),0 10px 24px -12px rgba(0,0,0,.22),0 0 0 .5px rgba(0,0,0,.18);
+  --deep:0 60px 90px -30px rgba(0,0,0,.6),0 24px 40px -18px rgba(0,0,0,.38),0 0 0 .5px rgba(0,0,0,.22);
   --font:-apple-system,BlinkMacSystemFont,"SF Pro Text","Inter",system-ui,sans-serif;
   --mono:ui-monospace,"SF Mono",Menlo,monospace; /* taste-skill-ignore: only the literal brew command */
   --m:clamp(20px,4vw,64px);
   --t-h1:clamp(46px,5.4vw,84px);--t-h2:clamp(34px,3.7vw,56px);--t-lead:clamp(19px,1.1rem + .5vw,23px);--t-body:18px;--t-small:14px;
-  --gap:clamp(120px,13vw,200px);
+  --gap:clamp(96px,10vw,152px);
   color-scheme:light dark;
 }
 @media (prefers-color-scheme:dark){
   :root{
     --bg:#0c0c0e;--surface:#1c1c1f;--ink:#f5f5f7;--muted:#a1a1a8;
-    --link:#3d9bff;
-    --stage:#18181b;--bar:#26262b;--bar-ink:#f5f5f7;--lit:rgba(255,255,255,.2);
-    --hero-stage:#0b4fae;--hero-bar:#0a3f8a;
+    --link:#3d9bff;--lit:rgba(255,255,255,.2);
     --tile-dark:#2a2a2e;
-    --field:#0b4fae;--field-bar:#0a3f8a;
+    --field:#0b4fae;
     --cmd:#232327;
     --win-shadow:0 32px 64px -24px rgba(0,0,0,.85),0 10px 24px -12px rgba(0,0,0,.6),0 0 0 .5px rgba(255,255,255,.14);
+    --deep:0 60px 90px -30px rgba(0,0,0,.9),0 24px 40px -18px rgba(0,0,0,.7),0 0 0 .5px rgba(255,255,255,.16);
   }
 }
 *{box-sizing:border-box}
@@ -65,103 +64,87 @@ h2:hover .anchor,h3:hover .anchor,.anchor:focus-visible,.anchor.done{opacity:1}
 .anchor.done::after{content:"Link copied";position:absolute;left:50%;bottom:calc(100% + 6px);transform:translateX(-50%);padding:5px 10px;border-radius:8px;background:var(--ink);color:var(--bg);font:500 13px/1.2 var(--font);letter-spacing:0;white-space:nowrap}
 .field .anchor{color:var(--field-ink)}
 
-/* The Mac screen: a menu bar on top, windows and panels hanging from it */
-.screen{position:relative;overflow:hidden;border-radius:24px;background:var(--stage);min-height:560px}
-.mb{position:relative;z-index:3;display:flex;align-items:center;gap:16px;height:32px;padding:0 16px;background:var(--bar);color:var(--bar-ink);font-size:13px;font-weight:500;white-space:nowrap}
-.mb b{font-weight:700}
-.mb i{flex:1}
-.mb .g{width:15px;height:15px;flex:none}
-.mb .batt{width:24px}
-.mb .menus{opacity:.9}
-.mb .lit{display:grid;place-items:center;width:30px;height:24px;border-radius:6px;background:var(--lit)}
-.win,.drop{position:absolute;z-index:1}
-.win img{border-radius:12px;box-shadow:var(--win-shadow);width:100%} /* taste-skill-ignore: a real floating window */
-.drop{z-index:2;width:356px;top:38px;right:var(--drop-right,88px)}
-.drop img{width:100%;border-radius:14px;box-shadow:var(--win-shadow)} /* taste-skill-ignore: a real menu bar panel */
+/* A Mac screen crop, enlarged: a real wallpaper, the macOS menu bar, and the app's own windows.
+   Everything inside .desk-in is laid out in real macOS points, then scaled by --z. */
+.desk{position:relative;height:var(--h,600px);--z:1.2;--zi:var(--z);--r:24px;--pr:112px;--wx:48px;--wy:56px}
+.desk-in{position:absolute;top:0;right:0;width:calc(100% / var(--zi));height:calc(100% / var(--zi));transform:scale(var(--z));transform-origin:100% 0}
+.scr{position:absolute;inset:0;overflow:hidden;border-radius:calc(var(--r) / var(--z))}
+.scr::before{content:"";position:absolute;inset:0;border-radius:inherit;background:#1d1d1f var(--wall) center/cover}
+.bar{position:absolute;z-index:1;inset:0 0 auto;height:24px;display:flex;align-items:center;gap:14px;padding:0 14px;color:#fff;font:500 13px/1 var(--font);letter-spacing:0;white-space:nowrap;filter:drop-shadow(0 0 3px rgba(0,0,0,.28))} /* taste-skill-ignore: macOS draws this shade under menu bar text on a wallpaper */
+.apps{flex:1;min-width:0;overflow:hidden;display:flex;align-items:center;gap:19px}
+.apps b{font-weight:700}
+.bar img{flex:none}
+.mbi{flex:none;display:grid;place-items:center;width:30px;height:22px;border-radius:7px;background:rgba(255,255,255,.28);transition:background .2s}
+.clock{flex:none;width:118px;text-align:right}
+.dwin{position:absolute;width:820px;left:var(--wx);top:var(--wy)}
+.dwin img,.tile-face img{border-radius:12px;box-shadow:var(--win-shadow)} /* taste-skill-ignore: a real floating window */
+.panel{position:absolute;z-index:2;width:356px;top:29px;right:var(--pr)}
+.panel img{width:100%;border-radius:14px;box-shadow:var(--deep)} /* taste-skill-ignore: a real menu bar panel */
 
 /* Hero */
-.hero{position:relative;display:grid;grid-template-columns:minmax(0,5fr) minmax(0,7fr);gap:clamp(32px,4vw,64px);align-items:start;max-width:1520px;margin:0 auto;padding:clamp(40px,7vh,96px) 0 0 var(--m);min-height:calc(100svh - 84px)}
-.hero-copy{display:flex;flex-direction:column;gap:0;padding-top:clamp(8px,4vh,56px)}
+.hero{display:grid;grid-template-columns:minmax(0,5fr) minmax(0,7fr);gap:clamp(32px,4vw,64px);align-items:center;max-width:1520px;margin:0 auto;padding:clamp(24px,4vh,56px) 0 0 var(--m)}
+.hero-copy{display:flex;flex-direction:column}
 .hero-copy .lead{margin-top:28px;font-size:var(--t-lead);line-height:1.4;max-width:30ch}
 .get{display:flex;flex-direction:column;align-items:flex-start;gap:16px;margin-top:40px}
 .get .cmd{width:min(100%,460px)}
 .fine{font-size:var(--t-small);color:var(--muted);margin-top:20px}
-.hero-screen{border-radius:24px 0 0 24px;background:var(--hero-stage);min-height:clamp(620px,78vh,760px);--drop-right:168px}
-.hero-screen .mb{background:var(--hero-bar);color:#fff}
-.hero-screen .mb .lit{background:rgba(255,255,255,.28)}
-.hero-win{left:40px;top:84px;width:min(560px,58%)}
-.hero-drop{width:340px}
+.hero-desk{--h:clamp(560px,46vw,660px);--z:1.12;--r:24px 0 0 24px}
+.hero-desk .bar{padding-right:24px}
+.hero-desk{--pr:122px}
+.hero+.sec{margin-top:clamp(72px,8vw,120px)}
+.hero-desk .scr{border-radius:22px 0 0 22px}
 
 /* Sections */
 .sec{max-width:1520px;margin:var(--gap) auto 0;padding:0 var(--m)}
 .txt{display:flex;flex-direction:column;gap:22px;max-width:520px}
-.txt>p{font-size:var(--t-body)}
 .ticon{width:52px;height:52px}
 .split{display:grid;grid-template-columns:minmax(0,5fr) minmax(0,7fr);gap:clamp(40px,5vw,96px);align-items:center}
 .split.rev{grid-template-columns:minmax(0,7fr) minmax(0,5fr)}
+.head{display:grid;grid-template-columns:minmax(0,7fr) minmax(0,5fr);gap:clamp(32px,5vw,96px);align-items:end;margin-bottom:48px}
+.head p{max-width:46ch}
+.head-txt{display:flex;flex-direction:column;gap:22px}
 
 /* Fan */
-#fan .screen{min-height:640px}
-.fan-win{left:32px;top:72px;width:min(640px,80%)}
-.fan-drop{top:38px;--drop-right:60px;right:60px}
-.try{display:grid;gap:12px;margin-top:6px;padding:22px;border-radius:18px;background:var(--surface)}
+.fan-desk{--h:560px;--z:1.3;--wx:40px;--wy:48px}
+.try{display:grid;gap:12px;padding:22px;border-radius:18px;background:var(--surface)}
 .try label{font-weight:600;font-size:17px}
-.try output{font-size:var(--t-body)}
 .try .note{font-size:var(--t-small);color:var(--muted)}
 .meter{height:8px;border-radius:4px;background:var(--bg);overflow:hidden}
 .meter span{display:block;height:100%;width:0;background:var(--accent);border-radius:4px;transition:width .2s}
 input[type=range]{width:100%;height:32px;margin:0;accent-color:var(--accent);cursor:pointer}
 
-/* Portman walkthrough */
-.walk-head{display:grid;grid-template-columns:minmax(0,7fr) minmax(0,5fr);gap:clamp(40px,5vw,96px);align-items:end}
-.walk-head p{max-width:46ch}
-.walk-body{display:grid;grid-template-columns:minmax(0,4fr) minmax(0,8fr);gap:0;margin-top:56px;border-radius:24px;overflow:hidden;background:var(--surface)}
-.walk-text{padding:48px 40px;display:flex;flex-direction:column;justify-content:center}
-.stage-text h3{font-size:clamp(30px,2.8vw,42px);line-height:1.05;letter-spacing:-.03em}
-.stage-text p{margin-top:16px;max-width:34ch}
-.walk-screen{border-radius:0;min-height:600px;--drop-right:72px}
-.walk-win{left:36px;top:72px;width:min(640px,82%)}
-.walk-ctl{grid-column:1/-1;padding:24px 40px 28px;background:var(--surface)}
-.walk-names{display:grid;grid-template-columns:repeat(4,1fr);margin-top:8px}
-.walk-names button{border:0;background:none;padding:6px 0;text-align:left;font:500 16px/1.3 var(--font);color:var(--muted);cursor:pointer;transition:color .15s}
-.walk-names button:hover,.walk-names button[aria-current]{color:var(--ink)}
-.walk-names button[aria-current]{font-weight:600}
-.walk-names button:nth-child(4){text-align:right}
-.walk-names button:nth-child(3){text-align:center}
-.walk-names button:nth-child(2){text-align:center}
-[data-stage]{transition:opacity .2s}
+/* Portman: four steps over one screen */
+.steps{list-style:none;margin:0 0 24px;padding:0;display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:12px}
+.steps button{display:flex;flex-direction:column;gap:6px;width:100%;height:100%;padding:18px 18px 20px;border:0;border-radius:18px;background:transparent;color:var(--muted);text-align:left;font:400 16px/1.4 var(--font);letter-spacing:-.005em;cursor:pointer;transition:background .2s,color .2s}
+.steps button:hover{background:var(--surface)}
+.steps button[aria-current]{background:var(--surface);color:var(--ink)}
+.steps b{font-size:19px;font-weight:600;letter-spacing:-.02em;color:var(--ink)}
+.port-desk{--h:560px;--z:1.3;--wx:40px;--wy:48px}
+[data-step="0"] .mbi{background:transparent}
 
 /* RSync: one whole field in the accent */
 .field{max-width:none;padding:clamp(72px,8vw,120px) max(var(--m),calc((100% - 1520px)/2 + var(--m)));background:var(--field);color:var(--field-ink)}
 .field .ticon{border-radius:12px}
-.screen.bare{background:transparent;min-height:700px;border-radius:20px;--drop-right:96px}
-.screen.bare .mb{background:var(--field-bar);color:#fff;border-radius:12px}
-.screen.bare .mb .lit{background:rgba(255,255,255,.28)}
+.rsync-desk{--h:740px;--z:1.08;--pr:96px}
 
 /* Input Devices */
-#input-devices .screen{min-height:580px}
+.input-desk{--h:640px;--z:1.15;--pr:96px}
 
 /* Mac Tweaks */
 .wide-head{display:grid;grid-template-columns:minmax(0,7fr) minmax(0,5fr);gap:clamp(40px,5vw,96px);align-items:end}
 .wide-head>div{display:flex;flex-direction:column;gap:22px}
-.wide-screen{margin-top:56px;min-height:600px}
-.tweaks-win{left:50%;top:76px;width:min(820px,76%);transform:translateX(-50%)}
+.tweaks-desk{--h:620px;--z:1.15;--wx:calc(50% - 410px);--wy:60px;margin-top:56px}
 
 /* Small tools: specimens on tiles */
 .small{display:grid;grid-template-columns:minmax(0,3fr) minmax(0,9fr);gap:clamp(32px,4vw,64px);align-items:start}
-.small-head{display:flex;flex-direction:column;gap:20px;position:sticky;top:32px}
+.small-head{display:flex;flex-direction:column;gap:20px}
 .small-head p{max-width:30ch}
 .tiles{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:12px 12px}
 .tile{margin:0;min-width:0}
 .tile.two{grid-column:span 2}
-.tile-face{display:grid;place-items:center;height:clamp(300px,30vw,440px);border-radius:20px;overflow:hidden;padding:24px}
-.tile.two .tile-face{height:clamp(300px,30vw,440px)}
+.tile-face{display:grid;place-items:center;height:clamp(300px,30vw,440px);border-radius:20px;overflow:hidden;padding:24px;background:#1d1d1f var(--wall) center/cover}
 .tile-face picture{width:92%}
 .tile.two .tile-face picture{width:84%}
-.tile-face img{border-radius:10px;box-shadow:var(--win-shadow)} /* taste-skill-ignore: a real floating window */
-.t1{background:var(--surface)}
-.t2{background:var(--field)}
-.t3{background:var(--tile-dark)}
 .tile figcaption{padding:16px 2px 32px}
 .tile h3{font-size:20px;display:flex;align-items:center}
 .tile h3 .anchor{width:30px;height:30px;margin-left:6px}
@@ -195,66 +178,83 @@ a.row:hover{background:var(--lit)}
 .foot-row a:hover{text-decoration:underline}
 .foot-row .soft{color:var(--muted);margin-left:auto}
 
+/* Look A, Break-out (default): the panel hangs past the bottom of the screen crop. Each desk reserves
+   room under it for that overhang so nothing below is covered. */
+html[data-v=a] .hero-desk{margin-bottom:56px}
+html[data-v=a] .port-desk{margin-bottom:72px}
+
+/* Look B, Tilt: an oversized screen turned in perspective that runs off the right edge of the page */
+html[data-v=b] .desk.v{overflow:hidden;border-radius:var(--r);transform:perspective(2400px) rotateY(-14deg) rotateX(5deg);transform-origin:0 50%;margin-right:calc(-1 * var(--m) - 10vw)}
+html[data-v=b] .hero-desk{margin-right:-12vw;--h:clamp(600px,50vw,720px)}
+html[data-v=b] .desk.v .panel{--pr:112px}
+
+/* Look C, Zoom on scroll: the whole desktop first, then the camera moves in on the panel */
+html[data-v=c] .desk.v{overflow:hidden;border-radius:var(--r);--zi:var(--z0,.62)}
+html[data-v=c] .hero-desk{--z0:.6}
+html[data-v=c] .desk.v{--wx:calc(100% - 1000px)}
+@supports (animation-timeline:view()){
+  html[data-v=c] .desk.v .desk-in{animation:zoom-in linear both;animation-timeline:view();animation-range:entry 20% cover 50%}
+  html[data-v=c] .hero-desk .desk-in{animation-timeline:scroll(root);animation-range:0 70vh}
+}
+@keyframes zoom-in{from{transform:scale(var(--z0,.62))}to{transform:scale(var(--z))}}
+
+/* Look D, Layered spill: the window and the panel both hang out of the wallpaper, over the next section */
+html[data-v=d] .desk.v .scr{overflow:visible}
+html[data-v=d] .desk.v{--wx:-56px;--wy:110px}
+html[data-v=d] .hero-desk{margin-bottom:120px}
+html[data-v=d] .fan-desk,html[data-v=d] .port-desk{--h:520px;--wy:80px;margin-bottom:clamp(320px,30vw,460px)}
+
 /* Motion: content shows without script; with it, each section's parts rise in turn */
 .js .rv{opacity:0;transform:translateY(24px);transition:opacity .7s cubic-bezier(.2,.7,.2,1),transform .7s cubic-bezier(.2,.7,.2,1)}
 .js .rv.in{opacity:1;transform:none}
-.js .txt .rv:nth-child(2),.js .walk-head .rv:nth-child(2),.js .small-head .rv:nth-child(2){transition-delay:.08s}
+.js .txt .rv:nth-child(2),.js .head .rv:nth-child(2),.js .head-txt .rv:nth-child(2),.js .small-head .rv:nth-child(2){transition-delay:.08s}
 .js .txt .rv:nth-child(3){transition-delay:.16s}
-.js .txt .rv:nth-child(4),.js .split>.screen.rv{transition-delay:.22s}
+.js .txt .rv:nth-child(4){transition-delay:.22s}
 .js .tile.rv:nth-child(2){transition-delay:.08s}.js .tile.rv:nth-child(3){transition-delay:.16s}.js .tile.rv:nth-child(4){transition-delay:.24s}
-.js .hero-drop{clip-path:inset(0 0 100% 0);animation:drop 1s .35s cubic-bezier(.2,.8,.2,1) forwards}
-.js .hero-drop img{transform:scale(1.06);transform-origin:50% 0;animation:settle 1.1s .35s cubic-bezier(.2,.8,.2,1) forwards}
-.js .hero-win{opacity:0;transform:translateY(20px);animation:rise .9s .1s cubic-bezier(.2,.8,.2,1) forwards}
-@keyframes drop{to{clip-path:inset(0 0 -40px 0)}}
+.js .hero-desk .panel{clip-path:inset(0 0 100% 0);animation:drop 1s .35s cubic-bezier(.2,.8,.2,1) forwards}
+.js .hero-desk .panel img{transform:scale(1.06);transform-origin:50% 0;animation:settle 1.1s .35s cubic-bezier(.2,.8,.2,1) forwards}
+@keyframes drop{to{clip-path:inset(-80px -80px -120px -80px)}}
 @keyframes settle{to{transform:none}}
-@keyframes rise{to{opacity:1;transform:none}}
 @media (prefers-reduced-motion:reduce){
   html{scroll-behavior:auto}
-  .js .rv,.js .hero-win{opacity:1;transform:none;transition:none;animation:none}
-  .js .hero-drop,.js .hero-drop img{clip-path:none;transform:none;animation:none}
+  .js .rv{opacity:1;transform:none;transition:none}
+  .js .hero-desk .panel,.js .hero-desk .panel img,html[data-v=c] .desk.v .desk-in{clip-path:none;transform:none;animation:none}
+  html[data-v=c] .desk.v .desk-in{transform:scale(var(--z))}
 }
 
 /* Medium widths */
 @media (max-width:1100px){
-  .hero{grid-template-columns:minmax(0,1fr);padding-right:var(--m);min-height:0}
-  .hero-screen{border-radius:24px;margin-right:calc(-1 * var(--m));border-radius:24px 0 0 24px}
-  .split,.split.rev,.walk-head,.wide-head,.small,.list{grid-template-columns:1fr}
+  .hero{grid-template-columns:minmax(0,1fr)}
+  .split,.split.rev,.head,.wide-head,.small,.list{grid-template-columns:1fr}
   .split.rev .txt{order:-1}
   .small-head,.list-head{position:static}
-  .walk-body{grid-template-columns:1fr}
-  .walk-text{order:2;padding:28px 28px 8px}
-  .walk-ctl{order:3;padding:16px 28px 28px}
+  .steps{grid-template-columns:1fr 1fr}
   .txt{max-width:640px}
+  .tweaks-desk{--wx:24px}
+  .hero-desk{--h:720px}
+  .hero-copy{padding-right:var(--m)}
 }
-/* Phone */
+/* Phone: a narrower crop, the menu bar loses the items macOS hides first */
 @media (max-width:640px){
   :root{--t-body:17px}
   .nav nav{gap:18px}
   .nav nav a:nth-child(1),.nav nav a:nth-child(2){display:none}
   .hero{padding-top:24px}
-  .hero-copy{padding-top:0}
   .hero h1{font-size:clamp(40px,11vw,52px)}
   .get .cmd{width:100%}
-  .hero-screen{min-height:680px;margin-top:32px;margin-right:calc(-1 * var(--m));--drop-right:auto}
-  .hero-win{display:none}
-  .mb .menus,.mb .batt,.mb .g:nth-of-type(2){display:none}
-  .drop{left:50%;right:auto;transform:translateX(-50%);width:min(340px,calc(100% - 24px))}
-  .screen{border-radius:20px}
-  #fan .screen{min-height:440px}
-  .fan-win{left:16px;top:56px;width:120%}
-  .fan-drop{top:auto;bottom:18px;transform:translateX(-50%)}
-  .walk-screen{min-height:520px}
-  .walk-win{left:16px;width:150%}
-  .walk-names{grid-template-columns:1fr 1fr;gap:4px 12px}
-  .walk-names button,.walk-names button:nth-child(n){text-align:left;font-size:15px}
-  .walk-text{padding:24px 20px 4px}
-  .walk-ctl{padding:12px 20px 24px}
-  .stage-text h3{font-size:32px}
+  .desk{--z:.95;--pr:12px;--r:20px;--h:560px}
+  .hero-desk{--h:640px;--z:.95;--r:20px 0 0 20px;--pr:20px}
+  .bar .apps,.bar .opt,.clock .d{display:none}
+  .bar{justify-content:flex-end}
+  .clock{width:auto}
+  .fan-desk{--h:420px}
+  .port-desk,.input-desk{--h:540px}
+  .rsync-desk{--h:700px}
+  .tweaks-desk{--h:440px;--wx:16px}
+  .steps{gap:8px}
+  .steps button{padding:14px}
+  .steps .d{display:none}
   .field{padding-left:var(--m);padding-right:var(--m)}
-  .screen.bare{min-height:680px}
-  #input-devices .screen{min-height:540px}
-  .wide-screen{min-height:420px}
-  .tweaks-win{width:150%;left:16px;transform:none}
   .tiles{grid-template-columns:1fr 1fr;gap:8px}
   .tile.two{grid-column:span 2}
   .tile-face,.tile.two .tile-face{height:auto;aspect-ratio:4/5}
@@ -268,4 +268,5 @@ a.row:hover{background:var(--lit)}
   .cmd.big{height:60px;padding-left:16px}
   .cmd.big code{font-size:13px;white-space:normal;overflow-wrap:anywhere}
   .foot-row .soft{margin-left:0;width:100%}
+  html[data-v=b] .desk.v{transform:perspective(1400px) rotateY(-10deg) rotateX(4deg)}
 }
