@@ -50,6 +50,7 @@ variant weakens the deliberate temperature and contrast difference.
 | Input Devices | Chosen Color | Chosen Color | Ivory mouse with a violet scroll wheel |
 | Task Manager | Chosen Color | Chosen Color | Midnight-blue display-and-metrics identity is fixed |
 | Portman | Midnight | Porcelain | Neutral network-port glyph in both appearances |
+| Fan page | Midnight | Porcelain | Owner pick "Neutral fan" (2026-11-20): five swept blades with the solid echo; sidebar glyph "Open blades" |
 | Mac Tweaks | Chosen Color | Chosen Color | Tweak wand with a lavender tip and sparkles |
 
 The 2026-09-25 owner request in `spec/icon-refresh-request-list.md` replaces

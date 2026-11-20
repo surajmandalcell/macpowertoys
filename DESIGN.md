@@ -570,7 +570,8 @@ Linear style, OnePlusUI `OnePlusLinear*` parts. Reference:
   (`secondary`, `ink` when selected; marketplace tools use their art), 8 pt
   gap, 13 pt name. A disabled tool name is `muted`. Selection: `selection`
   fill, radius 6, medium `ink` name, no movement. Bottom group: Fan
-  (`fanblades`), Apps by Sam (`heart`), Settings (`⌘,`), Exit (`⌘Q`), 13 pt medium symbols and
+  (`SidebarGlyphFan`, owner pick "Open blades": three outlined blades and a
+  hub dot), Apps by Sam (`heart`), Settings (`⌘,`), Exit (`⌘Q`), 13 pt medium symbols and
   shortcut hints.
 - Command-1 All tools; Command-2 to 9 follow the sidebar; Command-[ and
   Command-] go back and forward; Command-O opens the selected tool.
@@ -627,8 +628,9 @@ Linear style, OnePlusUI `OnePlusLinear*` parts. Reference:
   covers, 40 pt icon, 15 pt name), then one open row per other app (64 pt
   icon). Every app has the App Store capsule: OPEN when installed, else GET,
   or GET disabled with "Not available yet".
-- Fan page: tool header with a 56 pt `fan-tile` icon (white
-  `fanblades.fill`), then "Cool curve": a 240 pt chart (30-100 °C, 0-100%,
+- Fan page: tool header with the 56 pt `FanLogo` icon (owner pick
+  "Neutral fan", 2026-11-20: five swept blades, Midnight in Light,
+  Porcelain in Dark), then "Cool curve": a 240 pt chart (30-100 °C, 0-100%,
   `line` grid, 10 pt `secondary` labels, 1.75 pt `ink` monotone cubic line,
   accent dot at the current CPU temperature), a fixed safety band (90 °C
   ramp to full at 95 °C, `temperature-critical` 10% fill, dashed edge, label
