@@ -174,7 +174,7 @@ still use `SystemMonitor`. `DESIGN.md` owns every size, color, and type value.
   until success, and propagates failure so termination can cancel.
 - **Invariant:** The signed daemon accepts only allowlisted fan keys from the
   signed app (see "Max Rejected On Apple Silicon"), and the app restores Auto
-  on a failed write. The helper installs through osascript (see
+  on a failed write. The helper installs with SMJobBless (see
   `system-tools.md`, Helper install); never type the admin password on the
   owner's behalf. Raise the helper `CFBundleVersion` before using a new XPC
   method. The in-app SMC reader is read-only, runs

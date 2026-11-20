@@ -198,29 +198,29 @@ runs. Prompts come only from a user action.
   polls; a grant or hiding stops it). A real grant and a real helper audio
   restart need the owner's Mac.
 
-### Helper install (osascript)
+### Helper install (SMJobBless)
 
 The owner approves once; nothing goes through System Settings or Login
 Items (owner decision 2026-11-19, the way Mole does it).
 
 - Names: label, Mach service, signing identifier, and file name are all
   `com.surajmandal.macpowertoys.helper`. The tool sits in the app at
-  `Contents/Library/LaunchServices/`; the install copies it to
-  `/Library/PrivilegedHelperTools/`. Its Info.plist is linked into the
-  binary (`__TEXT,__info_plist`).
-- Requirements: the app's `SMPrivilegedExecutables` equals
-  `MacPowerToysHelperContract.helperRequirement`, and the helper's
-  `SMAuthorizedClients` equals `mainAppRequirement` (team `GF57JXJF5A`).
-  The daemon keeps `setConnectionCodeSigningRequirement`.
+  `Contents/Library/LaunchServices/` and macOS copies it to
+  `/Library/PrivilegedHelperTools/`. Its Info.plist and `launchd.plist` are
+  linked into the binary (`__TEXT,__info_plist`, `__TEXT,__launchd_plist`).
+- Requirements are team-based, never certificate-based: identifier plus
+  `anchor apple generic and certificate leaf[subject.OU] = "GF57JXJF5A"`.
+  The app's `SMPrivilegedExecutables` equals
+  `MacPowerToysHelperContract.helperRequirement`, the helper's
+  `SMAuthorizedClients` and the daemon's
+  `setConnectionCodeSigningRequirement` equal `mainAppRequirement`. So an
+  Apple Development app and a Developer ID app both pass, and a signing
+  change never needs a new install (helper 2 already checks this way).
   `FanControlTests` checks the plists against the contract; `make install`
   refuses a product whose signatures do not satisfy both strings.
-- Install: `FanHelperService.install()` runs `/usr/bin/osascript` with
-  `do shell script ... with administrator privileges` and the fixed
-  `installScript`. Its only argument is the helper path inside our bundle.
-  The script boots out the old job, copies the tool root:wheel 544, checks
-  its team signature after the copy, writes the launchd plist with plutil
-  (root:wheel 644), and bootstraps it; running it twice gives the same
-  result. Error -128 means canceled.
+- Install: `FanHelperService.install()` (AuthorizationCopyRights for
+  `kSMRightBlessPrivilegedHelper` with our prompt text and app icon, then
+  `SMJobBless`). Error canceled means the owner closed the prompt.
 - Prompts: only a Cool or Max click with the helper missing or older
   installs (`canInstall` is notInstalled or outdated). A helper that does
   not answer shows one line and Retry, never a password prompt. Auto with no
@@ -230,13 +230,18 @@ Items (owner decision 2026-11-19, the way Mole does it).
   Max click installs again. Raise `NetToysHelper/Info.plist`
   `CFBundleVersion` only when the XPC contract or safety logic must reach
   users; every raise costs the owner one prompt.
-- Touch ID: SecurityAgent logged `AEWP notarized 0, biometry prohibited 1`
-  and `TouchID is not enabled` for our unnotarized app's SMJobBless prompt,
-  but `AEWP notarized 1, biometry prohibited 0` for an Apple-signed
-  requester (`mdmclient`, 2026-11-19 18:29:46). The osascript prompt comes
-  from Apple-signed osascript, so it should offer Touch ID. Check:
-  `/usr/bin/log show --last 10m --predicate 'process == "SecurityAgent"'
-  | grep -i biometry` right after the next install.
+- Touch ID needs a notarized app. SecurityAgent logs `AEWP notarized 0,
+  biometry prohibited 1` and `TouchID is not enabled` for an unnotarized
+  app, through SMJobBless and through `osascript ... with administrator
+  privileges` alike (osascript also shows "Apple could not verify this
+  script"). Notarized Mole gets Touch ID with the same SMJobBless call.
+  `make install ALLOW_INSTALL=1 NOTARIZE=1` signs app and helper with
+  Developer ID and the hardened runtime, notarizes with the notarytool
+  profile `MacPowerToysNotary`, staples, then installs. Without the
+  profile it stops and names `xcrun notarytool store-credentials
+  MacPowerToysNotary`, which only the owner runs. Check after the next
+  install: `/usr/bin/log show --last 10m --predicate 'process ==
+  "SecurityAgent"' | grep -i biometry` shows `notarized 1`.
 - Unsigned builds (`ADHOC=1`): the app fails its own team requirement, so the
   status is `unsupported`, fans stay read only, and the row says why.
 - Migration: every launch, `retireLegacyRegistrations()` unregisters the old
