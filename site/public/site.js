@@ -139,13 +139,18 @@
     document.querySelectorAll('.rv').forEach(function (el) { io.observe(el); });
   });
 
-  // A shared link such as /#portman lands on its section even after the images above it load.
-  window.addEventListener('load', function () {
+  // A shared or clicked link such as /#portman lands on its section even after the images above it load.
+  window.addEventListener('load', land);
+  window.addEventListener('hashchange', land);
+  function land() {
     var id = decodeURIComponent(location.hash.slice(1));
     var target = id && document.getElementById(id);
     if (!target) return;
-    target.querySelectorAll('.rv').forEach(function (el) { el.classList.add('in'); });
-    if (target.classList.contains('rv')) target.classList.add('in');
+    // Shown at once: a tile still mid-rise is 24 px low, and the scroll would land 24 px short.
+    var shown = Array.prototype.slice.call(target.querySelectorAll('.rv'));
+    if (target.classList.contains('rv')) shown.push(target);
+    shown.forEach(function (el) { el.style.transition = 'none'; el.classList.add('in'); });
     target.scrollIntoView({ behavior: 'instant', block: 'start' });
-  });
+    requestAnimationFrame(function () { shown.forEach(function (el) { el.style.transition = ''; }); });
+  }
 })();
