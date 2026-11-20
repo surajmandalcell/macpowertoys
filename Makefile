@@ -58,7 +58,7 @@ ifeq ($(NOTARIZE),1)
 	@xcrun notarytool history --keychain-profile $(NOTARY_PROFILE) >/dev/null 2>&1 || (echo "No notary profile. Run once: xcrun notarytool store-credentials $(NOTARY_PROFILE)" && exit 1)
 endif
 
-install: raycast-assets install-preflight raycast-install $(INSTALL_BUILD)
+verify-app:
 	@test -z "$$(git status --porcelain)" || (echo "Refusing to install because the worktree changed during the build." && exit 1)
 	@CURRENT_COMMIT="$$(git rev-parse HEAD)"; BUILT_COMMIT="$$(plutil -extract MPTSourceCommit raw "$(INSTALL_APP)/Contents/Info.plist" 2>/dev/null)"; test "$(SOURCE_COMMIT)" = "$$CURRENT_COMMIT" && test "$$BUILT_COMMIT" = "$$CURRENT_COMMIT" || (echo "Refusing to install a stale build. Re-run make install from the current HEAD." && exit 1)
 	@codesign --verify --deep --strict "$(INSTALL_APP)"
@@ -67,15 +67,46 @@ install: raycast-assets install-preflight raycast-install $(INSTALL_BUILD)
 ifneq ($(ADHOC),1)
 	@codesign -dv --verbose=4 "$(INSTALL_APP)" 2>&1 | grep -q '^Authority=Developer ID Application' || (echo "Refusing to install an app without a Developer ID signature; a new identity drops every privacy grant." && exit 1)
 endif
-ifeq ($(NOTARIZE),1)
+
+notarize-app:
 	ditto -c -k --keepParent "$(INSTALL_APP)" "$(NOTARY_ZIP)"
 	xcrun notarytool submit "$(NOTARY_ZIP)" --keychain-profile $(NOTARY_PROFILE) --wait 2>&1 | tee "$(NOTARY_ZIP).log"; grep -q 'status: Accepted' "$(NOTARY_ZIP).log" || (echo "Notarization was not accepted. Read the log with: xcrun notarytool log <id> --keychain-profile $(NOTARY_PROFILE)" && exit 1)
 	xcrun stapler staple "$(INSTALL_APP)"
 	xcrun stapler validate "$(INSTALL_APP)"
 	rm -f "$(NOTARY_ZIP)" "$(NOTARY_ZIP).log"
-endif
+
+install: raycast-assets install-preflight raycast-install $(INSTALL_BUILD) verify-app $(if $(filter 1,$(NOTARIZE)),notarize-app)
 	@! pgrep -f '^/Applications/MacPowerToys.app/Contents/MacOS/MacPowerToys$$' >/dev/null || (echo "Refusing to replace the running installed MacPowerToys app." && exit 1)
 	rm -rf /Applications/MacPowerToys.app
 	ditto "$(INSTALL_APP)" /Applications/MacPowerToys.app
 
-.PHONY: build build-for-testing test raycast-assets raycast raycast-install install install-preflight
+# make release: a notarized, stapled MacPowerToys-<version>.dmg and its .sha256 in RELEASE_DIR, built from a clean HEAD.
+RELEASE_DIR ?= $(CURDIR)/release
+DMG_STAGE := $(DERIVED_DATA)/dmg-stage
+
+release-preflight:
+	@test "$(ADHOC)" != "1" || (echo "A release needs the Developer ID signature, not ADHOC=1." && exit 1)
+	@test -z "$(PREBUILT_APP)" || (echo "A release builds its own app; drop PREBUILT_APP." && exit 1)
+	@test -z "$$(git status --porcelain)" || (echo "Refusing to release from a dirty worktree. Commit the complete source state first." && exit 1)
+	@xcrun notarytool history --keychain-profile $(NOTARY_PROFILE) >/dev/null 2>&1 || (echo "No notary profile. Run once: xcrun notarytool store-credentials $(NOTARY_PROFILE)" && exit 1)
+
+release: release-preflight build verify-app notarize-app
+	@set -e; \
+	VERSION="$$(plutil -extract CFBundleShortVersionString raw "$(INSTALL_APP)/Contents/Info.plist")"; \
+	DMG="$(RELEASE_DIR)/MacPowerToys-$$VERSION.dmg"; \
+	IDENTITY="$$(codesign -dv --verbose=4 "$(INSTALL_APP)" 2>&1 | sed -n 's/^Authority=\(Developer ID Application.*\)/\1/p')"; \
+	rm -rf "$(DMG_STAGE)"; rm -f "$$DMG" "$$DMG.sha256"; mkdir -p "$(DMG_STAGE)" "$(RELEASE_DIR)"; \
+	ditto "$(INSTALL_APP)" "$(DMG_STAGE)/MacPowerToys.app"; \
+	ln -s /Applications "$(DMG_STAGE)/Applications"; \
+	hdiutil create -volname MacPowerToys -srcfolder "$(DMG_STAGE)" -format UDZO -ov "$$DMG"; \
+	rm -rf "$(DMG_STAGE)"; \
+	codesign --sign "$$IDENTITY" --timestamp "$$DMG"; \
+	xcrun notarytool submit "$$DMG" --keychain-profile $(NOTARY_PROFILE) --wait 2>&1 | tee "$$DMG.log"; \
+	grep -q 'status: Accepted' "$$DMG.log" || (echo "The DMG was not notarized. Read the log with: xcrun notarytool log <id> --keychain-profile $(NOTARY_PROFILE)" && exit 1); \
+	rm -f "$$DMG.log"; \
+	xcrun stapler staple "$$DMG"; \
+	xcrun stapler validate "$$DMG"; \
+	spctl -a -vv -t open --context context:primary-signature "$$DMG"; \
+	cd "$(RELEASE_DIR)" && shasum -a 256 "MacPowerToys-$$VERSION.dmg" | tee "MacPowerToys-$$VERSION.dmg.sha256"
+
+.PHONY: build build-for-testing test raycast-assets raycast raycast-install install install-preflight verify-app notarize-app release release-preflight
