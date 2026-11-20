@@ -55,6 +55,10 @@ struct DevSyncRulesSection: View {
     }
 
     private func patternEditor(_ title: String, patterns: Binding<[String]>, help: String) -> some View {
+        patternEditorBody(title, patterns: patterns, help: help).onePlusFocusPolicy()
+    }
+
+    private func patternEditorBody(_ title: String, patterns: Binding<[String]>, help: String) -> some View {
         OnePlusLinearAppletSection(title) {
             OnePlusTextEditor(title, text: Binding(
                 get: { patterns.wrappedValue.joined(separator: "\n") },

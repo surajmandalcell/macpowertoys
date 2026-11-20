@@ -399,7 +399,7 @@ private struct ProviderDropdown: View {
         GeometryReader { geometry in
             trigger(width: geometry.size.width)
                 .popover(isPresented: $isPresented, arrowEdge: .top) {
-                    providerList(width: geometry.size.width)
+                    providerList(width: geometry.size.width).onePlusFocusPolicy()
                 }
         }
         .frame(height: Self.controlHeight)

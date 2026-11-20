@@ -122,7 +122,7 @@ struct DevSyncProjectRow: View {
         .contentShape(Rectangle())
         .accessibilityLabel("Resolve destination drift")
         .popover(isPresented: $isShowingDrift, arrowEdge: .bottom) {
-            driftPopover
+            driftPopover.onePlusFocusPolicy()
         }
     }
 

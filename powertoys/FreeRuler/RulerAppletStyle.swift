@@ -200,6 +200,9 @@ final class RulerAppletButton: NSButton {
                                  yRadius: RulerAppletMetrics.buttonRadius)
         fillColor.withAlphaComponent(fillColor.alphaComponent * alpha).setFill()
         shape.fill()
+        if window?.firstResponder === self, OnePlusFocusPolicy.shared.showsFocus {
+            RulerQuietRaised.drawFocus(bounds, radius: RulerAppletMetrics.buttonRadius)
+        }
         let paragraph = NSMutableParagraphStyle()
         paragraph.alignment = role == .destructive ? .left : .center
         paragraph.lineBreakMode = .byTruncatingTail
@@ -211,12 +214,5 @@ final class RulerAppletButton: NSButton {
         (title as NSString).draw(in: NSRect(x: RulerAppletMetrics.rowPadding, y: bounds.midY - height / 2,
                                             width: bounds.width - 2 * RulerAppletMetrics.rowPadding, height: height),
                                  withAttributes: attributes)
-        if window?.firstResponder === self, OnePlusFocusPolicy.shared.showsFocus {
-            NSColor(OnePlusColor.focus).setStroke()
-            let ring = NSBezierPath(roundedRect: bounds.insetBy(dx: 1, dy: 1),
-                                    xRadius: RulerAppletMetrics.buttonRadius - 1,
-                                    yRadius: RulerAppletMetrics.buttonRadius - 1)
-            ring.stroke()
-        }
     }
 }
