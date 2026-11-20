@@ -200,8 +200,8 @@ struct AddRemoteSheet: View {
                     width: OnePlusLinearControlWidth.wide
                 )
             } else if option.isPassword {
-                SecureField(option.defaultValue, text: valueBinding(option))
-                    .textFieldStyle(.roundedBorder)
+                OnePlusLinearTextField(option.defaultValue.isEmpty ? option.label : option.defaultValue,
+                                       text: valueBinding(option), secure: true)
             } else {
                 OnePlusLinearTextField(option.label, text: valueBinding(option))
             }
@@ -249,11 +249,9 @@ struct AddRemoteSheet: View {
                     width: OnePlusLinearControlWidth.wide
                 )
             } else if prompt.option.isPassword {
-                SecureField(prompt.option.defaultValue, text: $promptAnswer)
-                    .textFieldStyle(.roundedBorder)
+                OnePlusLinearTextField(prompt.option.defaultValue, text: $promptAnswer, secure: true)
             } else {
-                TextField(prompt.option.defaultValue, text: $promptAnswer)
-                    .textFieldStyle(.roundedBorder)
+                OnePlusLinearTextField(prompt.option.defaultValue, text: $promptAnswer)
             }
 
             HStack {
