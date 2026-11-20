@@ -442,7 +442,9 @@ ease-in cubic-bezier(0.4, 0, 1, 1)):
     Auto, Cool, Max segmented control: `fillTrack` radius 7, `fillThumb`
     radius 5) and the Awake row (state text and a 32 x 18 switch, accent
     on). No fans hides the Fan row; only a segment click writes.
-  - Fan segments are `.snug` (40 pt min), so "Custom" never cuts the RPM.
+  - Fan segments are `.snug` (each label plus 8 pt a side, so "Custom" has
+    the same air as Auto and Max). The Fan title has no fixed width, so the
+    RPM stays whole. A click moves the pill at once, before the helper answers.
     Cool reads "Custom" while the curve differs from the standard one.
   - 12 pt `thermometer.medium` before the segments, by Apple silicon
     thermals: under 56 °C `panelMuted`, 56-69 warm, 70-84 hot, 85-94 very

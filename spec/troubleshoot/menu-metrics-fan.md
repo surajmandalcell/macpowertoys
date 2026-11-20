@@ -184,7 +184,10 @@ still use `SystemMonitor`. `DESIGN.md` owns every size, color, and type value.
 - **Invariant:** Fan is the first row of the Home control card, above
   Awake. It shows the RPM, the CPU thermometer (`CPUHeat`, the same sensor as
   Cool, read on the 5 s poll and reset when the row hides), and Auto, Cool
-  (or Custom), and Max with `.snug` segments so the RPM never truncates.
+  (or Custom), and Max with `.snug` segments (label plus 8 pt a side). The
+  Fan title has no fixed width, which keeps "2,840 RPM" whole; a 48 pt title
+  cut it. The clicked pill shows at once and falls back after 3 s if the
+  helper never reports the preset.
   `MPTDiagnosticCPUCelsius` replaces the reading for screenshot checks;
   delete it after. A read that finds no fans
   hides the row. Fan starts and stops its service from `onePlusIsVisible`;

@@ -111,19 +111,32 @@ struct MainPanelFanRow<Setup: View>: View {
     let isChoiceEnabled: (FanPreset) -> Bool
     @ViewBuilder let setup: Setup
     @AppStorage(FanCurve.storageKey) private var curveData: Data?
+    /// The clicked choice, shown at once while the helper applies it; cleared when the service reports back.
+    @State private var requested: FanPreset?
+
+    private var shownSelection: Binding<FanPreset?> {
+        Binding(get: { requested ?? selection }, set: { requested = $0; selection = $0 })
+    }
 
     private var choices: [(FanPreset?, String)] {
         FanPreset.allCases.map { (Optional($0), $0 == .cool && curveData != nil ? "Custom" : $0.rawValue) }
     }
 
     var body: some View {
-        OnePlusLinearControlRow("Fan", systemImage: "fanblades", status: status) {
+        // No fixed title width: "Fan" is short, and the room keeps the RPM whole beside the fitted segments.
+        OnePlusLinearControlRow("Fan", systemImage: "fanblades", status: status, titleWidth: nil) {
             HStack(spacing: 4) {
                 setup
                 if let cpuCelsius { CPUThermometer(celsius: cpuCelsius) }
-                // Snug keeps Auto and Max at the fixed width and widens only "Custom", so the RPM is never cut.
-                OnePlusLinearSegmented(choices: choices, selection: $selection, accessibilityLabel: "Fan preset",
-                                       sizing: .snug, isChoiceEnabled: { $0.map(isChoiceEnabled) ?? false })
+                OnePlusLinearSegmented(choices: choices, selection: shownSelection, accessibilityLabel: "Fan preset",
+                                       sizing: .snug, isChoiceEnabled: { $0.map(isChoiceEnabled) ?? false || $0 == requested })
+                    .onChange(of: selection) { requested = nil }
+                    .task(id: requested) {
+                        // A command that fails never reports back, so the pill returns to the real state.
+                        guard requested != nil else { return }
+                        try? await Task.sleep(for: .seconds(3))
+                        requested = nil
+                    }
                     .help(curveData != nil
                           ? "Auto follows macOS. Custom follows your curve on the Fan page. Max runs fans at their hardware maximum."
                           : "Auto follows macOS. Cool speeds the fans up as the CPU passes 65 °C, full speed at 90 °C. Max runs fans at their hardware maximum.")
