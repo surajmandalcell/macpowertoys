@@ -368,24 +368,24 @@ final class FanControlTests: XCTestCase {
     func testCoolCurveKeepsSpeedRisingAndFollowsEditedPoints() {
         let curve = FanCurve(points: [.init(celsius: 80, speed: 0.4), .init(celsius: 50, speed: 0.6),
                                       .init(celsius: 95, speed: 2), .init(celsius: 50, speed: 0.1)])
-        XCTAssertEqual(curve.points.map(\.celsius), [50, 80, 95], "Sorted, repeated temperatures dropped")
-        XCTAssertEqual(curve.points.map(\.speed), [0.6, 0.6, 1], "Speed never falls and stays inside 0...1")
-        XCTAssertEqual(FanCurve(points: [.init(celsius: 70, speed: 0.5)]), .standard, "One point falls back to Cool")
+        XCTAssertEqual(curve.points.map(\.celsius), [50, 80], "Sorted, repeated and locked-zone temperatures dropped")
+        XCTAssertEqual(curve.points.map(\.speed), [0.6, 0.6], "Speed never falls")
+        XCTAssertEqual(FanCurve(points: [.init(celsius: 92, speed: 0.5)]), .standard, "No point left falls back to Cool")
         XCTAssertEqual(FanDriver.coolTarget(hottest: 87.5, previous: 5_777, minimum: 1_350, maximum: 5_777, curve: curve),
                        5_627, "An edited curve still falls at most 150 RPM per tick")
         XCTAssertFalse(FanCurve.standard.isEdited)
     }
 
-    func testCoolCurveIsSmoothRisingAndKeepsTheSafetyFloor() {
+    func testCoolCurveIsSmoothRisingAndEndsAtTheLockedPoint() {
         let curve = FanCurve(points: [.init(celsius: 40, speed: 0.33), .init(celsius: 60, speed: 0.35),
                                       .init(celsius: 75, speed: 0.4)])
         let samples = stride(from: 30.0, through: 100.0, by: 0.5).map(curve.speed(at:))
         XCTAssertEqual(samples, samples.sorted(), "Never falls")
-        XCTAssertTrue(stride(from: 40.0, through: 75.0, by: 0.5).allSatisfy { (0.33...0.4).contains(curve.curveSpeed(at: $0)) },
+        XCTAssertTrue(stride(from: 40.0, through: 75.0, by: 0.5).allSatisfy { (0.33...0.4).contains(curve.speed(at: $0)) },
                       "No overshoot between points")
-        XCTAssertEqual(curve.speed(at: 85), 0.4, accuracy: 0.0001)
-        XCTAssertEqual(curve.speed(at: 92.5), 0.5, accuracy: 0.0001, "Safety floor halfway at 92.5 °C")
-        XCTAssertEqual(curve.speed(at: 95), 1, "Full speed at 95 °C whatever the curve says")
+        XCTAssertTrue((0.4...1).contains(curve.speed(at: 85)), "Rises from the last point to the locked end")
+        XCTAssertEqual(curve.speed(at: 90), 1, "Full speed from 90 °C whatever the curve says")
+        XCTAssertEqual(curve.speed(at: 100), 1)
         XCTAssertEqual(FanCurve.standard.speed(at: 77.5), 0.5, accuracy: 0.0001, "Two points stay a straight line")
     }
 
