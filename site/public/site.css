@@ -71,7 +71,8 @@ h2:hover .anchor,h3:hover .anchor,.anchor:focus-visible,.anchor.done{opacity:1}
 .scr{position:absolute;inset:0;overflow:hidden;border-radius:calc(var(--r) / var(--z))}
 .scr::before{content:"";position:absolute;inset:0;border-radius:inherit;background:#1d1d1f var(--wall) center/cover}
 .bar{position:absolute;z-index:1;inset:0 0 auto;height:24px;display:flex;align-items:center;gap:14px;padding:0 14px;color:#fff;font:500 13px/1 var(--font);letter-spacing:0;white-space:nowrap;filter:drop-shadow(0 0 3px rgba(0,0,0,.28))} /* taste-skill-ignore: macOS draws this shade under menu bar text on a wallpaper */
-.apps{flex:1;min-width:0;overflow:hidden;display:flex;align-items:center;gap:19px}
+.apps{flex:1;min-width:0;height:24px;overflow:hidden;display:flex;flex-wrap:wrap;align-items:center;align-content:flex-start;column-gap:19px}
+.apps>*{height:24px;display:flex;align-items:center} /* a menu that does not fit wraps out of sight, as macOS hides it whole */
 .apps b{font-weight:700}
 .bar img{flex:none}
 .mbi{flex:none;display:grid;place-items:center;width:30px;height:22px;border-radius:7px;background:rgba(255,255,255,.28);transition:background .2s}
@@ -105,13 +106,49 @@ h2:hover .anchor,h3:hover .anchor,.anchor:focus-visible,.anchor.done{opacity:1}
 .head-txt{display:flex;flex-direction:column;gap:22px}
 
 /* Fan */
-.fan-desk{--h:560px;--z:1.3;--wx:40px;--wy:48px}
-.try{display:grid;gap:12px;padding:22px;border-radius:18px;background:var(--surface)}
+.fan-desk{--h:740px;--z:.95;--wx:40px;--wy:56px}
+/* The panel sits beside the window only where both fit side by side; it never covers the curve */
+@media (max-width:1400px){.fan-desk .panel{display:none}}
+/* CPU temperature steps from DESIGN.md (CPUHeat.swift): gray, yellow, orange, red, deep red */
+:root{--t-normal:#6e6e76;--t-warm:#a67c00;--t-hot:#cc610c;--t-very-hot:#d03a2c;--t-near-the-limit:#9a1717}
+@media (prefers-color-scheme:dark){:root{--t-normal:#9999a1;--t-warm:#f2c94c;--t-hot:#f59a4a;--t-very-hot:#ff7466;--t-near-the-limit:#ff3b30}}
+.try{--heat:var(--t-warm);--f:.457;display:grid;gap:14px;padding:22px;border-radius:18px;background:var(--surface)}
+.try[data-heat=normal]{--heat:var(--t-normal)}
+.try[data-heat=hot]{--heat:var(--t-hot)}
+.try[data-heat=very-hot]{--heat:var(--t-very-hot)}
+.try[data-heat=near-the-limit]{--heat:var(--t-near-the-limit)}
 .try label{font-weight:600;font-size:17px}
 .try .note{font-size:var(--t-small);color:var(--muted)}
-.meter{height:8px;border-radius:4px;background:var(--bg);overflow:hidden}
-.meter span{display:block;height:100%;width:0;background:var(--accent);border-radius:4px;transition:width .2s}
-input[type=range]{width:100%;height:32px;margin:0;accent-color:var(--accent);cursor:pointer}
+.fan-now{display:flex;align-items:center;gap:14px}
+.fan-now p{font-size:17px;color:var(--muted)}
+.fan-now b{font-size:34px;font-weight:600;letter-spacing:-.03em;color:var(--ink);font-variant-numeric:tabular-nums}
+.blades{width:40px;height:40px;flex:none;color:var(--ink)}
+.heat-word{margin-left:auto;font-weight:600;color:var(--heat)!important;font-variant-numeric:tabular-nums;transition:color .3s}
+.curve{width:100%;height:auto;overflow:visible}
+.curve .grid{stroke:var(--lit);stroke-width:1;fill:none}
+.curve .safe{fill:var(--t-near-the-limit);opacity:.1}
+.curve .safe-edge{stroke:var(--t-near-the-limit);stroke-width:1.2;stroke-dasharray:3 3;fill:none}
+.curve .area{fill:var(--ink);opacity:.05}
+.curve .line{stroke:var(--ink);stroke-width:2;fill:none;stroke-linejoin:round}
+.curve .guide{stroke:var(--heat);stroke-width:1.2;stroke-dasharray:3 3;transition:stroke .3s}
+.curve .dot{fill:var(--heat);stroke:var(--surface);stroke-width:3;transition:fill .3s}
+/* A thermometer: the bulb takes the current step color, the tube fills with every step up to the current one */
+.therm{position:relative;height:28px}
+.bulb{position:absolute;left:0;top:2px;width:24px;height:24px;border-radius:50%;background:var(--heat);box-shadow:0 0 0 3px var(--surface);z-index:1;transition:background .3s}
+.tube{position:absolute;left:12px;right:11px;top:9px;height:10px;border-radius:5px;background:var(--bg);overflow:hidden;container-type:inline-size}
+.tube .fill{position:absolute;inset:0 auto 0 0;width:calc(22px + (100% - 22px) * var(--f));overflow:hidden;border-radius:5px}
+.tube i{position:absolute;inset:0 auto 0 0;width:100cqw;background:linear-gradient(90deg,var(--t-normal) 0 calc(22px + (100% - 22px) * .371),var(--t-warm) 0 calc(22px + (100% - 22px) * .571),var(--t-hot) 0 calc(22px + (100% - 22px) * .786),var(--t-very-hot) 0 calc(22px + (100% - 22px) * .929),var(--t-near-the-limit) 0)}
+.therm input{position:absolute;left:23px;right:0;top:0;width:auto;height:28px;margin:0;background:none;-webkit-appearance:none;appearance:none;cursor:pointer}
+.therm input::-webkit-slider-runnable-track{height:28px;background:none}
+.therm input::-moz-range-track{height:28px;background:none}
+.therm input::-webkit-slider-thumb{-webkit-appearance:none;width:22px;height:22px;margin-top:3px;border-radius:50%;background:#fff;box-shadow:0 1px 3px rgba(0,0,0,.3),0 0 0 .5px rgba(0,0,0,.15)}
+.therm input::-moz-range-thumb{width:22px;height:22px;border:0;border-radius:50%;background:#fff;box-shadow:0 1px 3px rgba(0,0,0,.3),0 0 0 .5px rgba(0,0,0,.15)}
+.therm input:focus-visible{outline:none}
+.therm input:focus-visible::-webkit-slider-thumb{box-shadow:0 0 0 4px color-mix(in srgb,var(--accent) 45%,transparent),0 1px 3px rgba(0,0,0,.3)}
+.ticks{position:relative;height:18px;margin:-8px 11px 0 34px;font-size:13px;color:var(--muted);font-variant-numeric:tabular-nums}
+.ticks span{position:absolute;transform:translateX(-50%)}
+.ticks span:nth-child(1){left:0}.ticks span:nth-child(2){left:37.14%}.ticks span:nth-child(3){left:57.14%}
+.ticks span:nth-child(4){left:78.57%}.ticks span:nth-child(5){left:92.86%}
 
 /* Portman: four steps over one screen */
 .steps{list-style:none;margin:0 0 24px;padding:0;display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:12px}
@@ -180,7 +217,7 @@ a.row:hover{background:var(--lit)}
 
 /* Look A, Break-out (default): the panel hangs past the bottom of the screen crop. Each desk reserves
    room under it for that overhang so nothing below is covered. */
-html[data-v=a] .hero-desk{margin-bottom:56px}
+html[data-v=a] .hero-desk{margin-bottom:max(0px,calc((29px + 642px) * var(--z) - var(--h) + 24px))}
 html[data-v=a] .port-desk{margin-bottom:72px}
 
 /* Look B, Tilt: an oversized screen turned in perspective that runs off the right edge of the page */
@@ -247,7 +284,7 @@ html[data-v=d] .fan-desk,html[data-v=d] .port-desk{--h:520px;--wy:80px;margin-bo
   .bar .apps,.bar .opt,.clock .d{display:none}
   .bar{justify-content:flex-end}
   .clock{width:auto}
-  .fan-desk{--h:420px}
+  .fan-desk{--h:330px;--z:.42;--wx:16px;--wy:44px;--r:14px} /* the whole Fan page, small, instead of a crop that hides the curve */
   .port-desk,.input-desk{--h:540px}
   .rsync-desk{--h:700px}
   .tweaks-desk{--h:440px;--wx:16px}
