@@ -45,16 +45,13 @@ struct FanPageView: View {
     }
 }
 
-/// The page icon: a white fan on the `fanTile` fill, in the same rounded tile as the tool logos.
+/// The page icon (owner pick "Neutral fan", 2026-11-20): Midnight in Light, Porcelain in Dark, like Portman.
 struct FanPageIcon: View {
     let size: CGFloat
 
     var body: some View {
-        Image(systemName: "fanblades.fill")
+        Image("FanLogo")
             .resizable().scaledToFit()
-            .padding(size * 0.24)
-            .foregroundStyle(.white)
-            .background(OnePlusLinearColor.fanTile)
             .toolIconTile(size: size)
             .accessibilityHidden(true)
     }
