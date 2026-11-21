@@ -1,45 +1,31 @@
+/* The page is always dark: every chapter sits on a dark moving background. App shots and demos
+   still follow the visitor's Light or Dark setting, like a Mac in Light mode on a dark wallpaper. */
 :root{
-  --bg:#f5f5f7;--surface:#e8e8ed;--ink:#1d1d1f;--muted:#5f5f66;
-  --accent:#0071e3;--accent-ink:#fff;--link:#0066cc;
-  --lit:rgba(0,0,0,.14);
-  --tile-dark:#1d1d1f;
-  --field:#0071e3;--field-ink:#fff;
-  --cmd:#fff;
-  --cmd-shadow:0 1px 2px rgba(0,0,0,.06),0 6px 16px -8px rgba(0,0,0,.18),0 0 0 .5px rgba(0,0,0,.14);
-  --cmd-hi:#fff;
-  --cmd-shadow-hi:0 2px 4px rgba(0,0,0,.06),0 16px 32px -14px rgba(0,0,0,.28),0 0 0 .5px rgba(0,0,0,.14),0 0 0 5px color-mix(in srgb,var(--accent) 9%,transparent);
+  --base:#07070a;--surface:rgba(255,255,255,.06);--ink:#f5f5f7;--muted:#b4b4bb;
+  --accent:#0071e3;--accent-ink:#fff;--link:#3d9bff;
+  --lit:rgba(255,255,255,.2);
+  --cmd:rgba(28,28,31,.82);
+  --cmd-shadow:0 1px 2px rgba(0,0,0,.4),0 6px 16px -8px rgba(0,0,0,.7),0 0 0 .5px rgba(255,255,255,.14);
+  --cmd-hi:#2b2b30;
+  --cmd-shadow-hi:0 2px 4px rgba(0,0,0,.4),0 16px 32px -14px rgba(0,0,0,.8),0 0 0 .5px rgba(255,255,255,.22),0 0 0 5px color-mix(in srgb,var(--accent) 16%,transparent);
   --spring:linear(0,.034 1.4%,.13 2.9%,.47 7.1%,.77 11.7%,.94 16.2%,1.03 21%,1.06 25.6%,1.05 31.2%,1.01 40%,.995 50%,1);
-  --win-shadow:0 32px 64px -24px rgba(0,0,0,.42),0 10px 24px -12px rgba(0,0,0,.22),0 0 0 .5px rgba(0,0,0,.18);
-  --deep:0 60px 90px -30px rgba(0,0,0,.6),0 24px 40px -18px rgba(0,0,0,.38),0 0 0 .5px rgba(0,0,0,.22);
+  --win-shadow:0 32px 64px -24px rgba(0,0,0,.85),0 10px 24px -12px rgba(0,0,0,.6),0 0 0 .5px rgba(255,255,255,.14);
+  --deep:0 60px 90px -30px rgba(0,0,0,.9),0 24px 40px -18px rgba(0,0,0,.7),0 0 0 .5px rgba(255,255,255,.16);
   --font:-apple-system,BlinkMacSystemFont,"SF Pro Text","Inter",system-ui,sans-serif;
   --bounce:linear(0,.009,.035 2.1%,.141,.281 6.7%,.723 12.9%,.938 16.7%,1.017,1.077,1.121,1.149 24.3%,1.159,1.163,1.161,1.154 29.9%,1.129 32.8%,1.051 39.6%,1.017 43.1%,.991,.977 51%,.974 53.8%,.975 57.1%,.997 69.8%,1.003 76.9%,1);
-  --glass:rgba(255,255,255,.62);--glass-hi:rgba(255,255,255,.95);--glass-edge:rgba(0,0,0,.12);
-  --star:#f5a623;--cap:#fff;--cap-edge:rgba(0,0,0,.14);
+  --glass:rgba(255,255,255,.07);--glass-hi:rgba(255,255,255,.2);--glass-edge:rgba(255,255,255,.14);
+  --star:#ffc24a;--cap:rgba(28,28,31,.7);--cap-edge:rgba(255,255,255,.16);
   --mono:ui-monospace,"SF Mono",Menlo,monospace; /* taste-skill-ignore: only the literal brew command */
   --m:clamp(20px,4vw,64px);
   --t-h1:clamp(46px,5.4vw,84px);--t-h2:clamp(34px,3.7vw,56px);--t-lead:clamp(19px,1.1rem + .5vw,23px);--t-body:18px;--t-small:14px;
-  --gap:clamp(96px,10vw,152px);
-  color-scheme:light dark;
-}
-@media (prefers-color-scheme:dark){
-  :root{
-    --bg:#0c0c0e;--surface:#1c1c1f;--ink:#f5f5f7;--muted:#a1a1a8;
-    --link:#3d9bff;--lit:rgba(255,255,255,.2);
-    --tile-dark:#2a2a2e;
-    --field:#0b4fae;
-    --cmd:#1c1c1f;
-    --cmd-shadow:0 1px 2px rgba(0,0,0,.4),0 6px 16px -8px rgba(0,0,0,.7),0 0 0 .5px rgba(255,255,255,.14);
-    --cmd-hi:#2b2b30;
-    --cmd-shadow-hi:0 2px 4px rgba(0,0,0,.4),0 16px 32px -14px rgba(0,0,0,.8),0 0 0 .5px rgba(255,255,255,.22),0 0 0 5px color-mix(in srgb,var(--accent) 16%,transparent);
-    --win-shadow:0 32px 64px -24px rgba(0,0,0,.85),0 10px 24px -12px rgba(0,0,0,.6),0 0 0 .5px rgba(255,255,255,.14);
-    --deep:0 60px 90px -30px rgba(0,0,0,.9),0 24px 40px -18px rgba(0,0,0,.7),0 0 0 .5px rgba(255,255,255,.16);
-    --glass:rgba(255,255,255,.07);--glass-hi:rgba(255,255,255,.2);--glass-edge:rgba(255,255,255,.14);
-    --star:#ffc24a;--cap:#1c1c1f;--cap-edge:rgba(255,255,255,.16);
-  }
+  /* One space between chapters: every seam is twice this */
+  --pad:clamp(64px,7vw,112px);
+  --vis:min(calc(100svh - 160px),860px);
+  color-scheme:dark;
 }
 *{box-sizing:border-box}
-html{scroll-behavior:smooth;-webkit-text-size-adjust:100%;overflow-x:clip}
-body{margin:0;background:var(--bg);color:var(--ink);font:400 var(--t-body)/1.5 var(--font);letter-spacing:-.01em;-webkit-font-smoothing:antialiased;overflow-x:clip}
+html{scroll-behavior:smooth;-webkit-text-size-adjust:100%;overflow-x:clip;background:var(--base)}
+body{margin:0;background:var(--base);color:var(--ink);font:400 var(--t-body)/1.5 var(--font);letter-spacing:-.01em;-webkit-font-smoothing:antialiased;overflow-x:clip}
 [id]{scroll-margin-top:32px}
 img{display:block;max-width:100%;height:auto}
 a{color:inherit}
@@ -56,10 +42,9 @@ a:focus-visible,button:focus-visible{background-color:var(--lit);border-radius:8
 /* Navigation */
 .nav{display:flex;align-items:center;justify-content:space-between;gap:24px;padding:22px var(--m);max-width:1520px;margin:0 auto}
 .mark{display:flex;align-items:center;gap:10px;font-weight:600;font-size:18px;text-decoration:none;letter-spacing:-.02em}
-.nav nav{display:flex;gap:28px;font-size:15px}
+.nav nav{display:flex;align-items:center;gap:28px;font-size:15px}
 .nav nav a{text-decoration:none;color:var(--muted);transition:color .15s}
 .nav nav a:hover{color:var(--ink)}
-.nav nav{align-items:center}
 /* GitHub: an outlined capsule; the star turns gold on hover */
 .nav .gh-cta{position:relative;display:inline-flex;align-items:center;gap:8px;height:36px;padding:0 12px 0 13px;border-radius:999px;font-size:14px;font-weight:600;letter-spacing:-.005em;white-space:nowrap;isolation:isolate;color:var(--ink);background:var(--cap);box-shadow:inset 0 0 0 1px var(--cap-edge),0 1px 2px rgba(0,0,0,.06);-webkit-tap-highlight-color:transparent;transform:scale(var(--s,1));transition:transform .5s var(--bounce)}
 .gh-cta::before{content:"";position:absolute;z-index:-1;inset:0;border-radius:inherit;background:var(--lit);opacity:0;transition:opacity .2s}
@@ -100,40 +85,74 @@ a:focus-visible,button:focus-visible{background-color:var(--lit);border-radius:8
 .cmd button:active{transform:scale(.92)}
 .cmd svg{width:19px;height:19px}
 .cmd .ok,.cmd.done .cp{display:none}
-.cmd.done .ok{display:block;color:#28a745}
+.cmd.done .ok{display:block;color:#30d158}
 .anchor{position:relative;display:inline-grid;place-items:center;width:34px;height:34px;margin-left:10px;vertical-align:middle;border-radius:9px;color:var(--muted);opacity:.8;transition:opacity .15s,background .15s}
 .anchor svg{width:20px;height:20px}
 h2:hover .anchor,h3:hover .anchor,.anchor:focus-visible,.anchor.done{opacity:1}
 .anchor:hover{background:var(--lit)}
-.anchor.done::after{content:"Link copied";position:absolute;left:50%;bottom:calc(100% + 6px);transform:translateX(-50%);padding:5px 10px;border-radius:8px;background:var(--ink);color:var(--bg);font:500 13px/1.2 var(--font);letter-spacing:0;white-space:nowrap}
-.field .anchor{color:var(--field-ink)}
+.anchor.done::after{content:"Link copied";position:absolute;left:50%;bottom:calc(100% + 6px);transform:translateX(-50%);padding:5px 10px;border-radius:8px;background:var(--ink);color:var(--base);font:500 13px/1.2 var(--font);letter-spacing:0;white-space:nowrap}
 
-/* A Mac screen crop, enlarged: a real wallpaper, the macOS menu bar, and the app's own windows.
-   Everything inside .desk-in is laid out in real macOS points, then scaled by --z. */
-.desk{position:relative;height:var(--h,600px);--z:1.2;--zi:var(--z);--r:24px;--pr:112px;--wx:48px;--wy:56px}
-.desk-in{position:absolute;top:0;right:0;width:calc(100% / var(--zi));height:calc(100% / var(--zi));transform:scale(var(--z));transform-origin:100% 0}
-.scr{position:absolute;inset:0;overflow:hidden;border-radius:calc(var(--r) / var(--z))}
-.scr::before{content:"";position:absolute;inset:0;border-radius:inherit;background:#1d1d1f var(--wall) center/cover;box-shadow:inset 0 0 0 1px var(--lit)}
-.bar{position:absolute;z-index:1;inset:0 0 auto;height:24px;display:flex;align-items:center;gap:14px;padding:0 22px;color:#fff;font:500 13px/1 var(--font);letter-spacing:0;white-space:nowrap;filter:drop-shadow(0 0 3px rgba(0,0,0,.28))} /* taste-skill-ignore: macOS draws this shade under menu bar text on a wallpaper */
-.apps{flex:1;min-width:0;height:24px;overflow:hidden;display:flex;flex-wrap:wrap;align-items:center;align-content:flex-start;column-gap:19px}
-.apps>*{height:24px;display:flex;align-items:center} /* a menu that does not fit wraps out of sight, as macOS hides it whole */
-.apps b{font-weight:700}
-.bar img{flex:none}
-.mbi{flex:none;display:grid;place-items:center;width:30px;height:22px;border-radius:7px;background:rgba(255,255,255,.28);transition:background .2s}
-.clock{flex:none;width:118px;text-align:right}
-/* A light wallpaper under the bar: macOS draws the menu bar in black */
-.bar.ink{color:rgba(0,0,0,.85);filter:none}
-.bar.ink img{filter:invert(1)}
-.bar.ink .mbi{background:rgba(0,0,0,.1)}
-/* A hairline round every screen and tile, so a dark wallpaper keeps its edge on a dark page */
-.tile-face::after{content:"";position:absolute;inset:0;z-index:3;border-radius:inherit;box-shadow:inset 0 0 0 1px var(--lit);pointer-events:none}
-/* Phone: a readable zoom of one whole region of a window, cut only on card edges and row gaps.
-   --zx --zy --zw --zh is the region in window points, --nw the window width. */
-.zoom{display:none}
-.dwin{position:absolute;width:820px;left:var(--wx);top:var(--wy)}
-.dwin img,.tile-face img{border-radius:12px;box-shadow:var(--win-shadow)} /* taste-skill-ignore: a real floating window */
-.panel{position:absolute;z-index:2;width:356px;top:29px;right:var(--pr)}
-.panel img{width:100%;border-radius:14px;box-shadow:var(--deep)} /* taste-skill-ignore: a real menu bar panel */
+/* Chapters: each section is one chapter of the story, on its own moving background */
+.ch{position:relative;isolation:isolate;padding-block:var(--pad)}
+.ch-hero{padding-top:0}
+.ch>.head,.ch>.list,.ch>.install,.ch>.demo{max-width:1520px;margin-inline:auto}
+.ch>.head,.ch>.list,.ch>.install{padding-inline:var(--m)}
+
+/* Backgrounds. Script puts a .bg in each chapter; its sticky .v is one screen tall, so only one screen
+   of gradient ever paints. Styles switch on html[data-bg]; motion runs only in chapters on screen. */
+.bg{position:absolute;inset:0;z-index:-1;overflow:clip;pointer-events:none}
+.bg::before,.bg::after{content:"";position:absolute;z-index:2;left:0;right:0;height:min(36vh,320px)}
+.bg::before{top:0;background:linear-gradient(var(--base),transparent)}
+.bg::after{bottom:0;background:linear-gradient(transparent,var(--base))}
+.ch-hero .bg::before{display:none}
+.v{position:sticky;top:0;height:100lvh;overflow:hidden}
+.v i{position:absolute;display:block;opacity:0;will-change:transform}
+.l-w{inset:-6%;background:var(--wall) center/cover}
+.l-a,.l-b,.l-c{width:90vmax;height:90vmax;border-radius:50%}
+.l-a{left:-30vmax;top:-40vmax;background:radial-gradient(closest-side,color-mix(in srgb,var(--c1) 60%,transparent),transparent)}
+.l-b{right:-35vmax;top:-10vmax;background:radial-gradient(closest-side,color-mix(in srgb,var(--c2) 50%,transparent),transparent)}
+.l-c{left:10vmax;bottom:-55vmax;background:radial-gradient(closest-side,color-mix(in srgb,var(--c3) 50%,transparent),transparent)}
+.l-g{inset:-20%;opacity:.07!important;background:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='220' height='220'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='.9' numOctaves='2' stitchTiles='stitch'/%3E%3CfeColorMatrix values='0 0 0 0 1 0 0 0 0 1 0 0 0 0 1 0 0 0 1.6 -.3'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)'/%3E%3C/svg%3E")}
+.l-s{inset:0;opacity:1!important;background:radial-gradient(130% 100% at 50% 45%,rgba(7,7,10,.35),rgba(7,7,10,.78))}
+/* 1 Wall (recommended): a darkened real wallpaper that drifts, with a soft glow in the tool's color */
+[data-bg=wall] .l-w{opacity:1;animation:drift 48s ease-in-out infinite alternate}
+[data-bg=wall] .l-a{opacity:.45;animation:orbit 40s linear infinite}
+[data-bg=wall] .l-b{opacity:.3;animation:orbit 52s linear infinite reverse}
+/* 2 Mesh: three color blobs that orbit */
+[data-bg=mesh] .v{background:#0b0b10}
+[data-bg=mesh] .l-a,[data-bg=mesh] .l-b,[data-bg=mesh] .l-c{opacity:1}
+[data-bg=mesh] .l-a{animation:orbit 36s linear infinite}
+[data-bg=mesh] .l-b{animation:orbit 44s linear infinite reverse}
+[data-bg=mesh] .l-c{animation:orbit 52s linear infinite}
+/* 3 Aurora: soft bands of light that sweep across */
+[data-bg=aurora] .v{background:#08080d}
+[data-bg=aurora] .l-a,[data-bg=aurora] .l-b,[data-bg=aurora] .l-c{opacity:1;left:-30%;width:160%;height:46vh;border-radius:0;transform:rotate(-12deg)}
+[data-bg=aurora] .l-a{top:6%;background:radial-gradient(50% 50% at 50% 50%,color-mix(in srgb,var(--c1) 75%,transparent),transparent);animation:sweep 26s ease-in-out infinite alternate}
+[data-bg=aurora] .l-b{top:34%;background:radial-gradient(50% 50% at 50% 50%,color-mix(in srgb,var(--c2) 62%,transparent),transparent);animation:sweep 34s ease-in-out infinite alternate-reverse}
+[data-bg=aurora] .l-c{top:62%;bottom:auto;background:radial-gradient(50% 50% at 50% 50%,color-mix(in srgb,var(--c3) 55%,transparent),transparent);animation:sweep 30s ease-in-out infinite alternate}
+/* 4 Grain: a dark two-tone gradient under heavy film grain */
+[data-bg=grain] .v{background:linear-gradient(155deg,color-mix(in srgb,var(--c1) 38%,#07070a),#07070a 55%,color-mix(in srgb,var(--c2) 30%,#07070a))}
+[data-bg=grain] .l-g{opacity:.16!important}
+.l-g{animation:jit 1s steps(1,end) infinite}
+@keyframes drift{from{transform:scale(1.04) translate(-1.5%,-1%)}to{transform:scale(1.12) translate(1.5%,1.5%)}}
+@keyframes orbit{from{transform:rotate(0deg) translateX(6vmax) rotate(0deg)}to{transform:rotate(360deg) translateX(6vmax) rotate(-360deg)}}
+@keyframes sweep{from{transform:rotate(-12deg) translateX(-12%)}to{transform:rotate(-6deg) translateX(12%)}}
+@keyframes jit{0%{transform:translate(0,0)}20%{transform:translate(-4%,3%)}40%{transform:translate(3%,-2%)}60%{transform:translate(-2%,-4%)}80%{transform:translate(4%,2%)}}
+.v i{animation-play-state:paused!important}
+[data-motion=play] .ch.live .v i{animation-play-state:running!important}
+[data-motion=off] .v i{animation:none!important}
+
+/* Dock: background style, animation, and Copy choices, in one floating capsule */
+.dock{position:fixed;z-index:50;left:50%;bottom:max(16px,env(safe-area-inset-bottom));transform:translateX(-50%);display:flex;align-items:center;gap:6px;padding:5px;border-radius:999px;background:rgba(32,32,36,.6);-webkit-backdrop-filter:blur(24px) saturate(1.8);backdrop-filter:blur(24px) saturate(1.8);box-shadow:inset 0 0 0 .5px rgba(255,255,255,.18),0 12px 32px -12px rgba(0,0,0,.7);white-space:nowrap}
+.seg{display:flex;gap:2px;padding:2px;border-radius:999px;background:rgba(255,255,255,.06)}
+.dock button{display:grid;place-items:center;height:32px;padding:0 12px;border:0;border-radius:999px;background:none;color:var(--muted);font:500 14px/1 var(--font);letter-spacing:-.01em;cursor:pointer;transition:background .15s,color .15s}
+.dock button:hover{color:var(--ink);background:rgba(255,255,255,.08)}
+.dock button[aria-pressed=true]{background:var(--accent);color:#fff}
+.seg.ic button{width:32px;padding:0}
+.dock svg{width:15px;height:15px}
+.pick{display:flex!important;gap:7px}
+.pick .ok,.pick.done .cp{display:none}
+.pick.done .ok{display:block;color:#30d158}
 
 /* Hero */
 .hero{display:grid;grid-template-columns:minmax(0,5fr) minmax(0,7fr);gap:clamp(32px,4vw,64px);align-items:center;max-width:1520px;margin:0 auto;padding:clamp(24px,4vh,56px) 0 0 var(--m)}
@@ -142,90 +161,85 @@ h2:hover .anchor,h3:hover .anchor,.anchor:focus-visible,.anchor.done{opacity:1}
 .get{display:flex;flex-direction:column;align-items:flex-start;gap:16px;margin-top:40px}
 .get .cmd{width:auto}
 .fine{font-size:var(--t-small);color:var(--muted);margin-top:20px}
-.hero+.sec{margin-top:clamp(40px,4vw,64px)}
 
 /* Live demos: real-app HTML recreations in a frame, in place of still screenshots */
-.demo{position:relative;overflow:hidden;background:#1d1d1f;border-radius:24px;box-shadow:0 0 0 1px var(--lit)}
+.demo{position:relative;overflow:hidden;background:#1d1d1f;border-radius:24px;box-shadow:0 0 0 1px var(--lit),var(--deep)}
 .hero-demo{height:clamp(600px,46vw,693px);border-radius:24px 0 0 24px}
-.fan-demo{height:clamp(600px,52vw,760px)}
-
-/* Sections */
-.sec{max-width:1520px;margin:var(--gap) auto 0;padding:0 var(--m)}
-.txt{display:flex;flex-direction:column;gap:22px;max-width:520px}
-.ticon{width:52px;height:52px}
-.split{display:grid;grid-template-columns:minmax(0,5fr) minmax(0,7fr);gap:clamp(40px,5vw,96px);align-items:center}
-.split.rev{grid-template-columns:minmax(0,7fr) minmax(0,5fr)}
+.ch>.fan-demo{height:clamp(600px,52vw,760px);margin-inline:max(var(--m),calc((100% - 1520px) / 2 + var(--m)))}
 .head{display:grid;grid-template-columns:minmax(0,7fr) minmax(0,5fr);gap:clamp(32px,5vw,96px);align-items:start;margin-bottom:48px}
-.head p{max-width:46ch}
+.head p{max-width:46ch;color:var(--muted)}
 .head-txt{display:flex;flex-direction:column;gap:22px}
+.ticon{width:52px;height:52px}
 
-
-/* Portman: a pinned story. While the section scrolls past, a large Mac screen stays on the left,
-   cut by the window edge, and the text on the right changes one step at a time. The camera holds
-   the screen in real macOS points; script sets its size and the two zooms (--zp panel, --zw window). */
-.pm{--n:4;position:relative;width:100vw;margin-left:calc(50% - 50vw);height:calc(100vh + var(--n) * 72vh)}
-.pm-pin{position:sticky;top:0;height:100vh;height:100svh;display:grid;grid-template-columns:56vw minmax(0,1fr);align-items:center;gap:clamp(40px,5vw,96px);padding-right:max(var(--m),calc((100vw - 1520px) / 2 + var(--m)))}
-.pm-vis{position:relative;height:min(calc(100svh - 96px),860px);margin-left:-2px;overflow:hidden;border-radius:0 28px 28px 0;background:#1d1d1f;box-shadow:inset 0 0 0 1px var(--lit),var(--deep);transform:translateZ(0)}
-.pm-cam{position:absolute;top:0;right:0;width:100%;height:100%;transform:scale(var(--zp,1));transform-origin:100% 0;transition:transform 1s cubic-bezier(.65,0,.25,1);background:#1d1d1f var(--wall) 100% 50%/cover}
-.pm[data-step="3"] .pm-cam{transform:scale(var(--zw,1))}
-.pm-shot{position:absolute;top:29px;opacity:0;visibility:hidden;transition:opacity .45s ease,transform .8s var(--spring),visibility 0s .8s}
-.pm-shot img{max-width:none;box-shadow:var(--deep)} /* taste-skill-ignore: a real menu bar panel or window */
-.pm-pan{z-index:2;width:356px;transform:translateY(-10px) scale(.97);transform-origin:50% 0}
-.pm-pan img{width:356px;border-radius:14px}
-.pm-win{top:52px;width:820px;transform:translateX(-72px)}
-.pm-win img{width:820px;border-radius:12px}
-.pm[data-step="0"] .pm-shot[data-s="0"],.pm[data-step="1"] .pm-shot[data-s="1"],.pm[data-step="2"] .pm-shot[data-s="2"],.pm[data-step="3"] .pm-shot[data-s="3"]{opacity:1;visibility:visible;transform:none;transition:opacity .45s ease .1s,transform .8s var(--spring) .1s,visibility 0s}
-.pm-txt{display:flex;flex-direction:column;gap:32px;max-width:560px}
-.pm-bars{list-style:none;margin:0;padding:0;display:grid;grid-template-columns:repeat(var(--n),minmax(0,1fr));gap:6px}
-.pm-bars button{display:block;width:100%;height:24px;padding:10px 0;border:0;background:none;cursor:pointer}
-.pm-bars i{display:block;height:4px;border-radius:2px;background:var(--lit);overflow:hidden}
-.pm-bars i::after{content:"";display:block;height:100%;border-radius:inherit;background:var(--ink);transform:scaleX(var(--k,0));transform-origin:0 50%}
-.pm-say{display:grid}
-.pm-step{grid-area:1/1;display:flex;flex-direction:column;gap:22px;opacity:0;visibility:hidden;transform:translateY(28px);transition:opacity .35s ease,transform .6s var(--spring),visibility 0s .6s}
-.pm-step.past{transform:translateY(-28px)}
-.pm-step.on{opacity:1;visibility:visible;transform:none;transition:opacity .5s ease .12s,transform .8s var(--spring) .12s,visibility 0s}
-.pm-step h3{font-size:var(--t-h2);line-height:1.04;letter-spacing:-.035em}
-.pm-step p{font-size:var(--t-lead);line-height:1.4;color:var(--muted)}
-/* The firewall example: this Mac, a dot running along the SSH line, the home server */
-.pm-step .pm-route{display:flex;align-items:center;gap:14px;font:500 15px/1.3 var(--mono);color:var(--ink)} /* taste-skill-ignore: host:port pairs read as code */
-.pm-route span{display:flex;flex-direction:column;gap:6px;padding:12px 14px;border-radius:14px;background:var(--surface)}
-.pm-route small{font:500 13px/1 var(--font);color:var(--muted)}
-.pm-route i{position:relative;flex:1;min-width:24px;height:2px;background:repeating-linear-gradient(90deg,var(--muted) 0 6px,transparent 6px 11px)}
-.pm-route b{position:absolute;inset:-3px 0 auto;height:8px;opacity:0}
-.pm-route b::before{content:"";position:absolute;left:0;top:0;width:8px;height:8px;border-radius:50%;background:var(--accent)}
-.pm-step.on .pm-route b{animation:carry 1.8s cubic-bezier(.45,0,.55,1) .6s infinite}
+/* A tool story. While the chapter scrolls past, a large Mac screen stays on the left, cut by the
+   window edge, and the text on the right changes one step at a time. The camera holds the screen in
+   real macOS points; script sizes it and sets the zoom of each step. One step means no pinning. */
+.story{--n:1;position:relative;height:calc(100vh + var(--n) * 72vh)}
+.ch:has(>.story){padding-block:max(0px,calc(var(--pad) - max(80px,(100svh - 860px) / 2)))}
+.story.one{height:auto}
+.s-pin{position:sticky;top:0;height:100vh;height:100svh;display:grid;grid-template-columns:56vw minmax(0,1fr);align-items:center;gap:clamp(40px,5vw,96px);padding-right:max(var(--m),calc((100vw - 1520px) / 2 + var(--m)))}
+.one .s-pin{position:relative}
+.s-vis{position:relative;height:var(--vis);margin-left:-2px;overflow:hidden;border-radius:0 28px 28px 0;background:#1d1d1f;box-shadow:inset 0 0 0 1px var(--lit),var(--deep);transform:translateZ(0)}
+.s-cam{position:absolute;top:0;right:0;transform:scale(var(--z,1));transform-origin:100% 0;transition:transform 1s cubic-bezier(.65,0,.25,1);background:#1d1d1f var(--wall) 100% 50%/cover}
+.shot{position:absolute;top:29px;opacity:0;visibility:hidden;transition:opacity .45s ease,transform .8s var(--spring),visibility 0s .8s}
+.shot img{max-width:none;width:100%;box-shadow:var(--deep)} /* taste-skill-ignore: a real menu bar panel or window */
+.pan{z-index:2;width:356px;transform:translateY(-10px) scale(.97);transform-origin:50% 0}
+.pan img{border-radius:14px}
+.win{transform:translateY(18px) scale(.985)}
+.win img{border-radius:12px}
+.win.bare img{border-radius:0;box-shadow:none;filter:drop-shadow(0 16px 28px rgba(0,0,0,.45))}
+.shot.on{opacity:1;visibility:visible;transform:none;transition:opacity .45s ease .1s,transform .8s var(--spring) .1s,visibility 0s}
+.ico{flex:none;display:grid;place-items:center;width:30px;height:22px;border-radius:7px;transition:background .2s}
+.ico.on{background:rgba(255,255,255,.28)}
+/* The spotlight dims everything but one part of the shot */
+.spot{position:absolute;left:0;top:0;z-index:5;border-radius:12px;box-shadow:0 0 0 1.5px rgba(255,255,255,.55),0 0 0 4000px rgba(0,0,0,.52);opacity:0;pointer-events:none;transition:opacity .45s ease,transform .8s var(--spring),width .8s var(--spring),height .8s var(--spring)}
+.spot.on{opacity:1}
+/* The pointer that clicks a menu bar icon */
+.cur{position:absolute;left:0;top:0;z-index:6;width:20px;height:28px;opacity:0;pointer-events:none;transition:transform 1s cubic-bezier(.45,0,.2,1),opacity .3s}
+.cur svg{display:block;width:100%;height:100%;transform-origin:4px 3px;transition:transform .12s}
+.cur.on{opacity:1}
+.cur.down svg{transform:scale(.82)}
+.s-txt{display:flex;flex-direction:column;gap:32px;max-width:560px}
+.kick{display:flex;align-items:center;gap:14px;font-size:22px;line-height:1.2;letter-spacing:-.02em}
+.kick img{width:40px;height:40px;border-radius:9px}
+.kick .anchor{margin-left:-4px}
+.bars{list-style:none;margin:0;padding:0;display:grid;grid-template-columns:repeat(var(--n),minmax(0,1fr));gap:6px}
+.one .bars{display:none}
+.bars button{display:block;width:100%;height:24px;padding:10px 0;border:0;background:none;cursor:pointer}
+.bars i{display:block;height:4px;border-radius:2px;background:var(--lit);overflow:hidden}
+.bars i::after{content:"";display:block;height:100%;border-radius:inherit;background:var(--ink);transform:scaleX(var(--k,0));transform-origin:0 50%}
+.s-say{display:grid}
+.st{grid-area:1/1;display:flex;flex-direction:column;gap:22px;opacity:0;visibility:hidden;transform:translateY(28px);transition:opacity .35s ease,transform .6s var(--spring),visibility 0s .6s}
+.st.past{transform:translateY(-28px)}
+.st.on{opacity:1;visibility:visible;transform:none;transition:opacity .5s ease .12s,transform .8s var(--spring) .12s,visibility 0s}
+.st h3{font-size:var(--t-h2);line-height:1.04;letter-spacing:-.035em}
+.st p{font-size:var(--t-lead);line-height:1.4;color:var(--muted)}
+.st .tag{display:flex;align-items:center;gap:10px;font-size:18px;font-weight:600;color:var(--ink)}
+.tag img{width:28px;height:28px}
+/* The firewall example: this Mac, a dot running along the SSH line, the remote server */
+.st .route{display:flex;align-items:center;gap:14px;font:500 15px/1.3 var(--mono);color:var(--ink)} /* taste-skill-ignore: host:port pairs read as code */
+.route span{display:flex;flex-direction:column;gap:6px;padding:12px 14px;border-radius:14px;background:rgba(255,255,255,.08);box-shadow:inset 0 0 0 .5px rgba(255,255,255,.12)}
+.route small{font:500 13px/1 var(--font);color:var(--muted)}
+.route i{position:relative;flex:1;min-width:24px;height:2px;background:repeating-linear-gradient(90deg,var(--muted) 0 6px,transparent 6px 11px)}
+.route b{position:absolute;inset:-3px 0 auto;height:8px;opacity:0}
+.route b::before{content:"";position:absolute;left:0;top:0;width:8px;height:8px;border-radius:50%;background:var(--accent)}
+.st.on .route b{animation:carry 1.8s cubic-bezier(.45,0,.55,1) .6s infinite}
+[data-motion=pause] .st.on .route b{animation-play-state:paused}
+[data-motion=off] .st.on .route b{animation:none;opacity:1}
 @keyframes carry{0%{transform:translateX(0);opacity:0}15%,85%{opacity:1}100%{transform:translateX(calc(100% - 8px));opacity:0}}
-.tweaks-desk .scr::before{background-size:190% auto;background-position:0 0}
 
-/* RSync: one whole field in the accent */
-.field{max-width:none;padding:clamp(72px,8vw,120px) max(var(--m),calc((100% - 1520px)/2 + var(--m)));background:var(--field);color:var(--field-ink)}
-.field .ticon{border-radius:12px}
-.rsync-desk{--h:740px;--z:1.08;--pr:96px}
+/* A menu bar on the camera: the real macOS bar over the wallpaper */
+.bar{position:absolute;z-index:1;inset:0 0 auto;height:24px;display:flex;align-items:center;gap:14px;padding:0 22px;color:#fff;font:500 13px/1 var(--font);letter-spacing:0;white-space:nowrap;filter:drop-shadow(0 0 3px rgba(0,0,0,.28))} /* taste-skill-ignore: macOS draws this shade under menu bar text on a wallpaper */
+.apps{flex:1;min-width:0;height:24px;overflow:hidden;display:flex;flex-wrap:wrap;align-items:center;align-content:flex-start;column-gap:19px}
+.apps>*{height:24px;display:flex;align-items:center} /* a menu that does not fit wraps out of sight, as macOS hides it whole */
+.apps b{font-weight:700}
+.bar img{flex:none}
+.clock{flex:none;width:118px;text-align:right}
 
-/* Input Devices */
-.input-desk{--h:640px;--z:1.15;--pr:96px}
-
-/* Mac Tweaks */
-.wide-head{display:grid;grid-template-columns:minmax(0,7fr) minmax(0,5fr);gap:clamp(40px,5vw,96px);align-items:end}
-.wide-head>div{display:flex;flex-direction:column;gap:22px}
-.tweaks-desk{--h:calc(595px * 1.15);--z:1.15;--wx:calc(50% - 410px);--wy:60px;margin-top:56px}
-
-/* Small tools: specimens on tiles */
-/* Each tile shows its whole window, at --s (1 = macOS points) or smaller when the tile is narrower */
-.tiles{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:12px}
-.tile{margin:0;min-width:0}
-.tile.wide{grid-column:1/-1}
-.tile-face{position:relative;height:440px;border-radius:20px;overflow:hidden;background:#1d1d1f var(--wall) center/cover;--k:var(--s,1)}
-.tile.wide .tile-face{height:520px}
-.tile-face .bare img{border-radius:0;box-shadow:none;filter:drop-shadow(0 12px 24px rgba(0,0,0,.35))}
-.tile-face picture{position:absolute;left:50%;top:50%;width:min(calc(var(--w) * var(--k)),100% - 40px);transform:translate(-50%,-50%)}
-.tile figcaption{padding:16px 2px 32px}
-.tile h3{font-size:20px;display:flex;align-items:center}
-.tile h3 .anchor{width:30px;height:30px;margin-left:6px}
-.tile p{font-size:16px;color:var(--muted);margin-top:4px}
-
-/* Tool list: two-ended rows */
+/* The end: the tool list, then install */
 .list{display:grid;grid-template-columns:minmax(0,5fr) minmax(0,7fr);gap:clamp(32px,4vw,64px);align-items:start}
+.list-head{display:flex;flex-direction:column;gap:20px;position:sticky;top:32px}
+.list-head p{max-width:30ch;color:var(--muted);font-size:var(--t-lead);line-height:1.4}
 .rows{list-style:none;margin:0;padding:0}
 .row{display:flex;align-items:center;gap:14px;min-height:60px;padding:6px 14px;border-radius:14px;text-decoration:none;transition:background .15s}
 .rows li:nth-child(odd) .row{background:var(--surface)}
@@ -234,11 +248,7 @@ a.row:hover{background:var(--lit)}
 .row img{width:30px;height:30px;flex:none}
 .row b{font-weight:600;white-space:nowrap}
 .row span{margin-left:auto;color:var(--muted);font-size:16px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;min-width:0;text-align:right}
-
-/* Install */
-.install{display:flex;flex-direction:column;align-items:center;text-align:center;gap:28px}
-.list-head{display:flex;flex-direction:column;gap:20px;position:sticky;top:32px}
-.list-head p{max-width:30ch}
+.ch>.install{display:flex;flex-direction:column;align-items:center;text-align:center;gap:28px;margin-top:calc(2 * var(--pad))}
 .cmd.big{height:68px;width:min(100%,720px);padding:0 10px 0 26px;border-radius:18px}
 .cmd.big code{font-size:clamp(15px,1.4vw,20px)}
 .cmd.big button{width:46px;height:46px;border-radius:12px}
@@ -246,7 +256,7 @@ a.row:hover{background:var(--lit)}
 .install .or{display:flex;align-items:center;justify-content:center;gap:16px;flex-wrap:wrap;color:var(--muted)}
 
 /* Footer: large type. Brand and links over a hairline, then the giant name, cut by the page bottom */
-.foot{max-width:1520px;margin:clamp(72px,8vw,120px) auto 0;padding:0 var(--m);overflow:hidden}
+.foot{max-width:1520px;margin:0 auto;padding:0 var(--m) 0;overflow:hidden}
 .foot-top{display:grid;grid-template-columns:minmax(0,5fr) minmax(0,7fr);gap:40px;padding-top:28px;border-top:.5px solid var(--lit)}
 .brand{display:flex;flex-direction:column;gap:14px;align-items:flex-start}
 .brand .id{display:flex;align-items:center;gap:12px;font-weight:600;font-size:20px;letter-spacing:-.02em}
@@ -267,50 +277,53 @@ a.row:hover{background:var(--lit)}
 .js .word.in span{transform:none;opacity:1}
 .js .word.in span.up{transform:translateY(-9%);transition:transform .5s var(--bounce);transition-delay:0s}
 
-/* Motion: content shows without script; with it, each section's parts rise in turn */
+/* Motion: content shows without script; with it, each part rises in turn */
 .js .rv{opacity:0;transform:translateY(24px);transition:opacity .7s cubic-bezier(.2,.7,.2,1),transform .7s cubic-bezier(.2,.7,.2,1)}
 .js .rv.in{opacity:1;transform:none}
-.js .txt .rv:nth-child(2),.js .head .rv:nth-child(2),.js .head-txt .rv:nth-child(2),.js .small-head .rv:nth-child(2){transition-delay:.08s}
-.js .txt .rv:nth-child(3){transition-delay:.16s}
-.js .txt .rv:nth-child(4){transition-delay:.22s}
-.js .tile.rv:nth-child(2){transition-delay:.08s}.js .tile.rv:nth-child(3){transition-delay:.16s}.js .tile.rv:nth-child(4){transition-delay:.24s}
+.js .head .rv:nth-child(2),.js .head-txt .rv:nth-child(2){transition-delay:.08s}
+.js .head-txt .rv:nth-child(3){transition-delay:.16s}
 @media (prefers-reduced-motion:reduce){
   html{scroll-behavior:auto}
   .js .rv{opacity:1;transform:none;transition:none}
-  /* Portman swaps its steps with a short fade and no movement */
-  .pm-cam{transition:none}
-  .pm-shot,.pm-shot[data-s],.pm-step,.pm-step.past,.pm-step.on{transform:none;transition:opacity .2s,visibility 0s}
-  .pm-step.on .pm-route b{animation:none;opacity:1}
+  /* Stories swap their steps with a short fade and no movement */
+  .s-cam,.cur{transition:none}
+  .shot,.st,.st.past,.st.on,.spot{transform:none;transition:opacity .2s,visibility 0s}
+  .st.on .route b{animation:none;opacity:1}
   .glass,.glass .glow,.gh-cta,.stars{transition:none}
   .js .word span{transform:none;opacity:1;transition:none}
 }
 
-/* Portman under 1000 px: the screen on top, cut by the left edge, and the text below */
+/* Under 1000 px a story puts the screen on top, cut by the left edge, and the text below */
 @media (max-width:1000px){
-  .pm{height:calc(100vh + var(--n) * 64vh)}
-  .pm-pin{grid-template-columns:minmax(0,1fr);grid-template-rows:minmax(0,1fr) auto;align-items:stretch;gap:20px;padding:16px var(--m) 28px 0}
-  .pm-vis{height:auto;min-height:0}
-  .pm-txt{gap:16px;max-width:none;padding-left:var(--m);min-height:250px}
-  .pm-step{gap:12px}
-  .pm-step h3{font-size:clamp(28px,7.4vw,40px)}
-  .pm-step p{font-size:16px;line-height:1.45}
-  .pm-step .pm-route{font-size:13px;gap:10px}
-  .pm-route span{padding:8px 10px}
-  .fan-demo{height:660px}
+  :root{--vis:auto}
+  .story{height:calc(100vh + var(--n) * 64vh)}
+  .ch:has(>.story){padding-block:calc(var(--pad) - 16px)}
+  .s-pin{grid-template-columns:minmax(0,1fr);grid-template-rows:minmax(0,1fr) auto;align-items:stretch;gap:20px;padding:16px var(--m) 84px 0}
+  .one .s-pin{height:auto;grid-template-rows:auto auto;padding-bottom:0}
+  .one .s-vis{height:min(72svh,620px)}
+  .s-vis{min-height:0}
+  .s-txt{gap:16px;max-width:none;padding-left:var(--m);min-height:250px}
+  .one .s-txt{min-height:0}
+  .kick{font-size:18px;gap:10px}
+  .kick img{width:30px;height:30px;border-radius:7px}
+  .st{gap:12px}
+  .st h3{font-size:clamp(28px,7.4vw,40px)}
+  .st p{font-size:16px;line-height:1.45}
+  .st .tag{font-size:16px}
+  .st .route{font-size:13px;gap:10px}
+  .route span{padding:8px 10px}
+  .ch>.fan-demo{height:660px}
   .foot-top{grid-template-columns:minmax(0,1fr)}
   .cols{justify-content:start}
   .brand .cmd{width:100%}
 }
 @media (max-width:1100px){
   .hero{grid-template-columns:minmax(0,1fr)}
-  .split,.split.rev,.head,.wide-head,.small,.list{grid-template-columns:minmax(0,1fr)}
-  .split.rev .txt{order:-1}
-  .small-head,.list-head{position:static}
-  .txt{max-width:640px}
-  .tweaks-desk{--wx:24px}
+  .head,.list{grid-template-columns:minmax(0,1fr)}
+  .list-head{position:static}
   .hero-copy{padding-right:var(--m)}
 }
-/* Phone: a narrower crop, the menu bar loses the items macOS hides first */
+/* Phone: the menu bar loses the items macOS hides first */
 @media (max-width:640px){
   :root{--t-body:17px}
   .nav nav{gap:18px}
@@ -320,35 +333,24 @@ a.row:hover{background:var(--lit)}
   .get{align-self:stretch}
   .get .cmd{width:100%}
   .cmd code{font-size:14px}
-  /* Every screen runs edge to edge, so a 356 pt panel shows at its real size */
-  .desk{--z:1;--pr:calc((100vw - 356px) / 2);--r:0px;margin-left:calc(-1 * var(--m));margin-right:calc(-1 * var(--m))}
   /* A live demo at phone width lays out at its real size, so the frame is as tall as its content */
-  .demo{border-radius:0;margin-left:calc(-1 * var(--m));margin-right:calc(-1 * var(--m))}
-  .hero-demo{height:693px;margin-right:0}
-  .fan-demo{height:1143px}
+  .demo{border-radius:0}
+  .ch>.fan-demo{margin-inline:0}
+  .hero-demo{height:693px;margin-left:calc(-1 * var(--m))}
+  .ch>.fan-demo{height:1143px}
   .bar .apps,.bar .opt,.clock .d{display:none}
   .bar{justify-content:flex-end}
   .clock{width:auto}
-  .rsync-desk{--h:685px}
-  .input-desk{--h:635px}
-  /* A settings window: the whole window small, then a zoom of its main region at a readable size */
-  .tweaks-desk{--z:.43;--wx:calc(50% - 410px);--wy:40px;--zh-px:calc((100vw - 32px) * var(--zh) / var(--zw));--h:calc(329px + var(--zh-px))}
-  .tweaks-desk{margin-top:32px}
-  .desk>.zoom{display:block;position:absolute;left:16px;right:16px;bottom:16px}
-  .zoom{display:block;position:relative;aspect-ratio:var(--zw) / var(--zh);overflow:hidden;border-radius:12px;background:var(--surface);box-shadow:0 0 0 1px var(--lit),0 10px 30px rgba(0,0,0,.3)} /* taste-skill-ignore: a magnified card over the wallpaper */
-  .zoom img{position:absolute;max-width:none;width:calc(var(--nw) / var(--zw) * 100%);left:calc(var(--zx) / var(--zw) * -100%);top:calc(var(--zy) / var(--zh) * -100%);border-radius:0;box-shadow:none}
-  .field{padding-left:var(--m);padding-right:var(--m)}
-  .tiles{grid-template-columns:1fr;gap:8px}
-  .tile-face,.tile.wide .tile-face{height:360px;border-radius:16px;--k:var(--sp,.8)}
-  .tile-face.zt,.tile.wide .tile-face.zt{height:auto;display:flex;flex-direction:column;gap:12px;padding:16px}
-  .tile-face.zt picture{position:static;width:100%;transform:none}
-  .tile-face.zt .zoom{position:relative;left:0;top:0}
-  .tile h3{font-size:17px}
-  .tile p{font-size:15px}
   .row{min-height:56px;padding:6px 10px;gap:12px}
   .row span{font-size:15px;white-space:normal}
   .cmd.big{height:60px;padding-left:16px}
   .cmd.big code{font-size:13px;white-space:normal;overflow-wrap:anywhere}
   .gh-cta .long{display:none}
   .foot-fine .soft{margin-left:0;width:100%}
+  .foot{padding-bottom:72px}
+  .dock{gap:4px;padding:4px}
+  .dock button{padding:0 9px;font-size:13px}
+  .seg.ic button{width:30px}
+  .pick span{display:none}
+  .pick{width:32px;padding:0!important}
 }
