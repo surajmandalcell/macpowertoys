@@ -402,6 +402,7 @@ const E = engine(mount('fan'));
     return clamp(v, lo[1], hi[1]);
   }
   console.assert(speedAt(EDITED, 80) === 1 && speedAt(EDITED, 90) === 1 && speedAt(EDITED, 40) === .32, "curve must be flat below the first point and full from 80 °C");
+  console.assert(speedAt([[58, 0], [62, .5], [66, 1]], 50) === 0 && speedAt([[58, 0], [62, .5], [66, 1]], 62) === .5 && speedAt([[58, 0], [62, .5], [66, 1]], 72) === 1, "Hold curve must be flat outside target ± 4 °C");
   // FanHold.next: PI loop on 1 s ticks, nothing changes inside target ± 2 °C.
   class Hold {
     constructor(target, speed) { this.target = target; this.speed = clamp(speed, 0, 1); this.integral = this.speed; }
@@ -436,7 +437,9 @@ const E = engine(mount('fan'));
   let CW = 540, CH = 240;
   const PT = 22, PB = 22;
   const X = c => CW * (c - 30) / (TOP - 30), Y = s => PT + (CH - PT - PB) * (1 - s);
-  const curvePts = () => PRESETS[pick] || custom;
+  // FanHold.displayCurve: minimum fan 4 °C under the target, half speed at it, full speed 4 °C over.
+  const holdPts = () => [[holdT - 4, 0], [holdT, .5], [holdT + 4, 1]];
+  const curvePts = () => hold ? holdPts() : PRESETS[pick] || custom;
   const dispAt = c => { const f = clamp((c - 30) * 2, 0, N - 1), i = Math.min(N - 2, Math.floor(f)); return lerp(disp[i], disp[i + 1], f - i); };
   const NS = 'http://www.w3.org/2000/svg';
   let knobs = [];
@@ -450,7 +453,6 @@ const E = engine(mount('fan'));
     Object.entries({ x: 0, y: PT - 4, width: CW, height: CH - PT - PB + 4 }).forEach(([k, v]) => $('#hmr').setAttribute(k, v));
     $('#lkd').setAttribute('transform', `translate(${X(LOCK[0])} ${Y(1)})`);
     Object.entries({ x: X(LOCK[0]) - 16, y: PT - 7 }).forEach(([k, v]) => $('#lkt').setAttribute(k, v));
-    Object.entries({ x1: X(LOCK[0]), y1: Y(1), x2: CW, y2: Y(1) }).forEach(([k, v]) => $('#hflat').setAttribute(k, v));
   }
   function setKnobs(pts) {
     knobs.forEach(k => { if (E.on) k.el.animate([{ opacity: 1 }, { opacity: 0 }], { duration: 220, fill: 'forwards' }).onfinish = () => k.el.remove(); else k.el.remove(); });
@@ -470,17 +472,14 @@ const E = engine(mount('fan'));
     $('#ht').textContent = `Hold ${holdT} °C`;
     $('#pkh').textContent = `Hold ${holdT} °C`;
     $('#hht').textContent = holdT; $('#hv2').textContent = holdT;
-    drawMini($('.pk[data-p=hold] svg'), null);
+    drawMini($('.pk[data-p=hold] svg'), holdPts(), true);
+    if (hold) { to = samples(holdPts()); if (!from) disp = to; }
   }
-  function drawMini(el, pts) {
-    const w = el.clientWidth || 80, h = 30, x = c => 2 + (w - 4) * (c - 30) / (TOP - 30), y = s => 2 + 26 * (1 - s);
-    if (!pts) {
-      el.innerHTML = `<rect x="${x(holdT - 2)}" y="2" width="${x(holdT + 2) - x(holdT - 2)}" height="26" fill="currentColor" fill-opacity=".12"/><path d="M${x(holdT)} 28V2" stroke="currentColor" stroke-width="1.5" stroke-dasharray="3 2"/>`;
-      return;
-    }
+  function drawMini(el, pts, band) {
+    const w = el.clientWidth || 80, x = c => 2 + (w - 4) * (c - 30) / (TOP - 30), y = s => 2 + 26 * (1 - s);
     let d = '';
-    for (let c = 30; c <= TOP; c += 1) d += (c === 30 ? 'M' : 'L') + x(c).toFixed(1) + ' ' + y(speedAt(pts, c)).toFixed(1);
-    el.innerHTML = `<path d="${d}L${x(TOP)} 28L${x(30)} 28Z" fill="currentColor" fill-opacity=".12"/><path d="${d}" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/>`;
+    for (let c = 30; c <= TOP; c += .5) d += (c === 30 ? 'M' : 'L') + x(c).toFixed(1) + ' ' + y(speedAt(pts, c)).toFixed(1);
+    el.innerHTML = (band ? `<rect x="${x(holdT - 2)}" y="2" width="${x(holdT + 2) - x(holdT - 2)}" height="26" fill="currentColor" fill-opacity=".12"/>` : '') + `<path d="${d}L${x(TOP)} 28L${x(30)} 28Z" fill="currentColor" fill-opacity=".12"/><path d="${d}" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/>`;
   }
   function drawMinis() { for (const p in PRESETS) drawMini($(`.pk[data-p=${p}] svg`), PRESETS[p]); drawMini($('.pk[data-p=custom] svg'), custom); drawHold(); }
 
@@ -495,14 +494,12 @@ const E = engine(mount('fan'));
     const nd = $('#nd');
     nd.setAttribute('cx', x); nd.setAttribute('cy', Y(clamp(dispAt(temp), 0, 1))); nd.style.fill = hv;
     nd.style.filter = `drop-shadow(0 0 4px color-mix(in srgb, ${hv} 50%, transparent))`;
-    Object.entries({ x1: x, y1: Y(0), x2: x, y2: PT + 52 }).forEach(([k, v]) => $('#nl').setAttribute(k, v));
-    $('#nl').style.stroke = hv;
-    const n2 = $('#nd2'); n2.setAttribute('cx', x); n2.setAttribute('cy', Y(0)); n2.style.fill = hv;
     const t = Math.round(temp), r = rpmText(shown);
     chip.textContent = `CPU avg ${t} °C · ${r} RPM`;
+    // In Hold the chip sits off the rising curve: below-right at or over the target, above-left under it.
     if (hold) {
       const away = temp >= holdT;
-      chip.style.transform = `translate(${x + (away ? 6 : -6)}px,${12 + PT + 52}px) translate(${away ? 0 : -100}%,-50%)`;
+      chip.style.transform = `translate(${x + (away ? 8 : -8)}px,${12 + Y(clamp(dispAt(temp), 0, 1)) + (away ? 22 : -22)}px) translate(${away ? 0 : -100}%,-50%)`;
     } else chip.style.transform = `translate(${x}px,${12 + Y(clamp(dispAt(temp), 0, 1)) - 22}px) translate(-50%,-50%)`;
     $('#now').textContent = `CPU avg ${t} °C · ${heatWord(t)} · ${r} RPM`;
   }
@@ -517,20 +514,18 @@ const E = engine(mount('fan'));
 
   function choose(p) {
     $$('.pk').forEach(k => k.classList.toggle('on', k.dataset.p === p));
-    const wasHold = !!hold;
     if (p === 'hold') {
       temp = holdT; hold = new Hold(holdT, speedAt(curvePts(), holdT));
-      $('#L-curve').style.opacity = 0; $('#L-now').style.opacity = 0; $('#L-hold').style.opacity = 1;
       $('#hc').classList.add('off'); $('#hh').classList.remove('off');
     } else {
       hold = null; pick = p;
-      $('#L-curve').style.opacity = 1; $('#L-now').style.opacity = 1; $('#L-hold').style.opacity = 0;
       $('#hc').classList.remove('off'); $('#hh').classList.add('off');
-      const pts = curvePts();
-      from = wasHold ? null : disp.slice(); to = samples(pts); m0 = E.vt;
-      if (wasHold) disp = to;
-      setKnobs(pts);
     }
+    $('#L-hold').style.opacity = hold ? 1 : 0;
+    $('#lkt').style.opacity = hold ? 0 : 1;
+    const pts = curvePts();
+    from = disp.slice(); to = samples(pts); m0 = E.vt;
+    setKnobs(hold ? [] : pts);
     $('#rst').disabled = !(pick === 'custom' && !hold && custom !== STANDARD);
     coolLabel();
     if (!E.on) snap();
