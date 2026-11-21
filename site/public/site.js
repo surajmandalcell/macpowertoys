@@ -27,12 +27,10 @@
   function still() { return calm.matches || doc.dataset.motion === 'off'; }
   var CURSOR = '<svg viewBox="0 0 20 28"><path d="M2.5 2.5v20l5-4.6 3.2 7.4 3.4-1.4-3.2-7.3h6.6z" fill="#000" stroke="#fff" stroke-width="1.6" stroke-linejoin="round"/></svg>';
 
-  // Where a step sits on the page: its chapter's top plus its share of the pinned scroll.
-  function stepTop(root, i, n) {
-    return root.getBoundingClientRect().top + scrollY + (root.offsetHeight - innerHeight) * (i + 0.02) / n;
-  }
+  // Every step is one screen of scroll with its own snap point, so each scroll gesture moves one step.
+  function stepTop(root, i) { return root.getBoundingClientRect().top + scrollY + i * innerHeight; }
 
-  // A tool story: the chapter scrolls past a pinned screen, and the scroll position picks the step.
+  // A tool story: the screen stays pinned while the page snaps from step to step.
   // Each step names a shot, and may add a spotlight ("x y w h" in shot points) or a click on its menu bar icon.
   function story(root) {
     var vis = root.querySelector('.s-vis'), cam = root.querySelector('.s-cam');
@@ -42,10 +40,11 @@
     root.style.setProperty('--n', n);
     if (n < 2) root.classList.add('one');
     steps.forEach(function (s, i) {
-      var li = document.createElement('li'), b = document.createElement('button');
+      var li = document.createElement('li'), b = document.createElement('button'), mark = document.createElement('i');
+      mark.className = 'snap'; mark.style.top = i * 100 + 'svh'; root.appendChild(mark);
       b.type = 'button'; b.setAttribute('aria-label', 'Step ' + (i + 1) + ': ' + s.querySelector('h3').textContent);
       b.appendChild(document.createElement('i')); li.appendChild(b); ol.appendChild(li);
-      b.addEventListener('click', function () { scrollTo({ top: stepTop(root, i, n), behavior: calm.matches ? 'instant' : 'smooth' }); });
+      b.addEventListener('click', function () { scrollTo({ top: stepTop(root, i), behavior: calm.matches ? 'instant' : 'smooth' }); });
     });
     var bars = [].slice.call(ol.querySelectorAll('button'));
     var spot = document.createElement('i'), cur = document.createElement('i');
@@ -128,34 +127,117 @@
     }
     function paint() {
       ticking = false;
-      var f = 0;
-      if (n > 1) { var r = root.getBoundingClientRect(); f = clamp(-r.top / (r.height - innerHeight), 0, 1) * n; }
-      var now = Math.min(n - 1, Math.floor(f));
-      bars.forEach(function (b, i) { b.style.setProperty('--k', clamp(f - i, 0, 1)); });
+      var top = root.getBoundingClientRect().top, f = clamp(-top / innerHeight, 0, n - 1);
+      var now = Math.round(f);
+      bars.forEach(function (b, i) { b.style.setProperty('--k', clamp(f - i + 1, 0, 1)); });
+      // The click plays once the story has mostly snapped in, not while it is still fading in.
+      var was = seen; seen = top < innerHeight * 0.35 && top > -root.offsetHeight + innerHeight * 0.65;
+      if (seen && !was && pending) click();
       if (now === step) return;
       var prev = step; step = now; show(prev);
     }
     function ask() { if (!ticking) { ticking = true; requestAnimationFrame(paint); } }
-    // The click plays once the screen is in view, not while it is still below the fold.
-    new IntersectionObserver(function (es) { seen = es[0].isIntersecting; if (seen && pending) click(); }, { threshold: 0.5 }).observe(vis);
     new ResizeObserver(size).observe(vis);
     addEventListener('scroll', ask, { passive: true });
     size(); paint();
   }
 
-  // Backgrounds: one sticky screen of layers per chapter; only chapters on screen animate.
-  function backgrounds() {
-    var io = new IntersectionObserver(function (es) { es.forEach(function (e) { e.target.classList.toggle('live', e.isIntersecting); }); });
-    document.querySelectorAll('.ch').forEach(function (ch) {
-      var bg = document.createElement('div'), v = document.createElement('div');
-      bg.className = 'bg'; bg.setAttribute('aria-hidden', 'true'); v.className = 'v';
-      ['l-w', 'l-a', 'l-b', 'l-c', 'l-s', 'l-g'].forEach(function (c) { var i = document.createElement('i'); i.className = c; v.appendChild(i); });
-      if (ch.dataset.bgWall) bg.style.setProperty('--wall', 'url(assets/bg/' + ch.dataset.bgWall + '.webp)');
-      bg.appendChild(v); ch.prepend(bg); io.observe(ch);
-    });
+  // The background: the "Fractal Maze" wallpaper turned upright and drawn live. Blurred orbs sit behind
+  // fluted glass; each glass rib shifts and squeezes what is behind it and has a lit top edge.
+  // One fixed canvas for the whole page. Orbs drift slower than the scroll and move to a new
+  // arrangement of the same colors at each chapter. Grain is a CSS layer at full resolution.
+  // Orb colors: off-white, teal, coral, orange, hot pink, off-white, deep teal.
+  var ORB_RGB = [[.86, .85, .84], [.17, .33, .36], [.84, .37, .27], [.87, .43, .2], [.92, .1, .38], [.78, .77, .76], [.07, .19, .21]];
+  // Per chapter: x and y as a share of the screen, radius as a share of its height, and strength.
+  var SCENES = [
+    [[.88, .1, .2, .75], [.7, .55, .26, .7], [.64, .4, .3, .8], [.84, .8, .34, .8], [.42, .94, .16, .85], [.99, .96, .18, .5], [.12, .5, .42, .9]],
+    [[.1, .96, .2, .6], [.25, .15, .3, .7], [.55, .62, .36, .8], [.86, .36, .3, .8], [.16, .62, .18, .8], [.96, .04, .16, .5], [.5, .1, .35, .8]],
+    [[.15, .15, .22, .7], [.76, .3, .3, .8], [.35, .6, .32, .8], [.1, .86, .3, .75], [.45, .96, .15, .8], [.02, .5, .18, .5], [.86, .74, .36, .9]],
+    [[.3, .9, .2, .6], [.2, .25, .34, .85], [.05, .55, .28, .7], [.45, .35, .22, .6], [.6, .98, .14, .7], [.1, .05, .16, .5], [.8, .4, .4, .9]],
+    [[.05, .3, .2, .65], [.4, .86, .3, .75], [.35, .2, .3, .85], [.15, .7, .3, .85], [.55, .5, .14, .75], [.45, 1, .18, .5], [.85, .2, .38, .9]],
+    [[.4, .05, .2, .6], [.1, .6, .3, .7], [.2, .9, .3, .8], [.5, .65, .26, .7], [.3, .3, .18, .9], [0, 0, .18, .5], [.85, .6, .4, .9]],
+    [[.2, .6, .22, .65], [.45, .15, .3, .8], [.1, .25, .3, .75], [.4, .9, .32, .8], [.05, .85, .16, .85], [.55, .45, .15, .45], [.85, .4, .4, .9]],
+    [[.9, .9, .22, .6], [.2, .7, .3, .7], [.76, .3, .3, .75], [.96, .6, .3, .7], [.6, .96, .15, .8], [1, .1, .18, .5], [.15, .25, .4, .9]],
+    [[.5, 1.1, .25, .55], [.1, .2, .3, .6], [.2, .96, .3, .7], [.86, .96, .3, .7], [.96, .3, .14, .6], [0, .6, .16, .4], [.5, .4, .45, .9]]
+  ];
+  var FRAG = [
+    'precision mediump float;',
+    'uniform vec2 R;uniform float P;uniform vec4 O[7];uniform vec3 C[7];',
+    'vec3 scene(vec2 q){vec2 p=q/R.y;float a=R.x/R.y;vec3 c=vec3(.03,.032,.036);',
+    ' for(int i=0;i<7;i++){vec2 d=p-vec2(O[i].x*a,O[i].y);float e=dot(d,d)/(O[i].z*O[i].z);c=mix(c,C[i],O[i].w*exp(-1.3*e*e));}',
+    ' return c;}',
+    'float h(float k){return fract(sin(k*91.7)*4375.85);}',
+    'void main(){vec2 q=vec2(gl_FragCoord.x,R.y-gl_FragCoord.y);',
+    // Ribs run across the screen (the wallpaper's upright ribs, turned with it) and vary a little in width.
+    ' float y=q.y/P;y+=.22*sin(y*1.37);float k=floor(y),t=fract(y),r=h(k);',
+    ' vec2 s=vec2(q.x*(1.+(r-.5)*.05)+(r-.5)*R.x*.012,q.y+(.5-t)*P*.5+(r-.5)*P*.6);',
+    ' vec3 c=scene(s);',
+    ' c*=1.-.15*smoothstep(.8,1.,t);c+=.05*(1.-smoothstep(0.,.1,t))*(.4+c);',
+    ' vec2 v=gl_FragCoord.xy/R-.5;c*=.84-.4*dot(v,v);',
+    ' gl_FragColor=vec4(c,1.);}'
+  ].join('\n');
+  function background() {
+    var cv = document.createElement('canvas'), gl;
+    cv.className = 'bgc'; cv.setAttribute('aria-hidden', 'true');
+    document.body.prepend(cv);
+    var grain = document.createElement('i'); grain.className = 'grain'; grain.setAttribute('aria-hidden', 'true');
+    document.body.prepend(grain);
+    try { gl = cv.getContext('webgl', { antialias: false, alpha: false, powerPreference: 'low-power' }); } catch (e) {}
+    function sh(type, src) { var s = gl.createShader(type); gl.shaderSource(s, src); gl.compileShader(s); return s; }
+    var pr = gl && gl.createProgram();
+    if (pr) {
+      gl.attachShader(pr, sh(gl.VERTEX_SHADER, 'attribute vec2 v;void main(){gl_Position=vec4(v,0.,1.);}'));
+      gl.attachShader(pr, sh(gl.FRAGMENT_SHADER, FRAG));
+      gl.linkProgram(pr);
+    }
+    if (!pr || !gl.getProgramParameter(pr, gl.LINK_STATUS)) { doc.classList.add('nogl'); cv.remove(); return; }
+    gl.useProgram(pr);
+    gl.bindBuffer(gl.ARRAY_BUFFER, gl.createBuffer());
+    gl.bufferData(gl.ARRAY_BUFFER, new Float32Array([-1, -1, 3, -1, -1, 3]), gl.STATIC_DRAW);
+    gl.enableVertexAttribArray(0); gl.vertexAttribPointer(0, 2, gl.FLOAT, false, 0, 0);
+    var uR = gl.getUniformLocation(pr, 'R'), uP = gl.getUniformLocation(pr, 'P'), uO = gl.getUniformLocation(pr, 'O'), uC = gl.getUniformLocation(pr, 'C');
+    gl.uniform3fv(uC, new Float32Array([].concat.apply([], ORB_RGB)));
+    var chs = [].slice.call(document.querySelectorAll('.ch')), tops = [], orbs = new Float32Array(28), t0 = performance.now(), last = -1, raf = 0;
+    // Blurred orbs need few pixels: half the CSS size on every screen, whatever its pixel density.
+    var SCALE = 0.5;
+    function resize() {
+      cv.width = Math.round(innerWidth * SCALE); cv.height = Math.round(innerHeight * SCALE);
+      gl.viewport(0, 0, cv.width, cv.height);
+      gl.uniform2f(uR, cv.width, cv.height);
+      gl.uniform1f(uP, 0.038 * Math.max(innerWidth, innerHeight) * SCALE);
+      tops = chs.map(function (c) { return c.getBoundingClientRect().top + scrollY; });
+      last = -1; draw();
+    }
+    function ease(x) { x = clamp(x, 0, 1); return x * x * (3 - 2 * x); }
+    function draw() {
+      raf = 0;
+      var y = scrollY, vh = innerHeight, i = 0, time = doc.dataset.motion === 'play' && !calm.matches ? (performance.now() - t0) / 1000 : 0;
+      while (i < tops.length - 1 && tops[i + 1] <= y) i++;
+      var j = Math.min(i + 1, tops.length - 1), m = j > i ? ease((y - (tops[j] - vh)) / vh) : 0;
+      var a = SCENES[i % SCENES.length], b = SCENES[j % SCENES.length];
+      // Parallax: the orbs move up at a twentieth of the scroll within a chapter.
+      var da = -0.05 * (y - tops[i]) / vh, db = -0.05 * (y - tops[j]) / vh;
+      for (var k = 0; k < 7; k++) {
+        var wx = 0.02 * Math.sin(time * 0.11 + k * 1.3), wy = 0.02 * Math.cos(time * 0.08 + k * 2.1);
+        orbs[k * 4] = a[k][0] + (b[k][0] - a[k][0]) * m + wx;
+        orbs[k * 4 + 1] = a[k][1] + da + (b[k][1] + db - a[k][1] - da) * m + wy;
+        orbs[k * 4 + 2] = a[k][2] + (b[k][2] - a[k][2]) * m;
+        orbs[k * 4 + 3] = a[k][3] + (b[k][3] - a[k][3]) * m;
+      }
+      gl.uniform4fv(uO, orbs);
+      gl.drawArrays(gl.TRIANGLES, 0, 3);
+      if (time) ask();
+    }
+    function ask() { if (!raf && !document.hidden) raf = requestAnimationFrame(draw); }
+    addEventListener('scroll', ask, { passive: true });
+    addEventListener('resize', resize);
+    document.addEventListener('visibilitychange', ask);
+    new ResizeObserver(resize).observe(document.body);
+    new MutationObserver(ask).observe(doc, { attributes: true, attributeFilter: ['data-motion'] });
+    resize();
   }
 
-  // Dock: the background style and the animation, both remembered; Copy choices copies the picks.
+  // Dock: the tool card style and the animation, both remembered; Copy choices copies the picks.
   function dock() {
     var d = document.querySelector('.dock');
     if (!d) return;
@@ -169,8 +251,8 @@
       var b = e.target.closest('button');
       if (!b) return;
       if (b.hasAttribute('data-choices')) {
-        var bg = d.querySelector('[data-set=bg] [aria-pressed=true]'), all = [].slice.call(d.querySelectorAll('[data-set=bg] button'));
-        copy('- Background: ' + (all.indexOf(bg) + 1) + ' ' + bg.textContent + '\n- Animation: ' + d.querySelector('[data-set=motion] [aria-pressed=true]').dataset.val.replace(/^./, function (c) { return c.toUpperCase(); }));
+        var cd = d.querySelector('[data-set=card] [aria-pressed=true]'), all = [].slice.call(d.querySelectorAll('[data-set=card] button'));
+        copy('- Tool card: ' + (all.indexOf(cd) + 1) + ' ' + cd.textContent + '\n- Animation: ' + d.querySelector('[data-set=motion] [aria-pressed=true]').dataset.val.replace(/^./, function (c) { return c.toUpperCase(); }));
         flash(b); return;
       }
       var set = b.parentNode.dataset.set;
@@ -241,8 +323,8 @@
   }
 
   document.addEventListener('DOMContentLoaded', function () {
-    backgrounds();
     document.querySelectorAll('[data-story]').forEach(story);
+    background();
     dock(); stars(); glass(); word(); clock(); setInterval(clock, 15000);
     var io = new IntersectionObserver(function (es) {
       es.forEach(function (e) { if (e.isIntersecting) { e.target.classList.add('in'); io.unobserve(e.target); } });
@@ -260,7 +342,7 @@
     if (!target) return;
     if (target.classList.contains('st')) {
       var root = target.closest('[data-story]'), all = [].slice.call(root.querySelectorAll('.st'));
-      scrollTo({ top: stepTop(root, all.indexOf(target), all.length), behavior: 'instant' });
+      scrollTo({ top: stepTop(root, all.indexOf(target)), behavior: 'instant' });
       return;
     }
     // Shown at once: a part still mid-rise is 24 px low, and the scroll would land 24 px short.

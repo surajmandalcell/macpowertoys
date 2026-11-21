@@ -8,7 +8,7 @@
 <meta name="description" content="A free, open-source macOS menu bar panel with system stats and fan curves, plus a growing set of tools: dev server ports, cloud copies, scroll settings per device, hidden Mac settings, and more.">
 <link rel="icon" href="assets/icons/appicon.svg" type="image/svg+xml">
 <link rel="stylesheet" href="site.css">
-<script>(function(d){d.classList.add('js');var q=new URLSearchParams(location.search),g=function(k){try{return localStorage.getItem('mpt-'+k)}catch(e){}},b=q.get('bg')||g('bg'),m=g('motion');d.dataset.bg=/^(wall|mesh|aurora|grain)$/.test(b)?b:'wall';d.dataset.motion=/^(play|pause|off)$/.test(m)?m:matchMedia('(prefers-reduced-motion: reduce)').matches?'off':'play'})(document.documentElement)</script>
+<script>(function(d){d.classList.add('js');var q=new URLSearchParams(location.search),g=function(k){try{return localStorage.getItem('mpt-'+k)}catch(e){}},c=q.get('card')||g('card'),m=g('motion');d.dataset.card=/^(glass|store|dock|spot|pill|finder)$/.test(c)?c:'glass';d.dataset.motion=/^(play|pause|off)$/.test(m)?m:matchMedia('(prefers-reduced-motion: reduce)').matches?'off':'play'})(document.documentElement)</script>
 <script src="site.js" defer></script>
 </head>
 <body>
@@ -21,15 +21,16 @@
 </svg>
 
 <main>
-<section class="ch ch-hero" id="top" data-bg-wall="grad" style="--c1:#5b3bd6;--c2:#1d5fe0;--c3:#a03bd0">
+<section class="ch ch-hero" id="top"><div class="stage">
 <header class="nav">
   <a class="mark" href="#top"><img src="assets/icons/appicon.svg" alt="" width="28" height="28">MacPowerToys</a>
   <nav aria-label="Main"><a href="#fan">Features</a><a href="#tools">Tools</a><a href="#install">Install</a><a class="gh-cta" href="https://github.com/surajmandalcell/macpowertoys" aria-label="MacPowerToys on GitHub, star it"><svg class="gh"><use href="#i-gh"/></svg><span class="long">GitHub</span><span class="sep" aria-hidden="true"></span><span class="stars" aria-hidden="true"><svg class="line"><use href="#i-star"/></svg><svg class="full"><use href="#i-star"/></svg></span><span class="n" data-stars>Star</span></a></nav>
 </header>
 <div class="hero">
   <div class="hero-copy">
-    <h1>Your menu bar, doing more.</h1>
-    <p class="lead">One menu bar panel for stats and fans, plus a growing set of tools.</p>
+    <p class="card"><img src="assets/icons/appicon.svg" alt="" width="64" height="64"><b>MacPowerToys</b><span>Free menu bar tools for the Mac.</span></p>
+    <h1>Puts your Mac's stats, fans, and tools in the menu bar.</h1>
+    <p class="lead">Free and open source. One click away, all day.</p>
     <div class="get">
       <a class="glass" data-download href="https://github.com/surajmandalcell/macpowertoys/releases/download/v1.9.4/MacPowerToys-1.9.4-universal.dmg"><span class="glow" aria-hidden="true"></span><i class="apple" aria-hidden="true"></i>Download for Mac</a>
       <div class="cmd"><code><span>brew install --cask</span> <span>samhqapp/tap/macpowertoys</span></code><button type="button" aria-label="Copy the install command" data-copy="brew install --cask samhqapp/tap/macpowertoys"><svg class="cp"><use href="#i-copy"/></svg><svg class="ok"><use href="#i-ok"/></svg></button></div>
@@ -112,15 +113,13 @@
 </div></div>
 </template></div>
 </div>
-</section>
+</div></section>
 
-<section class="ch" id="fan" data-bg-wall="maze" style="--c1:#0f8a86;--c2:#d9772b;--c3:#c2362c">
-  <div class="head">
-    <div class="head-txt">
-      <picture class="rv"><source media="(prefers-color-scheme: dark)" srcset="assets/icons/fan-dark.svg"><img class="ticon" src="assets/icons/fan.svg" alt="" width="52" height="52"></picture>
-      <h2 class="rv">Fan curves that stay <span class="nw">quiet.<a class="anchor" href="#fan" aria-label="Copy a link to Fan"><svg><use href="#i-link"/></svg></a></span></h2>
-      <p class="rv">Quiet fans that react to the whole chip, not one hot core.</p>
-    </div>
+<section class="ch" id="fan"><div class="stage fan-stage">
+  <div class="head-txt">
+    <h2 class="kick"><span class="card"><picture><source media="(prefers-color-scheme: dark)" srcset="assets/icons/fan-dark.svg"><img src="assets/icons/fan.svg" alt="" width="64" height="64"></picture><b>Fan</b><span>Presets and your own curve.</span></span><a class="anchor" href="#fan" aria-label="Copy a link to Fan"><svg><use href="#i-link"/></svg></a></h2>
+    <h3>Keeps your Mac quiet and cool.</h3>
+    <p>Fans follow the whole chip, not one hot core.</p>
   </div>
   <div class="demo fan-demo" data-demo="fan" role="group" aria-label="The Fan page, live: the pointer picks Silent, then Steady, and the curve changes; then Hold keeps a 62 °C average. Drag on the chart to try it"><template>
 <div class="desk" style="--wl:url(assets/wall/ring.webp);--wd:url(assets/wall/maze.webp)"><div class="desk-in">
@@ -230,11 +229,11 @@
 </div>
 </div></div>
 </template></div>
-</section>
+</div></section>
 
 <!-- A tool chapter: shots in .s-cam (.pan = a menu panel under the menu bar icon in data-ico,
      .win = a window), then one .st per step that names its shot and an optional spotlight in shot points. -->
-<section class="ch" id="portman" data-bg-wall="mesh" style="--c1:#13807a;--c2:#6a3fc4;--c3:#1f5bd1">
+<section class="ch" id="portman">
   <div class="story" data-story>
     <div class="s-pin">
       <div class="s-vis">
@@ -246,10 +245,10 @@
         </div>
       </div>
       <div class="s-txt">
-        <h2 class="kick"><img src="assets/icons/portman.png" alt="" width="40" height="40">Portman<a class="anchor" href="#portman" aria-label="Copy a link to Portman"><svg><use href="#i-link"/></svg></a></h2>
+        <h2 class="kick"><span class="card"><img src="assets/icons/portman.png" alt="" width="64" height="64"><b>Portman</b><span>Dev servers and SSH ports.</span></span><a class="anchor" href="#portman" aria-label="Copy a link to Portman"><svg><use href="#i-link"/></svg></a></h2>
         <ol class="bars"></ol>
         <div class="s-say">
-          <div class="st on" data-shot="0" data-click><h3>Portman has its own menu bar icon.</h3><p>One click shows every dev server on this Mac.</p></div>
+          <div class="st on" data-shot="0" data-click><h3>Finds and controls your dev servers.</h3><p>Click its menu bar icon to see every server.</p></div>
           <div class="st" data-shot="0" data-spot="10 48 336 217"><h3>The whole load, at a glance.</h3><p>Total memory, CPU, and the longest uptime in one ring.</p></div>
           <div class="st" data-shot="0" data-spot="10 277 336 168"><h3>Every server, with its project.</h3><p>Port, git branch, uptime, and memory on each row.</p></div>
           <div class="st" data-shot="1" data-spot="10 86 336 85"><h3>Open one to watch it live.</h3><p>Memory and CPU graphs for that one server.</p></div>
@@ -263,7 +262,7 @@
   </div>
 </section>
 
-<section class="ch" id="rsync" data-bg-wall="ring" style="--c1:#1f56c9;--c2:#2a86d8;--c3:#3b3fb0">
+<section class="ch" id="rsync">
   <div class="story" data-story>
     <div class="s-pin">
       <div class="s-vis">
@@ -272,17 +271,17 @@
         </div>
       </div>
       <div class="s-txt">
-        <h2 class="kick"><img src="assets/icons/rsync.svg" alt="" width="40" height="40">RSync UI<a class="anchor" href="#rsync" aria-label="Copy a link to RSync UI"><svg><use href="#i-link"/></svg></a></h2>
+        <h2 class="kick"><span class="card"><img src="assets/icons/rsync.svg" alt="" width="64" height="64"><b>RSync UI</b><span>Cloud copies with rclone.</span></span><a class="anchor" href="#rsync" aria-label="Copy a link to RSync UI"><svg><use href="#i-link"/></svg></a></h2>
         <ol class="bars"></ol>
         <div class="s-say">
-          <div class="st on" data-shot="0"><h3>Copies to the cloud keep going.</h3><p>Copy and sync files to Drive, S3, and 70 more clouds.</p></div>
+          <div class="st on" data-shot="0"><h3>Copies and syncs files to your clouds.</h3><p>Drive, S3, and 70 more, with pause and resume.</p></div>
         </div>
       </div>
     </div>
   </div>
 </section>
 
-<section class="ch" id="input-devices" data-bg-wall="eve" style="--c1:#1d8a5a;--c2:#138a8a;--c3:#2f6e3a">
+<section class="ch" id="input-devices">
   <div class="story" data-story>
     <div class="s-pin">
       <div class="s-vis">
@@ -291,17 +290,17 @@
         </div>
       </div>
       <div class="s-txt">
-        <h2 class="kick"><img src="assets/icons/input.png" alt="" width="40" height="40">Input Devices<a class="anchor" href="#input-devices" aria-label="Copy a link to Input Devices"><svg><use href="#i-link"/></svg></a></h2>
+        <h2 class="kick"><span class="card"><img src="assets/icons/input.png" alt="" width="64" height="64"><b>Input Devices</b><span>Scroll settings per device.</span></span><a class="anchor" href="#input-devices" aria-label="Copy a link to Input Devices"><svg><use href="#i-link"/></svg></a></h2>
         <ol class="bars"></ol>
         <div class="s-say">
-          <div class="st on" data-shot="0"><h3>Scroll each mouse its own way.</h3><p>Each mouse and trackpad gets its own direction and speed.</p></div>
+          <div class="st on" data-shot="0"><h3>Sets scrolling for each mouse and trackpad.</h3><p>Each one gets its own direction and speed.</p></div>
         </div>
       </div>
     </div>
   </div>
 </section>
 
-<section class="ch" id="mac-tweaks" data-bg-wall="fur" style="--c1:#a3287a;--c2:#5a2bb0;--c3:#c2416a">
+<section class="ch" id="mac-tweaks">
   <div class="story" data-story>
     <div class="s-pin">
       <div class="s-vis">
@@ -310,10 +309,10 @@
         </div>
       </div>
       <div class="s-txt">
-        <h2 class="kick"><img src="assets/icons/tweaks.png" alt="" width="40" height="40">Mac Tweaks<a class="anchor" href="#mac-tweaks" aria-label="Copy a link to Mac Tweaks"><svg><use href="#i-link"/></svg></a></h2>
+        <h2 class="kick"><span class="card"><img src="assets/icons/tweaks.png" alt="" width="64" height="64"><b>Mac Tweaks</b><span>Hidden macOS settings.</span></span><a class="anchor" href="#mac-tweaks" aria-label="Copy a link to Mac Tweaks"><svg><use href="#i-link"/></svg></a></h2>
         <ol class="bars"></ol>
         <div class="s-say">
-          <div class="st on" data-shot="0"><h3>Hidden macOS settings, in one place.</h3><p>Change things like the Dock delay without Terminal.</p></div>
+          <div class="st on" data-shot="0"><h3>Changes hidden macOS settings.</h3><p>Things like the Dock delay, without Terminal.</p></div>
           <div class="st" data-shot="0" data-spot="227 52 582 219"><h3>Every change can go back.</h3><p>Pick Default on any setting to undo your change.</p></div>
         </div>
       </div>
@@ -322,7 +321,7 @@
 </section>
 
 
-<section class="ch" id="small-tools" data-bg-wall="grad" style="--c1:#c23b78;--c2:#c9861f;--c3:#2b62d6">
+<section class="ch" id="small-tools">
   <div class="story" data-story>
     <div class="s-pin">
       <div class="s-vis">
@@ -338,21 +337,21 @@
         <h2 class="kick">Small tools<a class="anchor" href="#small-tools" aria-label="Copy a link to the small tools"><svg><use href="#i-link"/></svg></a></h2>
         <ol class="bars"></ol>
         <div class="s-say">
-          <div class="st on" id="color-picker" data-shot="0"><p class="tag"><img src="assets/icons/colorpicker.png" alt="" width="28" height="28">Color Picker</p><h3>Copy any pixel on screen.</h3><p>As HEX, RGB, SwiftUI, and more.</p></div>
-          <div class="st" id="text-extractor" data-shot="1"><p class="tag"><img src="assets/icons/text.png" alt="" width="28" height="28">Text Extractor</p><h3>Box any text, and copy it.</h3><p>The text lands on your clipboard.</p></div>
-          <div class="st" id="event-viewer" data-shot="2" data-spot="515 100 550 182"><p class="tag"><img src="assets/icons/events.png" alt="" width="28" height="28">Event Viewer</p><h3>See what the app and macOS did.</h3><p>App activity and macOS errors, filtered by level.</p></div>
-          <div class="st" id="awake" data-shot="3" data-spot="229 52 577 283"><p class="tag"><img src="assets/icons/awake.svg" alt="" width="28" height="28">Awake</p><h3>Keep the Mac awake.</h3><p>For 30 minutes, or until you stop it.</p></div>
-          <div class="st" id="ruler" data-shot="4"><p class="tag"><img src="assets/icons/ruler.svg" alt="" width="28" height="28">Ruler</p><h3>Measure anything on screen.</h3><p>In pixels, millimeters, or inches.</p></div>
+          <div class="st on" id="color-picker" data-shot="0"><p class="card"><img src="assets/icons/colorpicker.png" alt="" width="64" height="64"><b>Color Picker</b><span>Copy any pixel in 9 formats.</span></p><h3>Copies any color on screen.</h3><p>As HEX, RGB, SwiftUI, and more.</p></div>
+          <div class="st" id="text-extractor" data-shot="1"><p class="card"><img src="assets/icons/text.png" alt="" width="64" height="64"><b>Text Extractor</b><span>Copy text from the screen.</span></p><h3>Copies text from anywhere on screen.</h3><p>Draw a box, and the text is on your clipboard.</p></div>
+          <div class="st" id="event-viewer" data-shot="2" data-spot="515 100 550 182"><p class="card"><img src="assets/icons/events.png" alt="" width="64" height="64"><b>Event Viewer</b><span>App logs and macOS errors.</span></p><h3>Shows what the app and macOS did.</h3><p>App activity and macOS errors, filtered by level.</p></div>
+          <div class="st" id="awake" data-shot="3" data-spot="229 52 577 283"><p class="card"><img src="assets/icons/awake.svg" alt="" width="64" height="64"><b>Awake</b><span>Keep the Mac awake.</span></p><h3>Keeps your Mac awake.</h3><p>For 30 minutes, or until you stop it.</p></div>
+          <div class="st" id="ruler" data-shot="4"><p class="card"><img src="assets/icons/ruler.svg" alt="" width="64" height="64"><b>Ruler</b><span>Measure anything on screen.</span></p><h3>Measures anything on screen.</h3><p>In pixels, millimeters, or inches.</p></div>
         </div>
       </div>
     </div>
   </div>
 </section>
-<section class="ch ch-end" id="tools" data-bg-wall="ring" style="--c1:#3a4fd0;--c2:#6b35b8;--c3:#14808a">
+<section class="ch" id="tools"><div class="stage">
   <div class="list">
-  <div class="list-head"><h2 class="rv">And more on the <span class="nw">way.<a class="anchor" href="#tools" aria-label="Copy a link to the tool list"><svg><use href="#i-link"/></svg></a></span></h2>
-  <p class="rv">New tools arrive as free updates. Here is what ships today.</p></div>
-  <ul class="rows rv">
+  <div class="list-head"><h2>And more on the <span class="nw">way.<a class="anchor" href="#tools" aria-label="Copy a link to the tool list"><svg><use href="#i-link"/></svg></a></span></h2>
+  <p>New tools arrive as free updates. Here is what ships today.</p></div>
+  <ul class="rows">
     <li><a class="row" href="#fan"><picture><source media="(prefers-color-scheme: dark)" srcset="assets/icons/fan-dark.svg"><img src="assets/icons/fan.svg" alt="" width="28" height="28"></picture><b>Fan</b><span>Presets and your own curve.</span></a></li>
     <li><a class="row" href="#ruler"><img src="assets/icons/ruler.svg" alt="" width="28" height="28"><b>Ruler</b><span>Measure anything on screen.</span></a></li>
     <li><a class="row" href="#color-picker"><img src="assets/icons/colorpicker.png" alt="" width="28" height="28"><b>Color Picker</b><span>Copy any pixel in 9 formats.</span></a></li>
@@ -365,13 +364,15 @@
     <li><a class="row" href="#mac-tweaks"><img src="assets/icons/tweaks.png" alt="" width="28" height="28"><b>Mac Tweaks</b><span>Hidden macOS settings.</span></a></li>
   </ul>
   </div>
-  <div class="install" id="install">
-  <h2 class="rv">Install it in one <span class="nw">line.<a class="anchor" href="#install" aria-label="Copy a link to Install"><svg><use href="#i-link"/></svg></a></span></h2>
-  <div class="cmd big rv"><code><span>brew install --cask</span> <span>samhqapp/tap/macpowertoys</span></code><button type="button" aria-label="Copy the install command" data-copy="brew install --cask samhqapp/tap/macpowertoys"><svg class="cp"><use href="#i-copy"/></svg><svg class="ok"><use href="#i-ok"/></svg></button></div>
-  <p class="or rv">Or <a class="glass" data-download href="https://github.com/surajmandalcell/macpowertoys/releases/download/v1.9.4/MacPowerToys-1.9.4-universal.dmg"><span class="glow" aria-hidden="true"></span><i class="apple" aria-hidden="true"></i>Download for Mac</a></p>
-  <p class="fine rv">Version <span data-version>1.9.4</span> · macOS 26.2 or later · Notarized by Apple · No tracking · MIT license</p>
+</div></section>
+<section class="ch ch-last" id="install"><div class="stage">
+  <div class="install">
+  <h2>Install it in one <span class="nw">line.<a class="anchor" href="#install" aria-label="Copy a link to Install"><svg><use href="#i-link"/></svg></a></span></h2>
+  <div class="cmd big"><code><span>brew install --cask</span> <span>samhqapp/tap/macpowertoys</span></code><button type="button" aria-label="Copy the install command" data-copy="brew install --cask samhqapp/tap/macpowertoys"><svg class="cp"><use href="#i-copy"/></svg><svg class="ok"><use href="#i-ok"/></svg></button></div>
+  <p class="or">Or <a class="glass" data-download href="https://github.com/surajmandalcell/macpowertoys/releases/download/v1.9.4/MacPowerToys-1.9.4-universal.dmg"><span class="glow" aria-hidden="true"></span><i class="apple" aria-hidden="true"></i>Download for Mac</a></p>
+  <p class="fine">Version <span data-version>1.9.4</span> · macOS 26.2 or later · Notarized by Apple · No tracking · MIT license</p>
   </div>
-</section>
+</div></section>
 </main>
 
 <footer class="foot" data-foot>
@@ -390,9 +391,9 @@
   <div class="word" aria-hidden="true" data-word="MacPowerToys">MacPowerToys</div>
 </footer>
 
-<div class="dock" role="toolbar" aria-label="Background and animation">
-  <div class="seg" data-set="bg" aria-label="Background style">
-    <button type="button" data-val="wall" title="Recommended: a darkened real wallpaper that drifts">Wall</button><button type="button" data-val="mesh" title="Three color blobs that orbit">Mesh</button><button type="button" data-val="aurora" title="Soft bands of light that sweep">Aurora</button><button type="button" data-val="grain" title="A dark two-tone gradient with heavy film grain">Grain</button>
+<div class="dock" role="toolbar" aria-label="Tool card and animation">
+  <div class="seg" data-set="card" aria-label="Tool card style">
+    <button type="button" data-val="glass" data-n="1" title="1 Glass, recommended: a frosted glass chip with the icon and name">Glass</button><button type="button" data-val="store" data-n="2" title="2 Store: an App Store row with a big icon, the name, and one line">Store</button><button type="button" data-val="dock" data-n="3" title="3 Dock: a Dock tile with the name under it">Dock</button><button type="button" data-val="spot" data-n="4" title="4 Spotlight: a selected Spotlight result">Spotlight</button><button type="button" data-val="pill" data-n="5" title="5 Pill: a small menu bar item">Pill</button><button type="button" data-val="finder" data-n="6" title="6 Finder: a selected Finder icon with its blue name label">Finder</button>
   </div>
   <div class="seg ic" data-set="motion" aria-label="Animation">
     <button type="button" data-val="play" aria-label="Play the animation"><svg viewBox="0 0 16 16"><path d="M5 3.5v9l7.5-4.5z" fill="currentColor"/></svg></button><button type="button" data-val="pause" aria-label="Pause the animation"><svg viewBox="0 0 16 16"><path d="M5 3.5v9M11 3.5v9" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"/></svg></button><button type="button" data-val="off" aria-label="Turn the animation off"><svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.6"><circle cx="8" cy="8" r="5.5"/><path d="M4.2 11.8l7.6-7.6"/></svg></button>
