@@ -387,6 +387,17 @@ final class FanControlTests: XCTestCase {
                                             maximum: 5_777), 5_777, "The hottest-core safety wins over Keep")
     }
 
+    func testHoldDisplayCurveRisesThroughTheBand() {
+        let curve = FanHold.displayCurve(target: 62)
+        XCTAssertEqual(curve.speed(at: 58), 0, accuracy: 1e-9)
+        XCTAssertEqual(curve.speed(at: 62), 0.5, accuracy: 1e-9)
+        XCTAssertEqual(curve.speed(at: 66), 1, accuracy: 1e-9)
+        XCTAssertEqual(curve.speed(at: 40), 0, accuracy: 1e-9, "Flat below the band")
+        XCTAssertEqual(curve.speed(at: 75), 1, accuracy: 1e-9, "Flat above the band")
+        let speeds = stride(from: 30.0, through: 90.0, by: 0.25).map(curve.speed(at:))
+        XCTAssertEqual(speeds, speeds.sorted(), "Speed never falls as the temperature rises")
+    }
+
     func testKeepTakesOverHotFansWithoutADip() {
         let (minimum, maximum) = (1_350.0, 5_777.0)
         var hold = FanHold(target: 65, speed: (4_000 - minimum) / (maximum - minimum))

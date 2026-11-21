@@ -178,6 +178,13 @@ nonisolated struct FanHold: Equatable, Sendable {
     static let reset = 0.002
     static let ramp = 0.03
 
+    /// The picture of what Hold does, for the charts and the website demo: minimum fan up to 4 °C under the target,
+    /// half speed at it, full speed from 4 °C over. The PI loop, not this curve, drives the fans.
+    static func displayCurve(target: Double) -> FanCurve {
+        FanCurve(points: [.init(celsius: target - 4, speed: 0), .init(celsius: target, speed: 0.5),
+                          .init(celsius: target + 4, speed: 1)])
+    }
+
     private(set) var target: Double
     private(set) var integral: Double
     private(set) var speed: Double
