@@ -243,6 +243,7 @@ class AppDelegate: NSObject, NSApplicationDelegate {
         statusItemTimingMonitor = nil
         OnePlusFocusPolicy.shared.stop()
         PortmanService.shared.stopAll()
+        PortmanServerMonitor.shared.stop()
     }
 
     @MainActor
