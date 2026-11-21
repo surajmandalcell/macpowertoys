@@ -5,7 +5,9 @@
 const BASE = new URL('assets/portman/', document.currentScript ? document.currentScript.src : location.href).href;
 const W = 356, RAM_MB = 24576;
 const SERIES = ['#6EC7ED', '#B599F0', '#EB9CD4', '#7D9CF2', '#7DDCE0'];
-const portColor = p => SERIES[Math.floor(p * 7 / 11) % 5];
+// Demo-only warning (not in the app): a server past 600 MB turns OnePlusColor.danger on a dangerFill tint.
+const HOT_MB = 600, DANGER = '#FFB6AC', DANGER_FILL = '#382624';
+const portColor =p => SERIES[Math.floor(p * 7 / 11) % 5];
 const hexA = (hex, a) => hex + Math.round(a * 255).toString(16).padStart(2, '0');
 
 // SF Symbols rendered from AppKit at their app point size (white masks), sized in points.
@@ -66,7 +68,7 @@ const CSS = `
 .row{position:relative;height:40px;padding:0 10px;display:flex;align-items:center;gap:8px;overflow:hidden}
 .row::before,.pick::before{content:"";position:absolute;inset:1px 4px;border-radius:6px;background:#2A2A2E;opacity:0;transition:opacity .2s}
 .row.hov::before,.pick.hov::before{opacity:1;transition-duration:.09s}
-.row>*{position:relative}
+.row>*{position:relative;z-index:1}
 .chipc{width:50px;flex:none}
 .chip{display:inline-flex;align-items:center;height:18px;padding:0 5px;border-radius:5px;font-size:11px;font-weight:600;letter-spacing:0}
 .ico{width:16px;height:16px;flex:none;border-radius:4px;box-shadow:inset 0 0 0 1px rgba(255,255,255,.1);display:grid;place-items:center;color:#B4B4BA}
@@ -80,7 +82,9 @@ const CSS = `
 .acts{display:none;gap:0}
 .row.hov .acts{display:flex}.row.hov .spark{display:none}
 .acts .ib{width:22px;height:22px}
-.mem{width:52px;flex:none;text-align:right;font-size:12px;letter-spacing:0;color:#B4B4BA;white-space:nowrap}
+.mem{width:52px;flex:none;text-align:right;font-size:12px;letter-spacing:0;color:#B4B4BA;white-space:nowrap;transition:color .4s}
+.row::after{content:"";position:absolute;inset:1px 4px;border-radius:6px;background:${DANGER_FILL};opacity:0;transition:opacity .4s}
+.row.hot::after{opacity:1}.row.hot .mem{color:${DANGER}}
 .frow{min-height:40px;padding:0 10px;display:flex;align-items:center;gap:8px}
 .field{flex:1;min-width:0;height:28px;border-radius:7px;background:#2A2A2E;padding:0 8px;display:flex;align-items:center;white-space:nowrap;overflow:hidden}
 .field.ph{color:#AAABB2}
@@ -185,7 +189,7 @@ function mount(host) {
   }
   function rowHTML(id, over = {}) {
     const s = { ...SERVERS[id], ...over[id] }, c = portColor(s.port);
-    return `<div class="row" data-id="${id}">
+    return `<div class="row${s.mem > HOT_MB ? ' hot' : ''}" data-id="${id}">
       <span class="chipc"><span class="chip" style="color:${c};background:${hexA(c, .14)}">:${s.port}</span></span>
       <span class="ico">${g('terminal-8')}</span>
       <span class="nm"><b>${s.name}</b><i>${g('arrow-triangle-branch-9')}<span>${s.branch}</span><span>·</span><span>up ${s.up}</span></i></span>
@@ -250,7 +254,7 @@ function mount(host) {
       const span = s.mem / total;
       if (span > gap) {
         const from = (start + gap / 2) * reveal, to = (start + span - gap / 2) * reveal;
-        arcs += `<circle cx="66" cy="66" r="66" fill="none" stroke="${portColor(s.port)}" stroke-width="9" stroke-linecap="round" pathLength="1"
+        arcs += `<circle cx="66" cy="66" r="66" fill="none" stroke="${s.mem > HOT_MB ? DANGER : portColor(s.port)}" stroke-width="9" stroke-linecap="round" pathLength="1"
           stroke-dasharray="${Math.max(0, to - from).toFixed(4)} 2" stroke-dashoffset="${(-from).toFixed(4)}" transform="rotate(-90 66 66)"/>`;
       }
       start += span;
@@ -321,6 +325,7 @@ function mount(host) {
       await tween(2600, k => {
         const mem = 142.0 + (781.4 - 142.0) * k, cpu = 6 + (38.5 - 6) * k;
         memEl.textContent = fmtMB(mem);
+        row.classList.toggle('hot', mem > HOT_MB);
         const n = Math.max(3, Math.round(3 + 13 * k));
         path.setAttribute('d', sparkPath(SPARK.web.slice(0, n).concat(Array(16 - n).fill(SPARK.web[n - 1]))));
         setRing(five, { web: { mem, cpu } });
