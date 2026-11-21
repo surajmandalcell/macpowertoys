@@ -21,7 +21,8 @@ async function latestRelease(ctx) {
       if (/^v?\d+\.\d+\.\d+$/.test(tag)) release.version = tag.replace(/^v/, '');
       const dmg = (body.assets || []).find((a) => /\.dmg$/i.test(a.name || ''));
       if (dmg && /^https:\/\/github\.com\//.test(dmg.browser_download_url)) release.dmg = dmg.browser_download_url;
-      // `make release` writes release.json only for a notarized DMG; without it the page keeps the Open Anyway step.
+      // `make release` writes release.json only for a notarized DMG; without it the page keeps the quarantine step
+      // (a Development-signed app opens as "damaged", with no Open Anyway button).
       const note = (body.assets || []).find((a) => a.name === 'release.json');
       if (note && release.version && /^https:\/\/github\.com\//.test(note.browser_download_url)) {
         const info = await (await fetch(note.browser_download_url, { headers: { 'User-Agent': 'macpowertoys-site' } })).json();
