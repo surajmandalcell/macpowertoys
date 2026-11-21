@@ -28,7 +28,8 @@ struct FanPageView: View {
             OnePlusLinearAppletSection("Cool curve") {
                 VStack(spacing: 0) {
                     if let hold {
-                        FanHoldChart(target: hold, nowCelsius: nowCelsius, nowChip: nowChip).padding(.top, 12)
+                        FanCurveEditor(curve: FanHold.displayCurve(target: hold), nowCelsius: nowCelsius, nowChip: nowChip,
+                                       hold: hold) { _ in }.padding(.top, 12)
                         FanHintRow(text: "Holds \(Int(hold)) °C, give or take \(Int(FanHold.band)) °C, with a steady fan speed") {
                             OnePlusStepperField("Hold at", value: Binding(get: { Int(hold) }, set: { FanHold.save(Double($0)) }),
                                                 in: Int(FanHold.range.lowerBound)...Int(FanHold.range.upperBound), unit: "°C")
@@ -122,7 +123,7 @@ private struct FanPresetCards: View {
     }
 }
 
-/// A card's picture on the full 30-90 °C scale: the curve with a soft fill, or for Hold the target line in its band.
+/// A card's picture on the full 30-90 °C scale: the curve with a soft fill; Hold also shades its ±2 °C band.
 private struct FanMiniChart: View {
     enum Shape { case curve(FanCurve), hold(Double) }
     let shape: Shape
@@ -131,21 +132,18 @@ private struct FanMiniChart: View {
     var body: some View {
         GeometryReader { geo in
             let plot = FanPlot(rect: CGRect(origin: .zero, size: geo.size).insetBy(dx: 2, dy: 2))
-            switch shape {
-            case .curve(let curve):
-                let points = plot.samples(curve)
-                ZStack {
-                    plot.area(points).fill(tint.opacity(0.12))
-                    Path { $0.addLines(points) }.stroke(tint, style: StrokeStyle(lineWidth: 1.5, lineCap: .round, lineJoin: .round))
-                }
-            case .hold(let target):
-                ZStack(alignment: .topLeading) {
+            let points: [CGPoint] = switch shape {
+            case .curve(let curve): plot.samples(curve)
+            case .hold(let target): plot.samples(FanHold.displayCurve(target: target))
+            }
+            ZStack(alignment: .topLeading) {
+                if case .hold(let target) = shape {
                     Rectangle().fill(tint.opacity(0.12))
                         .frame(width: plot.x(target + FanHold.band) - plot.x(target - FanHold.band), height: plot.rect.height)
                         .position(x: plot.x(target), y: plot.rect.midY)
-                    Path { $0.move(to: plot.point(target, 0)); $0.addLine(to: plot.point(target, 1)) }
-                        .stroke(tint, style: StrokeStyle(lineWidth: 1.5, dash: [3, 2]))
                 }
+                plot.area(points).fill(tint.opacity(0.12))
+                Path { $0.addLines(points) }.stroke(tint, style: StrokeStyle(lineWidth: 1.5, lineCap: .round, lineJoin: .round))
             }
         }
         .allowsHitTesting(false)
@@ -248,48 +246,29 @@ private struct FanChip: View {
     }
 }
 
-/// Hold has no curve: the target as a dashed `ink` line in its ±2 °C band, and the CPU now as a heat-colored line.
-private struct FanHoldChart: View {
+/// Hold's marks under its curve: the ±2 °C band, the target as a dashed `ink` line, and its label left of the band.
+private struct FanHoldBand: View {
+    let plot: FanPlot
     let target: Double
-    let nowCelsius: Double?
-    let nowChip: String?
+    private static let labelWidth: CGFloat = 72
+
+    /// Where the label sits, so the now chip can avoid it.
+    static func labelRect(_ plot: FanPlot, target: Double) -> CGRect {
+        CGRect(x: plot.x(target - FanHold.band) - 8 - labelWidth, y: plot.rect.minY + 2, width: labelWidth, height: 16)
+    }
 
     var body: some View {
-        GeometryReader { geo in
-            let plot = FanPlot(rect: CGRect(x: 0, y: FanCurveEditor.inset.top, width: geo.size.width,
-                                            height: geo.size.height - FanCurveEditor.inset.top - FanCurveEditor.inset.bottom))
-            ZStack(alignment: .topLeading) {
-                FanCurveGrid(plot: plot)
-                Rectangle().fill(OnePlusLinearColor.ink.opacity(0.07))
-                    .frame(width: plot.x(target + FanHold.band) - plot.x(target - FanHold.band), height: plot.rect.height)
-                    .position(x: plot.x(target), y: plot.rect.midY)
-                Path { $0.move(to: plot.point(target, 0)); $0.addLine(to: plot.point(target, 1)) }
-                    .stroke(OnePlusLinearColor.ink, style: StrokeStyle(lineWidth: 1.5, dash: [4, 3]))
-                Text("Hold \(Int(target)) °C").linearText(OnePlusLinearMetrics.caption, weight: .semibold)
-                    .fixedSize().frame(width: 0, alignment: .trailing)
-                    .position(x: plot.x(target - FanHold.band) - 8, y: plot.rect.minY + 10)
-                Path { $0.move(to: plot.point(FanCurve.lockedEnd.celsius, 1)); $0.addLine(to: plot.point(FanPlot.domain.upperBound, 1)) }
-                    .stroke(OnePlusLinearColor.ink, style: StrokeStyle(lineWidth: 2, lineCap: .round))
-                FanLockedEnd(point: plot.point(FanCurve.lockedEnd.celsius, 1), plot: plot.rect)
-                if let nowCelsius {
-                    let x = plot.x(min(max(nowCelsius, FanPlot.domain.lowerBound), FanPlot.domain.upperBound))
-                    Path { $0.move(to: CGPoint(x: x, y: plot.rect.maxY)); $0.addLine(to: CGPoint(x: x, y: plot.rect.minY + 52)) }
-                        .stroke(FanHeat.color(nowCelsius), style: StrokeStyle(lineWidth: 1.5, lineCap: .round))
-                    Circle().fill(FanHeat.color(nowCelsius)).overlay(Circle().strokeBorder(OnePlusLinearColor.window, lineWidth: 2))
-                        .frame(width: 11, height: 11).position(x: x, y: plot.rect.maxY)
-                    // The chip sits on the side away from the target, so it never covers the dashed target line.
-                    if let nowChip {
-                        let away = nowCelsius >= target
-                        FanChip(text: nowChip).frame(width: 0, alignment: away ? .leading : .trailing)
-                            .position(x: x + (away ? 6 : -6), y: plot.rect.minY + 52)
-                    }
-                }
-            }
+        ZStack(alignment: .topLeading) {
+            Rectangle().fill(OnePlusLinearColor.ink.opacity(0.07))
+                .frame(width: plot.x(target + FanHold.band) - plot.x(target - FanHold.band), height: plot.rect.height)
+                .position(x: plot.x(target), y: plot.rect.midY)
+            Path { $0.move(to: plot.point(target, 0)); $0.addLine(to: plot.point(target, 1)) }
+                .stroke(OnePlusLinearColor.ink, style: StrokeStyle(lineWidth: 1.5, dash: [4, 3]))
+            Text("Hold \(Int(target)) °C").linearText(OnePlusLinearMetrics.caption, weight: .semibold)
+                .fixedSize().frame(width: 0, alignment: .trailing)
+                .position(x: plot.x(target - FanHold.band) - 8, y: plot.rect.minY + 10)
         }
-        .frame(height: FanCurveEditor.height)
-        .mask(Rectangle().padding(.vertical, -40))
-        .accessibilityElement(children: .ignore)
-        .accessibilityLabel("Hold \(Int(target)) °C, give or take \(Int(FanHold.band)) °C")
+        .allowsHitTesting(false)
     }
 }
 
@@ -305,11 +284,13 @@ struct FanPageIcon: View {
     }
 }
 
-/// Temperature across (30-90 °C average), speed up (0% at each fan's minimum, 100% at its maximum).
+/// Temperature across (30-90 °C average), speed up (0% at each fan's minimum, 100% at its maximum). With `hold` set it
+/// shows Hold's picture read-only: the curve with its band and target, no points to drag.
 struct FanCurveEditor: View {
     let curve: FanCurve
     let nowCelsius: Double?
     let nowChip: String?
+    var hold: Double?
     let save: (FanCurve) -> Void
 
     @State private var draft: FanCurve?
@@ -357,23 +338,31 @@ struct FanCurveEditor: View {
                               height: geo.size.height - Self.inset.top - Self.inset.bottom)
             ZStack(alignment: .topLeading) {
                 FanCurveGrid(plot: FanPlot(rect: plot))
-                Color.clear.contentShape(Rectangle())
-                    .onContinuousHover(coordinateSpace: .named(Self.space)) {
-                        if case .active(let location) = $0 { pointer = location } else { pointer = nil }
-                    }
-                    .onTapGesture(count: 2) { addPoint(at: $0, plot: plot) }
-                    .contextMenu {
-                        Button("Add point here") { if let pointer { addPoint(at: pointer, plot: plot) } }
-                            .disabled(pointer.map { !canAdd(at: $0, plot: plot) } ?? true)
-                    }
+                if let hold {
+                    FanHoldBand(plot: FanPlot(rect: plot), target: hold)
+                } else {
+                    Color.clear.contentShape(Rectangle())
+                        .onContinuousHover(coordinateSpace: .named(Self.space)) {
+                            if case .active(let location) = $0 { pointer = location } else { pointer = nil }
+                        }
+                        .onTapGesture(count: 2) { addPoint(at: $0, plot: plot) }
+                        .contextMenu {
+                            Button("Add point here") { if let pointer { addPoint(at: pointer, plot: plot) } }
+                                .disabled(pointer.map { !canAdd(at: $0, plot: plot) } ?? true)
+                        }
+                }
                 FanCurveLine(plot: FanPlot(rect: plot), curve: shown)
-                ForEach(shown.points.indices, id: \.self) { index in knob(index, plot: plot) }
+                if hold == nil {
+                    ForEach(shown.points.indices, id: \.self) { index in knob(index, plot: plot) }
+                }
                 FanLockedEnd(point: position(FanCurve.lockedEnd, plot), plot: plot) { captionWidth = $0 }
                 let bounds = CGRect(origin: .zero, size: geo.size).insetBy(dx: Self.chipMargin, dy: 0)
                 if let now = nowPoint(plot), let nowCelsius {
                     FanCurveNow(point: now, color: FanHeat.color(nowCelsius))
                     if let nowChip, dragging == nil {
-                        let obstacles = Self.obstacles(plot: plot, knobs: shown.points.map { position($0, plot) }, captionWidth: captionWidth)
+                        let obstacles = hold.map { [FanHoldBand.labelRect(FanPlot(rect: plot), target: $0)] + Self.obstacles(
+                            plot: plot, knobs: [], captionWidth: captionWidth) }
+                            ?? Self.obstacles(plot: plot, knobs: shown.points.map { position($0, plot) }, captionWidth: captionWidth)
                         FanChip(text: nowChip).onGeometryChange(for: CGSize.self, of: { $0.size }) { nowChipSize = $0 }
                             .position(FanChipPlacement.center(size: nowChipSize, dot: now, dotRadius: FanCurveNow.size / 2,
                                                               avoiding: obstacles, in: bounds))
@@ -403,7 +392,7 @@ struct FanCurveEditor: View {
             // Screenshot checks open a point's popover without a click: `MPTDiagnosticFanEditPoint` is the 1-based point.
             try? await Task.sleep(for: .milliseconds(600))
             let point = UserDefaults.standard.integer(forKey: "MPTDiagnosticFanEditPoint")
-            if curve.points.indices.contains(point - 1) { editing = point - 1 }
+            if hold == nil, curve.points.indices.contains(point - 1) { editing = point - 1 }
         }
         .onAppear { keyMonitor = NSEvent.addLocalMonitorForEvents(matching: .keyDown, handler: deleteKey) }
         .onDisappear {
@@ -412,7 +401,7 @@ struct FanCurveEditor: View {
             selected = nil
         }
         .accessibilityElement(children: .contain)
-        .accessibilityLabel("Cool curve")
+        .accessibilityLabel(hold.map { "Hold \(Int($0)) °C, give or take \(Int(FanHold.band)) °C" } ?? "Cool curve")
     }
 
     private var editingBinding: Binding<Bool> {
