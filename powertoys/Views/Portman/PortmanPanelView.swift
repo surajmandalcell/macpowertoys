@@ -161,6 +161,9 @@ struct PortmanPanelView: View {
     }
 
     @State private var service = PortmanService.shared
+    @State private var hostList = PortmanHostList.shared
+    @State private var serverMonitor = PortmanServerMonitor.shared
+    @State private var newHostMode = PortmanHostMode.both
     @State private var page = Page.local
     @State private var selectedPortID: String?
     @State private var host = ""
@@ -316,9 +319,9 @@ struct PortmanPanelView: View {
         if page == .local, let selectedPort {
             localDetailHeader(selectedPort)
         } else if page == .forward {
-            PortmanForwardInputs(host: $host, manualPort: $manualPort, aliases: aliases,
+            PortmanForwardInputs(host: $host, manualPort: $manualPort, mode: $newHostMode, aliases: aliases,
                                  scanning: service.isLoadingRemote, scan: scanRemote,
-                                 cancel: clearRemoteScan, addPort: addManualPort)
+                                 cancel: clearRemoteScan, addPort: addManualPort, addHost: addHost)
                 .portmanForwardLook()
         }
     }
@@ -327,6 +330,7 @@ struct PortmanPanelView: View {
         panel
         .onAppear {
             UserDefaults.standard.set(page.rawValue, forKey: Self.selectedPageKey)
+            serverMonitor.setPanel(open: true, forwardTab: page == .forward)
             if page == .local {
                 service.beginMonitoring()
                 panelOwnsMonitoring = true
@@ -349,6 +353,7 @@ struct PortmanPanelView: View {
         }
         .onChange(of: service.metadata.count) { overviewGeneration &+= 1 }
         .onDisappear {
+            serverMonitor.setPanel(open: false, forwardTab: false)
             if panelOwnsMonitoring { service.endMonitoring() }
             panelOwnsMonitoring = false
             refreshTask?.cancel()
@@ -361,6 +366,7 @@ struct PortmanPanelView: View {
         }
         .onChange(of: page) {
             UserDefaults.standard.set(page.rawValue, forKey: Self.selectedPageKey)
+            serverMonitor.setPanel(open: true, forwardTab: page == .forward)
             if page == .local && !panelOwnsMonitoring {
                 service.beginMonitoring()
                 panelOwnsMonitoring = true
@@ -798,14 +804,65 @@ struct PortmanPanelView: View {
                     }
                 }
             }
-            if !service.tunnels.isEmpty {
-                OnePlusLinearList(style: .panel) {
-                    PortmanForwardRow { PortmanForwardStatus("Forwarded ports · \(activeTunnelCount) active") }
-                    ForEach(service.tunnels) { tunnelRow($0) }
+            let groups = PortmanForwardTree.groups(hosts: hostList.hosts, tunnels: service.tunnels)
+            if !groups.isEmpty {
+                TimelineView(.periodic(from: .now, by: 30)) { context in
+                    OnePlusLinearList(style: .panel) {
+                        PortmanForwardRow { PortmanForwardStatus("Hosts · \(activeTunnelCount) forwards active") }
+                        ForEach(groups) { hostGroup($0, now: context.date) }
+                    }
                 }
             }
             if passwordPromptHost == nil, let error = service.forwardingError { errorText(error) }
         }
+    }
+
+    /// A host parent row, then its forwards as child rows.
+    @ViewBuilder private func hostGroup(_ group: PortmanHostGroup, now: Date) -> some View {
+        PortmanHostRow(group: group, state: serverMonitor.states[group.host.destination], now: now)
+            .contextMenu {
+                Button("Use this host") { host = group.host.destination }
+                ForEach(PortmanHostMode.allCases, id: \.self) { mode in
+                    Button(group.saved && group.host.mode == mode ? "✓ \(mode.title)" : mode.title) {
+                        if group.saved { hostList.setMode(mode, for: group.host.destination) }
+                        else { hostList.add(group.host.destination, mode: mode) }
+                    }
+                }
+                if group.saved { Button("Remove host") { hostList.remove(group.host.destination) } }
+            }
+        ForEach(group.children) { child in
+            Group {
+                if let tunnel = child.tunnel { tunnelRow(tunnel) } else { savedForwardRow(group.host.destination, child.spec) }
+            }
+            .padding(.leading, OnePlusLinearMetrics.panelRowInset)
+        }
+    }
+
+    /// A saved forward with no running tunnel: Start it again or remove it.
+    private func savedForwardRow(_ destination: String, _ spec: PortmanForwardSpec) -> some View {
+        PortmanForwardRow {
+            Image(systemName: "circle").font(.system(size: 11)).foregroundStyle(OnePlusColor.muted).accessibilityHidden(true)
+            Text(":\(String(spec.localPort)) → \(destination):\(String(spec.remotePort))")
+                .font(.system(size: OnePlusLinearMetrics.control, design: .monospaced)).foregroundStyle(OnePlusLinearColor.ink)
+                .lineLimit(1).truncationMode(.middle)
+                .frame(maxWidth: .infinity, alignment: .leading)
+            Text("Stopped").linearText(OnePlusLinearMetrics.control, color: OnePlusLinearColor.secondary).lineLimit(1).fixedSize()
+            OnePlusLinearIconButton(systemImage: "play.fill", help: "Start forwarding", size: 22) {
+                _ = service.forward(host: destination, remotePort: spec.remotePort, localPort: spec.localPort,
+                                    password: sshPasswordHost == destination ? sshPassword : nil)
+            }
+            OnePlusLinearIconButton(systemImage: "xmark", help: "Remove forward", size: 22) {
+                hostList.removeForward(host: destination, localPort: spec.localPort)
+            }
+        }
+    }
+
+    private func addHost() {
+        guard hostList.add(host, mode: newHostMode) else {
+            service.forwardingError = "Enter a valid SSH host or alias."
+            return
+        }
+        service.forwardingError = nil
     }
 
     private var manualRemotePorts: [UInt16] {
@@ -1032,6 +1089,7 @@ struct PortmanPanelView: View {
         for (remotePort, localPort) in requests {
             guard service.forward(host: host, remotePort: remotePort, localPort: localPort,
                                   password: sshPasswordHost == host ? sshPassword : nil) else { return }
+            hostList.recordForward(host: host, remotePort: remotePort, localPort: localPort)
             selectedRemotePorts.remove(remotePort)
         }
     }
@@ -1385,6 +1443,7 @@ final class PortmanMenuController: NSObject {
         if let item { NSStatusBar.system.removeStatusItem(item) }
         item = nil
         PortmanService.shared.endMonitoring()
+        PortmanServerMonitor.shared.stop()
     }
 
     func show(initialPage: PortmanPanelView.Page? = nil, activateApp: Bool = true) {
@@ -1514,6 +1573,7 @@ final class PortmanMenuController: NSObject {
             newItem.button?.setAccessibilityIdentifier("portman.statusItem")
             newItem.button?.sendAction(on: [.leftMouseDown])
             PortmanService.shared.beginMonitoring()
+            if !AppRuntime.isRunningTests { PortmanServerMonitor.shared.start() }
             updateButton()
         } else if let item {
             popover.close()
@@ -1521,6 +1581,7 @@ final class PortmanMenuController: NSObject {
             self.item = nil
             PortmanService.shared.endMonitoring()
             PortmanService.shared.stopAll()
+            PortmanServerMonitor.shared.stop()
         }
     }
 
