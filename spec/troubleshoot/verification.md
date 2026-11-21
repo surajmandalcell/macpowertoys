@@ -93,6 +93,11 @@
   parallel test launches. Owner decision 2026-10-01: unit tests also run
   locally on the owner's Mac through the guarded `tmp/redesign/tools/xtest.sh`
   (refuses while a game is in front, kills the run if the front app changes).
+  Symptom (2026-11-21): an aborted run left the Debug test host running, and it
+  rewrote the owner's saved fan curve. Cause: the host shares the app's
+  preferences and runs launch code. Check: after any xtest exit,
+  `pgrep -f tmp/redesign/dd/xtest/Build` prints nothing; `xtest.sh` kills that
+  exact path on exit, abort, and signal.
   GitHub CI is manual-only. Do not answer privacy or Gatekeeper decisions
   for the owner.
 - **Check:** The app scheme has zero testables; the isolated scheme has two.
