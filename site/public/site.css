@@ -93,25 +93,20 @@ h2:hover .anchor,h3:hover .anchor,.anchor:focus-visible,.anchor.done{opacity:1}
 /* Chapters. The page snaps one screen at a time: every chapter starts a screen, and every story
    step is a screen of its own. Trackpad, wheel, keys, and touch all scroll natively. */
 html{scroll-snap-type:y mandatory}
-.ch{position:relative;scroll-snap-align:start}
+.ch{position:relative;scroll-snap-align:start;scroll-margin-top:0}
 .ch:has(>.story){scroll-snap-align:none}
 .foot{scroll-snap-align:end}
 .ch>.stage{min-height:100svh;display:flex;flex-direction:column;justify-content:center;max-width:1520px;margin-inline:auto}
 .ch>.stage>.list,.ch>.stage>.install{padding-inline:var(--m)}
 .snap{position:absolute;left:0;width:1px;height:100svh;scroll-snap-align:start;scroll-snap-stop:always;pointer-events:none}
 
-/* Morph: while the page snaps between chapters, the old screen holds still, shrinks, and fades,
-   and the new one settles in from a little larger. Transform and opacity only, tied to the scroll. */
-@supports (animation-timeline:view()){
-  .ch{view-timeline:--ch block}
-  .story{view-timeline:--st block}
-  .ch>.stage,.s-pin{animation:m-in linear both,m-out linear forwards;animation-timeline:--ch,--ch;animation-range:entry 0% entry 100%,exit 0% exit 100%}
-  .s-pin{animation-timeline:--st,--st}
-  .ch-hero>.stage{animation:m-out linear forwards;animation-timeline:--ch;animation-range:exit 0% exit 100%}
-  .ch-last>.stage{animation:m-in linear both;animation-timeline:--ch;animation-range:entry 0% entry 100%}
-}
-@keyframes m-in{0%{opacity:0;transform:translateY(-100svh) scale(1.05)}55%{opacity:0;transform:translateY(-45svh) scale(1.03)}100%{opacity:1;transform:none}}
-@keyframes m-out{0%{opacity:1;transform:none}45%{opacity:0;transform:translateY(45svh) scale(.93)}100%{opacity:0;transform:translateY(100svh) scale(.93)}}
+/* With script, every chapter screen is a fixed layer of exactly one screen; the scroll only picks
+   which one shows, and site.js morphs one into the next. Hidden layers sit off screen, so their
+   live demos pause. The chapter itself stays in the flow to give the scroll its length. */
+.js .ch:not(:has(>.story)){height:100svh}
+.js .scr{position:fixed;top:0;left:0;right:0;height:100svh;min-height:0;overflow:hidden;visibility:hidden;translate:-120vw 0}
+.js .scr.on{visibility:visible;translate:none}
+.foot{position:relative}
 
 /* The background: one fixed canvas (site.js draws the wallpaper live) under a fine film grain */
 .bgc,.grain{position:fixed;inset:0;z-index:-1;width:100%;height:100lvh;pointer-events:none}
@@ -175,7 +170,7 @@ html{scroll-snap-type:y mandatory}
 
 /* Live demos: real-app HTML recreations in a frame, in place of still screenshots */
 .demo{position:relative;overflow:hidden;background:#1d1d1f;border-radius:24px;box-shadow:0 0 0 1px var(--lit),var(--deep)}
-.hero-demo{height:clamp(600px,46vw,693px);border-radius:24px 0 0 24px}
+.hero-demo{height:min(clamp(600px,46vw,693px),calc(100svh - 120px));border-radius:24px 0 0 24px}
 /* Fan: the card and one line on top, the live Fan page filling the rest of the screen */
 .fan-stage{height:100svh;gap:clamp(20px,3vh,32px);padding:clamp(28px,6vh,72px) var(--m) clamp(76px,10vh,96px);justify-content:flex-start}
 .head-txt{display:grid;grid-template-columns:auto minmax(0,1fr);align-items:center;column-gap:clamp(24px,3vw,48px);row-gap:10px}
@@ -290,9 +285,6 @@ a.row:hover{background:var(--lit)}
 .js .rv.in{opacity:1;transform:none}
 @media (prefers-reduced-motion:reduce){
   html{scroll-behavior:auto}
-  /* Chapters change with a plain crossfade: the screens hold still and only fade */
-  @keyframes m-in{0%{opacity:0;transform:translateY(-100svh)}55%{opacity:0;transform:translateY(-45svh)}100%{opacity:1;transform:none}}
-  @keyframes m-out{0%{opacity:1;transform:none}45%{opacity:0;transform:translateY(45svh)}100%{opacity:0;transform:translateY(100svh)}}
   .js .rv{opacity:1;transform:none;transition:none}
   /* Stories swap their steps with a short fade and no movement */
   .s-cam,.cur{transition:none}
@@ -321,10 +313,13 @@ a.row:hover{background:var(--lit)}
   .cols{justify-content:start}
   .brand .cmd{width:100%}
 }
-@media (max-width:1100px){
-  .hero{grid-template-columns:minmax(0,1fr)}
-  .list{grid-template-columns:minmax(0,1fr)}
-  .hero-copy{padding:clamp(16px,4vh,40px) var(--m) 0 0}
+/* Phone: one column, and the hero keeps the Download button while the brew line waits for Install */
+@media (max-width:640px){
+  .hero{display:flex;flex-direction:column;align-items:stretch;min-height:0;gap:20px;padding-bottom:76px}
+  .hero-demo{flex:1;min-height:0;height:auto}
+  .hero .get .cmd,.hero .fine{display:none}
+  .list{grid-template-columns:minmax(0,1fr);padding-block:12px 76px}
+  .hero-copy{padding:16px var(--m) 0 0}
 }
 /* Phone: the menu bar loses the items macOS hides first */
 @media (max-width:640px){
@@ -335,12 +330,10 @@ a.row:hover{background:var(--lit)}
   .get{align-self:stretch}
   .get .cmd{width:100%}
   .cmd code{font-size:14px}
-  /* A live demo at phone width lays out at its real size, so the frame is as tall as its content */
+  /* A live demo at phone width scales down to the room left on its screen */
   .demo{border-radius:0}
-  .fan-stage{height:auto;padding-inline:0}
+  .fan-stage{padding-inline:0}
   .fan-stage .head-txt{padding-inline:var(--m)}
-  .fan-demo{flex:none;height:1143px}
-  .hero-demo{height:693px;margin-left:calc(-1 * var(--m))}
   .bar .apps,.bar .opt,.clock .d{display:none}
   .bar{justify-content:flex-end}
   .clock{width:auto}

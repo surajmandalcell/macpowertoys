@@ -142,6 +142,53 @@
     size(); paint();
   }
 
+  // Chapters: each screen is a fixed layer and the scroll picks the one to show. On a switch the two
+  // screens crossfade while the old main box flies into the new one's place and the new one grows out
+  // of its anchor (data-from: a part of either screen, "host>>>part" inside a demo), so it reads as one
+  // thing turning into the next. Going back plays the same morph in reverse. Web Animations only.
+  var MAIN = '.hero-demo,.fan-demo,.s-vis,.list,.install';
+  function chapters() {
+    var chs = [].slice.call(document.querySelectorAll('.ch')), cur = -1, runs = [], ticking = false;
+    var scr = chs.map(function (c) { var s = c.querySelector('.s-pin') || c.querySelector('.stage'); s.classList.add('scr'); return s; });
+    var last = scr[scr.length - 1];
+    function anchor(c) {
+      var p = (c.dataset.from || '').split('>>>'), el = p[0] && document.querySelector(p[0]);
+      return el && p[1] ? el.shadowRoot && el.shadowRoot.querySelector(p[1]) : el;
+    }
+    function fly(a, b) { return 'translate(' + (b.left - a.left) + 'px,' + (b.top - a.top) + 'px) scale(' + b.width / a.width + ',' + b.height / a.height + ')'; }
+    function go(i) {
+      var j = cur; cur = i;
+      runs.forEach(function (r) { r.cancel(); }); runs = [];
+      scr.forEach(function (s, k) { s.classList.toggle('on', k === i || k === j); });
+      function settle() { scr.forEach(function (s, k) { s.classList.toggle('on', k === cur); }); }
+      if (j < 0 || doc.dataset.motion === 'off') return settle();
+      var lo = Math.min(i, j), hi = Math.max(i, j), back = i < j;
+      var ma = scr[lo].querySelector(MAIN), mb = scr[hi].querySelector(MAIN), an = anchor(chs[hi]);
+      var ra = ma.getBoundingClientRect(), rb = mb.getBoundingClientRect(), rs = an ? an.getBoundingClientRect() : ra;
+      var ms = calm.matches ? 240 : 480, ease = 'cubic-bezier(.3,.7,.15,1)';
+      function play(el, frames) { if (back) frames.reverse(); runs.push(el.animate(frames, { duration: ms, easing: ease })); }
+      play(scr[lo], [{ opacity: 1 }, { opacity: 0 }]);
+      play(scr[hi], [{ opacity: 0 }, { opacity: 1 }]);
+      if (!calm.matches && ra.width && rb.width && rs.width) {
+        play(ma, [{ transformOrigin: '0 0', transform: 'none' }, { transformOrigin: '0 0', transform: fly(ra, rb) }]);
+        play(mb, [{ transformOrigin: '0 0', transform: fly(rb, rs) }, { transformOrigin: '0 0', transform: 'none' }]);
+      }
+      runs[0].onfinish = settle;
+    }
+    function paint() {
+      ticking = false;
+      var y = innerHeight * 0.5, i = 0;
+      while (i < chs.length - 1 && chs[i + 1].getBoundingClientRect().top <= y) i++;
+      // Past the last chapter the footer scrolls in, and the last screen moves up with it.
+      var over = Math.max(0, -chs[chs.length - 1].getBoundingClientRect().top);
+      last.style.translate = over ? '0 ' + -over + 'px' : '';
+      if (i !== cur) go(i);
+    }
+    addEventListener('scroll', function () { if (!ticking) { ticking = true; requestAnimationFrame(paint); } }, { passive: true });
+    addEventListener('resize', paint);
+    paint();
+  }
+
   // The background: the "Fractal Maze" wallpaper turned upright and drawn live. Blurred orbs sit behind
   // fluted glass; each glass rib shifts and squeezes what is behind it and has a lit top edge.
   // One fixed canvas for the whole page. Orbs drift slower than the scroll and move to a new
@@ -324,6 +371,7 @@
 
   document.addEventListener('DOMContentLoaded', function () {
     document.querySelectorAll('[data-story]').forEach(story);
+    chapters();
     background();
     dock(); stars(); glass(); word(); clock(); setInterval(clock, 15000);
     var io = new IntersectionObserver(function (es) {
