@@ -9,6 +9,8 @@ const SERIES = ['#6EC7ED', '#B599F0', '#EB9CD4', '#7D9CF2', '#7DDCE0'];
 const HOT_MB = 600, DANGER = '#FFB6AC', DANGER_FILL = '#382624';
 const portColor =p => SERIES[Math.floor(p * 7 / 11) % 5];
 const hexA = (hex, a) => hex + Math.round(a * 255).toString(16).padStart(2, '0');
+// OnePlusLinearBadge: the port in its color on a sunken well.
+const chip = p => `<span class="chip" style="color:${portColor(p)}"><span class="edge"></span>:${p}</span>`;
 
 // SF Symbols rendered from AppKit at their app point size (white masks), sized in points.
 const GLYPHS = {
@@ -17,6 +19,7 @@ const GLYPHS = {
   'chevron-right-9': [8, 10], 'circle-fill-11': [13, 13], 'link-13': [17, 17], 'stop-fill-13': [15, 13],
   'checkmark-8': [10, 9], 'hourglass-11': [9, 12], 'arrow-up-right-square-13': [16, 14], 'stop-circle-13': [15, 15],
   'checkmark-12': [13, 13], 'chevron-right-11': [9, 12],
+  'network-10': [12, 12], 'cpu-10': [12, 12], 'memorychip-10': [13, 11], 'internaldrive-10': [14, 11],
 };
 const g = (name, color) => {
   const [w, h] = GLYPHS[name];
@@ -71,7 +74,9 @@ const CSS = `
 .row.hov::before,.pick.hov::before{opacity:1;transition-duration:.09s}
 .row>*{position:relative;z-index:1}
 .chipc{width:50px;flex:none}
-.chip{display:inline-flex;align-items:center;height:18px;padding:0 5px;border-radius:5px;font-size:11px;font-weight:600;letter-spacing:0}
+.chip{position:relative;display:inline-flex;align-items:center;height:18px;padding:0 5px;border-radius:5px;font-size:11px;font-weight:600;letter-spacing:0;
+  background:linear-gradient(#111113,#161618);box-shadow:inset 0 .75px 2px rgba(0,0,0,.6)}
+.chip>.edge,.well>.edge{background:linear-gradient(rgba(0,0,0,.7),rgba(255,255,255,.12))}
 .ico{width:16px;height:16px;flex:none;border-radius:4px;box-shadow:inset 0 0 0 1px rgba(255,255,255,.1);display:grid;place-items:center;color:#B4B4BA}
 .ico .g{transform:scale(.62)}
 .nm{display:flex;flex-direction:column;gap:1px;min-width:0;overflow:hidden}
@@ -87,27 +92,47 @@ const CSS = `
 .row::after{content:"";position:absolute;inset:1px 4px;border-radius:6px;background:${DANGER_FILL};opacity:0;transition:opacity .4s}
 .row.hot::after{opacity:1}.row.hot .mem{color:${DANGER}}
 .frow{min-height:40px;padding:0 10px;display:flex;align-items:center;gap:8px}
-.field{flex:1;min-width:0;height:28px;border-radius:7px;background:#2A2A2E;padding:0 8px;display:flex;align-items:center;white-space:nowrap;overflow:hidden}
-.field.ph{color:#AAABB2}
-.sel{position:relative;width:76px;height:28px;border-radius:7px;background:#1E1E21;box-shadow:inset 0 0 0 1px rgba(255,255,255,.07);padding:0 11px;display:flex;align-items:center;gap:8px;flex:none}
-.sel span{flex:1}
-.sel.lit::after{content:"";position:absolute;inset:0;border-radius:7px;background:rgba(255,255,255,.03)}
+.well{position:relative;height:28px;border-radius:7px;background:linear-gradient(#050506,#09090A);box-shadow:inset 0 1.5px 2.5px rgba(0,0,0,.9);
+  padding:0 9px;display:flex;align-items:center;gap:8px;white-space:nowrap;min-width:0}
+.well>span:not(.edge){flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis}
+.field{flex:1}
+.field.ph{color:#8E8E95}
+.sel{width:76px;flex:none}
+.sel.wide{flex:1;width:auto}
+.sel.lit::after{content:"";position:absolute;inset:0;border-radius:7px;background:rgba(255,255,255,.04)}
 .btn{position:relative;width:88px;height:28px;border-radius:7px;flex:none;display:grid;place-items:center;font-weight:500;background:linear-gradient(#313136,#28282C)}
 .btn.off{opacity:.38}
 .btn.press::after{content:"";position:absolute;inset:0;border-radius:7px;background:rgba(255,255,255,.06)}
-.fw88{width:88px;flex:none}
-.status{flex:1;font-size:12px;font-weight:500;letter-spacing:0;color:#B4B4BA;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
-.note{flex:1;font-size:12px;letter-spacing:0;color:#B4B4BA}
-.cb{position:relative;width:14px;height:14px;border-radius:4px;background:#2A2A2E;box-shadow:inset 0 0 0 1px rgba(255,255,255,.075);flex:none;display:grid;place-items:center;color:#fff}
-.cb.on{background:#EE5B50}
-.cb .g{display:none}.cb.on .g{display:block}
-.pick{position:relative;flex:1;min-width:0;height:40px;display:flex;align-items:center;gap:8px}
-.pick::before{display:none}
-.pick>*{position:relative}
-.pick b{font-weight:400;font-size:12px;letter-spacing:0;flex:1;white-space:nowrap}
-.tun{flex:1;font:12px "SF Mono",ui-monospace,Menlo,monospace;letter-spacing:0;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.card{position:relative;overflow:hidden}
+.hrow{position:relative;height:40px;padding:0 10px;display:flex;align-items:center;gap:8px}
+.hico{position:relative;width:16px;height:16px;flex:none;border-radius:4px;box-shadow:inset 0 0 0 1px rgba(255,255,255,.1);display:grid;place-items:center;color:#B4B4BA}
+.hico .dot{position:absolute;right:-4.5px;bottom:-4.5px;width:10px;height:10px;border-radius:50%;background:#1F1F22;display:grid;place-items:center}
+.hico .dot::after{content:"";width:7px;height:7px;border-radius:50%;background:var(--c);transition:background .3s}
+.hrow .nm b{font-weight:600}
+.hrow .nm i{color:#B4B4BA}
+.chev{width:12px;flex:none;display:grid;place-items:center;color:#66666E;transition:transform .25s}
+.chev.open{transform:rotate(90deg)}
+.tree::after,.statsw::before,.crow::before,.crow::after{content:"";position:absolute;left:17.5px;width:1px;background:rgba(255,255,255,.12)}
+.tree::after{top:29px;bottom:0}
+.statsw{position:relative;overflow:hidden}
+.statsw::before{top:0;bottom:0}
+.tiles{display:grid;grid-template-columns:1fr 1fr;gap:6px;padding:2px 10px 6px 34px}
+.tile{position:relative;height:66px;border-radius:8px;background:#27272B;overflow:hidden;padding:7px 8px 0;display:flex;flex-direction:column;gap:2px}
+.tile .th{position:relative;display:flex;align-items:center;gap:4px;font-size:11px;letter-spacing:0;line-height:13px;color:#B4B4BA;white-space:nowrap}
+.tile .th .fl{min-width:4px}
+.tile .th em{font-style:normal;color:#9999A1}
+.tile .tv{position:relative;display:flex;align-items:baseline;gap:2px;white-space:nowrap}
+.tile .tv b{font-size:16px;font-weight:600;letter-spacing:0;line-height:19px}
+.tile .tv span{font-size:11px;letter-spacing:0;color:#B4B4BA}
+.tile svg{position:absolute;left:0;bottom:0;width:100%;height:26px;overflow:visible;
+  -webkit-mask-image:linear-gradient(90deg,transparent,#000 16px);mask-image:linear-gradient(90deg,transparent,#000 16px)}
+.crow{position:relative;height:32px;padding:0 10px 0 34px;display:flex;align-items:center;gap:8px;overflow:hidden}
+.crow::before{top:0;bottom:0}
+.crow.last::before{bottom:15.5px}
+.crow::after{top:15.5px;height:1px;width:10px}
+.addr{flex:1;font-size:12px;letter-spacing:0;white-space:nowrap}
 .tst{font-size:12px;letter-spacing:0;color:#B4B4BA;white-space:nowrap}
-.tun-ib{width:22px;height:22px}
+.crow .ib{width:22px;height:22px}
 .menu{position:absolute;z-index:5;padding:5px;border-radius:11px;background:rgba(38,38,40,.86);
   -webkit-backdrop-filter:blur(30px) saturate(1.8);backdrop-filter:blur(30px) saturate(1.8);
   box-shadow:0 0 0 .5px rgba(0,0,0,.75),inset 0 0 0 .5px rgba(255,255,255,.16),0 14px 36px rgba(0,0,0,.5);
@@ -139,16 +164,27 @@ const SERVERS = {
 const sawtooth = (n, base, amp, seed) => Array.from({ length: n }, (_, i) => base + amp * (((i + seed) % 4) / 3) + (i % 3 === seed % 3 ? amp * .3 : 0));
 const SPARK = { admin: sawtooth(16, 10, 4, 1), docs: sawtooth(16, 10, 3, 2), storefront: sawtooth(16, 10, 5, 3), api: sawtooth(16, 10, 2, 0),
   web: [2, 3, 3, 5, 6, 8, 9, 11, 12, 14, 15, 15, 16, 17, 17, 18] };
-const REMOTE = [{ port: 5432, name: 'postgres' }, { port: 6379, name: 'redis-server' }, { port: 9090, name: 'Docker: prometheus' }];
-const HOSTS = ['build-box', 'gpu-lab', 'staging-eu'];
+const HOSTS = ['build-box', 'gpu-lab', 'staging-eu'], MODES = ['Forward ports', 'Monitor', 'Both'];
+// Made-up build-box readings for the host card (PortmanHostCardModel): caption, row CPU line, memory, and the four tiles.
+const wave = (n, base, amp, f, ph = 0) => Array.from({ length: n }, (_, i) => base + amp * Math.sin(i * f + ph) + amp * .4 * Math.sin(i * f * 2.3 + ph));
+const BOX = {
+  caption: 'up 12 d · load 0.42', mem: '9.99 GB', spark: wave(14, 36, .3, .45),
+  tiles: [
+    { title: 'CPU', icon: 'cpu-10', meta: 'load 0.42', value: '37', unit: '%', text: '#8DB8EF', color: '#4C8FE6', series: wave(30, 26, 9, .55), max: 100 },
+    { title: 'Memory', icon: 'memorychip-10', meta: '16 GB', value: '9.99', unit: 'GB', text: '#C97FA4', color: '#C97FA4', series: wave(30, 62, .6, .4), max: 100 },
+    { title: 'Disk', icon: 'internaldrive-10', meta: '74.51 GB', value: '51', unit: '%', text: '#8890E0', color: '#8890E0', series: Array(30).fill(51), max: 100 },
+    { title: 'Network', icon: 'network-10', meta: '↑ 289 KB/s', value: '1.2', unit: 'MB/s', text: '#45B8C4', color: '#45B8C4',
+      series: wave(30, 1.1, .5, .6, 1).map(v => Math.max(.1, v)), up: wave(30, .3, .08, .8), max: 2.4 },
+  ],
+};
 
 const four = ['admin', 'docs', 'storefront', 'api'], five = ['web', ...four];
 const STATES = [
   { page: 'servers', rows: four, reserved: 4 },
   { page: 'servers', rows: five, reserved: 5 },
   { page: 'servers', rows: four, reserved: 5 },
-  { page: 'forward', host: 'build-box', scanned: true, checked: [5432], tunnels: [] },
-  { page: 'forward', host: 'build-box', scanned: true, checked: [], tunnels: [{ local: 5432, remote: 5432, state: 'run' }] },
+  { page: 'forward', host: 'build-box', card: { health: 'waiting', forwards: [] } },
+  { page: 'forward', host: 'build-box', card: { health: 'online', open: true, forwards: [{ port: 5432, state: 'run' }] } },
 ];
 
 const fmtMB = mb => mb.toFixed(1) + ' MB';
@@ -191,7 +227,7 @@ function mount(host) {
   function rowHTML(id, over = {}) {
     const s = { ...SERVERS[id], ...over[id] }, c = portColor(s.port);
     return `<div class="row${s.mem > HOT_MB ? ' hot' : ''}" data-id="${id}">
-      <span class="chipc"><span class="chip" style="color:${c};background:${hexA(c, .14)}">:${s.port}</span></span>
+      <span class="chipc">${chip(s.port)}</span>
       <span class="ico">${g('terminal-8')}</span>
       <span class="nm"><b>${s.name}</b><i>${g('arrow-triangle-branch-9')}<span>${s.branch}</span><span>·</span><span>up ${s.up}</span></i></span>
       <span class="fl"></span>
@@ -212,34 +248,56 @@ function mount(host) {
       </div>
       <div class="grp"><div class="rows" style="min-height:${st.reserved * 40}px">${st.rows.map(id => rowHTML(id, over)).join('')}</div></div>`;
   }
+  // PortmanForwardInputs: sunken wells with the 9 pt fieldInset, raised keys in the 88 pt column.
+  const well = (cls, text, k, chev) => `<div class="well ${cls}"${k ? ` data-k="${k}"` : ''}><span class="edge"></span><span>${text}</span>${chev ? g('chevron-up-chevron-down-9', '#C1C1C7') : ''}</div>`;
   function forwardHTML(st) {
-    const h = st.host || '', scanned = !!st.scanned, checked = new Set(st.checked || []), tunnels = st.tunnels || [];
-    let html = `<div class="grp">
-      <div class="frow"><div class="field${h ? '' : ' ph'}" data-k="field">${h || 'alias or user@IP'}</div>
-        <div class="sel" data-k="hosts"><span>Hosts</span>${g('chevron-up-chevron-down-9', '#C1C1C7')}</div>
-        <div class="btn${h ? '' : ' off'}" data-k="scan">Scan</div></div>
-      <div class="frow"><div class="field ph">Remote port</div><div class="btn${h ? '' : ' off'}">Add port</div></div>
+    const h = st.host || '', off = h ? '' : ' off';
+    return `<div class="grp">
+      <div class="frow">${well('field' + (h ? '' : ' ph'), h || 'alias or user@IP', 'field')}${well('sel', h || 'Hosts', 'hosts', true)}
+        <div class="btn${off}" data-k="scan">Scan</div></div>
+      <div class="frow">${well('field ph', 'Remote port')}<div class="btn${off}">Add port</div></div>
+      <div class="frow">${well('sel wide', 'Both', 'mode', true)}<div class="btn${off}" data-k="add">Add host</div></div>
+    </div>${st.card ? cardHTML(st.card) : ''}`;
+  }
+  // PortmanHostCard: the 40 pt host row, the 2 x 2 chart tiles when open, and 32 pt forward rows on the guide line.
+  function cardHTML(c) {
+    const on = c.health === 'online', kids = c.forwards || [];
+    return `<div class="grp card" data-k="card">
+      <div class="hrow${(on && c.open) || kids.length ? ' tree' : ''}" data-k="hrow">
+        <span class="hico">${g('network-10')}<span class="dot" style="--c:${on ? '#6CCB8C' : '#66666E'}"></span></span>
+        <span class="nm"><b>build-box</b><i>${on ? BOX.caption : 'Connecting'}</i></span><span class="fl"></span>
+        ${on ? `<svg class="spark" viewBox="0 0 32 14"><path d="${sparkPath(BOX.spark)}" fill="none" stroke="#4C8FE6" stroke-width="1.2" stroke-linecap="round" stroke-linejoin="round"/></svg>
+          <span class="mem">${BOX.mem}</span><span class="chev${c.open ? ' open' : ''}">${g('chevron-right-9')}</span>` : ''}
+      </div>
+      ${on && c.open ? statsHTML() : ''}${kids.map((f, i) => childHTML(f, i === kids.length - 1)).join('')}
     </div>`;
-    if (scanned) {
-      const all = REMOTE.every(r => checked.has(r.port));
-      html += `<div class="grp" data-k="scan-grp">
-        <div class="frow"><span class="cb${all ? ' on' : ''}">${g('checkmark-8')}</span><span class="status">${h} · ${REMOTE.length} ports</span><div class="btn">Clear</div></div>
-        ${REMOTE.map(r => { const c = portColor(r.port); return `<div class="frow"><span class="cb${checked.has(r.port) ? ' on' : ''}" data-k="cb${r.port}">${g('checkmark-8')}</span>
-          <div class="pick"><span class="chip" style="color:${c};background:${hexA(c, .14)}">:${r.port}</span><b>${r.name}</b>${g('chevron-right-9', '#B4B4BA')}</div>
-          <div class="field fw88">${r.port}</div></div>`; }).join('')}
-        <div class="frow"><span class="note" data-k="count">${checked.size ? checked.size + ' selected' : 'No ports selected'}</span><div class="btn${checked.size ? '' : ' off'}" data-k="forward-btn">Forward</div></div>
-      </div>`;
+  }
+  const TILE_W = (W - 34 - 10 - 6) / 2, CHART_H = 26;
+  function smooth(vals, max) {
+    const pts = vals.map((v, i) => [i / (vals.length - 1) * TILE_W, CHART_H - Math.max(0, Math.min(1, v / max)) * CHART_H]);
+    let d = `M${pts[0][0].toFixed(2)} ${pts[0][1].toFixed(2)}`;
+    for (let i = 0; i < pts.length - 1; i++) {
+      const [p0, p1, p2, p3] = [pts[Math.max(0, i - 1)], pts[i], pts[i + 1], pts[Math.min(pts.length - 1, i + 2)]];
+      const c1 = [p1[0] + (p2[0] - p0[0]) / 6, p1[1] + (p2[1] - p0[1]) / 6], c2 = [p2[0] - (p3[0] - p1[0]) / 6, p2[1] - (p3[1] - p1[1]) / 6];
+      d += `C${[...c1, ...c2, ...p2].map(n => n.toFixed(2)).join(' ')}`;
     }
-    if (tunnels.length) {
-      const active = tunnels.filter(t => t.state === 'run').length;
-      html += `<div class="grp" data-k="tun-grp">
-        <div class="frow"><span class="status" data-k="active">Forwarded ports · ${active} active</span></div>
-        ${tunnels.map(t => `<div class="frow" data-k="tun">${t.state === 'run' ? g('circle-fill-11', '#C8C8C8') : g('hourglass-11', '#BCBCBC')}
-          <span class="tun">:${t.local} → ${h}:${t.remote}</span><span class="tst">${t.state === 'run' ? 'Forwarding' : 'Connecting'}</span>
-          ${t.state === 'run' ? `<span class="ib tun-ib">${g('link-13')}</span>` : ''}<span class="ib tun-ib">${g('stop-fill-13')}</span></div>`).join('')}
-      </div>`;
-    }
-    return html;
+    return d;
+  }
+  function statsHTML() {
+    return `<div class="statsw" data-k="stats"><div class="tiles">${BOX.tiles.map(t => {
+      const line = smooth(t.series, t.max);
+      return `<div class="tile"><div class="th">${g(t.icon)}<span>${t.title}</span><span class="fl"></span><em>${t.meta}</em></div>
+        <div class="tv"><b style="color:${t.text}">${t.value}</b><span>${t.unit}</span></div>
+        <svg viewBox="0 0 ${TILE_W} ${CHART_H}" preserveAspectRatio="none"><path d="${line}L${TILE_W} ${CHART_H}L0 ${CHART_H}Z" fill="${hexA(t.color, .1)}"/>
+          <path d="${line}" fill="none" stroke="${t.color}" stroke-width="1.25" stroke-linecap="round" stroke-linejoin="round"/>
+          ${t.up ? `<path d="${smooth(t.up, t.max)}" fill="none" stroke="#D9925A" stroke-width="1.25" stroke-linecap="round" stroke-linejoin="round"/>` : ''}</svg></div>`;
+    }).join('')}</div></div>`;
+  }
+  function childHTML(f, last) {
+    const run = f.state === 'run';
+    return `<div class="crow${last ? ' last' : ''}" data-k="crow"><span class="chipc">${chip(f.port)}</span>
+      <span class="addr">localhost:${f.port}</span><span class="tst">${run ? 'Forwarding' : 'Connecting'}</span>
+      <span class="ib">${run ? g('link-13') : spinner()}</span></div>`;
   }
   const POINTER = `<svg width="22" height="30" viewBox="0 0 22 30"><path d="M4 3v19.5l4.6-4.4 3.1 7.2 3.3-1.4-3.1-7.1h6.5z" fill="#000" stroke="#fff" stroke-width="1.5" stroke-linejoin="round"/></svg>`;
 
@@ -298,6 +356,32 @@ function mount(host) {
   async function click(t, el) {
     const p = $('.ptr'); p.classList.add('down'); el && el.classList.add('press');
     await wait(120, t); p.classList.remove('down'); el && el.classList.remove('press'); await wait(60, t);
+  }
+  // Open a select's pop-up (checked item `on`), move to item `pick`, click it, and close.
+  async function choose(t, k, items, on, pick) {
+    const sel = $(`[data-k=${k}]`);
+    await moveTo(t, pos(sel, .45, .55), 550);
+    sel.classList.add('lit');
+    await click(t);
+    const sp = pos(sel, 0, 1);
+    stage.insertAdjacentHTML('beforeend', `<div class="pop" style="left:${sp.x}px;top:${sp.y + 4}px;min-width:${Math.max(120, sel.offsetWidth)}px">
+      ${items.map((h, i) => `<div class="pi${i === on ? ' hl' : ''}"><span class="ck">${i === on ? g('checkmark-12', '#DEDEDE') : ''}</span><span>${h}</span></div>`).join('')}</div>`);
+    const pop = $('.pop'), pis = [...pop.querySelectorAll('.pi')];
+    await tween(100, k => { pop.style.opacity = k; }, t);
+    await wait(250, t);
+    await moveTo(t, pos(pis[pick], .4, .55), 350);
+    pis.forEach(p => p.classList.toggle('hl', p === pis[pick]));
+    await wait(300, t);
+    await click(t);
+    await tween(120, k => { pop.style.opacity = 1 - k; }, t);
+    pop.remove();
+  }
+  // Grow a new part from zero height to its own, fading it in.
+  async function grow(t, el) {
+    const h = el.offsetHeight;
+    el.style.height = '0px'; el.style.opacity = '0';
+    await tween(300, k => { el.style.height = h * k + 'px'; el.style.opacity = Math.min(1, k * 1.6); }, t, easeOut);
+    el.style.height = ''; el.style.opacity = '';
   }
 
   // ---------- step timelines (each starts from the previous step's end state) ----------
@@ -369,56 +453,43 @@ function mount(host) {
       setRing(four);
       await hidePtr(t);
     },
-    async t => { // Forward: pick a saved SSH host, scan it, select Postgres
+    async t => { // Forward: pick build-box from the SSH hosts, keep the mode on Both, Add host
       render(STATES[2]);
       await showPtr(t, 220, 300);
       await moveTo(t, pos($('[data-k=forward]')), 700);
       await click(t);
       render({ page: 'forward' }); placePtr(); $('.ptr').style.opacity = 1;
       await wait(350, t);
-      const sel = $('[data-k=hosts]');
-      await moveTo(t, pos(sel, .45, .55), 550);
-      sel.classList.add('lit');
-      await click(t);
-      const sp = pos(sel, 0, 1);
-      stage.insertAdjacentHTML('beforeend', `<div class="pop" style="left:${sp.x}px;top:${sp.y + 4}px">
-        ${['Hosts', ...HOSTS].map((h, i) => `<div class="pi${i ? '' : ' hl'}"><span class="ck">${i ? '' : g('checkmark-12', '#DEDEDE')}</span><span>${h}</span></div>`).join('')}</div>`);
-      const pop = $('.pop'), pis = [...pop.querySelectorAll('.pi')];
-      pop.style.minWidth = 120 + 'px';
-      await tween(100, k => { pop.style.opacity = k; }, t);
-      await wait(250, t);
-      await moveTo(t, pos(pis[1], .4, .55), 350);
-      pis.forEach(p => p.classList.toggle('hl', p === pis[1]));
-      await wait(300, t);
-      await click(t);
-      await tween(120, k => { pop.style.opacity = 1 - k; }, t);
+      await choose(t, 'hosts', ['Hosts', ...HOSTS], 0, 1);
       render({ page: 'forward', host: 'build-box' }); placePtr(); $('.ptr').style.opacity = 1;
-      await wait(250, t);
-      const scan = $('[data-k=scan]');
-      await moveTo(t, pos(scan, .5, .55), 450);
-      await click(t, scan);
-      $('[data-k=gear]').innerHTML = spinner();
-      await wait(1100, t);
-      render({ page: 'forward', host: 'build-box', scanned: true }); placePtr(); $('.ptr').style.opacity = 1;
-      await wait(400, t);
-      const cb = $('[data-k=cb5432]');
-      await moveTo(t, pos(cb), 650);
-      await click(t);
-      cb.classList.add('on'); $('[data-k=count]').textContent = '1 selected'; $('[data-k=forward-btn]').classList.remove('off');
+      await wait(300, t);
+      await choose(t, 'mode', MODES, 2, 2);
+      $('[data-k=mode]').classList.remove('lit');
+      await wait(200, t);
+      const add = $('[data-k=add]');
+      await moveTo(t, pos(add, .5, .55), 450);
+      await click(t, add);
+      render(STATES[3]); placePtr(); $('.ptr').style.opacity = 1;
+      await grow(t, $('[data-k=card]'));
       await wait(300, t);
       await hidePtr(t);
     },
-    async t => { // Forward the port: Connecting, then Forwarding with Open and Stop
+    async t => { // build-box answers, its charts open, and its saved forward comes up
       render(STATES[3]);
-      const btn = $('[data-k=forward-btn]');
-      await showPtr(t, 200, 340);
-      await moveTo(t, pos(btn, .5, .55), 600);
-      await click(t, btn);
-      const st = { ...STATES[4], tunnels: [{ local: 5432, remote: 5432, state: 'wait' }] };
-      render(st); placePtr(); $('.ptr').style.opacity = 1;
-      await wait(900, t);
+      await wait(700, t);
+      const card = { health: 'online', forwards: [] };
+      render({ ...STATES[4], card });
+      await showPtr(t, 250, 420);
+      await moveTo(t, pos($('[data-k=hrow] .nm'), .5, .5), 600);
+      await click(t);
+      render({ ...STATES[4], card: { ...card, open: true } }); placePtr(); $('.ptr').style.opacity = 1;
+      await grow(t, $('[data-k=stats]'));
+      await wait(250, t);
+      render({ ...STATES[4], card: { ...card, open: true, forwards: [{ port: 5432, state: 'wait' }] } }); placePtr(); $('.ptr').style.opacity = 1;
+      await grow(t, $('[data-k=crow]'));
+      await wait(800, t);
       render(STATES[4]); placePtr(); $('.ptr').style.opacity = 1;
-      await wait(500, t);
+      await wait(400, t);
       await hidePtr(t);
     },
   ];
