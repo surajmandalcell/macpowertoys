@@ -34,6 +34,11 @@ verification results change.
 Keep `spec/system-tools-request-list.md` current when Input Devices
 requirements or verification results change.
 
+Website taste: for `site/` work, load the `website-design` skill. When the
+site design changes, update the matching entry in Sam's Design Deck
+(`/Volumes/External1TB/dev/personal/sams_design_deck/website/`) with a dated
+before → now → why history line.
+
 Tool and app icon rules live in `spec/icons.md`. Read it before any icon work.
 
 Keep `goals.md` current when a request list adds or closes current work.
