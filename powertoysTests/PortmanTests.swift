@@ -5,6 +5,13 @@ import OnePlusUI
 import XCTest
 @testable import powertoys
 
+/// The value fields of `OnePlusStepperField`s; each field's placeholder is the stepper's title.
+@MainActor
+private func stepperFields(in view: NSView) -> [NSTextField] {
+    let own = (view as? NSTextField).flatMap { $0.isEditable && $0.placeholderString != nil ? [$0] : nil } ?? []
+    return own + view.subviews.flatMap { stepperFields(in: $0) }
+}
+
 final class PortmanTests: XCTestCase {
     private static let rclonePath = ["/opt/homebrew/bin/rclone", "/usr/local/bin/rclone"]
         .first { FileManager.default.isExecutableFile(atPath: $0) }
@@ -85,19 +92,18 @@ final class PortmanTests: XCTestCase {
     @MainActor
     func testEveryPortmanPageMeasuresItsBodyBeforeNativePresentation() {
         let ceiling = (NSScreen.main?.visibleFrame.height ?? 800) * OnePlusMenuMetrics.heightFraction
+        // The controller presents at sizeThatFits, so that measure must already be the settled height.
         for page in PortmanPanelView.Page.allCases {
-            var reportedHeights: [CGFloat] = []
             let hosting = NSHostingController(rootView: PortmanPanelView(initialPage: page)
-                .onOnePlusMenuHeightChange { reportedHeights.append($0) })
+                .environment(\.onePlusMenuMaximumHeight, ceiling))
             let size = hosting.sizeThatFits(in: NSSize(width: OnePlusMenuMetrics.width, height: ceiling))
             XCTAssertEqual(size.width, OnePlusMenuMetrics.width, accuracy: 0.5)
             XCTAssertGreaterThan(size.height, OnePlusMenuMetrics.topBar + OnePlusMetrics.cardHeader)
             XCTAssertLessThanOrEqual(size.height, ceiling + 0.5)
             hosting.view.setFrameSize(size)
             hosting.view.layoutSubtreeIfNeeded()
-            XCTAssertFalse(reportedHeights.isEmpty, "No pre-presentation height for \(page)")
-            XCTAssertTrue(reportedHeights.allSatisfy { abs($0 - size.height) < 0.5 },
-                          "Intermediate heights for \(page): \(reportedHeights)")
+            let settled = hosting.sizeThatFits(in: NSSize(width: OnePlusMenuMetrics.width, height: ceiling))
+            XCTAssertEqual(settled.height, size.height, accuracy: 0.5, "Height changed after layout for \(page)")
         }
     }
 
@@ -323,25 +329,19 @@ final class PortmanTests: XCTestCase {
     func testSettingsSearchFindsVisiblePortAndCleanupLabels() {
         let state = PortmanSettingsState()
         state.installedEditors = []
-        func steppers(in view: NSView) -> [NSStepper] {
-            (view as? NSStepper).map { [$0] } ?? view.subviews.flatMap { steppers(in: $0) }
-        }
         for (query, label) in [("First port", "First scan port"), ("Last port", "Last scan port"),
                                ("Idle for", "Idle hours"), ("Running for", "Running days")] {
             let host = NSHostingView(rootView: PortmanSettingsView(search: query, state: state))
             host.frame = NSRect(x: 0, y: 0, width: OnePlusMenuMetrics.bodyWidth, height: 300)
             host.layoutSubtreeIfNeeded()
-            XCTAssertEqual(steppers(in: host).map { $0.accessibilityLabel() }, [label], query)
+            XCTAssertEqual(stepperFields(in: host).map(\.placeholderString), [label], query)
         }
     }
 
     @MainActor
-    func testSettingsPairColumnsInMainAndKeepMenuControlsOnOneEdge() throws {
+    func testSettingsStayOneColumnWithControlsOnOneEdge() throws {
         let state = PortmanSettingsState()
         state.installedEditors = []
-        func steppers(in view: NSView) -> [NSStepper] {
-            (view as? NSStepper).map { [$0] } ?? view.subviews.flatMap { steppers(in: $0) }
-        }
         func visibleFrame(_ control: NSView, in host: NSView) -> NSRect {
             var frame = control.convert(control.bounds, to: host)
             var ancestor = control.superview
@@ -357,21 +357,16 @@ final class PortmanTests: XCTestCase {
             let size = host.sizeThatFits(in: NSSize(width: width, height: 2_000))
             host.view.setFrameSize(NSSize(width: width, height: size.height))
             host.view.layoutSubtreeIfNeeded()
-            let controls = steppers(in: host.view)
-            let first = try XCTUnwrap(controls.first { $0.accessibilityLabel() == "First scan port" })
-            let idle = try XCTUnwrap(controls.first { $0.accessibilityLabel() == "Idle hours" })
+            let controls = stepperFields(in: host.view)
+            let first = try XCTUnwrap(controls.first { $0.placeholderString == "First scan port" })
+            let idle = try XCTUnwrap(controls.first { $0.placeholderString == "Idle hours" })
             let firstFrame = visibleFrame(first, in: host.view)
             let idleFrame = visibleFrame(idle, in: host.view)
-            XCTAssertEqual(idleFrame.maxX, width, accuracy: 1, "Unboxed controls must reach the body edge")
-            if density == .regular {
-                XCTAssertEqual(firstFrame.maxX, 480, accuracy: 1)
-                XCTAssertEqual(idleFrame.minX - firstFrame.minX, 496, accuracy: 1)
-                XCTAssertLessThan(size.height, 640, "All four groups must fit above the main footer")
-            } else {
-                XCTAssertEqual(firstFrame.maxX, width, accuracy: 1)
-                XCTAssertEqual(firstFrame.minX, idleFrame.minX, accuracy: 1)
-                XCTAssertGreaterThan(size.height, 600, "Menu settings must keep their single column")
-            }
+            // Settings are one column of groups in both hosts (0345d932), so every stepper shares one control column.
+            XCTAssertEqual(firstFrame.minX, idleFrame.minX, accuracy: 1, "\(density)")
+            XCTAssertGreaterThan(firstFrame.minX, width / 2, "Controls sit on the trailing edge in \(density)")
+            XCTAssertLessThan(firstFrame.maxX, width, "\(density)")
+            XCTAssertGreaterThan(size.height, 600, "One column keeps every group stacked in \(density)")
         }
     }
 
