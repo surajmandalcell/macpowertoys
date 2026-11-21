@@ -12,7 +12,7 @@ const hexA = (hex, a) => hex + Math.round(a * 255).toString(16).padStart(2, '0')
 
 // SF Symbols rendered from AppKit at their app point size (white masks), sized in points.
 const GLYPHS = {
-  'bell-13': [14, 16], 'gearshape-13': [16, 16], 'arrow-up-right-13': [14, 12], 'arrow-left-arrow-right-13': [17, 17],
+  'bell-13': [14, 16], 'gearshape-13': [16, 16], 'arrow-up-right-11': [10, 10], 'arrow-left-arrow-right-13': [17, 17],
   'terminal-8': [12, 10], 'arrow-triangle-branch-9': [11, 11], 'chevron-up-chevron-down-9': [9, 12],
   'chevron-right-9': [8, 10], 'circle-fill-11': [13, 13], 'link-13': [17, 17], 'stop-fill-13': [15, 13],
   'checkmark-8': [10, 9], 'hourglass-11': [9, 12], 'arrow-up-right-square-13': [16, 14], 'stop-circle-13': [15, 15],
@@ -46,7 +46,8 @@ const CSS = `
 .key.on>.edge{background:linear-gradient(rgba(255,255,255,.08),rgba(255,255,255,0))}
 .key .pg{width:17.5px;height:17.5px;background:currentColor;-webkit-mask:url("${PORTMAN_GLYPH}") center/100% 100% no-repeat;mask:url("${PORTMAN_GLYPH}") center/100% 100% no-repeat}
 .ib{position:relative;width:28px;height:28px;border-radius:6px;display:grid;place-items:center;color:#B4B4BA}
-.track .ib{width:26px;height:26px}
+.trail .ib{width:26px;height:26px}
+.trail .open .g{transform:translate(-.5px,.5px)}
 .ib.press{background:rgba(255,255,255,.06)}
 .spin{width:13px;height:13px;animation:spin 1s steps(8) infinite}
 @keyframes spin{to{transform:rotate(360deg)}}
@@ -175,7 +176,7 @@ function mount(host) {
         <div class="ib">${g('bell-13')}</div>
         <div class="track"><span class="edge"></span>
           <div class="ib" data-k="gear">${busy ? spinner() : g('gearshape-13')}</div>
-          <div class="ib">${g('arrow-up-right-13')}</div>
+          <div class="ib open">${g('arrow-up-right-11')}</div>
         </div>
       </div>
     </div>`;
