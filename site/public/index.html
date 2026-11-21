@@ -29,13 +29,12 @@
 <section class="hero" id="top">
   <div class="hero-copy">
     <h1>Your menu bar, doing more.</h1>
-    <p class="lead">One native panel for system stats and fan curves, plus nine free tools: dev server ports, cloud copies, scroll settings for each mouse, and more.</p>
+    <p class="lead">One menu bar panel for stats and fans, plus nine tools.</p>
     <div class="get">
       <a class="glass" data-download href="https://github.com/surajmandalcell/macpowertoys/releases/download/v1.9.4/MacPowerToys-1.9.4-universal.dmg"><span class="glow" aria-hidden="true"></span><i class="apple" aria-hidden="true"></i>Download for Mac</a>
       <div class="cmd"><code><span>brew install --cask</span> <span>samhqapp/tap/macpowertoys</span></code><button type="button" aria-label="Copy the install command" data-copy="brew install --cask samhqapp/tap/macpowertoys"><svg class="cp"><use href="#i-copy"/></svg><svg class="ok"><use href="#i-ok"/></svg></button></div>
     </div>
-    <p class="fine">Version <span data-version>1.9.4</span> · macOS 26.2 or later</p>
-    <div class="fine notary" data-notary>If macOS says it's damaged, run:<div class="cmd"><code><span>xattr -dr com.apple.quarantine</span> <span>/Applications/MacPowerToys.app</span></code><button type="button" aria-label="Copy the command that removes the quarantine flag" data-copy="xattr -dr com.apple.quarantine /Applications/MacPowerToys.app"><svg class="cp"><use href="#i-copy"/></svg><svg class="ok"><use href="#i-ok"/></svg></button></div></div>
+    <p class="fine">Version <span data-version>1.9.4</span> · macOS 26.2 or later · Notarized by Apple</p>
   </div>
   <div class="demo hero-demo" data-demo="live" role="img" aria-label="The MacPowerToys panel, live: CPU, GPU, memory, and network move every second, with the fan and the busiest apps"><template>
 <div class="desk" style="--wl:url(assets/wall/grad.webp);--wd:url(assets/wall/ring.webp)"><div class="desk-in">
@@ -120,7 +119,7 @@
     <div class="head-txt">
       <picture class="rv"><source media="(prefers-color-scheme: dark)" srcset="assets/icons/fan-dark.svg"><img class="ticon" src="assets/icons/fan.svg" alt="" width="52" height="52"></picture>
       <h2 class="rv">Fan curves that stay <span class="nw">quiet.<a class="anchor" href="#fan" aria-label="Copy a link to Fan"><svg><use href="#i-link"/></svg></a></span></h2>
-      <p class="rv">Pick Auto, Cool, or Max right from the panel. Auto follows macOS. Cool follows your pick on the Fan page: Silent, Quiet, Steady, your own Custom curve, or Hold, which keeps the CPU near one temperature, give or take 2 °C, with a steady fan speed. Cool reads the average of the CPU cores and of the GPU cores over 20 seconds, so one busy core does not spin the fans up and down. Every pick runs at full speed from an 80 °C average, and when one core stays at 90 °C or more for 10 seconds.</p>
+      <p class="rv">Quiet fans that react to the whole chip, not one hot core.</p>
     </div>
   </div>
   <div class="demo fan-demo" data-demo="fan" role="group" aria-label="The Fan page, live: the pointer picks Silent, then Steady, and the curve changes; then Hold keeps a 62 °C average. Drag on the chart to try it"><template>
@@ -237,7 +236,7 @@
 <section class="sec" id="portman">
   <div class="head">
     <h2 class="rv">Portman finds every dev <span class="nw">server.<a class="anchor" href="#portman" aria-label="Copy a link to Portman"><svg><use href="#i-link"/></svg></a></span></h2>
-    <p class="rv">It watches the ports your projects open, shows what each server uses, and brings ports from your SSH hosts to this Mac.</p>
+    <p class="rv">Every dev server and SSH port on this Mac, in one list.</p>
   </div>
   <div class="pm" data-pm data-step="0">
     <div class="pm-pin">
@@ -258,11 +257,11 @@
           <li><button type="button" data-go="3" aria-label="Step 4: set it up"><i></i></button></li>
         </ol>
         <div class="pm-say">
-          <div class="pm-step on" data-s="0"><h3>Every dev server, in one list.</h3><p>Portman watches ports 3000 to 9999. Each server shows its project, git branch, uptime, and memory, and the ring adds them all up.</p></div>
-          <div class="pm-step" data-s="1"><h3>Open one to see what it uses.</h3><p>Live memory and CPU graphs. Restart it or stop it, open it in your editor or Finder, or copy its URL.</p></div>
-          <div class="pm-step" data-s="2"><h3>Postgres stays closed. You still get in.</h3><p>Postgres runs on build-box at home, and the router keeps port 5432 shut. Portman carries it over SSH, so your apps just use localhost:5432.</p>
+          <div class="pm-step on" data-s="0"><h3>Every dev server, in one list.</h3><p>Each server shows its project, branch, uptime, and memory.</p></div>
+          <div class="pm-step" data-s="1"><h3>Open one to see what it uses.</h3><p>Live graphs, with Restart, Stop, and Copy URL one click away.</p></div>
+          <div class="pm-step" data-s="2"><h3>Postgres stays closed. You still get in.</h3><p>Portman brings a closed remote port to localhost over SSH.</p>
             <p class="pm-route"><span><small>This Mac</small>localhost:5432</span><i aria-hidden="true"><b></b></i><span><small>SSH on port 22</small>build-box:5432</span></p></div>
-          <div class="pm-step" data-s="3"><h3>Set it up once.</h3><p>Pick the ports it watches, how often it scans, and the apps it must never stop. Open it from anywhere with ⌥⌘P.</p></div>
+          <div class="pm-step" data-s="3"><h3>Set it up once.</h3><p>Pick ports, scan speed, and apps it must never stop.</p></div>
         </div>
       </div>
     </div>
@@ -273,7 +272,7 @@
   <div class="txt">
     <img class="ticon rv" src="assets/icons/rsync.svg" alt="" width="52" height="52">
     <h2 class="rv">RSync UI keeps copies <span class="nw">going.<a class="anchor" href="#rsync" aria-label="Copy a link to RSync UI"><svg><use href="#i-link"/></svg></a></span></h2>
-    <p class="rv">Copy, move, or sync files to Google Drive, B2, S3, and 70 more services through rclone. Pause, resume, or retry a copy right from the menu bar while you keep working.</p>
+    <p class="rv">Copy and sync files to Drive, S3, and 70 more clouds.</p>
   </div>
   <div class="desk rsync-desk" style="--wall:url(assets/wall/ring.webp)">
     <div class="desk-in">
@@ -293,7 +292,7 @@
   <div class="txt">
     <img class="ticon rv" src="assets/icons/input.png" alt="" width="52" height="52">
     <h2 class="rv">Scroll each mouse its own <span class="nw">way.<a class="anchor" href="#input-devices" aria-label="Copy a link to Input Devices"><svg><use href="#i-link"/></svg></a></span></h2>
-    <p class="rv">macOS uses one scroll direction for everything. Input Devices gives each mouse and trackpad its own direction, speed, and smoothing, and Shift scrolls sideways.</p>
+    <p class="rv">Each mouse and trackpad gets its own scroll direction and speed.</p>
   </div>
 </section>
 
@@ -303,7 +302,7 @@
       <img class="ticon rv" src="assets/icons/tweaks.png" alt="" width="52" height="52">
       <h2 class="rv">Mac Tweaks opens hidden <span class="nw">settings.<a class="anchor" href="#mac-tweaks" aria-label="Copy a link to Mac Tweaks"><svg><use href="#i-link"/></svg></a></span></h2>
     </div>
-    <p class="rv">Change what System Settings has no switch for, such as the Dock reveal delay or the screenshot format. Every row has a Default choice, and Modified lists what you changed.</p>
+    <p class="rv">Hidden macOS settings, like the Dock delay, each with a Default.</p>
   </div>
   <div class="desk tweaks-desk" style="--wall:url(assets/wall/grad.webp);--nw:820;--zx:227;--zy:52;--zw:582;--zh:219">
     <div class="desk-in">
@@ -320,35 +319,35 @@
 <section class="sec small" id="small-tools">
   <div class="head">
     <h2 class="rv">Five small tools.</h2>
-    <p class="rv">Each one opens from the panel or with its own shortcut, and quits its work when you close it.</p>
+    <p class="rv">Each opens from the panel or a shortcut, and quits cleanly.</p>
   </div>
   <div class="tiles">
     <figure class="tile rv" id="color-picker">
       <div class="tile-face" style="--wall:url(assets/wall/blossom.webp);--w:420px;--s:1.1;--sp:.8"><picture data-ui><source media="(prefers-color-scheme: dark)" srcset="assets/shots/app-color-picker-dark.webp"><img src="assets/shots/app-color-picker-light.webp" width="420" height="362" loading="lazy" alt="Color Picker with six picked colors"></picture></div>
-      <figcaption><h3>Color Picker<a class="anchor" href="#color-picker" aria-label="Copy a link to Color Picker"><svg><use href="#i-link"/></svg></a></h3><p>Copy any pixel as HEX, RGB, HSL, SwiftUI, and five more.</p></figcaption>
+      <figcaption><h3>Color Picker<a class="anchor" href="#color-picker" aria-label="Copy a link to Color Picker"><svg><use href="#i-link"/></svg></a></h3><p>Copy any pixel as HEX, RGB, SwiftUI, and more.</p></figcaption>
     </figure>
     <figure class="tile rv" id="text-extractor">
       <div class="tile-face" style="--wall:url(assets/wall/maze.webp);--w:480px;--s:1.1;--sp:.7"><picture data-ui><source media="(prefers-color-scheme: dark)" srcset="assets/shots/app-text-extractor-dark.webp"><img src="assets/shots/app-text-extractor-light.webp" width="480" height="338" loading="lazy" alt="Text Extractor with seven recent captures"></picture></div>
-      <figcaption><h3>Text Extractor<a class="anchor" href="#text-extractor" aria-label="Copy a link to Text Extractor"><svg><use href="#i-link"/></svg></a></h3><p>Draw a box over an image, a video, or an error, and the text goes to your clipboard.</p></figcaption>
+      <figcaption><h3>Text Extractor<a class="anchor" href="#text-extractor" aria-label="Copy a link to Text Extractor"><svg><use href="#i-link"/></svg></a></h3><p>Box any text on screen, and it lands on your clipboard.</p></figcaption>
     </figure>
     <figure class="tile wide rv" id="event-viewer">
       <div class="tile-face zt" style="--wall:url(assets/wall/ring.webp);--w:1080px;--s:.72;--nw:1080;--zx:515;--zy:100;--zw:550;--zh:182"><picture data-ui><source media="(prefers-color-scheme: dark)" srcset="assets/shots/logs-dark.webp"><img src="assets/shots/logs-light.webp" width="1080" height="660" loading="lazy" alt="Event Viewer with twelve app events from the last 45 minutes, filtered by level"></picture><picture data-ui class="zoom"><source media="(prefers-color-scheme: dark)" srcset="assets/shots/logs-dark.webp"><img src="assets/shots/logs-light.webp" width="1080" height="660" loading="lazy" alt=""></picture></div>
-      <figcaption><h3>Event Viewer<a class="anchor" href="#event-viewer" aria-label="Copy a link to Event Viewer"><svg><use href="#i-link"/></svg></a></h3><p>App activity and recent macOS errors, filtered by level and source.</p></figcaption>
+      <figcaption><h3>Event Viewer<a class="anchor" href="#event-viewer" aria-label="Copy a link to Event Viewer"><svg><use href="#i-link"/></svg></a></h3><p>App activity and macOS errors, filtered by level.</p></figcaption>
     </figure>
     <figure class="tile rv" id="awake">
       <div class="tile-face zt" style="--wall:url(assets/wall/fur.webp);--w:820px;--s:.6;--nw:820;--zx:229;--zy:52;--zw:577;--zh:283"><picture data-ui><source media="(prefers-color-scheme: dark)" srcset="assets/shots/main-awake-dark.webp"><img src="assets/shots/main-awake-light.webp" width="820" height="660" loading="lazy" alt="Awake settings with the menu bar icon and its current status"></picture><picture data-ui class="zoom"><source media="(prefers-color-scheme: dark)" srcset="assets/shots/main-awake-dark.webp"><img src="assets/shots/main-awake-light.webp" width="820" height="660" loading="lazy" alt=""></picture></div>
-      <figcaption><h3>Awake<a class="anchor" href="#awake" aria-label="Copy a link to Awake"><svg><use href="#i-link"/></svg></a></h3><p>Keep the Mac awake for 30 minutes, until 6 PM, or until you say stop.</p></figcaption>
+      <figcaption><h3>Awake<a class="anchor" href="#awake" aria-label="Copy a link to Awake"><svg><use href="#i-link"/></svg></a></h3><p>Keep the Mac awake for 30 minutes, or until you stop.</p></figcaption>
     </figure>
     <figure class="tile rv" id="ruler">
       <div class="tile-face" style="--wall:url(assets/wall/mesh.webp);--w:560px;--s:1;--sp:.6"><picture data-ui class="bare"><source media="(prefers-color-scheme: dark)" srcset="assets/shots/ruler-dark.webp"><img src="assets/shots/ruler-light.webp" width="560" height="320" loading="lazy" alt="A ruler with a top and a side wing in pixels"></picture></div>
-      <figcaption><h3>Ruler<a class="anchor" href="#ruler" aria-label="Copy a link to Ruler"><svg><use href="#i-link"/></svg></a></h3><p>Measure anything on screen in pixels, millimeters, or inches. Arrow keys move it 1 pixel.</p></figcaption>
+      <figcaption><h3>Ruler<a class="anchor" href="#ruler" aria-label="Copy a link to Ruler"><svg><use href="#i-link"/></svg></a></h3><p>Measure anything on screen in pixels, millimeters, or inches.</p></figcaption>
     </figure>
   </div>
 </section>
 
 <section class="sec list" id="tools">
   <div class="list-head"><h2 class="rv">Nine tools, plus <span class="nw">Fan.<a class="anchor" href="#tools" aria-label="Copy a link to the tool list"><svg><use href="#i-link"/></svg></a></span></h2>
-  <p class="rv">All free, open source, and behind one menu bar icon. Fan control and system stats are built into the panel.</p></div>
+  <p class="rv">All free, open source, and behind one menu bar icon.</p></div>
   <ul class="rows rv">
     <li><a class="row" href="#fan"><picture><source media="(prefers-color-scheme: dark)" srcset="assets/icons/fan-dark.svg"><img src="assets/icons/fan.svg" alt="" width="28" height="28"></picture><b>Fan</b><span>Presets and your own curve.</span></a></li>
     <li><a class="row" href="#ruler"><img src="assets/icons/ruler.svg" alt="" width="28" height="28"><b>Ruler</b><span>Measure anything on screen.</span></a></li>
@@ -367,8 +366,7 @@
   <h2 class="rv">Install it in one <span class="nw">line.<a class="anchor" href="#install" aria-label="Copy a link to Install"><svg><use href="#i-link"/></svg></a></span></h2>
   <div class="cmd big rv"><code><span>brew install --cask</span> <span>samhqapp/tap/macpowertoys</span></code><button type="button" aria-label="Copy the install command" data-copy="brew install --cask samhqapp/tap/macpowertoys"><svg class="cp"><use href="#i-copy"/></svg><svg class="ok"><use href="#i-ok"/></svg></button></div>
   <p class="or rv">Or <a class="glass" data-download href="https://github.com/surajmandalcell/macpowertoys/releases/download/v1.9.4/MacPowerToys-1.9.4-universal.dmg"><span class="glow" aria-hidden="true"></span><i class="apple" aria-hidden="true"></i>Download for Mac</a></p>
-  <p class="fine rv">Version <span data-version>1.9.4</span> · macOS 26.2 or later · No tracking · MIT license</p>
-  <div class="fine notary rv" data-notary>If macOS says it's damaged, run:<div class="cmd"><code><span>xattr -dr com.apple.quarantine</span> <span>/Applications/MacPowerToys.app</span></code><button type="button" aria-label="Copy the command that removes the quarantine flag" data-copy="xattr -dr com.apple.quarantine /Applications/MacPowerToys.app"><svg class="cp"><use href="#i-copy"/></svg><svg class="ok"><use href="#i-ok"/></svg></button></div></div>
+  <p class="fine rv">Version <span data-version>1.9.4</span> · macOS 26.2 or later · Notarized by Apple · No tracking · MIT license</p>
 </section>
 </main>
 

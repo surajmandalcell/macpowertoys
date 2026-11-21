@@ -72,8 +72,8 @@ and writes its `.sha256` and `release.json` (`{"version", "notarized": true}`).
 
 Publish: create the GitHub release `v<version>` with the DMG, its `.sha256`,
 and `release.json`. The site worker puts that release's DMG into the Download
-buttons, and reads `release.json` to say "Notarized by Apple"; a release
-without it shows the copyable `xattr -dr com.apple.quarantine` step instead. Then update `version` and
+buttons. The site always says "Notarized by Apple", so it goes live only
+with a notarized release. Then update `version` and
 `sha256` in `Casks/macpowertoys.rb` in `samhqapp/homebrew-tap` (local checkout
 `../homebrew-tap`), and run
 `brew audit --cask --online samhqapp/tap/macpowertoys`.
