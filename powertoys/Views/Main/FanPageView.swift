@@ -355,13 +355,14 @@ struct FanCurveEditor: View {
                 if hold == nil {
                     ForEach(shown.points.indices, id: \.self) { index in knob(index, plot: plot) }
                 }
-                FanLockedEnd(point: position(FanCurve.lockedEnd, plot), plot: plot) { captionWidth = $0 }
+                // Hold reaches full speed at target + 4 °C, so the "Full speed from 80 °C" caption would mislead there.
+                FanLockedEnd(point: position(FanCurve.lockedEnd, plot), plot: plot, showsCaption: hold == nil) { captionWidth = $0 }
                 let bounds = CGRect(origin: .zero, size: geo.size).insetBy(dx: Self.chipMargin, dy: 0)
                 if let now = nowPoint(plot), let nowCelsius {
                     FanCurveNow(point: now, color: FanHeat.color(nowCelsius))
                     if let nowChip, dragging == nil {
                         let obstacles = hold.map { [FanHoldBand.labelRect(FanPlot(rect: plot), target: $0)] + Self.obstacles(
-                            plot: plot, knobs: [], captionWidth: captionWidth) }
+                            plot: plot, knobs: [], captionWidth: 0) }
                             ?? Self.obstacles(plot: plot, knobs: shown.points.map { position($0, plot) }, captionWidth: captionWidth)
                         FanChip(text: nowChip).onGeometryChange(for: CGSize.self, of: { $0.size }) { nowChipSize = $0 }
                             .position(FanChipPlacement.center(size: nowChipSize, dot: now, dotRadius: FanCurveNow.size / 2,
@@ -568,19 +569,22 @@ private struct FanCurveLine: View {
 private struct FanLockedEnd: View {
     let point: CGPoint
     let plot: CGRect
+    var showsCaption = true
     var measured: (CGFloat) -> Void = { _ in }
     static let size: CGFloat = 16
     static let estimatedCaptionWidth: CGFloat = 130
 
     var body: some View {
         ZStack(alignment: .topLeading) {
-            Text("Full speed from \(Int(FanCurve.lockedEnd.celsius)) °C")
-                .linearText(OnePlusLinearMetrics.caption, color: OnePlusLinearColor.secondary)
-                .fixedSize()
-                .onGeometryChange(for: CGFloat.self, of: { $0.size.width }, action: measured)
-                .frame(width: 0, alignment: .trailing)
-                .position(x: point.x - Self.size, y: plot.minY - 11)
-                .allowsHitTesting(false)
+            if showsCaption {
+                Text("Full speed from \(Int(FanCurve.lockedEnd.celsius)) °C")
+                    .linearText(OnePlusLinearMetrics.caption, color: OnePlusLinearColor.secondary)
+                    .fixedSize()
+                    .onGeometryChange(for: CGFloat.self, of: { $0.size.width }, action: measured)
+                    .frame(width: 0, alignment: .trailing)
+                    .position(x: point.x - Self.size, y: plot.minY - 11)
+                    .allowsHitTesting(false)
+            }
             Image(systemName: "lock.fill")
                 .font(.system(size: 8, weight: .bold))
                 .foregroundStyle(OnePlusLinearColor.window)

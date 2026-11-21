@@ -226,6 +226,12 @@ still use `SystemMonitor`. `DESIGN.md` owns every size, color, and type value.
   now chip and the drag chip both use it.
 - **Check:** render the page offscreen at 45-85 °C (average scale) on every preset in
   Light and Dark, and assert no chip rect meets `FanCurveEditor.obstacles`.
+- **Invariant:** Hold draws `FanHold.displayCurve` (target-4 °C 0%, target 50%,
+  target+4 °C 100%; the website demo copies these numbers) in `FanCurveEditor`
+  with `hold` set: no knobs, the band, dashed target, and its label under the
+  curve, and the now chip avoids that label. The "Full speed from 80 °C"
+  caption is hidden in Hold: the now dot at 66-78 °C sits on the 100% line
+  under it, and Hold is already full speed from target+4.
 - **Symptom:** In Cool the fans spun up on one-core spikes: 45 speed jumps
   over 200 RPM in a 380 s loaded trace.
 - **Cause:** The curve followed the hottest single core. Tp* sensors also
