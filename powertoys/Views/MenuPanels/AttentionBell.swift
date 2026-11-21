@@ -51,7 +51,8 @@ struct AttentionBell: View {
     var body: some View {
         let items = AttentionItem.current + (Self.diagnosticSample ? [Self.sampleItem] : [])
         OnePlusLinearIconButton(systemImage: "bell",
-                                help: items.isEmpty ? "Nothing needs attention" : "\(items.count) need attention") {
+                                help: items.isEmpty ? "Nothing needs attention" : "\(items.count) need attention",
+                                size: OnePlusLinearMetrics.iconTab) {
             isOpen.toggle()
         }
         .overlay(alignment: .topTrailing) {

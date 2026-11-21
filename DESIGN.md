@@ -418,10 +418,11 @@ ease-in cubic-bezier(0.4, 0, 1, 1)):
   raised radius 6 key. Dark: deep track, `#313136` to `#28282C` key, a 1 pt
   fading `softKeyDivider` between two unselected tabs only. Context menu
   Move Left and Move Right reorder tool tabs. Trailing, 2 pt apart: the
-  28 pt bell, then "Shared track" (`OnePlusLinearIconTrack`): the 26 pt
+  26 pt bell, then "Shared track" (`OnePlusLinearIconTrack`): the 26 pt
   gear (opens Settings) and a 26 pt `arrow.up.right` (Open MacPowerToys,
   its label and tooltip) in the same sunken radius 8 track as the tabs,
-  13 pt glyphs in `secondary` ink, hover and press like the tabs. No text
+  13 pt glyphs in `secondary` ink (the arrow 11 pt, 0.5 pt down-left, so it
+  matches the gear and sits centered), hover and press like the tabs. No text
   key. Quit stays in the status item menu.
 - Groups: `fillGroup`, radius 10, 4 pt top and bottom padding, no
   separators. Row hover is a radius 6 `fillRowHover` step 4 pt inside the
