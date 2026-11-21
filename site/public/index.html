@@ -9,11 +9,11 @@
 <link rel="icon" href="assets/icons/appicon.svg" type="image/svg+xml">
 <link rel="stylesheet" href="site.css">
 <script>(function(d){d.classList.add('js');var q=new URLSearchParams(location.search),g=function(k){try{return localStorage.getItem('mpt-'+k)}catch(e){}},c=q.get('card')||g('card'),m=g('motion');d.dataset.card=/^(glass|store|dock|spot|pill|finder)$/.test(c)?c:'glass';d.dataset.motion=/^(play|pause|off)$/.test(m)?m:matchMedia('(prefers-reduced-motion: reduce)').matches?'off':'play'})(document.documentElement)</script>
+<script src="portman.js" defer></script>
 <script src="site.js" defer></script>
 </head>
 <body>
 <svg width="0" height="0" style="position:absolute" aria-hidden="true">
-  <symbol id="i-link" viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round"><path d="M8.5 11.5a3.5 3.5 0 0 0 5 0l2.5-2.5a3.5 3.5 0 0 0-5-5l-1 1"/><path d="M11.5 8.5a3.5 3.5 0 0 0-5 0L4 11a3.5 3.5 0 0 0 5 5l1-1"/></symbol>
   <symbol id="i-copy" viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.6"><rect x="7" y="7" width="10" height="10" rx="2.2"/><path d="M13 4.5V4.2A1.7 1.7 0 0 0 11.3 2.5H4.7A1.7 1.7 0 0 0 3 4.2v6.6a1.7 1.7 0 0 0 1.7 1.7H5"/></symbol>
   <symbol id="i-ok" viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4.5 10.5l3.5 3.5 7.5-8"/></symbol>
   <symbol id="i-gh" viewBox="0 0 16 16"><path d="M8 0C3.58 0 0 3.58 0 8c0 3.54 2.29 6.53 5.47 7.59.4.07.55-.17.55-.38 0-.19-.01-.82-.01-1.49-2.01.37-2.53-.49-2.69-.94-.09-.23-.48-.94-.82-1.13-.28-.15-.68-.52-.01-.53.63-.01 1.08.58 1.23.82.72 1.21 1.87.87 2.33.66.07-.52.28-.87.51-1.07-1.78-.2-3.64-.89-3.64-3.95 0-.87.31-1.59.82-2.15-.08-.2-.36-1.02.08-2.12 0 0 .67-.21 2.2.82.64-.18 1.32-.27 2-.27.68 0 1.36.09 2 .27 1.53-1.04 2.2-.82 2.2-.82.44 1.1.16 1.92.08 2.12.51.56.82 1.27.82 2.15 0 3.07-1.87 3.75-3.65 3.95.29.25.54.73.54 1.48 0 1.07-.01 1.93-.01 2.2 0 .21.15.46.55.38A8.013 8.013 0 0 0 16 8c0-4.42-3.58-8-8-8z"/></symbol>
@@ -39,7 +39,7 @@
   </div>
   <div class="demo hero-demo" data-demo="live" role="img" aria-label="The MacPowerToys panel, live: CPU, GPU, memory, and network move every second, with the fan and the busiest apps"><template>
 <div class="desk" style="--wd:url(assets/wall/ring.webp)"><div class="desk-in">
-<div class="bar" aria-hidden="true"><span class="apps"><img src="assets/menubar/apple.png" width="12" height="15" alt=""><b>Finder</b><span>File</span><span>Edit</span><span>View</span><span>Go</span><span>Window</span><span>Help</span></span><span class="mbi"><img src="assets/menubar/menubar-white@1x.png" srcset="assets/menubar/menubar-white@2x.png 2x, assets/menubar/menubar-white@4x.png 4x" width="16" height="16" alt=""></span><img src="assets/menubar/battery.png" width="24" height="11" alt=""><img src="assets/menubar/wifi.png" width="17" height="13" alt=""><img class="opt" src="assets/menubar/search.png" width="15" height="15" alt=""><img class="opt" src="assets/menubar/control.png" width="17" height="15" alt=""><span class="clock"><span class="d">Fri Nov 20</span>&ensp;<span class="t">9:41 AM</span></span></div>
+<div class="bar" aria-hidden="true"><span class="mbi"><img src="assets/menubar/menubar-white@1x.png" srcset="assets/menubar/menubar-white@2x.png 2x, assets/menubar/menubar-white@4x.png 4x" width="16" height="16" alt=""></span><img src="assets/menubar/battery.png" width="24" height="11" alt=""><img src="assets/menubar/wifi.png" width="17" height="13" alt=""><img class="opt" src="assets/menubar/search.png" width="15" height="15" alt=""><img class="opt" src="assets/menubar/control.png" width="17" height="15" alt=""><span class="clock"><span class="d">Fri Nov 20</span>&ensp;<span class="t">9:41 AM</span></span></div>
 <svg width="0" height="0" style="position:absolute" aria-hidden="true"><defs>
 <filter id="f-ink" color-interpolation-filters="sRGB"><feColorMatrix type="matrix" values="0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 -.637 -.637 -.637 0 1.656" result="a"/><feFlood class="f-ink"/><feComposite in2="a" operator="in"/></filter>
 <filter id="f-sec" color-interpolation-filters="sRGB"><feColorMatrix type="matrix" values="0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 -.637 -.637 -.637 0 1.656" result="a"/><feFlood class="f-sec"/><feComposite in2="a" operator="in"/></filter>
@@ -115,15 +115,15 @@
 </div>
 </div></section>
 
-<section class="ch" id="fan" data-from="[data-demo=live]>>>.crow"><div class="stage fan-stage">
+<section class="ch" id="fan"><div class="stage fan-stage">
   <div class="head-txt">
-    <h2 class="kick"><span class="card"><picture><img src="assets/icons/fan-dark.svg" alt="" width="64" height="64"></picture><b>Fan</b><span>Presets and your own curve.</span></span><a class="anchor" href="#fan" aria-label="Copy a link to Fan"><svg><use href="#i-link"/></svg></a></h2>
+    <h2 class="kick"><span class="card"><picture><img src="assets/icons/fan-dark.svg" alt="" width="64" height="64"></picture><b>Fan</b><span>Presets and your own curve.</span></span></h2>
     <h3>Keeps your Mac quiet and cool.</h3>
     <p>Fans follow the whole chip, not one hot core.</p>
   </div>
   <div class="demo fan-demo" data-demo="fan" role="group" aria-label="The Fan page, live: the pointer picks Silent, then Steady, and the curve changes; then Hold keeps a 62 °C average. Drag on the chart to try it"><template>
 <div class="desk" style="--wd:url(assets/wall/maze.webp)"><div class="desk-in">
-<div class="bar" aria-hidden="true"><span class="apps"><img src="assets/menubar/apple.png" width="12" height="15" alt=""><b>Finder</b><span>File</span><span>Edit</span><span>View</span><span>Go</span><span>Window</span><span>Help</span></span><span class="mbi"><img src="assets/menubar/menubar-white@1x.png" srcset="assets/menubar/menubar-white@2x.png 2x, assets/menubar/menubar-white@4x.png 4x" width="16" height="16" alt=""></span><img src="assets/menubar/battery.png" width="24" height="11" alt=""><img src="assets/menubar/wifi.png" width="17" height="13" alt=""><img class="opt" src="assets/menubar/search.png" width="15" height="15" alt=""><img class="opt" src="assets/menubar/control.png" width="17" height="15" alt=""><span class="clock"><span class="d">Fri Nov 20</span>&ensp;<span class="t">9:41 AM</span></span></div>
+<div class="bar" aria-hidden="true"><span class="mbi"><img src="assets/menubar/menubar-white@1x.png" srcset="assets/menubar/menubar-white@2x.png 2x, assets/menubar/menubar-white@4x.png 4x" width="16" height="16" alt=""></span><img src="assets/menubar/battery.png" width="24" height="11" alt=""><img src="assets/menubar/wifi.png" width="17" height="13" alt=""><img class="opt" src="assets/menubar/search.png" width="15" height="15" alt=""><img class="opt" src="assets/menubar/control.png" width="17" height="15" alt=""><span class="clock"><span class="d">Fri Nov 20</span>&ensp;<span class="t">9:41 AM</span></span></div>
 <svg width="0" height="0" style="position:absolute" aria-hidden="true"><defs>
 <filter id="f-ink" color-interpolation-filters="sRGB"><feColorMatrix type="matrix" values="0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 -.637 -.637 -.637 0 1.656" result="a"/><feFlood class="f-ink"/><feComposite in2="a" operator="in"/></filter>
 <filter id="f-sec" color-interpolation-filters="sRGB"><feColorMatrix type="matrix" values="0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 -.637 -.637 -.637 0 1.656" result="a"/><feFlood class="f-sec"/><feComposite in2="a" operator="in"/></filter>
@@ -231,66 +231,65 @@
 </template></div>
 </div></section>
 
-<!-- A tool chapter: shots in .s-cam (.pan = a menu panel under the menu bar icon in data-ico,
-     .win = a window), then one .st per step that names its shot and an optional spotlight in shot points. -->
-<section class="ch" id="portman" data-from="#portman .ico[data-ico=portman]">
+<!-- A tool chapter: a camera over a whole Mac screen (1920 x 1080 points) that crops in on one shot.
+     .pan = a menu panel under the menu bar icon in data-ico, .win = a centered window. One .st per step
+     names its shot, with an optional spotlight (data-spot) and pointer tap (data-tap) in shot points. -->
+<section class="ch" id="portman">
   <div class="story" data-story>
     <div class="s-pin">
       <div class="s-vis">
         <div class="s-cam" style="--wall:url(assets/wall/mesh.webp)">
-          <picture data-ui class="shot pan" data-ico="portman"><img src="assets/shots/panel-portman-servers-dark.webp" width="356" height="457" loading="lazy" alt="Portman lists four dev servers with their ports, git branch, uptime, and memory; the ring shows 791.5 MB in all"></picture>
-          <picture data-ui class="shot pan" data-ico="portman"><img src="assets/shots/panel-portman-detail-dark.webp" width="356" height="388" loading="lazy" alt="One Portman server, storefront on port 5173, with memory and CPU graphs and Restart, Stop, Editor, Finder, and Copy URL buttons"></picture>
-          <picture data-ui class="shot pan" data-ico="portman"><img src="assets/shots/panel-portman-forward-dark.webp" width="356" height="286" loading="lazy" alt="Portman forwarding: port 5432 on this Mac goes to build-box port 5432, and 16379 goes to staging port 6379"></picture>
-          <picture data-ui class="shot win"><img src="assets/shots/main-portman-dark.webp" width="820" height="660" loading="lazy" alt="Portman settings: the ⌥⌘P shortcut, ports 3000 to 9999, a scan every 2 seconds, protected apps, and clean up"></picture>
+          <div class="shot pan pm" data-ico="portman" data-w="356" data-h="460" role="img" aria-label="Portman, live: four dev servers, then a Next.js server takes 780 MB and is killed, then a remote host is added with its forwarded ports"></div>
         </div>
       </div>
       <div class="s-txt">
-        <h2 class="kick"><span class="card"><img src="assets/icons/portman.png" alt="" width="64" height="64"><b>Portman</b><span>Dev servers and SSH ports.</span></span><a class="anchor" href="#portman" aria-label="Copy a link to Portman"><svg><use href="#i-link"/></svg></a></h2>
+        <h2 class="kick"><span class="card"><img src="assets/icons/portman.png" alt="" width="64" height="64"><b>Portman</b><span>Dev servers and SSH ports.</span></span></h2>
         <ol class="bars"></ol>
         <div class="s-say">
-          <div class="st on" data-shot="0" data-click><h3>Finds and controls your dev servers.</h3><p>Click its menu bar icon to see every server.</p></div>
-          <div class="st" data-shot="0" data-spot="10 48 336 217"><h3>The whole load, at a glance.</h3><p>Total memory, CPU, and the longest uptime in one ring.</p></div>
-          <div class="st" data-shot="0" data-spot="10 277 336 168"><h3>Every server, with its project.</h3><p>Port, git branch, uptime, and memory on each row.</p></div>
-          <div class="st" data-shot="1" data-spot="10 86 336 85"><h3>Open one to watch it live.</h3><p>Memory and CPU graphs for that one server.</p></div>
-          <div class="st" data-shot="1" data-spot="10 180 336 104"><h3>Restart runs the same command.</h3><p>Portman reruns its saved command in the same folder.</p></div>
-          <div class="st" data-shot="2" data-spot="10 147 336 129"><h3>Postgres stays closed. You still get in.</h3><p>Portman brings a remote port to localhost over SSH.</p>
-            <p class="route"><span><small>This Mac</small>localhost:5432</span><i aria-hidden="true"><b></b></i><span><small>SSH on port 22</small>build-box:5432</span></p></div>
-          <div class="st" data-shot="3" data-spot="247 348 541 209"><h3>Set it up once.</h3><p>Pick ports, scan speed, and apps it must never stop.</p></div>
+          <div class="st on" data-shot="0" data-click><h3>Finds every dev server on your Mac.</h3><p>Ports, projects, and memory, one click from the menu bar.</p></div>
+          <div class="st" data-shot="0"><h3>Spots the one eating your memory.</h3><p>A Next.js server jumps to 780 MB and turns red.</p></div>
+          <div class="st" data-shot="0"><h3>Stops it in one click.</h3><p>Right-click, Stop, and the memory comes back.</p></div>
+          <div class="st" data-shot="0"><h3>Adds your remote machines.</h3><p>Pick a host from your SSH list, then scan its ports.</p></div>
+          <div class="st" data-shot="0"><h3>Brings remote ports to your Mac.</h3><p>A closed database port opens on localhost, safely.</p></div>
         </div>
       </div>
     </div>
   </div>
 </section>
 
-<section class="ch" id="rsync" data-from="#rsync .ico[data-ico=mpt]">
+<section class="ch" id="rsync">
   <div class="story" data-story>
     <div class="s-pin">
       <div class="s-vis">
         <div class="s-cam" style="--wall:url(assets/wall/ring.webp)">
-          <picture data-ui class="shot pan" data-ico="mpt"><img src="assets/shots/panel-rclone-dark.webp" width="356" height="632" loading="lazy" alt="RSync UI panel with running, paused, failed, and finished copies"></picture>
+          <div class="shot pan" data-ico="mpt"><img src="assets/shots/panel-rclone-dark.webp" width="356" height="632" loading="lazy" alt="RSync UI panel with running, paused, failed, and finished copies">
+            <span class="fx" aria-hidden="true" style="left:250px;top:349px;width:92px;height:23px;background:#1f1f21"><b style="right:37px;color:#eaba66">Paused</b><svg viewBox="0 0 12 12" style="left:69px;top:5.5px;width:12px;height:12px"><path d="M2.5 1.2v9.6l8.2-4.8z" fill="#bababc"/></svg></span>
+            <span class="fx" aria-hidden="true" style="left:20px;top:377.5px;width:315px;height:4px;background:#323234;border-radius:2px"><i style="left:0;top:0;bottom:0;width:42%;border-radius:2px;background:#eaba66"></i></span>
+            <span class="fx" aria-hidden="true" style="left:220px;top:385px;width:116px;height:17px;background:#1f1f21"><b style="right:1px;font-size:11px;line-height:17px;color:#99989d;font-weight:400">812 of 2,140 files</b></span>
+          </div>
         </div>
       </div>
       <div class="s-txt">
-        <h2 class="kick"><span class="card"><img src="assets/icons/rsync.svg" alt="" width="64" height="64"><b>RSync UI</b><span>Cloud copies with rclone.</span></span><a class="anchor" href="#rsync" aria-label="Copy a link to RSync UI"><svg><use href="#i-link"/></svg></a></h2>
+        <h2 class="kick"><span class="card"><img src="assets/icons/rsync.svg" alt="" width="64" height="64"><b>RSync UI</b><span>Cloud copies with rclone.</span></span></h2>
         <ol class="bars"></ol>
         <div class="s-say">
-          <div class="st on" data-shot="0"><h3>Copies and syncs files to your clouds.</h3><p>Drive, S3, and 70 more, with pause and resume.</p></div>
+          <div class="st on" data-shot="0" data-tap="325 360"><h3>Copies your files to any cloud.</h3><p>Pause a big upload now and finish it later.</p></div>
         </div>
       </div>
     </div>
   </div>
 </section>
 
-<section class="ch" id="input-devices" data-from="#input-devices .ico[data-ico=mpt]">
+<section class="ch" id="input-devices">
   <div class="story" data-story>
     <div class="s-pin">
       <div class="s-vis">
         <div class="s-cam" style="--wall:url(assets/wall/eve.webp)">
-          <picture data-ui class="shot pan" data-ico="mpt"><img src="assets/shots/panel-input-devices-dark.webp" width="356" height="582" loading="lazy" alt="The Input Devices tab of the panel: the mouse is controlled, custom scrolling is on, and the mouse profile is open"></picture>
+          <div class="shot pan" data-ico="mpt"><img src="assets/shots/panel-input-devices-dark.webp" width="356" height="582" loading="lazy" alt="The Input Devices tab of the panel: the mouse is controlled, custom scrolling is on, and the mouse profile is open"></div>
         </div>
       </div>
       <div class="s-txt">
-        <h2 class="kick"><span class="card"><img src="assets/icons/input.png" alt="" width="64" height="64"><b>Input Devices</b><span>Scroll settings per device.</span></span><a class="anchor" href="#input-devices" aria-label="Copy a link to Input Devices"><svg><use href="#i-link"/></svg></a></h2>
+        <h2 class="kick"><span class="card"><img src="assets/icons/input.png" alt="" width="64" height="64"><b>Input Devices</b><span>Scroll settings per device.</span></span></h2>
         <ol class="bars"></ol>
         <div class="s-say">
           <div class="st on" data-shot="0"><h3>Sets scrolling for each mouse and trackpad.</h3><p>Each one gets its own direction and speed.</p></div>
@@ -305,15 +304,16 @@
     <div class="s-pin">
       <div class="s-vis">
         <div class="s-cam" style="--wall:url(assets/wall/grad.webp)">
-          <picture data-ui class="shot win"><img src="assets/shots/mac-tweaks-dark.webp" width="820" height="660" loading="lazy" alt="Mac Tweaks on the Dock page"></picture>
+          <div class="shot win"><img src="assets/shots/mac-tweaks-dark.webp" width="820" height="660" loading="lazy" alt="Mac Tweaks on the Dock page: the pointer takes the Dock reveal delay from 0.40 to 0.00 seconds">
+            <span class="fx roll" aria-hidden="true" style="left:640px;top:88px;width:108px;height:21px;background:#29282b"><b><i>0.35</i><i>0.30</i><i>0.25</i><i>0.20</i><i>0.15</i><i>0.10</i><i>0.05</i><i>0.00</i></b></span>
+          </div>
         </div>
       </div>
       <div class="s-txt">
-        <h2 class="kick"><span class="card"><img src="assets/icons/tweaks.png" alt="" width="64" height="64"><b>Mac Tweaks</b><span>Hidden macOS settings.</span></span><a class="anchor" href="#mac-tweaks" aria-label="Copy a link to Mac Tweaks"><svg><use href="#i-link"/></svg></a></h2>
+        <h2 class="kick"><span class="card"><img src="assets/icons/tweaks.png" alt="" width="64" height="64"><b>Mac Tweaks</b><span>Hidden macOS settings.</span></span></h2>
         <ol class="bars"></ol>
         <div class="s-say">
-          <div class="st on" data-shot="0"><h3>Changes hidden macOS settings.</h3><p>Things like the Dock delay, without Terminal.</p></div>
-          <div class="st" data-shot="0" data-spot="227 52 582 219"><h3>Every change can go back.</h3><p>Pick Default on any setting to undo your change.</p></div>
+          <div class="st on" data-shot="0" data-tap="774 103"><h3>Shows the hidden Dock with no wait.</h3><p>System Settings can't do this. Mac Tweaks can, no Terminal.</p></div>
         </div>
       </div>
     </div>
@@ -334,7 +334,7 @@
         </div>
       </div>
       <div class="s-txt">
-        <h2 class="kick">Small tools<a class="anchor" href="#small-tools" aria-label="Copy a link to the small tools"><svg><use href="#i-link"/></svg></a></h2>
+        <h2 class="kick">Small tools</h2>
         <ol class="bars"></ol>
         <div class="s-say">
           <div class="st on" id="color-picker" data-shot="0"><p class="card"><img src="assets/icons/colorpicker.png" alt="" width="64" height="64"><b>Color Picker</b><span>Copy any pixel in 9 formats.</span></p><h3>Copies any color on screen.</h3><p>As HEX, RGB, SwiftUI, and more.</p></div>
@@ -349,7 +349,7 @@
 </section>
 <section class="ch" id="tools"><div class="stage">
   <div class="list">
-  <div class="list-head"><h2>And more on the <span class="nw">way.<a class="anchor" href="#tools" aria-label="Copy a link to the tool list"><svg><use href="#i-link"/></svg></a></span></h2>
+  <div class="list-head"><h2>And more on the way.</h2>
   <p>New tools arrive as free updates. Here is what ships today.</p></div>
   <ul class="rows">
     <li><a class="row" href="#fan"><picture><img src="assets/icons/fan-dark.svg" alt="" width="28" height="28"></picture><b>Fan</b><span>Presets and your own curve.</span></a></li>
@@ -367,7 +367,7 @@
 </div></section>
 <section class="ch ch-last" id="install"><div class="stage">
   <div class="install">
-  <h2>Install it in one <span class="nw">line.<a class="anchor" href="#install" aria-label="Copy a link to Install"><svg><use href="#i-link"/></svg></a></span></h2>
+  <h2>Install it in one line.</h2>
   <div class="cmd big"><code><span>brew install --cask</span> <span>samhqapp/tap/macpowertoys</span></code><button type="button" aria-label="Copy the install command" data-copy="brew install --cask samhqapp/tap/macpowertoys"><svg class="cp"><use href="#i-copy"/></svg><svg class="ok"><use href="#i-ok"/></svg></button></div>
   <p class="or">Or <a class="glass" data-download href="https://github.com/surajmandalcell/macpowertoys/releases/download/v1.9.4/MacPowerToys-1.9.4-universal.dmg"><span class="glow" aria-hidden="true"></span><i class="apple" aria-hidden="true"></i>Download for Mac</a></p>
   <p class="fine">Version <span data-version>1.9.4</span> · macOS 26.2 or later · Notarized by Apple · No tracking · MIT license</p>
@@ -401,7 +401,7 @@
   <button type="button" class="pick" data-choices aria-label="Copy choices"><svg class="cp"><use href="#i-copy"/></svg><svg class="ok"><use href="#i-ok"/></svg><span>Copy choices</span></button>
 </div>
 
-<template id="mbar"><div class="bar" aria-hidden="true"><span class="apps"><img src="assets/menubar/apple.png" width="12" height="15" alt=""><b>Finder</b><span>File</span><span>Edit</span><span>View</span><span>Go</span><span>Window</span><span>Help</span></span><span class="ico" data-ico="portman"><svg viewBox="0 0 32 32" width="17" height="17"><path d="M4.5 5.5h23v15.5h-4.5v3h-4v3h-6v-3h-4v-3H4.5z" fill="none" stroke="#fff" stroke-width="2.5" stroke-linejoin="round"/><path d="M9 10v5.5m3.5-5.5v5.5M16 10v5.5m3.5-5.5v5.5M23 10v5.5" fill="none" stroke="#fff" stroke-width="2" stroke-linecap="round"/></svg></span><span class="ico" data-ico="mpt"><img src="assets/menubar/menubar-white@1x.png" srcset="assets/menubar/menubar-white@2x.png 2x, assets/menubar/menubar-white@4x.png 4x" width="16" height="16" alt=""></span><img src="assets/menubar/battery.png" width="24" height="11" alt=""><img src="assets/menubar/wifi.png" width="17" height="13" alt=""><img class="opt" src="assets/menubar/search.png" width="15" height="15" alt=""><img class="opt" src="assets/menubar/control.png" width="17" height="15" alt=""><span class="clock"><span class="d">Fri Nov 20</span>&ensp;<span class="t">9:41 AM</span></span></div></template>
+<template id="mbar"><div class="bar" aria-hidden="true"><span class="ico" data-ico="portman"><svg viewBox="0 0 32 32" width="17" height="17"><path d="M4.5 5.5h23v15.5h-4.5v3h-4v3h-6v-3h-4v-3H4.5z" fill="none" stroke="#fff" stroke-width="2.5" stroke-linejoin="round"/><path d="M9 10v5.5m3.5-5.5v5.5M16 10v5.5m3.5-5.5v5.5M23 10v5.5" fill="none" stroke="#fff" stroke-width="2" stroke-linecap="round"/></svg></span><span class="ico" data-ico="mpt"><img src="assets/menubar/menubar-white@1x.png" srcset="assets/menubar/menubar-white@2x.png 2x, assets/menubar/menubar-white@4x.png 4x" width="16" height="16" alt=""></span><img src="assets/menubar/battery.png" width="24" height="11" alt=""><img src="assets/menubar/wifi.png" width="17" height="13" alt=""><img class="opt" src="assets/menubar/search.png" width="15" height="15" alt=""><img class="opt" src="assets/menubar/control.png" width="17" height="15" alt=""><span class="clock"><span class="d">Fri Nov 20</span>&ensp;<span class="t">9:41 AM</span></span></div></template>
 <template id="demo-css">
 :host{
   --font:-apple-system,BlinkMacSystemFont,"SF Pro Text","Inter",system-ui,sans-serif;
@@ -422,18 +422,16 @@
 }
 *{box-sizing:border-box}
 :host{container-type:inline-size;font:13px/1.2 var(--font);letter-spacing:normal;text-align:left;-webkit-font-smoothing:antialiased}
-.desk{position:relative;width:100%;height:100%;overflow:hidden;background:var(--wd) center/cover no-repeat}
+.desk{position:relative;width:100%;height:100%;overflow:hidden;background:#141416}
 .desk-in{position:absolute;left:0;top:0;transform-origin:0 0}
-.bar{position:absolute;z-index:1;inset:0 0 auto;height:24px;display:flex;align-items:center;gap:14px;padding:0 22px;color:#fff;font:500 13px/1 var(--font);letter-spacing:0;white-space:nowrap;filter:drop-shadow(0 0 3px rgba(0,0,0,.28))}
-.apps{flex:1;min-width:0;height:24px;overflow:hidden;display:flex;flex-wrap:wrap;align-items:center;align-content:flex-start;column-gap:19px}
-.apps>*{height:24px;display:flex;align-items:center}
-.apps b{font-weight:700}
+/* The demo is the top right corner of a 1920 x 1080 point screen: the wallpaper and menu bar are cut, never shrunk */
+.desk-in::before{content:"";position:absolute;right:0;top:0;width:1920px;height:1080px;background:var(--wd) center/cover no-repeat}
+.bar{position:absolute;z-index:1;inset:0 0 auto;height:24px;display:flex;align-items:center;justify-content:flex-end;gap:14px;padding:0 22px;color:#fff;font:500 13px/1 var(--font);letter-spacing:0;white-space:nowrap;filter:drop-shadow(0 0 3px rgba(0,0,0,.28))}
 .bar img{flex:none}
 .mbi{flex:none;display:grid;place-items:center;width:30px;height:22px;border-radius:7px;background:rgba(255,255,255,.28)}
 .clock{flex:none;width:118px;text-align:right}
 @container (max-width:640px){
-  .bar .apps,.bar .opt,.clock .d{display:none}
-  .bar{justify-content:flex-end}
+  .bar .opt,.clock .d{display:none}
   .clock{width:auto}
 }
 

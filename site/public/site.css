@@ -84,11 +84,6 @@ a:focus-visible,button:focus-visible{background-color:var(--lit);border-radius:8
 .cmd svg{width:19px;height:19px}
 .cmd .ok,.cmd.done .cp{display:none}
 .cmd.done .ok{display:block;color:#30d158}
-.anchor{position:relative;display:inline-grid;place-items:center;width:34px;height:34px;margin-left:10px;vertical-align:middle;border-radius:9px;color:var(--muted);opacity:.8;transition:opacity .15s,background .15s}
-.anchor svg{width:20px;height:20px}
-h2:hover .anchor,h3:hover .anchor,.anchor:focus-visible,.anchor.done{opacity:1}
-.anchor:hover{background:var(--lit)}
-.anchor.done::after{content:"Link copied";position:absolute;left:50%;bottom:calc(100% + 6px);transform:translateX(-50%);padding:5px 10px;border-radius:8px;background:var(--ink);color:var(--base);font:500 13px/1.2 var(--font);letter-spacing:0;white-space:nowrap}
 
 /* Chapters. The page snaps one screen at a time: every chapter starts a screen, and every story
    step is a screen of its own. Trackpad, wheel, keys, and touch all scroll natively. */
@@ -113,7 +108,7 @@ html{scroll-snap-type:y mandatory}
 main,.foot{position:relative;z-index:1}
 .bgc{display:block}
 .nogl{background:radial-gradient(40% 30% at 70% 30%,rgba(214,94,69,.4),transparent),radial-gradient(35% 30% at 20% 70%,rgba(43,84,92,.5),transparent),radial-gradient(20% 15% at 30% 20%,rgba(235,26,97,.3),transparent),var(--base)}
-.grain{inset:-10%;width:auto;height:auto;opacity:.1;background:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='220' height='220'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='.9' numOctaves='2' stitchTiles='stitch'/%3E%3CfeColorMatrix values='0 0 0 0 1 0 0 0 0 1 0 0 0 0 1 0 0 0 1.6 -.3'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)'/%3E%3C/svg%3E");animation:jit 1s steps(1,end) infinite paused}
+.grain{inset:-10%;width:auto;height:auto;opacity:.17;background:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='220' height='220'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='.9' numOctaves='2' stitchTiles='stitch'/%3E%3CfeColorMatrix values='0 0 0 0 1 0 0 0 0 1 0 0 0 0 1 0 0 0 1.6 -.3'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)'/%3E%3C/svg%3E");animation:jit 1s steps(1,end) infinite paused}
 [data-motion=play] .grain{animation-play-state:running}
 [data-motion=off] .grain{animation:none}
 @keyframes jit{0%{transform:translate(0,0)}20%{transform:translate(-4%,3%)}40%{transform:translate(3%,-2%)}60%{transform:translate(-2%,-4%)}80%{transform:translate(4%,2%)}}
@@ -180,14 +175,29 @@ main,.foot{position:relative;z-index:1}
 .head-txt p{color:var(--muted);font-size:var(--t-lead);line-height:1.4}
 .fan-demo{flex:1;min-height:0}
 
-/* A tool story. While the chapter scrolls past, a large Mac screen stays on the left, cut by the
-   window edge, and the text on the right changes one step at a time. The camera holds the screen in
-   real macOS points; script sizes it and sets the zoom of each step. One step means no pinning. */
+/* A tool story. While the chapter scrolls past, a large Mac screen stays on one side, cut by the
+   window edge, and the text on the other side changes one step at a time. Stories alternate sides.
+   The camera is a whole 1920 x 1080 point Mac screen; script pans and zooms it to crop in on each
+   step's shot, like a zoomed screen grab. One step means no pinning. */
 .story{--n:1;position:relative;height:calc(var(--n) * 100svh)}
 .s-pin{position:sticky;top:0;height:100svh;display:grid;grid-template-columns:56vw minmax(0,1fr);align-items:center;gap:clamp(40px,5vw,96px);padding-right:max(var(--m),calc((100vw - 1520px) / 2 + var(--m)))}
 .s-vis{position:relative;height:var(--vis);margin-left:-2px;overflow:hidden;border-radius:0 28px 28px 0;background:#1d1d1f;box-shadow:inset 0 0 0 1px var(--lit),var(--deep);transform:translateZ(0)}
-.s-cam{position:absolute;top:0;right:0;transform:scale(var(--z,1));transform-origin:100% 0;transition:transform 1s cubic-bezier(.65,0,.25,1);background:#1d1d1f var(--wall) 100% 50%/cover}
+.flip .s-pin{grid-template-columns:minmax(0,1fr) 56vw;padding-right:0;padding-left:max(var(--m),calc((100vw - 1520px) / 2 + var(--m)))}
+.flip .s-vis{order:2;margin:0 -2px 0 0;border-radius:28px 0 0 28px}
+.flip .s-txt{justify-self:end}
+.s-cam{position:absolute;left:0;top:0;width:1920px;height:1080px;transform-origin:0 0;transition:transform .7s cubic-bezier(.65,0,.25,1);background:#1d1d1f var(--wall) center/cover}
 .shot{position:absolute;top:29px;opacity:0;will-change:opacity,transform;transition:opacity .45s ease,transform .8s var(--spring)}
+/* A changed part of a shot, drawn over it after the pointer taps (RSync pauses a copy, Mac Tweaks rolls a value) */
+.fx{position:absolute;z-index:1;opacity:0;transition:opacity .12s}
+.fx>*{position:absolute}
+.fx b{top:0;font:600 13px/23px var(--font);letter-spacing:-.08px;white-space:nowrap}
+.tap .fx{opacity:1}
+.roll{overflow:hidden}
+.roll b{right:0;display:flex;flex-direction:column;font:400 13px/21px var(--font);color:#ececf0;font-variant-numeric:tabular-nums;text-align:right}
+.roll i{font-style:normal}
+.tap .roll b{animation:roll .9s steps(7,end) forwards}
+@keyframes roll{to{transform:translateY(-147px)}}
+[data-motion=off] .tap .roll b,[data-motion=pause] .tap .roll b{animation:none;transform:translateY(-147px)}
 .shot img{max-width:none;width:100%;box-shadow:var(--deep)} /* taste-skill-ignore: a real menu bar panel or window */
 .pan{z-index:2;width:356px;transform:translateY(-10px) scale(.97);transform-origin:50% 0}
 .pan img{border-radius:14px}
@@ -220,23 +230,8 @@ main,.foot{position:relative;z-index:1}
 .st p{font-size:var(--t-lead);line-height:1.4;color:var(--muted)}
 .st .card{align-self:flex-start}
 .st .card span{font-size:15px}
-/* The firewall example: this Mac, a dot running along the SSH line, the remote server */
-.st .route{display:flex;align-items:center;gap:14px;font:500 15px/1.3 var(--mono);color:var(--ink)} /* taste-skill-ignore: host:port pairs read as code */
-.route span{display:flex;flex-direction:column;gap:6px;padding:12px 14px;border-radius:14px;background:rgba(255,255,255,.08);box-shadow:inset 0 0 0 .5px rgba(255,255,255,.12)}
-.route small{font:500 13px/1 var(--font);color:var(--muted)}
-.route i{position:relative;flex:1;min-width:24px;height:2px;background:repeating-linear-gradient(90deg,var(--muted) 0 6px,transparent 6px 11px)}
-.route b{position:absolute;inset:-3px 0 auto;height:8px;opacity:0}
-.route b::before{content:"";position:absolute;left:0;top:0;width:8px;height:8px;border-radius:50%;background:var(--accent)}
-.st.on .route b{animation:carry 1.8s cubic-bezier(.45,0,.55,1) .6s infinite}
-[data-motion=pause] .st.on .route b{animation-play-state:paused}
-[data-motion=off] .st.on .route b{animation:none;opacity:1}
-@keyframes carry{0%{transform:translateX(0);opacity:0}15%,85%{opacity:1}100%{transform:translateX(calc(100% - 8px));opacity:0}}
-
-/* A menu bar on the camera: the real macOS bar over the wallpaper */
-.bar{position:absolute;z-index:1;inset:0 0 auto;height:24px;display:flex;align-items:center;gap:14px;padding:0 22px;color:#fff;font:500 13px/1 var(--font);letter-spacing:0;white-space:nowrap;filter:drop-shadow(0 0 3px rgba(0,0,0,.28))} /* taste-skill-ignore: macOS draws this shade under menu bar text on a wallpaper */
-.apps{flex:1;min-width:0;height:24px;overflow:hidden;display:flex;flex-wrap:wrap;align-items:center;align-content:flex-start;column-gap:19px}
-.apps>*{height:24px;display:flex;align-items:center} /* a menu that does not fit wraps out of sight, as macOS hides it whole */
-.apps b{font-weight:700}
+/* A menu bar on the camera: the right end of the real macOS bar over the wallpaper */
+.bar{position:absolute;z-index:1;inset:0 0 auto;height:24px;display:flex;align-items:center;justify-content:flex-end;gap:14px;padding:0 22px;color:#fff;font:500 13px/1 var(--font);letter-spacing:0;white-space:nowrap;filter:drop-shadow(0 0 3px rgba(0,0,0,.28))} /* taste-skill-ignore: macOS draws this shade under menu bar text on a wallpaper */
 .bar img{flex:none}
 .clock{flex:none;width:118px;text-align:right}
 
@@ -261,7 +256,9 @@ a.row:hover{background:var(--lit)}
 
 /* Footer: large type. Brand and links over a hairline, then the giant name, cut by the page bottom */
 .foot{max-width:1520px;margin:0 auto;padding:0 var(--m) 0;overflow:hidden}
-.foot-top{display:grid;grid-template-columns:minmax(0,5fr) minmax(0,7fr);gap:40px;padding-top:28px;border-top:.5px solid var(--lit)}
+.foot-top{position:relative;display:grid;grid-template-columns:minmax(0,5fr) minmax(0,7fr);gap:40px;margin-top:clamp(56px,10vh,112px);padding-top:clamp(32px,5vh,48px)}
+/* A short hairline that fades out at both ends */
+.foot-top::before{content:"";position:absolute;top:0;left:50%;width:min(56%,560px);height:1px;translate:-50% 0;background:linear-gradient(90deg,transparent,rgba(255,255,255,.22),transparent)}
 .brand{display:flex;flex-direction:column;gap:14px;align-items:flex-start}
 .brand .id{display:flex;align-items:center;gap:12px;font-weight:600;font-size:20px;letter-spacing:-.02em}
 .brand p{color:var(--muted);max-width:32ch}
@@ -290,7 +287,7 @@ a.row:hover{background:var(--lit)}
   /* Stories swap their steps with a short fade and no movement */
   .s-cam,.cur{transition:none}
   .shot,.st,.st.past,.st.on,.spot{transform:none;transition:opacity .2s,visibility 0s}
-  .st.on .route b{animation:none;opacity:1}
+  .tap .roll b{animation:none;transform:translateY(-147px)}
   .glass,.glass .glow,.gh-cta,.stars{transition:none}
   .js .word span{transform:none;opacity:1;transition:none}
 }
@@ -306,8 +303,9 @@ a.row:hover{background:var(--lit)}
   .st{gap:12px}
   .st h3{font-size:clamp(26px,7vw,40px)}
   .st p{font-size:16px;line-height:1.45}
-  .st .route{font-size:13px;gap:10px}
-  .route span{padding:8px 10px}
+  .flip .s-pin{grid-template-columns:minmax(0,1fr);padding:16px 0 76px var(--m)}
+  .flip .s-vis{order:0;margin:0 -2px 0 0}
+  .flip .s-txt{justify-self:stretch;padding:0 var(--m) 0 0}
   .head-txt{grid-template-columns:minmax(0,1fr)}
   .head-txt .kick{grid-row:auto}
   .foot-top{grid-template-columns:minmax(0,1fr)}
@@ -335,8 +333,7 @@ a.row:hover{background:var(--lit)}
   .demo{border-radius:0}
   .fan-stage{padding-inline:0}
   .fan-stage .head-txt{padding-inline:var(--m)}
-  .bar .apps,.bar .opt,.clock .d{display:none}
-  .bar{justify-content:flex-end}
+  .bar .opt,.clock .d{display:none}
   .clock{width:auto}
   .row{min-height:56px;padding:6px 10px;gap:12px}
   .row span{font-size:15px;white-space:normal}
