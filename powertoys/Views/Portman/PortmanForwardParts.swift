@@ -58,11 +58,13 @@ struct PortmanForwardStatus: View {
 struct PortmanForwardInputs: View {
     @Binding var host: String
     @Binding var manualPort: String
+    @Binding var mode: PortmanHostMode
     let aliases: [String]
     let scanning: Bool
     let scan: () -> Void
     let cancel: () -> Void
     let addPort: () -> Void
+    let addHost: () -> Void
 
     var body: some View {
         OnePlusLinearList(style: .panel) {
@@ -89,6 +91,54 @@ struct PortmanForwardInputs: View {
                     .accessibilityLabel("Remote port to add")
                 PortmanForwardKey("Add port", action: addPort).disabled(host.isEmpty)
             }
+            PortmanForwardRow {
+                OnePlusLinearSelect(
+                    choices: PortmanHostMode.allCases.map { ($0, $0.title) },
+                    selection: $mode,
+                    accessibilityLabel: "What to do with this host"
+                )
+                .frame(maxWidth: .infinity, alignment: .leading)
+                PortmanForwardKey("Add host", action: addHost).disabled(host.isEmpty)
+            }
         }
+    }
+}
+
+/// The parent row of a host in Forward: its name, mode, and monitor status or latest readings.
+struct PortmanHostRow: View {
+    let group: PortmanHostGroup
+    let state: PortmanServerState?
+    let now: Date
+
+    var body: some View {
+        PortmanForwardRow {
+            VStack(alignment: .leading, spacing: 0) {
+                Text(group.host.destination).linearText(OnePlusLinearMetrics.control, weight: .medium)
+                    .lineLimit(1).truncationMode(.middle)
+                Text(detail).linearText(OnePlusLinearMetrics.control, color: OnePlusLinearColor.secondary)
+                    .lineLimit(1).truncationMode(.tail)
+            }
+            .frame(maxWidth: .infinity, alignment: .leading)
+            Text(status).linearText(OnePlusLinearMetrics.control, color: OnePlusLinearColor.secondary)
+                .lineLimit(1).fixedSize()
+        }
+        .help(help)
+        .accessibilityElement(children: .combine)
+    }
+
+    private var status: String {
+        guard group.host.monitors, let state else { return group.saved ? group.host.mode.title : "Not saved" }
+        return state.statusText(now: now)
+    }
+
+    private var detail: String {
+        if group.host.monitors, let summary = state?.latest?.summary, !summary.isEmpty { return summary }
+        let count = group.children.count
+        return count == 1 ? "1 forward" : "\(count) forwards"
+    }
+
+    private var help: String {
+        if case .failed(let failure) = state?.status { return "\(group.host.destination) · \(failure.detail)" }
+        return "\(group.host.destination) · \(group.host.mode.title)"
     }
 }
