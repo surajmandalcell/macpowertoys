@@ -267,14 +267,17 @@ struct PortmanPanelView: View {
                 ], selection: Binding(get: { page }, set: navigate))
             } trailing: {
                 AttentionBell()
-                OnePlusLinearIconButton(systemImage: "gearshape", help: "Portman settings",
-                                        busy: service.isLoadingRemote ? "Scanning" : nil) {
-                    ToolActionRouter.shared.openMainPage(toolID: "portman")
-                }
-                .accessibilityIdentifier("portman.settings")
-                Button("Open MacPowerToys") { ToolActionRouter.shared.open(toolID: "main", page: "tool/portman") }
-                    .buttonStyle(OnePlusLinearButtonStyle(.filled))
+                OnePlusLinearIconTrack {
+                    OnePlusLinearIconButton(systemImage: "gearshape", help: "Portman settings", size: OnePlusLinearMetrics.iconTab,
+                                            busy: service.isLoadingRemote ? "Scanning" : nil) {
+                        ToolActionRouter.shared.openMainPage(toolID: "portman")
+                    }
+                    .accessibilityIdentifier("portman.settings")
+                    OnePlusLinearIconButton(systemImage: "arrow.up.right", help: "Open MacPowerToys", size: OnePlusLinearMetrics.iconTab) {
+                        ToolActionRouter.shared.open(toolID: "main", page: "tool/portman")
+                    }
                     .accessibilityIdentifier("portman.open-app")
+                }
             }
         } content: {
             MainPanelBodyLayout(maximumHeight: TrayPopoverLayout.maximumBodyHeight(panelCeiling: panelCeiling)) {

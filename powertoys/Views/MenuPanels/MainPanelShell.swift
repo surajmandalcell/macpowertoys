@@ -179,10 +179,13 @@ struct MainPanelFrame<Regions: View>: View {
                 OnePlusLinearIconTabs(tabs: menuTabs, selection: $selection, onMove: onMove)
             } trailing: {
                 AttentionBell()
-                OnePlusLinearIconButton(systemImage: "gearshape", help: "Open Settings", action: openSettings)
-                Button("Open MacPowerToys", action: openApp)
-                    .buttonStyle(OnePlusLinearButtonStyle(.filled))
-                    .accessibilityIdentifier("tray.open-app")
+                OnePlusLinearIconTrack {
+                    OnePlusLinearIconButton(systemImage: "gearshape", help: "Open Settings",
+                                            size: OnePlusLinearMetrics.iconTab, action: openSettings)
+                    OnePlusLinearIconButton(systemImage: "arrow.up.right", help: "Open MacPowerToys",
+                                            size: OnePlusLinearMetrics.iconTab, action: openApp)
+                        .accessibilityIdentifier("tray.open-app")
+                }
             }
         } content: {
             MainPanelBodyLayout(maximumHeight: maximumHeight) { regions }
@@ -275,12 +278,15 @@ struct IndividualToolMenuPanel: View {
             .accessibilityAddTraits(.isHeader)
         } trailing: {
             AttentionBell()
-            OnePlusLinearIconButton(systemImage: "gearshape", help: "Open Settings") {
-                ToolActionRouter.shared.open(toolID: tool.id, page: "settings")
-            }
-            Button("Open App") { ToolActionRouter.shared.open(toolID: tool.id) }
-                .buttonStyle(OnePlusLinearButtonStyle(.filled))
+            OnePlusLinearIconTrack {
+                OnePlusLinearIconButton(systemImage: "gearshape", help: "Open Settings", size: OnePlusLinearMetrics.iconTab) {
+                    ToolActionRouter.shared.open(toolID: tool.id, page: "settings")
+                }
+                OnePlusLinearIconButton(systemImage: "arrow.up.right", help: "Open App", size: OnePlusLinearMetrics.iconTab) {
+                    ToolActionRouter.shared.open(toolID: tool.id)
+                }
                 .accessibilityIdentifier("tray.\(tool.id).open-app")
+            }
         } content: {
             content
         }

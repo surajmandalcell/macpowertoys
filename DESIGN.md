@@ -418,10 +418,11 @@ ease-in cubic-bezier(0.4, 0, 1, 1)):
   raised radius 6 key. Dark: deep track, `#313136` to `#28282C` key, a 1 pt
   fading `softKeyDivider` between two unselected tabs only. Context menu
   Move Left and Move Right reorder tool tabs. Trailing, 2 pt apart: the
-  28 pt gear (opens Settings), then the 26 pt "Ink key" `Open MacPowerToys`
-  (dark key and white label in Light, light key and `#141416` label in
-  Dark), radius 8, 10 pt padding, 12 pt medium text centered on its cap
-  height. Quit stays in the status item menu.
+  28 pt bell, then "Shared track" (`OnePlusLinearIconTrack`): the 26 pt
+  gear (opens Settings) and a 26 pt `arrow.up.right` (Open MacPowerToys,
+  its label and tooltip) in the same sunken radius 8 track as the tabs,
+  13 pt glyphs in `secondary` ink, hover and press like the tabs. No text
+  key. Quit stays in the status item menu.
 - Groups: `fillGroup`, radius 10, 4 pt top and bottom padding, no
   separators. Row hover is a radius 6 `fillRowHover` step 4 pt inside the
   group sides and 1 pt off the row edges.
@@ -530,7 +531,8 @@ the Open key. Parts: `PortmanOverviewParts.swift`,
 ### Separate tool panels
 
 `OnePlusLinearMenuPanel`: the combined panel's shell and 46 pt top bar (a
-one-key icon track and the tool name; the gear and `Open App` trailing),
+one-key icon track and the tool name; the bell, then the gear and Open
+arrow in one icon track, trailing),
 with the same height reporting. The body is the tool-tab content: RSync UI
 and Input Devices without their Open key, Awake as one group, Color Picker
 and Text Extractor as one action key.

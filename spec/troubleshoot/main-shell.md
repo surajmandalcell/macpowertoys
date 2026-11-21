@@ -459,7 +459,8 @@ References: [suppressed launch](https://developer.apple.com/documentation/swiftu
 
 - **Invariant:** The combined panel has no top bar. Its footer leads with
   the icon tabs (Home first; tool tabs reorder through Move Left and Move
-  Right) and ends with the gear and Open App. Quit lives in the status
+  Right) and ends with the bell, then the gear and the Open arrow
+  (`tray.open-app`) in one icon track. Quit lives in the status
   item's right-click menu. Home is the bento, the Fan and Awake card, three
   top processes, then the Pick Color, Extract Text, and Ruler action bar.
   The body is the only scroller: `MainPanelBodyLayout` gives it its natural
