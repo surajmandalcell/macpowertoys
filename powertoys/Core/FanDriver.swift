@@ -4,10 +4,10 @@ import Foundation
 /// helper. Runs only on `FanCommand.controlQueue`.
 ///
 /// Both manual presets start from the fans' current speed and move the target once per second. Max climbs at most
-/// 1500 RPM a second. Cool follows the hottest CPU die sensor (`Tp*` P-cores, `Te*` E-cores), smoothed so a
-/// one-core spike does not reach the fans, along the saved `FanCurve` (by default Mn at 65 °C or less, Mx at 90 °C
-/// or more, linear between); it rises at most 300 RPM and falls at most 150 RPM a second. When a Keep target is
-/// saved (`FanHold`), Cool holds the CPU at that temperature with a PI loop instead of the curve, in the same steps.
+/// 1500 RPM a second. Cool follows `FanInput`, the CPU and GPU die averages over 20 s, along the saved `FanCurve`
+/// (by default Mn at a 50 °C average or less, Mx at 80 °C or more); the higher request wins, and 10 s with the hottest
+/// core at 90 °C or more forces full speed. It rises at most 300 RPM and falls at most 150 RPM a second. When a Keep
+/// target is saved (`FanHold`), Cool holds that average with a PI loop instead of the curve, in the same steps.
 ///
 /// SMC reads lag a write by up to about 0.7 s, so every check reads keys written at least one tick earlier.
 nonisolated enum FanDriver {
@@ -25,12 +25,11 @@ nonisolated enum FanDriver {
     static let coolRise = 300.0
     static let coolFall = 150.0
     static let maxRise = 1_500.0
-    static let smoothing = 0.2
 
     nonisolated(unsafe) private static var link: HelperFanKeys?
     nonisolated(unsafe) private static var timer: DispatchSourceTimer?
     nonisolated(unsafe) private static var targets: [Int: Double] = [:]
-    nonisolated(unsafe) private static var smoothed: Double?
+    nonisolated(unsafe) private static var input: FanInput?
     nonisolated(unsafe) private static var hold: FanHold?
     nonisolated(unsafe) private static var mismatches = 0
     nonisolated(unsafe) static var onManualLost: (@Sendable (String) -> Void)?
@@ -46,12 +45,12 @@ nonisolated enum FanDriver {
             targets = Dictionary(uniqueKeysWithValues: fans.map { fan in
                 (fan.index, min(max(smc.number("F\(fan.index)Ac") ?? fan.minimum, fan.minimum), fan.maximum).rounded())
             })
-            smoothed = nil
+            input = nil
             hold = nil
             mismatches = 0
             try writeTargets(preset, fans: fans, keys: keys, smc: smc)
             log("Fan \(preset.rawValue): from \(fans.map { Int(smc.number("F\($0.index)Ac") ?? 0) }) RPM"
-                + (smoothed.map { ", CPU \(Int($0)) °C" } ?? ""))
+                + (input?.driving.map { ", \($0.name) \(Int($0.celsius)) °C" } ?? ""))
         } catch {
             try? restoreAutomatic(smc)
             throw error
@@ -59,31 +58,30 @@ nonisolated enum FanDriver {
         startTimer(preset, fans: fans)
     }
 
-    /// One tick of Cool: the speed the smoothed CPU temperature asks for, reached in limited steps.
-    static func coolTarget(hottest: Double, previous: Double?, minimum: Double, maximum: Double,
-                           curve: FanCurve = .standard) -> Double {
-        let desired = (minimum + (maximum - minimum) * curve.speed(at: hottest)).rounded()
-        return step(toward: desired, from: previous ?? minimum, rise: coolRise, fall: coolFall,
-                    minimum: minimum, maximum: maximum)
+    /// One tick of Cool: the speed (0-1) `FanInput` asks for, reached in limited steps.
+    static func coolTarget(speed: Double, previous: Double?, minimum: Double, maximum: Double) -> Double {
+        step(toward: (minimum + (maximum - minimum) * speed).rounded(), from: previous ?? minimum, rise: coolRise,
+             fall: coolFall, minimum: minimum, maximum: maximum)
     }
 
-    /// One tick of Keep for one fan: the controller's speed, the locked full speed from 90 °C on top, in Cool's steps.
-    static func keepTarget(speed: Double, hottest: Double, previous: Double?, minimum: Double, maximum: Double) -> Double {
-        let speed = hottest >= FanCurve.lockedEnd.celsius ? 1 : speed
-        return step(toward: (minimum + (maximum - minimum) * speed).rounded(), from: previous ?? minimum,
-                    rise: coolRise, fall: coolFall, minimum: minimum, maximum: maximum)
+    /// One tick of Keep for one fan: the controller's speed, with full speed at the locked end or while the
+    /// hottest-core safety holds, in Cool's steps.
+    static func keepTarget(speed: Double, celsius: Double, forced: Bool = false, previous: Double?, minimum: Double,
+                           maximum: Double) -> Double {
+        coolTarget(speed: forced || celsius >= FanCurve.lockedEnd.celsius ? 1 : speed, previous: previous,
+                   minimum: minimum, maximum: maximum)
     }
 
     /// Advances the Keep controller once per tick, or returns nil when no Keep target is saved. It starts from the
     /// first fan's current speed and keeps its learned speed when only the target changes.
-    private static func keepSpeed(_ hottest: Double, fans: [Fan]) -> Double? {
+    private static func keepSpeed(_ celsius: Double, fans: [Fan]) -> Double? {
         guard let target = FanHold.savedTarget() else { hold = nil; return nil }
         if hold == nil, let fan = fans.first {
             let current = targets[fan.index] ?? fan.minimum
             hold = FanHold(target: target, speed: (current - fan.minimum) / max(fan.maximum - fan.minimum, 1))
         }
         hold?.retarget(target)
-        return hold?.next(celsius: hottest)
+        return hold?.next(celsius: celsius)
     }
 
     static func step(toward desired: Double, from previous: Double, rise: Double, fall: Double,
@@ -126,16 +124,16 @@ nonisolated enum FanDriver {
     }
 
     private static func writeTargets(_ preset: FanPreset, fans: [Fan], keys: HelperFanKeys, smc: SMCSession) throws {
-        let temperature: Double? = if preset == .cool { try cpuTemperature(smc) } else { nil }
-        let curve = temperature == nil ? FanCurve.standard : FanCurve.load()
-        let holdSpeed = temperature.flatMap { keepSpeed($0, fans: fans) }
+        let input: (celsius: Double, forced: Bool, speed: Double)? = if preset == .cool {
+            try readInput(smc)
+        } else { nil }
+        let holdSpeed = input.flatMap { keepSpeed($0.celsius, fans: fans) }
         for fan in fans {
             let previous = targets[fan.index] ?? fan.minimum
-            let target = temperature.map { hottest in
-                holdSpeed.map { keepTarget(speed: $0, hottest: hottest, previous: previous, minimum: fan.minimum,
-                                           maximum: fan.maximum) }
-                    ?? coolTarget(hottest: hottest, previous: previous, minimum: fan.minimum, maximum: fan.maximum,
-                                  curve: curve)
+            let target = input.map { input in
+                holdSpeed.map { keepTarget(speed: $0, celsius: input.celsius, forced: input.forced, previous: previous,
+                                           minimum: fan.minimum, maximum: fan.maximum) }
+                    ?? coolTarget(speed: input.speed, previous: previous, minimum: fan.minimum, maximum: fan.maximum)
             } ?? step(toward: fan.maximum, from: previous, rise: maxRise, fall: maxRise,
                       minimum: fan.minimum, maximum: fan.maximum)
             if let failure = keys.write(fan.targetKey, value: target) { throw FanError(failure) }
@@ -190,12 +188,19 @@ nonisolated enum FanDriver {
         onManualLost?(reason)
     }
 
-    /// The hottest CPU die sensor, smoothed over about 5 s.
-    private static func cpuTemperature(_ smc: SMCSession) throws -> Double {
-        guard let hottest = CPUTemperatureSensor.hottest(smc) else { throw FanError("No CPU temperature sensor was found.") }
-        let next = smoothed.map { $0 + smoothing * (hottest - $0) } ?? hottest
-        smoothed = next
-        return next
+    /// One tick of `FanInput`: the driving average, the hottest-core safety, and the speed the saved curve asks for.
+    private static func readInput(_ smc: SMCSession) throws -> (celsius: Double, forced: Bool, speed: Double) {
+        let reading = CPUTemperatureSensor.read(smc)
+        guard reading.cpu != nil else { throw FanError("No CPU temperature sensor was found.") }
+        var next = input ?? FanInput()
+        next.update(reading, elapsed: tick)
+        if next.forcesFull != (input?.forcesFull ?? false) {
+            log(next.forcesFull ? "Fan: one core held \(Int(FanInput.hotCelsius)) °C for \(Int(FanInput.hotSeconds)) s, full speed"
+                                : "Fan: hottest core under \(Int(FanInput.releaseCelsius)) °C, back to the curve")
+        }
+        input = next
+        guard let driving = next.driving else { throw FanError("No CPU temperature sensor was found.") }
+        return (driving.celsius, next.forcesFull, next.speed(FanCurve.load()))
     }
 
     private static func helperKeys() -> HelperFanKeys {

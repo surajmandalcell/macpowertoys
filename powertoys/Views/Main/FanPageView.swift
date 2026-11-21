@@ -18,7 +18,7 @@ struct FanPageView: View {
     private var curve: FanCurve { preset.curve ?? custom }
     private var hold: Double? { holdCelsius.map { min(max($0, FanHold.range.lowerBound), FanHold.range.upperBound) } }
     private var nowCelsius: Double? { service.display.cpuCelsius.map(Double.init) }
-    private var nowChip: String? { service.display.cpuCelsius.map { "\($0) °C · \(service.display.rpm)" } }
+    private var nowChip: String? { service.display.cpuCelsius.map { "\(service.display.inputName) \($0) °C · \(service.display.rpm)" } }
 
     var body: some View {
         OnePlusLinearEditorialBody {
@@ -56,7 +56,7 @@ struct FanPageView: View {
 
     private var nowText: String {
         let display = service.display
-        return [display.cpuCelsius.map { CPUHeat.help($0) }, display.rpm].compactMap(\.self).joined(separator: " · ")
+        return [display.cpuCelsius.map { CPUHeat.help($0, name: display.inputName) }, display.rpm].compactMap(\.self).joined(separator: " · ")
     }
 }
 
@@ -122,7 +122,7 @@ private struct FanPresetCards: View {
     }
 }
 
-/// A card's picture on the full 30-100 °C scale: the curve with a soft fill, or for Hold the target line in its band.
+/// A card's picture on the full 30-90 °C scale: the curve with a soft fill, or for Hold the target line in its band.
 private struct FanMiniChart: View {
     enum Shape { case curve(FanCurve), hold(Double) }
     let shape: Shape
@@ -153,7 +153,7 @@ private struct FanMiniChart: View {
     }
 }
 
-/// Temperature across (30-100 °C) and speed up (0-1) inside one rectangle.
+/// Temperature across (30-90 °C average) and speed up (0-1) inside one rectangle.
 private struct FanPlot {
     let rect: CGRect
     static let domain = FanCurve.temperatureRange
@@ -180,7 +180,8 @@ private struct FanPlot {
     }
 }
 
-/// The "Heat line" colors (owner pick, 2026-11-20): cool blue through the `CPUHeat` steps to very hot red.
+/// The "Heat line" colors (owner pick, 2026-11-20): cool blue through the `CPUHeat` steps to very hot red. The stops
+/// sit where those steps fall on the 30-90 °C average scale.
 enum FanHeat {
     static func color(_ celsius: Double) -> Color {
         switch CPUHeat(celsius: celsius) {
@@ -193,8 +194,8 @@ enum FanHeat {
     }
 
     static let gradient = LinearGradient(stops: [
-        .init(color: OnePlusLinearColor.temperatureCool, location: 0.1), .init(color: OnePlusLinearColor.temperatureWarm, location: 0.45),
-        .init(color: OnePlusLinearColor.temperatureHot, location: 0.7), .init(color: OnePlusLinearColor.temperatureVeryHot, location: 0.86),
+        .init(color: OnePlusLinearColor.temperatureCool, location: 0.1), .init(color: OnePlusLinearColor.temperatureWarm, location: 0.36),
+        .init(color: OnePlusLinearColor.temperatureHot, location: 0.54), .init(color: OnePlusLinearColor.temperatureVeryHot, location: 0.7),
     ], startPoint: .leading, endPoint: .trailing)
 }
 
@@ -304,7 +305,7 @@ struct FanPageIcon: View {
     }
 }
 
-/// Temperature across (30-100 °C), speed up (0% at each fan's minimum, 100% at its maximum).
+/// Temperature across (30-90 °C average), speed up (0% at each fan's minimum, 100% at its maximum).
 struct FanCurveEditor: View {
     let curve: FanCurve
     let nowCelsius: Double?
@@ -526,11 +527,11 @@ struct FanCurveEditor: View {
 
 }
 
-/// Three dotted guides at 0, 50 and 100%, and 10 pt `tertiary` labels for speed and for 40-90 °C.
+/// Three dotted guides at 0, 50 and 100%, and 10 pt `tertiary` labels for speed and for 40-80 °C.
 private struct FanCurveGrid: View {
     let plot: FanPlot
     private static let labelSize: CGFloat = 10
-    private static let celsiusLabels = Array(stride(from: 40.0, through: 90.0, by: 10))
+    private static let celsiusLabels = Array(stride(from: 40.0, through: 80.0, by: 10))
 
     var body: some View {
         ZStack(alignment: .topLeading) {
@@ -573,7 +574,7 @@ private struct FanCurveLine: View {
     }
 }
 
-/// The fixed end of every curve (owner, 2026-11-20): full speed from 90 °C. An ink dot with a lock, unlike the
+/// The fixed end of every curve (owner, 2026-11-20): full speed from an 80 °C CPU average. An ink dot with a lock, unlike the
 /// user's white points, and its label to the left above the plot; it never moves.
 private struct FanLockedEnd: View {
     let point: CGPoint
@@ -598,7 +599,7 @@ private struct FanLockedEnd: View {
                 .background(Circle().fill(OnePlusLinearColor.ink))
                 .shadow(color: OnePlusLinearColor.quietKnobShadow, radius: 1.5, y: 1)
                 .position(point)
-                .help("Locked: the fans always run at full speed from \(Int(FanCurve.lockedEnd.celsius)) °C, where the chip is close to throttling.")
+                .help("Locked: the fans always run at full speed from a \(Int(FanCurve.lockedEnd.celsius)) °C CPU average, and when one core stays at \(Int(FanInput.hotCelsius)) °C for \(Int(FanInput.hotSeconds)) s.")
         }
         .accessibilityElement()
         .accessibilityLabel("Locked end point: full speed from \(Int(FanCurve.lockedEnd.celsius)) °C")

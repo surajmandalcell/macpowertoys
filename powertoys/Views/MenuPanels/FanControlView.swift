@@ -13,7 +13,7 @@ struct FanControlView: View {
     private var detail: String { display.detail }
 
     var body: some View {
-        MainPanelFanRow(status: display.rpm, cpuCelsius: display.cpuCelsius, selection: presetBinding,
+        MainPanelFanRow(status: display.rpm, cpuCelsius: display.cpuCelsius, inputName: display.inputName, selection: presetBinding,
                                 isChoiceEnabled: { !display.isChanging && display.canSelect($0) }) {
             if display.hasError || (display.hasCompletedRead && !display.canControl) {
                 setupButton
@@ -107,6 +107,7 @@ struct FanControlView: View {
 struct MainPanelFanRow<Setup: View>: View {
     let status: String
     var cpuCelsius: Int?
+    var inputName = FanInput.cpuName
     @Binding var selection: FanPreset?
     let isChoiceEnabled: (FanPreset) -> Bool
     @ViewBuilder let setup: Setup
@@ -131,7 +132,7 @@ struct MainPanelFanRow<Setup: View>: View {
         OnePlusLinearControlRow("Fan", systemImage: "fanblades", status: status, titleWidth: nil) {
             HStack(spacing: 4) {
                 setup
-                if let cpuCelsius { CPUThermometer(celsius: cpuCelsius) }
+                if let cpuCelsius { CPUThermometer(celsius: cpuCelsius, name: inputName) }
                 OnePlusLinearSegmented(choices: choices, selection: shownSelection, accessibilityLabel: "Fan preset",
                                        sizing: .snug, isChoiceEnabled: { $0.map(isChoiceEnabled) ?? false || $0 == requested })
                     .onChange(of: selection) { requested = nil }
@@ -143,7 +144,7 @@ struct MainPanelFanRow<Setup: View>: View {
                     }
                     .help(isCustom
                           ? "Auto follows macOS. Custom follows your curve on the Fan page. Max runs fans at their hardware maximum."
-                          : "Auto follows macOS. Cool follows the pick on the Fan page, full speed at 90 °C. Max runs fans at their hardware maximum.")
+                          : "Auto follows macOS. Cool follows the pick on the Fan page, full speed at an 80 °C CPU average. Max runs fans at their hardware maximum.")
             }
         }
     }
@@ -152,14 +153,15 @@ struct MainPanelFanRow<Setup: View>: View {
 /// A thermometer tinted by `CPUHeat`: gray while the CPU is at normal temperatures, then yellow, orange, and red.
 struct CPUThermometer: View {
     let celsius: Int
+    var name = FanInput.cpuName
 
     var body: some View {
         Image(systemName: "thermometer.medium")
             .font(.system(size: OnePlusLinearMetrics.caption + 1, weight: .medium))
             .foregroundStyle(Self.color(CPUHeat(celsius: Double(celsius))))
             .frame(width: OnePlusLinearMetrics.segment.height - 4, height: OnePlusLinearMetrics.segment.height)
-            .help(CPUHeat.help(celsius))
-            .accessibilityLabel(CPUHeat.help(celsius))
+            .help(CPUHeat.help(celsius, name: name))
+            .accessibilityLabel(CPUHeat.help(celsius, name: name))
     }
 
     static func color(_ heat: CPUHeat) -> Color {
