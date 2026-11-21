@@ -178,11 +178,13 @@ nonisolated struct FanControlPresentation: Equatable, Sendable {
     var hasCompletedRead = false
     var hasError = false
     var cpuCelsius: Int?
+    var inputName = FanInput.cpuName
 
     init(snapshot: FanSnapshot? = nil, selectedPreset: FanPreset? = nil, errorMessage: String? = nil,
          canRestoreAutomatic: Bool = false, canInstallHelper: Bool = false, isUnsupportedBuild: Bool = false,
-         isChanging: Bool = false, hasCompletedRead: Bool = false, cpuCelsius: Double? = nil) {
+         isChanging: Bool = false, hasCompletedRead: Bool = false, cpuCelsius: Double? = nil, inputName: String = FanInput.cpuName) {
         self.cpuCelsius = cpuCelsius.map { Int($0.rounded()) }
+        self.inputName = inputName
         rpm = snapshot?.averageRPM.map { $0.formatted() + " RPM" } ?? "— RPM"
         let utilization = snapshot?.utilization.map { "\($0)%" } ?? "—%"
         status = "\(rpm) · \(utilization)"
@@ -265,14 +267,17 @@ final class FanControlService {
     private(set) var selectedPreset: FanPreset? { didSet { scheduleDisplay() } }
     private(set) var errorMessage: String? { didSet { scheduleDisplay() } }
     private(set) var isChanging = false { didSet { scheduleDisplay() } }
-    /// The hottest CPU sensor, smoothed across polls so one busy core does not flash the thermometer.
+    /// The Fan input, the higher of the CPU and GPU die averages over 20 s (`FanInput`), and its name.
     private(set) var cpuCelsius: Double? { didSet { scheduleDisplay() } }
+    private(set) var inputName = FanInput.cpuName
+    @ObservationIgnored private var input = FanInput()
+    @ObservationIgnored private var lastTemperatureRead: ContinuousClock.Instant?
     private(set) var display = FanControlPresentation()
     @ObservationIgnored private var displayTask: Task<Void, Never>?
     @ObservationIgnored private var lastDisplayPublication: ContinuousClock.Instant?
     @ObservationIgnored private var displayRevision = 0
     @ObservationIgnored private let readSnapshot: @Sendable () -> FanSnapshot?
-    @ObservationIgnored private let readTemperature: @Sendable () -> Double?
+    @ObservationIgnored private let readTemperature: @Sendable () -> FanTemperatures?
     @ObservationIgnored private let applyPreset: @Sendable (FanPreset, @escaping @Sendable (String?) -> Void) -> Void
     private var owners = Set<String>()
     private var pollTask: Task<Void, Never>?
@@ -293,6 +298,7 @@ final class FanControlService {
     private convenience init() {
         self.init(readSnapshot: FanCommand.read, readTemperature: CPUTemperatureSensor.read)
         Self.current = self
+        if let moved = FanCurve.migrateToAverageScale() { LogManager.shared.info(moved, source: "Fan") }
         FanCommand.setManualLostHandler { reason in
             Task { @MainActor in FanControlService.shared.manualControlLost(reason) }
         }
@@ -364,7 +370,7 @@ final class FanControlService {
     }
 
     init(readSnapshot: @escaping @Sendable () -> FanSnapshot?,
-         readTemperature: @escaping @Sendable () -> Double? = { nil },
+         readTemperature: @escaping @Sendable () -> FanTemperatures? = { nil },
          applyPreset: @escaping @Sendable (FanPreset, @escaping @Sendable (String?) -> Void) -> Void = FanCommand.apply) {
         self.readSnapshot = readSnapshot
         self.readTemperature = readTemperature
@@ -406,6 +412,8 @@ final class FanControlService {
         displayTask?.cancel()
         displayTask = nil
         cpuCelsius = nil
+        input = FanInput()
+        lastTemperatureRead = nil
     }
 
     func refresh() async {
@@ -415,7 +423,13 @@ final class FanControlService {
         let (result, celsius) = await Task.detached(priority: .utility) { (readSnapshot(), readTemperature()) }.value
         guard currentRevision == revision, !owners.isEmpty, !isRestoringOnExit else { return }
         hasCompletedRead = true
-        cpuCelsius = celsius.map { new in cpuCelsius.map { $0 + 0.5 * (new - $0) } ?? new }
+        if let reading = celsius {
+            let now = ContinuousClock.now
+            input.update(reading, elapsed: lastTemperatureRead.map { (now - $0) / .seconds(1) } ?? 1)
+            lastTemperatureRead = now
+            inputName = input.driving?.name ?? FanInput.cpuName
+            cpuCelsius = input.driving?.celsius
+        }
         if let result {
             // A helper that is missing or older still allows a choice: the first write installs it.
             let helper = FanHelperService.shared
@@ -528,11 +542,12 @@ final class FanControlService {
             let isChanging = isChanging
             let hasCompletedRead = hasCompletedRead
             let cpuCelsius = cpuCelsius
+            let inputName = inputName
             let next = await Task.detached(priority: .utility) {
                 FanControlPresentation(snapshot: snapshot, selectedPreset: selectedPreset, errorMessage: errorMessage,
                                        canRestoreAutomatic: canRestoreAutomatic, canInstallHelper: canInstallHelper,
                                        isUnsupportedBuild: isUnsupportedBuild, isChanging: isChanging,
-                                       hasCompletedRead: hasCompletedRead, cpuCelsius: cpuCelsius)
+                                       hasCompletedRead: hasCompletedRead, cpuCelsius: cpuCelsius, inputName: inputName)
             }.value
             guard !Task.isCancelled, !owners.isEmpty else { return }
             displayTask = nil

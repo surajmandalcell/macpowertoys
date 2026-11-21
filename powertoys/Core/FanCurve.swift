@@ -1,9 +1,10 @@
 import Foundation
 
-/// The one Cool curve: fan speed for a CPU temperature. `speed` is a fraction of each fan's own range, 0 at Mn and
-/// 1 at Mx. Speed never falls as the temperature rises, so an edit can never slow the fans when the chip is hotter.
-/// The user's points stay below `lockedEnd`, the fixed full-speed point at 90 °C where Apple Silicon is close to
-/// throttling; the curve always runs through it and stays at full speed above it.
+/// The one Cool curve: fan speed for a `FanInput` temperature, the 20 s CPU (or GPU) die average. `speed` is a
+/// fraction of each fan's own range, 0 at Mn and 1 at Mx. Speed never falls as the temperature rises, so an edit can
+/// never slow the fans when the chip is hotter. The user's points stay below `lockedEnd`, the fixed full-speed point
+/// at an 80 °C average, where the hottest core reads about 100 °C and Apple Silicon is close to throttling; the curve
+/// always runs through it and stays at full speed above it.
 nonisolated struct FanCurve: Codable, Equatable, Sendable {
     struct Point: Codable, Equatable, Sendable {
         var celsius: Double
@@ -11,11 +12,36 @@ nonisolated struct FanCurve: Codable, Equatable, Sendable {
     }
 
     static let storageKey = "fan.coolCurve"
-    static let temperatureRange = 30.0...100.0
-    static let lockedEnd = Point(celsius: 90, speed: 1)
+    static let temperatureRange = 30.0...90.0
+    static let lockedEnd = Point(celsius: 80, speed: 1)
     /// The highest temperature a user point may take.
     static let userCeiling = lockedEnd.celsius - 1
-    static let standard = FanCurve(points: [Point(celsius: 65, speed: 0)])
+    static let standard = FanCurve(points: [Point(celsius: 50, speed: 0)])
+
+    /// The 2026-11-21 trace fit from the hottest core (the old input) to the CPU die average, both over 20 s:
+    /// average = 1.4 + 0.788 × hottest. Saved temperatures from before the change move through it once.
+    static let scaleKey = "fan.inputScale"
+    static func averageScale(fromHottest celsius: Double) -> Double { (1.4 + 0.788 * celsius).rounded() }
+
+    /// Moves a Custom curve and a Hold target saved on the hottest-core scale to the average scale, once. Returns a
+    /// log line when something moved.
+    static func migrateToAverageScale(_ defaults: UserDefaults = .standard) -> String? {
+        guard defaults.integer(forKey: scaleKey) < 2 else { return nil }
+        defaults.set(2, forKey: scaleKey)
+        var moved: [String] = []
+        // Raw points: decoding a `FanCurve` would drop old points above the new ceiling before they move.
+        if let data = defaults.data(forKey: storageKey),
+           let old = (try? JSONDecoder().decode([String: [Point]].self, from: data))?["points"] {
+            let new = FanCurve(points: old.map { Point(celsius: averageScale(fromHottest: $0.celsius), speed: $0.speed) })
+            if let encoded = try? JSONEncoder().encode(new) { defaults.set(encoded, forKey: storageKey) }
+            moved.append("Custom curve \(old.map { Int($0.celsius) }) °C to \(new.points.map { Int($0.celsius) }) °C")
+        }
+        if let target = defaults.object(forKey: FanHold.storageKey) as? Double {
+            FanHold.save(averageScale(fromHottest: target), defaults)
+            moved.append("Hold \(Int(target)) °C to \(Int(FanHold.savedTarget(defaults) ?? 0)) °C")
+        }
+        return moved.isEmpty ? nil : "Fan input is now the CPU average: moved " + moved.joined(separator: ", ")
+    }
     static let maxPoints = 8
 
     /// The user's points, all below `lockedEnd`.
@@ -103,9 +129,10 @@ nonisolated struct FanCurve: Codable, Equatable, Sendable {
     }
 }
 
-/// The fixed Cool curves (owner pick "By sound", 2026-11-20). macOS Auto on this Mac keeps the fans at their minimum
-/// even at 86-96 °C, so each preset rests at the minimum like Auto, then ramps early enough that the CPU never sits
-/// near the locked full speed at 90 °C. Custom is the user's own curve.
+/// The fixed Cool curves on the CPU-average scale (owner, 2026-11-21: "less full fan spin-ups"). Silent and Quiet are
+/// by sound: they leave the minimum early, at 50 and 48 °C, and climb gently, so heat never builds to a loud spin-up;
+/// full speed comes only from the locked end or the hottest-core safety. Steady is the aggressive curve. Custom is the
+/// user's own curve.
 nonisolated enum FanCurvePreset: String, CaseIterable, Sendable {
     case silent, quiet, steady, custom
 
@@ -115,10 +142,12 @@ nonisolated enum FanCurvePreset: String, CaseIterable, Sendable {
 
     var curve: FanCurve? {
         switch self {
-        case .silent: FanCurve(points: [.init(celsius: 75, speed: 0), .init(celsius: 85, speed: 0.3)])
-        case .quiet: FanCurve(points: [.init(celsius: 68, speed: 0), .init(celsius: 78, speed: 0.2), .init(celsius: 85, speed: 0.45)])
-        case .steady: FanCurve(points: [.init(celsius: 60, speed: 0), .init(celsius: 70, speed: 0.2),
-                                        .init(celsius: 80, speed: 0.45), .init(celsius: 86, speed: 0.7)])
+        case .silent: FanCurve(points: [.init(celsius: 50, speed: 0), .init(celsius: 60, speed: 0.12),
+                                        .init(celsius: 68, speed: 0.25), .init(celsius: 74, speed: 0.4)])
+        case .quiet: FanCurve(points: [.init(celsius: 48, speed: 0), .init(celsius: 58, speed: 0.15),
+                                       .init(celsius: 66, speed: 0.32), .init(celsius: 73, speed: 0.5)])
+        case .steady: FanCurve(points: [.init(celsius: 45, speed: 0), .init(celsius: 55, speed: 0.25),
+                                        .init(celsius: 63, speed: 0.5), .init(celsius: 70, speed: 0.75)])
         case .custom: nil
         }
     }
@@ -140,10 +169,10 @@ nonisolated enum FanCurvePreset: String, CaseIterable, Sendable {
 /// the target ± `band` nothing changes, so the fans hold one steady speed.
 nonisolated struct FanHold: Equatable, Sendable {
     static let storageKey = "fan.keepCelsius"
-    /// 2026-11-20, normal desktop use: the hottest die read 50-78 °C, median 67 °C, over 2 minutes. A target below
-    /// that would hold the fans near full speed all day, so the range starts a few degrees above the median.
-    static let range = 70.0...85.0
-    static let defaultTarget = 75.0
+    /// The old 70-85 °C hottest-core range through the trace fit (56.5-68.4 °C average). In normal desktop use the
+    /// hottest die read median 67 °C (about 54 °C average); a target below that would hold the fans high all day.
+    static let range = 56.0...70.0
+    static let defaultTarget = 62.0
     static let band = 2.0
     static let gain = 0.05
     static let reset = 0.002
@@ -183,5 +212,53 @@ nonisolated struct FanHold: Equatable, Sendable {
     /// Picks Keep; the saved curve stays as Custom but is not used while Keep is on.
     static func save(_ celsius: Double, _ defaults: UserDefaults = .standard) {
         defaults.set(clamped(celsius), forKey: storageKey)
+    }
+}
+
+/// What Cool follows (owner pick "CPU and GPU averages, 20 s", 2026-11-21): the CPU die average and the GPU die
+/// average, each over a 20 s average, so one busy core never spins the fans up. Each goes through the curve and the
+/// higher request wins. The hottest single core only guards the chip: 10 s in a row at 90 °C or more forces full
+/// speed until it reads below 85 °C.
+nonisolated struct FanInput: Equatable, Sendable {
+    static let timeConstant = 20.0
+    static let hotCelsius = 90.0
+    static let hotSeconds = 10.0
+    static let releaseCelsius = 85.0
+    static let cpuName = "CPU avg"
+    static let gpuName = "GPU avg"
+
+    private(set) var cpu: Double?
+    private(set) var gpu: Double?
+    private(set) var hotFor = 0.0
+    private(set) var forcesFull = false
+
+    /// Adds one read, `elapsed` seconds after the last one. The first read starts each average.
+    mutating func update(_ reading: FanTemperatures, elapsed: Double = 1) {
+        let share = 1 - exp(-elapsed / Self.timeConstant)
+        cpu = Self.blend(cpu, reading.cpu, share)
+        gpu = Self.blend(gpu, reading.gpu, share)
+        guard let hottest = reading.hottest else { return }
+        hotFor = hottest >= Self.hotCelsius ? hotFor + elapsed : 0
+        if hotFor >= Self.hotSeconds { forcesFull = true } else if hottest < Self.releaseCelsius { forcesFull = false }
+    }
+
+    private static func blend(_ average: Double?, _ new: Double?, _ share: Double) -> Double? {
+        guard let new else { return average }
+        return average.map { $0 + share * (new - $0) } ?? new
+    }
+
+    /// The average that asks for more speed, with its name, such as ("CPU avg", 62).
+    var driving: (name: String, celsius: Double)? {
+        switch (cpu, gpu) {
+        case let (cpu?, gpu?): gpu > cpu ? (Self.gpuName, gpu) : (Self.cpuName, cpu)
+        case let (cpu?, nil): (Self.cpuName, cpu)
+        case let (nil, gpu?): (Self.gpuName, gpu)
+        case (nil, nil): nil
+        }
+    }
+
+    /// The fan speed (0-1) the curve asks for: the higher of the two requests, or full speed while the safety holds.
+    func speed(_ curve: FanCurve) -> Double {
+        forcesFull ? 1 : max(cpu.map(curve.speed(at:)) ?? 0, gpu.map(curve.speed(at:)) ?? 0)
     }
 }

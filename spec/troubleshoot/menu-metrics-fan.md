@@ -186,8 +186,9 @@ still use `SystemMonitor`. `DESIGN.md` owns every size, color, and type value.
   only while a fan view owns the poller, and bounds indices and lengths.
   Fan commands drain output with a cap and hard-kill after a short grace.
 - **Invariant:** Fan is the first row of the Home control card, above
-  Awake. It shows the RPM, the CPU thermometer (`CPUHeat`, the same sensor as
-  Cool, read on the 5 s poll and reset when the row hides), and Auto, Cool
+  Awake. It shows the RPM, the CPU thermometer (`CPUHeat` on the driving
+  `FanInput` average, the same input as Cool, read on the 5 s poll and reset
+  when the row hides), and Auto, Cool
   (or Custom), and Max with `.snug` segments (label plus 8 pt a side). The
   Fan title has no fixed width, which keeps "2,840 RPM" whole; a 48 pt title
   cut it. The clicked pill shows at once and falls back after 3 s if the
@@ -223,5 +224,18 @@ still use `SystemMonitor`. `DESIGN.md` owns every size, color, and type value.
   below, left, right, then the far diagonals, and avoids the points, the lock
   point and its caption, the axis labels, and the card's sides (8 pt). The
   now chip and the drag chip both use it.
-- **Check:** render the page offscreen at 60, 75, 85, 89, 90, and 95 °C in
+- **Check:** render the page offscreen at 45-85 °C (average scale) on every preset in
   Light and Dark, and assert no chip rect meets `FanCurveEditor.obstacles`.
+- **Symptom:** In Cool the fans spun up on one-core spikes: 45 speed jumps
+  over 200 RPM in a 380 s loaded trace.
+- **Cause:** The curve followed the hottest single core. Tp* sensors also
+  drop out (power gating) on about a third of ticks and read -4, 0, or 40.
+- **Invariant:** `FanInput` drives Cool and Hold: the mean of the live CPU
+  dies and of the GPU dies, each over 20 s; dropouts and readings outside
+  20-110 °C never count; the higher curve request wins. The hottest core only
+  forces full speed after 10 s in a row at 90 °C or more and releases under
+  85 °C. The chart, presets, Hold range, and `CPUHeat` words use the
+  average's scale (`FanCurve.averageScale`); saved curves move once
+  (`fan.inputScale`).
+- **Check:** `FanControlTests` FanInput and migration tests, and the trace
+  replay in the request list (8 jumps on Quiet).

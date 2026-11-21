@@ -75,8 +75,10 @@ final class FanControlTests: XCTestCase {
         let store = FakeFanKeys()
         let clock = Mutex(0.0)
         let lease = FanManualLease(openStore: { store }, now: { clock.withLock { $0 } })
-        let app = ObjectIdentifier(NSObject())
-        let probe = ObjectIdentifier(NSObject())
+        let (appObject, probeObject) = (NSObject(), NSObject())
+        defer { withExtendedLifetime((appObject, probeObject)) {} }
+        let app = ObjectIdentifier(appObject)
+        let probe = ObjectIdentifier(probeObject)
 
         lease.clientEnded(app)
         XCTAssertTrue(store.writes.isEmpty, "A client lost while Auto must cause no write")
@@ -351,14 +353,14 @@ final class FanControlTests: XCTestCase {
     }
 
     func testCoolRampsBetweenFanMinimumAndMaximumWithSmoothSteps() {
-        let target = { (hottest: Double, previous: Double?) in
-            FanDriver.coolTarget(hottest: hottest, previous: previous, minimum: 1_350, maximum: 5_777)
+        let target = { (celsius: Double, previous: Double?) in
+            FanDriver.coolTarget(speed: FanCurve.standard.speed(at: celsius), previous: previous, minimum: 1_350, maximum: 5_777)
         }
         XCTAssertEqual(target(40, nil), 1_350)
-        XCTAssertEqual(target(65, 1_350), 1_350, "65 °C and below stays at the fan minimum")
-        XCTAssertEqual(target(77.5, 3_500), 3_564, "Halfway between 65 and 90 °C is half the range")
-        XCTAssertEqual(target(95, 5_700), 5_777)
-        XCTAssertEqual(target(90, 1_350), 1_650, "Rises at most 300 RPM per tick")
+        XCTAssertEqual(target(50, 1_350), 1_350, "A 50 °C average and below stays at the fan minimum")
+        XCTAssertEqual(target(65, 3_500), 3_564, "Halfway between 50 and 80 °C is half the range")
+        XCTAssertEqual(target(85, 5_700), 5_777)
+        XCTAssertEqual(target(80, 1_350), 1_650, "Rises at most 300 RPM per tick")
         XCTAssertEqual(target(40, 5_777), 5_627, "Falls at most 150 RPM per tick")
         XCTAssertEqual(target(40, 1_400), 1_350)
         XCTAssertEqual(FanDriver.step(toward: 5_777, from: 1_350, rise: FanDriver.maxRise, fall: FanDriver.maxRise,
@@ -379,38 +381,40 @@ final class FanControlTests: XCTestCase {
         for _ in 0..<600 { _ = cool.next(celsius: 50) }
         XCTAssertEqual(cool.speed, 0, accuracy: 1e-9)
         XCTAssertEqual(cool.integral, 0, accuracy: 1e-9, "Below the target the fans rest at minimum")
-        XCTAssertEqual(FanDriver.keepTarget(speed: 0, hottest: 91, previous: 5_700, minimum: 1_350, maximum: 5_777),
-                       5_777, "The locked full speed from 90 °C wins over Keep")
+        XCTAssertEqual(FanDriver.keepTarget(speed: 0, celsius: 81, previous: 5_700, minimum: 1_350, maximum: 5_777),
+                       5_777, "The locked full speed from an 80 °C average wins over Keep")
+        XCTAssertEqual(FanDriver.keepTarget(speed: 0, celsius: 60, forced: true, previous: 5_700, minimum: 1_350,
+                                            maximum: 5_777), 5_777, "The hottest-core safety wins over Keep")
     }
 
     func testKeepTakesOverHotFansWithoutADip() {
         let (minimum, maximum) = (1_350.0, 5_777.0)
-        var hold = FanHold(target: 75, speed: (4_000 - minimum) / (maximum - minimum))
+        var hold = FanHold(target: 65, speed: (4_000 - minimum) / (maximum - minimum))
         var rpm = 4_000.0
-        for celsius in stride(from: 85.0, to: 75.5, by: -0.05) {
-            let next = FanDriver.keepTarget(speed: hold.next(celsius: celsius), hottest: celsius, previous: rpm,
+        for celsius in stride(from: 75.0, to: 65.5, by: -0.05) {
+            let next = FanDriver.keepTarget(speed: hold.next(celsius: celsius), celsius: celsius, previous: rpm,
                                             minimum: minimum, maximum: maximum)
             XCTAssertGreaterThanOrEqual(next, 4_000, "Over the target the fans never drop below where they were (\(celsius) °C)")
             rpm = next
         }
         let learned = hold.integral
-        hold.retarget(80)
+        hold.retarget(68)
         XCTAssertEqual(hold.integral, learned, "A new target keeps the learned speed")
-        XCTAssertEqual(hold.target, 80)
+        XCTAssertEqual(hold.target, 68)
     }
 
     func testCurveAndKeepAreNeverOnTogether() throws {
         let name = "FanHoldTests.\(UUID().uuidString)"
         let defaults = try XCTUnwrap(UserDefaults(suiteName: name))
         defer { defaults.removePersistentDomain(forName: name) }
-        FanHold.save(78, defaults)
-        XCTAssertEqual(FanHold.savedTarget(defaults), 78)
+        FanHold.save(66, defaults)
+        XCTAssertEqual(FanHold.savedTarget(defaults), 66)
         FanCurve(points: [.init(celsius: 60, speed: 0.3)]).save(defaults)
         XCTAssertNil(FanHold.savedTarget(defaults), "Picking a curve turns Keep off")
-        FanHold.save(72, defaults)
+        FanHold.save(60, defaults)
         FanCurve.standard.save(defaults)
         XCTAssertNil(FanHold.savedTarget(defaults), "Resetting to the standard curve also turns Keep off")
-        FanHold.save(72, defaults)
+        FanHold.save(60, defaults)
         FanCurvePreset.quiet.pick(defaults)
         XCTAssertNil(FanHold.savedTarget(defaults), "Picking a preset card turns Keep off")
         XCTAssertEqual(FanCurve.load(defaults), FanCurvePreset.quiet.curve, "Cool follows the picked preset")
@@ -424,20 +428,74 @@ final class FanControlTests: XCTestCase {
     func testPresetsStayQuietAtIdleAndRampBeforeTheLockedEnd() throws {
         for preset in FanCurvePreset.allCases {
             guard let curve = preset.curve else { continue }
-            XCTAssertEqual(curve.speed(at: 60), 0, "\(preset.name) rests at the minimum at idle")
-            XCTAssertGreaterThan(curve.speed(at: 86), 0.25, "\(preset.name) is well up before 90 °C")
+            XCTAssertEqual(curve.speed(at: 45), 0, "\(preset.name) rests at the minimum at idle")
+            XCTAssertGreaterThan(curve.speed(at: 75), 0.25, "\(preset.name) is well up before the locked end")
         }
+        for preset in [FanCurvePreset.silent, .quiet] {
+            XCTAssertGreaterThan(preset.curve?.speed(at: 55) ?? 0, 0, "\(preset.name) starts the fans early")
+            XCTAssertLessThan(preset.curve?.speed(at: 70) ?? 1, 0.5, "\(preset.name) stays under half speed at 70 °C")
+        }
+        XCTAssertGreaterThan(FanCurvePreset.steady.curve?.speed(at: 65) ?? 0, FanCurvePreset.quiet.curve?.speed(at: 65) ?? 1,
+                             "Steady is the aggressive curve")
+    }
+
+    func testFanInputFiltersDropoutsTakesTheHigherRequestAndForcesFullOnlyAfterTenHotSeconds() {
+        let reading = FanTemperatures.reading(cpu: [60, 70, -4, 0, 40, 4, 120], gpu: [50, 40, 0])
+        XCTAssertEqual(reading, FanTemperatures(cpu: 65, gpu: 50, hottest: 70), "Dropout readings never count")
+
+        let curve = FanCurvePreset.quiet.curve ?? .standard
+        var input = FanInput()
+        input.update(FanTemperatures(cpu: 55, gpu: 68, hottest: 95))
+        XCTAssertEqual(input.driving?.name, FanInput.gpuName)
+        XCTAssertEqual(input.speed(curve), curve.speed(at: 68), "The higher of the two requests wins")
+        for second in 2...9 {
+            input.update(FanTemperatures(cpu: 55, gpu: nil, hottest: 95))
+            XCTAssertFalse(input.forcesFull, "Not yet at \(second) s")
+        }
+        input.update(FanTemperatures(cpu: 55, gpu: nil, hottest: 95))
+        XCTAssertTrue(input.forcesFull, "10 s in a row at 90 °C or more forces full speed")
+        XCTAssertEqual(input.speed(curve), 1)
+        input.update(FanTemperatures(cpu: 55, gpu: nil, hottest: 87))
+        XCTAssertTrue(input.forcesFull, "Holds until the hottest core is under 85 °C")
+        input.update(FanTemperatures(cpu: 55, gpu: nil, hottest: 84))
+        XCTAssertFalse(input.forcesFull)
+
+        var spiky = FanInput()
+        for celsius in Array(repeating: 95.0, count: 9) + [89] + Array(repeating: 95.0, count: 9) {
+            spiky.update(FanTemperatures(cpu: 55, gpu: nil, hottest: celsius))
+        }
+        XCTAssertFalse(spiky.forcesFull, "One second under 90 °C restarts the count")
+
+        var average = FanInput()
+        average.update(FanTemperatures(cpu: 50, gpu: nil, hottest: 50))
+        average.update(FanTemperatures(cpu: 70, gpu: nil, hottest: 70))
+        XCTAssertEqual(average.cpu ?? 0, 50 + 20 * (1 - exp(-1.0 / 20)), accuracy: 1e-9, "A 20 s average at the 1 s tick")
+    }
+
+    func testSavedCurveAndHoldMoveToTheAverageScaleOnce() throws {
+        let name = "FanScaleTests.\(UUID().uuidString)"
+        let defaults = try XCTUnwrap(UserDefaults(suiteName: name))
+        defer { defaults.removePersistentDomain(forName: name) }
+        let old = Data(#"{"points":[{"speed":0.32,"celsius":60},{"speed":0.59,"celsius":83}]}"#.utf8)
+        defaults.set(old, forKey: FanCurve.storageKey)
+        defaults.set(70.0, forKey: FanHold.storageKey)
+        XCTAssertNotNil(FanCurve.migrateToAverageScale(defaults))
+        XCTAssertEqual(FanCurve.custom(defaults).points.map(\.celsius), [49, 67])
+        XCTAssertEqual(FanCurve.custom(defaults).points.map(\.speed), [0.32, 0.59])
+        XCTAssertEqual(FanHold.savedTarget(defaults), 57)
+        XCTAssertNil(FanCurve.migrateToAverageScale(defaults), "Runs once")
+        XCTAssertEqual(FanCurve.custom(defaults).points.map(\.celsius), [49, 67])
     }
 
     func testKeepNeverChangesSpeedInsideTheBand() {
-        var hold = FanHold(target: 75, speed: 0.4)
+        var hold = FanHold(target: 65, speed: 0.4)
         let (speed, integral) = (hold.speed, hold.integral)
         var generator = SystemRandomNumberGenerator()
         for _ in 0..<1_000 {
-            XCTAssertEqual(hold.next(celsius: .random(in: 73...77, using: &generator)), speed, "Inside ±2 °C the fans hold")
+            XCTAssertEqual(hold.next(celsius: .random(in: 63...67, using: &generator)), speed, "Inside ±2 °C the fans hold")
         }
         XCTAssertEqual(hold.integral, integral, "Inside the band nothing is learned")
-        XCTAssertGreaterThan(hold.next(celsius: 77.5), speed, "Over the band it corrects")
+        XCTAssertGreaterThan(hold.next(celsius: 67.5), speed, "Over the band it corrects")
     }
 
     func testKeepSettlesOnASimpleHeatModel() {
@@ -455,12 +513,12 @@ final class FanControlTests: XCTestCase {
     }
 
     func testCoolCurveKeepsSpeedRisingAndFollowsEditedPoints() {
-        let curve = FanCurve(points: [.init(celsius: 80, speed: 0.4), .init(celsius: 50, speed: 0.6),
-                                      .init(celsius: 95, speed: 2), .init(celsius: 50, speed: 0.1)])
-        XCTAssertEqual(curve.points.map(\.celsius), [50, 80], "Sorted, repeated and locked-zone temperatures dropped")
+        let curve = FanCurve(points: [.init(celsius: 75, speed: 0.4), .init(celsius: 50, speed: 0.6),
+                                      .init(celsius: 85, speed: 2), .init(celsius: 50, speed: 0.1)])
+        XCTAssertEqual(curve.points.map(\.celsius), [50, 75], "Sorted, repeated and locked-zone temperatures dropped")
         XCTAssertEqual(curve.points.map(\.speed), [0.6, 0.6], "Speed never falls")
-        XCTAssertEqual(FanCurve(points: [.init(celsius: 92, speed: 0.5)]), .standard, "No point left falls back to Cool")
-        XCTAssertEqual(FanDriver.coolTarget(hottest: 87.5, previous: 5_777, minimum: 1_350, maximum: 5_777, curve: curve),
+        XCTAssertEqual(FanCurve(points: [.init(celsius: 82, speed: 0.5)]), .standard, "No point left falls back to Cool")
+        XCTAssertEqual(FanDriver.coolTarget(speed: curve.speed(at: 77.5), previous: 5_777, minimum: 1_350, maximum: 5_777),
                        5_627, "An edited curve still falls at most 150 RPM per tick")
         XCTAssertFalse(FanCurve.standard.isEdited)
     }
@@ -472,10 +530,10 @@ final class FanControlTests: XCTestCase {
         XCTAssertEqual(samples, samples.sorted(), "Never falls")
         XCTAssertTrue(stride(from: 40.0, through: 75.0, by: 0.5).allSatisfy { (0.33...0.4).contains(curve.speed(at: $0)) },
                       "No overshoot between points")
-        XCTAssertTrue((0.4...1).contains(curve.speed(at: 85)), "Rises from the last point to the locked end")
-        XCTAssertEqual(curve.speed(at: 90), 1, "Full speed from 90 °C whatever the curve says")
+        XCTAssertTrue((0.4...1).contains(curve.speed(at: 78)), "Rises from the last point to the locked end")
+        XCTAssertEqual(curve.speed(at: 80), 1, "Full speed from an 80 °C average whatever the curve says")
         XCTAssertEqual(curve.speed(at: 100), 1)
-        XCTAssertEqual(FanCurve.standard.speed(at: 77.5), 0.5, accuracy: 0.0001, "Two points stay a straight line")
+        XCTAssertEqual(FanCurve.standard.speed(at: 65), 0.5, accuracy: 0.0001, "Two points stay a straight line")
     }
 
     func testFanCommandBoundsProcessOutputWithoutHardwareAccess() {
