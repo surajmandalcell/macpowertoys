@@ -12,6 +12,9 @@
   --win-shadow:0 32px 64px -24px rgba(0,0,0,.42),0 10px 24px -12px rgba(0,0,0,.22),0 0 0 .5px rgba(0,0,0,.18);
   --deep:0 60px 90px -30px rgba(0,0,0,.6),0 24px 40px -18px rgba(0,0,0,.38),0 0 0 .5px rgba(0,0,0,.22);
   --font:-apple-system,BlinkMacSystemFont,"SF Pro Text","Inter",system-ui,sans-serif;
+  --bounce:linear(0,.009,.035 2.1%,.141,.281 6.7%,.723 12.9%,.938 16.7%,1.017,1.077,1.121,1.149 24.3%,1.159,1.163,1.161,1.154 29.9%,1.129 32.8%,1.051 39.6%,1.017 43.1%,.991,.977 51%,.974 53.8%,.975 57.1%,.997 69.8%,1.003 76.9%,1);
+  --glass:rgba(255,255,255,.62);--glass-hi:rgba(255,255,255,.95);--glass-edge:rgba(0,0,0,.12);
+  --star:#f5a623;--cap:#fff;--cap-edge:rgba(0,0,0,.14);
   --mono:ui-monospace,"SF Mono",Menlo,monospace; /* taste-skill-ignore: only the literal brew command */
   --m:clamp(20px,4vw,64px);
   --t-h1:clamp(46px,5.4vw,84px);--t-h2:clamp(34px,3.7vw,56px);--t-lead:clamp(19px,1.1rem + .5vw,23px);--t-body:18px;--t-small:14px;
@@ -30,6 +33,8 @@
     --cmd-shadow-hi:0 2px 4px rgba(0,0,0,.4),0 16px 32px -14px rgba(0,0,0,.8),0 0 0 .5px rgba(255,255,255,.22),0 0 0 5px color-mix(in srgb,var(--accent) 16%,transparent);
     --win-shadow:0 32px 64px -24px rgba(0,0,0,.85),0 10px 24px -12px rgba(0,0,0,.6),0 0 0 .5px rgba(255,255,255,.14);
     --deep:0 60px 90px -30px rgba(0,0,0,.9),0 24px 40px -18px rgba(0,0,0,.7),0 0 0 .5px rgba(255,255,255,.16);
+    --glass:rgba(255,255,255,.07);--glass-hi:rgba(255,255,255,.2);--glass-edge:rgba(255,255,255,.14);
+    --star:#ffc24a;--cap:#1c1c1f;--cap-edge:rgba(255,255,255,.16);
   }
 }
 *{box-sizing:border-box}
@@ -54,12 +59,34 @@ a:focus-visible,button:focus-visible{background-color:var(--lit);border-radius:8
 .nav nav{display:flex;gap:28px;font-size:15px}
 .nav nav a{text-decoration:none;color:var(--muted);transition:color .15s}
 .nav nav a:hover{color:var(--ink)}
+.nav nav{align-items:center}
+/* GitHub: an outlined capsule; the star turns gold on hover */
+.nav .gh-cta{position:relative;display:inline-flex;align-items:center;gap:8px;height:36px;padding:0 12px 0 13px;border-radius:999px;font-size:14px;font-weight:600;letter-spacing:-.005em;white-space:nowrap;isolation:isolate;color:var(--ink);background:var(--cap);box-shadow:inset 0 0 0 1px var(--cap-edge),0 1px 2px rgba(0,0,0,.06);-webkit-tap-highlight-color:transparent;transform:scale(var(--s,1));transition:transform .5s var(--bounce)}
+.gh-cta::before{content:"";position:absolute;z-index:-1;inset:0;border-radius:inherit;background:var(--lit);opacity:0;transition:opacity .2s}
+.gh-cta:hover::before{opacity:.45}
+.nav .gh-cta:focus-visible{background:var(--cap);border-radius:999px}
+.gh-cta:focus-visible::before{opacity:.8}
+.gh-cta:active{--s:.95;transition-duration:.1s;transition-timing-function:ease-out}
+.gh-cta svg{flex:none;display:block}
+.gh-cta .gh{width:16px;height:16px;fill:currentColor}
+.gh-cta .sep{width:1px;height:16px;margin:0 3px;background:var(--cap-edge)}
+.gh-cta .n{color:var(--muted);font-weight:500;font-variant-numeric:tabular-nums}
+.stars{position:relative;width:15px;height:15px;transition:transform .6s var(--bounce)}
+.stars svg{position:absolute;inset:0;width:15px;height:15px}
+.stars .full{fill:var(--star);opacity:0;transition:opacity .2s}
+.stars .line{fill:none;stroke:currentColor;stroke-width:1.5;stroke-linejoin:round;transition:opacity .2s}
+.gh-cta:hover .stars,.gh-cta:focus-visible .stars{transform:rotate(72deg) scale(1.18)}
+.gh-cta:hover .stars .full,.gh-cta:focus-visible .stars .full{opacity:1}
+.gh-cta:hover .stars .line,.gh-cta:focus-visible .stars .line{opacity:0}
 
-/* Controls */
-.btn{display:inline-flex;align-items:center;height:48px;padding:0 24px;border-radius:12px;background:var(--accent);color:var(--accent-ink);font-weight:600;font-size:17px;text-decoration:none;transition:transform .15s,filter .15s}
-.btn:hover{filter:brightness(1.08)}
-.btn:focus-visible{background-color:#0058b0;border-radius:12px}
-.btn:active{transform:scale(.97)}
+/* Download: a frosted glass capsule; a blue light follows the pointer, and it leans toward it */
+.glass{position:relative;display:inline-flex;align-items:center;gap:10px;height:54px;padding:0 30px 0 26px;border-radius:999px;overflow:hidden;isolation:isolate;color:var(--ink);font-weight:600;font-size:17px;text-decoration:none;background:var(--glass);-webkit-backdrop-filter:blur(20px) saturate(1.8);backdrop-filter:blur(20px) saturate(1.8);box-shadow:inset 0 1px 0 var(--glass-hi),inset 0 0 0 .5px var(--glass-edge),0 10px 30px -12px rgba(0,113,227,.55),0 1px 2px rgba(0,0,0,.08);transform:translate(var(--mx,0px),var(--my,0px)) scale(var(--s,1));transition:transform .6s var(--bounce)}
+.glass .glow{position:absolute;z-index:-1;left:0;top:0;width:220px;height:220px;margin:-110px 0 0 -110px;border-radius:50%;background:radial-gradient(closest-side,rgba(0,113,227,.55),rgba(0,113,227,.22) 45%,transparent);opacity:.55;transform:translate(var(--gx,50%),var(--gy,100%));transition:opacity .35s,transform .45s var(--spring);pointer-events:none}
+.glass::after{content:"";position:absolute;z-index:-1;inset:0;border-radius:inherit;background:linear-gradient(180deg,rgba(255,255,255,.35),transparent 55%);opacity:.6;pointer-events:none}
+.glass:hover .glow,.glass:focus-visible .glow{opacity:1}
+.glass:focus-visible{background:color-mix(in srgb,var(--accent) 16%,var(--glass));border-radius:999px}
+.glass:active{--s:.95;transition-duration:.12s;transition-timing-function:ease-out}
+.apple{flex:none;display:block;width:15px;height:18px;background:currentColor;-webkit-mask:url(assets/menubar/apple.png) center/contain no-repeat;mask:url(assets/menubar/apple.png) center/contain no-repeat;transform:translateY(-1px)}
 .cmd{display:flex;align-items:center;gap:8px;min-height:48px;padding:6px 6px 6px 18px;border-radius:14px;background:var(--cmd);box-shadow:var(--cmd-shadow);max-width:100%}
 .cmd{transition:background-color .3s ease,box-shadow .4s ease,transform .7s var(--spring)}
 .js .cmd.rv.in{transition:opacity .7s cubic-bezier(.2,.7,.2,1),background-color .3s ease,box-shadow .4s ease,transform .7s var(--spring)}
@@ -115,12 +142,13 @@ h2:hover .anchor,h3:hover .anchor,.anchor:focus-visible,.anchor.done{opacity:1}
 .get{display:flex;flex-direction:column;align-items:flex-start;gap:16px;margin-top:40px}
 .get .cmd{width:auto}
 .fine{font-size:var(--t-small);color:var(--muted);margin-top:20px}
-.hero-desk{--h:clamp(560px,46vw,660px);--z:1.12;--r:24px 0 0 24px}
-.hero-desk{--pr:122px}
 .hero+.sec{margin-top:clamp(40px,4vw,64px)}
-.hero-desk .scr{border-radius:22px 0 0 22px}
-/* Moves a bright star in the wallpaper off the menu titles */
-.hero-desk .scr::before{background-position:62% 50%}
+
+/* Live demos: real-app HTML recreations in a frame, in place of still screenshots */
+.demo{position:relative;overflow:hidden;background:#1d1d1f;border-radius:24px;box-shadow:0 0 0 1px var(--lit)}
+.demo iframe{display:block;width:100%;height:100%;border:0}
+.hero-demo{height:clamp(600px,46vw,693px);border-radius:24px 0 0 24px}
+.fan-demo{height:clamp(600px,52vw,760px)}
 
 /* Sections */
 .sec{max-width:1520px;margin:var(--gap) auto 0;padding:0 var(--m)}
@@ -133,11 +161,10 @@ h2:hover .anchor,h3:hover .anchor,.anchor:focus-visible,.anchor.done{opacity:1}
 .head-txt{display:flex;flex-direction:column;gap:22px}
 
 /* Fan */
-.fan-desk{--z:1;--wx:calc(50% - 410px);--wy:52px;--h:calc((var(--wy) + 700px) * var(--z))}
 /* CPU temperature steps from DESIGN.md (CPUHeat.swift): gray, yellow, orange, red, deep red */
 :root{--t-normal:#008cbf;--t-warm:#a67c00;--t-hot:#cc610c;--t-very-hot:#d03a2c;--t-near-the-limit:#9a1717;--app-accent:#d94f45}
 @media (prefers-color-scheme:dark){:root{--t-normal:#63d1ff;--app-accent:#ee5b50;--t-warm:#f2c94c;--t-hot:#f59a4a;--t-very-hot:#ff7466;--t-near-the-limit:#ff3b30}}
-.try{--heat:var(--t-warm);--f:.457;display:grid;gap:14px;padding:22px;border-radius:18px;background:var(--surface)}
+.try{--heat:var(--t-hot);--f:.567;display:grid;gap:14px;padding:22px;border-radius:18px;background:var(--surface)}
 .try[data-heat=normal]{--heat:var(--t-normal)}
 .try[data-heat=hot]{--heat:var(--t-hot)}
 .try[data-heat=very-hot]{--heat:var(--t-very-hot)}
@@ -199,21 +226,43 @@ h2:hover .anchor,h3:hover .anchor,.anchor:focus-visible,.anchor.done{opacity:1}
 .therm input:focus-visible{outline:none}
 .therm input:focus-visible::-webkit-slider-thumb{box-shadow:0 0 0 4px color-mix(in srgb,var(--accent) 45%,transparent),0 1px 3px rgba(0,0,0,.3)}
 .ticks{position:relative;height:20px;margin:-2px 11px 0;font-size:13px;color:var(--muted);font-variant-numeric:tabular-nums}
-.ticks span{position:absolute;top:0;left:calc((var(--t) - 30) / 70 * 100%);transform:translateX(-50%)}
+.ticks span{position:absolute;top:0;left:calc((var(--t) - 30) / 60 * 100%);transform:translateX(-50%)}
 
-/* Portman: four steps over one screen */
-/* Steps on the left, the screen on the right, framed tight around what each step shows */
-.walk{display:grid;grid-template-columns:minmax(0,4fr) minmax(0,8fr);gap:clamp(24px,3vw,48px);align-items:start}
-.steps{list-style:none;margin:0;padding:0;display:grid;gap:8px}
-.steps button{display:flex;flex-direction:column;gap:6px;width:100%;height:100%;padding:18px 18px 20px;border:0;border-radius:18px;background:transparent;color:var(--muted);text-align:left;font:400 16px/1.4 var(--font);letter-spacing:-.005em;cursor:pointer;transition:background .2s,color .2s}
-.steps button:hover{background:var(--surface)}
-.steps button[aria-current]{background:var(--surface);color:var(--ink)}
-.steps b{font-size:19px;font-weight:600;letter-spacing:-.02em;color:var(--ink)}
-.port-desk{--h:700px;--z:1.36;--pr:72px}
-[data-step="0"] .port-desk{--z:.98;--wx:calc(50% - 410px);--wy:48px}
-[data-step="0"] .mbi{background:transparent}
-/* The light left part of the mesh wallpaper sits under the whole menu bar */
-.port-desk .scr::before{background-position:0% 50%}
+/* Portman: a pinned story. While the section scrolls past, a large Mac screen stays on the left,
+   cut by the window edge, and the text on the right changes one step at a time. The camera holds
+   the screen in real macOS points; script sets its size and the two zooms (--zp panel, --zw window). */
+.pm{--n:4;position:relative;width:100vw;margin-left:calc(50% - 50vw);height:calc(100vh + var(--n) * 72vh)}
+.pm-pin{position:sticky;top:0;height:100vh;height:100svh;display:grid;grid-template-columns:56vw minmax(0,1fr);align-items:center;gap:clamp(40px,5vw,96px);padding-right:max(var(--m),calc((100vw - 1520px) / 2 + var(--m)))}
+.pm-vis{position:relative;height:min(calc(100svh - 96px),860px);margin-left:-2px;overflow:hidden;border-radius:0 28px 28px 0;background:#1d1d1f;box-shadow:inset 0 0 0 1px var(--lit),var(--deep);transform:translateZ(0)}
+.pm-cam{position:absolute;top:0;right:0;width:100%;height:100%;transform:scale(var(--zp,1));transform-origin:100% 0;transition:transform 1s cubic-bezier(.65,0,.25,1);background:#1d1d1f var(--wall) 100% 50%/cover}
+.pm[data-step="3"] .pm-cam{transform:scale(var(--zw,1))}
+.pm-shot{position:absolute;top:29px;opacity:0;visibility:hidden;transition:opacity .45s ease,transform .8s var(--spring),visibility 0s .8s}
+.pm-shot img{max-width:none;box-shadow:var(--deep)} /* taste-skill-ignore: a real menu bar panel or window */
+.pm-pan{z-index:2;width:356px;transform:translateY(-10px) scale(.97);transform-origin:50% 0}
+.pm-pan img{width:356px;border-radius:14px}
+.pm-win{top:52px;width:820px;transform:translateX(-72px)}
+.pm-win img{width:820px;border-radius:12px}
+.pm[data-step="0"] .pm-shot[data-s="0"],.pm[data-step="1"] .pm-shot[data-s="1"],.pm[data-step="2"] .pm-shot[data-s="2"],.pm[data-step="3"] .pm-shot[data-s="3"]{opacity:1;visibility:visible;transform:none;transition:opacity .45s ease .1s,transform .8s var(--spring) .1s,visibility 0s}
+.pm-txt{display:flex;flex-direction:column;gap:32px;max-width:560px}
+.pm-bars{list-style:none;margin:0;padding:0;display:grid;grid-template-columns:repeat(var(--n),minmax(0,1fr));gap:6px}
+.pm-bars button{display:block;width:100%;height:24px;padding:10px 0;border:0;background:none;cursor:pointer}
+.pm-bars i{display:block;height:4px;border-radius:2px;background:var(--lit);overflow:hidden}
+.pm-bars i::after{content:"";display:block;height:100%;border-radius:inherit;background:var(--ink);transform:scaleX(var(--k,0));transform-origin:0 50%}
+.pm-say{display:grid}
+.pm-step{grid-area:1/1;display:flex;flex-direction:column;gap:22px;opacity:0;visibility:hidden;transform:translateY(28px);transition:opacity .35s ease,transform .6s var(--spring),visibility 0s .6s}
+.pm-step.past{transform:translateY(-28px)}
+.pm-step.on{opacity:1;visibility:visible;transform:none;transition:opacity .5s ease .12s,transform .8s var(--spring) .12s,visibility 0s}
+.pm-step h3{font-size:var(--t-h2);line-height:1.04;letter-spacing:-.035em}
+.pm-step p{font-size:var(--t-lead);line-height:1.4;color:var(--muted)}
+/* The firewall example: this Mac, a dot running along the SSH line, the home server */
+.pm-step .pm-route{display:flex;align-items:center;gap:14px;font:500 15px/1.3 var(--mono);color:var(--ink)} /* taste-skill-ignore: host:port pairs read as code */
+.pm-route span{display:flex;flex-direction:column;gap:6px;padding:12px 14px;border-radius:14px;background:var(--surface)}
+.pm-route small{font:500 13px/1 var(--font);color:var(--muted)}
+.pm-route i{position:relative;flex:1;min-width:24px;height:2px;background:repeating-linear-gradient(90deg,var(--muted) 0 6px,transparent 6px 11px)}
+.pm-route b{position:absolute;inset:-3px 0 auto;height:8px;opacity:0}
+.pm-route b::before{content:"";position:absolute;left:0;top:0;width:8px;height:8px;border-radius:50%;background:var(--accent)}
+.pm-step.on .pm-route b{animation:carry 1.8s cubic-bezier(.45,0,.55,1) .6s infinite}
+@keyframes carry{0%{transform:translateX(0);opacity:0}15%,85%{opacity:1}100%{transform:translateX(calc(100% - 8px));opacity:0}}
 .tweaks-desk .scr::before{background-size:190% auto;background-position:0 0}
 
 /* RSync: one whole field in the accent */
@@ -264,45 +313,27 @@ a.row:hover{background:var(--lit)}
 .cmd.big svg{width:22px;height:22px}
 .install .or{display:flex;align-items:center;justify-content:center;gap:16px;flex-wrap:wrap;color:var(--muted)}
 
-/* Footer: one plain row under a hairline */
-.foot{max-width:1520px;margin:clamp(72px,8vw,120px) auto 0;padding:0 var(--m) 32px}
-.foot-row{display:flex;flex-wrap:wrap;gap:12px 28px;font-size:15px;padding-top:24px;border-top:.5px solid var(--lit)}
-.foot-row a{color:var(--link);text-decoration:none}
-.foot-row a:hover{text-decoration:underline}
-.foot-row .soft{color:var(--muted);margin-left:auto}
-
-/* Look A, Break-out (default): the panel hangs past the bottom of the screen crop. Each desk reserves
-   room under it for that overhang so nothing below is covered. */
-html[data-v=a] .hero-desk{margin-bottom:max(0px,calc((29px + 642px) * var(--z) - var(--h) + 24px))}
-/* Look B, Tilt: the screen turned slightly in perspective, inside the page, tall enough to hold the panel */
-html[data-v=b] .desk.v{overflow:hidden;border-radius:var(--r);transform:perspective(2400px) rotateY(-9deg) rotateX(3deg);transform-origin:100% 50%}
-html[data-v=b] .hero-desk{--h:calc((29px + 642px + 28px) * var(--z));--r:24px;margin-right:var(--m)}
-html[data-v=b] .hero-desk .scr{border-radius:22px}
-
-/* Look C, Zoom on scroll: the hero and each settings window stay whole; a section panel starts as the whole
-   desktop, then the camera moves in on it. Without scroll
-   timelines, or with reduced motion, the whole desktop stays in view. */
-html[data-v=c] .desk.v{overflow:hidden;border-radius:var(--r);--zi:var(--z0,.62)}
-html[data-v=c] .hero-desk{--z0:.6}
-/* A settings window has no panel to move in on: it stays whole and centered, as in Look A */
-html[data-v=c] .fan-desk,html[data-v=c] [data-step="0"] .port-desk{--z0:var(--z)}
-html[data-v=c] .desk.v .desk-in{transform:scale(var(--z0,.62))}
-@supports (animation-timeline:view()){
-  html[data-v=c] .desk.v .desk-in{animation:zoom-in linear both;animation-timeline:view();animation-range:entry 20% cover 50%}
-  html[data-v=c] .desk.v.hero-desk .desk-in{animation:none}
-  html[data-v=c] .desk.v.fan-desk .desk-in,html[data-v=c] [data-step="0"] .desk.v.port-desk .desk-in{animation:none}
-}
-@keyframes zoom-in{from{transform:scale(var(--z0,.62))}to{transform:scale(var(--z))}}
-
-/* Look D, Layered spill: the wallpaper is inset, and the window or panel hangs a fixed 48 pt out of its
-   left and bottom edges. The space under each desk is exactly that overhang plus a gap. */
-@media (min-width:641px){
-  html[data-v=d] .desk.v .scr{overflow:visible}
-  html[data-v=d] .desk.v{margin-left:64px}
-  html[data-v=d] .fan-desk,html[data-v=d] [data-step="0"] .port-desk{--wx:-48px;--wy:72px;--h:calc((72px + 612px) * var(--z));margin-bottom:calc(48px * var(--z) + 40px)}
-  html[data-v=d] .hero-desk{--h:calc((29px + 594px) * var(--z));margin-bottom:calc(48px * var(--z) + 24px)}
-  html[data-v=d] .port-desk{margin-bottom:40px}
-}
+/* Footer: large type. Brand and links over a hairline, then the giant name, cut by the page bottom */
+.foot{max-width:1520px;margin:clamp(72px,8vw,120px) auto 0;padding:0 var(--m);overflow:hidden}
+.foot-top{display:grid;grid-template-columns:minmax(0,5fr) minmax(0,7fr);gap:40px;padding-top:28px;border-top:.5px solid var(--lit)}
+.brand{display:flex;flex-direction:column;gap:14px;align-items:flex-start}
+.brand .id{display:flex;align-items:center;gap:12px;font-weight:600;font-size:20px;letter-spacing:-.02em}
+.brand p{color:var(--muted);max-width:32ch}
+.brand .cmd{margin-top:8px;width:fit-content}
+.cols{display:grid;grid-template-columns:repeat(2,minmax(0,180px));gap:24px;justify-content:end}
+.cols ul{list-style:none;margin:0;padding:0}
+.cols h4{margin:0 0 8px;font-size:13px;font-weight:600;color:var(--ink)}
+.cols li{line-height:1}
+.ln{display:inline-flex;align-items:center;min-height:32px;margin:0 -8px;padding:0 8px;border-radius:8px;color:var(--muted);text-decoration:none;transition:color .15s,background-color .15s}
+.ln:hover{color:var(--ink)}
+.foot-fine{display:flex;flex-wrap:wrap;gap:6px 24px;margin-top:40px;font-size:14px;color:var(--muted)}
+.foot-fine .soft{margin-left:auto}
+.word{display:flex;justify-content:space-between;margin-top:clamp(16px,2vw,32px);font-weight:700;font-size:var(--fs);line-height:1.02;letter-spacing:-.055em;white-space:nowrap;color:var(--ink);--fs:calc((min(100vw,1520px) - 2 * var(--m)) / 6.7);-webkit-mask:linear-gradient(180deg,#000 35%,rgba(0,0,0,.4) 100%);mask:linear-gradient(180deg,#000 35%,rgba(0,0,0,.4) 100%);user-select:none}
+.word span{display:inline-block}
+.word span:last-child{letter-spacing:0}
+.js .word span{transform:translateY(60%);opacity:0;transition:transform 1.3s var(--spring),opacity .5s ease-out;transition-delay:calc(var(--k) * 45ms + 200ms)}
+.js .word.in span{transform:none;opacity:1}
+.js .word.in span.up{transform:translateY(-9%);transition:transform .5s var(--bounce);transition-delay:0s}
 
 /* Motion: content shows without script; with it, each section's parts rise in turn */
 .js .rv{opacity:0;transform:translateY(24px);transition:opacity .7s cubic-bezier(.2,.7,.2,1),transform .7s cubic-bezier(.2,.7,.2,1)}
@@ -311,22 +342,32 @@ html[data-v=c] .desk.v .desk-in{transform:scale(var(--z0,.62))}
 .js .txt .rv:nth-child(3){transition-delay:.16s}
 .js .txt .rv:nth-child(4){transition-delay:.22s}
 .js .tile.rv:nth-child(2){transition-delay:.08s}.js .tile.rv:nth-child(3){transition-delay:.16s}.js .tile.rv:nth-child(4){transition-delay:.24s}
-.js .hero-desk .panel{clip-path:inset(0 0 100% 0);animation:drop 1s .35s cubic-bezier(.2,.8,.2,1) forwards}
-.js .hero-desk .panel img{transform:scale(1.06);transform-origin:50% 0;animation:settle 1.1s .35s cubic-bezier(.2,.8,.2,1) forwards}
-@keyframes drop{to{clip-path:inset(-80px -80px -120px -80px)}}
-@keyframes settle{to{transform:none}}
 @media (prefers-reduced-motion:reduce){
   html{scroll-behavior:auto}
   .js .rv{opacity:1;transform:none;transition:none}
-  .js .hero-desk .panel,.js .hero-desk .panel img,html[data-v=c] .desk.v .desk-in{clip-path:none;transform:none;animation:none}
-  html[data-v=c] .desk.v .desk-in{transform:scale(var(--z0,.62))}
+  /* Portman swaps its steps with a short fade and no movement */
+  .pm-cam{transition:none}
+  .pm-shot,.pm-shot[data-s],.pm-step,.pm-step.past,.pm-step.on{transform:none;transition:opacity .2s,visibility 0s}
+  .pm-step.on .pm-route b{animation:none;opacity:1}
+  .glass,.glass .glow,.gh-cta,.stars{transition:none}
+  .js .word span{transform:none;opacity:1;transition:none}
 }
 
-/* Medium widths: the Portman steps move above a screen of at most 920 px */
-@media (max-width:1380px){
-  .walk{grid-template-columns:1fr}
-  .steps{grid-template-columns:1fr 1fr}
-  .port-desk{width:100%;max-width:920px;margin-left:auto;margin-right:auto}
+/* Portman under 1000 px: the screen on top, cut by the left edge, and the text below */
+@media (max-width:1000px){
+  .pm{height:calc(100vh + var(--n) * 64vh)}
+  .pm-pin{grid-template-columns:minmax(0,1fr);grid-template-rows:minmax(0,1fr) auto;align-items:stretch;gap:20px;padding:16px var(--m) 28px 0}
+  .pm-vis{height:auto;min-height:0}
+  .pm-txt{gap:16px;max-width:none;padding-left:var(--m);min-height:250px}
+  .pm-step{gap:12px}
+  .pm-step h3{font-size:clamp(28px,7.4vw,40px)}
+  .pm-step p{font-size:16px;line-height:1.45}
+  .pm-step .pm-route{font-size:13px;gap:10px}
+  .pm-route span{padding:8px 10px}
+  .fan-demo{height:660px}
+  .foot-top{grid-template-columns:minmax(0,1fr)}
+  .cols{justify-content:start}
+  .brand .cmd{width:100%}
 }
 @media (max-width:1100px){
   .hero{grid-template-columns:minmax(0,1fr)}
@@ -335,7 +376,6 @@ html[data-v=c] .desk.v .desk-in{transform:scale(var(--z0,.62))}
   .small-head,.list-head{position:static}
   .txt{max-width:640px}
   .tweaks-desk{--wx:24px}
-  .hero-desk{--h:720px}
   .hero-copy{padding-right:var(--m)}
 }
 /* Phone: a narrower crop, the menu bar loses the items macOS hides first */
@@ -353,24 +393,21 @@ html[data-v=c] .desk.v .desk-in{transform:scale(var(--z0,.62))}
   .cmd code{font-size:14px}
   /* Every screen runs edge to edge, so a 356 pt panel shows at its real size */
   .desk{--z:1;--pr:calc((100vw - 356px) / 2);--r:0px;margin-left:calc(-1 * var(--m));margin-right:calc(-1 * var(--m))}
-  .hero-desk{--h:695px;--r:0px;margin-right:0}
+  /* A live demo at phone width lays out at its real size, so the frame is as tall as its content */
+  .demo{border-radius:0;margin-left:calc(-1 * var(--m));margin-right:calc(-1 * var(--m))}
+  .hero-demo{height:693px;margin-right:0}
+  .fan-demo{height:1143px}
   .bar .apps,.bar .opt,.clock .d{display:none}
   .bar{justify-content:flex-end}
   .clock{width:auto}
-  .port-desk{--h:510px;width:auto}
-  [data-step="2"] .port-desk{--h:441px}
-  [data-step="3"] .port-desk{--h:339px}
   .rsync-desk{--h:685px}
   .input-desk{--h:635px}
   /* A settings window: the whole window small, then a zoom of its main region at a readable size */
-  .fan-desk,[data-step="0"] .port-desk,.tweaks-desk{--z:.43;--wx:calc(50% - 410px);--wy:40px;--zh-px:calc((100vw - 32px) * var(--zh) / var(--zw));--h:calc(329px + var(--zh-px))}
+  .tweaks-desk{--z:.43;--wx:calc(50% - 410px);--wy:40px;--zh-px:calc((100vw - 32px) * var(--zh) / var(--zw));--h:calc(329px + var(--zh-px))}
   .tweaks-desk{margin-top:32px}
   .desk>.zoom{display:block;position:absolute;left:16px;right:16px;bottom:16px}
   .zoom{display:block;position:relative;aspect-ratio:var(--zw) / var(--zh);overflow:hidden;border-radius:12px;background:var(--surface);box-shadow:0 0 0 1px var(--lit),0 10px 30px rgba(0,0,0,.3)} /* taste-skill-ignore: a magnified card over the wallpaper */
   .zoom img{position:absolute;max-width:none;width:calc(var(--nw) / var(--zw) * 100%);left:calc(var(--zx) / var(--zw) * -100%);top:calc(var(--zy) / var(--zh) * -100%);border-radius:0;box-shadow:none}
-  [data-walk]:not([data-step="0"]) .port-desk>.zoom{display:none}
-  .steps{grid-template-columns:1fr;gap:6px}
-  .steps button{padding:14px}
   .field{padding-left:var(--m);padding-right:var(--m)}
   .tiles{grid-template-columns:1fr;gap:8px}
   .tile-face,.tile.wide .tile-face{height:360px;border-radius:16px;--k:var(--sp,.8)}
@@ -383,9 +420,6 @@ html[data-v=c] .desk.v .desk-in{transform:scale(var(--z0,.62))}
   .row span{font-size:15px;white-space:normal}
   .cmd.big{height:60px;padding-left:16px}
   .cmd.big code{font-size:13px;white-space:normal;overflow-wrap:anywhere}
-  .foot-row .soft{margin-left:0;width:100%}
-  html[data-v=b] .desk.v{transform:perspective(1400px) rotateY(-6deg) rotateX(2deg)}
-  html[data-v=b] .desk.v.fan-desk,html[data-v=b] [data-step="0"] .desk.v.port-desk{transform:none}
-  html[data-v=b] .hero-desk{margin-right:4px;--r:20px}
-  html[data-v=b] .hero-desk .scr{border-radius:18px}
+  .gh-cta .long{display:none}
+  .foot-fine .soft{margin-left:0;width:100%}
 }

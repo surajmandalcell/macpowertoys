@@ -16,11 +16,13 @@
   <symbol id="i-link" viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round"><path d="M8.5 11.5a3.5 3.5 0 0 0 5 0l2.5-2.5a3.5 3.5 0 0 0-5-5l-1 1"/><path d="M11.5 8.5a3.5 3.5 0 0 0-5 0L4 11a3.5 3.5 0 0 0 5 5l1-1"/></symbol>
   <symbol id="i-copy" viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.6"><rect x="7" y="7" width="10" height="10" rx="2.2"/><path d="M13 4.5V4.2A1.7 1.7 0 0 0 11.3 2.5H4.7A1.7 1.7 0 0 0 3 4.2v6.6a1.7 1.7 0 0 0 1.7 1.7H5"/></symbol>
   <symbol id="i-ok" viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4.5 10.5l3.5 3.5 7.5-8"/></symbol>
+  <symbol id="i-gh" viewBox="0 0 16 16"><path d="M8 0C3.58 0 0 3.58 0 8c0 3.54 2.29 6.53 5.47 7.59.4.07.55-.17.55-.38 0-.19-.01-.82-.01-1.49-2.01.37-2.53-.49-2.69-.94-.09-.23-.48-.94-.82-1.13-.28-.15-.68-.52-.01-.53.63-.01 1.08.58 1.23.82.72 1.21 1.87.87 2.33.66.07-.52.28-.87.51-1.07-1.78-.2-3.64-.89-3.64-3.95 0-.87.31-1.59.82-2.15-.08-.2-.36-1.02.08-2.12 0 0 .67-.21 2.2.82.64-.18 1.32-.27 2-.27.68 0 1.36.09 2 .27 1.53-1.04 2.2-.82 2.2-.82.44 1.1.16 1.92.08 2.12.51.56.82 1.27.82 2.15 0 3.07-1.87 3.75-3.65 3.95.29.25.54.73.54 1.48 0 1.07-.01 1.93-.01 2.2 0 .21.15.46.55.38A8.013 8.013 0 0 0 16 8c0-4.42-3.58-8-8-8z"/></symbol>
+  <symbol id="i-star" viewBox="0 0 16 16"><path d="M8 1.6l1.95 3.95 4.36.64-3.16 3.07.75 4.34L8 11.55l-3.9 2.05.75-4.34L1.69 6.19l4.36-.64z"/></symbol>
 </svg>
 
 <header class="nav">
   <a class="mark" href="#top"><img src="assets/icons/appicon.svg" alt="" width="28" height="28">MacPowerToys</a>
-  <nav aria-label="Main"><a href="#fan">Features</a><a href="#tools">Tools</a><a href="#install">Install</a><a href="https://github.com/surajmandalcell/macpowertoys">GitHub</a></nav>
+  <nav aria-label="Main"><a href="#fan">Features</a><a href="#tools">Tools</a><a href="#install">Install</a><a class="gh-cta" href="https://github.com/surajmandalcell/macpowertoys" aria-label="MacPowerToys on GitHub, star it"><svg class="gh"><use href="#i-gh"/></svg><span class="long">GitHub</span><span class="sep" aria-hidden="true"></span><span class="stars" aria-hidden="true"><svg class="line"><use href="#i-star"/></svg><svg class="full"><use href="#i-star"/></svg></span><span class="n" data-stars>Star</span></a></nav>
 </header>
 
 <main>
@@ -29,19 +31,12 @@
     <h1>Your menu bar, doing more.</h1>
     <p class="lead">One native panel for system stats and fan curves, plus nine free tools: dev server ports, cloud copies, scroll settings for each mouse, and more.</p>
     <div class="get">
-      <a class="btn" data-download href="https://github.com/surajmandalcell/macpowertoys/releases/download/v1.9.4/MacPowerToys-1.9.4-universal.dmg">Download for Mac</a>
+      <a class="glass" data-download href="https://github.com/surajmandalcell/macpowertoys/releases/download/v1.9.4/MacPowerToys-1.9.4-universal.dmg"><span class="glow" aria-hidden="true"></span><i class="apple" aria-hidden="true"></i>Download for Mac</a>
       <div class="cmd"><code><span>brew install --cask</span> <span>samhqapp/tap/macpowertoys</span></code><button type="button" aria-label="Copy the install command" data-copy="brew install --cask samhqapp/tap/macpowertoys"><svg class="cp"><use href="#i-copy"/></svg><svg class="ok"><use href="#i-ok"/></svg></button></div>
     </div>
     <p class="fine">Version <span data-version>1.9.4</span> · macOS 26.2 or later · <span data-notary>If macOS blocks it: System Settings › Privacy &amp; Security › Open Anyway</span></p>
   </div>
-  <div class="desk v hero-desk" style="--wall:url(assets/wall/ring.webp)">
-    <div class="desk-in">
-      <div class="scr">
-        <div class="bar" aria-hidden="true"><span class="apps"><img src="assets/menubar/apple.png" width="12" height="15" alt=""><b>Finder</b><span>File</span><span>Edit</span><span>View</span><span>Go</span><span>Window</span><span>Help</span></span><span class="mbi"><img src="assets/menubar/menubar-white@1x.png" srcset="assets/menubar/menubar-white@2x.png 2x, assets/menubar/menubar-white@4x.png 4x" width="16" height="16" alt=""></span><img src="assets/menubar/battery.png" width="24" height="11" alt=""><img src="assets/menubar/wifi.png" width="17" height="13" alt=""><img class="opt" src="assets/menubar/search.png" width="15" height="15" alt=""><img class="opt" src="assets/menubar/control.png" width="17" height="15" alt=""><span class="clock"><span class="d">Fri Nov 20</span>&ensp;<span class="t">9:41 AM</span></span></div>
-      </div>
-      <picture data-ui class="panel"><source media="(prefers-color-scheme: dark)" srcset="assets/shots/panel-home-dark.webp"><img src="assets/shots/panel-home-light.webp" width="356" height="642" alt="The MacPowerToys panel open under its menu bar icon: CPU, GPU, memory, disk, battery, network, fan, and the busiest apps"></picture>
-    </div>
-  </div>
+  <div class="demo hero-demo"><iframe src="demos/live.html" title="The MacPowerToys panel, live: CPU, GPU, memory, and network move every second, with the fan and the busiest apps"></iframe></div>
 </section>
 
 <section class="sec" id="fan">
@@ -49,51 +44,43 @@
     <div class="head-txt">
       <picture class="rv"><source media="(prefers-color-scheme: dark)" srcset="assets/icons/fan-dark.svg"><img class="ticon" src="assets/icons/fan.svg" alt="" width="52" height="52"></picture>
       <h2 class="rv">Fan curves that stay <span class="nw">quiet.<a class="anchor" href="#fan" aria-label="Copy a link to Fan"><svg><use href="#i-link"/></svg></a></span></h2>
-      <p class="rv">Pick Auto, Cool, or Max right from the panel. Auto follows macOS. Cool follows your pick on the Fan page: Silent, Quiet, Steady, your own Custom curve, or Hold, which keeps the CPU near one temperature, give or take 2 °C, with a steady fan speed. Every pick runs at full speed from 90 °C.</p>
+      <p class="rv">Pick Auto, Cool, or Max right from the panel. Auto follows macOS. Cool follows your pick on the Fan page: Silent, Quiet, Steady, your own Custom curve, or Hold, which keeps the CPU near one temperature, give or take 2 °C, with a steady fan speed. Cool reads the average of the CPU cores and of the GPU cores over 20 seconds, so one busy core does not spin the fans up and down. Every pick runs at full speed from an 80 °C average, and when one core stays at 90 °C or more for 10 seconds.</p>
     </div>
     <div class="try rv" data-fan>
       <div class="fan-now">
         <svg class="blades" viewBox="0 0 16 16" aria-hidden="true"><g fill="none" stroke="currentColor" stroke-width="1.2" stroke-linejoin="round"><path id="blade" d="M8 8C7.2 6.4 7.2 3.6 9.1 2.5 10.9 1.5 13.1 2.9 12.5 5 12 6.7 9.9 7.7 8 8Z"/><use href="#blade" transform="rotate(120 8 8)"/><use href="#blade" transform="rotate(240 8 8)"/></g><circle cx="8" cy="8" r="1.3" fill="currentColor"/></svg>
-        <p><b id="fan-rpm">3,829</b> RPM</p>
-        <p class="heat-word"><span id="fan-temp">79</span> °C · <span id="fan-word">hot</span></p>
+        <p><b id="fan-rpm">3,416</b> RPM</p>
+        <p class="heat-word">CPU avg <span id="fan-temp">64</span> °C · <span id="fan-word">hot</span></p>
       </div>
       <div class="picks" role="radiogroup" aria-label="Fan page pick">
         <button type="button" role="radio" aria-checked="false" data-pick="silent"><svg class="mini" viewBox="0 0 100 44" preserveAspectRatio="none" aria-hidden="true"></svg><span>Silent</span></button>
         <button type="button" role="radio" aria-checked="false" data-pick="quiet"><svg class="mini" viewBox="0 0 100 44" preserveAspectRatio="none" aria-hidden="true"></svg><span>Quiet</span></button>
         <button type="button" role="radio" aria-checked="false" data-pick="steady"><svg class="mini" viewBox="0 0 100 44" preserveAspectRatio="none" aria-hidden="true"></svg><span>Steady</span></button>
-        <button type="button" role="radio" aria-checked="false" data-pick="hold"><svg class="mini" viewBox="0 0 100 44" preserveAspectRatio="none" aria-hidden="true"></svg><span>Hold 75 °C</span></button>
+        <button type="button" role="radio" aria-checked="false" data-pick="hold"><svg class="mini" viewBox="0 0 100 44" preserveAspectRatio="none" aria-hidden="true"></svg><span>Hold 62 °C</span></button>
         <button type="button" role="radio" aria-checked="true" data-pick="custom"><svg class="mini" viewBox="0 0 100 44" preserveAspectRatio="none" aria-hidden="true"></svg><span>Custom</span></button>
       </div>
       <svg class="curve" viewBox="0 -16 320 148" aria-hidden="true">
-        <defs><linearGradient id="heat-line" gradientUnits="userSpaceOnUse" x1="0" x2="320" y1="0" y2="0"><stop offset=".1" class="s-cool"/><stop offset=".45" class="s-warm"/><stop offset=".7" class="s-hot"/><stop offset=".86" class="s-very-hot"/></linearGradient></defs>
+        <defs><linearGradient id="heat-line" gradientUnits="userSpaceOnUse" x1="0" x2="320" y1="0" y2="0"><stop offset=".1" class="s-cool"/><stop offset=".36" class="s-warm"/><stop offset=".54" class="s-hot"/><stop offset=".7" class="s-very-hot"/></linearGradient></defs>
         <path class="grid" d="M0 120.5H320M0 64.5H320M0 8.5H320"/>
-        <g class="hold-mark" id="hold-mark"><rect class="band" x="196.6" y="8" width="18.3" height="112"/><path class="target" d="M205.7 8V120"/><text class="hold-word" x="192" y="20" text-anchor="end">Hold 75 °C</text></g>
+        <g class="hold-mark" id="hold-mark"><rect class="band" x="160" y="8" width="21.3" height="112"/><path class="target" d="M170.7 8V120"/><text class="hold-word" x="156" y="20" text-anchor="end">Hold 62 °C</text></g>
         <path class="area" id="fan-area"/>
         <path class="line" id="fan-line"/>
-        <path class="lock-line" d="M274.3 8H320"/>
-        <text class="lock-word" x="268" y="-4" text-anchor="end">Full speed from 90 °C</text>
-        <circle class="lock" cx="274.3" cy="8" r="5"/>
+        <path class="lock-line" d="M266.7 8H320"/>
+        <text class="lock-word" x="260" y="-4" text-anchor="end">Full speed from 80 °C</text>
+        <circle class="lock" cx="266.7" cy="8" r="5"/>
         <line class="guide" id="fan-guide" y2="120"/>
         <circle class="dot" id="fan-dot" r="6"/>
       </svg>
-      <label for="heat">Drag to try: the CPU temperature, in °C</label>
+      <label for="heat">Drag to try: the CPU average, in °C</label>
       <div class="therm">
         <span class="tube" aria-hidden="true"><span class="fill"><i></i></span></span>
-        <input id="heat" type="range" min="30" max="100" step="1" value="79">
+        <input id="heat" type="range" min="30" max="90" step="1" value="64">
       </div>
-      <div class="ticks" aria-hidden="true"><span style="--t:30">30</span><span style="--t:50">50</span><span style="--t:70">70</span><span style="--t:90">90</span><span style="--t:100">100</span></div>
-      <p class="note" id="fan-note"><span class="for-curve">The same picks as the Fan page below, at 1,350 to 5,777 RPM.</span><span class="for-hold">Holds 75 °C, give or take 2 °C, with a steady fan speed.</span></p>
+      <div class="ticks" aria-hidden="true"><span style="--t:30">30</span><span style="--t:40">40</span><span style="--t:50">50</span><span style="--t:60">60</span><span style="--t:70">70</span><span style="--t:80">80</span><span style="--t:90">90</span></div>
+      <p class="note" id="fan-note"><span class="for-curve">The same picks as the Fan page below, at 1,350 to 5,777 RPM.</span><span class="for-hold">Holds a 62 °C average, give or take 2 °C, with a steady fan speed.</span></p>
     </div>
   </div>
-  <div class="desk v fan-desk" style="--wall:url(assets/wall/fur.webp);--nw:820;--zx:229;--zy:181;--zw:577;--zh:371">
-    <div class="desk-in">
-      <div class="scr">
-        <div class="bar" aria-hidden="true"><span class="apps"><img src="assets/menubar/apple.png" width="12" height="15" alt=""><b>MacPowerToys</b><span>Edit</span><span>View</span><span>Window</span><span>Help</span></span><span class="mbi"><img src="assets/menubar/menubar-white@1x.png" srcset="assets/menubar/menubar-white@2x.png 2x, assets/menubar/menubar-white@4x.png 4x" width="16" height="16" alt=""></span><img src="assets/menubar/battery.png" width="24" height="11" alt=""><img src="assets/menubar/wifi.png" width="17" height="13" alt=""><img class="opt" src="assets/menubar/search.png" width="15" height="15" alt=""><img class="opt" src="assets/menubar/control.png" width="17" height="15" alt=""><span class="clock"><span class="d">Fri Nov 20</span>&ensp;<span class="t">9:41 AM</span></span></div>
-        <picture data-ui class="dwin"><source media="(prefers-color-scheme: dark)" srcset="assets/shots/main-fan-dark.webp"><img src="assets/shots/main-fan-light.webp" width="820" height="660" loading="lazy" alt="The Fan page with a Custom Cool curve that turns from blue to red, locked at full speed from 90 °C, the CPU at 79 °C, and the Silent, Quiet, Steady, Hold 75 °C and Custom cards"></picture>
-      </div>
-    </div>
-    <picture data-ui class="zoom"><source media="(prefers-color-scheme: dark)" srcset="assets/shots/main-fan-dark.webp"><img src="assets/shots/main-fan-light.webp" width="820" height="660" loading="lazy" alt=""></picture>
-  </div>
+  <div class="demo fan-demo"><iframe src="demos/fan.html" loading="lazy" title="The Fan page, live: the pointer picks Silent, then Steady, and the curve changes; then Hold keeps a 62 °C average. Drag on the chart to try it"></iframe></div>
 </section>
 
 <section class="sec" id="portman">
@@ -101,24 +88,32 @@
     <h2 class="rv">Portman finds every dev <span class="nw">server.<a class="anchor" href="#portman" aria-label="Copy a link to Portman"><svg><use href="#i-link"/></svg></a></span></h2>
     <p class="rv">It watches the ports your projects open, shows what each server uses, and brings ports from your SSH hosts to this Mac.</p>
   </div>
-  <div class="walk" data-walk data-step="0">
-    <ol class="steps rv">
-      <li><button type="button" data-go="0" aria-current="step"><b>Turn it on.</b><span class="d">Pick Portman in MacPowerToys, switch it on, and choose the ports it watches. Open it with ⌥⌘P.</span></button></li>
-      <li><button type="button" data-go="1"><b>See every server.</b><span class="d">Each one shows its project, git branch, uptime, and memory. The ring adds them all up.</span></button></li>
-      <li><button type="button" data-go="2"><b>Open one to check it.</b><span class="d">Live memory and CPU graphs. Restart or stop it, open its folder, or copy its URL.</span></button></li>
-      <li><button type="button" data-go="3"><b>Forward a port.</b><span class="d">Pick a host from your SSH config and add a port. The remote server opens here as localhost.</span></button></li>
-    </ol>
-    <div class="desk v port-desk" style="--wall:url(assets/wall/mesh.webp);--nw:820;--zx:229;--zy:318;--zw:577;--zh:249">
-      <div class="desk-in">
-        <div class="scr">
-          <div class="bar ink" aria-hidden="true"><span class="apps"><img src="assets/menubar/apple.png" width="12" height="15" alt=""><b>MacPowerToys</b><span>Edit</span><span>View</span><span>Window</span><span>Help</span></span><span class="mbi"><img src="assets/menubar/menubar-white@1x.png" srcset="assets/menubar/menubar-white@2x.png 2x, assets/menubar/menubar-white@4x.png 4x" width="16" height="16" alt=""></span><img src="assets/menubar/battery.png" width="24" height="11" alt=""><img src="assets/menubar/wifi.png" width="17" height="13" alt=""><img class="opt" src="assets/menubar/search.png" width="15" height="15" alt=""><img class="opt" src="assets/menubar/control.png" width="17" height="15" alt=""><span class="clock"><span class="d">Fri Nov 20</span>&ensp;<span class="t">9:41 AM</span></span></div>
-          <picture data-ui class="dwin" data-stage="0"><source media="(prefers-color-scheme: dark)" srcset="assets/shots/main-portman-dark.webp"><img src="assets/shots/main-portman-light.webp" width="820" height="660" loading="lazy" alt="Portman settings: ports watched, scan interval, clean up"></picture>
+  <div class="pm" data-pm data-step="0">
+    <div class="pm-pin">
+      <div class="pm-vis">
+        <div class="pm-cam" style="--wall:url(assets/wall/mesh.webp)">
+          <div class="bar" aria-hidden="true"><span class="apps"><img src="assets/menubar/apple.png" width="12" height="15" alt=""><b>MacPowerToys</b><span>Edit</span><span>View</span><span>Window</span><span>Help</span></span><span class="mbi"><img src="assets/menubar/menubar-white@1x.png" srcset="assets/menubar/menubar-white@2x.png 2x, assets/menubar/menubar-white@4x.png 4x" width="16" height="16" alt=""></span><img src="assets/menubar/battery.png" width="24" height="11" alt=""><img src="assets/menubar/wifi.png" width="17" height="13" alt=""><img class="opt" src="assets/menubar/search.png" width="15" height="15" alt=""><img class="opt" src="assets/menubar/control.png" width="17" height="15" alt=""><span class="clock"><span class="d">Fri Nov 20</span>&ensp;<span class="t">9:41 AM</span></span></div>
+          <picture data-ui class="pm-shot pm-pan" data-s="0"><source media="(prefers-color-scheme: dark)" srcset="assets/shots/panel-portman-servers-dark.webp"><img src="assets/shots/panel-portman-servers-light.webp" width="356" height="457" loading="lazy" alt="Portman lists four dev servers with their ports, git branch, uptime, and memory; the ring shows 791.5 MB in all"></picture>
+          <picture data-ui class="pm-shot pm-pan" data-s="1"><source media="(prefers-color-scheme: dark)" srcset="assets/shots/panel-portman-detail-dark.webp"><img src="assets/shots/panel-portman-detail-light.webp" width="356" height="388" loading="lazy" alt="One Portman server, storefront on port 5173, with memory and CPU graphs and Restart, Stop, Editor, Finder, and Copy URL buttons"></picture>
+          <picture data-ui class="pm-shot pm-pan" data-s="2"><source media="(prefers-color-scheme: dark)" srcset="assets/shots/panel-portman-forward-dark.webp"><img src="assets/shots/panel-portman-forward-light.webp" width="356" height="286" loading="lazy" alt="Portman forwarding: port 5432 on this Mac goes to build-box port 5432, and 16379 goes to staging port 6379"></picture>
+          <picture data-ui class="pm-shot pm-win" data-s="3"><source media="(prefers-color-scheme: dark)" srcset="assets/shots/main-portman-dark.webp"><img src="assets/shots/main-portman-light.webp" width="820" height="660" loading="lazy" alt="Portman settings: the ⌥⌘P shortcut, ports 3000 to 9999, a scan every 2 seconds, protected apps, and clean up"></picture>
         </div>
-        <picture data-ui class="panel" data-stage="1" hidden><source media="(prefers-color-scheme: dark)" srcset="assets/shots/panel-portman-servers-dark.webp"><img src="assets/shots/panel-portman-servers-light.webp" width="356" height="457" loading="lazy" alt="Portman list of four dev servers with memory use"></picture>
-        <picture data-ui class="panel" data-stage="2" hidden><source media="(prefers-color-scheme: dark)" srcset="assets/shots/panel-portman-detail-dark.webp"><img src="assets/shots/panel-portman-detail-light.webp" width="356" height="388" loading="lazy" alt="One Portman server with memory and CPU graphs"></picture>
-        <picture data-ui class="panel" data-stage="3" hidden><source media="(prefers-color-scheme: dark)" srcset="assets/shots/panel-portman-forward-dark.webp"><img src="assets/shots/panel-portman-forward-light.webp" width="356" height="286" loading="lazy" alt="Portman SSH forwarding with two active ports"></picture>
       </div>
-      <picture data-ui class="zoom"><source media="(prefers-color-scheme: dark)" srcset="assets/shots/main-portman-dark.webp"><img src="assets/shots/main-portman-light.webp" width="820" height="660" loading="lazy" alt=""></picture>
+      <div class="pm-txt">
+        <ol class="pm-bars">
+          <li><button type="button" data-go="0" aria-label="Step 1: every dev server" aria-current="step"><i></i></button></li>
+          <li><button type="button" data-go="1" aria-label="Step 2: open one server"><i></i></button></li>
+          <li><button type="button" data-go="2" aria-label="Step 3: forward a closed port"><i></i></button></li>
+          <li><button type="button" data-go="3" aria-label="Step 4: set it up"><i></i></button></li>
+        </ol>
+        <div class="pm-say">
+          <div class="pm-step on" data-s="0"><h3>Every dev server, in one list.</h3><p>Portman watches ports 3000 to 9999. Each server shows its project, git branch, uptime, and memory, and the ring adds them all up.</p></div>
+          <div class="pm-step" data-s="1"><h3>Open one to see what it uses.</h3><p>Live memory and CPU graphs. Restart it or stop it, open it in your editor or Finder, or copy its URL.</p></div>
+          <div class="pm-step" data-s="2"><h3>Postgres stays closed. You still get in.</h3><p>Postgres runs on build-box at home, and the router keeps port 5432 shut. Portman carries it over SSH, so your apps just use localhost:5432.</p>
+            <p class="pm-route"><span><small>This Mac</small>localhost:5432</span><i aria-hidden="true"><b></b></i><span><small>SSH on port 22</small>build-box:5432</span></p></div>
+          <div class="pm-step" data-s="3"><h3>Set it up once.</h3><p>Pick the ports it watches, how often it scans, and the apps it must never stop. Open it from anywhere with ⌥⌘P.</p></div>
+        </div>
+      </div>
     </div>
   </div>
 </section>
@@ -220,19 +215,25 @@
 <section class="sec install" id="install">
   <h2 class="rv">Install it in one <span class="nw">line.<a class="anchor" href="#install" aria-label="Copy a link to Install"><svg><use href="#i-link"/></svg></a></span></h2>
   <div class="cmd big rv"><code><span>brew install --cask</span> <span>samhqapp/tap/macpowertoys</span></code><button type="button" aria-label="Copy the install command" data-copy="brew install --cask samhqapp/tap/macpowertoys"><svg class="cp"><use href="#i-copy"/></svg><svg class="ok"><use href="#i-ok"/></svg></button></div>
-  <p class="or rv">Or <a class="btn" data-download href="https://github.com/surajmandalcell/macpowertoys/releases/download/v1.9.4/MacPowerToys-1.9.4-universal.dmg">Download for Mac</a></p>
+  <p class="or rv">Or <a class="glass" data-download href="https://github.com/surajmandalcell/macpowertoys/releases/download/v1.9.4/MacPowerToys-1.9.4-universal.dmg"><span class="glow" aria-hidden="true"></span><i class="apple" aria-hidden="true"></i>Download for Mac</a></p>
   <p class="fine rv">Version <span data-version>1.9.4</span> · macOS 26.2 or later · <span data-notary>If macOS blocks it: System Settings › Privacy &amp; Security › Open Anyway</span> · No tracking · MIT license</p>
 </section>
 </main>
 
-<footer class="foot">
-  <div class="foot-row">
-    <span>MacPowerToys by Sam</span>
-    <a href="https://github.com/surajmandalcell/macpowertoys">GitHub</a>
-    <a href="https://github.com/surajmandalcell/macpowertoys/releases">Release notes</a>
-    <a href="https://github.com/surajmandalcell/macpowertoys/blob/main/PRIVACY.md">Privacy</a>
-    <span class="soft">Screens show sample data.</span>
+<footer class="foot" data-foot>
+  <div class="foot-top">
+    <div class="brand">
+      <div class="id rv"><img src="assets/icons/appicon.svg" alt="" width="36" height="36">MacPowerToys</div>
+      <p class="rv">Free menu bar tools for the Mac. Open source under MIT.</p>
+      <div class="cmd rv"><code><span>brew install --cask</span> <span>samhqapp/tap/macpowertoys</span></code><button type="button" aria-label="Copy the install command" data-copy="brew install --cask samhqapp/tap/macpowertoys"><svg class="cp"><use href="#i-copy"/></svg><svg class="ok"><use href="#i-ok"/></svg></button></div>
+    </div>
+    <div class="cols">
+      <ul class="rv"><li><h4>Product</h4></li><li><a class="ln" href="#fan">Features</a></li><li><a class="ln" href="#tools">Tools</a></li><li><a class="ln" href="#install">Install</a></li><li><a class="ln" data-download href="https://github.com/surajmandalcell/macpowertoys/releases/download/v1.9.4/MacPowerToys-1.9.4-universal.dmg">Download</a></li></ul>
+      <ul class="rv"><li><h4>Project</h4></li><li><a class="ln" href="https://github.com/surajmandalcell/macpowertoys">GitHub</a></li><li><a class="ln" href="https://github.com/surajmandalcell/macpowertoys/releases">Release notes</a></li><li><a class="ln" href="https://github.com/surajmandalcell/macpowertoys/blob/main/PRIVACY.md">Privacy</a></li></ul>
+    </div>
   </div>
+  <p class="foot-fine rv"><span>MacPowerToys by Sam · Version <span data-version>1.9.4</span></span><span class="soft">Screens show sample data.</span></p>
+  <div class="word" aria-hidden="true" data-word="MacPowerToys">MacPowerToys</div>
 </footer>
 </body>
 </html>
