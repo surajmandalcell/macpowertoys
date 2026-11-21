@@ -51,9 +51,6 @@
     spot.className = 'spot'; cur.className = 'cur'; cur.innerHTML = CURSOR;
     cam.append(spot, cur);
     cam.querySelectorAll('.ico').forEach(function (e) { icons[e.dataset.ico] = e; });
-    (window.requestIdleCallback || function (f) { setTimeout(f, 1200); })(function () {
-      cam.querySelectorAll('img').forEach(function (img) { img.loading = 'eager'; if (img.decode) img.decode().catch(function () {}); });
-    });
 
     // The camera is the whole screen in macOS points at the smallest zoom; each shot has its own zoom,
     // and the camera scales from its top right corner, so a panel shows under its menu bar icon.
@@ -103,11 +100,12 @@
       pending = false;
       var st = steps[step], si = +st.dataset.shot, ic = icons[shots[si].dataset.ico], end = iconPoint(ic);
       if (still()) { moveCursor(end); cur.classList.add('on'); open(si); return; }
-      cur.style.transition = 'none'; moveCursor([end[0] - 150, 230]); cur.getBoundingClientRect(); cur.style.transition = '';
+      // The whole click takes about 400 ms, so the panel opens before the empty desktop reads as a pause.
+      cur.style.transition = 'none'; moveCursor([end[0] - 60, 110]); cur.getBoundingClientRect(); cur.style.transition = '';
       cur.classList.add('on');
-      timers.push(setTimeout(function () { moveCursor(end); }, 60));
-      timers.push(setTimeout(function () { cur.classList.add('down'); }, 1100));
-      timers.push(setTimeout(function () { cur.classList.remove('down'); open(si); }, 1230));
+      timers.push(setTimeout(function () { moveCursor(end); }, 20));
+      timers.push(setTimeout(function () { cur.classList.add('down'); }, 320));
+      timers.push(setTimeout(function () { cur.classList.remove('down'); open(si); }, 400));
     }
     function show(prev) {
       var st = steps[step], si = +st.dataset.shot;
@@ -182,7 +180,16 @@
       // Past the last chapter the footer scrolls in, and the last screen moves up with it.
       var over = Math.max(0, -chs[chs.length - 1].getBoundingClientRect().top);
       last.style.translate = over ? '0 ' + -over + 'px' : '';
-      if (i !== cur) go(i);
+      if (i !== cur) { go(i); warm(i); }
+    }
+    // Decode this screen's and the next two screens' images while idle, so a first visit does not
+    // decode them in the frame that shows them. Kept close to use, so the decode cache still holds them.
+    function warm(i) {
+      (window.requestIdleCallback || function (f) { setTimeout(f, 200); })(function () {
+        scr.slice(Math.max(0, i - 1), i + 3).forEach(function (s) {
+          s.querySelectorAll('img').forEach(function (img) { img.loading = 'eager'; if (img.decode) img.decode().catch(function () {}); });
+        });
+      });
     }
     addEventListener('scroll', function () { if (!ticking) { ticking = true; requestAnimationFrame(paint); } }, { passive: true });
     addEventListener('resize', paint);
