@@ -265,6 +265,7 @@
           <div class="shot pan" data-ico="mpt"><img src="assets/shots/panel-rclone-dark.webp" width="356" height="632" loading="lazy" alt="RSync UI panel with running, paused, failed, and finished copies">
             <span class="fx" aria-hidden="true" style="left:250px;top:349px;width:92px;height:23px;background:#1f1f21"><b style="right:37px;color:#eaba66">Paused</b><svg viewBox="0 0 12 12" style="left:69px;top:5.5px;width:12px;height:12px"><path d="M2.5 1.2v9.6l8.2-4.8z" fill="#bababc"/></svg></span>
             <span class="fx" aria-hidden="true" style="left:20px;top:377.5px;width:315px;height:4px;background:#323234;border-radius:2px"><i style="left:0;top:0;bottom:0;width:42%;border-radius:2px;background:#eaba66"></i></span>
+            <span class="fx" aria-hidden="true" style="left:266px;top:57px;width:86px;height:21px;background:#232e31"><b style="right:0;line-height:21px;font-size:14px;color:#4cb7c7">Not <small style="font-size:11px;font-weight:500;opacity:.75">available</small></b></span>
             <span class="fx" aria-hidden="true" style="left:220px;top:385px;width:116px;height:17px;background:#1f1f21"><b style="right:1px;font-size:11px;line-height:17px;color:#99989d;font-weight:400">812 of 2,140 files</b></span>
           </div>
         </div>
@@ -303,7 +304,7 @@
   <div class="story" data-story>
     <div class="s-pin">
       <div class="s-vis">
-        <div class="s-cam" style="--wall:url(assets/wall/grad.webp)">
+        <div class="s-cam" style="--wall:url(assets/wall/mesh.webp)">
           <div class="shot win"><img src="assets/shots/mac-tweaks-dark.webp" width="820" height="660" loading="lazy" alt="Mac Tweaks on the Dock page: the pointer takes the Dock reveal delay from 0.40 to 0.00 seconds">
             <span class="fx roll" aria-hidden="true" style="left:640px;top:88px;width:108px;height:21px;background:#29282b"><b><i>0.35</i><i>0.30</i><i>0.25</i><i>0.20</i><i>0.15</i><i>0.10</i><i>0.05</i><i>0.00</i></b></span>
           </div>
@@ -425,7 +426,7 @@
 .desk{position:relative;width:100%;height:100%;overflow:hidden;background:#141416}
 .desk-in{position:absolute;left:0;top:0;transform-origin:0 0}
 /* The demo is the top right corner of a 1920 x 1080 point screen: the wallpaper and menu bar are cut, never shrunk */
-.desk-in::before{content:"";position:absolute;right:0;top:0;width:1920px;height:1080px;background:var(--wd) center/cover no-repeat}
+.desk-in::before{content:"";position:absolute;right:0;top:0;width:1920px;height:1080px;background:linear-gradient(rgba(0,0,0,.3),rgba(0,0,0,.3)),var(--wd) center/cover no-repeat}
 .bar{position:absolute;z-index:1;inset:0 0 auto;height:24px;display:flex;align-items:center;justify-content:flex-end;gap:14px;padding:0 22px;color:#fff;font:500 13px/1 var(--font);letter-spacing:0;white-space:nowrap;filter:drop-shadow(0 0 3px rgba(0,0,0,.28))}
 .bar img{flex:none}
 .mbi{flex:none;display:grid;place-items:center;width:30px;height:22px;border-radius:7px;background:rgba(255,255,255,.28)}
