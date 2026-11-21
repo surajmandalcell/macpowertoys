@@ -1,6 +1,11 @@
 # Portman request list
 
 - [ ] Server monitor (owner pick, 2026-11-21): monitored hosts live inside the Forward tab; each host row leads and its forwarded ports sit indented under it. Icon, port badge, stats, and layout looks are open.
+  - [x] Engine: hosts save under `portman.hosts` (version 1) with a mode (Forward ports, Monitor, Both) and their forwards. The old System Monitor host keys migrate once and stay untouched; unreadable data moves to `portman.hosts.unreadable`.
+  - [x] Sampling: one `ssh -T host sh -s` script per sample (BatchMode, ConnectTimeout 5, 12 s hard deadline, 64 KB output cap). `uname -s` picks the Linux (`/proc`) or macOS (`top`, `vm_stat`, `sysctl`, `df`, `netstat`) parser. CPU, memory, root disk, load, uptime, and network rates.
+  - [x] Polling: every 2 s while the panel is open on Forward, every 45 s otherwise, none in Low Power Mode or for Forward-only hosts. Backoff doubles per failure (caps 30 s and 10 min), no overlapping samples, removal cancels the running sample, 60-point history.
+  - [x] States: Connecting, Online, Offline, Unreachable, Auth failed, Host key failed, Command not found, Unreadable data, with the last-seen time.
+  - Tests: parser fixtures, counter deltas (first sample, reboot, 32-bit wrap), ssh error mapping, scheduler with a fake clock and transport, host store migration. Every new behavior needs a test; every test must pass.
 
 Listener artwork comes from the background process scanner and the System
 Monitor icon cache. App bundles use real artwork; confirmed command-line
