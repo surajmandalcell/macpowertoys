@@ -392,13 +392,69 @@ final class PortmanServerFailureTests: XCTestCase {
     }
 
     func testTransportArgumentsNeverPromptAndKeepTheHostAfterDoubleDash() {
-        let arguments = PortmanSSHServerTransport.arguments(PortmanServerTarget(destination: "sam@box", port: 2222))
+        let arguments = PortmanSSHServerTransport.arguments(PortmanServerTarget(destination: "sam@box", port: 2222),
+                                                            controlPath: "/s/abc")
         XCTAssertTrue(arguments.contains("BatchMode=yes"))
         XCTAssertTrue(arguments.contains("ConnectTimeout=5"))
         XCTAssertEqual(Array(arguments.suffix(4)), ["--", "sam@box", "sh", "-s"])
         XCTAssertEqual(arguments[arguments.firstIndex(of: "-p")! + 1], "2222")
-        XCTAssertFalse(PortmanSSHServerTransport.arguments(PortmanServerTarget(destination: "box")).contains("-p"))
+        XCTAssertFalse(PortmanSSHServerTransport.arguments(PortmanServerTarget(destination: "box"), controlPath: nil)
+            .contains("-p"))
         XCTAssertLessThan(PortmanSSHServerTransport.deadline, 30)
+    }
+
+    func testSharedConnectionArguments() {
+        let shared = PortmanSSHServerTransport.arguments(PortmanServerTarget(destination: "box"), controlPath: "/a b/c")
+        XCTAssertTrue(shared.contains("ControlMaster=auto"))
+        XCTAssertTrue(shared.contains("ControlPath=\"/a b/c\""), "a path with a space is quoted for ssh")
+        XCTAssertTrue(shared.contains("ControlPersist=60"))
+        let direct = PortmanSSHServerTransport.arguments(PortmanServerTarget(destination: "box"), controlPath: nil)
+        XCTAssertTrue(direct.contains("ControlMaster=no"), "never reuse a master from the owner's ssh config")
+        XCTAssertTrue(direct.contains("ControlPath=none"))
+        XCTAssertEqual(PortmanSSHServerTransport.closeArguments(PortmanServerTarget(destination: "box"), controlPath: "/s/c"),
+                       ["-o", "ControlPath=\"/s/c\"", "-O", "exit", "--", "box"])
+    }
+
+    func testControlPathIsShortStableAndPerHostAndPort() throws {
+        let directory = URL(fileURLWithPath: "/Users/someone/Library/Application Support/MacPowerToys/ssh")
+        let box = try XCTUnwrap(PortmanSSHServerTransport.controlPath(PortmanServerTarget(destination: "box"), in: directory))
+        XCTAssertEqual(box, PortmanSSHServerTransport.controlPath(PortmanServerTarget(destination: "box"), in: directory))
+        XCTAssertNotEqual(box, PortmanSSHServerTransport.controlPath(PortmanServerTarget(destination: "box", port: 22), in: directory))
+        XCTAssertNotEqual(box, PortmanSSHServerTransport.controlPath(PortmanServerTarget(destination: "other"), in: directory))
+        XCTAssertEqual(URL(fileURLWithPath: box).lastPathComponent.count, 12)
+        XCTAssertLessThanOrEqual(box.utf8.count + 17, 104, "ssh's temporary suffix must still fit sun_path")
+        let long = URL(fileURLWithPath: "/" + String(repeating: "d", count: 90))
+        XCTAssertNil(PortmanSSHServerTransport.controlPath(PortmanServerTarget(destination: "box"), in: long),
+                     "a path too long for a socket turns sharing off instead of failing")
+        XCTAssertNil(PortmanSSHServerTransport.controlPath(PortmanServerTarget(destination: "box"), in: nil))
+    }
+
+    func testDeadConnectionIsDroppedSoTheNextRunConnectsFresh() {
+        XCTAssertTrue(PortmanSSHServerTransport.shouldDropConnection(after: SSHKeyAccessError.timeout, status: nil))
+        XCTAssertTrue(PortmanSSHServerTransport.shouldDropConnection(after: nil, status: 255))
+        XCTAssertFalse(PortmanSSHServerTransport.shouldDropConnection(after: nil, status: 0))
+        XCTAssertFalse(PortmanSSHServerTransport.shouldDropConnection(after: nil, status: 127))
+        XCTAssertFalse(PortmanSSHServerTransport.shouldDropConnection(after: CancellationError(), status: nil))
+        XCTAssertFalse(PortmanSSHServerTransport.shouldDropConnection(after: SSHKeyAccessError.outputLimit, status: nil))
+    }
+
+    func testCloseRemovesAStaleSocketFile() throws {
+        let directory = URL(fileURLWithPath: "/private/tmp/mpt-close-\(UUID().uuidString.prefix(8))")
+        try FileManager.default.createDirectory(at: directory, withIntermediateDirectories: true)
+        defer { try? FileManager.default.removeItem(at: directory) }
+        let target = PortmanServerTarget(destination: "portman-test.invalid")
+        let transport = PortmanSSHServerTransport(socketDirectory: directory)
+        let path = try XCTUnwrap(PortmanSSHServerTransport.controlPath(target, in: directory))
+        FileManager.default.createFile(atPath: path, contents: Data())
+        transport.close(target)
+        let gone = expectation(description: "socket removed")
+        DispatchQueue.global().async {
+            for _ in 0..<100 where FileManager.default.fileExists(atPath: path) { usleep(50_000) }
+            gone.fulfill()
+        }
+        wait(for: [gone], timeout: 10)
+        XCTAssertFalse(FileManager.default.fileExists(atPath: path))
+        transport.close(target)
     }
 
     func testScriptPicksTheParserByUname() {
@@ -430,11 +486,21 @@ final class PortmanServerFailureTests: XCTestCase {
 
 // MARK: Scheduler
 
+private final class CloseLog: @unchecked Sendable {
+    private let lock = NSLock()
+    private var items: [String] = []
+    var values: [String] { lock.withLock { items } }
+    func append(_ value: String) { lock.withLock { items.append(value) } }
+}
+
 private actor FakeServerTransport: PortmanServerTransport {
     private var responses: [String: [Result<SSHProcessResult, any Error>]] = [:]
     private var held: [CheckedContinuation<Void, Never>] = []
     private var holding = false
     private(set) var calls: [String] = []
+    nonisolated let closed = CloseLog()
+
+    nonisolated func close(_ target: PortmanServerTarget) { closed.append(target.destination) }
 
     func enqueue(_ destination: String, _ result: Result<SSHProcessResult, any Error>) {
         responses[destination, default: []].append(result)
@@ -677,6 +743,20 @@ final class PortmanServerSchedulerTests: XCTestCase {
         await runOnce()
         monitor.sync([PortmanServerTarget(destination: "box", port: 2200)])
         XCTAssertEqual(monitor.states["box"]?.status, .waiting)
+        XCTAssertEqual(transport.closed.values, ["box"], "the old port's shared connection is closed")
+    }
+
+    func testRemovingHostsClosesOnlyTheirConnections() async {
+        let other = PortmanServerTarget(destination: "other")
+        monitor.sync([box, other])
+        await runOnce()
+        XCTAssertEqual(transport.closed.values, [], "sampling keeps the connection open")
+        monitor.sync([other])
+        XCTAssertEqual(transport.closed.values, ["box"])
+        monitor.sync([other])
+        XCTAssertEqual(transport.closed.values, ["box"], "an unchanged host is not closed")
+        monitor.sync([])
+        XCTAssertEqual(transport.closed.values, ["box", "other"], "stopping closes every connection")
     }
 
     func testHistoryKeepsTheLastSixtyPoints() async {

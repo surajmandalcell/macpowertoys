@@ -1,3 +1,4 @@
+import CryptoKit
 import Foundation
 import Observation
 
@@ -9,31 +10,114 @@ nonisolated struct PortmanServerTarget: Hashable, Sendable {
 
 nonisolated protocol PortmanServerTransport: Sendable {
     func run(_ target: PortmanServerTarget, script: String) async throws -> SSHProcessResult
+    /// Ends the host's shared connection. Must not block.
+    func close(_ target: PortmanServerTarget)
 }
 
 /// Runs the script with the owner's ssh config, keys and agent. BatchMode never prompts; no password is stored.
+/// One shared connection per host (ControlMaster) so a 2 s cadence does not open a new SSH login each time.
 nonisolated struct PortmanSSHServerTransport: PortmanServerTransport {
     static let connectTimeout = 5
     static let deadline: TimeInterval = 12
+    static let persistSeconds = 60
+    /// sun_path is 104 bytes and ssh adds a 17-byte suffix while it creates the master socket.
+    static let maximumControlPathBytes = 86
 
-    static func arguments(_ target: PortmanServerTarget) -> [String] {
+    let socketDirectory: URL?
+
+    init(socketDirectory: URL? = Self.defaultSocketDirectory) {
+        self.socketDirectory = socketDirectory
+    }
+
+    static let defaultSocketDirectory: URL? = {
+        let directory = AppDataLocation.directory.appendingPathComponent("ssh", isDirectory: true)
+        do {
+            try FileManager.default.createDirectory(at: directory, withIntermediateDirectories: true,
+                                                    attributes: [.posixPermissions: 0o700])
+            return directory
+        } catch {
+            return nil
+        }
+    }()
+
+    /// A short hash path per destination and port, or nil when it would not fit a socket path (no sharing then).
+    static func controlPath(_ target: PortmanServerTarget, in directory: URL?) -> String? {
+        guard let directory else { return nil }
+        let digest = SHA256.hash(data: Data("\(target.destination):\(target.port.map(String.init) ?? "")".utf8))
+        let name = digest.prefix(6).map { String(format: "%02x", $0) }.joined()
+        let path = directory.appendingPathComponent(name).path
+        guard path.utf8.count <= maximumControlPathBytes, !path.contains("\"") else { return nil }
+        return path
+    }
+
+    static func connectionArguments(_ target: PortmanServerTarget, controlPath: String?) -> [String] {
         var arguments = PortmanScanner.authenticationArguments(password: false) + [
             "-o", "ConnectTimeout=\(connectTimeout)",
             "-o", "ServerAliveInterval=5", "-o", "ServerAliveCountMax=1",
             "-o", "StrictHostKeyChecking=accept-new", "-o", "LogLevel=ERROR",
         ]
+        // A stale socket from a dead master is unlinked by ssh itself, which then connects fresh.
+        if let controlPath {
+            arguments += ["-o", "ControlMaster=auto", "-o", "ControlPath=\"\(controlPath)\"",
+                          "-o", "ControlPersist=\(persistSeconds)"]
+        } else {
+            arguments += ["-o", "ControlMaster=no", "-o", "ControlPath=none"]
+        }
         if let port = target.port { arguments += ["-p", String(port)] }
-        return arguments + ["-T", "--", target.destination, "sh", "-s"]
+        return arguments
+    }
+
+    static func arguments(_ target: PortmanServerTarget, controlPath: String?) -> [String] {
+        connectionArguments(target, controlPath: controlPath) + ["-T", "--", target.destination, "sh", "-s"]
+    }
+
+    static func closeArguments(_ target: PortmanServerTarget, controlPath: String) -> [String] {
+        ["-o", "ControlPath=\"\(controlPath)\"", "-O", "exit", "--", target.destination]
+    }
+
+    /// A timeout or an ssh-level failure can mean a hung master; drop it so the next run connects fresh.
+    static func shouldDropConnection(after error: (any Error)?, status: Int32?) -> Bool {
+        if let error {
+            if case .timeout? = error as? SSHKeyAccessError { return true }
+            return false
+        }
+        return status == 255
     }
 
     func run(_ target: PortmanServerTarget, script: String) async throws -> SSHProcessResult {
-        try await SSHProcessRunner.run(
-            executableURL: URL(fileURLWithPath: "/usr/bin/ssh"),
-            arguments: Self.arguments(target),
-            standardInput: Data(script.utf8),
-            maximumOutputBytes: PortmanServerProtocol.maximumOutputBytes,
-            timeout: Self.deadline
-        )
+        let controlPath = Self.controlPath(target, in: socketDirectory)
+        do {
+            let result = try await SSHProcessRunner.run(
+                executableURL: URL(fileURLWithPath: "/usr/bin/ssh"),
+                arguments: Self.arguments(target, controlPath: controlPath),
+                standardInput: Data(script.utf8),
+                maximumOutputBytes: PortmanServerProtocol.maximumOutputBytes,
+                timeout: Self.deadline
+            )
+            if Self.shouldDropConnection(after: nil, status: result.status) { close(target) }
+            return result
+        } catch {
+            if Self.shouldDropConnection(after: error, status: nil) { close(target) }
+            throw error
+        }
+    }
+
+    func close(_ target: PortmanServerTarget) {
+        guard let controlPath = Self.controlPath(target, in: socketDirectory),
+              FileManager.default.fileExists(atPath: controlPath) else { return }
+        let process = Process()
+        process.executableURL = URL(fileURLWithPath: "/usr/bin/ssh")
+        process.arguments = Self.closeArguments(target, controlPath: controlPath)
+        process.standardInput = FileHandle.nullDevice
+        process.standardOutput = FileHandle.nullDevice
+        process.standardError = FileHandle.nullDevice
+        // A dead master leaves its socket behind; remove it once `-O exit` has had its say.
+        process.terminationHandler = { _ in try? FileManager.default.removeItem(atPath: controlPath) }
+        do {
+            try process.run()
+        } catch {
+            try? FileManager.default.removeItem(atPath: controlPath)
+        }
     }
 }
 
@@ -174,6 +258,7 @@ final class PortmanServerMonitor {
         let wanted = Dictionary(newTargets.map { ($0.destination, $0) }, uniquingKeysWith: { first, _ in first })
         for (id, target) in targets where wanted[id] != target {
             cancel(id)
+            transport.close(target)
             targets.removeValue(forKey: id)
             samplers.removeValue(forKey: id)
             states.removeValue(forKey: id)
