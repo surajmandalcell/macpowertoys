@@ -9,6 +9,14 @@ enum PortmanForwardMetrics {
     static let column: CGFloat = keyLabel + 24
     static let hostSelect: CGFloat = 76
     static let rowHeight: CGFloat = 40
+    /// Host card parts (owner picks 2026-11-21, DESIGN.md "Portman").
+    static let badgeColumn: CGFloat = 50
+    static let memoryColumn: CGFloat = 52
+    static let chevron: CGFloat = 12
+    static let sparkline = CGSize(width: 32, height: 14)
+    static let tileGap: CGFloat = 6
+    static let statsTop: CGFloat = 2
+    static let statsBottom: CGFloat = 6
 }
 
 extension View {
@@ -104,41 +112,212 @@ struct PortmanForwardInputs: View {
     }
 }
 
-/// The parent row of a host in Forward: its name, mode, and monitor status or latest readings.
-struct PortmanHostRow: View {
+/// What a host card asks the panel to do.
+struct PortmanHostCardActions {
+    var toggleStats: () -> Void = {}
+    /// Nil re-forwards every down forward of the host (Reconnect all).
+    var retry: (PortmanForwardChild?) -> Void = { _ in }
+    var open: (UInt16) -> Void = { _ in }
+    var stop: (PortmanForwardChild) -> Void = { _ in }
+    var remove: (PortmanForwardChild) -> Void = { _ in }
+}
+
+/// One card per host (DESIGN.md "Portman", Forward): the host row, its chart tiles when open, then its forwards
+/// indented under a guide line from the host icon.
+struct PortmanHostCard: View {
     let group: PortmanHostGroup
-    let state: PortmanServerState?
-    let now: Date
+    let model: PortmanHostCardModel
+    let expanded: Bool
+    let actions: PortmanHostCardActions
 
     var body: some View {
-        PortmanForwardRow {
+        OnePlusLinearList(style: .panel) {
+            PortmanHostCardRow(group: group, model: model, expanded: expanded, actions: actions)
+                .overlay(alignment: .bottomLeading) { if !group.children.isEmpty || showsStats { guide(from: .icon) } }
+            if showsStats {
+                PortmanHostStats(tiles: model.tiles)
+                    .overlay(alignment: .leading) { guide(from: .top) }
+            }
+            ForEach(Array(group.children.enumerated()), id: \.element.id) { index, child in
+                PortmanForwardChildRow(destination: group.host.destination, child: child, actions: actions)
+                    .overlay(alignment: .leading) { guide(from: .top, last: index == group.children.count - 1, tick: true) }
+            }
+        }
+    }
+
+    private var showsStats: Bool { expanded && !model.tiles.isEmpty }
+
+    private enum GuideStart { case icon, top }
+
+    /// The tree line: under the host icon it runs from the icon's bottom; in a forward row it ends at the row's
+    /// center on the last row, with a tick to the badge.
+    private func guide(from start: GuideStart, last: Bool = false, tick: Bool = false) -> some View {
+        let x = OnePlusLinearMetrics.panelRowInset + OnePlusLinearMetrics.hostIcon / 2 - 0.5
+        return GeometryReader { proxy in
+            let height = proxy.size.height
+            let top = start == .icon ? (height + OnePlusLinearMetrics.hostIcon) / 2 + 1 : 0
+            let bottom = last ? height / 2 + 0.5 : height
+            ZStack(alignment: .topLeading) {
+                OnePlusLinearColor.lineStrong.frame(width: 1, height: max(0, bottom - top)).offset(x: x, y: top)
+                if tick {
+                    OnePlusLinearColor.lineStrong.frame(width: OnePlusLinearMetrics.guideTick, height: 1)
+                        .offset(x: x, y: height / 2 - 0.5)
+                }
+            }
+        }
+        .allowsHitTesting(false).accessibilityHidden(true)
+    }
+}
+
+/// The 40 pt host row: icon with status dot, name over caption, CPU line and memory (or the failure), a
+/// Reconnect all key when a forward is down, and the stats chevron.
+private struct PortmanHostCardRow: View {
+    let group: PortmanHostGroup
+    let model: PortmanHostCardModel
+    let expanded: Bool
+    let actions: PortmanHostCardActions
+    @State private var hover = false
+
+    var body: some View {
+        HStack(spacing: OnePlusLinearMetrics.rowGap) {
+            Button(action: actions.toggleStats) { summary }
+                .buttonStyle(.plain).focusEffectDisabled().disabled(model.tiles.isEmpty)
+                .accessibilityLabel("\(group.host.destination), \(model.caption)")
+                .accessibilityHint(model.tiles.isEmpty ? "" : expanded ? "Hides the charts" : "Shows the charts")
+            if group.children.contains(where: { PortmanForwardHealth($0.tunnel).isDown }) {
+                OnePlusLinearIconButton(systemImage: "arrow.clockwise", help: "Reconnect all forwards",
+                                        size: OnePlusLinearMetrics.panelAccessory) { actions.retry(nil) }
+            }
+        }
+        .padding(.horizontal, OnePlusLinearMetrics.panelRowInset)
+        .frame(height: OnePlusLinearMetrics.panelTwoLineRow)
+        .linearRowHover($hover, sample: .rest, enabled: !model.tiles.isEmpty, panelStyle: .fillSteps)
+        .help(help)
+    }
+
+    private var summary: some View {
+        HStack(spacing: OnePlusLinearMetrics.rowGap) {
+            OnePlusLinearHostIcon(online: model.online)
             VStack(alignment: .leading, spacing: 0) {
-                Text(group.host.destination).linearText(OnePlusLinearMetrics.control, weight: .medium)
+                Text(group.host.destination).linearText(OnePlusLinearMetrics.control, weight: .semibold)
                     .lineLimit(1).truncationMode(.middle)
-                Text(detail).linearText(OnePlusLinearMetrics.control, color: OnePlusLinearColor.secondary)
+                Text(model.caption).linearText(OnePlusLinearMetrics.caption, color: OnePlusLinearColor.secondary)
                     .lineLimit(1).truncationMode(.tail)
             }
             .frame(maxWidth: .infinity, alignment: .leading)
-            Text(status).linearText(OnePlusLinearMetrics.control, color: OnePlusLinearColor.secondary)
-                .lineLimit(1).fixedSize()
+            trailing
+            if !model.tiles.isEmpty {
+                Image(systemName: "chevron.right").font(.system(size: 9, weight: .semibold))
+                    .rotationEffect(.degrees(expanded ? 90 : 0))
+                    .foregroundStyle(OnePlusLinearColor.tertiary)
+                    .frame(width: PortmanForwardMetrics.chevron)
+            }
         }
-        .help(help)
-        .accessibilityElement(children: .combine)
+        .contentShape(Rectangle())
     }
 
-    private var status: String {
-        guard group.host.monitors, let state else { return group.saved ? group.host.mode.title : "Not saved" }
-        return state.statusText(now: now)
+    @ViewBuilder private var trailing: some View {
+        switch model.health {
+        case .online, .stale:
+            if !model.sparkline.isEmpty {
+                OnePlusSparkline(values: model.sparkline, color: OnePlusLinearColor.cpu)
+                    .frame(width: PortmanForwardMetrics.sparkline.width, height: PortmanForwardMetrics.sparkline.height)
+            }
+            Text(model.memory ?? "").linearText(OnePlusLinearMetrics.control, color: OnePlusLinearColor.secondary)
+                .monospacedDigit().lineLimit(1)
+                .frame(width: PortmanForwardMetrics.memoryColumn, alignment: .trailing)
+        case .offline(let label):
+            Text(label).linearText(OnePlusLinearMetrics.control, color: OnePlusLinearColor.panelMuted).lineLimit(1).fixedSize()
+        case .waiting, .unmonitored:
+            EmptyView()
+        }
     }
 
-    private var detail: String {
-        if group.host.monitors, let summary = state?.latest?.summary, !summary.isEmpty { return summary }
-        let count = group.children.count
-        return count == 1 ? "1 forward" : "\(count) forwards"
+    private var help: String { "\(group.host.destination) · \(group.host.mode.title) · \(model.caption)" }
+}
+
+/// The open host's chart tiles: CPU, memory, disk, network, two by two.
+private struct PortmanHostStats: View {
+    let tiles: [PortmanHostCardModel.Tile]
+    private let columns = Array(repeating: GridItem(.flexible(), spacing: PortmanForwardMetrics.tileGap), count: 2)
+
+    var body: some View {
+        LazyVGrid(columns: columns, spacing: PortmanForwardMetrics.tileGap) {
+            ForEach(tiles, id: \.kind) { tile in
+                let look = Self.look(tile.kind)
+                OnePlusLinearInsetTile(look.title, systemImage: look.symbol, meta: tile.meta, value: tile.value, unit: tile.unit,
+                                       color: look.text, chart: OnePlusLinearChart(
+                                           [OnePlusLinearSeries(tile.series, color: look.color, filled: true)]
+                                               + (tile.secondary.isEmpty ? [] : [OnePlusLinearSeries(tile.secondary, color: OnePlusLinearColor.networkUp, filled: false)]),
+                                           range: tile.range, height: OnePlusLinearMetrics.insetTileChart))
+            }
+        }
+        .padding(.leading, OnePlusLinearMetrics.treeChildInset)
+        .padding(.trailing, OnePlusLinearMetrics.panelRowInset)
+        .padding(.top, PortmanForwardMetrics.statsTop).padding(.bottom, PortmanForwardMetrics.statsBottom)
     }
 
-    private var help: String {
-        if case .failed(let failure) = state?.status { return "\(group.host.destination) · \(failure.detail)" }
-        return "\(group.host.destination) · \(group.host.mode.title)"
+    private static func look(_ kind: PortmanHostCardModel.Kind) -> (title: String, symbol: String, color: Color, text: Color) {
+        switch kind {
+        case .cpu: ("CPU", "cpu", OnePlusLinearColor.cpu, OnePlusLinearColor.cpuText)
+        case .memory: ("Memory", "memorychip", OnePlusLinearColor.memory, OnePlusLinearColor.memory)
+        case .disk: ("Disk", "internaldrive", OnePlusLinearColor.disk, OnePlusLinearColor.disk)
+        case .network: ("Network", "network", OnePlusLinearColor.networkDown, OnePlusLinearColor.networkDown)
+        }
     }
+}
+
+/// A 32 pt forward row under its host: the port badge, the local address, its state in plain words, and one
+/// icon: open it, or re-forward it when it is down.
+private struct PortmanForwardChildRow: View {
+    let destination: String
+    let child: PortmanForwardChild
+    let actions: PortmanHostCardActions
+
+    var body: some View {
+        let health = PortmanForwardHealth(child.tunnel)
+        let spec = child.spec
+        HStack(spacing: OnePlusLinearMetrics.rowGap) {
+            PortmanPortChip(port: spec.localPort)
+                .frame(width: PortmanForwardMetrics.badgeColumn, alignment: .leading)
+            HStack(spacing: 6) {
+                Text("localhost:\(String(spec.localPort))").linearText(OnePlusLinearMetrics.control)
+                if spec.remotePort != spec.localPort {
+                    Text("→ :\(String(spec.remotePort))").linearText(OnePlusLinearMetrics.control, color: OnePlusLinearColor.panelMuted)
+                        .monospacedDigit()
+                }
+            }
+            .lineLimit(1).frame(maxWidth: .infinity, alignment: .leading)
+            Text(health.label)
+                .linearText(OnePlusLinearMetrics.control, color: health.isFailed ? OnePlusLinearColor.destructiveText : OnePlusLinearColor.secondary)
+                .lineLimit(1).fixedSize()
+            switch health {
+            case .forwarding:
+                OnePlusLinearIconButton(systemImage: "link", help: "Open localhost:\(String(spec.localPort))",
+                                        size: OnePlusLinearMetrics.panelAccessory) { actions.open(spec.localPort) }
+            case .connecting:
+                OnePlusLinearIconButton(systemImage: "link", help: "Open localhost:\(String(spec.localPort))",
+                                        size: OnePlusLinearMetrics.panelAccessory, busy: "Connecting") {}
+            case .stopped, .failed:
+                OnePlusLinearIconButton(systemImage: "arrow.clockwise", help: "Forward again",
+                                        size: OnePlusLinearMetrics.panelAccessory) { actions.retry(child) }
+            }
+        }
+        .padding(.leading, OnePlusLinearMetrics.treeChildInset)
+        .padding(.trailing, OnePlusLinearMetrics.panelRowInset)
+        .frame(height: OnePlusLinearMetrics.treeChildRow)
+        .help("localhost:\(String(spec.localPort)) → \(destination):\(String(spec.remotePort)) · \(child.tunnel.flatMap(\.failureMessage) ?? health.label)")
+        .contextMenu {
+            if child.tunnel != nil { Button("Stop forwarding") { actions.stop(child) } }
+            Button("Remove forward") { actions.remove(child) }
+        }
+    }
+}
+
+private extension PortmanForwardHealth {
+    var isFailed: Bool { if case .failed = self { true } else { false } }
+}
+
+private extension PortmanTunnel {
+    var failureMessage: String? { if case .failed(let message) = state { message } else { nil } }
 }
