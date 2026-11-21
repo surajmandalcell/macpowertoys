@@ -227,7 +227,7 @@ main,.foot{position:relative;z-index:1}
 .st.past{transform:translateY(-28px)}
 .st.on{opacity:1;visibility:visible;transform:none;transition:opacity .5s ease .12s,transform .8s var(--spring) .12s,visibility 0s}
 .st h3{font-size:var(--t-h2);line-height:1.04;letter-spacing:-.035em}
-.st p{font-size:var(--t-lead);line-height:1.4;color:var(--muted)}
+.st p:not(.card){font-size:var(--t-lead);line-height:1.4;color:var(--muted)}
 .st .card{align-self:flex-start}
 .st .card span{font-size:15px}
 /* A menu bar on the camera: the right end of the real macOS bar over the wallpaper */
@@ -302,7 +302,7 @@ a.row:hover{background:var(--lit)}
   .kick{font-size:18px}
   .st{gap:12px}
   .st h3{font-size:clamp(26px,7vw,40px)}
-  .st p{font-size:16px;line-height:1.45}
+  .st p:not(.card){font-size:16px;line-height:1.45}
   .flip .s-pin{grid-template-columns:minmax(0,1fr);padding:16px 0 76px var(--m)}
   .flip .s-vis{order:0;margin:0 -2px 0 0}
   .flip .s-txt{justify-self:stretch;padding:0 var(--m) 0 0}
