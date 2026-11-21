@@ -343,16 +343,6 @@
     sync();
   }
 
-  // GitHub: the live star count, once there are enough to show.
-  function stars() {
-    var out = document.querySelector('[data-stars]');
-    if (!out || !window.fetch) return;
-    fetch('https://api.github.com/repos/surajmandalcell/macpowertoys').then(function (r) { return r.ok ? r.json() : null; }).then(function (j) {
-      var c = j && j.stargazers_count;
-      if (c >= 25) out.textContent = c >= 1000 ? (c / 1000).toFixed(c < 10000 ? 1 : 0).replace(/\.0$/, '') + 'k' : String(c);
-    }).catch(function () {});
-  }
-
   // Download: the blue light follows the pointer, and the capsule leans a few points toward it.
   function glass() {
     if (calm.matches) return;
@@ -408,7 +398,7 @@
     document.querySelectorAll('[data-story]').forEach(story);
     chapters();
     background();
-    dock(); stars(); glass(); word(); clock(); setInterval(clock, 15000);
+    dock(); glass(); word(); clock(); setInterval(clock, 15000);
     var io = new IntersectionObserver(function (es) {
       es.forEach(function (e) { if (e.isIntersecting) { e.target.classList.add('in'); io.unobserve(e.target); } });
     }, { rootMargin: '0px 0px -8% 0px' });
