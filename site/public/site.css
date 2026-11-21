@@ -185,7 +185,7 @@ main,.foot{position:relative;z-index:1}
 .flip .s-pin{grid-template-columns:minmax(0,1fr) 56vw;padding-right:0;padding-left:max(var(--m),calc((100vw - 1520px) / 2 + var(--m)))}
 .flip .s-vis{order:2;margin:0 -2px 0 0;border-radius:28px 0 0 28px}
 .flip .s-txt{justify-self:end}
-.s-cam{position:absolute;left:0;top:0;width:1920px;height:1080px;transform-origin:0 0;transition:transform .7s cubic-bezier(.65,0,.25,1);background:#1d1d1f var(--wall) center/cover}
+.s-cam{position:absolute;left:0;top:0;width:1920px;height:1080px;transform-origin:0 0;transition:transform .7s cubic-bezier(.65,0,.25,1);background:linear-gradient(rgba(0,0,0,.3),rgba(0,0,0,.3)),#1d1d1f var(--wall) center/cover} /* wallpapers dimmed so every crop keeps the page's low brightness */
 .shot{position:absolute;top:29px;opacity:0;will-change:opacity,transform;transition:opacity .45s ease,transform .8s var(--spring)}
 /* A changed part of a shot, drawn over it after the pointer taps (RSync pauses a copy, Mac Tweaks rolls a value) */
 .fx{position:absolute;z-index:1;opacity:0;transition:opacity .12s}

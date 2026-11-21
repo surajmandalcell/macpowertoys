@@ -64,7 +64,8 @@
           z = clamp(Math.min(h / (sh + 80), w / (SW - x + 24)), 0.5, 1.35);
         } else {
           x = (SW - sw) / 2; y = Math.max(40, (SH - sh) / 2);
-          z = clamp(Math.min(h / (sh + 140), w / (sw + 140)), 0.4, 1.2);
+          // Never crop a window sideways: a narrow phone crop scales it down to fit.
+          z = Math.min(clamp(Math.min(h / (sh + 140), w / (sw + 140)), 0.4, 1.2), (w - 24) / sw);
         }
         // A tall phone crop would need more than the screen's height: the wallpaper runs on below instead.
         z = Math.max(z, w / SW); H = Math.max(H, h / z);
