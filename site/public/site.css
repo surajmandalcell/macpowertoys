@@ -18,14 +18,12 @@
   --mono:ui-monospace,"SF Mono",Menlo,monospace; /* taste-skill-ignore: only the literal brew command */
   --m:clamp(20px,4vw,64px);
   --t-h1:clamp(46px,5.4vw,84px);--t-h2:clamp(34px,3.7vw,56px);--t-lead:clamp(19px,1.1rem + .5vw,23px);--t-body:18px;--t-small:14px;
-  /* One space between chapters: every seam is twice this */
-  --pad:clamp(64px,7vw,112px);
   --vis:min(calc(100svh - 160px),860px);
   color-scheme:dark;
 }
 *{box-sizing:border-box}
 html{scroll-behavior:smooth;-webkit-text-size-adjust:100%;overflow-x:clip;background:var(--base)}
-body{margin:0;background:var(--base);color:var(--ink);font:400 var(--t-body)/1.5 var(--font);letter-spacing:-.01em;-webkit-font-smoothing:antialiased;overflow-x:clip}
+body{margin:0;color:var(--ink);font:400 var(--t-body)/1.5 var(--font);letter-spacing:-.01em;-webkit-font-smoothing:antialiased;overflow-x:clip}
 [id]{scroll-margin-top:32px}
 img{display:block;max-width:100%;height:auto}
 a{color:inherit}
@@ -40,7 +38,7 @@ p{margin:0}
 a:focus-visible,button:focus-visible{background-color:var(--lit);border-radius:8px}
 
 /* Navigation */
-.nav{display:flex;align-items:center;justify-content:space-between;gap:24px;padding:22px var(--m);max-width:1520px;margin:0 auto}
+.nav{width:100%;display:flex;align-items:center;justify-content:space-between;gap:24px;padding:22px var(--m);max-width:1520px;margin:0 auto}
 .mark{display:flex;align-items:center;gap:10px;font-weight:600;font-size:18px;text-decoration:none;letter-spacing:-.02em}
 .nav nav{display:flex;align-items:center;gap:28px;font-size:15px}
 .nav nav a{text-decoration:none;color:var(--muted);transition:color .15s}
@@ -92,58 +90,69 @@ h2:hover .anchor,h3:hover .anchor,.anchor:focus-visible,.anchor.done{opacity:1}
 .anchor:hover{background:var(--lit)}
 .anchor.done::after{content:"Link copied";position:absolute;left:50%;bottom:calc(100% + 6px);transform:translateX(-50%);padding:5px 10px;border-radius:8px;background:var(--ink);color:var(--base);font:500 13px/1.2 var(--font);letter-spacing:0;white-space:nowrap}
 
-/* Chapters: each section is one chapter of the story, on its own moving background */
-.ch{position:relative;isolation:isolate;padding-block:var(--pad)}
-.ch-hero{padding-top:0}
-.ch>.head,.ch>.list,.ch>.install,.ch>.demo{max-width:1520px;margin-inline:auto}
-.ch>.head,.ch>.list,.ch>.install{padding-inline:var(--m)}
+/* Chapters. The page snaps one screen at a time: every chapter starts a screen, and every story
+   step is a screen of its own. Trackpad, wheel, keys, and touch all scroll natively. */
+html{scroll-snap-type:y mandatory}
+.ch{position:relative;scroll-snap-align:start}
+.ch:has(>.story){scroll-snap-align:none}
+.foot{scroll-snap-align:end}
+.ch>.stage{min-height:100svh;display:flex;flex-direction:column;justify-content:center;max-width:1520px;margin-inline:auto}
+.ch>.stage>.list,.ch>.stage>.install{padding-inline:var(--m)}
+.snap{position:absolute;left:0;width:1px;height:100svh;scroll-snap-align:start;scroll-snap-stop:always;pointer-events:none}
 
-/* Backgrounds. Script puts a .bg in each chapter; its sticky .v is one screen tall, so only one screen
-   of gradient ever paints. Styles switch on html[data-bg]; motion runs only in chapters on screen. */
-.bg{position:absolute;inset:0;z-index:-1;overflow:clip;pointer-events:none}
-.bg::before,.bg::after{content:"";position:absolute;z-index:2;left:0;right:0;height:min(36vh,320px)}
-.bg::before{top:0;background:linear-gradient(var(--base),transparent)}
-.bg::after{bottom:0;background:linear-gradient(transparent,var(--base))}
-.ch-hero .bg::before{display:none}
-.v{position:sticky;top:0;height:100lvh;overflow:hidden}
-.v i{position:absolute;display:block;opacity:0;will-change:transform}
-.l-w{inset:-6%;background:var(--wall) center/cover}
-.l-a,.l-b,.l-c{width:90vmax;height:90vmax;border-radius:50%}
-.l-a{left:-30vmax;top:-40vmax;background:radial-gradient(closest-side,color-mix(in srgb,var(--c1) 60%,transparent),transparent)}
-.l-b{right:-35vmax;top:-10vmax;background:radial-gradient(closest-side,color-mix(in srgb,var(--c2) 50%,transparent),transparent)}
-.l-c{left:10vmax;bottom:-55vmax;background:radial-gradient(closest-side,color-mix(in srgb,var(--c3) 50%,transparent),transparent)}
-.l-g{inset:-20%;opacity:.07!important;background:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='220' height='220'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='.9' numOctaves='2' stitchTiles='stitch'/%3E%3CfeColorMatrix values='0 0 0 0 1 0 0 0 0 1 0 0 0 0 1 0 0 0 1.6 -.3'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)'/%3E%3C/svg%3E")}
-.l-s{inset:0;opacity:1!important;background:radial-gradient(130% 100% at 50% 45%,rgba(7,7,10,.35),rgba(7,7,10,.78))}
-/* 1 Wall (recommended): a darkened real wallpaper that drifts, with a soft glow in the tool's color */
-[data-bg=wall] .l-w{opacity:1;animation:drift 48s ease-in-out infinite alternate}
-[data-bg=wall] .l-a{opacity:.45;animation:orbit 40s linear infinite}
-[data-bg=wall] .l-b{opacity:.3;animation:orbit 52s linear infinite reverse}
-/* 2 Mesh: three color blobs that orbit */
-[data-bg=mesh] .v{background:#0b0b10}
-[data-bg=mesh] .l-a,[data-bg=mesh] .l-b,[data-bg=mesh] .l-c{opacity:1}
-[data-bg=mesh] .l-a{animation:orbit 36s linear infinite}
-[data-bg=mesh] .l-b{animation:orbit 44s linear infinite reverse}
-[data-bg=mesh] .l-c{animation:orbit 52s linear infinite}
-/* 3 Aurora: soft bands of light that sweep across */
-[data-bg=aurora] .v{background:#08080d}
-[data-bg=aurora] .l-a,[data-bg=aurora] .l-b,[data-bg=aurora] .l-c{opacity:1;left:-30%;width:160%;height:46vh;border-radius:0;transform:rotate(-12deg)}
-[data-bg=aurora] .l-a{top:6%;background:radial-gradient(50% 50% at 50% 50%,color-mix(in srgb,var(--c1) 75%,transparent),transparent);animation:sweep 26s ease-in-out infinite alternate}
-[data-bg=aurora] .l-b{top:34%;background:radial-gradient(50% 50% at 50% 50%,color-mix(in srgb,var(--c2) 62%,transparent),transparent);animation:sweep 34s ease-in-out infinite alternate-reverse}
-[data-bg=aurora] .l-c{top:62%;bottom:auto;background:radial-gradient(50% 50% at 50% 50%,color-mix(in srgb,var(--c3) 55%,transparent),transparent);animation:sweep 30s ease-in-out infinite alternate}
-/* 4 Grain: a dark two-tone gradient under heavy film grain */
-[data-bg=grain] .v{background:linear-gradient(155deg,color-mix(in srgb,var(--c1) 38%,#07070a),#07070a 55%,color-mix(in srgb,var(--c2) 30%,#07070a))}
-[data-bg=grain] .l-g{opacity:.16!important}
-.l-g{animation:jit 1s steps(1,end) infinite}
-@keyframes drift{from{transform:scale(1.04) translate(-1.5%,-1%)}to{transform:scale(1.12) translate(1.5%,1.5%)}}
-@keyframes orbit{from{transform:rotate(0deg) translateX(6vmax) rotate(0deg)}to{transform:rotate(360deg) translateX(6vmax) rotate(-360deg)}}
-@keyframes sweep{from{transform:rotate(-12deg) translateX(-12%)}to{transform:rotate(-6deg) translateX(12%)}}
+/* Morph: while the page snaps between chapters, the old screen holds still, shrinks, and fades,
+   and the new one settles in from a little larger. Transform and opacity only, tied to the scroll. */
+@supports (animation-timeline:view()){
+  .ch{view-timeline:--ch block}
+  .story{view-timeline:--st block}
+  .ch>.stage,.s-pin{animation:m-in linear both,m-out linear forwards;animation-timeline:--ch,--ch;animation-range:entry 0% entry 100%,exit 0% exit 100%}
+  .s-pin{animation-timeline:--st,--st}
+  .ch-hero>.stage{animation:m-out linear forwards;animation-timeline:--ch;animation-range:exit 0% exit 100%}
+  .ch-last>.stage{animation:m-in linear both;animation-timeline:--ch;animation-range:entry 0% entry 100%}
+}
+@keyframes m-in{0%{opacity:0;transform:translateY(-100svh) scale(1.05)}55%{opacity:0;transform:translateY(-45svh) scale(1.03)}100%{opacity:1;transform:none}}
+@keyframes m-out{0%{opacity:1;transform:none}45%{opacity:0;transform:translateY(45svh) scale(.93)}100%{opacity:0;transform:translateY(100svh) scale(.93)}}
+
+/* The background: one fixed canvas (site.js draws the wallpaper live) under a fine film grain */
+.bgc,.grain{position:fixed;inset:0;z-index:-1;width:100%;height:100lvh;pointer-events:none}
+.bgc{display:block}
+.nogl{background:radial-gradient(40% 30% at 70% 30%,rgba(214,94,69,.4),transparent),radial-gradient(35% 30% at 20% 70%,rgba(43,84,92,.5),transparent),radial-gradient(20% 15% at 30% 20%,rgba(235,26,97,.3),transparent),var(--base)}
+.grain{inset:-10%;width:auto;height:auto;opacity:.1;background:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='220' height='220'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='.9' numOctaves='2' stitchTiles='stitch'/%3E%3CfeColorMatrix values='0 0 0 0 1 0 0 0 0 1 0 0 0 0 1 0 0 0 1.6 -.3'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)'/%3E%3C/svg%3E");animation:jit 1s steps(1,end) infinite paused}
+[data-motion=play] .grain{animation-play-state:running}
+[data-motion=off] .grain{animation:none}
 @keyframes jit{0%{transform:translate(0,0)}20%{transform:translate(-4%,3%)}40%{transform:translate(3%,-2%)}60%{transform:translate(-2%,-4%)}80%{transform:translate(4%,2%)}}
-.v i{animation-play-state:paused!important}
-[data-motion=play] .ch.live .v i{animation-play-state:running!important}
-[data-motion=off] .v i{animation:none!important}
 
-/* Dock: background style, animation, and Copy choices, in one floating capsule */
-.dock{position:fixed;z-index:50;left:50%;bottom:max(16px,env(safe-area-inset-bottom));transform:translateX(-50%);display:flex;align-items:center;gap:6px;padding:5px;border-radius:999px;background:rgba(32,32,36,.6);-webkit-backdrop-filter:blur(24px) saturate(1.8);backdrop-filter:blur(24px) saturate(1.8);box-shadow:inset 0 0 0 .5px rgba(255,255,255,.18),0 12px 32px -12px rgba(0,0,0,.7);white-space:nowrap}
+/* Tool card: the tool's real icon and name. Six looks to pick from, switched on html[data-card]. */
+.card{display:inline-flex;align-items:center;gap:12px;margin:0;font-size:17px;font-weight:600;letter-spacing:-.015em;color:var(--ink);white-space:nowrap}
+.card picture{display:contents}
+.card img{flex:none;width:36px;height:36px}
+.card b{font-weight:600}
+.card span{display:none;font-weight:400;color:var(--muted)}
+/* 1 Glass (recommended): a frosted chip */
+[data-card=glass] .card{padding:8px 18px 8px 8px;border-radius:16px;background:rgba(255,255,255,.08);-webkit-backdrop-filter:blur(20px) saturate(1.6);backdrop-filter:blur(20px) saturate(1.6);box-shadow:inset 0 1px 0 rgba(255,255,255,.14),inset 0 0 0 .5px rgba(255,255,255,.2),0 10px 28px -14px rgba(0,0,0,.7)}
+/* 2 Store: an App Store row with a big icon, the name, and one line */
+[data-card=store] .card{display:inline-grid;grid-template-columns:64px auto;column-gap:16px;row-gap:2px;align-items:end}
+[data-card=store] .card img{grid-row:span 2;width:64px;height:64px}
+[data-card=store] .card b{font-size:22px;letter-spacing:-.02em;align-self:end}
+[data-card=store] .card span{display:block;grid-column:2;align-self:start;font-size:15px}
+/* 3 Dock: a tile with the name under it */
+[data-card=dock] .card{flex-direction:column;gap:8px;padding:12px 16px 10px;border-radius:22px;background:rgba(255,255,255,.07);-webkit-backdrop-filter:blur(20px);backdrop-filter:blur(20px);box-shadow:inset 0 0 0 .5px rgba(255,255,255,.2)}
+[data-card=dock] .card img{width:60px;height:60px}
+[data-card=dock] .card b{font-size:13px;font-weight:500;color:var(--muted)}
+/* 4 Spotlight: the selected result row in a Spotlight panel */
+[data-card=spot] .card{min-width:min(100%,380px);gap:10px;padding:7px 14px 7px 8px;margin:6px;border-radius:9px;background:#0a5fd1;box-shadow:0 0 0 6px rgba(36,36,40,.72),0 0 0 6.5px rgba(255,255,255,.16),0 18px 40px -16px rgba(0,0,0,.8);font-size:16px}
+[data-card=spot] .card img{width:30px;height:30px}
+[data-card=spot] .card span{display:block;margin-left:auto;padding-left:18px;font-size:14px;color:rgba(255,255,255,.78)}
+/* 5 Pill: a small item in the menu bar */
+[data-card=pill] .card{gap:7px;height:30px;padding:0 12px 0 6px;border-radius:8px;background:rgba(255,255,255,.16);font-size:14px;font-weight:500}
+[data-card=pill] .card img{width:20px;height:20px}
+/* 6 Finder: a selected icon with its blue name label */
+[data-card=finder] .card{flex-direction:column;gap:6px}
+[data-card=finder] .card img{width:64px;height:64px;padding:5px;box-sizing:content-box;border-radius:10px;background:rgba(255,255,255,.14)}
+[data-card=finder] .card b{padding:1px 7px;border-radius:5px;background:#0a5fd1;font-size:13px;font-weight:500}
+
+/* Dock: tool card style, animation, and Copy choices, in one floating capsule */
+.dock{max-width:calc(100vw - 16px);position:fixed;z-index:50;left:50%;bottom:max(16px,env(safe-area-inset-bottom));transform:translateX(-50%);display:flex;align-items:center;gap:6px;padding:5px;border-radius:999px;background:rgba(32,32,36,.6);-webkit-backdrop-filter:blur(24px) saturate(1.8);backdrop-filter:blur(24px) saturate(1.8);box-shadow:inset 0 0 0 .5px rgba(255,255,255,.18),0 12px 32px -12px rgba(0,0,0,.7);white-space:nowrap}
 .seg{display:flex;gap:2px;padding:2px;border-radius:999px;background:rgba(255,255,255,.06)}
 .dock button{display:grid;place-items:center;height:32px;padding:0 12px;border:0;border-radius:999px;background:none;color:var(--muted);font:500 14px/1 var(--font);letter-spacing:-.01em;cursor:pointer;transition:background .15s,color .15s}
 .dock button:hover{color:var(--ink);background:rgba(255,255,255,.08)}
@@ -155,9 +164,11 @@ h2:hover .anchor,h3:hover .anchor,.anchor:focus-visible,.anchor.done{opacity:1}
 .pick.done .ok{display:block;color:#30d158}
 
 /* Hero */
-.hero{display:grid;grid-template-columns:minmax(0,5fr) minmax(0,7fr);gap:clamp(32px,4vw,64px);align-items:center;max-width:1520px;margin:0 auto;padding:clamp(24px,4vh,56px) 0 0 var(--m)}
-.hero-copy{display:flex;flex-direction:column}
-.hero-copy .lead{margin-top:28px;font-size:var(--t-lead);line-height:1.4;max-width:30ch}
+.ch-hero>.stage{justify-content:flex-start}
+.hero{flex:1;display:grid;grid-template-columns:minmax(0,5fr) minmax(0,7fr);gap:clamp(32px,4vw,64px);align-items:center;width:100%;padding:0 0 clamp(24px,4vh,48px) var(--m)}
+.hero-copy{display:flex;flex-direction:column;align-items:flex-start}
+.hero-copy h1{margin-top:28px;font-size:clamp(40px,4.2vw,68px);line-height:1.02}
+.hero-copy .lead{margin-top:24px;font-size:var(--t-lead);line-height:1.4;max-width:30ch;color:var(--muted)}
 .get{display:flex;flex-direction:column;align-items:flex-start;gap:16px;margin-top:40px}
 .get .cmd{width:auto}
 .fine{font-size:var(--t-small);color:var(--muted);margin-top:20px}
@@ -165,20 +176,19 @@ h2:hover .anchor,h3:hover .anchor,.anchor:focus-visible,.anchor.done{opacity:1}
 /* Live demos: real-app HTML recreations in a frame, in place of still screenshots */
 .demo{position:relative;overflow:hidden;background:#1d1d1f;border-radius:24px;box-shadow:0 0 0 1px var(--lit),var(--deep)}
 .hero-demo{height:clamp(600px,46vw,693px);border-radius:24px 0 0 24px}
-.ch>.fan-demo{height:clamp(600px,52vw,760px);margin-inline:max(var(--m),calc((100% - 1520px) / 2 + var(--m)))}
-.head{display:grid;grid-template-columns:minmax(0,7fr) minmax(0,5fr);gap:clamp(32px,5vw,96px);align-items:start;margin-bottom:48px}
-.head p{max-width:46ch;color:var(--muted)}
-.head-txt{display:flex;flex-direction:column;gap:22px}
-.ticon{width:52px;height:52px}
+/* Fan: the card and one line on top, the live Fan page filling the rest of the screen */
+.fan-stage{height:100svh;gap:clamp(20px,3vh,32px);padding:clamp(28px,6vh,72px) var(--m) clamp(76px,10vh,96px);justify-content:flex-start}
+.head-txt{display:grid;grid-template-columns:auto minmax(0,1fr);align-items:center;column-gap:clamp(24px,3vw,48px);row-gap:10px}
+.head-txt .kick{grid-row:span 2}
+.head-txt h3{font-size:var(--t-h2);line-height:1.04;letter-spacing:-.035em}
+.head-txt p{color:var(--muted);font-size:var(--t-lead);line-height:1.4}
+.fan-demo{flex:1;min-height:0}
 
 /* A tool story. While the chapter scrolls past, a large Mac screen stays on the left, cut by the
    window edge, and the text on the right changes one step at a time. The camera holds the screen in
    real macOS points; script sizes it and sets the zoom of each step. One step means no pinning. */
-.story{--n:1;position:relative;height:calc(100vh + var(--n) * 72vh)}
-.ch:has(>.story){padding-block:max(0px,calc(var(--pad) - max(80px,(100svh - 860px) / 2)))}
-.story.one{height:auto}
-.s-pin{position:sticky;top:0;height:100vh;height:100svh;display:grid;grid-template-columns:56vw minmax(0,1fr);align-items:center;gap:clamp(40px,5vw,96px);padding-right:max(var(--m),calc((100vw - 1520px) / 2 + var(--m)))}
-.one .s-pin{position:relative}
+.story{--n:1;position:relative;height:calc(var(--n) * 100svh)}
+.s-pin{position:sticky;top:0;height:100svh;display:grid;grid-template-columns:56vw minmax(0,1fr);align-items:center;gap:clamp(40px,5vw,96px);padding-right:max(var(--m),calc((100vw - 1520px) / 2 + var(--m)))}
 .s-vis{position:relative;height:var(--vis);margin-left:-2px;overflow:hidden;border-radius:0 28px 28px 0;background:#1d1d1f;box-shadow:inset 0 0 0 1px var(--lit),var(--deep);transform:translateZ(0)}
 .s-cam{position:absolute;top:0;right:0;transform:scale(var(--z,1));transform-origin:100% 0;transition:transform 1s cubic-bezier(.65,0,.25,1);background:#1d1d1f var(--wall) 100% 50%/cover}
 .shot{position:absolute;top:29px;opacity:0;visibility:hidden;transition:opacity .45s ease,transform .8s var(--spring),visibility 0s .8s}
@@ -200,9 +210,7 @@ h2:hover .anchor,h3:hover .anchor,.anchor:focus-visible,.anchor.done{opacity:1}
 .cur.on{opacity:1}
 .cur.down svg{transform:scale(.82)}
 .s-txt{display:flex;flex-direction:column;gap:32px;max-width:560px}
-.kick{display:flex;align-items:center;gap:14px;font-size:22px;line-height:1.2;letter-spacing:-.02em}
-.kick img{width:40px;height:40px;border-radius:9px}
-.kick .anchor{margin-left:-4px}
+.kick{display:flex;align-items:center;gap:10px;font-size:22px;line-height:1.2;letter-spacing:-.02em}
 .bars{list-style:none;margin:0;padding:0;display:grid;grid-template-columns:repeat(var(--n),minmax(0,1fr));gap:6px}
 .one .bars{display:none}
 .bars button{display:block;width:100%;height:24px;padding:10px 0;border:0;background:none;cursor:pointer}
@@ -214,8 +222,8 @@ h2:hover .anchor,h3:hover .anchor,.anchor:focus-visible,.anchor.done{opacity:1}
 .st.on{opacity:1;visibility:visible;transform:none;transition:opacity .5s ease .12s,transform .8s var(--spring) .12s,visibility 0s}
 .st h3{font-size:var(--t-h2);line-height:1.04;letter-spacing:-.035em}
 .st p{font-size:var(--t-lead);line-height:1.4;color:var(--muted)}
-.st .tag{display:flex;align-items:center;gap:10px;font-size:18px;font-weight:600;color:var(--ink)}
-.tag img{width:28px;height:28px}
+.st .card{align-self:flex-start}
+.st .card span{font-size:15px}
 /* The firewall example: this Mac, a dot running along the SSH line, the remote server */
 .st .route{display:flex;align-items:center;gap:14px;font:500 15px/1.3 var(--mono);color:var(--ink)} /* taste-skill-ignore: host:port pairs read as code */
 .route span{display:flex;flex-direction:column;gap:6px;padding:12px 14px;border-radius:14px;background:rgba(255,255,255,.08);box-shadow:inset 0 0 0 .5px rgba(255,255,255,.12)}
@@ -237,8 +245,8 @@ h2:hover .anchor,h3:hover .anchor,.anchor:focus-visible,.anchor.done{opacity:1}
 .clock{flex:none;width:118px;text-align:right}
 
 /* The end: the tool list, then install */
-.list{display:grid;grid-template-columns:minmax(0,5fr) minmax(0,7fr);gap:clamp(32px,4vw,64px);align-items:start}
-.list-head{display:flex;flex-direction:column;gap:20px;position:sticky;top:32px}
+.list{display:grid;grid-template-columns:minmax(0,5fr) minmax(0,7fr);gap:clamp(32px,4vw,64px);align-items:start;padding-block:clamp(32px,6vh,64px) 88px}
+.list-head{display:flex;flex-direction:column;gap:20px}
 .list-head p{max-width:30ch;color:var(--muted);font-size:var(--t-lead);line-height:1.4}
 .rows{list-style:none;margin:0;padding:0}
 .row{display:flex;align-items:center;gap:14px;min-height:60px;padding:6px 14px;border-radius:14px;text-decoration:none;transition:background .15s}
@@ -248,7 +256,7 @@ a.row:hover{background:var(--lit)}
 .row img{width:30px;height:30px;flex:none}
 .row b{font-weight:600;white-space:nowrap}
 .row span{margin-left:auto;color:var(--muted);font-size:16px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;min-width:0;text-align:right}
-.ch>.install{display:flex;flex-direction:column;align-items:center;text-align:center;gap:28px;margin-top:calc(2 * var(--pad))}
+.install{display:flex;flex-direction:column;align-items:center;text-align:center;gap:28px}
 .cmd.big{height:68px;width:min(100%,720px);padding:0 10px 0 26px;border-radius:18px}
 .cmd.big code{font-size:clamp(15px,1.4vw,20px)}
 .cmd.big button{width:46px;height:46px;border-radius:12px}
@@ -280,10 +288,11 @@ a.row:hover{background:var(--lit)}
 /* Motion: content shows without script; with it, each part rises in turn */
 .js .rv{opacity:0;transform:translateY(24px);transition:opacity .7s cubic-bezier(.2,.7,.2,1),transform .7s cubic-bezier(.2,.7,.2,1)}
 .js .rv.in{opacity:1;transform:none}
-.js .head .rv:nth-child(2),.js .head-txt .rv:nth-child(2){transition-delay:.08s}
-.js .head-txt .rv:nth-child(3){transition-delay:.16s}
 @media (prefers-reduced-motion:reduce){
   html{scroll-behavior:auto}
+  /* Chapters change with a plain crossfade: the screens hold still and only fade */
+  @keyframes m-in{0%{opacity:0;transform:translateY(-100svh)}55%{opacity:0;transform:translateY(-45svh)}100%{opacity:1;transform:none}}
+  @keyframes m-out{0%{opacity:1;transform:none}45%{opacity:0;transform:translateY(45svh)}100%{opacity:0;transform:translateY(100svh)}}
   .js .rv{opacity:1;transform:none;transition:none}
   /* Stories swap their steps with a short fade and no movement */
   .s-cam,.cur{transition:none}
@@ -296,48 +305,42 @@ a.row:hover{background:var(--lit)}
 /* Under 1000 px a story puts the screen on top, cut by the left edge, and the text below */
 @media (max-width:1000px){
   :root{--vis:auto}
-  .story{height:calc(100vh + var(--n) * 64vh)}
-  .ch:has(>.story){padding-block:calc(var(--pad) - 16px)}
-  .s-pin{grid-template-columns:minmax(0,1fr);grid-template-rows:minmax(0,1fr) auto;align-items:stretch;gap:20px;padding:16px var(--m) 84px 0}
-  .one .s-pin{height:auto;grid-template-rows:auto auto;padding-bottom:0}
-  .one .s-vis{height:min(72svh,620px)}
+  .s-pin{grid-template-columns:minmax(0,1fr);grid-template-rows:minmax(0,1fr) auto;align-items:stretch;gap:18px;padding:16px var(--m) 76px 0}
   .s-vis{min-height:0}
-  .s-txt{gap:16px;max-width:none;padding-left:var(--m);min-height:250px}
+  .s-txt{gap:14px;max-width:none;padding-left:var(--m);min-height:236px}
   .one .s-txt{min-height:0}
-  .kick{font-size:18px;gap:10px}
-  .kick img{width:30px;height:30px;border-radius:7px}
+  .kick{font-size:18px}
   .st{gap:12px}
-  .st h3{font-size:clamp(28px,7.4vw,40px)}
+  .st h3{font-size:clamp(26px,7vw,40px)}
   .st p{font-size:16px;line-height:1.45}
-  .st .tag{font-size:16px}
   .st .route{font-size:13px;gap:10px}
   .route span{padding:8px 10px}
-  .ch>.fan-demo{height:660px}
+  .head-txt{grid-template-columns:minmax(0,1fr)}
+  .head-txt .kick{grid-row:auto}
   .foot-top{grid-template-columns:minmax(0,1fr)}
   .cols{justify-content:start}
   .brand .cmd{width:100%}
 }
 @media (max-width:1100px){
   .hero{grid-template-columns:minmax(0,1fr)}
-  .head,.list{grid-template-columns:minmax(0,1fr)}
-  .list-head{position:static}
-  .hero-copy{padding-right:var(--m)}
+  .list{grid-template-columns:minmax(0,1fr)}
+  .hero-copy{padding:clamp(16px,4vh,40px) var(--m) 0 0}
 }
 /* Phone: the menu bar loses the items macOS hides first */
 @media (max-width:640px){
   :root{--t-body:17px}
   .nav nav{gap:18px}
   .nav nav a:nth-child(1),.nav nav a:nth-child(2){display:none}
-  .hero{padding-top:24px}
-  .hero h1{font-size:clamp(40px,11vw,52px)}
+  .hero-copy h1{font-size:clamp(34px,9.4vw,46px)}
   .get{align-self:stretch}
   .get .cmd{width:100%}
   .cmd code{font-size:14px}
   /* A live demo at phone width lays out at its real size, so the frame is as tall as its content */
   .demo{border-radius:0}
-  .ch>.fan-demo{margin-inline:0}
+  .fan-stage{height:auto;padding-inline:0}
+  .fan-stage .head-txt{padding-inline:var(--m)}
+  .fan-demo{flex:none;height:1143px}
   .hero-demo{height:693px;margin-left:calc(-1 * var(--m))}
-  .ch>.fan-demo{height:1143px}
   .bar .apps,.bar .opt,.clock .d{display:none}
   .bar{justify-content:flex-end}
   .clock{width:auto}
@@ -350,6 +353,9 @@ a.row:hover{background:var(--lit)}
   .foot{padding-bottom:72px}
   .dock{gap:4px;padding:4px}
   .dock button{padding:0 9px;font-size:13px}
+  /* The six card buttons show their number on a phone */
+  .seg[data-set=card] button{width:28px;padding:0;font-size:0}
+  .seg[data-set=card] button::after{content:attr(data-n);font-size:13px}
   .seg.ic button{width:30px}
   .pick span{display:none}
   .pick{width:32px;padding:0!important}
