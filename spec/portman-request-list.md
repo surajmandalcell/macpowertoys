@@ -1,15 +1,11 @@
 # Portman request list
 
-Round 17 correction, run 68, 2026-10-01: `9dc41c29` restores listener
-artwork through the existing background process scanner and System
+- [ ] Server monitor (owner pick, 2026-11-21): monitored hosts live inside the Forward tab; each host row leads and its forwarded ports sit indented under it. Icon, port badge, stats, and layout looks are open.
+
+Listener artwork comes from the background process scanner and the System
 Monitor icon cache. App bundles use real artwork; confirmed command-line
 paths use the terminal glyph. Unknown paths and unavailable artwork keep
-a blank 15pt slot. The 44pt port lane, 52pt row, and 134pt metrics slot
-remain. Memory legends use mono type with explicit metric-caption ink.
-All 34 PortmanTests and 60 SystemMonitorTests pass through the foreground
-guard. The app and test bundles compile. Signed Servers rest, hover,
-selection, missing-artwork, and legend checks remain with the orchestrator.
-Report: `tmp/redesign/logs/w10-fix17-applets.md`.
+a blank slot. Memory legends use mono type with explicit metric-caption ink.
 
 CI repair, run 62, 2026-10-01: DESIGN.md requires invalid text to stay in
 its field with an error. The hosted cleanup check must retain the `99`
