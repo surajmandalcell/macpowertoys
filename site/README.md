@@ -3,8 +3,7 @@
 Static site for macpowertoys.samhq.app. No build step and no dependencies.
 
 - `public/` is the whole site: `index.html`, `site.css`, `site.js`, `404.html`, `_headers`, and `assets/`.
-- Preview: `python3 site/preview.py` and open http://127.0.0.1:4831. Add `?theme=light` or `?theme=dark` to force a look.
-- Deploy: `cd site/worker && npx wrangler deploy`. Cloudflare serves `public/` as static assets.
+- Preview: `python3 site/preview.py` and open http://127.0.0.1:4831.- Deploy: `cd site/worker && npx wrangler deploy`. Cloudflare serves `public/` as static assets.
 - Version: the worker (`worker/src/index.js`) writes the latest GitHub release into every `[data-version]` span and its `.dmg` asset into every `a[data-download]` link, cached for an hour. The HTML keeps the last known release (version and DMG link) as the fallback, so a release needs no site edit. The page always says "Notarized by Apple", so the site goes live only with a notarized release.
 
 Every feature section has a stable id for links, such as `/#portman`, `/#fan`, and `/#mac-tweaks`. Keep the ids when you edit a section.
@@ -24,7 +23,8 @@ The owner picked these from real renders. Change them only with a new pick.
 - Headlines say what the tool does ("Keeps your Mac quiet and cool."), with one short line under them.
 - No tool count anywhere. The tool story ends with "And more on the way." over the list of tools that ship today.
 - Portman: its own menu bar icon (`PortmanStatusGlyph`) and its logo (`PortmanLogo`). The pointer clicks the Portman icon and the panel opens, then seven steps: the icon, the summary ring, the server rows, live graphs, Restart, SSH forwarding, and the settings window.
-- Page chrome is always dark. App shots and live demos still follow the visitor's Light or Dark setting.
+- Dark only, one style set: no Light branch anywhere (no `prefers-color-scheme` rules, no light shots). App shots and live demos always show the Dark app. `assets/shots/glyph-mask.webp` is the light panel render kept only as the mask the demo's glyph recolor filters read.
+- The page must survive the claude.ai artifact host, which puts `body{background:#fff;color:#000;font:14px ...}` and `color-scheme:light` above it. `site.css` forces the body transparent, its color and font, and `color-scheme:dark`; the canvas sits at z-index 0 under `main` and the footer at z-index 1. Test with that host style block on top of `index.html`, in Light and Dark, at 390 and 1440: both must look the same.
 - The Open arrow in the panel header has the gear's brightness in Dark (`--ptkA` in `#demo-css`).
 - Animation control: Play, Pause, Off in the dock, remembered per visitor. Off by default under reduced motion.
 - Tool card: open. Each chapter names its tool in a `.card` with the real icon. The dock switches six looks live: 1 Glass (recommended: a frosted chip), 2 Store (App Store row with one line), 3 Dock (a tile with the name under it), 4 Spotlight (a selected result row), 5 Pill (a menu bar item), 6 Finder (a selected icon with a blue label). `?card=store` opens one. Once the owner picks, keep it and drop the others and the card buttons.

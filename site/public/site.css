@@ -1,5 +1,4 @@
-/* The page is always dark: every chapter sits on a dark moving background. App shots and demos
-   still follow the visitor's Light or Dark setting, like a Mac in Light mode on a dark wallpaper. */
+/* One style set, dark only: the page, the app shots, and the demos never follow the visitor's Light setting. */
 :root{
   --base:#07070a;--surface:rgba(255,255,255,.06);--ink:#f5f5f7;--muted:#b4b4bb;
   --accent:#0071e3;--accent-ink:#fff;--link:#3d9bff;
@@ -19,11 +18,12 @@
   --m:clamp(20px,4vw,64px);
   --t-h1:clamp(46px,5.4vw,84px);--t-h2:clamp(34px,3.7vw,56px);--t-lead:clamp(19px,1.1rem + .5vw,23px);--t-body:18px;--t-small:14px;
   --vis:min(calc(100svh - 160px),860px);
-  color-scheme:dark;
+  color-scheme:dark!important;
 }
 *{box-sizing:border-box}
 html{scroll-behavior:smooth;-webkit-text-size-adjust:100%;overflow-x:clip;background:var(--base)}
-body{margin:0;color:var(--ink);font:400 var(--t-body)/1.5 var(--font);letter-spacing:-.01em;-webkit-font-smoothing:antialiased;overflow-x:clip}
+/* The artifact host puts a white, 14px, black-text body rule above the page; these must win. */
+body{margin:0;background:transparent!important;color:var(--ink)!important;font:400 var(--t-body)/1.5 var(--font)!important;letter-spacing:-.01em;-webkit-font-smoothing:antialiased;overflow-x:clip}
 [id]{scroll-margin-top:32px}
 img{display:block;max-width:100%;height:auto}
 a{color:inherit}
@@ -109,7 +109,8 @@ html{scroll-snap-type:y mandatory}
 .foot{position:relative}
 
 /* The background: one fixed canvas (site.js draws the wallpaper live) under a fine film grain */
-.bgc,.grain{position:fixed;inset:0;z-index:-1;width:100%;height:100lvh;pointer-events:none}
+.bgc,.grain{position:fixed;inset:0;z-index:0;width:100%;height:100lvh;pointer-events:none}
+main,.foot{position:relative;z-index:1}
 .bgc{display:block}
 .nogl{background:radial-gradient(40% 30% at 70% 30%,rgba(214,94,69,.4),transparent),radial-gradient(35% 30% at 20% 70%,rgba(43,84,92,.5),transparent),radial-gradient(20% 15% at 30% 20%,rgba(235,26,97,.3),transparent),var(--base)}
 .grain{inset:-10%;width:auto;height:auto;opacity:.1;background:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='220' height='220'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='.9' numOctaves='2' stitchTiles='stitch'/%3E%3CfeColorMatrix values='0 0 0 0 1 0 0 0 0 1 0 0 0 0 1 0 0 0 1.6 -.3'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)'/%3E%3C/svg%3E");animation:jit 1s steps(1,end) infinite paused}
