@@ -195,6 +195,8 @@ struct PortmanPanelView: View {
     @State private var overviewGeneration = 0
     @State private var overviewPresentation = PortmanOverviewPresentation.empty
     @State private var processIcons = SystemMonitorProcessIcons()
+    /// Hosts whose chart tiles are open, one per line. The first-run value opens the first host.
+    @AppStorage("portman.forward.openHosts") private var openHosts = PortmanPanelView.firstHostOpen
     @AppStorage("portman.sessionLinksEnabled") private var sessionLinksEnabled = false
     @AppStorage("portman.publicGitHubLinksEnabled") private var publicGitHubLinksEnabled = false
     @AppStorage("portman.editor") private var editor = "auto"
@@ -220,13 +222,6 @@ struct PortmanPanelView: View {
 
     private var selectedPort: PortmanLocalPort? {
         service.localPorts.first { $0.id == selectedPortID }
-    }
-
-    private var activeTunnelCount: Int {
-        service.tunnels.reduce(0) { count, tunnel in
-            if case .running = tunnel.state { return count + 1 }
-            return count
-        }
     }
 
     private var showingStopConfirmation: Binding<Bool> {
@@ -807,9 +802,8 @@ struct PortmanPanelView: View {
             let groups = PortmanForwardTree.groups(hosts: hostList.hosts, tunnels: service.tunnels)
             if !groups.isEmpty {
                 TimelineView(.periodic(from: .now, by: 30)) { context in
-                    OnePlusLinearList(style: .panel) {
-                        PortmanForwardRow { PortmanForwardStatus("Hosts · \(activeTunnelCount) forwards active") }
-                        ForEach(groups) { hostGroup($0, now: context.date) }
+                    VStack(spacing: OnePlusLinearPanelStyle.fillSteps.blockGap) {
+                        ForEach(groups) { hostGroup($0, first: $0.id == groups.first?.id, now: context.date) }
                     }
                 }
             }
@@ -817,9 +811,35 @@ struct PortmanPanelView: View {
         }
     }
 
-    /// A host parent row, then its forwards as child rows.
-    @ViewBuilder private func hostGroup(_ group: PortmanHostGroup, now: Date) -> some View {
-        PortmanHostRow(group: group, state: serverMonitor.states[group.host.destination], now: now)
+    nonisolated static let firstHostOpen = "\u{1}first"
+
+    nonisolated static func isOpen(_ destination: String, first: Bool, in stored: String) -> Bool {
+        stored == firstHostOpen ? first : stored.split(separator: "\n").contains(Substring(destination))
+    }
+
+    nonisolated static func toggled(_ destination: String, open: Bool, in stored: String) -> String {
+        var hosts = stored == firstHostOpen ? [] : stored.split(separator: "\n").map(String.init)
+        hosts.removeAll { $0 == destination }
+        if !open { hosts.append(destination) }
+        return hosts.joined(separator: "\n")
+    }
+
+    /// One card per host: its row, chart tiles when open, and its forwards under a guide line.
+    private func hostGroup(_ group: PortmanHostGroup, first: Bool, now: Date) -> some View {
+        let destination = group.host.destination
+        let open = Self.isOpen(destination, first: first, in: openHosts)
+        let model = PortmanHostCardModel(monitors: group.host.monitors, forwards: group.children.count,
+                                         state: serverMonitor.states[destination], now: now)
+        return PortmanHostCard(group: group, model: model, expanded: open, actions: PortmanHostCardActions(
+            toggleStats: { openHosts = Self.toggled(destination, open: open, in: openHosts) },
+            retry: { child in reforward(group, child) },
+            open: openLocal,
+            stop: { child in if let id = child.tunnel?.id { service.stopTunnel(id) } },
+            remove: { child in
+                if let id = child.tunnel?.id { service.stopTunnel(id) }
+                hostList.removeForward(host: destination, localPort: child.spec.localPort)
+            }
+        ))
             .contextMenu {
                 Button("Use this host") { host = group.host.destination }
                 ForEach(PortmanHostMode.allCases, id: \.self) { mode in
@@ -830,31 +850,23 @@ struct PortmanPanelView: View {
                 }
                 if group.saved { Button("Remove host") { hostList.remove(group.host.destination) } }
             }
-        ForEach(group.children) { child in
-            Group {
-                if let tunnel = child.tunnel { tunnelRow(tunnel) } else { savedForwardRow(group.host.destination, child.spec) }
-            }
-            .padding(.leading, OnePlusLinearMetrics.panelRowInset)
-        }
     }
 
-    /// A saved forward with no running tunnel: Start it again or remove it.
-    private func savedForwardRow(_ destination: String, _ spec: PortmanForwardSpec) -> some View {
-        PortmanForwardRow {
-            Image(systemName: "circle").font(.system(size: 11)).foregroundStyle(OnePlusColor.muted).accessibilityHidden(true)
-            Text(":\(String(spec.localPort)) → \(destination):\(String(spec.remotePort))")
-                .font(.system(size: OnePlusLinearMetrics.control, design: .monospaced)).foregroundStyle(OnePlusLinearColor.ink)
-                .lineLimit(1).truncationMode(.middle)
-                .frame(maxWidth: .infinity, alignment: .leading)
-            Text("Stopped").linearText(OnePlusLinearMetrics.control, color: OnePlusLinearColor.secondary).lineLimit(1).fixedSize()
-            OnePlusLinearIconButton(systemImage: "play.fill", help: "Start forwarding", size: 22) {
-                _ = service.forward(host: destination, remotePort: spec.remotePort, localPort: spec.localPort,
-                                    password: sshPasswordHost == destination ? sshPassword : nil)
-            }
-            OnePlusLinearIconButton(systemImage: "xmark", help: "Remove forward", size: 22) {
-                hostList.removeForward(host: destination, localPort: spec.localPort)
-            }
-        }
+    /// Re-forwards one down forward, or every down forward of the host when `child` is nil. An auth failure asks
+    /// for the password first; submitting it restarts every down forward of that host.
+    private func reforward(_ group: PortmanHostGroup, _ child: PortmanForwardChild?) {
+        let destination = group.host.destination
+        let steps = child.map { PortmanForwardRetry.plan(host: destination, child: $0).map { [$0] } ?? [] }
+            ?? PortmanForwardRetry.plan(group: group)
+        PortmanForwardRetry.run(steps, stop: { service.stopTunnel($0) }, forward: { host, remote, local in
+            service.forward(host: host, remotePort: remote, localPort: local,
+                            password: sshPasswordHost == host ? sshPassword : nil)
+        }, askPassword: { id in
+            guard let tunnel = service.tunnels.first(where: { $0.id == id }) else { return }
+            retryAfterPassword = tunnel
+            passwordPromptError = "Authentication failed. Enter the password again."
+            passwordPromptHost = tunnel.host
+        })
     }
 
     private func addHost() {
@@ -958,51 +970,6 @@ struct PortmanPanelView: View {
         }
     }
 
-    private func tunnelRow(_ tunnel: PortmanTunnel) -> some View {
-        var actions: [OnePlusLinearAction] = []
-        if case .running = tunnel.state {
-            actions.append(OnePlusLinearAction("Open tunnel on port \(String(tunnel.localPort))", systemImage: "link") {
-                openLocal(tunnel.localPort)
-            })
-        }
-        if case .failed = tunnel.state {
-            actions.append(OnePlusLinearAction("Retry forwarding", systemImage: "arrow.clockwise") {
-                if case .failed(let message) = tunnel.state,
-                   PortmanScanner.passwordAvailable(in: message) {
-                    retryAfterPassword = tunnel
-                    passwordPromptError = "Authentication failed. Enter the password again."
-                    passwordPromptHost = tunnel.host
-                } else {
-                    service.stopTunnel(tunnel.id)
-                    _ = service.forward(host: tunnel.host, remotePort: tunnel.remotePort,
-                                        localPort: tunnel.localPort,
-                                        password: sshPasswordHost == tunnel.host ? sshPassword : nil)
-                }
-            })
-        }
-        actions.append(OnePlusLinearAction("Stop forwarding", systemImage: "stop.fill") { service.stopTunnel(tunnel.id) })
-        return PortmanForwardRow {
-            Image(systemName: tunnelSymbol(tunnel.state))
-                .font(.system(size: 11))
-                .foregroundStyle(tunnelColor(tunnel.state))
-                .accessibilityHidden(true)
-            Text(":\(String(tunnel.localPort)) → \(tunnel.host):\(String(tunnel.remotePort))")
-                .font(.system(size: OnePlusLinearMetrics.control, design: .monospaced)).foregroundStyle(OnePlusLinearColor.ink)
-                .lineLimit(1).truncationMode(.middle)
-                .frame(maxWidth: .infinity, alignment: .leading)
-            Text(tunnelStateLabel(tunnel.state)).linearText(OnePlusLinearMetrics.control, color: OnePlusLinearColor.secondary)
-                .lineLimit(1).fixedSize()
-            ForEach(actions) { action in
-                OnePlusLinearIconButton(systemImage: action.systemImage, help: action.title, size: 22, action: action.action)
-            }
-        }
-        .help("localhost:\(String(tunnel.localPort)) → \(tunnel.host):\(String(tunnel.remotePort)) · \(tunnelStatus(tunnel.state))")
-        .contextMenu {
-            if case .running = tunnel.state { Button("Open localhost") { openLocal(tunnel.localPort) } }
-            Button("Stop forwarding") { service.stopTunnel(tunnel.id) }
-        }
-    }
-
     nonisolated static func remoteSelection(
         _ current: Set<UInt16>, port: UInt16, selecting: Bool,
         anchor: UInt16?, visible: [UInt16], extendRange: Bool
@@ -1102,9 +1069,10 @@ struct PortmanPanelView: View {
         sshPasswordHost = target
         sshPassword = password
         if let retry {
-            service.stopTunnel(retry.id)
-            _ = service.forward(host: retry.host, remotePort: retry.remotePort,
-                                localPort: retry.localPort, password: password)
+            PortmanForwardRetry.run(PortmanForwardRetry.afterPassword(host: retry.host, tunnels: service.tunnels),
+                                    stop: { service.stopTunnel($0) },
+                                    forward: { service.forward(host: $0, remotePort: $1, localPort: $2, password: password) },
+                                    askPassword: { _ in })
         } else {
             startRemoteScan(password: password)
         }
@@ -1120,21 +1088,8 @@ struct PortmanPanelView: View {
             .accessibilityIdentifier("portman.forwarding.error")
     }
 
-    private func tunnelSymbol(_ state: PortmanTunnel.State) -> String {
-        switch state { case .connecting: "hourglass"; case .running: "circle.fill"; case .failed: "exclamationmark.triangle" }
-    }
-
-    private func tunnelColor(_ state: PortmanTunnel.State) -> Color {
-        switch state { case .connecting: OnePlusColor.muted; case .running: OnePlusColor.secondary; case .failed: OnePlusColor.danger }
-    }
-
     private func tunnelStatus(_ state: PortmanTunnel.State) -> String {
         switch state { case .connecting: "Connecting"; case .running: "Forwarding"; case .failed(let message): message }
-    }
-
-    private func tunnelStateLabel(_ state: PortmanTunnel.State) -> String {
-        if case .failed = state { return "Failed" }
-        return tunnelStatus(state)
     }
 }
 

@@ -110,15 +110,10 @@ struct PortmanHeroRing: View {
     }
 }
 
-/// The port in its data color on a soft chip of the same color.
+/// The port in its data color in a sunken badge well (owner pick 2026-11-21), on every Portman list.
 struct PortmanPortChip: View {
     let port: UInt16
-    var body: some View {
-        let color = portmanPortColor(port)
-        Text(":\(String(port))").linearText(11, weight: .semibold, color: color).monospacedDigit()
-            .padding(.horizontal, 5).frame(height: 18)
-            .background(color.opacity(0.14), in: RoundedRectangle(cornerRadius: 5))
-    }
+    var body: some View { OnePlusLinearBadge(":\(String(port))", color: portmanPortColor(port)) }
 }
 
 /// A 40 pt server row: port chip, app icon, name over branch and uptime, then a sparkline and memory. On hover the
