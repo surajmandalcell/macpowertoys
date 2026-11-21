@@ -167,6 +167,19 @@ orchestrator; see "Open signed checks" at the end.
   both appearances, 1x and 2x, no window ordered). Measure glyph masks as
   blue-minus-green coverage; an absolute blue cutoff drops faint dark-mode pin edges.
 
+## Field And Select Insets Under Raised Keys
+
+- **Symptom:** In Portman Forward the host field text and the Hosts select
+  text sat at different insets and looked off center (owner, 2026-11-21).
+- **Cause:** Under `.raisedKeys` the text field drew the flat `fillTrack`
+  well with an 8 pt inset while the select drew the quiet raised bezel with
+  11 pt.
+- **Rule:** Both draw the sunken key well and pad by the look's
+  `fieldInset` (9 pt); a button beside them matches height and radius.
+- **Check:** In `../oneplus-ui`, `swift test --filter
+  OnePlusLinearFieldInsetTests` (text center within 0.5 pt of 14, left inset
+  and chevron right inset equal within 0.75 pt, Light and Dark at 2x).
+
 ## Focus Chrome And Responders
 
 - **Symptom:** A custom control shows a large blue rectangle, or an outline stays

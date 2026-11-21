@@ -1,6 +1,10 @@
 # Portman request list
 
-- [ ] Server monitor (owner pick, 2026-11-21): monitored hosts live inside the Forward tab; each host row leads and its forwarded ports sit indented under it. Icon, port badge, stats, and layout looks are open.
+- [x] Server monitor (owner pick, 2026-11-21): monitored hosts live inside the Forward tab; each host row leads and its forwarded ports sit indented under it.
+  - [x] Looks (owner picks 2026-11-21, rules in DESIGN.md Portman): "network symbol" host icon, "Sunken well" port badges on every Portman list (lighter wells; every port ink keeps 4.5:1 or more, Light 4.77, Dark 6.81), "Chart tiles" stats from the 60-point history, "Card with guide line" layout with one right icon per forward.
+  - [x] Broken forwards say why in words (Port in use, Auth failed, Host offline, Host key changed, Port did not open, Tunnel closed) and get an `arrow.clockwise` re-forward; the host row gets one to reconnect all. Auth failure asks once for the password, then restarts every failed tunnel of that host.
+  - [x] Field and Hosts select under "Raised keys" share one key well and a 9 pt inset: text and chevron sit 10 pt from the edges and center within 0.25 pt (measured at 2x, Light and Dark).
+  - Tests: `PortmanForwardModelTests` (state mapping, stale, empty, 1 and 60 points, zero, spike, NaN scaling, failure words, retry plans through fake seams), `PortmanForwardRenderTests` (offscreen cards, build-box, staging-eu, gpu-lab), OnePlusUI field-inset and badge contrast tests.
   - [x] Engine: hosts save under `portman.hosts` (version 1) with a mode (Forward ports, Monitor, Both) and their forwards. The old System Monitor host keys migrate once and stay untouched; unreadable data moves to `portman.hosts.unreadable`.
   - [x] Sampling: one `ssh -T host sh -s` script per sample (BatchMode, ConnectTimeout 5, 12 s hard deadline, 64 KB output cap). One shared SSH connection per host (ControlMaster auto, 12-hex socket under the app data `ssh/` folder, ControlPersist 60 s); a timeout or ssh exit 255 drops it, removing or changing a host and quitting the app close it. On oci2 the first sample takes 0.5 s, later ones 0.15 s. `uname -s` picks the Linux (`/proc`) or macOS (`top`, `vm_stat`, `sysctl`, `df`, `netstat`) parser. CPU, memory, root disk, load, uptime, and network rates.
   - [x] Polling: every 2 s while the panel is open on Forward, every 45 s otherwise, none in Low Power Mode or for Forward-only hosts. Backoff doubles per failure (caps 30 s and 10 min), no overlapping samples, removal cancels the running sample, 60-point history.
@@ -12,11 +16,8 @@ Monitor icon cache. App bundles use real artwork; confirmed command-line
 paths use the terminal glyph. Unknown paths and unavailable artwork keep
 a blank slot. Memory legends use mono type with explicit metric-caption ink.
 
-CI repair, run 62, 2026-10-01: DESIGN.md requires invalid text to stay in
-its field with an error. The hosted cleanup check must retain the `99`
-draft and range error across tabs, then permit a valid correction. The
-stepper must save only valid integers. Hosted execution remains open.
-Report: `tmp/redesign/logs/w7-ci-fix.md`.
+The cleanup threshold keeps invalid text (such as `99`) with its range error
+across tabs; the stepper saves only valid integers.
 
 ## Production audit, 2026-10-01
 
@@ -40,81 +41,16 @@ Hover and keyboard access switch its paint at once. Help stays in tooltips. Deta
 actions use shared controls and a shared popup. Complete rows include actions
 and values in their hover fill.
 
-Standalone checks of the current scanner and projection pass. A disposable
-HTTP server and SSH daemon pass discovery, process stats, loopback HTTP
-forwarding, forwarding stop, stale process rejection, and guarded server stop.
-No existing server, forward, user key, or credential store was changed.
-Supplied dark and light captures are baseline evidence. Background panel
-routes were attempted; installed capture and build results are in the report.
-Local app-hosted tests and installation belong to the orchestrator.
 
-The fixes are committed as `1750f97c`, `1ac2e939`, and `5c96af10`.
-Five gated build attempts reached unowned compile errors. The final Debug
-and desktop test-build retries both stopped on a
-type-check timeout. Full app and test compilation is not verified. Current
-standalone scanner, projection, TCP metadata, cleanup policy, missing-tool,
-and disposable SSH checks pass. The prior projection fails the selected-child
-memory regression. Installed Servers, Forward, and Settings were captured in
-the background at source `36c585b4`; these are baseline captures only.
+## Status glyph and settings layout
 
-## Round 11 review, 2026-10-01
-
-| Status | Request | Evidence | Remaining work |
-|---|---|---|---|
-| Source fixed | T087: recover identity width with one 134pt trailing slot. | `5447bd89` overlays adjacent Link and Stop on graph, memory, and uptime. Short distinct branches share the name baseline when they fit. `01bed768` exposes actions during keyboard focus and checks full button width in the hosted hover test. Identity colors, full-row hover, help, native context menus, and cleanup metrics remain. | Run the hosted hover test. Check rest, hover, protected rows, cleanup, Tab, Full Keyboard Access, and VoiceOver in both appearances on the signed build. |
-| Geometry verified | T088: pair direct settings sections in the main window and remove the card-only inset in both hosts. | `8801bfd9` pairs General with Integrations and Ports & processes with Clean up. The source-derived offscreen check measures 480pt columns with a 16pt gap at 976pt, a 356pt natural height, and a single 338pt column with a 724pt height in compact density. Visible native stepper bounds reach each group edge. The prior source fails the same check. Control columns remain 160/180pt. `e55dfd06` checks the captured 640pt main viewport. | Run the full native regression on hosted CI and inspect all sections, filtering, help, and control actions in both signed hosts. |
-
-Report: `tmp/redesign/logs/w3-audit-portman.md`. The eight supplied round 10
-Portman captures were reviewed. They show the two assigned defects and no
-additional visible Portman defect. Current native interaction and installation
-remain with the orchestrator under `40-common.md`.
-
-The T088 commit also contains a concurrent `PortmanMenuController` presenter
-hunk. It supplies the clicked display's height ceiling to the retained root.
-This is perf-panels work and requires that owner's integration review.
-
-The complete Portman view at `01bed768` type-checks against the built app module.
-The probe renames its overview helper to avoid an imported duplicate.
-The existing combined gate passes: the Debug app and both test bundles
-compile. Evidence: `tmp/redesign/logs/w3-audit-portman-debug-final.log`.
-The newer duplicate was canceled under the latest orchestrator instruction.
-Hosted execution and signed interaction checks remain open.
-
-## Round 12 review, 2026-10-01
-
-Panels-r11 item 1 and applets-r11 item 1 are source-fixed in `f59a6d0d`.
-The supplied signed `43ce0eb9` captures show the same all-row action defect
-in both appearances. The shared localRow condition now uses actual row hover,
-keyboard focus, or accessibility focus. Global focus-paint mode does not
-replace rest metrics. Memory and uptime remain in the details button value.
-The fixed 134pt slot, colors, sparklines, and row geometry remain.
-
-The extracted production condition passes 200 state combinations. The prior
-condition fails 10. Evidence: `tmp/redesign/logs/w3-audit-portman-r12-focus.log`
-and `w3-audit-portman-r12-focus-before.log` in the same directory.
-The existing hosted hover regression checks absent rest actions and metric
-values in both states. The single tests-mode gate passes for the Debug app
-and both test bundles. Evidence: `tmp/redesign/logs/w3-audit-portman-r12-tests.log`.
-Hosted execution and signed rest/one-focused-row captures in both appearances
-remain with the orchestrator. The shared UI chrome topic is updated in place;
-its isolated patch is `tmp/redesign/logs/audit-portman-r12-ui-chrome.patch`.
-This patch remains for integration because the topic has other owners' edits.
-
-## Status glyph, 2026-10-01
-
-The owner's Round 12 correction restores the original `PortmanStatusGlyph`
-socket asset, introduced in `49f41b41`, with the exact pre-wave-1 drawing:
-a copied 14pt template image. The asset is byte-for-byte unchanged from
-`91d9a538^`; the trailing server count remains. The sidebar, Servers panel
-tab, and glyph fallback use the same socket. Other status images retain the
-centered 11.2pt maximum ink span on a 14pt canvas, measured from Portman's
-11.2pt by 10.6pt ink. Native button margins remain unchanged.
-Original/restored raster equality passes at 1x/2x/4x, alongside all 36 status
-image geometry checks. Evidence: `tmp/redesign/captures/glyphs-status/r12/`.
-Source checkpoint: `5c04a1e7`. The single tests-mode gate passes for the
-Debug app and both desktop test bundles; its seven glyph source files match
-that checkpoint. Hosted execution and signed menu-bar comparison remain
-with the orchestrator. Report: `tmp/redesign/logs/w3-glyphs-status.md`.
+- `PortmanStatusGlyph` is the original socket asset (`49f41b41`), a 14 pt
+  template with the trailing server count; the sidebar, the Servers tab, and
+  the fallback share it. Other status images center an 11.2 pt ink span on
+  a 14 pt canvas.
+- Main-window Portman settings pair General with Integrations and Ports &
+  processes with Clean up; compact density uses one column. Control columns
+  are 160/180 pt.
 
 ## OnePlusUI redesign, 2026-09-29
 

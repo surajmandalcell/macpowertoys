@@ -120,7 +120,8 @@ All shipped; the rules live in the sections below.
   "Live instrument" motion.
 - Applets "Filled groups" shell, "Quiet Raised" controls, plain red
   destructive text, "Native snap" motion.
-- Portman "Hero ring", "Two lines with a port chip", "Right-click only".
+- Portman "Hero ring", "Two lines with a port chip", "Right-click only";
+  Forward "Card with guide line", "Chart tiles", "Sunken well" badges.
 - Panel bars "A. Bell with a red dot" attention key.
 - Apps by Sam: two cover cards, the Pro banner, sidebar glyph "Heart".
 - Fan: row thermometer "Five shades, before the switch", page "Big chart",
@@ -131,28 +132,24 @@ All shipped; the rules live in the sections below.
 
 ## Overview
 
-A premium, quiet instrument that feels like a Mac app: real traffic lights,
-menus, text fields, sheets, scroll views, and keyboard behavior. Custom
-drawing is limited to identity: charts, dot titles, tiles, and the shells of
-controls whose behavior stays native. Alignment
-is the first quality bar: one leading edge per container, one height and
-baseline per control row. Speed is part of the look. Nothing moves while
-idle.
+A quiet Mac instrument: native lights, menus, fields, sheets, scrolling, and
+keys; custom drawing only for charts, tiles, and control shells. One leading
+edge per container, one height and baseline per control row, nothing moves
+while idle.
 
 ## Appearance
 
 - One Appearance setting: Dark (default), Light, Automatic. It sets
   `NSApp.appearance`; every window and panel follows it.
 - Every OnePlusUI color is dynamic. Views never branch on the color scheme.
-- Open surfaces follow accessibility contrast, locale, calendar, and time
-  zone changes once per system notification, never by polling.
+- Open surfaces follow contrast, locale, calendar, and time zone changes
+  per system notification, never polling.
 - No raw colors in app code. Hex values live only in OnePlusUI tokens,
   chart series, and icon assets.
-- Accent marks one thing at a time (selected tab underline, active data
-  point, alert) and never fills a large surface. Text on an accent fill is
-  white.
-- Status never relies on color alone. Healthy states stay neutral. Offline
-  is a hollow dot and muted text, never red.
+- Accent marks one thing at a time (tab underline, data point, alert),
+  never a large surface; text on it is white.
+- Status never relies on color alone; healthy is neutral; offline is a
+  muted dot and text, not red.
 - Chart series: neutral steps `#BCBCBC`, `#8A8A8A`, `#626262`, `#454545`;
   gray line `#BEBEBE`; accent line `accent`; grid `#343434`.
 - Text selection: accent at 28% with primary text.
@@ -204,13 +201,11 @@ applets, sheets. Compact density: every menu-bar panel.
 - Applets: a 40 pt row with lights, title caps, and actions on `C = 22`;
   24 pt action frames run y 10 to 34; the untabbed body starts at y 56.
   Sheet headers keep a 44 pt Top B row.
-- Spacing only from the scale; radii 3 (segment in a track), 5 (nav rows,
-  icon buttons, menu tabs), 6 (controls, fields), 8 (cards), 13 (window,
-  system). Capsules only for switches, progress tracks, and count badges.
-  Lines are 1 pt, inside the shape.
-- No window is resizable; zoom is disabled. Sizes are the visible window and
-  fit a 1920 x 1080 display with the Dock and a 1728 x 1117 laptop. A window
-  opens at its saved position, clamped to its display, never a saved size.
+- Spacing from the scale; radii 3 (segments), 5 (nav rows, icon buttons,
+  tabs), 6 (controls), 8 (cards), 13 (window). Capsules only for switches,
+  progress tracks, and count badges. Lines are 1 pt, inside the shape.
+- No window resizes or zooms. Sizes fit 1920 x 1080 with the Dock and a
+  1728 x 1117 laptop. A window opens at its saved position, clamped.
 
 ## Window anatomy
 
@@ -236,19 +231,14 @@ editorial body, "Raised keys" controls, and "Inset, gray glyphs" groups:
   `OnePlusLinearEditorialFixedBody` for pages whose own list or table
   scrolls. Spacing comes from `OnePlusLinearSpace` (2, 4, 6, 8, 12, 16, 20,
   24) and the control column from `OnePlusLinearControlWidth` (160, 180).
-- Live data: Transfers opens with the Home tiles (`CloudSyncTiles`,
-  `OnePlusLinearBento` with `.instrument` tiles under `.fillSteps`), then
-  one group of transfer rows.
-- Rows: `linearGroupRowHover(selected:)` paints the radius 8 `hover` fill
-  past the row content; nothing moves.
-- Tables: under editorial, `onePlusTableRow` and `OnePlusNativeTable` draw
-  the group fill, sentence-case headers, `lineSoft` row lines, and the
-  `selection` fill, with no zebra stripes.
-- Banners: `OnePlusLinearBanner` (`.info`, `.warning`, `.error`); its text is
-  selectable.
-- Sheets: `OnePlusLinearSheet` (title row, close key, groups, trailing
-  footer keys) inside SwiftUI's `.sheet`.
-- Log lines, paths, and messages stay selectable text.
+- Transfers opens with the Home tiles (`CloudSyncTiles`), then one group of
+  transfer rows. `linearGroupRowHover(selected:)` paints the radius 8
+  `hover` fill past the content.
+- Tables (`onePlusTableRow`, `OnePlusNativeTable`): group fill,
+  sentence-case headers, `lineSoft` lines, `selection` fill, no zebra.
+- `OnePlusLinearBanner` (`.info`, `.warning`, `.error`) and
+  `OnePlusLinearSheet` (title row, close key, groups, footer keys in
+  `.sheet`). Banner text, log lines, paths, and messages stay selectable.
 
 ### Rows and the control column
 
@@ -261,10 +251,9 @@ editorial body, "Raised keys" controls, and "Inset, gray glyphs" groups:
 - Controls apply at once; an invalid value stays with an error caption and
   never clamps silently.
 - Process and server rows draw the app's real icon at the full slot (16 pt
-  in panels), with no padded tile, ring, or wrapper. An app with only a
-  legacy `.icns` icon uses its own `.icns` art, because macOS 26 wraps it in
-  a gray tile. A command-line process uses the terminal glyph. No generic
-  placeholder; the slot is kept so names align.
+  in panels), unwrapped; a legacy-only app uses its `.icns` art (macOS 26
+  tiles it gray); a command-line process uses the terminal glyph. The slot
+  always stays so names align.
 
 ## Components (OnePlusUI)
 
@@ -280,9 +269,12 @@ editorial body, "Raised keys" controls, and "Inset, gray glyphs" groups:
 | `OnePlusSwitchStyle` | 29 x 17 capsule, 11 pt knob; off `selection` track, on `primaryFill`. |
 | `OnePlusSegmented` | 28 pt (24 compact), 2 pt inset and gaps, radius 6 / 3, `track` fill, selected `selectedControl`. |
 | `OnePlusSelect` | 28 pt trigger, radius 6, `raised`, trailing chevron; opens `OnePlusPopupMenu`. |
-| `OnePlusPopupMenu` | Borderless panel below the trigger (above without room), at least the trigger width and wide enough for the longest item; 5 pt padding, radius 7, `raised`, one soft shadow; 28 pt items (24 compact), radius 4, checkmark column, `selection` highlight. Long titles truncate in the middle with the full title as help. Arrows, Return, Escape, type-select. Scrolls after 12 items, only for the wheel or arrow keys at an edge, never for pointer hover. Closes on outside click, Escape, window move, or deactivation. Context menus stay native. |
+| `OnePlusPopupMenu` | Panel below the trigger (above without room), at least trigger width; front-matter geometry, one soft shadow, checkmark column, `selection` highlight, middle truncation with help. Arrows, Return, Escape, type-select; scrolls after 12 items by wheel or keys, never by hover; closes on outside click, Escape, window move, deactivation. |
 | `OnePlusMenuButton` | Ghost or neutral button with a chevron that opens the popup with actions. |
-| `OnePlusLinearSegmented`, `OnePlusLinearSelect`, `OnePlusLinearStepper` | Drawn like the menu panel in every look: segments touch on a `fillTrack` well (2 pt inset) under one flat `fillThumb` thumb; the select is the white field with a hairline; the stepper puts the value on the `fillTrack` well beside a 16 pt `fillThumb` key with chevron up and down halves (hover one `pressed` step, press two). Text fields and the color well sit on the same flat `fillTrack` well, so every field on a page has one fill. Height and radius follow the row's look (24 / 7 in a panel). No native `Picker`, `Stepper`, or `NSPopUpButton` outside context menus. |
+| `OnePlusLinearSegmented`, `OnePlusLinearSelect`, `OnePlusLinearStepper` | Segments on a `fillTrack` well (2 pt inset) under one `fillThumb` thumb; the select is the white field with a hairline; the stepper value sits on the well beside a 16 pt key with up and down halves. Fields and the color well share the `fillTrack` well. Under "Raised keys" the field and select both draw the sunken key well with one `fieldInset` (9 pt), so text and chevron sit 10 pt from each edge and center within 0.5 pt. Height and radius follow the look. No native `Picker`, `Stepper`, or `NSPopUpButton` outside context menus. |
+| `OnePlusLinearBadge` | A port or count in its data color on `OnePlusBadgeWell`: a sunken well (`badgeWellTop` to `badgeWellBottom`, inner shade, soft edge), 18 pt, radius 5, 5 pt padding, 11 pt semibold. Every port ink keeps 4.5:1 on both well ends (test). |
+| `OnePlusLinearInsetTile` | 66 pt `insetTile` card, radius 8: icon, caption, and meta (shrinks to 0.8 before truncating), a 16 pt value and unit, and a 26 pt area chart edge to edge along the bottom. |
+| `OnePlusLinearHostIcon` | 16 pt outlined box, 10 pt glyph (`network`), and a 7 pt status dot with a 1.5 pt ring at the lower right. |
 | `OnePlusStepperField` | `OnePlusLinearStepper` with a text field. Every stepper is one control column wide (160 pt) in every look; the value and its unit right-align, so "4 hours", "3 days", and "3 sec" line up. A value without a unit right-aligns too. |
 | `OnePlusTextField` / `OnePlusSearchField` | Native field in a 28 pt `field` bezel (32 pt search in sidebars), radius 6; focus `fieldFocus` with an inset line, no ring, no size change; error `dangerLine` plus a caption. Escape clears search first. |
 | `OnePlusTextEditor` | `NSTextView` in `NSScrollView`, `track`, radius 6, 11 x 12 padding, SF Mono for code. |
@@ -310,17 +302,12 @@ editorial body, "Raised keys" controls, and "Inset, gray glyphs" groups:
 
 ## Horizontal density and native feel
 
-- Use the width first: metadata (time, count, size, status) trails on the
-  same row. Related actions sit side by side.
-- No inline provenance or help text; use an info glyph with a tooltip.
-- Page toolbars sit on the page in one row, never inside a padded card. A
-  card groups rows; it never wraps one control or one line.
-- Token paddings only. No pill badges on every row, hover lifts, or
-  web-style space.
-- Nothing clips abruptly: shadows, hover surfaces, popups, and text keep
-  their shape. A scroll view clips only at its real edge; bottom gutters
-  are padding inside the scroll content.
-- No control floats over scrolling content.
+- Metadata trails on the same row; related actions sit side by side; help is
+  an info glyph with a tooltip, never inline text.
+- Toolbars sit on the page in one row. A card groups rows, never one
+  control. Token paddings only; no hover lifts or web-style space.
+- Nothing clips abruptly; a scroll view clips only at its real edge, bottom
+  gutters are padding inside it, and no control floats over it.
 
 ## Native behavior contract
 
@@ -370,11 +357,10 @@ ease-in cubic-bezier(0.4, 0, 1, 1)):
   interval, offset): Network 0.25 s, every sample, 0; CPU 0.45 s, 2 s,
   0.15 s; GPU 0.45 s, 2 s, 0.30 s; Memory 0.6 s, 4 s, 0.45 s; Disk 0.6 s,
   5 s, 0.60 s; Battery 0.6 s, 5 s, 0.75 s; process rows 0.5 s, every 2 s.
-- Hover: a tile rises 1 pt and its wash is 1.8 times stronger (160 ms in,
-  240 ms out); row fills fade 90 / 200 ms; action keys rise 1 pt (120 ms)
-  and sit 0.5 pt down while pressed.
-- Reduce Motion: no count-up or draw-in, one scroll step per sample,
-  150 ms number crossfade, color-only hover. A closed panel runs nothing.
+- Hover: a tile rises 1 pt with a 1.8x wash (160 / 240 ms); row fills fade
+  90 / 200 ms; keys rise 1 pt (120 ms), 0.5 pt down when pressed.
+- Reduce Motion: no count-up or draw-in, one scroll step per sample, 150 ms
+  number crossfade, color-only hover. A closed panel runs nothing.
 
 ## Menu-bar panels
 
@@ -382,8 +368,8 @@ ease-in cubic-bezier(0.4, 0, 1, 1)):
 
 - 356 pt wide. Height is the natural height of the current tab, capped at
   90% of the visible screen. A short tab never opens tall.
-- A tab switch shows the final layout in the first frame: measure before the
-  swap and resize in the same transaction.
+- A tab switch shows the final layout in its first frame (measure, then
+  swap and resize in one transaction).
 - Each panel keeps its identity color for key data (Portman's port colors,
   the combined panel's metric colors, RSync UI's blue progress). Chrome
   stays neutral. Only the body scrolls. One opaque surface, no blur.
@@ -398,12 +384,10 @@ ease-in cubic-bezier(0.4, 0, 1, 1)):
 - Busy work (such as a Portman scan) shows on the top-bar gear: the gear
   becomes a spinner in the same frame. Body controls never move aside for a
   spinner.
-- Attention bell (`AttentionBell`): a `bell` icon button left of the gear
-  in every panel bar. A 7 pt `destructiveText` dot, 4 pt in from the top
-  right, shows while an item needs attention. A click opens a 312 pt
-  popover: a "Needs attention" caption, then one warning banner per item
-  with one plain line and a compact `Fix` key (Accessibility for custom
-  scrolling, then the fan helper). Windows have no gear, so no bell.
+- Attention bell (`AttentionBell`), left of the gear in every panel bar: a
+  7 pt `destructiveText` dot (4 pt in from the top right) while an item
+  needs attention; a click opens a 312 pt popover of warning banners, each
+  one line with a `Fix` key (Accessibility, then the fan helper).
 
 ### Fill steps shell (combined panel and Portman)
 
@@ -415,15 +399,12 @@ ease-in cubic-bezier(0.4, 0, 1, 1)):
   10 pt apart.
 - Top bar, 46 pt, 10 pt inset. Leading "Soft keys": 26 pt icon tabs, 13 pt
   glyphs, 2 pt apart, in a sunken radius 8 track; the selected tab is a
-  raised radius 6 key. Dark: deep track, `#313136` to `#28282C` key, a 1 pt
-  fading `softKeyDivider` between two unselected tabs only. Context menu
-  Move Left and Move Right reorder tool tabs. Trailing, 2 pt apart: the
-  26 pt bell, then "Shared track" (`OnePlusLinearIconTrack`): the 26 pt
-  gear (opens Settings) and a 26 pt `arrow.up.right` (Open MacPowerToys,
-  its label and tooltip) in the same sunken radius 8 track as the tabs,
-  13 pt glyphs in `secondary` ink (the arrow 11 pt, 0.5 pt down-left, so it
-  matches the gear and sits centered), hover and press like the tabs. No text
-  key. Quit stays in the status item menu.
+  raised radius 6 key (Dark `#313136` to `#28282C`, a fading
+  `softKeyDivider` only between two unselected tabs). Move Left and Move
+  Right reorder tool tabs. Trailing, 2 pt apart: the bell, then "Shared
+  track" (`OnePlusLinearIconTrack`) with the gear (Settings) and
+  `arrow.up.right` (Open MacPowerToys; 11 pt, 0.5 pt down-left to match the
+  gear). No text key; Quit stays in the status item menu.
 - Groups: `fillGroup`, radius 10, 4 pt top and bottom padding, no
   separators. Row hover is a radius 6 `fillRowHover` step 4 pt inside the
   group sides and 1 pt off the row edges.
@@ -442,42 +423,35 @@ ease-in cubic-bezier(0.4, 0, 1, 1)):
     current point, a gradient fade, the left edge fading over 16 pt.
   - A missing battery or GPU hides its tile; the column's chart tile takes
     the height. Missing readings show a dash.
-  - One group with the Fan row (32 pt, RPM, a CPU thermometer, and the
-    Auto, Cool, Max segmented control: `fillTrack` radius 7, `fillThumb`
-    radius 5) and the Awake row (state text and a 32 x 18 switch, accent
-    on). No fans hides the Fan row; only a segment click writes.
-  - Fan segments are `.snug` (each label plus 8 pt a side, so "Custom" has
-    the same air as Auto and Max). The Fan title has no fixed width, so the
-    RPM stays whole. A click moves the pill at once, before the helper answers.
+  - One group: the Fan row (32 pt, RPM, thermometer, Auto/Cool/Max
+    segments, track radius 7, thumb 5; hidden with no fans; only a click
+    writes) and the Awake row (state and a 32 x 18 accent switch).
+  - Fan segments are `.snug` (label plus 8 pt a side); the title has no
+    fixed width so the RPM stays whole; a click moves the pill at once.
     Cool reads "Custom" while the curve differs from the standard one.
-  - 12 pt `thermometer.medium` before the segments, by Apple silicon
-    thermals: under 56 °C `panelMuted`, 56-69 warm, 70-84 hot, 85-94 very
-    hot, 95+ critical. Help "CPU 62 °C · warm".
+  - 12 pt `thermometer.medium` before the segments: under 56 °C
+    `panelMuted`, 56-69 warm, 70-84 hot, 85-94 very hot, 95+ critical.
+    Help "CPU 62 °C · warm".
   - "Top processes": five 30 pt rows, 12 pt text: icon (16 pt), name, CPU
     percent in `cpuText` (40 pt column), memory (68 pt column). A click
     selects by PID. Right-click: Quit Process… (Quit, Force Quit, Cancel),
     then Open in Task Manager Pro, or Classic when only Classic is
     installed; with neither, the menu links to Apps by Sam.
-  - Actions for the enabled tools among Pick Color, Extract Text, Ruler:
-    equal 32 pt keys, radius 8, 4 pt apart. Light: white keys with one 1 pt
-    edge at 12% black, regular labels. Dark: flat `fillGroup`, medium
-    labels.
-- Speed: metrics sample off the main thread every second while Home shows,
-  every 5 seconds otherwise; the first sample on open comes at once.
-  Processes refresh every 2 seconds only while Home shows. Text formats off
-  the main thread.
+  - Pick Color, Extract Text, Ruler (enabled ones): equal 32 pt keys,
+    radius 8, 4 pt apart; Light white with a 12% black edge, Dark flat
+    `fillGroup` with medium labels.
+- Speed: off-main sampling every 1 s on Home, 5 s otherwise, at once on
+  open; processes every 2 s only on Home; text formats off main.
 - Tool tabs (RSync UI, Input Devices) use Home's parts: a pair of 56 pt
   tiles, `fillGroup` groups 10 pt apart, 24 pt section headers, 32 pt rows
   with the Home row hover, and the action keys last.
-  - Input Devices: Mouse and Trackpad tiles (lowest battery as a bar, else
-    the device name and control state); the custom scrolling switch and the
-    Accessibility row with a 24 pt Grant key; one group per Mouse,
-    Trackpad, and Scroll device profile, each opened by a disclosure row
-    (glyph, name, detail, chevron) that keeps its open state.
-  - RSync UI: a warning banner with Retry when the engine stops; Transfers
-    and Speed tiles; Remotes, Active, and Recent groups; transfer rows with
-    a chevron, state text, a 22 pt icon key, and a 5 pt progress bar;
-    New Transfer and Open RSync UI keys.
+  - Input Devices: Mouse and Trackpad tiles (lowest battery bar, else name
+    and state); the scrolling switch and an Accessibility row with a Grant
+    key; one remembered disclosure group per Mouse, Trackpad, and Scroll
+    device profile.
+  - RSync UI: a Retry banner when the engine stops; Transfers and Speed
+    tiles; Remotes, Active, and Recent groups (rows with chevron, state, a
+    22 pt icon key, a 5 pt bar); New Transfer and Open RSync UI keys.
 
 ### Portman
 
@@ -492,7 +466,7 @@ the Open key. Parts: `PortmanOverviewParts.swift`,
     20 pt below: Servers, CPU (`cpuText`), and Longest up as 15 pt medium
     values over muted captions, split by fading 30 pt dividers.
   - One `OnePlusLinearList(style: .panel)` of 40 pt rows: the port chip
-    (`:8787` in the port color on a 14% wash, radius 5), the app icon or
+    (`:8787` as an `OnePlusLinearBadge`, every Portman list), the app icon or
     terminal glyph, the name over branch and uptime, a 32 pt sparkline, and
     memory in a 52 pt column. Hover is the fill step only; nothing moves.
     Open and Stop replace the sparkline on hover.
@@ -517,9 +491,17 @@ the Open key. Parts: `PortmanOverviewParts.swift`,
      select-all checkbox, the status line ("oc1 · 28 ports"), and Clear;
      one row per port (checkbox, port chip, name, disclosure chevron, local
      port field); a footer row with "N selected" and Forward.
-  3. Forwarded group: "Forwarded ports · N active", then one row per tunnel
-     (state glyph, mono `:local → host:remote`, state text, 22 pt icon
-     actions).
+  3. Hosts: one `fillGroup` card per host. 40 pt host row:
+     `OnePlusLinearHostIcon` (dot when monitored), name over "up 12 d ·
+     load 0.42" or "no answer for 3 min", CPU sparkline, memory, and a
+     chevron opening 2 x 2 inset tiles (CPU, Memory, Disk, Network with
+     upload as a second line; remembered, first host open by default). A
+     `lineStrong` guide line runs from the icon with a 10 pt tick into each
+     32 pt forward row (inset 34): badge, `localhost:N` (`→ :remote`), the
+     state in words, one right icon: link, or `arrow.clockwise` when down
+     ("Port in use", "Auth failed", "Host offline" in `destructiveText`).
+     A host with a down forward gets `arrow.clockwise` to reconnect all;
+     auth failures ask once for the password.
   The scan spinner is the gear spinner; nothing in the body moves.
 - Server details (Home's parts): a fixed header row (back icon, name,
   `:port` in the port color, open-link icon); an instrument bento with
@@ -570,27 +552,22 @@ Linear style, OnePlusUI `OnePlusLinear*` parts. Reference:
 - 820 x 660, 215 pt sidebar, no texture or translucency. Lights center on
   `C = 22`, the center of the 44 pt toolbar. Sidebar `#101012` / `#F5F5F6`
   with a 1 pt trailing `line`; pane `#141416` / `#FCFCFD`.
-- Sidebar: a 44 pt drag row with the window title on `C = 22`, 14 pt after
-  zoom; a 28 pt search field (`⌘K` chip, 8 pt insets; Command-K and
-  Command-F focus it); `All tools`; one group per category (System,
-  Developer, then the rest), tools sorted by name length. 28 pt captions
-  (11.5 pt medium `muted`). 28 pt rows: 16 pt one-color `SidebarGlyph`
-  (`secondary`, `ink` when selected; marketplace tools use their art), 8 pt
-  gap, 13 pt name. A disabled tool name is `muted`. Selection: `selection`
-  fill, radius 6, medium `ink` name, no movement. Bottom group: Fan
-  (`SidebarGlyphFan`, owner pick "Open blades": three outlined blades and a
-  hub dot), Apps by Sam (`heart`), Settings (`⌘,`), Exit (`⌘Q`), 13 pt medium symbols and
-  shortcut hints.
+- Sidebar: a 44 pt drag row with the title on `C = 22`, 14 pt after zoom; a
+  28 pt search field (`⌘K` chip; Command-K and Command-F focus it); `All
+  tools`; groups System, Developer, then the rest, tools sorted by name
+  length, 28 pt captions (11.5 pt medium `muted`). 28 pt rows: 16 pt
+  `SidebarGlyph` (`secondary`, selected `ink`; marketplace tools use their
+  art), 8 pt gap, 13 pt name (`muted` when disabled). Selection: `selection`
+  fill, radius 6, medium name. Bottom: Fan (`SidebarGlyphFan` "Open
+  blades"), Apps by Sam (`heart`), Settings (`⌘,`), Exit (`⌘Q`).
 - Command-1 All tools; Command-2 to 9 follow the sidebar; Command-[ and
   Command-] go back and forward; Command-O opens the selected tool.
-- Pane toolbar: 44 pt with its 1 pt bottom `line`, drags the window. Back
-  and forward 24 pt icons 4 pt apart, 16 pt from the edge, then the 13 pt
-  semibold title. Trailing text tabs end 24 pt from the edge: each pads its
-  label and 12 pt `muted` count by 8 pt; the padded boxes touch; the
-  selected tab draws the 2 pt accent underline across its box and never
-  changes weight or position. All tools: `All N`, `Enabled N`,
-  `Favorites N`. Settings: General, Marketplace, About. A tool page shows
-  `Enabled` and the tool's enable switch instead.
+- Pane toolbar: 44 pt, 1 pt bottom `line`, drags the window. Back and
+  forward 24 pt icons 4 pt apart, 16 pt in, then the 13 pt semibold title.
+  Trailing text tabs end 24 pt in; label and 12 pt `muted` count padded
+  8 pt, boxes touching; the selected one gets a 2 pt accent underline, no
+  weight or position change. Tabs: `All N`, `Enabled N`, `Favorites N`;
+  Settings: General, Marketplace, About; a tool page: `Enabled` switch.
 - Editorial body: one scroll view, 20 pt top, 32 pt gutters, 20 pt between
   blocks, 24 pt bottom. Controls "Raised keys": every control is 28 pt,
   radius 7; fields, steppers, selects, search, and segment tracks are
@@ -613,10 +590,9 @@ Linear style, OnePlusUI `OnePlusLinear*` parts. Reference:
   24 pt name and description; right, the 176 x 108 "Key tile" (radius 12)
   with `Open` and an arrow over the shortcut caps and action name, or the
   tool name. Hover lifts it 2 pt; press sinks and scales to 98% (springs).
-  Awake's tile shows `⌃⌥⌘A` over "Show in menu bar" and opens the panel on
-  Home without activating the app; the Awake row then shows the row mark
-  (dotted 1 pt accent line at 40%, 5% accent fill, radius 6, fades in 0.2 s
-  after 0.3 s, holds 1.2 s, fades out 0.5 s).
+  Awake's tile ("Show in menu bar") opens the panel on Home without
+  activating the app and marks the Awake row (dotted accent line at 40%, 5%
+  fill, radius 6; in 0.2 s after 0.3 s, holds 1.2 s, out 0.5 s).
 - Then the `Menu bar icon` row (None, Combined, Separate) where supported,
   then the tool's settings inline. Groups "Inset, gray glyphs": `fillGroup`,
   radius 10, 1 pt `line` ring, rows at least 40 pt with 12 pt padding, an
@@ -625,43 +601,35 @@ Linear style, OnePlusUI `OnePlusLinear*` parts. Reference:
   above. A reset or clear is `.resetBlock`: one full-width 40 pt inset row
   with red text, its own block after the last group. Ruler shows its
   defaults for new rulers bound to FreeRuler `prefs`.
-- `How to use` is the footer "Checklist" below the free space: one
-  `OnePlusLinearChecklist` card per manual section (radius 12, `fillGroup`,
-  tile shadows): 40 pt step rows with a 13 pt accent glyph, 36 pt shortcut
-  rows with key caps, note rows with an info glyph. Steps are short plain
-  sentences.
-- Apps by Sam (`OnePlusLinearAppShelf`): the title, the Task Manager Pro
-  banner (radius 12, 96 pt icon, 20 pt name, raised `Paid` key), "More
-  apps" with the Hushpen and Switch cover cards side by side (118 pt
-  covers, 40 pt icon, 15 pt name), then one open row per other app (64 pt
-  icon). Every app has the App Store capsule: OPEN when installed, else GET,
-  or GET disabled with "Not available yet".
-- Fan page: tool header with the 56 pt `FanLogo` icon (owner pick
-  "Neutral fan", 2026-11-20: five swept blades, Midnight in Light,
-  Porcelain in Dark), then "Cool curve": a 240 pt "Heat line" chart
-  (30-100 °C, 0-100%, dotted `line` guides at 0, 50 and 100%, 10 pt
-  `tertiary` labels, a 3 pt monotone cubic line in a `temperature-cool` to
-  `temperature-very-hot` gradient over the same gradient fading from 28% to
-  clear, the CPU now as a filled dot in its `CPUHeat` color with an
-  "N °C · N RPM" chip above), the locked end (ink lock dot at 90 °C, 100%),
-  a `tertiary` hint line with the coral `.inlineDestructive` "Reset Curve",
-  and a "Now" row. Hold draws a dashed `ink` target line with a ±2 °C band
-  instead of the curve. Under the card, five preset cards (radius 10,
-  `fillGroup`, 1 pt `line`, 1.5 pt accent when picked, a 30 pt curve picture,
-  caption name): Silent, Quiet, Steady, Hold N °C, Custom. Points: 12 pt
-  knobs in `window` ringed in their temperature color, 24 pt hits, 2-8 points.
-  Drag stays between neighbors; double-click a point edits it; right-click
-  adds or removes; Delete removes; double-click space adds.
-- Settings uses `OnePlusLinearPaneBody`: 14 pt top, 24 pt gutters, 16 pt
-  between sections, 20 pt `muted` captions, lists with radius 8, a 1 pt
-  ring, and `lineSoft` separators. General: Appearance and windows, Launch
-  and iCloud, Quick Access shortcut. About: header row with icon, update
-  status, and `Check for Updates`, then details, links, acknowledgements,
-  manuals.
-- Enablement, placement, runtime state, and window visibility stay separate
-  states. Each tool exposes one settings content view that returns only its
-  groups (no page, scroll view, padding, header, `Spacer`, or max height);
-  `ToolSettingsContent` only dispatches by tool id.
+- `How to use` is the footer "Checklist": one `OnePlusLinearChecklist` card
+  per manual section (radius 12, `fillGroup`): 40 pt step rows with an
+  accent glyph, 36 pt shortcut rows with key caps, info note rows. Steps
+  are short plain sentences.
+- Apps by Sam (`OnePlusLinearAppShelf`): the Task Manager Pro banner
+  (radius 12, 96 pt icon, `Paid` key), "More apps" with Hushpen and Switch
+  cover cards (118 pt covers), then one row per other app. App Store
+  capsule: OPEN, GET, or disabled GET with "Not available yet".
+- Fan page: 56 pt `FanLogo` ("Neutral fan": five swept blades, Midnight in
+  Light, Porcelain in Dark), then "Cool curve": a 240 pt "Heat line" chart
+  (30-100 °C, 0-100%, dotted guides at 0, 50, 100%, 10 pt `tertiary`
+  labels; a 3 pt monotone line in the `temperature-cool` to
+  `temperature-very-hot` gradient over its 28%-to-clear fill; the CPU as a
+  dot in its `CPUHeat` color under an "N °C · N RPM" chip), the locked ink
+  end at 90 °C, 100%, a hint line with "Reset Curve"
+  (`.inlineDestructive`), and a "Now" row. Hold draws a dashed target line
+  with a ±2 °C band. Five preset cards below (radius 10, 1.5 pt accent when
+  picked, 30 pt curve picture): Silent, Quiet, Steady, Hold N °C, Custom.
+  Points: 12 pt knobs ringed in their temperature color, 24 pt hits, 2-8
+  points, dragged between neighbors; double-click edits, right-click adds
+  or removes, Delete removes, double-click space adds.
+- Settings (`OnePlusLinearPaneBody`): 14 pt top, 24 pt gutters, 16 pt
+  between sections, 20 pt `muted` captions, radius 8 ringed lists with
+  `lineSoft` separators. General: Appearance and windows, Launch and
+  iCloud, Quick Access shortcut. About: icon, update status, `Check for
+  Updates`, details, links, acknowledgements, manuals.
+- Enablement, placement, runtime state, and window visibility are separate
+  states. Each tool's settings view returns only its groups (no page,
+  scroll, padding, header, or `Spacer`); `ToolSettingsContent` dispatches.
 
 ## Other surfaces
 
@@ -689,11 +657,10 @@ appearances:
    loading, empty, error, permission needed.
 7. The native behavior contract holds.
 8. No idle CPU: an open window with unchanged data adds no timers.
-9. Speed: a page switch commits within 100 ms; 1,000-row tables scroll
-   without dropped frames; hidden or closed surfaces stop redrawing; live
-   charts update at most 4 times a second; a warm panel opens within
-   100 ms, a cold panel or window within 250 ms, measured to the final
-   frame. Keep file, process, and network work off input and termination
-   callbacks. Startup failures are recoverable; shutdown is time-bound.
+9. Speed: page switch within 100 ms; 1,000-row tables keep every frame;
+   hidden surfaces stop redrawing; live charts update at most 4 times a
+   second; a warm panel opens within 100 ms, a cold one within 250 ms, to
+   the final frame. No file, process, or network work on input or
+   termination callbacks. Startup failures recover; shutdown is time-bound.
 10. Fixed regions stay put while rows scroll.
 11. A capture of the signed build matches the reference at the same scale.
