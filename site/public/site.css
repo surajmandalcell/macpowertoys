@@ -146,7 +146,6 @@ h2:hover .anchor,h3:hover .anchor,.anchor:focus-visible,.anchor.done{opacity:1}
 
 /* Live demos: real-app HTML recreations in a frame, in place of still screenshots */
 .demo{position:relative;overflow:hidden;background:#1d1d1f;border-radius:24px;box-shadow:0 0 0 1px var(--lit)}
-.demo iframe{display:block;width:100%;height:100%;border:0}
 .hero-demo{height:clamp(600px,46vw,693px);border-radius:24px 0 0 24px}
 .fan-demo{height:clamp(600px,52vw,760px)}
 
@@ -160,73 +159,10 @@ h2:hover .anchor,h3:hover .anchor,.anchor:focus-visible,.anchor.done{opacity:1}
 .head p{max-width:46ch}
 .head-txt{display:flex;flex-direction:column;gap:22px}
 
-/* Fan */
-/* CPU temperature steps from DESIGN.md (CPUHeat.swift): gray, yellow, orange, red, deep red */
-:root{--t-normal:#008cbf;--t-warm:#a67c00;--t-hot:#cc610c;--t-very-hot:#d03a2c;--t-near-the-limit:#9a1717;--app-accent:#d94f45}
-@media (prefers-color-scheme:dark){:root{--t-normal:#63d1ff;--app-accent:#ee5b50;--t-warm:#f2c94c;--t-hot:#f59a4a;--t-very-hot:#ff7466;--t-near-the-limit:#ff3b30}}
-.try{--heat:var(--t-hot);--f:.567;display:grid;gap:14px;padding:22px;border-radius:18px;background:var(--surface)}
-.try[data-heat=normal]{--heat:var(--t-normal)}
-.try[data-heat=hot]{--heat:var(--t-hot)}
-.try[data-heat=very-hot]{--heat:var(--t-very-hot)}
-.try[data-heat=near-the-limit]{--heat:var(--t-near-the-limit)}
-.try label{font-weight:600;font-size:17px}
-.try .note{font-size:var(--t-small);color:var(--muted)}
-.fan-now{display:flex;align-items:center;gap:14px}
-.fan-now p{font-size:17px;color:var(--muted)}
-.fan-now b{font-size:34px;font-weight:600;letter-spacing:-.03em;color:var(--ink);font-variant-numeric:tabular-nums}
-.blades{width:40px;height:40px;flex:none;color:var(--ink)}
-.heat-word{margin-left:auto;font-weight:600;color:var(--heat)!important;font-variant-numeric:tabular-nums;transition:color .3s}
-.curve{width:100%;height:auto;overflow:visible}
-.curve .grid{stroke:var(--lit);stroke-width:1;fill:none}
-.curve .s-cool{stop-color:var(--t-normal)}.curve .s-warm{stop-color:var(--t-warm)}.curve .s-hot{stop-color:var(--t-hot)}.curve .s-very-hot{stop-color:var(--t-very-hot)}
-.curve .area{fill:url(#heat-line);opacity:.14;transition:opacity .3s}
-.curve .line{stroke:url(#heat-line);stroke-width:3;fill:none;stroke-linejoin:round;stroke-linecap:round;transition:opacity .3s}
-.curve .lock-line{stroke:var(--ink);stroke-width:2;opacity:0;transition:opacity .3s}
-.curve .lock{fill:var(--ink);stroke:var(--surface);stroke-width:2.5}
-.curve text{font:500 11px/1 var(--font);fill:var(--muted);letter-spacing:0}
-.curve .hold-mark{opacity:0;transition:opacity .3s}
-.curve .band{fill:var(--ink);opacity:.07}
-.curve .target{stroke:var(--ink);stroke-width:1.5;stroke-dasharray:4 3}
-.curve .hold-word{font-weight:600;fill:var(--ink)}
-.try[data-pick=hold] .curve .line,.try[data-pick=hold] .curve .area{opacity:0}
-.try[data-pick=hold] .curve .hold-mark,.try[data-pick=hold] .curve .lock-line{opacity:1}
-.try[data-pick=hold] .curve .guide{stroke-dasharray:none;stroke-width:1.5}
-/* The Fan page's curve cards: the mini curve on top, the name below at the left, an accent border when picked. */
-.picks{display:grid;grid-template-columns:repeat(5,1fr);gap:8px}
-.picks button{display:flex;flex-direction:column;gap:6px;min-width:0;padding:8px 8px 7px;border:1px solid var(--lit);border-radius:10px;background:var(--bg);color:var(--muted);font:500 13px/1.2 var(--font);letter-spacing:-.01em;text-align:left;white-space:nowrap;cursor:pointer;transition:border-color .2s,box-shadow .2s,color .2s}
-.picks button[aria-checked=true]{color:var(--ink);font-weight:600;border-color:var(--app-accent);box-shadow:inset 0 0 0 .5px var(--app-accent)}
-.picks .mini{display:block;width:100%;height:32px;overflow:visible}
-.picks .mini{--mini:var(--ink)}
-.picks [aria-checked=true] .mini{--mini:var(--app-accent)}
-.picks .mini .fill{fill:var(--mini);opacity:.1}
-.picks .mini .band{fill:var(--mini);opacity:.18}
-.picks .mini .stroke{fill:none;stroke:var(--mini);stroke-width:1.5;vector-effect:non-scaling-stroke;stroke-linejoin:round}
-.picks .mini .target{stroke:var(--mini);stroke-width:1.5;stroke-dasharray:3 2.5;vector-effect:non-scaling-stroke}
-.picks [aria-checked=false] .mini .stroke,.picks [aria-checked=false] .mini .target{opacity:.7}
-@media (max-width:600px){.picks{grid-template-columns:repeat(6,1fr)}.picks button{grid-column:span 2}.picks button:nth-child(n+4){grid-column:span 3}}
-.try .note{display:grid}
-.try .note>span{grid-area:1/1}
-.try .note .for-hold,.try[data-pick=hold] .note .for-curve{visibility:hidden}
-.try[data-pick=hold] .note .for-hold{visibility:visible}
-.picks button:focus-visible{outline:none;box-shadow:0 0 0 3px color-mix(in srgb,var(--accent) 40%,transparent)}
-.curve .guide{stroke:var(--heat);stroke-width:1.2;stroke-dasharray:3 3;transition:stroke .3s}
-.curve .dot{fill:var(--heat);stroke:var(--surface);stroke-width:3;transition:fill .3s}
-/* One track in the five heat bands (thresholds 56, 70, 85, 95 °C), full color up to the knob, faint after it.
-   The knob center runs from 11 px to the end minus 11 px, so each band edge sits at 11px + (100% - 22px) * p. */
-.therm{position:relative;height:28px;--bands:linear-gradient(90deg,var(--t-normal) 0 calc(11px + (100% - 22px) * .371),var(--t-warm) 0 calc(11px + (100% - 22px) * .571),var(--t-hot) 0 calc(11px + (100% - 22px) * .786),var(--t-very-hot) 0 calc(11px + (100% - 22px) * .929),var(--t-near-the-limit) 0)}
-.tube{position:absolute;left:0;right:0;top:10px;height:8px;border-radius:4px;overflow:hidden;container-type:inline-size}
-.tube::before{content:"";position:absolute;inset:0;background:var(--bands);opacity:.25}
-.tube .fill{position:absolute;inset:0 auto 0 0;width:calc(11px + (100% - 22px) * var(--f));overflow:hidden}
-.tube i{position:absolute;inset:0 auto 0 0;width:100cqw;background:var(--bands)}
-.therm input{position:absolute;left:0;right:0;top:0;width:auto;height:28px;margin:0;background:none;-webkit-appearance:none;appearance:none;cursor:pointer}
-.therm input::-webkit-slider-runnable-track{height:28px;background:none}
-.therm input::-moz-range-track{height:28px;background:none}
-.therm input::-webkit-slider-thumb{-webkit-appearance:none;width:22px;height:22px;margin-top:3px;border-radius:50%;background:#fff;box-shadow:0 1px 3px rgba(0,0,0,.3),0 0 0 .5px rgba(0,0,0,.15)}
-.therm input::-moz-range-thumb{width:22px;height:22px;border:0;border-radius:50%;background:#fff;box-shadow:0 1px 3px rgba(0,0,0,.3),0 0 0 .5px rgba(0,0,0,.15)}
-.therm input:focus-visible{outline:none}
-.therm input:focus-visible::-webkit-slider-thumb{box-shadow:0 0 0 4px color-mix(in srgb,var(--accent) 45%,transparent),0 1px 3px rgba(0,0,0,.3)}
-.ticks{position:relative;height:20px;margin:-2px 11px 0;font-size:13px;color:var(--muted);font-variant-numeric:tabular-nums}
-.ticks span{position:absolute;top:0;left:calc((var(--t) - 30) / 60 * 100%);transform:translateX(-50%)}
+/* The quarantine step under a Download button; the worker swaps it for "Notarized by Apple" on a notarized release. */
+.notary{display:grid;justify-items:start;gap:8px;margin-top:10px}
+.notary .cmd code{font-size:13px}
+.install .notary{justify-items:center;margin-top:-18px}
 
 /* Portman: a pinned story. While the section scrolls past, a large Mac screen stays on the left,
    cut by the window edge, and the text on the right changes one step at a time. The camera holds
@@ -381,9 +317,6 @@ a.row:hover{background:var(--lit)}
 /* Phone: a narrower crop, the menu bar loses the items macOS hides first */
 @media (max-width:640px){
   :root{--t-body:17px}
-  .fan-now{gap:10px;white-space:nowrap}
-  .fan-now b{font-size:28px}
-  .fan-now p{font-size:15px}
   .nav nav{gap:18px}
   .nav nav a:nth-child(1),.nav nav a:nth-child(2){display:none}
   .hero{padding-top:24px}

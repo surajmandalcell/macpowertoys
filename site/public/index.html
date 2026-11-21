@@ -34,9 +34,85 @@
       <a class="glass" data-download href="https://github.com/surajmandalcell/macpowertoys/releases/download/v1.9.4/MacPowerToys-1.9.4-universal.dmg"><span class="glow" aria-hidden="true"></span><i class="apple" aria-hidden="true"></i>Download for Mac</a>
       <div class="cmd"><code><span>brew install --cask</span> <span>samhqapp/tap/macpowertoys</span></code><button type="button" aria-label="Copy the install command" data-copy="brew install --cask samhqapp/tap/macpowertoys"><svg class="cp"><use href="#i-copy"/></svg><svg class="ok"><use href="#i-ok"/></svg></button></div>
     </div>
-    <p class="fine">Version <span data-version>1.9.4</span> · macOS 26.2 or later · <span data-notary>If macOS blocks it: System Settings › Privacy &amp; Security › Open Anyway</span></p>
+    <p class="fine">Version <span data-version>1.9.4</span> · macOS 26.2 or later</p>
+    <div class="fine notary" data-notary>If macOS says it's damaged, run:<div class="cmd"><code><span>xattr -dr com.apple.quarantine</span> <span>/Applications/MacPowerToys.app</span></code><button type="button" aria-label="Copy the command that removes the quarantine flag" data-copy="xattr -dr com.apple.quarantine /Applications/MacPowerToys.app"><svg class="cp"><use href="#i-copy"/></svg><svg class="ok"><use href="#i-ok"/></svg></button></div></div>
   </div>
-  <div class="demo hero-demo"><iframe src="demos/live.html" title="The MacPowerToys panel, live: CPU, GPU, memory, and network move every second, with the fan and the busiest apps"></iframe></div>
+  <div class="demo hero-demo" data-demo="live" role="img" aria-label="The MacPowerToys panel, live: CPU, GPU, memory, and network move every second, with the fan and the busiest apps"><template>
+<div class="desk" style="--wl:url(assets/wall/grad.webp);--wd:url(assets/wall/ring.webp)"><div class="desk-in">
+<div class="bar" aria-hidden="true"><span class="apps"><img src="assets/menubar/apple.png" width="12" height="15" alt=""><b>Finder</b><span>File</span><span>Edit</span><span>View</span><span>Go</span><span>Window</span><span>Help</span></span><span class="mbi"><img src="assets/menubar/menubar-white@1x.png" srcset="assets/menubar/menubar-white@2x.png 2x, assets/menubar/menubar-white@4x.png 4x" width="16" height="16" alt=""></span><img src="assets/menubar/battery.png" width="24" height="11" alt=""><img src="assets/menubar/wifi.png" width="17" height="13" alt=""><img class="opt" src="assets/menubar/search.png" width="15" height="15" alt=""><img class="opt" src="assets/menubar/control.png" width="17" height="15" alt=""><span class="clock"><span class="d">Fri Nov 20</span>&ensp;<span class="t">9:41 AM</span></span></div>
+<svg width="0" height="0" style="position:absolute" aria-hidden="true"><defs>
+<filter id="f-ink" color-interpolation-filters="sRGB"><feColorMatrix type="matrix" values="0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 -.637 -.637 -.637 0 1.656" result="a"/><feFlood class="f-ink"/><feComposite in2="a" operator="in"/></filter>
+<filter id="f-sec" color-interpolation-filters="sRGB"><feColorMatrix type="matrix" values="0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 -.637 -.637 -.637 0 1.656" result="a"/><feFlood class="f-sec"/><feComposite in2="a" operator="in"/></filter>
+<filter id="f-muted" color-interpolation-filters="sRGB"><feColorMatrix type="matrix" values="0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 -.637 -.637 -.637 0 1.656" result="a"/><feFlood class="f-muted"/><feComposite in2="a" operator="in"/></filter>
+<filter id="f-kink" color-interpolation-filters="sRGB"><feColorMatrix type="matrix" values="0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 -.637 -.637 -.637 0 1.656" result="a"/><feFlood class="f-kink"/><feComposite in2="a" operator="in"/></filter>
+<filter id="f-tink" color-interpolation-filters="sRGB"><feColorMatrix type="matrix" values="0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 -.637 -.637 -.637 0 1.656" result="a"/><feFlood class="f-tink"/><feComposite in2="a" operator="in"/></filter>
+</defs></svg>
+<div class="panel" id="panel" role="img" aria-label="MacPowerToys menu panel">
+  <div class="tabs">
+    <span class="tk on" style="left:2px"></span><span class="tk" style="left:30px"></span><span class="tk" style="left:58px"></span>
+    <svg class="g" data-g="tabGrid" style="left:5px;top:5px" width="20" height="20" viewBox="15 13 20 20" aria-hidden="true"><image href="assets/shots/panel-home-light.webp" width="356" height="642" filter="url(#f-kink)"/></svg><svg class="g" data-g="tabCloud" style="left:33px;top:5px" width="20" height="20" viewBox="43 13 20 20" aria-hidden="true"><image href="assets/shots/panel-home-light.webp" width="356" height="642" filter="url(#f-tink)"/></svg><svg class="g" data-g="tabMouse" style="left:61px;top:5px" width="20" height="20" viewBox="71 13 20 20" aria-hidden="true"><image href="assets/shots/panel-home-light.webp" width="356" height="642" filter="url(#f-tink)"/></svg>
+  </div>
+  <span class="ib" style="left:144.5px"></span><span class="ib" style="left:174.5px"></span>
+  <svg class="g" data-g="bell" style="left:148px;top:13px" width="20" height="20" viewBox="148 13 20 20" aria-hidden="true"><image href="assets/shots/panel-home-light.webp" width="356" height="642" filter="url(#f-sec)"/></svg><svg class="g" data-g="gear" style="left:178.5px;top:13px" width="20" height="20" viewBox="178.5 13 20 20" aria-hidden="true"><image href="assets/shots/panel-home-light.webp" width="356" height="642" filter="url(#f-sec)"/></svg>
+  <span class="open">Open MacPowerToys</span>
+
+  <div class="blk tile" data-in style="--tint:var(--cpu);--vc:var(--cpuText);left:10px;top:48px;width:164.5px;height:140px">
+    <svg class="g" data-g="cpu" style="left:9px;top:10px" width="16" height="16" viewBox="19 58 16 16" aria-hidden="true"><image href="assets/shots/panel-home-light.webp" width="356" height="642" filter="url(#f-sec)"/></svg>
+    <div class="lr"><span class="tt">CPU</span><span class="meta">14 cores</span></div>
+    <div class="val"><b class="rn" id="v-cpu">37</b><span class="u">%</span></div>
+    <div class="split"><span>User <b class="rn" id="v-user">23</b><span class="u">%</span></span><span>System <b class="rn" id="v-sys">14</b><span class="u">%</span></span></div>
+    <svg class="ch" id="c-cpu" width="164.5" height="68"></svg>
+  </div>
+  <div class="blk tile" data-in style="--tint:var(--gpu);left:181.5px;top:48px;width:164.5px;height:84px">
+    <svg class="g" data-g="gpu" style="left:9.5px;top:10px" width="16" height="16" viewBox="191 58 16 16" aria-hidden="true"><image href="assets/shots/panel-home-light.webp" width="356" height="642" filter="url(#f-sec)"/></svg>
+    <div class="lr"><span class="tt">GPU</span><span class="meta">Apple M4 Pro</span></div>
+    <div class="val"><b class="rn" id="v-gpu">11</b><span class="u">%</span></div>
+    <svg class="ch" id="c-gpu" width="164.5" height="30"></svg>
+  </div>
+  <div class="blk tile" data-in style="--tint:var(--mem);left:181.5px;top:139px;width:164.5px;height:84px">
+    <svg class="g" data-g="mem" style="left:9px;top:10.5px" width="16" height="16" viewBox="190.5 149.5 16 16" aria-hidden="true"><image href="assets/shots/panel-home-light.webp" width="356" height="642" filter="url(#f-sec)"/></svg>
+    <div class="lr"><span class="tt">Memory</span><span class="meta">24 GB</span></div>
+    <div class="val"><b class="rn" id="v-mem">59</b><span class="u">%</span><span class="note"><span class="rn" id="v-memu">14.19</span> GB used</span></div>
+    <div class="use"><span class="bt"><i class="bf" id="b-mem" style="--p:59%"></i></span></div>
+  </div>
+  <div class="blk tile" data-in style="--tint:var(--disk);left:10px;top:195px;width:164.5px;height:56px">
+    <svg class="g" data-g="disk" style="left:9px;top:11px" width="16" height="16" viewBox="19 206 16 16" aria-hidden="true"><image href="assets/shots/panel-home-light.webp" width="356" height="642" filter="url(#f-sec)"/></svg>
+    <div class="lr"><span class="tt">Disk</span><span class="iv"><b>482</b><span class="u">GB free</span></span></div>
+    <div class="use"><span class="bt"><i class="bf" style="--p:48.5%"></i></span><span class="cap">512 GB used</span></div>
+  </div>
+  <div class="blk tile" data-in style="--tint:var(--bat);left:10px;top:258px;width:164.5px;height:56px">
+    <svg class="g" data-g="bat" style="left:7px;top:10px" width="20" height="16" viewBox="17 268 20 16" aria-hidden="true"><image href="assets/shots/panel-home-light.webp" width="356" height="642" filter="url(#f-sec)"/></svg>
+    <div class="lr"><span class="tt">Battery</span><span class="iv"><b class="rn" id="v-bat">82</b><span class="u">%</span></span></div>
+    <div class="use"><span class="bt"><i class="bf" id="b-bat" style="--p:82%"></i></span><span class="cap">Charging</span></div>
+  </div>
+  <div class="blk tile" data-in style="--tint:var(--down);left:181.5px;top:230px;width:164.5px;height:84px">
+    <svg class="g" data-g="net" style="left:10px;top:10px" width="16" height="16" viewBox="191.5 240 16 16" aria-hidden="true"><image href="assets/shots/panel-home-light.webp" width="356" height="642" filter="url(#f-sec)"/></svg><svg class="g" data-g="up" style="left:90.5px;top:11px" width="11.5" height="15" viewBox="272 241 11.5 15" aria-hidden="true"><image href="assets/shots/panel-home-light.webp" width="356" height="642" filter="url(#f-ink)"/></svg><svg class="g" data-g="down" style="left:9.5px;top:41px" width="13" height="15" viewBox="191 271 13 15" aria-hidden="true"><image href="assets/shots/panel-home-light.webp" width="356" height="642" filter="url(#f-sec)"/></svg>
+    <div class="lr"><span class="tt">Network</span><span class="meta" style="color:var(--up);font-size:11.5px"><span class="rn" id="v-up">66.1</span> <span id="v-upu">KB/s</span></span></div>
+    <div class="val" style="padding-left:16.5px"><b class="rn" id="v-down">550.6</b><span class="u" id="v-downu">KB/s</span></div>
+    <svg class="ch" id="c-net" width="164.5" height="30"></svg>
+  </div>
+
+  <div class="blk card" data-in style="left:10px;top:324px;width:336px;height:72px">
+    <svg class="g" data-g="fan" style="left:9.25px;top:12.25px" width="16" height="16" viewBox="19.25 336.25 16 16" aria-hidden="true"><image href="assets/shots/panel-home-light.webp" width="356" height="642" filter="url(#f-sec)"/></svg><svg class="g" data-g="eye" style="left:8px;top:44px" width="18" height="18" viewBox="18 368 18 18" aria-hidden="true"><image href="assets/shots/panel-home-light.webp" width="356" height="642" filter="url(#f-sec)"/></svg>
+    <div class="crow" style="top:4px">Fan<span class="st"><span class="rn" id="v-rpm">2,140</span> RPM</span>
+      <span class="fc">
+        <svg class="therm" id="therm" viewBox="0 0 14 18" aria-hidden="true"><rect x="3.6" y="1.2" width="4.8" height="11" rx="2.4" fill="none" stroke="currentColor" stroke-width="1.2"/><circle cx="6" cy="13.6" r="3.1" fill="currentColor"/><rect x="5.1" y="5.6" width="1.8" height="7" rx=".9" fill="currentColor"/><path d="M10 3.2h2.2M10 5.6h2.2M10 8h2.2" stroke="currentColor" stroke-width="1" stroke-linecap="round"/></svg>
+        <span class="seg" id="seg"><span class="th" id="thumb"><i class="l"></i><i class="m"></i><i class="r"></i></span><span data-m="auto">Auto</span><span data-m="custom" class="on">Cool</span><span data-m="max">Max</span></span>
+      </span>
+    </div>
+    <div class="crow" style="top:36px"><span style="width:48px">Awake</span><span class="st" style="margin-left:8px">Off</span><span class="sw"><i></i></span></div>
+  </div>
+
+  <div class="hdr" data-in>Top processes<span class="c">CPU</span><span class="m">Memory</span></div>
+  <div class="blk card list" data-in id="list"></div>
+
+  <div class="blk act" data-in style="left:10px"><svg class="g" data-g="pick" style="left:14px;top:8px" width="16" height="17" viewBox="24 606 16 17" aria-hidden="true"><image href="assets/shots/panel-home-light.webp" width="356" height="642" filter="url(#f-sec)"/></svg><span style="left:36.5px">Pick Color</span></div>
+  <div class="blk act" data-in style="left:123.33px"><svg class="g" data-g="text" style="left:10.67px;top:8px" width="16" height="16" viewBox="134 606 16 16" aria-hidden="true"><image href="assets/shots/panel-home-light.webp" width="356" height="642" filter="url(#f-sec)"/></svg><span style="left:32.2px">Extract Text</span></div>
+  <div class="blk act" data-in style="left:236.67px"><svg class="g" data-g="ruler" style="left:26.33px;top:9px" width="19" height="15" viewBox="263 607 19 15" aria-hidden="true"><image href="assets/shots/panel-home-light.webp" width="356" height="642" filter="url(#f-sec)"/></svg><span style="left:51.8px">Ruler</span></div>
+</div>
+
+</div></div>
+</template></div>
 </section>
 
 <section class="sec" id="fan">
@@ -46,41 +122,116 @@
       <h2 class="rv">Fan curves that stay <span class="nw">quiet.<a class="anchor" href="#fan" aria-label="Copy a link to Fan"><svg><use href="#i-link"/></svg></a></span></h2>
       <p class="rv">Pick Auto, Cool, or Max right from the panel. Auto follows macOS. Cool follows your pick on the Fan page: Silent, Quiet, Steady, your own Custom curve, or Hold, which keeps the CPU near one temperature, give or take 2 °C, with a steady fan speed. Cool reads the average of the CPU cores and of the GPU cores over 20 seconds, so one busy core does not spin the fans up and down. Every pick runs at full speed from an 80 °C average, and when one core stays at 90 °C or more for 10 seconds.</p>
     </div>
-    <div class="try rv" data-fan>
-      <div class="fan-now">
-        <svg class="blades" viewBox="0 0 16 16" aria-hidden="true"><g fill="none" stroke="currentColor" stroke-width="1.2" stroke-linejoin="round"><path id="blade" d="M8 8C7.2 6.4 7.2 3.6 9.1 2.5 10.9 1.5 13.1 2.9 12.5 5 12 6.7 9.9 7.7 8 8Z"/><use href="#blade" transform="rotate(120 8 8)"/><use href="#blade" transform="rotate(240 8 8)"/></g><circle cx="8" cy="8" r="1.3" fill="currentColor"/></svg>
-        <p><b id="fan-rpm">3,416</b> RPM</p>
-        <p class="heat-word">CPU avg <span id="fan-temp">64</span> °C · <span id="fan-word">hot</span></p>
-      </div>
-      <div class="picks" role="radiogroup" aria-label="Fan page pick">
-        <button type="button" role="radio" aria-checked="false" data-pick="silent"><svg class="mini" viewBox="0 0 100 44" preserveAspectRatio="none" aria-hidden="true"></svg><span>Silent</span></button>
-        <button type="button" role="radio" aria-checked="false" data-pick="quiet"><svg class="mini" viewBox="0 0 100 44" preserveAspectRatio="none" aria-hidden="true"></svg><span>Quiet</span></button>
-        <button type="button" role="radio" aria-checked="false" data-pick="steady"><svg class="mini" viewBox="0 0 100 44" preserveAspectRatio="none" aria-hidden="true"></svg><span>Steady</span></button>
-        <button type="button" role="radio" aria-checked="false" data-pick="hold"><svg class="mini" viewBox="0 0 100 44" preserveAspectRatio="none" aria-hidden="true"></svg><span>Hold 62 °C</span></button>
-        <button type="button" role="radio" aria-checked="true" data-pick="custom"><svg class="mini" viewBox="0 0 100 44" preserveAspectRatio="none" aria-hidden="true"></svg><span>Custom</span></button>
-      </div>
-      <svg class="curve" viewBox="0 -16 320 148" aria-hidden="true">
-        <defs><linearGradient id="heat-line" gradientUnits="userSpaceOnUse" x1="0" x2="320" y1="0" y2="0"><stop offset=".1" class="s-cool"/><stop offset=".36" class="s-warm"/><stop offset=".54" class="s-hot"/><stop offset=".7" class="s-very-hot"/></linearGradient></defs>
-        <path class="grid" d="M0 120.5H320M0 64.5H320M0 8.5H320"/>
-        <g class="hold-mark" id="hold-mark"><rect class="band" x="160" y="8" width="21.3" height="112"/><path class="target" d="M170.7 8V120"/><text class="hold-word" x="156" y="20" text-anchor="end">Hold 62 °C</text></g>
-        <path class="area" id="fan-area"/>
-        <path class="line" id="fan-line"/>
-        <path class="lock-line" d="M266.7 8H320"/>
-        <text class="lock-word" x="260" y="-4" text-anchor="end">Full speed from 80 °C</text>
-        <circle class="lock" cx="266.7" cy="8" r="5"/>
-        <line class="guide" id="fan-guide" y2="120"/>
-        <circle class="dot" id="fan-dot" r="6"/>
-      </svg>
-      <label for="heat">Drag to try: the CPU average, in °C</label>
-      <div class="therm">
-        <span class="tube" aria-hidden="true"><span class="fill"><i></i></span></span>
-        <input id="heat" type="range" min="30" max="90" step="1" value="64">
-      </div>
-      <div class="ticks" aria-hidden="true"><span style="--t:30">30</span><span style="--t:40">40</span><span style="--t:50">50</span><span style="--t:60">60</span><span style="--t:70">70</span><span style="--t:80">80</span><span style="--t:90">90</span></div>
-      <p class="note" id="fan-note"><span class="for-curve">The same picks as the Fan page below, at 1,350 to 5,777 RPM.</span><span class="for-hold">Holds a 62 °C average, give or take 2 °C, with a steady fan speed.</span></p>
-    </div>
   </div>
-  <div class="demo fan-demo"><iframe src="demos/fan.html" loading="lazy" title="The Fan page, live: the pointer picks Silent, then Steady, and the curve changes; then Hold keeps a 62 °C average. Drag on the chart to try it"></iframe></div>
+  <div class="demo fan-demo" data-demo="fan" role="group" aria-label="The Fan page, live: the pointer picks Silent, then Steady, and the curve changes; then Hold keeps a 62 °C average. Drag on the chart to try it"><template>
+<div class="desk" style="--wl:url(assets/wall/ring.webp);--wd:url(assets/wall/maze.webp)"><div class="desk-in">
+<div class="bar" aria-hidden="true"><span class="apps"><img src="assets/menubar/apple.png" width="12" height="15" alt=""><b>Finder</b><span>File</span><span>Edit</span><span>View</span><span>Go</span><span>Window</span><span>Help</span></span><span class="mbi"><img src="assets/menubar/menubar-white@1x.png" srcset="assets/menubar/menubar-white@2x.png 2x, assets/menubar/menubar-white@4x.png 4x" width="16" height="16" alt=""></span><img src="assets/menubar/battery.png" width="24" height="11" alt=""><img src="assets/menubar/wifi.png" width="17" height="13" alt=""><img class="opt" src="assets/menubar/search.png" width="15" height="15" alt=""><img class="opt" src="assets/menubar/control.png" width="17" height="15" alt=""><span class="clock"><span class="d">Fri Nov 20</span>&ensp;<span class="t">9:41 AM</span></span></div>
+<svg width="0" height="0" style="position:absolute" aria-hidden="true"><defs>
+<filter id="f-ink" color-interpolation-filters="sRGB"><feColorMatrix type="matrix" values="0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 -.637 -.637 -.637 0 1.656" result="a"/><feFlood class="f-ink"/><feComposite in2="a" operator="in"/></filter>
+<filter id="f-sec" color-interpolation-filters="sRGB"><feColorMatrix type="matrix" values="0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 -.637 -.637 -.637 0 1.656" result="a"/><feFlood class="f-sec"/><feComposite in2="a" operator="in"/></filter>
+<filter id="f-muted" color-interpolation-filters="sRGB"><feColorMatrix type="matrix" values="0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 -.637 -.637 -.637 0 1.656" result="a"/><feFlood class="f-muted"/><feComposite in2="a" operator="in"/></filter>
+<filter id="f-kink" color-interpolation-filters="sRGB"><feColorMatrix type="matrix" values="0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 -.637 -.637 -.637 0 1.656" result="a"/><feFlood class="f-kink"/><feComposite in2="a" operator="in"/></filter>
+<filter id="f-tink" color-interpolation-filters="sRGB"><feColorMatrix type="matrix" values="0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 -.637 -.637 -.637 0 1.656" result="a"/><feFlood class="f-tink"/><feComposite in2="a" operator="in"/></filter>
+</defs></svg>
+<div class="panel" id="panel" role="img" aria-label="MacPowerToys menu panel">
+  <div class="tabs">
+    <span class="tk on" style="left:2px"></span><span class="tk" style="left:30px"></span><span class="tk" style="left:58px"></span>
+    <svg class="g" data-g="tabGrid" style="left:5px;top:5px" width="20" height="20" viewBox="15 13 20 20" aria-hidden="true"><image href="assets/shots/panel-home-light.webp" width="356" height="642" filter="url(#f-kink)"/></svg><svg class="g" data-g="tabCloud" style="left:33px;top:5px" width="20" height="20" viewBox="43 13 20 20" aria-hidden="true"><image href="assets/shots/panel-home-light.webp" width="356" height="642" filter="url(#f-tink)"/></svg><svg class="g" data-g="tabMouse" style="left:61px;top:5px" width="20" height="20" viewBox="71 13 20 20" aria-hidden="true"><image href="assets/shots/panel-home-light.webp" width="356" height="642" filter="url(#f-tink)"/></svg>
+  </div>
+  <span class="ib" style="left:144.5px"></span><span class="ib" style="left:174.5px"></span>
+  <svg class="g" data-g="bell" style="left:148px;top:13px" width="20" height="20" viewBox="148 13 20 20" aria-hidden="true"><image href="assets/shots/panel-home-light.webp" width="356" height="642" filter="url(#f-sec)"/></svg><svg class="g" data-g="gear" style="left:178.5px;top:13px" width="20" height="20" viewBox="178.5 13 20 20" aria-hidden="true"><image href="assets/shots/panel-home-light.webp" width="356" height="642" filter="url(#f-sec)"/></svg>
+  <span class="open">Open MacPowerToys</span>
+
+  <div class="blk tile" data-in style="--tint:var(--cpu);--vc:var(--cpuText);left:10px;top:48px;width:164.5px;height:140px">
+    <svg class="g" data-g="cpu" style="left:9px;top:10px" width="16" height="16" viewBox="19 58 16 16" aria-hidden="true"><image href="assets/shots/panel-home-light.webp" width="356" height="642" filter="url(#f-sec)"/></svg>
+    <div class="lr"><span class="tt">CPU</span><span class="meta">14 cores</span></div>
+    <div class="val"><b class="rn" id="v-cpu">37</b><span class="u">%</span></div>
+    <div class="split"><span>User <b class="rn" id="v-user">23</b><span class="u">%</span></span><span>System <b class="rn" id="v-sys">14</b><span class="u">%</span></span></div>
+    <svg class="ch" id="c-cpu" width="164.5" height="68"></svg>
+  </div>
+  <div class="blk tile" data-in style="--tint:var(--gpu);left:181.5px;top:48px;width:164.5px;height:84px">
+    <svg class="g" data-g="gpu" style="left:9.5px;top:10px" width="16" height="16" viewBox="191 58 16 16" aria-hidden="true"><image href="assets/shots/panel-home-light.webp" width="356" height="642" filter="url(#f-sec)"/></svg>
+    <div class="lr"><span class="tt">GPU</span><span class="meta">Apple M4 Pro</span></div>
+    <div class="val"><b class="rn" id="v-gpu">11</b><span class="u">%</span></div>
+    <svg class="ch" id="c-gpu" width="164.5" height="30"></svg>
+  </div>
+  <div class="blk tile" data-in style="--tint:var(--mem);left:181.5px;top:139px;width:164.5px;height:84px">
+    <svg class="g" data-g="mem" style="left:9px;top:10.5px" width="16" height="16" viewBox="190.5 149.5 16 16" aria-hidden="true"><image href="assets/shots/panel-home-light.webp" width="356" height="642" filter="url(#f-sec)"/></svg>
+    <div class="lr"><span class="tt">Memory</span><span class="meta">24 GB</span></div>
+    <div class="val"><b class="rn" id="v-mem">59</b><span class="u">%</span><span class="note"><span class="rn" id="v-memu">14.19</span> GB used</span></div>
+    <div class="use"><span class="bt"><i class="bf" id="b-mem" style="--p:59%"></i></span></div>
+  </div>
+  <div class="blk tile" data-in style="--tint:var(--disk);left:10px;top:195px;width:164.5px;height:56px">
+    <svg class="g" data-g="disk" style="left:9px;top:11px" width="16" height="16" viewBox="19 206 16 16" aria-hidden="true"><image href="assets/shots/panel-home-light.webp" width="356" height="642" filter="url(#f-sec)"/></svg>
+    <div class="lr"><span class="tt">Disk</span><span class="iv"><b>482</b><span class="u">GB free</span></span></div>
+    <div class="use"><span class="bt"><i class="bf" style="--p:48.5%"></i></span><span class="cap">512 GB used</span></div>
+  </div>
+  <div class="blk tile" data-in style="--tint:var(--bat);left:10px;top:258px;width:164.5px;height:56px">
+    <svg class="g" data-g="bat" style="left:7px;top:10px" width="20" height="16" viewBox="17 268 20 16" aria-hidden="true"><image href="assets/shots/panel-home-light.webp" width="356" height="642" filter="url(#f-sec)"/></svg>
+    <div class="lr"><span class="tt">Battery</span><span class="iv"><b class="rn" id="v-bat">82</b><span class="u">%</span></span></div>
+    <div class="use"><span class="bt"><i class="bf" id="b-bat" style="--p:82%"></i></span><span class="cap">Charging</span></div>
+  </div>
+  <div class="blk tile" data-in style="--tint:var(--down);left:181.5px;top:230px;width:164.5px;height:84px">
+    <svg class="g" data-g="net" style="left:10px;top:10px" width="16" height="16" viewBox="191.5 240 16 16" aria-hidden="true"><image href="assets/shots/panel-home-light.webp" width="356" height="642" filter="url(#f-sec)"/></svg><svg class="g" data-g="up" style="left:90.5px;top:11px" width="11.5" height="15" viewBox="272 241 11.5 15" aria-hidden="true"><image href="assets/shots/panel-home-light.webp" width="356" height="642" filter="url(#f-ink)"/></svg><svg class="g" data-g="down" style="left:9.5px;top:41px" width="13" height="15" viewBox="191 271 13 15" aria-hidden="true"><image href="assets/shots/panel-home-light.webp" width="356" height="642" filter="url(#f-sec)"/></svg>
+    <div class="lr"><span class="tt">Network</span><span class="meta" style="color:var(--up);font-size:11.5px"><span class="rn" id="v-up">66.1</span> <span id="v-upu">KB/s</span></span></div>
+    <div class="val" style="padding-left:16.5px"><b class="rn" id="v-down">550.6</b><span class="u" id="v-downu">KB/s</span></div>
+    <svg class="ch" id="c-net" width="164.5" height="30"></svg>
+  </div>
+
+  <div class="blk card" data-in style="left:10px;top:324px;width:336px;height:72px">
+    <svg class="g" data-g="fan" style="left:9.25px;top:12.25px" width="16" height="16" viewBox="19.25 336.25 16 16" aria-hidden="true"><image href="assets/shots/panel-home-light.webp" width="356" height="642" filter="url(#f-sec)"/></svg><svg class="g" data-g="eye" style="left:8px;top:44px" width="18" height="18" viewBox="18 368 18 18" aria-hidden="true"><image href="assets/shots/panel-home-light.webp" width="356" height="642" filter="url(#f-sec)"/></svg>
+    <div class="crow" style="top:4px">Fan<span class="st"><span class="rn" id="v-rpm">2,140</span> RPM</span>
+      <span class="fc">
+        <svg class="therm" id="therm" viewBox="0 0 14 18" aria-hidden="true"><rect x="3.6" y="1.2" width="4.8" height="11" rx="2.4" fill="none" stroke="currentColor" stroke-width="1.2"/><circle cx="6" cy="13.6" r="3.1" fill="currentColor"/><rect x="5.1" y="5.6" width="1.8" height="7" rx=".9" fill="currentColor"/><path d="M10 3.2h2.2M10 5.6h2.2M10 8h2.2" stroke="currentColor" stroke-width="1" stroke-linecap="round"/></svg>
+        <span class="seg" id="seg"><span class="th" id="thumb"><i class="l"></i><i class="m"></i><i class="r"></i></span><span data-m="auto">Auto</span><span data-m="custom" class="on">Cool</span><span data-m="max">Max</span></span>
+      </span>
+    </div>
+    <div class="crow" style="top:36px"><span style="width:48px">Awake</span><span class="st" style="margin-left:8px">Off</span><span class="sw"><i></i></span></div>
+  </div>
+
+  <div class="hdr" data-in>Top processes<span class="c">CPU</span><span class="m">Memory</span></div>
+  <div class="blk card list" data-in id="list"></div>
+
+  <div class="blk act" data-in style="left:10px"><svg class="g" data-g="pick" style="left:14px;top:8px" width="16" height="17" viewBox="24 606 16 17" aria-hidden="true"><image href="assets/shots/panel-home-light.webp" width="356" height="642" filter="url(#f-sec)"/></svg><span style="left:36.5px">Pick Color</span></div>
+  <div class="blk act" data-in style="left:123.33px"><svg class="g" data-g="text" style="left:10.67px;top:8px" width="16" height="16" viewBox="134 606 16 16" aria-hidden="true"><image href="assets/shots/panel-home-light.webp" width="356" height="642" filter="url(#f-sec)"/></svg><span style="left:32.2px">Extract Text</span></div>
+  <div class="blk act" data-in style="left:236.67px"><svg class="g" data-g="ruler" style="left:26.33px;top:9px" width="19" height="15" viewBox="263 607 19 15" aria-hidden="true"><image href="assets/shots/panel-home-light.webp" width="356" height="642" filter="url(#f-sec)"/></svg><span style="left:51.8px">Ruler</span></div>
+</div>
+
+<div class="fp" id="fp">
+  <div class="ftop"><span class="cap">Cool curve</span><span class="try"><svg viewBox="0 0 16 16" aria-hidden="true"><path d="M2.5 8h11M5 5.5 2.5 8 5 10.5M11 5.5 13.5 8 11 10.5" fill="none" stroke="currentColor" stroke-width="1.4" stroke-linecap="round" stroke-linejoin="round"/></svg>Drag to try</span></div>
+  <div class="fg" id="fg">
+    <div class="fch" id="fch" aria-label="Fan curve demo: drag across the chart to change the CPU temperature">
+      <svg id="cv" aria-hidden="true">
+        <defs>
+          <linearGradient id="hg" gradientUnits="userSpaceOnUse" x1="0" y1="0" x2="540" y2="0"><stop offset=".1" style="stop-color:var(--t-cool)"/><stop offset=".36" style="stop-color:var(--t-warm)"/><stop offset=".54" style="stop-color:var(--t-hot)"/><stop offset=".7" style="stop-color:var(--t-very-hot)"/></linearGradient>
+          <linearGradient id="hv" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#fff" stop-opacity=".28"/><stop offset="1" stop-color="#fff" stop-opacity="0"/></linearGradient>
+          <mask id="hm" maskUnits="userSpaceOnUse"><rect id="hmr" fill="url(#hv)"/></mask>
+        </defs>
+        <g id="grid"></g>
+        <g class="lay" id="L-curve"><path id="ca" fill="url(#hg)" mask="url(#hm)"/><path id="cl" fill="none" stroke="url(#hg)" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"/><g id="kns"></g></g>
+        <g class="lay" id="L-hold" style="opacity:0"><rect class="hband" id="hb"/><line class="hline" id="hl"/><text class="hlab" id="ht" text-anchor="end">Hold 62 °C</text><line id="hflat" stroke="var(--ink)" stroke-width="2" stroke-linecap="round"/><line id="nl" stroke-width="1.5" stroke-linecap="round"/><circle id="nd2" r="4.5" stroke="var(--win)" stroke-width="2"/></g>
+        <g class="lk" id="lk"><text id="lkt" text-anchor="end">Full speed from 80 °C</text><g id="lkd"><circle r="8"/><rect x="-2.6" y="-.6" width="5.2" height="4" rx=".8"/><path d="M-1.6 -.6V-2a1.6 1.6 0 0 1 3.2 0v1.4" fill="none" stroke-width="1.2"/></g></g>
+        <g class="lay" id="L-now"><circle id="nd" r="6.25" stroke="var(--win)" stroke-width="2.5"/></g>
+      </svg>
+      <div class="chip" id="chip">CPU avg 64 °C · 3,669 RPM</div>
+      <div class="fmo" id="fmo">Auto follows macOS</div>
+    </div>
+    <div class="fh">
+      <div id="hc"><span>Drag points · double-click to edit · right-click to add or remove</span><button class="rst" id="rst">Reset Curve</button></div>
+      <div id="hh" class="off"><span>Holds <b style="font-weight:400" id="hht">62</b> °C, give or take 2 °C, with a steady fan speed</span><span class="stp" style="flex:none"><b id="hv2">62</b><i>°C</i><span><button data-d="1" aria-label="Raise hold temperature"><svg width="7" height="5" viewBox="0 0 7 5"><path d="M.8 4.2 3.5 1.5l2.7 2.7" fill="none" stroke="currentColor" stroke-width="1.2"/></svg></button><button data-d="-1" aria-label="Lower hold temperature"><svg width="7" height="5" viewBox="0 0 7 5"><path d="M.8.8l2.7 2.7L6.2.8" fill="none" stroke="currentColor" stroke-width="1.2"/></svg></button></span></span></div>
+    </div>
+    <div class="fn"><svg viewBox="0 0 14 18" aria-hidden="true"><rect x="3.6" y="1.2" width="4.8" height="11" rx="2.4" fill="none" stroke="currentColor" stroke-width="1.2"/><circle cx="6" cy="13.6" r="3.1" fill="currentColor"/><rect x="5.1" y="7" width="1.8" height="6" rx=".9" fill="currentColor"/></svg><b>Now</b><span class="v" id="now">CPU 79 °C · hot · 3,669 RPM</span></div>
+  </div>
+  <div class="pks" id="pks">
+    <button class="pk" data-p="silent"><svg></svg><span>Silent</span></button>
+    <button class="pk" data-p="quiet"><svg></svg><span>Quiet</span></button>
+    <button class="pk" data-p="steady"><svg></svg><span>Steady</span></button>
+    <button class="pk" data-p="hold"><svg></svg><span id="pkh">Hold 62 °C</span></button>
+    <button class="pk on" data-p="custom"><svg></svg><span>Custom</span></button>
+  </div>
+</div>
+</div></div>
+</template></div>
 </section>
 
 <section class="sec" id="portman">
@@ -216,7 +367,8 @@
   <h2 class="rv">Install it in one <span class="nw">line.<a class="anchor" href="#install" aria-label="Copy a link to Install"><svg><use href="#i-link"/></svg></a></span></h2>
   <div class="cmd big rv"><code><span>brew install --cask</span> <span>samhqapp/tap/macpowertoys</span></code><button type="button" aria-label="Copy the install command" data-copy="brew install --cask samhqapp/tap/macpowertoys"><svg class="cp"><use href="#i-copy"/></svg><svg class="ok"><use href="#i-ok"/></svg></button></div>
   <p class="or rv">Or <a class="glass" data-download href="https://github.com/surajmandalcell/macpowertoys/releases/download/v1.9.4/MacPowerToys-1.9.4-universal.dmg"><span class="glow" aria-hidden="true"></span><i class="apple" aria-hidden="true"></i>Download for Mac</a></p>
-  <p class="fine rv">Version <span data-version>1.9.4</span> · macOS 26.2 or later · <span data-notary>If macOS blocks it: System Settings › Privacy &amp; Security › Open Anyway</span> · No tracking · MIT license</p>
+  <p class="fine rv">Version <span data-version>1.9.4</span> · macOS 26.2 or later · No tracking · MIT license</p>
+  <div class="fine notary rv" data-notary>If macOS says it's damaged, run:<div class="cmd"><code><span>xattr -dr com.apple.quarantine</span> <span>/Applications/MacPowerToys.app</span></code><button type="button" aria-label="Copy the command that removes the quarantine flag" data-copy="xattr -dr com.apple.quarantine /Applications/MacPowerToys.app"><svg class="cp"><use href="#i-copy"/></svg><svg class="ok"><use href="#i-ok"/></svg></button></div></div>
 </section>
 </main>
 
@@ -235,5 +387,207 @@
   <p class="foot-fine rv"><span>MacPowerToys by Sam · Version <span data-version>1.9.4</span></span><span class="soft">Screens show sample data.</span></p>
   <div class="word" aria-hidden="true" data-word="MacPowerToys">MacPowerToys</div>
 </footer>
+<template id="demo-css">
+:host{
+  --font:-apple-system,BlinkMacSystemFont,"SF Pro Text","Inter",system-ui,sans-serif;
+  --deep:0 60px 90px -30px rgba(0,0,0,.6),0 24px 40px -18px rgba(0,0,0,.38),0 0 0 .5px rgba(0,0,0,.22);
+  --win-shadow:0 32px 64px -24px rgba(0,0,0,.42),0 10px 24px -12px rgba(0,0,0,.22),0 0 0 .5px rgba(0,0,0,.18);
+  --shot:url(assets/shots/panel-home-light.webp);
+  --shell:#F0F0F2;--group:#FFFFFF;--hover:#F0F0F2;--track:#EBEBEE;--thumb:#FFFFFF;
+  --ink:#1B1B1F;--sec:#55555C;--muted:#6E6E76;--bar:rgba(0,0,0,.075);--accent:#D94F45;
+  --cpu:#2A7DE1;--cpuText:#2A7DE1;--gpu:#8A63D2;--mem:#D2508F;--disk:#5A64D8;--bat:#2AA855;--down:#1A9FB0;--up:#E07F2A;
+  --fade:.16;--washp:9%;--contact:rgba(0,0,0,.06);--tshadow:rgba(0,0,0,.08);
+  --kt1:#DADADE;--kt2:#E6E6EA;--k1:#FFFFFF;--k2:#EEEEF1;--kink:#1B1B1F;--tink:#55555C;
+  --open1:#34343A;--open2:#1C1D22;--openInk:#FFFFFF;--openEdgeT:rgba(255,255,255,.16);--openEdgeB:rgba(0,0,0,.25);--openSh:rgba(0,0,0,.18);
+  --act1:#FFFFFF;--act2:#EEEEF1;--actEdge:rgba(0,0,0,.12);--actW:400;
+  --t-normal:#6E6E76;--t-warm:#A67C00;--t-hot:#CC610C;--t-very-hot:#D03A2C;--t-near-the-limit:#9A1717;
+  --menu:rgba(242,242,244,.78);--menuRing:rgba(0,0,0,.14);--sel:#0A6CF0;--alert:rgba(238,238,240,.86);--btn2:rgba(0,0,0,.07);--red:#E5322D;
+  color-scheme:light dark;
+}
+@media (prefers-color-scheme:dark){:host{
+  --shot:url(assets/shots/panel-home-dark.webp);
+  --deep:0 60px 90px -30px rgba(0,0,0,.75),0 24px 40px -18px rgba(0,0,0,.5),0 0 0 .5px rgba(255,255,255,.14);
+  --win-shadow:0 32px 64px -24px rgba(0,0,0,.7),0 10px 24px -12px rgba(0,0,0,.45),0 0 0 .5px rgba(255,255,255,.14);
+  --shell:#151517;--group:#1F1F22;--hover:#2A2A2E;--track:#2A2A2E;--thumb:#48484E;
+  --ink:#EDEDEF;--sec:#B4B4BA;--muted:#9999A1;--bar:rgba(255,255,255,.085);--accent:#EE5B50;
+  --cpu:#4C8FE6;--cpuText:#8DB8EF;--gpu:#9A88D2;--mem:#C97FA4;--disk:#8890E0;--bat:#4FBE76;--down:#45B8C4;--up:#D9925A;
+  --fade:.20;--washp:16%;--contact:rgba(0,0,0,.35);--tshadow:rgba(0,0,0,.5);
+  --kt1:#050506;--kt2:#09090A;--k1:#313136;--k2:#28282C;--kink:#C4C4CA;--tink:#9A9AA1;
+  --open1:#EDEDEF;--open2:#D2D2D7;--openInk:#141416;--openEdgeT:rgba(255,255,255,.6);--openEdgeB:rgba(0,0,0,.15);--openSh:rgba(0,0,0,.5);
+  --act1:#1F1F22;--act2:#1F1F22;--actEdge:transparent;--actW:500;
+  --t-normal:#9999A1;--t-warm:#F2C94C;--t-hot:#F59A4A;--t-very-hot:#FF7466;--t-near-the-limit:#FF3B30;
+  --menu:rgba(44,44,47,.74);--menuRing:rgba(255,255,255,.16);--sel:#0A6CF0;--alert:rgba(40,40,43,.86);--btn2:rgba(255,255,255,.13);--red:#FF5A52;
+}}
+*{box-sizing:border-box}
+:host{container-type:inline-size;font:13px/1.2 var(--font);letter-spacing:normal;text-align:left;-webkit-font-smoothing:antialiased}
+.desk{position:relative;width:100%;height:100%;overflow:hidden;background:var(--wl) center/cover no-repeat}
+@media (prefers-color-scheme:dark){.desk{background-image:var(--wd)}}
+.desk-in{position:absolute;left:0;top:0;transform-origin:0 0}
+.bar{position:absolute;z-index:1;inset:0 0 auto;height:24px;display:flex;align-items:center;gap:14px;padding:0 22px;color:#fff;font:500 13px/1 var(--font);letter-spacing:0;white-space:nowrap;filter:drop-shadow(0 0 3px rgba(0,0,0,.28))}
+.apps{flex:1;min-width:0;height:24px;overflow:hidden;display:flex;flex-wrap:wrap;align-items:center;align-content:flex-start;column-gap:19px}
+.apps>*{height:24px;display:flex;align-items:center}
+.apps b{font-weight:700}
+.bar img{flex:none}
+.mbi{flex:none;display:grid;place-items:center;width:30px;height:22px;border-radius:7px;background:rgba(255,255,255,.28)}
+.clock{flex:none;width:118px;text-align:right}
+@media (prefers-color-scheme:light){
+  .ink-light .bar{color:rgba(0,0,0,.85);filter:none}
+  .ink-light .bar img{filter:invert(1)}
+  .ink-light .mbi{background:rgba(0,0,0,.1)}
+}
+@container (max-width:640px){
+  .bar .apps,.bar .opt,.clock .d{display:none}
+  .bar{justify-content:flex-end}
+  .clock{width:auto}
+}
+
+.panel{position:absolute;top:29px;left:0;width:356px;height:642px;border-radius:12px;background:var(--shell);box-shadow:var(--deep);color:var(--ink);font:13px/1.2 var(--font);letter-spacing:-.08px;font-variant-numeric:tabular-nums;user-select:none;-webkit-user-select:none;cursor:default}
+.panel .g{position:absolute;overflow:hidden}
+.panel b,.panel i{font-style:normal}
+.f-ink{flood-color:var(--ink)}.f-sec{flood-color:var(--sec)}.f-muted{flood-color:var(--muted)}.f-kink{flood-color:var(--kink)}.f-tink{flood-color:var(--tink)}.f-white{flood-color:#fff}
+
+.tabs{position:absolute;left:10px;top:8px;width:86px;height:30px;border-radius:8px;background:linear-gradient(var(--kt1),var(--kt2))}
+.tk{position:absolute;top:2px;width:26px;height:26px;border-radius:6px}
+.tk.on{background:linear-gradient(var(--k1),var(--k2));box-shadow:0 .5px 1px rgba(0,0,0,.2),0 0 0 .5px rgba(0,0,0,.05)}
+.ib{position:absolute;top:9px;width:28px;height:28px;border-radius:7px}
+.open{position:absolute;left:205px;top:10px;width:141px;height:26px;border-radius:7px;background:linear-gradient(var(--open1),var(--open2));color:var(--openInk);font:600 12px/26px var(--font);letter-spacing:0;text-align:center;box-shadow:0 1px 1.5px var(--openSh),inset 0 .5px 0 var(--openEdgeT),inset 0 -.5px 0 var(--openEdgeB)}
+
+.blk{position:absolute}
+.tile{border-radius:8px;background:linear-gradient(color-mix(in srgb,var(--tint) var(--washp),var(--group)),var(--group) 75%);box-shadow:0 .5px 1px var(--contact),0 3px 10px var(--tshadow);transition:transform .2s cubic-bezier(.2,.8,.2,1)}
+.tile::after{content:"";position:absolute;inset:0;border-radius:inherit;background:linear-gradient(color-mix(in srgb,var(--tint) var(--washp),transparent),transparent 75%);opacity:0;transition:opacity .2s;pointer-events:none}
+.tile:hover,.tile.hov{transform:translateY(-1px)}
+.tile:hover::after,.tile.hov::after{opacity:.8}
+.lr{position:absolute;left:10px;right:10px;top:10px;height:16px;display:flex;align-items:center;gap:6px;padding-left:20px;white-space:nowrap}
+.tt{color:var(--sec)}
+.meta{margin-left:auto;font-size:11px;color:var(--muted)}
+.val{position:absolute;left:10px;right:10px;top:29px;height:26px;display:flex;align-items:baseline;gap:3px;white-space:nowrap}
+.val>b{font:300 26px/26px var(--font);letter-spacing:-.5px;color:var(--vc,var(--tint))}
+.u{font-size:11px;color:var(--muted)}
+.note{margin-left:auto;font-size:11px;color:var(--sec)}
+.split{position:absolute;left:10px;top:59px;display:flex;gap:14.5px;font-size:11px;color:var(--muted);white-space:nowrap}
+.split b{font-weight:500;color:var(--sec)}
+.split .u{margin-left:3px}
+.iv{margin-left:auto;display:flex;align-items:baseline;gap:3px}
+.iv>b{font-weight:600;color:var(--tint)}
+.use{position:absolute;left:10px;right:10px;bottom:12px;height:14px;display:flex;align-items:center;gap:8px}
+.bt{position:relative;flex:1;height:5px;border-radius:3px;background:var(--bar);overflow:hidden}
+.bf{position:absolute;inset:0;border-radius:3px;background:var(--tint);transform:translateX(calc(var(--p) - 100%));transition:transform .6s cubic-bezier(.2,.8,.2,1)}
+.cap{font-size:11px;color:var(--muted);white-space:nowrap}
+.ch{position:absolute;left:0;bottom:0;overflow:visible;-webkit-mask:linear-gradient(90deg,transparent,#000 16px);mask:linear-gradient(90deg,transparent,#000 16px)}
+.ch .ln{fill:none;stroke-width:1;stroke-linejoin:round;stroke-linecap:round}
+
+.card{border-radius:10px;background:var(--group);box-shadow:0 .5px 1px var(--contact)}
+.crow{position:absolute;left:0;right:0;height:32px;display:flex;align-items:center;padding-left:32px;white-space:nowrap}
+.crow .st{margin-left:8px;font-size:11px;color:var(--muted)}
+.fc{position:absolute;right:10px;top:4px;height:24px;display:flex;align-items:center;gap:4px}
+.seg{position:relative;height:24px;padding:2px;border-radius:7px;background:var(--track);display:flex}
+.seg>[data-m]{position:relative;z-index:1;height:20px;padding:0 8px;font-size:12px;line-height:20px;color:var(--sec);transition:color .16s}
+.seg>.on{color:var(--ink);font-weight:500}
+.th{position:absolute;left:0;top:2px;height:20px;filter:drop-shadow(0 .5px .6px rgba(0,0,0,.18));transition:transform .16s cubic-bezier(.3,.7,.3,1)}
+.th i{position:absolute;top:0;height:20px;background:var(--thumb)}
+.th .l{left:0;width:6px;border-radius:5px 0 0 5px}
+.th .m{left:5px;width:1px;transform-origin:0 0;transition:transform .16s cubic-bezier(.3,.7,.3,1)}
+.th .r{left:0;width:6px;border-radius:0 5px 5px 0;transition:transform .16s cubic-bezier(.3,.7,.3,1)}
+.therm{position:relative;flex:none;width:14px;height:18px;color:var(--heat,var(--t-warm));transition:color .4s}
+.sw{position:absolute;right:10px;top:7px;width:32px;height:18px;border-radius:9px;background:var(--track)}
+.sw i{position:absolute;left:2px;top:2px;width:14px;height:14px;border-radius:7px;background:var(--thumb);box-shadow:0 .5px 1px rgba(0,0,0,.2)}
+
+.hdr{position:absolute;left:20px;right:20px;top:406px;height:24px;display:flex;align-items:center;font-size:11px;font-weight:500;color:var(--muted);white-space:nowrap}
+.hdr .c{margin-left:auto;width:40px;text-align:right}
+.hdr .m{width:68px;margin-left:8px;text-align:right}
+.list{left:10px;top:430px;width:336px;height:158px}
+.row{position:absolute;left:4px;top:0;width:328px;height:30px;display:flex;align-items:center;padding:0 6px 0 6px;font-size:12px;white-space:nowrap}
+.row::before{content:"";position:absolute;inset:1px 0;border-radius:6px;background:var(--hover);opacity:0;transition:opacity .2s}
+.row:hover::before,.row.hov::before{opacity:1;transition-duration:.09s}
+.row>*{position:relative}
+.ic{width:16px;height:16px;flex:none;background:var(--shot) no-repeat;background-size:356px 642px}
+.ic.gen{background:linear-gradient(#4a4a50,#2a2a2e);border-radius:3.5px;transform:scale(.82);display:grid;place-items:center;color:#7CE38B;font:700 7px/1 ui-monospace,Menlo,monospace}
+.pn{margin-left:8px;flex:1;font-size:12.5px}
+.pc{min-width:40px;text-align:right;color:var(--cpuText);font-weight:500}
+.pc .u{font-weight:400;margin-left:3px;color:var(--cpuText)}
+.pm{width:68px;margin-left:8px;text-align:right;color:var(--sec)}
+.act{top:598px;width:109.33px;height:32px;border-radius:8px;background:linear-gradient(var(--act1),var(--act2));box-shadow:inset 0 0 0 .5px var(--actEdge),0 .5px 1px var(--contact);font-size:12px;font-weight:var(--actW);color:var(--ink);white-space:nowrap}
+.act span{position:absolute;top:0;line-height:32px}
+
+.rc{display:inline-block;position:relative;clip-path:inset(-.12em -.2em)}
+.rc>.ro{position:absolute;left:0;top:0}
+.rn{display:inline-block}
+
+.cur{position:absolute;left:0;top:0;width:18px;height:26px;z-index:30;pointer-events:none;opacity:0;transition:opacity .25s}
+.cur.on{opacity:1}
+.cur svg{display:block;transform-origin:3px 2px;transition:transform .08s}
+.cur.dn svg{transform:scale(.88)}
+
+.menu{position:absolute;z-index:15;min-width:190px;padding:5px;border-radius:10px;background:var(--menu);-webkit-backdrop-filter:blur(24px) saturate(1.8);backdrop-filter:blur(24px) saturate(1.8);box-shadow:0 0 0 .5px var(--menuRing),0 10px 30px rgba(0,0,0,.22),0 2px 6px rgba(0,0,0,.1);font-size:13px;letter-spacing:-.08px;color:var(--ink);transform-origin:0 0;opacity:0;pointer-events:none}
+.menu.on{opacity:1;pointer-events:auto}
+.mi{position:relative;height:22px;line-height:22px;padding:0 10px;border-radius:5px;white-space:nowrap}
+.mi.sel{background:var(--sel);color:#fff}
+.msep{height:1px;margin:5px 10px;background:var(--menuRing)}
+.alert{position:absolute;z-index:16;left:48px;top:118px;width:260px;padding:20px 16px 16px;border-radius:18px;background:var(--alert);-webkit-backdrop-filter:blur(30px) saturate(1.8);backdrop-filter:blur(30px) saturate(1.8);box-shadow:0 0 0 .5px var(--menuRing),0 24px 60px rgba(0,0,0,.32),0 4px 12px rgba(0,0,0,.12);text-align:center;color:var(--ink);opacity:0;pointer-events:none}
+.alert.on{opacity:1;pointer-events:auto}
+.alert img{width:56px;height:56px;display:block;margin:0 auto 10px}
+.alert h4{margin:0 0 6px;font-size:13px;font-weight:700;letter-spacing:-.08px}
+.alert p{margin:0 0 14px;font-size:11px;line-height:1.35;color:var(--ink)}
+.ab{display:block;height:28px;margin-top:8px;border-radius:14px;background:var(--btn2);font-size:13px;line-height:28px;font-weight:500}
+.ab.def{background:linear-gradient(#2C8BFF,#0A6CF0);color:#fff}
+.ab.red{color:var(--red)}
+.ab.dn{filter:brightness(.88)}
+
+.ov{position:absolute;left:0;top:0;width:356px;height:642px;mix-blend-mode:difference;pointer-events:none;z-index:30;background:var(--shot) 0 0/356px 642px}
+
+:host{--win:#FCFCFD;--tert:#9A9AA2;--line2:rgba(0,0,0,.085);--btn:#FFFFFF;--btnRing:rgba(0,0,0,.16);--field:#F1F1F3;--t-cool:#008CBF;--knobSh:rgba(0,0,0,.14)}
+@media (prefers-color-scheme:dark){:host{--win:#141416;--tert:#66666E;--line2:rgba(255,255,255,.075);--btn:#1E1E21;--btnRing:rgba(255,255,255,.10);--field:#26262A;--t-cool:#63D1FF;--knobSh:rgba(0,0,0,.5)}}
+.fp{position:absolute;width:568px;padding:10px 14px 14px;border-radius:16px;background:color-mix(in srgb,var(--win) 94%,transparent);-webkit-backdrop-filter:blur(24px) saturate(1.6);backdrop-filter:blur(24px) saturate(1.6);box-shadow:var(--win-shadow);color:var(--ink);font:13px/1.2 var(--font);letter-spacing:-.08px;font-variant-numeric:tabular-nums;user-select:none;-webkit-user-select:none}
+.fp.sm{width:356px}
+.ftop{display:flex;align-items:center;height:20px;margin-bottom:6px;white-space:nowrap}
+.ftop .cap{font-size:11.5px;font-weight:600;color:var(--sec)}
+.ftop .try{margin-left:auto;display:flex;align-items:center;gap:5px;font-size:11.5px;font-weight:600;color:var(--accent)}
+.ftop .try svg{width:15px;height:15px}
+.fg{position:relative;border-radius:10px;background:var(--group);box-shadow:inset 0 0 0 1px var(--line2)}
+.fch{position:relative;padding-top:12px;touch-action:none;cursor:ew-resize}
+.fch svg{display:block;overflow:visible}
+.gl{stroke:var(--line2);stroke-width:1;stroke-dasharray:1 3;fill:none}
+.glab{font:10px var(--font);fill:var(--tert);font-variant-numeric:tabular-nums}
+.lay{transition:opacity .28s}
+.dim .lay,.dim .lk{opacity:.16}
+.kn{fill:var(--win);stroke-width:2.5}
+.lk circle{fill:var(--ink)}
+.lk path{stroke:var(--win)}
+.lk rect{fill:var(--win)}
+.lk text{font:11px var(--font);fill:var(--sec)}
+.hband{fill:var(--ink);fill-opacity:.07}
+.hline{stroke:var(--ink);stroke-width:1.5;stroke-dasharray:4 3}
+.hlab{font:600 11px var(--font);fill:var(--ink)}
+.chip{position:absolute;left:0;top:0;height:20px;padding:0 7px;border-radius:6px;background:var(--btn);box-shadow:0 1px 3px var(--knobSh),inset 0 0 0 1px var(--btnRing);font:500 11px/20px var(--font);white-space:nowrap;pointer-events:none;transition:opacity .2s}
+.dim .chip{opacity:0}
+.fmo{position:absolute;inset:12px 0 0;display:grid;place-items:center;font-size:13px;font-weight:600;color:var(--sec);opacity:0;pointer-events:none;transition:opacity .28s}
+.dim .fmo{opacity:1}
+.fh{position:relative;min-height:30px}
+.fh>div{position:absolute;inset:0;display:flex;align-items:flex-start;gap:8px;padding:0 12px 10px;font-size:11px;line-height:20px;color:var(--tert);transition:opacity .25s}
+.fh>div>span{flex:1}
+.fh>div.off{opacity:0;pointer-events:none}
+.sm .fh{min-height:50px}.sm .fh>div>span{line-height:15px;padding-top:2px}
+.rst{all:unset;cursor:pointer;color:var(--accent);font-size:11px;line-height:20px;transition:opacity .2s}
+.rst[disabled]{opacity:.35;cursor:default}
+.stp{display:flex;align-items:center;height:22px;padding:0 3px 0 9px;border-radius:6px;background:var(--field);color:var(--ink);font-size:13px;font-weight:500;gap:3px}
+.stp i{font-style:normal;font-weight:400;color:var(--sec);font-size:12px;margin-right:4px}
+.stp span{display:flex;flex-direction:column}
+.stp button{all:unset;cursor:pointer;width:12px;height:9px;display:grid;place-items:center;color:var(--sec)}
+.fn{position:relative;display:flex;align-items:center;gap:10px;height:38px;padding:0 12px;white-space:nowrap}
+.fn::before{content:"";position:absolute;left:12px;right:12px;top:0;height:1px;background:var(--line2)}
+.fn svg{width:14px;height:18px;color:var(--sec)}
+.fn b{font-weight:400}
+.fn .v{margin-left:auto;color:var(--sec)}
+.pks{display:grid;grid-template-columns:repeat(5,1fr);gap:8px;margin-top:21px}
+.pk{all:unset;box-sizing:border-box;display:flex;flex-direction:column;gap:6px;padding:8px;border-radius:10px;background:var(--group);box-shadow:inset 0 0 0 1px var(--line2);color:var(--sec);cursor:pointer;transition:box-shadow .2s}
+.pk.on{box-shadow:inset 0 0 0 1.5px var(--accent);color:var(--accent)}
+.pk svg{display:block;width:100%;height:30px;overflow:visible}
+.pk span{font-size:11px;font-weight:500;white-space:nowrap;color:var(--sec)}
+.pk.on span{color:var(--ink)}
+.sm .pks{gap:6px;margin-top:12px}.sm .pk{padding:6px}.sm .pk span{font-size:10px}
+.panel [data-m]{cursor:pointer}
+.panel .g[data-g=fan]{transform-origin:50% 50%}
+</template>
+<script src="demos.js"></script>
 </body>
 </html>
