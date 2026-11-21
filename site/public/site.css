@@ -31,7 +31,7 @@ h1,h2,h3{margin:0;font-weight:600;text-wrap:balance}
 h1{font-size:var(--t-h1);line-height:1;letter-spacing:-.04em}
 h2{font-size:var(--t-h2);line-height:1.04;letter-spacing:-.035em}
 h3{font-size:22px;line-height:1.2;letter-spacing:-.02em}
-p{margin:0}
+p{margin:0;text-wrap:pretty}
 .nw{white-space:nowrap}
 /* No focus rings: keyboard focus shows as a fill */
 :focus,:focus-visible{outline:none}
