@@ -296,7 +296,7 @@ return (() => {
     const vw = R.host.clientWidth, vh = R.host.clientHeight, phone = vw < 640;
     const stack = phone || vw / clamp(Math.min(1.3, vh / 693), .55, 1.3) < (api.sideMin || 554);
     const extra = stack ? (api.below || 0) : 0, need = 29 + 642 + 22 + extra;
-    const z = phone ? 1 : clamp(Math.min(1.3, vh / need), .55, 1.3);
+    const z = phone ? Math.min(1, vh / need) : clamp(Math.min(1.3, vh / need), .55, 1.3);
     const W = vw / z, H = Math.max(vh / z, need);
     Object.assign(deskIn.style, { width: W + 'px', height: H + 'px', transform: `scale(${z})` });
     desk.style.height = H * z + 'px';
