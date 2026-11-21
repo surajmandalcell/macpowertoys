@@ -83,7 +83,8 @@ struct PortmanForwardInputs: View {
                 if !aliases.isEmpty {
                     OnePlusLinearSelect(
                         choices: [("", "Hosts")] + aliases.map { ($0, $0) },
-                        selection: Binding(get: { aliases.contains(host) ? host : "" }, set: { if !$0.isEmpty { host = $0 } }),
+                        // A picker that fills the field: it always reads "Hosts", so the chosen name shows once, uncut.
+                        selection: Binding(get: { "" }, set: { if !$0.isEmpty { host = $0 } }),
                         accessibilityLabel: "Choose an SSH host",
                         width: PortmanForwardMetrics.hostSelect
                     )

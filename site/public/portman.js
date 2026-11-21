@@ -16,8 +16,7 @@ const chip = p => `<span class="chip" style="color:${portColor(p)}"><span class=
 const GLYPHS = {
   'bell-13': [14, 16], 'gearshape-13': [16, 16], 'arrow-up-right-11': [10, 10], 'arrow-left-arrow-right-13': [17, 17],
   'terminal-8': [12, 10], 'arrow-triangle-branch-9': [11, 11], 'chevron-up-chevron-down-9': [9, 12],
-  'chevron-right-9': [8, 10], 'circle-fill-11': [13, 13], 'link-13': [17, 17], 'stop-fill-13': [15, 13],
-  'checkmark-8': [10, 9], 'hourglass-11': [9, 12], 'arrow-up-right-square-13': [16, 14], 'stop-circle-13': [15, 15],
+  'chevron-right-9': [8, 10], 'link-13': [17, 17], 'arrow-up-right-square-13': [16, 14], 'stop-circle-13': [15, 15],
   'checkmark-12': [13, 13], 'chevron-right-11': [9, 12],
   'network-10': [12, 12], 'cpu-10': [12, 12], 'memorychip-10': [13, 11], 'internaldrive-10': [14, 11],
 };
@@ -253,7 +252,7 @@ function mount(host) {
   function forwardHTML(st) {
     const h = st.host || '', off = h ? '' : ' off';
     return `<div class="grp">
-      <div class="frow">${well('field' + (h ? '' : ' ph'), h || 'alias or user@IP', 'field')}${well('sel', h || 'Hosts', 'hosts', true)}
+      <div class="frow">${well('field' + (h ? '' : ' ph'), h || 'alias or user@IP', 'field')}${well('sel', 'Hosts', 'hosts', true)}
         <div class="btn${off}" data-k="scan">Scan</div></div>
       <div class="frow">${well('field ph', 'Remote port')}<div class="btn${off}">Add port</div></div>
       <div class="frow">${well('sel wide', 'Both', 'mode', true)}<div class="btn${off}" data-k="add">Add host</div></div>
