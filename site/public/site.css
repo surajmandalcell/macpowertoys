@@ -159,10 +159,6 @@ h2:hover .anchor,h3:hover .anchor,.anchor:focus-visible,.anchor.done{opacity:1}
 .head p{max-width:46ch}
 .head-txt{display:flex;flex-direction:column;gap:22px}
 
-/* The quarantine step under a Download button; the worker swaps it for "Notarized by Apple" on a notarized release. */
-.notary{display:grid;justify-items:start;gap:8px;margin-top:10px}
-.notary .cmd code{font-size:13px}
-.install .notary{justify-items:center;margin-top:-18px}
 
 /* Portman: a pinned story. While the section scrolls past, a large Mac screen stays on the left,
    cut by the window edge, and the text on the right changes one step at a time. The camera holds
