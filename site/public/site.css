@@ -186,21 +186,21 @@ html{scroll-snap-type:y mandatory}
 .s-pin{position:sticky;top:0;height:100svh;display:grid;grid-template-columns:56vw minmax(0,1fr);align-items:center;gap:clamp(40px,5vw,96px);padding-right:max(var(--m),calc((100vw - 1520px) / 2 + var(--m)))}
 .s-vis{position:relative;height:var(--vis);margin-left:-2px;overflow:hidden;border-radius:0 28px 28px 0;background:#1d1d1f;box-shadow:inset 0 0 0 1px var(--lit),var(--deep);transform:translateZ(0)}
 .s-cam{position:absolute;top:0;right:0;transform:scale(var(--z,1));transform-origin:100% 0;transition:transform 1s cubic-bezier(.65,0,.25,1);background:#1d1d1f var(--wall) 100% 50%/cover}
-.shot{position:absolute;top:29px;opacity:0;visibility:hidden;transition:opacity .45s ease,transform .8s var(--spring),visibility 0s .8s}
+.shot{position:absolute;top:29px;opacity:0;will-change:opacity,transform;transition:opacity .45s ease,transform .8s var(--spring)}
 .shot img{max-width:none;width:100%;box-shadow:var(--deep)} /* taste-skill-ignore: a real menu bar panel or window */
 .pan{z-index:2;width:356px;transform:translateY(-10px) scale(.97);transform-origin:50% 0}
 .pan img{border-radius:14px}
 .win{transform:translateY(18px) scale(.985)}
 .win img{border-radius:12px}
 .win.bare img{border-radius:0;box-shadow:none;filter:drop-shadow(0 16px 28px rgba(0,0,0,.45))}
-.shot.on{opacity:1;visibility:visible;transform:none;transition:opacity .45s ease .1s,transform .8s var(--spring) .1s,visibility 0s}
+.shot.on{opacity:1;transform:none;transition:opacity .45s ease .1s,transform .8s var(--spring) .1s}
 .ico{flex:none;display:grid;place-items:center;width:30px;height:22px;border-radius:7px;transition:background .2s}
 .ico.on{background:rgba(255,255,255,.28)}
 /* The spotlight dims everything but one part of the shot */
 .spot{position:absolute;left:0;top:0;z-index:5;border-radius:12px;box-shadow:0 0 0 1.5px rgba(255,255,255,.55),0 0 0 4000px rgba(0,0,0,.52);opacity:0;pointer-events:none;transition:opacity .45s ease,transform .8s var(--spring),width .8s var(--spring),height .8s var(--spring)}
 .spot.on{opacity:1}
 /* The pointer that clicks a menu bar icon */
-.cur{position:absolute;left:0;top:0;z-index:6;width:20px;height:28px;opacity:0;pointer-events:none;transition:transform 1s cubic-bezier(.45,0,.2,1),opacity .3s}
+.cur{position:absolute;left:0;top:0;z-index:6;width:20px;height:28px;opacity:0;pointer-events:none;transition:transform .3s cubic-bezier(.3,0,.2,1),opacity .15s}
 .cur svg{display:block;width:100%;height:100%;transform-origin:4px 3px;transition:transform .12s}
 .cur.on{opacity:1}
 .cur.down svg{transform:scale(.82)}
