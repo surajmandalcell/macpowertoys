@@ -127,6 +127,10 @@ Before each release:
   notarization, stapling, and a SHA-256 checksum. Check the archive on a clean
   account before publishing. Development-signed test releases need explicit
   owner approval and visible Gatekeeper and notarization limitations.
+  Once downloaded (quarantined), an Apple Development-signed app shows "is damaged
+  and can't be opened" with no Open Anyway button (1.9.4, checked with spctl on
+  2026-11-21). The only workaround is `xattr -dr com.apple.quarantine`; only
+  Developer ID with notarization fixes it.
 
 Prior evidence: the 2026-08-31 Gitleaks 8.30.1 history scan had zero findings.
 The 1.8.1 source gate passed 808 tests with five skips and zero failures,
