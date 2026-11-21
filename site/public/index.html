@@ -3,12 +3,12 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<meta name="color-scheme" content="light dark">
+<meta name="color-scheme" content="dark">
 <title>MacPowerToys: free menu bar tools for the Mac</title>
-<meta name="description" content="A free, open-source macOS menu bar panel with system stats and fan curves, plus nine tools: dev server ports, cloud copies, scroll settings per device, hidden Mac settings, and more.">
+<meta name="description" content="A free, open-source macOS menu bar panel with system stats and fan curves, plus a growing set of tools: dev server ports, cloud copies, scroll settings per device, hidden Mac settings, and more.">
 <link rel="icon" href="assets/icons/appicon.svg" type="image/svg+xml">
 <link rel="stylesheet" href="site.css">
-<script>(function(d){var v=new URLSearchParams(location.search).get('v');d.classList.add('js');d.dataset.v=/^[abcd]$/.test(v)?v:'a'})(document.documentElement)</script>
+<script>(function(d){d.classList.add('js');var q=new URLSearchParams(location.search),g=function(k){try{return localStorage.getItem('mpt-'+k)}catch(e){}},b=q.get('bg')||g('bg'),m=g('motion');d.dataset.bg=/^(wall|mesh|aurora|grain)$/.test(b)?b:'wall';d.dataset.motion=/^(play|pause|off)$/.test(m)?m:matchMedia('(prefers-reduced-motion: reduce)').matches?'off':'play'})(document.documentElement)</script>
 <script src="site.js" defer></script>
 </head>
 <body>
@@ -20,16 +20,16 @@
   <symbol id="i-star" viewBox="0 0 16 16"><path d="M8 1.6l1.95 3.95 4.36.64-3.16 3.07.75 4.34L8 11.55l-3.9 2.05.75-4.34L1.69 6.19l4.36-.64z"/></symbol>
 </svg>
 
+<main>
+<section class="ch ch-hero" id="top" data-bg-wall="grad" style="--c1:#5b3bd6;--c2:#1d5fe0;--c3:#a03bd0">
 <header class="nav">
   <a class="mark" href="#top"><img src="assets/icons/appicon.svg" alt="" width="28" height="28">MacPowerToys</a>
   <nav aria-label="Main"><a href="#fan">Features</a><a href="#tools">Tools</a><a href="#install">Install</a><a class="gh-cta" href="https://github.com/surajmandalcell/macpowertoys" aria-label="MacPowerToys on GitHub, star it"><svg class="gh"><use href="#i-gh"/></svg><span class="long">GitHub</span><span class="sep" aria-hidden="true"></span><span class="stars" aria-hidden="true"><svg class="line"><use href="#i-star"/></svg><svg class="full"><use href="#i-star"/></svg></span><span class="n" data-stars>Star</span></a></nav>
 </header>
-
-<main>
-<section class="hero" id="top">
+<div class="hero">
   <div class="hero-copy">
     <h1>Your menu bar, doing more.</h1>
-    <p class="lead">One menu bar panel for stats and fans, plus nine tools.</p>
+    <p class="lead">One menu bar panel for stats and fans, plus a growing set of tools.</p>
     <div class="get">
       <a class="glass" data-download href="https://github.com/surajmandalcell/macpowertoys/releases/download/v1.9.4/MacPowerToys-1.9.4-universal.dmg"><span class="glow" aria-hidden="true"></span><i class="apple" aria-hidden="true"></i>Download for Mac</a>
       <div class="cmd"><code><span>brew install --cask</span> <span>samhqapp/tap/macpowertoys</span></code><button type="button" aria-label="Copy the install command" data-copy="brew install --cask samhqapp/tap/macpowertoys"><svg class="cp"><use href="#i-copy"/></svg><svg class="ok"><use href="#i-ok"/></svg></button></div>
@@ -111,9 +111,10 @@
 
 </div></div>
 </template></div>
+</div>
 </section>
 
-<section class="sec" id="fan">
+<section class="ch" id="fan" data-bg-wall="maze" style="--c1:#0f8a86;--c2:#d9772b;--c3:#c2362c">
   <div class="head">
     <div class="head-txt">
       <picture class="rv"><source media="(prefers-color-scheme: dark)" srcset="assets/icons/fan-dark.svg"><img class="ticon" src="assets/icons/fan.svg" alt="" width="52" height="52"></picture>
@@ -231,121 +232,126 @@
 </template></div>
 </section>
 
-<section class="sec" id="portman">
-  <div class="head">
-    <h2 class="rv">Portman finds every dev <span class="nw">server.<a class="anchor" href="#portman" aria-label="Copy a link to Portman"><svg><use href="#i-link"/></svg></a></span></h2>
-    <p class="rv">Every dev server and SSH port on this Mac, in one list.</p>
-  </div>
-  <div class="pm" data-pm data-step="0">
-    <div class="pm-pin">
-      <div class="pm-vis">
-        <div class="pm-cam" style="--wall:url(assets/wall/mesh.webp)">
-          <div class="bar" aria-hidden="true"><span class="apps"><img src="assets/menubar/apple.png" width="12" height="15" alt=""><b>MacPowerToys</b><span>Edit</span><span>View</span><span>Window</span><span>Help</span></span><span class="mbi"><img src="assets/menubar/menubar-white@1x.png" srcset="assets/menubar/menubar-white@2x.png 2x, assets/menubar/menubar-white@4x.png 4x" width="16" height="16" alt=""></span><img src="assets/menubar/battery.png" width="24" height="11" alt=""><img src="assets/menubar/wifi.png" width="17" height="13" alt=""><img class="opt" src="assets/menubar/search.png" width="15" height="15" alt=""><img class="opt" src="assets/menubar/control.png" width="17" height="15" alt=""><span class="clock"><span class="d">Fri Nov 20</span>&ensp;<span class="t">9:41 AM</span></span></div>
-          <picture data-ui class="pm-shot pm-pan" data-s="0"><source media="(prefers-color-scheme: dark)" srcset="assets/shots/panel-portman-servers-dark.webp"><img src="assets/shots/panel-portman-servers-light.webp" width="356" height="457" loading="lazy" alt="Portman lists four dev servers with their ports, git branch, uptime, and memory; the ring shows 791.5 MB in all"></picture>
-          <picture data-ui class="pm-shot pm-pan" data-s="1"><source media="(prefers-color-scheme: dark)" srcset="assets/shots/panel-portman-detail-dark.webp"><img src="assets/shots/panel-portman-detail-light.webp" width="356" height="388" loading="lazy" alt="One Portman server, storefront on port 5173, with memory and CPU graphs and Restart, Stop, Editor, Finder, and Copy URL buttons"></picture>
-          <picture data-ui class="pm-shot pm-pan" data-s="2"><source media="(prefers-color-scheme: dark)" srcset="assets/shots/panel-portman-forward-dark.webp"><img src="assets/shots/panel-portman-forward-light.webp" width="356" height="286" loading="lazy" alt="Portman forwarding: port 5432 on this Mac goes to build-box port 5432, and 16379 goes to staging port 6379"></picture>
-          <picture data-ui class="pm-shot pm-win" data-s="3"><source media="(prefers-color-scheme: dark)" srcset="assets/shots/main-portman-dark.webp"><img src="assets/shots/main-portman-light.webp" width="820" height="660" loading="lazy" alt="Portman settings: the ⌥⌘P shortcut, ports 3000 to 9999, a scan every 2 seconds, protected apps, and clean up"></picture>
+<!-- A tool chapter: shots in .s-cam (.pan = a menu panel under the menu bar icon in data-ico,
+     .win = a window), then one .st per step that names its shot and an optional spotlight in shot points. -->
+<section class="ch" id="portman" data-bg-wall="mesh" style="--c1:#13807a;--c2:#6a3fc4;--c3:#1f5bd1">
+  <div class="story" data-story>
+    <div class="s-pin">
+      <div class="s-vis">
+        <div class="s-cam" style="--wall:url(assets/wall/mesh.webp)">
+          <picture data-ui class="shot pan" data-ico="portman"><source media="(prefers-color-scheme: dark)" srcset="assets/shots/panel-portman-servers-dark.webp"><img src="assets/shots/panel-portman-servers-light.webp" width="356" height="457" loading="lazy" alt="Portman lists four dev servers with their ports, git branch, uptime, and memory; the ring shows 791.5 MB in all"></picture>
+          <picture data-ui class="shot pan" data-ico="portman"><source media="(prefers-color-scheme: dark)" srcset="assets/shots/panel-portman-detail-dark.webp"><img src="assets/shots/panel-portman-detail-light.webp" width="356" height="388" loading="lazy" alt="One Portman server, storefront on port 5173, with memory and CPU graphs and Restart, Stop, Editor, Finder, and Copy URL buttons"></picture>
+          <picture data-ui class="shot pan" data-ico="portman"><source media="(prefers-color-scheme: dark)" srcset="assets/shots/panel-portman-forward-dark.webp"><img src="assets/shots/panel-portman-forward-light.webp" width="356" height="286" loading="lazy" alt="Portman forwarding: port 5432 on this Mac goes to build-box port 5432, and 16379 goes to staging port 6379"></picture>
+          <picture data-ui class="shot win"><source media="(prefers-color-scheme: dark)" srcset="assets/shots/main-portman-dark.webp"><img src="assets/shots/main-portman-light.webp" width="820" height="660" loading="lazy" alt="Portman settings: the ⌥⌘P shortcut, ports 3000 to 9999, a scan every 2 seconds, protected apps, and clean up"></picture>
         </div>
       </div>
-      <div class="pm-txt">
-        <ol class="pm-bars">
-          <li><button type="button" data-go="0" aria-label="Step 1: every dev server" aria-current="step"><i></i></button></li>
-          <li><button type="button" data-go="1" aria-label="Step 2: open one server"><i></i></button></li>
-          <li><button type="button" data-go="2" aria-label="Step 3: forward a closed port"><i></i></button></li>
-          <li><button type="button" data-go="3" aria-label="Step 4: set it up"><i></i></button></li>
-        </ol>
-        <div class="pm-say">
-          <div class="pm-step on" data-s="0"><h3>Every dev server, in one list.</h3><p>Each server shows its project, branch, uptime, and memory.</p></div>
-          <div class="pm-step" data-s="1"><h3>Open one to see what it uses.</h3><p>Live graphs, with Restart, Stop, and Copy URL one click away.</p></div>
-          <div class="pm-step" data-s="2"><h3>Postgres stays closed. You still get in.</h3><p>Portman brings a closed remote port to localhost over SSH.</p>
-            <p class="pm-route"><span><small>This Mac</small>localhost:5432</span><i aria-hidden="true"><b></b></i><span><small>SSH on port 22</small>build-box:5432</span></p></div>
-          <div class="pm-step" data-s="3"><h3>Set it up once.</h3><p>Pick ports, scan speed, and apps it must never stop.</p></div>
+      <div class="s-txt">
+        <h2 class="kick"><img src="assets/icons/portman.png" alt="" width="40" height="40">Portman<a class="anchor" href="#portman" aria-label="Copy a link to Portman"><svg><use href="#i-link"/></svg></a></h2>
+        <ol class="bars"></ol>
+        <div class="s-say">
+          <div class="st on" data-shot="0" data-click><h3>Portman has its own menu bar icon.</h3><p>One click shows every dev server on this Mac.</p></div>
+          <div class="st" data-shot="0" data-spot="10 48 336 217"><h3>The whole load, at a glance.</h3><p>Total memory, CPU, and the longest uptime in one ring.</p></div>
+          <div class="st" data-shot="0" data-spot="10 277 336 168"><h3>Every server, with its project.</h3><p>Port, git branch, uptime, and memory on each row.</p></div>
+          <div class="st" data-shot="1" data-spot="10 86 336 85"><h3>Open one to watch it live.</h3><p>Memory and CPU graphs for that one server.</p></div>
+          <div class="st" data-shot="1" data-spot="10 180 336 104"><h3>Restart runs the same command.</h3><p>Portman reruns its saved command in the same folder.</p></div>
+          <div class="st" data-shot="2" data-spot="10 147 336 129"><h3>Postgres stays closed. You still get in.</h3><p>Portman brings a remote port to localhost over SSH.</p>
+            <p class="route"><span><small>This Mac</small>localhost:5432</span><i aria-hidden="true"><b></b></i><span><small>SSH on port 22</small>build-box:5432</span></p></div>
+          <div class="st" data-shot="3" data-spot="247 348 541 209"><h3>Set it up once.</h3><p>Pick ports, scan speed, and apps it must never stop.</p></div>
         </div>
       </div>
     </div>
   </div>
 </section>
 
-<section class="sec field split" id="rsync">
-  <div class="txt">
-    <img class="ticon rv" src="assets/icons/rsync.svg" alt="" width="52" height="52">
-    <h2 class="rv">RSync UI keeps copies <span class="nw">going.<a class="anchor" href="#rsync" aria-label="Copy a link to RSync UI"><svg><use href="#i-link"/></svg></a></span></h2>
-    <p class="rv">Copy and sync files to Drive, S3, and 70 more clouds.</p>
-  </div>
-  <div class="desk rsync-desk" style="--wall:url(assets/wall/ring.webp)">
-    <div class="desk-in">
-      <div class="scr"><div class="bar" aria-hidden="true"><span class="apps"><img src="assets/menubar/apple.png" width="12" height="15" alt=""><b>MacPowerToys</b><span>Edit</span><span>View</span><span>Window</span><span>Help</span></span><span class="mbi"><img src="assets/menubar/menubar-white@1x.png" srcset="assets/menubar/menubar-white@2x.png 2x, assets/menubar/menubar-white@4x.png 4x" width="16" height="16" alt=""></span><img src="assets/menubar/battery.png" width="24" height="11" alt=""><img src="assets/menubar/wifi.png" width="17" height="13" alt=""><img class="opt" src="assets/menubar/search.png" width="15" height="15" alt=""><img class="opt" src="assets/menubar/control.png" width="17" height="15" alt=""><span class="clock"><span class="d">Fri Nov 20</span>&ensp;<span class="t">9:41 AM</span></span></div></div>
-      <picture data-ui class="panel"><source media="(prefers-color-scheme: dark)" srcset="assets/shots/panel-rclone-dark.webp"><img src="assets/shots/panel-rclone-light.webp" width="356" height="632" loading="lazy" alt="RSync UI panel with running, paused, failed, and finished copies"></picture>
-    </div>
-  </div>
-</section>
-
-<section class="sec split rev" id="input-devices">
-  <div class="desk input-desk" style="--wall:url(assets/wall/eve.webp)">
-    <div class="desk-in">
-      <div class="scr"><div class="bar" aria-hidden="true"><span class="apps"><img src="assets/menubar/apple.png" width="12" height="15" alt=""><b>MacPowerToys</b><span>Edit</span><span>View</span><span>Window</span><span>Help</span></span><span class="mbi"><img src="assets/menubar/menubar-white@1x.png" srcset="assets/menubar/menubar-white@2x.png 2x, assets/menubar/menubar-white@4x.png 4x" width="16" height="16" alt=""></span><img src="assets/menubar/battery.png" width="24" height="11" alt=""><img src="assets/menubar/wifi.png" width="17" height="13" alt=""><img class="opt" src="assets/menubar/search.png" width="15" height="15" alt=""><img class="opt" src="assets/menubar/control.png" width="17" height="15" alt=""><span class="clock"><span class="d">Fri Nov 20</span>&ensp;<span class="t">9:41 AM</span></span></div></div>
-      <picture data-ui class="panel"><source media="(prefers-color-scheme: dark)" srcset="assets/shots/panel-input-devices-dark.webp"><img src="assets/shots/panel-input-devices-light.webp" width="356" height="582" loading="lazy" alt="The Input Devices tab of the panel: the mouse is controlled, custom scrolling is on, and the mouse profile is open"></picture>
-    </div>
-  </div>
-  <div class="txt">
-    <img class="ticon rv" src="assets/icons/input.png" alt="" width="52" height="52">
-    <h2 class="rv">Scroll each mouse its own <span class="nw">way.<a class="anchor" href="#input-devices" aria-label="Copy a link to Input Devices"><svg><use href="#i-link"/></svg></a></span></h2>
-    <p class="rv">Each mouse and trackpad gets its own scroll direction and speed.</p>
-  </div>
-</section>
-
-<section class="sec wide" id="mac-tweaks">
-  <div class="wide-head">
-    <div>
-      <img class="ticon rv" src="assets/icons/tweaks.png" alt="" width="52" height="52">
-      <h2 class="rv">Mac Tweaks opens hidden <span class="nw">settings.<a class="anchor" href="#mac-tweaks" aria-label="Copy a link to Mac Tweaks"><svg><use href="#i-link"/></svg></a></span></h2>
-    </div>
-    <p class="rv">Hidden macOS settings, like the Dock delay, each with a Default.</p>
-  </div>
-  <div class="desk tweaks-desk" style="--wall:url(assets/wall/grad.webp);--nw:820;--zx:227;--zy:52;--zw:582;--zh:219">
-    <div class="desk-in">
-      <div class="scr">
-        <div class="bar" aria-hidden="true"><span class="apps"><img src="assets/menubar/apple.png" width="12" height="15" alt=""><b>MacPowerToys</b><span>Edit</span><span>View</span><span>Window</span><span>Help</span></span><span class="mbi"><img src="assets/menubar/menubar-white@1x.png" srcset="assets/menubar/menubar-white@2x.png 2x, assets/menubar/menubar-white@4x.png 4x" width="16" height="16" alt=""></span><img src="assets/menubar/battery.png" width="24" height="11" alt=""><img src="assets/menubar/wifi.png" width="17" height="13" alt=""><img class="opt" src="assets/menubar/search.png" width="15" height="15" alt=""><img class="opt" src="assets/menubar/control.png" width="17" height="15" alt=""><span class="clock"><span class="d">Fri Nov 20</span>&ensp;<span class="t">9:41 AM</span></span></div>
-        <picture data-ui class="dwin"><source media="(prefers-color-scheme: dark)" srcset="assets/shots/mac-tweaks-dark.webp"><img src="assets/shots/mac-tweaks-light.webp" width="820" height="660" loading="lazy" alt="Mac Tweaks on the Dock page"></picture>
+<section class="ch" id="rsync" data-bg-wall="ring" style="--c1:#1f56c9;--c2:#2a86d8;--c3:#3b3fb0">
+  <div class="story" data-story>
+    <div class="s-pin">
+      <div class="s-vis">
+        <div class="s-cam" style="--wall:url(assets/wall/ring.webp)">
+          <picture data-ui class="shot pan" data-ico="mpt"><source media="(prefers-color-scheme: dark)" srcset="assets/shots/panel-rclone-dark.webp"><img src="assets/shots/panel-rclone-light.webp" width="356" height="632" loading="lazy" alt="RSync UI panel with running, paused, failed, and finished copies"></picture>
+        </div>
+      </div>
+      <div class="s-txt">
+        <h2 class="kick"><img src="assets/icons/rsync.svg" alt="" width="40" height="40">RSync UI<a class="anchor" href="#rsync" aria-label="Copy a link to RSync UI"><svg><use href="#i-link"/></svg></a></h2>
+        <ol class="bars"></ol>
+        <div class="s-say">
+          <div class="st on" data-shot="0"><h3>Copies to the cloud keep going.</h3><p>Copy and sync files to Drive, S3, and 70 more clouds.</p></div>
+        </div>
       </div>
     </div>
-    <picture data-ui class="zoom"><source media="(prefers-color-scheme: dark)" srcset="assets/shots/mac-tweaks-dark.webp"><img src="assets/shots/mac-tweaks-light.webp" width="820" height="660" loading="lazy" alt=""></picture>
+  </div>
+</section>
+
+<section class="ch" id="input-devices" data-bg-wall="eve" style="--c1:#1d8a5a;--c2:#138a8a;--c3:#2f6e3a">
+  <div class="story" data-story>
+    <div class="s-pin">
+      <div class="s-vis">
+        <div class="s-cam" style="--wall:url(assets/wall/eve.webp)">
+          <picture data-ui class="shot pan" data-ico="mpt"><source media="(prefers-color-scheme: dark)" srcset="assets/shots/panel-input-devices-dark.webp"><img src="assets/shots/panel-input-devices-light.webp" width="356" height="582" loading="lazy" alt="The Input Devices tab of the panel: the mouse is controlled, custom scrolling is on, and the mouse profile is open"></picture>
+        </div>
+      </div>
+      <div class="s-txt">
+        <h2 class="kick"><img src="assets/icons/input.png" alt="" width="40" height="40">Input Devices<a class="anchor" href="#input-devices" aria-label="Copy a link to Input Devices"><svg><use href="#i-link"/></svg></a></h2>
+        <ol class="bars"></ol>
+        <div class="s-say">
+          <div class="st on" data-shot="0"><h3>Scroll each mouse its own way.</h3><p>Each mouse and trackpad gets its own direction and speed.</p></div>
+        </div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<section class="ch" id="mac-tweaks" data-bg-wall="fur" style="--c1:#a3287a;--c2:#5a2bb0;--c3:#c2416a">
+  <div class="story" data-story>
+    <div class="s-pin">
+      <div class="s-vis">
+        <div class="s-cam" style="--wall:url(assets/wall/grad.webp)">
+          <picture data-ui class="shot win"><source media="(prefers-color-scheme: dark)" srcset="assets/shots/mac-tweaks-dark.webp"><img src="assets/shots/mac-tweaks-light.webp" width="820" height="660" loading="lazy" alt="Mac Tweaks on the Dock page"></picture>
+        </div>
+      </div>
+      <div class="s-txt">
+        <h2 class="kick"><img src="assets/icons/tweaks.png" alt="" width="40" height="40">Mac Tweaks<a class="anchor" href="#mac-tweaks" aria-label="Copy a link to Mac Tweaks"><svg><use href="#i-link"/></svg></a></h2>
+        <ol class="bars"></ol>
+        <div class="s-say">
+          <div class="st on" data-shot="0"><h3>Hidden macOS settings, in one place.</h3><p>Change things like the Dock delay without Terminal.</p></div>
+          <div class="st" data-shot="0" data-spot="227 52 582 219"><h3>Every change can go back.</h3><p>Pick Default on any setting to undo your change.</p></div>
+        </div>
+      </div>
+    </div>
   </div>
 </section>
 
 
-<section class="sec small" id="small-tools">
-  <div class="head">
-    <h2 class="rv">Five small tools.</h2>
-    <p class="rv">Each opens from the panel or a shortcut, and quits cleanly.</p>
-  </div>
-  <div class="tiles">
-    <figure class="tile rv" id="color-picker">
-      <div class="tile-face" style="--wall:url(assets/wall/blossom.webp);--w:420px;--s:1.1;--sp:.8"><picture data-ui><source media="(prefers-color-scheme: dark)" srcset="assets/shots/app-color-picker-dark.webp"><img src="assets/shots/app-color-picker-light.webp" width="420" height="362" loading="lazy" alt="Color Picker with six picked colors"></picture></div>
-      <figcaption><h3>Color Picker<a class="anchor" href="#color-picker" aria-label="Copy a link to Color Picker"><svg><use href="#i-link"/></svg></a></h3><p>Copy any pixel as HEX, RGB, SwiftUI, and more.</p></figcaption>
-    </figure>
-    <figure class="tile rv" id="text-extractor">
-      <div class="tile-face" style="--wall:url(assets/wall/maze.webp);--w:480px;--s:1.1;--sp:.7"><picture data-ui><source media="(prefers-color-scheme: dark)" srcset="assets/shots/app-text-extractor-dark.webp"><img src="assets/shots/app-text-extractor-light.webp" width="480" height="338" loading="lazy" alt="Text Extractor with seven recent captures"></picture></div>
-      <figcaption><h3>Text Extractor<a class="anchor" href="#text-extractor" aria-label="Copy a link to Text Extractor"><svg><use href="#i-link"/></svg></a></h3><p>Box any text on screen, and it lands on your clipboard.</p></figcaption>
-    </figure>
-    <figure class="tile wide rv" id="event-viewer">
-      <div class="tile-face zt" style="--wall:url(assets/wall/ring.webp);--w:1080px;--s:.72;--nw:1080;--zx:515;--zy:100;--zw:550;--zh:182"><picture data-ui><source media="(prefers-color-scheme: dark)" srcset="assets/shots/logs-dark.webp"><img src="assets/shots/logs-light.webp" width="1080" height="660" loading="lazy" alt="Event Viewer with twelve app events from the last 45 minutes, filtered by level"></picture><picture data-ui class="zoom"><source media="(prefers-color-scheme: dark)" srcset="assets/shots/logs-dark.webp"><img src="assets/shots/logs-light.webp" width="1080" height="660" loading="lazy" alt=""></picture></div>
-      <figcaption><h3>Event Viewer<a class="anchor" href="#event-viewer" aria-label="Copy a link to Event Viewer"><svg><use href="#i-link"/></svg></a></h3><p>App activity and macOS errors, filtered by level.</p></figcaption>
-    </figure>
-    <figure class="tile rv" id="awake">
-      <div class="tile-face zt" style="--wall:url(assets/wall/fur.webp);--w:820px;--s:.6;--nw:820;--zx:229;--zy:52;--zw:577;--zh:283"><picture data-ui><source media="(prefers-color-scheme: dark)" srcset="assets/shots/main-awake-dark.webp"><img src="assets/shots/main-awake-light.webp" width="820" height="660" loading="lazy" alt="Awake settings with the menu bar icon and its current status"></picture><picture data-ui class="zoom"><source media="(prefers-color-scheme: dark)" srcset="assets/shots/main-awake-dark.webp"><img src="assets/shots/main-awake-light.webp" width="820" height="660" loading="lazy" alt=""></picture></div>
-      <figcaption><h3>Awake<a class="anchor" href="#awake" aria-label="Copy a link to Awake"><svg><use href="#i-link"/></svg></a></h3><p>Keep the Mac awake for 30 minutes, or until you stop.</p></figcaption>
-    </figure>
-    <figure class="tile rv" id="ruler">
-      <div class="tile-face" style="--wall:url(assets/wall/mesh.webp);--w:560px;--s:1;--sp:.6"><picture data-ui class="bare"><source media="(prefers-color-scheme: dark)" srcset="assets/shots/ruler-dark.webp"><img src="assets/shots/ruler-light.webp" width="560" height="320" loading="lazy" alt="A ruler with a top and a side wing in pixels"></picture></div>
-      <figcaption><h3>Ruler<a class="anchor" href="#ruler" aria-label="Copy a link to Ruler"><svg><use href="#i-link"/></svg></a></h3><p>Measure anything on screen in pixels, millimeters, or inches.</p></figcaption>
-    </figure>
+<section class="ch" id="small-tools" data-bg-wall="grad" style="--c1:#c23b78;--c2:#c9861f;--c3:#2b62d6">
+  <div class="story" data-story>
+    <div class="s-pin">
+      <div class="s-vis">
+        <div class="s-cam" style="--wall:url(assets/wall/blossom.webp)">
+          <picture data-ui class="shot win"><source media="(prefers-color-scheme: dark)" srcset="assets/shots/app-color-picker-dark.webp"><img src="assets/shots/app-color-picker-light.webp" width="420" height="362" loading="lazy" alt="Color Picker with six picked colors"></picture>
+          <picture data-ui class="shot win"><source media="(prefers-color-scheme: dark)" srcset="assets/shots/app-text-extractor-dark.webp"><img src="assets/shots/app-text-extractor-light.webp" width="480" height="338" loading="lazy" alt="Text Extractor with seven recent captures"></picture>
+          <picture data-ui class="shot win"><source media="(prefers-color-scheme: dark)" srcset="assets/shots/logs-dark.webp"><img src="assets/shots/logs-light.webp" width="1080" height="660" loading="lazy" alt="Event Viewer with twelve app events from the last 45 minutes, filtered by level"></picture>
+          <picture data-ui class="shot win"><source media="(prefers-color-scheme: dark)" srcset="assets/shots/main-awake-dark.webp"><img src="assets/shots/main-awake-light.webp" width="820" height="660" loading="lazy" alt="Awake settings with the menu bar icon and its current status"></picture>
+          <picture data-ui class="shot win bare"><source media="(prefers-color-scheme: dark)" srcset="assets/shots/ruler-dark.webp"><img src="assets/shots/ruler-light.webp" width="560" height="320" loading="lazy" alt="A ruler with a top and a side wing in pixels"></picture>
+        </div>
+      </div>
+      <div class="s-txt">
+        <h2 class="kick">Small tools<a class="anchor" href="#small-tools" aria-label="Copy a link to the small tools"><svg><use href="#i-link"/></svg></a></h2>
+        <ol class="bars"></ol>
+        <div class="s-say">
+          <div class="st on" id="color-picker" data-shot="0"><p class="tag"><img src="assets/icons/colorpicker.png" alt="" width="28" height="28">Color Picker</p><h3>Copy any pixel on screen.</h3><p>As HEX, RGB, SwiftUI, and more.</p></div>
+          <div class="st" id="text-extractor" data-shot="1"><p class="tag"><img src="assets/icons/text.png" alt="" width="28" height="28">Text Extractor</p><h3>Box any text, and copy it.</h3><p>The text lands on your clipboard.</p></div>
+          <div class="st" id="event-viewer" data-shot="2" data-spot="515 100 550 182"><p class="tag"><img src="assets/icons/events.png" alt="" width="28" height="28">Event Viewer</p><h3>See what the app and macOS did.</h3><p>App activity and macOS errors, filtered by level.</p></div>
+          <div class="st" id="awake" data-shot="3" data-spot="229 52 577 283"><p class="tag"><img src="assets/icons/awake.svg" alt="" width="28" height="28">Awake</p><h3>Keep the Mac awake.</h3><p>For 30 minutes, or until you stop it.</p></div>
+          <div class="st" id="ruler" data-shot="4"><p class="tag"><img src="assets/icons/ruler.svg" alt="" width="28" height="28">Ruler</p><h3>Measure anything on screen.</h3><p>In pixels, millimeters, or inches.</p></div>
+        </div>
+      </div>
+    </div>
   </div>
 </section>
-
-<section class="sec list" id="tools">
-  <div class="list-head"><h2 class="rv">Nine tools, plus <span class="nw">Fan.<a class="anchor" href="#tools" aria-label="Copy a link to the tool list"><svg><use href="#i-link"/></svg></a></span></h2>
-  <p class="rv">All free, open source, and behind one menu bar icon.</p></div>
+<section class="ch ch-end" id="tools" data-bg-wall="ring" style="--c1:#3a4fd0;--c2:#6b35b8;--c3:#14808a">
+  <div class="list">
+  <div class="list-head"><h2 class="rv">And more on the <span class="nw">way.<a class="anchor" href="#tools" aria-label="Copy a link to the tool list"><svg><use href="#i-link"/></svg></a></span></h2>
+  <p class="rv">New tools arrive as free updates. Here is what ships today.</p></div>
   <ul class="rows rv">
     <li><a class="row" href="#fan"><picture><source media="(prefers-color-scheme: dark)" srcset="assets/icons/fan-dark.svg"><img src="assets/icons/fan.svg" alt="" width="28" height="28"></picture><b>Fan</b><span>Presets and your own curve.</span></a></li>
     <li><a class="row" href="#ruler"><img src="assets/icons/ruler.svg" alt="" width="28" height="28"><b>Ruler</b><span>Measure anything on screen.</span></a></li>
@@ -358,13 +364,13 @@
     <li><a class="row" href="#event-viewer"><img src="assets/icons/events.png" alt="" width="28" height="28"><b>Event Viewer</b><span>App logs and macOS errors.</span></a></li>
     <li><a class="row" href="#mac-tweaks"><img src="assets/icons/tweaks.png" alt="" width="28" height="28"><b>Mac Tweaks</b><span>Hidden macOS settings.</span></a></li>
   </ul>
-</section>
-
-<section class="sec install" id="install">
+  </div>
+  <div class="install" id="install">
   <h2 class="rv">Install it in one <span class="nw">line.<a class="anchor" href="#install" aria-label="Copy a link to Install"><svg><use href="#i-link"/></svg></a></span></h2>
   <div class="cmd big rv"><code><span>brew install --cask</span> <span>samhqapp/tap/macpowertoys</span></code><button type="button" aria-label="Copy the install command" data-copy="brew install --cask samhqapp/tap/macpowertoys"><svg class="cp"><use href="#i-copy"/></svg><svg class="ok"><use href="#i-ok"/></svg></button></div>
   <p class="or rv">Or <a class="glass" data-download href="https://github.com/surajmandalcell/macpowertoys/releases/download/v1.9.4/MacPowerToys-1.9.4-universal.dmg"><span class="glow" aria-hidden="true"></span><i class="apple" aria-hidden="true"></i>Download for Mac</a></p>
   <p class="fine rv">Version <span data-version>1.9.4</span> · macOS 26.2 or later · Notarized by Apple · No tracking · MIT license</p>
+  </div>
 </section>
 </main>
 
@@ -383,6 +389,18 @@
   <p class="foot-fine rv"><span>MacPowerToys by Sam · Version <span data-version>1.9.4</span></span><span class="soft">Screens show sample data.</span></p>
   <div class="word" aria-hidden="true" data-word="MacPowerToys">MacPowerToys</div>
 </footer>
+
+<div class="dock" role="toolbar" aria-label="Background and animation">
+  <div class="seg" data-set="bg" aria-label="Background style">
+    <button type="button" data-val="wall" title="Recommended: a darkened real wallpaper that drifts">Wall</button><button type="button" data-val="mesh" title="Three color blobs that orbit">Mesh</button><button type="button" data-val="aurora" title="Soft bands of light that sweep">Aurora</button><button type="button" data-val="grain" title="A dark two-tone gradient with heavy film grain">Grain</button>
+  </div>
+  <div class="seg ic" data-set="motion" aria-label="Animation">
+    <button type="button" data-val="play" aria-label="Play the animation"><svg viewBox="0 0 16 16"><path d="M5 3.5v9l7.5-4.5z" fill="currentColor"/></svg></button><button type="button" data-val="pause" aria-label="Pause the animation"><svg viewBox="0 0 16 16"><path d="M5 3.5v9M11 3.5v9" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"/></svg></button><button type="button" data-val="off" aria-label="Turn the animation off"><svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.6"><circle cx="8" cy="8" r="5.5"/><path d="M4.2 11.8l7.6-7.6"/></svg></button>
+  </div>
+  <button type="button" class="pick" data-choices aria-label="Copy choices"><svg class="cp"><use href="#i-copy"/></svg><svg class="ok"><use href="#i-ok"/></svg><span>Copy choices</span></button>
+</div>
+
+<template id="mbar"><div class="bar" aria-hidden="true"><span class="apps"><img src="assets/menubar/apple.png" width="12" height="15" alt=""><b>Finder</b><span>File</span><span>Edit</span><span>View</span><span>Go</span><span>Window</span><span>Help</span></span><span class="ico" data-ico="portman"><svg viewBox="0 0 32 32" width="17" height="17"><path d="M4.5 5.5h23v15.5h-4.5v3h-4v3h-6v-3h-4v-3H4.5z" fill="none" stroke="#fff" stroke-width="2.5" stroke-linejoin="round"/><path d="M9 10v5.5m3.5-5.5v5.5M16 10v5.5m3.5-5.5v5.5M23 10v5.5" fill="none" stroke="#fff" stroke-width="2" stroke-linecap="round"/></svg></span><span class="ico" data-ico="mpt"><img src="assets/menubar/menubar-white@1x.png" srcset="assets/menubar/menubar-white@2x.png 2x, assets/menubar/menubar-white@4x.png 4x" width="16" height="16" alt=""></span><img src="assets/menubar/battery.png" width="24" height="11" alt=""><img src="assets/menubar/wifi.png" width="17" height="13" alt=""><img class="opt" src="assets/menubar/search.png" width="15" height="15" alt=""><img class="opt" src="assets/menubar/control.png" width="17" height="15" alt=""><span class="clock"><span class="d">Fri Nov 20</span>&ensp;<span class="t">9:41 AM</span></span></div></template>
 <template id="demo-css">
 :host{
   --font:-apple-system,BlinkMacSystemFont,"SF Pro Text","Inter",system-ui,sans-serif;
@@ -413,6 +431,7 @@
   --act1:#1F1F22;--act2:#1F1F22;--actEdge:transparent;--actW:500;
   --t-normal:#9999A1;--t-warm:#F2C94C;--t-hot:#F59A4A;--t-very-hot:#FF7466;--t-near-the-limit:#FF3B30;
   --menu:rgba(44,44,47,.74);--menuRing:rgba(255,255,255,.16);--sel:#0A6CF0;--alert:rgba(40,40,43,.86);--btn2:rgba(255,255,255,.13);--red:#FF5A52;
+  --ptkA:.64;
 }}
 *{box-sizing:border-box}
 :host{container-type:inline-size;font:13px/1.2 var(--font);letter-spacing:normal;text-align:left;-webkit-font-smoothing:antialiased}
@@ -450,6 +469,8 @@
 .ptk{position:absolute;left:318px;top:10px;width:26px;height:26px;border-radius:6px;display:grid;place-items:center;color:var(--sec);cursor:pointer;transition:background .12s}
 .ptk:hover{background:linear-gradient(var(--k1),var(--k2));box-shadow:0 .5px 1px var(--kSh),inset 0 .5px 0 var(--kEdgeT),inset 0 -.5px 0 var(--kEdgeB);color:var(--ink)}
 .ptk:active{background:var(--k2);box-shadow:inset 0 0 0 .5px var(--kEdgeB);color:var(--ink)}
+/* The gear beside it is a soft 2x glyph from the shot; in Dark the crisp arrow matches its brightness */
+.ptk svg{opacity:var(--ptkA,1)}.ptk:hover svg,.ptk:active svg{opacity:1}
 
 .blk{position:absolute}
 .tile{border-radius:8px;background:linear-gradient(color-mix(in srgb,var(--tint) var(--washp),var(--group)),var(--group) 75%);box-shadow:0 .5px 1px var(--contact),0 3px 10px var(--tshadow);transition:transform .2s cubic-bezier(.2,.8,.2,1)}
