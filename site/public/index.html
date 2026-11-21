@@ -444,13 +444,15 @@
 .tabs{position:absolute;left:10px;top:8px;width:86px;height:30px;border-radius:8px;background:linear-gradient(var(--kt1),var(--kt2))}
 .tk{position:absolute;top:2px;width:26px;height:26px;border-radius:6px}
 .tk.on{background:linear-gradient(var(--k1),var(--k2));box-shadow:0 .5px 1px rgba(0,0,0,.2),0 0 0 .5px rgba(0,0,0,.05)}
-.ib{position:absolute;top:9px;width:28px;height:28px;border-radius:7px}
-.ptrack{position:absolute;left:290px;top:8px;width:56px;height:30px;border-radius:8px;background:linear-gradient(var(--kt1),var(--kt2));box-shadow:inset 0 .5px 0 var(--ktEdgeT),inset 0 -.5px 0 var(--ktEdgeB)}
+.ib{position:absolute;top:10px;width:26px;height:26px;border-radius:6px}
+.ptrack{position:absolute;left:288px;top:8px;width:58px;height:30px;border-radius:8px;background:linear-gradient(var(--kt1),var(--kt2));box-shadow:inset 0 .5px 0 var(--ktEdgeT),inset 0 -.5px 0 var(--ktEdgeB)}
 .ptk{position:absolute;left:318px;top:10px;width:26px;height:26px;border-radius:6px;display:grid;place-items:center;color:var(--sec);cursor:pointer;transition:background .12s}
 .ptk:hover{background:linear-gradient(var(--k1),var(--k2));box-shadow:0 .5px 1px var(--kSh),inset 0 .5px 0 var(--kEdgeT),inset 0 -.5px 0 var(--kEdgeB);color:var(--ink)}
 .ptk:active{background:var(--k2);box-shadow:inset 0 0 0 .5px var(--kEdgeB);color:var(--ink)}
 /* The gear beside it is a soft 2x glyph from the shot; in Dark the crisp arrow matches its brightness */
-.ptk svg{opacity:var(--ptkA,1)}.ptk:hover svg,.ptk:active svg{opacity:1}
+.ptk svg{opacity:var(--ptkA,1);transform:translate(-.5px,0) scale(.94)}.ptk:hover svg,.ptk:active svg{opacity:1}
+/* Header glyphs from the shot, re-centered on the app's 26 pt bell cell and gear key */
+.panel .g[data-g=bell]{left:261.5px!important;top:12.5px!important}.panel .g[data-g=gear]{left:292.5px!important;top:12.5px!important}
 
 .blk{position:absolute}
 .tile{border-radius:8px;background:linear-gradient(color-mix(in srgb,var(--tint) var(--washp),var(--group)),var(--group) 75%);box-shadow:0 .5px 1px var(--contact),0 3px 10px var(--tshadow);transition:transform .2s cubic-bezier(.2,.8,.2,1)}
