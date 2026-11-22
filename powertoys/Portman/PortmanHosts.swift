@@ -131,6 +131,16 @@ nonisolated enum PortmanHostStore {
     }
 }
 
+nonisolated enum PortmanOrder {
+    /// The items with the one at `from` moved so it ends at `to`. Nil when an index is out of range or nothing moves.
+    static func moved<Item>(_ items: [Item], from: Int, to: Int) -> [Item]? {
+        guard items.indices.contains(from), items.indices.contains(to), from != to else { return nil }
+        var result = items
+        result.insert(result.remove(at: from), at: to)
+        return result
+    }
+}
+
 /// One child row under a host: a saved forward and its live tunnel, if one runs.
 nonisolated struct PortmanForwardChild: Identifiable, Sendable {
     let spec: PortmanForwardSpec
@@ -238,6 +248,23 @@ final class PortmanHostList {
     func removeForward(host destination: String, localPort: UInt16) {
         guard let index = hosts.firstIndex(where: { $0.destination == destination }) else { return }
         hosts[index].forwards.removeAll { $0.localPort == localPort }
+        commit()
+    }
+
+    /// Moves a saved host card so it ends at `index`. The saved array order is the card order.
+    func moveHost(_ destination: String, to index: Int) {
+        guard let from = hosts.firstIndex(where: { $0.destination == destination }),
+              let moved = PortmanOrder.moved(hosts, from: from, to: index) else { return }
+        hosts = moved
+        commit()
+    }
+
+    /// Moves a saved forward inside its own host only; a forward never changes host.
+    func moveForward(host destination: String, localPort: UInt16, to index: Int) {
+        guard let host = hosts.firstIndex(where: { $0.destination == destination }),
+              let from = hosts[host].forwards.firstIndex(where: { $0.localPort == localPort }),
+              let moved = PortmanOrder.moved(hosts[host].forwards, from: from, to: index) else { return }
+        hosts[host].forwards = moved
         commit()
     }
 

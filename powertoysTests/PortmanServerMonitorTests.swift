@@ -599,6 +599,18 @@ final class PortmanServerSchedulerTests: XCTestCase {
                                  PortmanServerTarget(destination: "both")])
     }
 
+    func testReorderedHostsKeepTheirMonitorState() async {
+        let other = PortmanServerTarget(destination: "other")
+        monitor.sync([box, other])
+        await runOnce()
+        let before = monitor.states
+        monitor.sync([other, box])
+        XCTAssertEqual(monitor.states["box"]?.status, .online)
+        XCTAssertEqual(monitor.states["box"]?.history.count, before["box"]?.history.count)
+        XCTAssertEqual(monitor.states["other"]?.lastSeen, before["other"]?.lastSeen)
+        XCTAssertTrue(transport.closed.values.isEmpty, "a new order must not drop the SSH connections")
+    }
+
     func testFirstTickSamplesAndGoesOnline() async {
         monitor.sync([box])
         await runOnce()

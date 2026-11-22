@@ -90,6 +90,115 @@ final class PortmanHostStoreTests: XCTestCase {
         XCTAssertEqual(PortmanHostStore.load(defaults), hosts)
     }
 
+    // MARK: Order
+
+    private func list(_ names: [String]) -> PortmanHostList {
+        PortmanHostStore.save(names.map { PortmanHost(destination: $0, mode: .forward) }, defaults)
+        return PortmanHostList(defaults: defaults)
+    }
+
+    private func order(_ list: PortmanHostList) -> [String] { list.hosts.map(\.destination) }
+    private func savedOrder() -> [String] { PortmanHostList(defaults: defaults).hosts.map(\.destination) }
+
+    func testOrderMovedHandlesEveryEdge() {
+        XCTAssertEqual(PortmanOrder.moved([1, 2, 3], from: 0, to: 2), [2, 3, 1])
+        XCTAssertEqual(PortmanOrder.moved([1, 2, 3], from: 2, to: 0), [3, 1, 2])
+        XCTAssertEqual(PortmanOrder.moved([1, 2, 3], from: 1, to: 2), [1, 3, 2])
+        XCTAssertNil(PortmanOrder.moved([1, 2, 3], from: 1, to: 1), "no-op")
+        XCTAssertNil(PortmanOrder.moved([1, 2, 3], from: 0, to: 3), "past the end")
+        XCTAssertNil(PortmanOrder.moved([1, 2, 3], from: -1, to: 0), "negative")
+        XCTAssertNil(PortmanOrder.moved([1], from: 0, to: 0), "one item")
+        XCTAssertNil(PortmanOrder.moved([Int](), from: 0, to: 0), "empty")
+    }
+
+    func testMoveFirstHostToLastSavesAndSurvivesRelaunch() {
+        let hosts = list(["a", "b", "c"])
+        hosts.moveHost("a", to: 2)
+        XCTAssertEqual(order(hosts), ["b", "c", "a"])
+        XCTAssertEqual(savedOrder(), ["b", "c", "a"])
+    }
+
+    func testMoveLastHostToFirst() {
+        let hosts = list(["a", "b", "c"])
+        hosts.moveHost("c", to: 0)
+        XCTAssertEqual(savedOrder(), ["c", "a", "b"])
+    }
+
+    func testNoOpAndOutOfRangeHostMovesChangeNothingAndDoNotSave() {
+        let hosts = list(["a", "b", "c"])
+        var changes = 0
+        hosts.onChange = { _ in changes += 1 }
+        hosts.moveHost("b", to: 1)
+        hosts.moveHost("b", to: 3)
+        hosts.moveHost("b", to: -1)
+        hosts.moveHost("missing", to: 0)
+        XCTAssertEqual(order(hosts), ["a", "b", "c"])
+        XCTAssertEqual(changes, 0)
+    }
+
+    func testMoveWithOneHostDoesNothing() {
+        let hosts = list(["solo"])
+        hosts.moveHost("solo", to: 0)
+        hosts.moveHost("solo", to: 1)
+        XCTAssertEqual(savedOrder(), ["solo"])
+    }
+
+    func testRemovedAndAddedHostsKeepTheOthersOrder() {
+        let hosts = list(["a", "b", "c", "d"])
+        hosts.moveHost("d", to: 0)
+        hosts.remove("b")
+        XCTAssertEqual(savedOrder(), ["d", "a", "c"])
+        hosts.add("e", mode: .monitor)
+        hosts.recordForward(host: "f", remotePort: 80, localPort: 8080)
+        XCTAssertEqual(savedOrder(), ["d", "a", "c", "e", "f"], "new hosts go at the end")
+    }
+
+    func testOldSavedDataLoadsInItsSavedOrderAndTakesAMove() throws {
+        // Written by the build before reordering: version 1, no order field; the array order is the card order.
+        let old = #"{"version":1,"hosts":[{"destination":"oci2","mode":"monitor"},{"destination":"lin1","mode":"both","forwards":[{"remotePort":5432,"localPort":5432},{"remotePort":80,"localPort":8080}]},{"destination":"oci1","mode":"forward"}]}"#
+        defaults.set(Data(old.utf8), forKey: PortmanHostStore.key)
+        let hosts = PortmanHostList(defaults: defaults)
+        XCTAssertEqual(order(hosts), ["oci2", "lin1", "oci1"])
+        hosts.moveHost("oci1", to: 0)
+        hosts.moveForward(host: "lin1", localPort: 8080, to: 0)
+        let reloaded = PortmanHostList(defaults: defaults)
+        XCTAssertEqual(order(reloaded), ["oci1", "oci2", "lin1"])
+        XCTAssertEqual(reloaded.host("lin1")?.forwards.map(\.localPort), [8080, 5432])
+        XCTAssertEqual(try savedJSON()["version"] as? Int, PortmanHostStore.version)
+    }
+
+    func testForwardMovesStayInsideTheirHost() {
+        PortmanHostStore.save([
+            PortmanHost(destination: "a", mode: .forward, forwards: [.init(remotePort: 1, localPort: 1001),
+                                                                     .init(remotePort: 2, localPort: 1002),
+                                                                     .init(remotePort: 3, localPort: 1003)]),
+            PortmanHost(destination: "b", mode: .forward, forwards: [.init(remotePort: 9, localPort: 1009)]),
+        ], defaults)
+        let hosts = PortmanHostList(defaults: defaults)
+        hosts.moveForward(host: "a", localPort: 1001, to: 2)
+        hosts.moveForward(host: "a", localPort: 1002, to: 5)
+        hosts.moveForward(host: "b", localPort: 1001, to: 0)
+        hosts.moveForward(host: "b", localPort: 1009, to: 1)
+        let reloaded = PortmanHostList(defaults: defaults)
+        XCTAssertEqual(reloaded.host("a")?.forwards.map(\.localPort), [1002, 1003, 1001])
+        XCTAssertEqual(reloaded.host("b")?.forwards.map(\.localPort), [1009], "a forward never changes host")
+        XCTAssertEqual(order(reloaded), ["a", "b"])
+    }
+
+    func testOrderIsKeptWhenTunnelAndMonitorStatesChange() {
+        let hosts = list(["a", "b", "c"])
+        hosts.moveHost("c", to: 0)
+        hosts.setMode(.both, for: "a")
+        hosts.setMode(.monitor, for: "c")
+        let running = PortmanForwardTree.groups(hosts: hosts.hosts, tunnels: [tunnel("b", 80, 8080), tunnel("a", 81, 8081)])
+        let failed = PortmanForwardTree.groups(hosts: hosts.hosts, tunnels: [
+            PortmanTunnel(id: UUID(), host: "a", remotePort: 81, localPort: 8081, state: .failed("timed out")),
+        ])
+        XCTAssertEqual(running.map(\.id), ["c", "a", "b"])
+        XCTAssertEqual(failed.map(\.id), ["c", "a", "b"])
+        XCTAssertEqual(savedOrder(), ["c", "a", "b"])
+    }
+
     func testUnreadableDataIsKeptAsideNotOverwritten() {
         let junk = Data("not json".utf8)
         defaults.set(junk, forKey: PortmanHostStore.key)

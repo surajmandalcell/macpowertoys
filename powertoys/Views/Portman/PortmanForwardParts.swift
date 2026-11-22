@@ -17,6 +17,12 @@ enum PortmanForwardMetrics {
     static let tileGap: CGFloat = 6
     static let statsTop: CGFloat = 2
     static let statsBottom: CGFloat = 6
+    /// Drag to reorder (DESIGN.md "Portman"): starts after 4 pt, the others slide in 200 ms, a 2 pt accent drop line.
+    static let dragStart: CGFloat = 4
+    static let reorderSlide: TimeInterval = 0.2
+    static let dropLine: CGFloat = 2
+    static let liftShadowRadius: CGFloat = 8
+    static let liftShadowY: CGFloat = 2
 }
 
 extension View {
@@ -121,6 +127,8 @@ struct PortmanHostCardActions {
     var open: (UInt16) -> Void = { _ in }
     var stop: (PortmanForwardChild) -> Void = { _ in }
     var remove: (PortmanForwardChild) -> Void = { _ in }
+    /// Moves a saved forward to a new index inside this card.
+    var move: (PortmanForwardChild, Int) -> Void = { _, _ in }
 }
 
 /// One card per host (DESIGN.md "Portman", Forward): the host row, its chart tiles when open, then its forwards
@@ -139,9 +147,13 @@ struct PortmanHostCard: View {
                 PortmanHostStats(tiles: model.tiles)
                     .overlay(alignment: .leading) { guide(from: .top) }
             }
-            ForEach(Array(group.children.enumerated()), id: \.element.id) { index, child in
+            PortmanReorderStack(items: group.children, movable: group.saved ? group.host.forwards.count : 0,
+                                lineInsets: EdgeInsets(top: 0, leading: OnePlusLinearMetrics.treeChildInset,
+                                                       bottom: 0, trailing: OnePlusLinearMetrics.panelRowInset),
+                                name: { "localhost:\(String($0.spec.localPort))" }, move: actions.move) { child, _ in
                 PortmanForwardChildRow(destination: group.host.destination, child: child, actions: actions)
-                    .overlay(alignment: .leading) { guide(from: .top, last: index == group.children.count - 1, tick: true) }
+            } slot: { index in
+                guide(from: .top, last: index == group.children.count - 1, tick: true)
             }
         }
     }

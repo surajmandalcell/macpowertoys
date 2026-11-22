@@ -802,8 +802,11 @@ struct PortmanPanelView: View {
             let groups = PortmanForwardTree.groups(hosts: hostList.hosts, tunnels: service.tunnels)
             if !groups.isEmpty {
                 TimelineView(.periodic(from: .now, by: 30)) { context in
-                    VStack(spacing: OnePlusLinearPanelStyle.fillSteps.blockGap) {
-                        ForEach(groups) { hostGroup($0, first: $0.id == groups.first?.id, now: context.date) }
+                    PortmanReorderStack(items: groups, movable: groups.filter(\.saved).count,
+                                        spacing: OnePlusLinearPanelStyle.fillSteps.blockGap,
+                                        name: \.host.destination,
+                                        move: { hostList.moveHost($0.host.destination, to: $1) }) { group, index in
+                        hostGroup(group, first: index == 0, now: context.date)
                     }
                 }
             }
@@ -838,7 +841,8 @@ struct PortmanPanelView: View {
             remove: { child in
                 if let id = child.tunnel?.id { service.stopTunnel(id) }
                 hostList.removeForward(host: destination, localPort: child.spec.localPort)
-            }
+            },
+            move: { child, index in hostList.moveForward(host: destination, localPort: child.spec.localPort, to: index) }
         ))
             .contextMenu {
                 Button("Use this host") { host = group.host.destination }
