@@ -130,7 +130,7 @@ struct MainPanelFanRow<Setup: View>: View {
     var body: some View {
         // No fixed title width: "Fan" is short, and the room keeps the RPM whole beside the fitted segments.
         OnePlusLinearControlRow("Fan", systemImage: "fanblades", status: status, titleWidth: nil) {
-            HStack(spacing: 4) {
+            HStack(spacing: OnePlusLinearMetrics.rowGap) {
                 setup
                 if let cpuCelsius { CPUThermometer(celsius: cpuCelsius, name: inputName) }
                 OnePlusLinearSegmented(choices: choices, selection: shownSelection, accessibilityLabel: "Fan preset",
@@ -157,9 +157,9 @@ struct CPUThermometer: View {
 
     var body: some View {
         Image(systemName: "thermometer.medium")
-            .font(.system(size: OnePlusLinearMetrics.caption + 1, weight: .medium))
+            .font(.system(size: OnePlusLinearMetrics.rowStatusGlyph))
             .foregroundStyle(Self.color(CPUHeat(celsius: Double(celsius))))
-            .frame(width: OnePlusLinearMetrics.segment.height - 4, height: OnePlusLinearMetrics.segment.height)
+            .frame(height: OnePlusLinearMetrics.segment.height)
             .help(CPUHeat.help(celsius, name: name))
             .accessibilityLabel(CPUHeat.help(celsius, name: name))
     }

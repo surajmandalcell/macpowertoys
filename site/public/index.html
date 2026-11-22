@@ -456,9 +456,8 @@
 .panel .g[data-g=bell]{left:261.5px!important;top:12.5px!important}.panel .g[data-g=gear]{left:292.5px!important;top:12.5px!important}
 
 .blk{position:absolute}
-.tile{border-radius:8px;background:linear-gradient(color-mix(in srgb,var(--tint) var(--washp),var(--group)),var(--group) 75%);box-shadow:0 .5px 1px var(--contact),0 3px 10px var(--tshadow);transition:transform .2s cubic-bezier(.2,.8,.2,1)}
+.tile{border-radius:8px;background:linear-gradient(color-mix(in srgb,var(--tint) var(--washp),var(--group)),var(--group) 75%);box-shadow:0 .5px 1px var(--contact),0 3px 10px var(--tshadow)}
 .tile::after{content:"";position:absolute;inset:0;border-radius:inherit;background:linear-gradient(color-mix(in srgb,var(--tint) var(--washp),transparent),transparent 75%);opacity:0;transition:opacity .2s;pointer-events:none}
-.tile:hover,.tile.hov{transform:translateY(-1px)}
 .tile:hover::after,.tile.hov::after{opacity:.8}
 .lr{position:absolute;left:10px;right:10px;top:10px;height:16px;display:flex;align-items:center;gap:6px;padding-left:20px;white-space:nowrap}
 .tt{color:var(--sec)}
