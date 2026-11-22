@@ -75,7 +75,8 @@ final class PermissionCenter {
     /// What a missing Accessibility approval means. macOS keeps an approval per code signature, so after a signing
     /// change the switch in Settings stays on while `AXIsProcessTrusted` is false.
     var accessibilityProblem: String? {
-        guard isMissing(.accessibility) else { return nil }
+        // The demo stands in for a set-up Mac, where Accessibility is granted.
+        guard !DemoMode.isActive, isMissing(.accessibility) else { return nil }
         return UserDefaults.standard.bool(forKey: Self.accessibilityWasGrantedKey)
             ? "macOS has an old approval for MacPowerToys. Turn it off and on again in Accessibility, or click Fix."
             : "MacPowerToys needs Accessibility to change scrolling. Click Fix, then switch MacPowerToys on."

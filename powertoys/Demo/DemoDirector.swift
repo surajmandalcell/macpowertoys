@@ -66,7 +66,8 @@ enum DemoDirector {
         let leadIn = defaults.object(forKey: "MPTDemoLeadIn") == nil ? 1.5 : defaults.double(forKey: "MPTDemoLeadIn")
         let quitAfter = defaults.bool(forKey: "MPTDemoQuitAfter")
         let scene = make()
-        let windowsBefore = Set(NSApp.windows.map(\.windowNumber))
+        // Visible ones only: a panel built at launch and shown by the scene must still count.
+        let windowsBefore = Set(NSApp.windows.filter(\.isVisible).map(\.windowNumber))
         scene.open()
         Task { @MainActor in
             try? await Task.sleep(for: .seconds(0.6))
@@ -79,9 +80,12 @@ enum DemoDirector {
                 elapsed = max(elapsed, step.at)
                 step.run()
             }
-            try? await Task.sleep(for: .seconds(scene.tail))
+            // The recording starts about 1 s after launch; this keeps every site clip at 6 s or more.
+            try? await Task.sleep(for: .seconds(max(scene.tail, 7.5 - leadIn - elapsed)))
             markSceneDone()
-            if quitAfter { NSApp.terminate(nil) }
+            // The demo has nothing to save, and the normal quit path waits on real-app shutdown steps.
+            // The capture tool polls scene.json, so the window stays up a moment after done:true.
+            if quitAfter { try? await Task.sleep(for: .seconds(1)); exit(0) }
         }
     }
 

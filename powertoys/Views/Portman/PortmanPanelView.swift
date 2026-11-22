@@ -1430,8 +1430,20 @@ final class PortmanMenuController: NSObject {
         }
     }
 
+    #if MPT_DEMO
+    /// The capture Mac's menu bar can hide the demo's status item; the demo anchors the panel here instead.
+    var demoAnchor: NSView?
+    #endif
+
+    private var anchorView: NSView? {
+        #if MPT_DEMO
+        if let demoAnchor { return demoAnchor }
+        #endif
+        return item?.button
+    }
+
     private func present(initialPage: PortmanPanelView.Page?, activateApp: Bool) -> Bool {
-        guard let button = item?.button, button.window?.isVisible == true,
+        guard let button = anchorView, button.window?.isVisible == true,
               !button.visibleRect.isEmpty, button.bounds.width > 0 else { return false }
         if activateApp { NSApp.activate(ignoringOtherApps: true) }
         popover.appearance = NSApp.appearance

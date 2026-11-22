@@ -59,7 +59,7 @@ enum DemoFan {
     static var scene: DemoScene {
         DemoScene(open: {
             DemoFanState.set(celsius: sceneCelsius, rpm: rpm(for: curve(lastSpeed: startSpeed)))
-            ToolActionRouter.shared.openMainPage(toolID: FanPageView.pageID, activateApp: false)
+            ToolActionRouter.shared.open(toolID: FanPageView.pageID, activateApp: false)
         }, steps: (0...liftSteps).map { step in
             let progress = Double(step) / Double(liftSteps)
             let eased = progress * progress * (3 - 2 * progress)

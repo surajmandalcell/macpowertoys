@@ -1,8 +1,8 @@
-// demo-capture: records one MacPowerToys Demo window to ProRes 4444 with alpha, 2x, 60 fps.
+// demo-capture: records one MacPowerToys Demo window to ProRes 4444 with alpha, at the window's scale, 60 fps.
 //
 // Usage:
 //   demo-capture --out clip.mov (--window-id N | --scene-file scene.json | --bundle-id ID --title TEXT)
-//                [--duration 8] [--timeout 20] [--allow-any-app]
+//                [--duration 8] [--timeout 20] [--canvas WxH] [--allow-any-app]
 // The filter holds exactly one window (desktop independent), so no desktop, menu bar, wallpaper,
 // or other window can be in a frame. The window shadow is kept and the background is transparent.
 // Only windows of com.surajmandal.macpowertoys.demo are accepted unless --allow-any-app is passed.
@@ -10,6 +10,7 @@
 // (or at --duration, whichever comes first). Needs Screen Recording permission; it never prompts,
 // never activates an app, never moves the pointer. Build: tools/demo-capture/build.sh [output path].
 
+import AppKit
 import AVFoundation
 import CoreGraphics
 import Foundation
@@ -40,9 +41,15 @@ let sceneFile = options["--scene-file"].map { URL(fileURLWithPath: $0) }
 guard duration != nil || sceneFile != nil else { fail("give --duration, or --scene-file to stop when the scene is done") }
 let maxDuration = duration ?? 60
 
-func readScene() -> [String: Any]? {
+struct SceneFile: Decodable {
+    struct Window: Decodable { let number: Int; let width: Double; let height: Double }
+    let done: Bool
+    let windows: [Window]
+}
+
+func readScene() -> SceneFile? {
     guard let sceneFile, let data = try? Data(contentsOf: sceneFile) else { return nil }
-    return (try? JSONSerialization.jsonObject(with: data)) as? [String: Any]
+    return try? JSONDecoder().decode(SceneFile.self, from: data)
 }
 
 func waitUntil(_ seconds: Double, what: String, _ check: () async -> Bool) async {
@@ -54,6 +61,9 @@ func waitUntil(_ seconds: Double, what: String, _ check: () async -> Bool) async
     fail("\(what) not found within \(Int(seconds)) s")
 }
 
+// A bare CLI must connect to the window server before any CoreGraphics call; .prohibited keeps it out of the Dock.
+NSApplication.shared.setActivationPolicy(.prohibited)
+
 guard CGPreflightScreenCaptureAccess() else {
     fail("no Screen Recording permission for this terminal. Grant it in System Settings > Privacy & Security.")
 }
@@ -61,9 +71,11 @@ guard CGPreflightScreenCaptureAccess() else {
 var windowID = options["--window-id"].flatMap(CGWindowID.init)
 if windowID == nil, sceneFile != nil {
     await waitUntil(timeout, what: "scene file \(sceneFile!.path)") {
-        guard let windows = readScene()?["windows"] as? [[String: Any]],
-              let number = windows.first?["number"] as? Int else { return false }
-        windowID = CGWindowID(number)
+        // The scene also lists the demo's status items; the tool window is the largest one.
+        // Status items that have no window server window yet carry numbers past UInt32; skip them.
+        guard let largest = readScene()?.windows.filter({ CGWindowID(exactly: $0.number) != nil })
+            .max(by: { $0.width * $0.height < $1.width * $1.height }) else { return false }
+        windowID = CGWindowID(largest.number)
         return true
     }
 }
@@ -95,14 +107,21 @@ guard owner == demoBundleID || flags.contains("--allow-any-app") else {
 }
 
 let filter = SCContentFilter(desktopIndependentWindow: window)
-let pixelScale = 2.0  // Forced 2x so clips match on any display.
-let width = Int((filter.contentRect.width * pixelScale).rounded())
-let height = Int((filter.contentRect.height * pixelScale).rounded())
+// The window's real backing scale: 2 on a HiDPI display mode, 1 otherwise. Forcing 2x on a 1x display
+// only pads the frame with empty pixels.
+let pixelScale = Double(filter.pointPixelScale)
+// --canvas WxH (points) leaves room for a window that grows during the scene; the window is drawn 1:1 at the
+// top left and the empty transparent area is cropped later.
+let canvas = options["--canvas"]?.split(separator: "x").compactMap { Double($0) }
+let canvasSize = canvas?.count == 2 ? CGSize(width: canvas![0], height: canvas![1]) : filter.contentRect.size
+let width = Int((canvasSize.width * pixelScale).rounded())
+let height = Int((canvasSize.height * pixelScale).rounded())
 guard width > 0, height > 0 else { fail("window \(window.windowID) has no size") }
 
 let config = SCStreamConfiguration()
 config.width = width
 config.height = height
+config.scalesToFit = false
 config.pixelFormat = kCVPixelFormatType_32BGRA
 config.minimumFrameInterval = CMTime(value: 1, timescale: 60)
 config.showsCursor = false
@@ -163,12 +182,16 @@ do {
 } catch {
     fail("capture did not start: \(error.localizedDescription)")
 }
-print("demo-capture: recording window \(window.windowID) (\(owner)) at \(width)x\(height), 60 fps")
+print("demo-capture: recording window \(window.windowID) (\(owner)) frame \(window.frame) at \(width)x\(height), 60 fps")
 
 let stopAt = Date().addingTimeInterval(maxDuration)
 while Date() < stopAt {
-    if let error = queue.sync(execute: { sink.streamError }) { fail("stream stopped: \(error.localizedDescription)") }
-    if duration == nil, readScene()?["done"] as? Bool == true { break }
+    if let error = queue.sync(execute: { sink.streamError }) {
+        // The demo quits right after its scene; a window that closes after done:true is a normal end.
+        if readScene()?.done == true { break }
+        fail("stream stopped: \(error.localizedDescription)")
+    }
+    if duration == nil, readScene()?.done == true { break }
     try? await Task.sleep(for: .milliseconds(100))
 }
 
@@ -177,6 +200,8 @@ await withCheckedContinuation { (done: CheckedContinuation<Void, Never>) in
 }
 let (frames, dropped, started) = queue.sync { (sink.frames, sink.dropped, sink.started) }
 guard started else { fail("no complete frame arrived; the window may be hidden or minimized") }
+// ScreenCaptureKit sends frames only when the window changes; hold the last one until the stop time.
+writer.endSession(atSourceTime: CMClockGetTime(CMClockGetHostTimeClock()))
 input.markAsFinished()
 await writer.finishWriting()
 guard writer.status == .completed else { fail("writer failed: \(writer.error?.localizedDescription ?? "unknown")") }

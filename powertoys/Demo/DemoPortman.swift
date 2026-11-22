@@ -4,7 +4,7 @@
 //
 
 #if MPT_DEMO
-import Foundation
+import AppKit
 
 @MainActor
 enum DemoPortman {
@@ -55,6 +55,7 @@ enum DemoPortman {
         DemoScene(
             open: {
                 seed(webMB: webStartMB, webCPU: webStartCPU)
+                PortmanMenuController.shared.demoAnchor = menuBarAnchor()
                 ToolActionRouter.shared.open(toolID: "portman", activateApp: false)
             },
             steps: climb + [DemoStep(at: stopAt) { stopWeb() }]
@@ -73,6 +74,21 @@ enum DemoPortman {
                 )
             }
         }
+    }
+
+    /// A clear status-item-sized view at the top right of the main screen, standing in for Portman's menu bar icon.
+    private static func menuBarAnchor() -> NSView {
+        let visible = (NSScreen.main ?? NSScreen.screens[0]).visibleFrame
+        let size = NSSize(width: 24, height: 24)
+        let window = NSWindow(contentRect: NSRect(origin: NSPoint(x: visible.maxX - 200, y: visible.maxY), size: size),
+                              styleMask: .borderless, backing: .buffered, defer: false)
+        window.isOpaque = false
+        window.backgroundColor = .clear
+        window.ignoresMouseEvents = true
+        window.level = .statusBar
+        window.isReleasedWhenClosed = false
+        window.orderFrontRegardless()
+        return window.contentView!
     }
 
     /// Goes through the real Stop entry point; its demo guard only drops the row from memory.
