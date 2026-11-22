@@ -55,6 +55,7 @@ struct PortmanShareRing: View {
 }
 
 /// The hero: the ring with the total memory in its center, then servers, CPU, and the longest uptime.
+/// Its numbers are sums of the rows, so they follow each scan at once (`.process`), never lagging the rows.
 struct PortmanHeroRing: View {
     let presentation: PortmanOverviewPresentation
     let caption: String
@@ -65,7 +66,7 @@ struct PortmanHeroRing: View {
                 PortmanShareRing(segments: presentation.segments)
                 VStack(spacing: 1) {
                     HStack(alignment: .firstTextBaseline, spacing: 3) {
-                        OnePlusLinearNumberText(String(format: "%.1f", Double(presentation.memoryBytes) / 1_048_576), pace: .memory)
+                        OnePlusLinearNumberText(String(format: "%.1f", Double(presentation.memoryBytes) / 1_048_576), pace: .process)
                             .font(.system(size: 26, weight: .light)).monospacedDigit().foregroundStyle(OnePlusLinearColor.ink)
                         Text("MB").linearText(13, color: OnePlusLinearColor.secondary)
                     }
@@ -74,11 +75,11 @@ struct PortmanHeroRing: View {
             }
             .help("Memory used only by processes listening on scanned ports")
             HStack(spacing: 0) {
-                stat(String(presentation.uniquePortCount), "Servers", color: OnePlusLinearColor.ink, pace: .memory)
+                stat(String(presentation.uniquePortCount), "Servers", color: OnePlusLinearColor.ink)
                 statDivider
-                stat(String(format: "%.1f%%", presentation.cpuPercent), "CPU", color: OnePlusLinearColor.cpuText, pace: .cpu)
+                stat(String(format: "%.1f%%", presentation.cpuPercent), "CPU", color: OnePlusLinearColor.cpuText)
                 statDivider
-                stat(longestUptime, "Longest up", color: OnePlusLinearColor.ink, pace: .memory)
+                stat(longestUptime, "Longest up", color: OnePlusLinearColor.ink)
             }
             .padding(.horizontal, OnePlusLinearMetrics.panelRowInset)
         }
@@ -94,9 +95,9 @@ struct PortmanHeroRing: View {
     }
 
     /// Three equal columns: a value in its data color or ink over a muted caption.
-    private func stat(_ value: String, _ label: String, color: Color, pace: OnePlusNumberPace) -> some View {
+    private func stat(_ value: String, _ label: String, color: Color) -> some View {
         VStack(spacing: 2) {
-            OnePlusLinearNumberText(value, pace: pace).font(.system(size: 15, weight: .medium)).monospacedDigit()
+            OnePlusLinearNumberText(value, pace: .process).font(.system(size: 15, weight: .medium)).monospacedDigit()
                 .foregroundStyle(color)
             Text(label).linearText(OnePlusLinearMetrics.caption, color: OnePlusLinearColor.panelMuted)
         }
