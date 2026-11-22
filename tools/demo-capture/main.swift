@@ -2,9 +2,12 @@
 //
 // Usage:
 //   demo-capture --out clip.mov (--window-id N | --scene-file scene.json | --bundle-id ID --title TEXT)
-//                [--duration 8] [--timeout 20] [--canvas WxH] [--allow-any-app]
+//                [--duration 8] [--timeout 20] [--canvas WxH] [--allow-any-app] [--scene-windows]
 // The filter holds exactly one window (desktop independent), so no desktop, menu bar, wallpaper,
 // or other window can be in a frame. The window shadow is kept and the background is transparent.
+// --scene-windows (with --scene-file) instead records every demo window the scene opened, together, in the
+// region around them, with a transparent background. The filter includes only those windows, so no desktop
+// or other app shows.
 // Only windows of com.surajmandal.macpowertoys.demo are accepted unless --allow-any-app is passed.
 // With --scene-file it waits for the file DemoDirector writes and stops when it says done:true
 // (or at --duration, whichever comes first). Needs Screen Recording permission; it never prompts,
@@ -28,7 +31,7 @@ var flags = Set<String>()
 var argIterator = CommandLine.arguments.dropFirst().makeIterator()
 while let arg = argIterator.next() {
     guard arg.hasPrefix("--") else { fail("unexpected argument \(arg)") }
-    if arg == "--allow-any-app" { flags.insert(arg); continue }
+    if arg == "--allow-any-app" || arg == "--scene-windows" { flags.insert(arg); continue }
     guard let value = argIterator.next() else { fail("\(arg) needs a value") }
     options[arg] = value
 }
@@ -106,14 +109,34 @@ guard owner == demoBundleID || flags.contains("--allow-any-app") else {
     fail("window \(window.windowID) belongs to \(owner), not \(demoBundleID). Pass --allow-any-app to override.")
 }
 
-let filter = SCContentFilter(desktopIndependentWindow: window)
+// Status items have tiny windows on the menu bar; only real scene windows count.
+let sceneWindowNumbers = Set(readScene()?.windows.filter { $0.width * $0.height > 5_000 }.map(\.number) ?? [])
+let sceneWindows = flags.contains("--scene-windows")
+    ? ((try? await SCShareableContent.excludingDesktopWindows(true, onScreenWindowsOnly: true))?.windows ?? [])
+        .filter { $0.owningApplication?.bundleIdentifier == demoBundleID && sceneWindowNumbers.contains(Int($0.windowID)) }
+    : []
+// Room for the window shadows around the union of the scene windows.
+let shadowMargin = 40.0
+let region = sceneWindows.map(\.frame).reduce(CGRect.null) { $0.union($1) }.insetBy(dx: -shadowMargin, dy: -shadowMargin)
+let filter: SCContentFilter
+var sourceRect: CGRect?
+if sceneWindows.isEmpty {
+    if flags.contains("--scene-windows") { fail("--scene-windows found no demo windows from the scene file") }
+    filter = SCContentFilter(desktopIndependentWindow: window)
+} else {
+    let content = try await SCShareableContent.excludingDesktopWindows(true, onScreenWindowsOnly: true)
+    guard let display = content.displays.first(where: { $0.frame.contains(CGPoint(x: region.midX, y: region.midY)) })
+    else { fail("no display holds the scene windows at \(region)") }
+    filter = SCContentFilter(display: display, including: sceneWindows)
+    sourceRect = region.offsetBy(dx: -display.frame.minX, dy: -display.frame.minY)
+}
 // The window's real backing scale: 2 on a HiDPI display mode, 1 otherwise. Forcing 2x on a 1x display
 // only pads the frame with empty pixels.
 let pixelScale = Double(filter.pointPixelScale)
 // --canvas WxH (points) leaves room for a window that grows during the scene; the window is drawn 1:1 at the
 // top left and the empty transparent area is cropped later.
 let canvas = options["--canvas"]?.split(separator: "x").compactMap { Double($0) }
-let canvasSize = canvas?.count == 2 ? CGSize(width: canvas![0], height: canvas![1]) : filter.contentRect.size
+let canvasSize = sourceRect?.size ?? (canvas?.count == 2 ? CGSize(width: canvas![0], height: canvas![1]) : filter.contentRect.size)
 let width = Int((canvasSize.width * pixelScale).rounded())
 let height = Int((canvasSize.height * pixelScale).rounded())
 guard width > 0, height > 0 else { fail("window \(window.windowID) has no size") }
@@ -125,6 +148,8 @@ config.scalesToFit = false
 config.pixelFormat = kCVPixelFormatType_32BGRA
 config.minimumFrameInterval = CMTime(value: 1, timescale: 60)
 config.showsCursor = false
+// The region keeps a transparent background too; encode.sh flattens it on #232327.
+if let sourceRect { config.sourceRect = sourceRect }
 config.backgroundColor = .clear
 config.shouldBeOpaque = false
 config.ignoreShadowsSingleWindow = false

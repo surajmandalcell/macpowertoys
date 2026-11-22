@@ -6,32 +6,61 @@
 #if MPT_DEMO
 import AppKit
 
+/// The ruler measures a real demo window: Mac Tweaks opens, the ruler's zero corner snaps to its top left,
+/// and the ruler grows to the window's size while the mouse ticks follow the growing corner and read out width
+/// and height. The demo draws the ticks itself: the app never becomes active, and the owner's pointer is never read.
 @MainActor
 enum DemoRuler {
-    private static let target = NSSize(width: 640, height: 460)
     private static let start = NSSize(width: 280, height: 200)
     private static let growSteps = 24
     private static let growDuration = 1.6
+    private static let arrangeDelay = 0.25
+    private static var measured = NSRect.zero
 
     static func seed() {}
 
+    private static var controller: RulerController? { AppDelegate.current?.rulerManager.activeController }
+
+    /// The ruler runs a little past the measured edge, like a real ruler laid against a box.
+    private static let overhang = 24.0
+
+    /// `size` is the measured span. The ticks sit one pixel past its last pixel (pixels count from 0), so the
+    /// readouts show the full width and height.
     private static func resize(to size: NSSize) {
-        AppDelegate.current?.rulerManager.activeController?
-            .updateDimensions(horizontalLength: size.width, verticalLength: size.height)
+        controller?.updateDimensions(horizontalLength: size.width + overhang, verticalLength: size.height + overhang)
+        controller?.drawMouseTick(at: NSPoint(x: measured.minX + size.width + 1, y: measured.maxY - size.height - 1))
+    }
+
+    /// Puts Mac Tweaks near the top right of the main screen and the ruler's zero corner on its top left.
+    private static func arrange() {
+        guard let target = NSApp.windows.filter({ $0.isVisible && !($0 is RulerWindow) })
+            .max(by: { $0.frame.width * $0.frame.height < $1.frame.width * $1.frame.height }) else { return }
+        let visible = (NSScreen.main ?? NSScreen.screens[0]).visibleFrame
+        let margin = 120.0
+        target.setFrameOrigin(NSPoint(x: visible.maxX - target.frame.width - margin,
+                                      y: visible.maxY - target.frame.height - margin))
+        measured = target.frame
+        controller?.align(at: NSPoint(x: measured.minX, y: measured.maxY))
+        resize(to: start)
     }
 
     static var scene: DemoScene {
         let grow = (1...growSteps).map { index in
             let progress = Double(index) / Double(growSteps)
             let eased = 1 - pow(1 - progress, 3)
-            let size = NSSize(width: start.width + (target.width - start.width) * eased,
-                              height: start.height + (target.height - start.height) * eased)
-            return DemoStep(at: 1.0 + growDuration * progress) { resize(to: size) }
+            return DemoStep(at: 1.0 + growDuration * progress) {
+                resize(to: NSSize(width: start.width + (measured.width - start.width) * eased,
+                                  height: start.height + (measured.height - start.height) * eased))
+            }
         }
         return DemoScene(
             open: {
+                ToolActionRouter.shared.open(toolID: "mac-tweaks", activateApp: false)
                 ToolActionRouter.shared.open(toolID: "ruler", activateApp: false)
-                resize(to: start)
+                Task { @MainActor in
+                    try? await Task.sleep(for: .seconds(arrangeDelay))
+                    arrange()
+                }
             },
             steps: grow,
             tail: 2.5
