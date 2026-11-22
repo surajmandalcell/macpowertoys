@@ -104,68 +104,109 @@ final class ToolActionRouter {
         open(toolID: "main", page: "tool/\(toolID)", activateApp: activateApp)
     }
 
-    func open(toolID: String, activateApp: Bool = true) {
-        if [AppsBySamView.pageID, FanPageView.pageID].contains(toolID) {
-            open(toolID: "main", page: toolID, activateApp: activateApp)
-            return
-        }
-        let resolved = Self.resolvedWindowID(toolID)
-        guard resolved == "main" || SettingsManager.shared.isToolEnabled(resolved) else {
-            LogManager.shared.info("Ignored disabled tool: \(resolved)", source: "ToolActionRouter")
-            return
-        }
-        if resolved == "ruler" {
-            execute(ToolActionRequest(action: .rulerOpen, activateApp: activateApp))
-            return
-        }
-        if resolved == "awake" {
-            openMainPage(toolID: resolved, activateApp: activateApp)
-            return
-        }
+    /// What opening a tool shows. Every open entry point (buttons, panel arrows, links, menus) resolves here.
+    enum OpenTarget: Equatable {
+        case window(String), ruler, portmanPanel, marketplace(String), ignored
+        /// The tool has no window of its own, so its main-window page opens instead.
+        case mainPage(String)
+    }
 
-        if resolved == "portman" {
+    /// The SwiftUI `Window` scene IDs. Keep in sync with `MacPowerToysApp.body`.
+    nonisolated static let windowIDs: Set<String> = ["main", "rclone", "logs", "color-picker", "text-extractor",
+                                                     "input-devices", "mac-tweaks"]
+
+    static func openTarget(for toolID: String,
+                           isEnabled: (String) -> Bool) -> OpenTarget {
+        if [AppsBySamView.pageID, FanPageView.pageID].contains(toolID) { return .mainPage(toolID) }
+        let resolved = resolvedWindowID(toolID)
+        guard resolved == "main" || isEnabled(resolved) else { return .ignored }
+        switch resolved {
+        case "ruler": return .ruler
+        case "awake": return .mainPage("tool/awake")
+        case "portman": return .portmanPanel
+        case _ where windowIDs.contains(resolved): return .window(resolved)
+        default: return .marketplace(resolved)
+        }
+    }
+
+    /// A menu panel's Open arrow. The panel closes first, like a native menu. Portman's panel is Portman itself,
+    /// so its arrow falls back to the Portman page in the main window.
+    static func panelOpenTarget(for toolID: String,
+                                isEnabled: (String) -> Bool) -> OpenTarget {
+        let target = openTarget(for: toolID, isEnabled: isEnabled)
+        return target == .portmanPanel ? .mainPage("tool/portman") : target
+    }
+
+    func openFromPanel(toolID: String) {
+        DiagnosticsMenuPanels.shared.closeMenuPanels()
+        open(Self.panelOpenTarget(for: toolID, isEnabled: SettingsManager.shared.isToolEnabled), activateApp: true)
+    }
+
+    func openFromPanel(toolID: String, page: String) {
+        DiagnosticsMenuPanels.shared.closeMenuPanels()
+        open(toolID: toolID, page: page)
+    }
+
+    func open(toolID: String, activateApp: Bool = true) {
+        open(Self.openTarget(for: toolID, isEnabled: SettingsManager.shared.isToolEnabled), activateApp: activateApp)
+    }
+
+    private func open(_ target: OpenTarget, activateApp: Bool) {
+        switch target {
+        case .ignored:
+            LogManager.shared.info("Ignored disabled tool open", source: "ToolActionRouter")
+        case .ruler:
+            execute(ToolActionRequest(action: .rulerOpen, activateApp: activateApp))
+        case .mainPage(let page):
+            open(toolID: "main", page: page, activateApp: activateApp)
+        case .portmanPanel:
             PortmanMenuController.shared.show(activateApp: activateApp)
             dismissMainWindowAfterToolOpen()
+        case .window(let id):
+            openWindow(id: id, activateApp: activateApp)
+        case .marketplace(let id):
+            openMarketplaceTool(id: id, activateApp: activateApp)
+        }
+    }
+
+    private func openWindow(id resolved: String, activateApp: Bool) {
+        if !OnePlusPanelTimings.shared.hasPending("window.\(resolved)") {
+            OnePlusPanelTimings.shared.begin(panel: "window.\(resolved)", operation: .windowOpen, input: "tool-router")
+        }
+        guard let openWindowAction else {
+            if pendingToolOpens.last?.id != resolved || pendingToolOpens.last?.activateApp != activateApp {
+                if pendingToolOpens.count == Self.maximumPendingCount { pendingToolOpens.removeFirst() }
+                pendingToolOpens.append((resolved, activateApp))
+            }
             return
         }
+        Self.presentSingleWindow(id: resolved, windows: NSApp.windows, activateApp: activateApp,
+            createWindow: { id in
+                let window = MacPowerToysApp.makeBackgroundWindow(id: id)
+                self.backgroundWindows[id] = window
+                return window
+            }, activate: { NSApp.activate(ignoringOtherApps: true) }) { openWindowAction(id: $0) }
+        if resolved != "main" { dismissMainWindowAfterToolOpen() }
+    }
 
-        if resolved == "main" || ToolRegistry.builtInTools.contains(where: { $0.id == resolved }) {
-            if !OnePlusPanelTimings.shared.hasPending("window.\(resolved)") {
-                OnePlusPanelTimings.shared.begin(panel: "window.\(resolved)", operation: .windowOpen, input: "tool-router")
-            }
-            guard let openWindowAction else {
-                if pendingToolOpens.last?.id != resolved || pendingToolOpens.last?.activateApp != activateApp {
-                    if pendingToolOpens.count == Self.maximumPendingCount { pendingToolOpens.removeFirst() }
-                    pendingToolOpens.append((resolved, activateApp))
-                }
+    private func openMarketplaceTool(id resolved: String, activateApp: Bool) {
+        Task {
+            await MarketplaceManager.shared.restore()
+            guard SettingsManager.shared.isToolEnabled(resolved) else { return }
+            guard MarketplaceManager.shared.receipts.contains(where: { $0.toolID == resolved }) else {
+                LogManager.shared.warning("Unknown tool ID: \(resolved)", source: "ToolActionRouter")
                 return
             }
-            Self.presentSingleWindow(id: resolved, windows: NSApp.windows, activateApp: activateApp,
-                createWindow: { id in
-                    let window = MacPowerToysApp.makeBackgroundWindow(id: id)
-                    self.backgroundWindows[id] = window
-                    return window
-                }, activate: { NSApp.activate(ignoringOtherApps: true) }) { openWindowAction(id: $0) }
-            if resolved != "main" { dismissMainWindowAfterToolOpen() }
-        } else {
-            Task {
-                await MarketplaceManager.shared.restore()
-                guard SettingsManager.shared.isToolEnabled(resolved) else { return }
-                guard MarketplaceManager.shared.receipts.contains(where: { $0.toolID == resolved }) else {
-                    LogManager.shared.warning("Unknown tool ID: \(resolved)", source: "ToolActionRouter")
-                    return
-                }
-                if launchFailure?.toolID == resolved { launchFailure = nil }
-                do {
-                    try await MarketplaceManager.shared.launchInstalledTool(toolID: resolved, activateApp: activateApp)
-                    dismissMainWindowAfterToolOpen()
-                } catch {
-                    launchFailure = ToolLaunchFailure(toolID: resolved, message: error.localizedDescription)
-                    LogManager.shared.error(
-                        "Failed to launch marketplace tool \(resolved): \(error)",
-                        source: "ToolActionRouter"
-                    )
-                }
+            if launchFailure?.toolID == resolved { launchFailure = nil }
+            do {
+                try await MarketplaceManager.shared.launchInstalledTool(toolID: resolved, activateApp: activateApp)
+                dismissMainWindowAfterToolOpen()
+            } catch {
+                launchFailure = ToolLaunchFailure(toolID: resolved, message: error.localizedDescription)
+                LogManager.shared.error(
+                    "Failed to launch marketplace tool \(resolved): \(error)",
+                    source: "ToolActionRouter"
+                )
             }
         }
     }

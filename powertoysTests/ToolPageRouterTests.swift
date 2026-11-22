@@ -200,7 +200,7 @@ struct ToolPageRouterTests {
         let panels: [(DiagnosticsPanel, String, [(String, String)])] = [
             (.main, "tray.selectedTab.v2", [("home", "home"), ("cloud-sync", "rclone"),
                 ("input-devices", "input-devices")]),
-            (.portman, "portman.selectedPage", [("servers", "Servers"), ("forward", "Forward"), ("settings", "Settings")])
+            (.portman, "portman.selectedPage", [("servers", "Servers"), ("forward", "Forward")])
         ]
         for (panel, key, tabs) in panels {
             for (id, saved) in tabs {

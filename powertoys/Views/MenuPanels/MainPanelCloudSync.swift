@@ -53,11 +53,11 @@ struct CloudSyncTrayView: View {
 
     private var actions: [OnePlusLinearAction] {
         var actions = [OnePlusLinearAction("New Transfer", systemImage: "plus", id: "tray.action.new-transfer") {
-            ToolActionRouter.shared.open(toolID: "rclone", page: "new-transfer")
+            ToolActionRouter.shared.openFromPanel(toolID: "rclone", page: "new-transfer")
         }]
         if showsOpenKey {
             actions.append(OnePlusLinearAction("Open RSync UI", systemImage: TrayTab.cloudSync.symbol, id: "tray.action.rclone") {
-                ToolActionRouter.shared.open(toolID: "rclone")
+                ToolActionRouter.shared.openFromPanel(toolID: "rclone")
             })
         }
         return actions

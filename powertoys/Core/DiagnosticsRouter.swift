@@ -87,11 +87,16 @@ final class DiagnosticsMenuPanels: NSObject {
             captureWindow?.orderOut(nil)
             captureWindow = nil
         }
+        closeMenuPanels()
+        if let mainWindow, mainWindow.isVisible { mainWindow.close() }
+    }
+
+    /// Closes every shown menu panel (main, Portman, separate tool panels).
+    func closeMenuPanels() {
         // The native menu controllers own their popovers. Keep only weak references.
         for popover in popovers.allObjects where popover.isShown {
             popover.performClose(nil)
         }
-        if let mainWindow, mainWindow.isVisible { mainWindow.close() }
     }
 
     // Capture panels float at popUpMenu level over full-screen apps, so they never outlive a short capture.

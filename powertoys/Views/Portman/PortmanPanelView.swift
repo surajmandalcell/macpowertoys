@@ -268,11 +268,11 @@ struct PortmanPanelView: View {
                 OnePlusLinearIconTrack {
                     OnePlusLinearIconButton(systemImage: "gearshape", help: "Portman settings", size: OnePlusLinearMetrics.iconTab,
                                             busy: service.isLoadingRemote ? "Scanning" : nil) {
-                        ToolActionRouter.shared.openMainPage(toolID: "portman")
+                        ToolActionRouter.shared.openFromPanel(toolID: "main", page: "tool/portman")
                     }
                     .accessibilityIdentifier("portman.settings")
                     OnePlusLinearIconButton(systemImage: "arrow.up.right", help: "Open MacPowerToys", size: OnePlusLinearMetrics.iconTab) {
-                        ToolActionRouter.shared.open(toolID: "main", page: "tool/portman")
+                        ToolActionRouter.shared.openFromPanel(toolID: "portman")
                     }
                     .accessibilityIdentifier("portman.open-app")
                 }

@@ -29,7 +29,7 @@ struct InputDevicesTrayView: View {
             if showsOpenKey {
                 OnePlusLinearActionBar([OnePlusLinearAction("Open Input Devices", systemImage: TrayTab.inputDevices.symbol,
                                                             id: "tray.action.input-devices") {
-                    ToolActionRouter.shared.open(toolID: TrayTab.inputDevices.rawValue)
+                    ToolActionRouter.shared.openFromPanel(toolID: TrayTab.inputDevices.rawValue)
                 }])
             }
         }

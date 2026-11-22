@@ -85,7 +85,7 @@ final class AppDelegateTests: XCTestCase {
         let routing = try String(contentsOf: root.appendingPathComponent("powertoys/Core/ToolPageRouter.swift"), encoding: .utf8)
         let delegate = try String(contentsOf: root.appendingPathComponent("powertoys/AppDelegate.swift"), encoding: .utf8)
         let sceneCount = scenes.components(separatedBy: ".handlesExternalEvents(matching:").count - 1
-        XCTAssertEqual(sceneCount, 8)
+        XCTAssertEqual(sceneCount, ToolActionRouter.windowIDs.count)
         XCTAssertEqual(scenes.components(separatedBy: ".handlesExternalEvents(matching: [])").count - 1, sceneCount,
                        "All cold tool and page URLs must use the background-aware router.")
         XCTAssertTrue(routing.contains(".handlesExternalEvents(preferring: [], allowing: [])"),
@@ -177,10 +177,7 @@ final class AppDelegateTests: XCTestCase {
         for removed in ["system-care", "disk-explorer", "nettoys"] {
             XCTAssertNil(AppDelegate.quitCommandToolID(for: removed))
         }
-        for toolID in [
-            "rclone", "logs", "awake", "color-picker",
-            "text-extractor", "input-devices", "mac-tweaks",
-        ] {
+        for toolID in ToolActionRouter.windowIDs.subtracting(["main"]) {
             XCTAssertEqual(AppDelegate.quitCommandToolID(for: toolID), toolID)
             XCTAssertEqual(AppDelegate.quitCommandToolID(for: "\(toolID)-settings"), toolID)
         }

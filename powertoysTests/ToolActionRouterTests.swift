@@ -81,8 +81,8 @@ final class ToolActionRouterTests: XCTestCase {
             override func makeKeyAndOrderFront(_ sender: Any?) { orders += 1 }
             override func close() { reportsVisible = false; super.close() }
         }
-        let tools = ["main", "rclone", "logs", "awake", "color-picker", "text-extractor",
-                     "input-devices", "mac-tweaks"]
+        // Awake has no window, so only real window scenes take part.
+        let tools = ToolActionRouter.windowIDs.sorted()
         let manager = WindowStateManager.shared
         for tool in tools {
             let window = WindowSpy(contentRect: .zero, styleMask: [.titled, .closable], backing: .buffered, defer: false)

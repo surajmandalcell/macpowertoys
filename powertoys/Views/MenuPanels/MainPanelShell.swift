@@ -21,6 +21,8 @@ enum TrayTab: String, CaseIterable, Identifiable {
     }
 
     var toolID: String? { self == .home ? nil : rawValue }
+    /// What the panel's Open arrow opens on this tab.
+    var openToolID: String { toolID ?? "main" }
 
     var panelID: String {
         self == .cloudSync ? "cloud-sync" : rawValue
@@ -116,11 +118,11 @@ struct TrayPopoverView: View {
     }
 
     private func openApp() {
-        ToolActionRouter.shared.open(toolID: "main")
+        ToolActionRouter.shared.openFromPanel(toolID: selectedTab.openToolID)
     }
 
     private func openSettings() {
-        ToolActionRouter.shared.open(toolID: "main", page: "settings")
+        ToolActionRouter.shared.openFromPanel(toolID: "main", page: "settings")
     }
 
     private func select(_ tab: TrayTab) {
@@ -280,10 +282,10 @@ struct IndividualToolMenuPanel: View {
             AttentionBell()
             OnePlusLinearIconTrack {
                 OnePlusLinearIconButton(systemImage: "gearshape", help: "Open Settings", size: OnePlusLinearMetrics.iconTab) {
-                    ToolActionRouter.shared.open(toolID: tool.id, page: "settings")
+                    ToolActionRouter.shared.openFromPanel(toolID: tool.id, page: "settings")
                 }
                 OnePlusLinearIconButton(systemImage: "arrow.up.right", help: "Open App", size: OnePlusLinearMetrics.iconTab) {
-                    ToolActionRouter.shared.open(toolID: tool.id)
+                    ToolActionRouter.shared.openFromPanel(toolID: tool.id)
                 }
                 .accessibilityIdentifier("tray.\(tool.id).open-app")
             }
