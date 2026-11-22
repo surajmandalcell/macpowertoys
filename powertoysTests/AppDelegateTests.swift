@@ -77,6 +77,8 @@ final class AppDelegateTests: XCTestCase {
             ]))
         }
         XCTAssertFalse(AppDelegate().applicationShouldHandleReopen(NSApp, hasVisibleWindows: false))
+        XCTAssertEqual(AppDelegate().applicationShouldTerminate(NSApp), .terminateCancel,
+                       "A quit sent to the installed app's bundle ID must not end the test host")
     }
 
     func testExternalURLsCannotBypassBackgroundIntentThroughSwiftUIScenes() throws {
