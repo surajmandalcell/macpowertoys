@@ -731,7 +731,11 @@ final class SystemMonitorService {
         let source = DispatchSource.makeTimerSource(queue: samplingQueue)
         source.schedule(deadline: .now(), repeating: interval, leeway: .milliseconds(Int(interval * 150)))
         source.setEventHandler { @Sendable [weak self, sampler] in autoreleasepool {
+            #if MPT_DEMO
+            let sample = DemoMenuPanelData.sample()
+            #else
             let sample = sampler.sample(detailedMetrics: detailedMetrics, metrics: [])
+            #endif
             Task { @MainActor [weak self] in
                 self?.receive(sample, metrics: detailedMetrics, generation: currentGeneration)
             }

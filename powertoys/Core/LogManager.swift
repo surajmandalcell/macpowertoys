@@ -186,3 +186,12 @@ final class LogManager {
             .sorted { $0.timestamp < $1.timestamp }.suffix(maxMemoryEntries))
     }
 }
+
+#if MPT_DEMO
+extension LogManager {
+    /// Replaces the in-memory list only; nothing reaches the store.
+    func demoReplace(with entries: [LogEntryData]) {
+        logs = entries
+    }
+}
+#endif

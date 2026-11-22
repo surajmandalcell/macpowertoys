@@ -19,11 +19,11 @@
 	<array>
 		<dict>
 			<key>CFBundleURLName</key>
-			<string>com.surajmandal.macpowertoys</string>
+			<string>com.surajmandal.macpowertoys$(MPT_DEMO_BUNDLE_SUFFIX)</string>
 			<key>CFBundleURLSchemes</key>
 			<array>
-				<string>macpowertoys</string>
-				<string>powertoys</string>
+				<string>macpowertoys$(MPT_DEMO_BUNDLE_SUFFIX)</string>
+				<string>powertoys$(MPT_DEMO_BUNDLE_SUFFIX)</string>
 			</array>
 		</dict>
 	</array>

@@ -45,6 +45,7 @@ nonisolated final class DevSyncService: DevSyncEngine, @unchecked Sendable {
     }
 
     func start() async {
+        if DemoMode.blocks("devsync.start") { return }
         guard let executable = DevRsyncLocator.locate(preferredPath: rsyncPreferredPath) else { return }
         let pairs = await stateStore.loadPairs()
         lock.withLock { activePairCount = pairs.filter { $0.state != .disabled }.count }

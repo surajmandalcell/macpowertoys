@@ -270,7 +270,15 @@ final class PortmanHostList {
 
     private func commit() {
         hosts = PortmanHostStore.normalized(hosts)
-        PortmanHostStore.save(hosts, defaults)
+        if !DemoMode.blocks("portman.hosts.save") { PortmanHostStore.save(hosts, defaults) }
         onChange?(hosts)
     }
 }
+
+#if MPT_DEMO
+extension PortmanHostList {
+    func demoSeed(_ hosts: [PortmanHost]) {
+        self.hosts = hosts
+    }
+}
+#endif

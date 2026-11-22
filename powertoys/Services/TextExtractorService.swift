@@ -67,6 +67,7 @@ final class TextExtractorService {
     }
 
     func begin() {
+        if DemoMode.blocks("text-extractor.capture") { return }
         // A second hotkey press is the keyboard exit when the overlay could not take key focus for Escape.
         if state == .selecting {
             selector?.cancel()
@@ -103,6 +104,7 @@ final class TextExtractorService {
     }
 
     func prewarm() {
+        if DemoMode.blocks("text-extractor.prewarm") { return }
         guard !didPrewarm else { return }
         didPrewarm = true
         let settings = settings
@@ -124,14 +126,18 @@ final class TextExtractorService {
     }
 
     func copy(_ extraction: TextExtraction) {
-        pasteboard.clearContents()
-        pasteboard.setString(extraction.text, forType: .string)
+        if !DemoMode.blocks("text-extractor.clipboard") {
+            pasteboard.clearContents()
+            pasteboard.setString(extraction.text, forType: .string)
+        }
         state = .copied(extraction.text)
     }
 
     func finishRecognition(_ text: String) {
-        pasteboard.clearContents()
-        pasteboard.setString(text, forType: .string)
+        if !DemoMode.blocks("text-extractor.clipboard") {
+            pasteboard.clearContents()
+            pasteboard.setString(text, forType: .string)
+        }
         record(text)
         state = .copied(text)
         playCompletionCue()
@@ -562,3 +568,17 @@ private final class TextRegionSelectionView: NSView {
         event.keyCode == 53 ? cancellation() : super.keyDown(with: event)
     }
 }
+
+#if MPT_DEMO
+extension TextExtractorService {
+    func demoSeed(_ extractions: [TextExtraction]) {
+        history = extractions
+        state = .idle
+    }
+
+    func demoCapture(_ text: String) {
+        history.insert(TextExtraction(text: text), at: 0)
+        state = .copied(text)
+    }
+}
+#endif

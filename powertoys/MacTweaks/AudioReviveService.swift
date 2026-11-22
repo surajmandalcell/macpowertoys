@@ -16,6 +16,10 @@ final class AudioReviveService {
     @ObservationIgnored private var process: AudioReviveProcess?
 
     func restart(completion: @escaping @MainActor (AudioReviveResult) -> Void) {
+        if DemoMode.blocks("audio.revive") {
+            completion(AudioReviveResult(succeeded: true, message: "Audio restarted."))
+            return
+        }
         cancel()
         let process = AudioReviveProcess(usesHelper: FanHelperService.shared.isEnabled)
         self.process = process

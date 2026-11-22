@@ -251,6 +251,7 @@ final class RcloneJobManager {
     }
 
     func start() async {
+        if DemoMode.blocks("rclone.start") { return }
         guard !started, !isShuttingDown, !Task.isCancelled else { return }
         started = true
         var startupFinished = false
@@ -1063,6 +1064,7 @@ final class RcloneJobManager {
 
     func pause(_ job: TransferJob) {
         guard job.canPause else { return }
+        if DemoMode.blocks("rclone.pause") { job.state = .paused; return }
         let jobid = job.rcJobId
         if job.state == .running {
             job.commitAttemptProgress()
@@ -1082,6 +1084,7 @@ final class RcloneJobManager {
 
     func resume(_ job: TransferJob) {
         guard job.canResume else { return }
+        if DemoMode.blocks("rclone.resume") { job.state = .running; return }
         job.state = .queued
         job.errorMessage = nil
         job.nextRetryAt = nil
@@ -1510,6 +1513,7 @@ final class RcloneJobManager {
     }
 
     private func persistSnapshots(_ snapshots: [TransferJobSnapshot]) async throws {
+        if DemoMode.blocks("rclone.persist") { return }
         transferRevision += 1
         let revision = transferRevision
         let writer = transferWriter
@@ -1866,3 +1870,12 @@ final class RcloneJobManager {
         return "Transfer failed."
     }
 }
+
+#if MPT_DEMO
+extension RcloneJobManager {
+    func applyDemo(remotes: [RcloneRemote], jobs: [TransferJob]) {
+        self.remotes = remotes
+        self.jobs = jobs
+    }
+}
+#endif

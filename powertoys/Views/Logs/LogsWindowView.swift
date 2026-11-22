@@ -717,6 +717,7 @@ private struct LogsPageView: View {
     }
 
     private func exportRows() {
+        if DemoMode.blocks("logs.export") { return }
         guard !isExporting,
               let window = NSApp.windows.first(where: { $0.identifier?.rawValue == "logs" && $0.isVisible }) else { return }
         let panel = NSSavePanel()

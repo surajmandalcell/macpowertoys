@@ -337,6 +337,10 @@ final class GlobalShortcutManager {
             registrationStatus[action] = .unset
             return true
         }
+        if DemoMode.blocks("shortcuts.hotkey") {
+            registrationStatus[action] = .registered
+            return true
+        }
         if !Self.usesCarbonHotKey(for: shortcut) {
             guard ensureReservedShortcutTap() else {
                 registrationStatus[action] = AXIsProcessTrusted()
@@ -373,6 +377,7 @@ final class GlobalShortcutManager {
     }
 
     private func register(id: UInt32, keyCode: UInt32, modifiers: UInt32) {
+        if DemoMode.blocks("shortcuts.hotkey") { return }
         var reference: EventHotKeyRef?
         let hotKeyID = EventHotKeyID(signature: OSType(0x50545759), id: id)
         let status = RegisterEventHotKey(
@@ -417,6 +422,7 @@ final class GlobalShortcutManager {
 
     private func ensureReservedShortcutTap() -> Bool {
         if reservedShortcutTap != nil { return true }
+        if DemoMode.blocks("shortcuts.key-tap") { return false }
         guard AXIsProcessTrusted() else { return false }
         let mask = CGEventMask(1) << CGEventType.keyDown.rawValue
         guard let tap = CGEvent.tapCreate(

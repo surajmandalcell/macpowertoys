@@ -35,6 +35,7 @@ nonisolated enum FanDriver {
     nonisolated(unsafe) static var onManualLost: (@Sendable (String) -> Void)?
 
     static func apply(_ preset: FanPreset) throws {
+        if DemoMode.blocks("fan.driver.apply") { return }
         stopTimer()
         guard let smc = SMCSession() else { throw FanError("The fan controller could not be opened.") }
         let fans = try readFans(smc)

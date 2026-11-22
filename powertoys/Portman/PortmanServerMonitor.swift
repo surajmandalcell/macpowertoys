@@ -234,6 +234,7 @@ final class PortmanServerMonitor {
 
     /// Connects the saved host list. Called once from the Portman status item; never in unit tests.
     func start() {
+        if DemoMode.blocks("portman.server-monitor") { return }
         guard powerObserver == nil else { return }
         let hosts = PortmanHostList.shared
         hosts.onChange = { [weak self] in self?.sync(Self.targets(from: $0)) }

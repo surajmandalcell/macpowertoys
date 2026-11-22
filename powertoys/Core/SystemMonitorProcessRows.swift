@@ -186,7 +186,11 @@ final class MenuPanelTopProcesses {
     func refresh(limit: Int = 3) async {
         if let refreshTask { await refreshTask.value; return }
         let task = Task {
+            #if MPT_DEMO
+            let processes = DemoMenuPanelData.processes()
+            #else
             let processes = await sampler.sample()
+            #endif
             let prepared = await Task.detached(priority: .userInitiated) {
                 SystemMonitorProcessRows.prepare(processes, column: .cpu, descending: true, limit: limit)
             }.value

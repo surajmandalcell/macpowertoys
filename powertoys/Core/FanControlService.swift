@@ -65,6 +65,7 @@ nonisolated enum FanCommand {
     }
 
     static func apply(_ preset: FanPreset, completion: @escaping @Sendable (String?) -> Void) {
+        if DemoMode.blocks("fan.apply") { return completion(nil) }
         controlQueue.async {
             do {
                 try FanDriver.apply(preset)
@@ -82,6 +83,7 @@ nonisolated enum FanCommand {
 
     /// The running helper's CFBundleVersion, or nil when it does not answer. Blocks; call off main.
     static func helperVersion() -> Int? {
+        if DemoMode.blocks("fan.helper.version") { return nil }
         let connection = helperConnection()
         defer { connection.invalidate() }
         let version = request(on: connection, seconds: 5) { helper, reply in
@@ -92,6 +94,7 @@ nonisolated enum FanCommand {
 
     /// Asks the root helper to restart Core Audio. Returns an empty string on success. Blocks; call off main.
     static func restartAudio() -> String {
+        if DemoMode.blocks("fan.helper.restart-audio") { return "The demo build does not restart audio." }
         let connection = helperConnection()
         defer { connection.invalidate() }
         return request(on: connection, seconds: 10) { helper, reply in helper.restartAudio(reply: reply) }
@@ -111,6 +114,7 @@ nonisolated enum FanCommand {
     /// One blocking helper call. The error handler covers a helper that stops or refuses the connection.
     static func request(on connection: NSXPCConnection, seconds: Double = 8,
                         _ send: (MacPowerToysHelperXPCProtocol, @escaping @Sendable (String) -> Void) -> Void) -> String {
+        if DemoMode.blocks("fan.helper.request") { return "The demo build does not talk to the fan helper." }
         let reply = HelperReply()
         guard let helper = connection.remoteObjectProxyWithErrorHandler({ reply.finish($0.localizedDescription) })
                 as? MacPowerToysHelperXPCProtocol else { return "The built-in fan helper is unavailable." }
@@ -119,6 +123,7 @@ nonisolated enum FanCommand {
     }
 
     static func run(_ executable: String, _ arguments: [String]) throws -> String {
+        if DemoMode.blocks("process.run") { throw FanError("The demo build does not run \(executable).") }
         let process = Process()
         process.executableURL = URL(fileURLWithPath: executable)
         process.arguments = arguments
@@ -296,6 +301,11 @@ final class FanControlService {
     @ObservationIgnored private var wakeObserver: NSObjectProtocol?
 
     private convenience init() {
+        #if MPT_DEMO
+        self.init(readSnapshot: DemoFanState.snapshot, readTemperature: DemoFanState.temperatures,
+                  applyPreset: DemoFanState.apply)
+        Self.current = self
+        #else
         self.init(readSnapshot: FanCommand.read, readTemperature: CPUTemperatureSensor.read)
         Self.current = self
         if let moved = FanCurve.migrateToAverageScale() { LogManager.shared.info(moved, source: "Fan") }
@@ -309,10 +319,12 @@ final class FanControlService {
                     await FanControlService.shared.restoreSavedPreset(afterWake: true)
                 }
             }
+        #endif
     }
 
     /// Applies the saved Cool or Max with no prompt. A missing or outdated helper leaves Auto and shows the bell item.
     func restoreSavedPreset(afterWake: Bool = false) async {
+        if DemoMode.blocks("fan.restore-saved") { return }
         let saved = Self.savedPreset
         guard saved != .auto, !isRestoringOnExit, !isChanging else { return }
         let owner = "saved-preset"
@@ -350,6 +362,7 @@ final class FanControlService {
     /// `macpowertoys://fan/<auto|cool|max>`: applies a preset with no window, for tests and scripts. It never
     /// installs the helper, so it never shows a password prompt.
     func selectFromLink(_ preset: FanPreset) async {
+        if DemoMode.blocks("fan.select-link") { return }
         let owner = "deep-link"
         start(owner: owner)
         defer { stop(owner: owner) }
@@ -446,6 +459,7 @@ final class FanControlService {
     }
 
     func select(_ preset: FanPreset) {
+        if DemoMode.blocks("fan.select") { return }
         guard !isRestoringOnExit else { return }
         guard FanControlPresentation.canSelect(preset, canControl: canControl,
                                               canRestoreAutomatic: canRestoreAutomatic, isChanging: isChanging) else { return }
@@ -495,6 +509,7 @@ final class FanControlService {
     }
 
     func restoreAutomaticOnExit() async throws {
+        if DemoMode.blocks("fan.restore-on-exit") { return }
         guard !isRestoringOnExit else { throw FanError("Automatic fan restoration is already in progress.") }
         guard ownsManualControl || hasPendingManualCommand else { return }
         isRestoringOnExit = true
@@ -562,3 +577,13 @@ final class FanControlService {
         }
     }
 }
+
+#if MPT_DEMO
+extension FanControlService {
+    /// Shows a preset as active in memory only; nothing reaches the helper or the SMC.
+    func showDemoPreset(_ preset: FanPreset) {
+        ownsManualControl = preset != .auto
+        selectedPreset = preset
+    }
+}
+#endif

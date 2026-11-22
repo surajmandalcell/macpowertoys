@@ -145,15 +145,19 @@ final class AwakeService {
         let assertionType = configuration.keepDisplayOn
             ? kIOPMAssertionTypePreventUserIdleDisplaySleep
             : kIOPMAssertionTypePreventUserIdleSystemSleep
-        let result = IOPMAssertionCreateWithName(
-            assertionType as CFString,
-            IOPMAssertionLevel(kIOPMAssertionLevelOn),
-            "MacPowerToys Awake is active" as CFString,
-            &assertionID
-        )
-        if result != kIOReturnSuccess {
-            assertionID = 0
-            assertionError = "macOS could not create the power assertion (\(result))."
+        if DemoMode.blocks("awake.assertion") {
+            assertionID = 1
+        } else {
+            let result = IOPMAssertionCreateWithName(
+                assertionType as CFString,
+                IOPMAssertionLevel(kIOPMAssertionLevelOn),
+                "MacPowerToys Awake is active" as CFString,
+                &assertionID
+            )
+            if result != kIOReturnSuccess {
+                assertionID = 0
+                assertionError = "macOS could not create the power assertion (\(result))."
+            }
         }
         updateRemaining()
         save()
@@ -162,7 +166,7 @@ final class AwakeService {
 
     private func releaseAssertion() {
         guard assertionID != 0 else { return }
-        IOPMAssertionRelease(assertionID)
+        if !DemoMode.blocks("awake.release") { IOPMAssertionRelease(assertionID) }
         assertionID = 0
     }
 

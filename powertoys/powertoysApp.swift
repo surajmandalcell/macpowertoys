@@ -16,6 +16,9 @@ struct MacPowerToysApp: App {
     @AppStorage(AppAppearance.storageKey) private var appearance = AppAppearance.dark
 
     init() {
+        #if MPT_DEMO
+        DemoSafety.install()
+        #endif
         if AppRuntime.isRunningUnitTests {
             NSApplication.shared.setActivationPolicy(.prohibited)
         }
@@ -26,7 +29,7 @@ struct MacPowerToysApp: App {
             AppIdentity.migrateLegacyPreferences()
             NSLog("Startup preferences migrated in %@", String(describing: started.duration(to: .now)))
         }
-        PortmanShortcuts.updateAppShortcutParameters()
+        if !DemoMode.isActive { PortmanShortcuts.updateAppShortcutParameters() }
     }
 
     @MainActor

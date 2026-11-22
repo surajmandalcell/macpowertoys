@@ -232,6 +232,9 @@ struct MacTweaksWindowView: View {
             }
         }
         .task(id: preferenceRevision) { await reloadPreferenceState() }
+        #if MPT_DEMO
+        .onReceive(NotificationCenter.default.publisher(for: DemoMacTweaks.didChange)) { _ in preferenceRevision &+= 1 }
+        #endif
         .onExitCommand { if !search.isEmpty { search = "" } }
         .onOpenToolPage("mac-tweaks") { pageID in
             let pageIDs = Set(MacTweaksCategory.all.map(\.id) + ["modified", "about"])
@@ -760,6 +763,7 @@ struct MacTweaksWindowView: View {
     private func restartRequestedApp() {
         guard let request = restartRequest else { return }
         restartRequest = nil
+        if DemoMode.blocks("app.restart") { showNotice(.init(message: "\(request.name) restarted.")); return }
         let apps = NSRunningApplication.runningApplications(withBundleIdentifier: request.bundleID)
         guard !apps.isEmpty else { showNotice(.init(message: "\(request.name) is not running.")); return }
         guard let url = NSWorkspace.shared.urlForApplication(withBundleIdentifier: request.bundleID) else {

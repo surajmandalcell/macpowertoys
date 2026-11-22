@@ -20,7 +20,11 @@ final class FanHelperService {
         case ready
     }
 
+    #if MPT_DEMO
+    static let shared = FanHelperService(refreshOnInit: true) { _ in .ready }
+    #else
     static let shared = FanHelperService(refreshOnInit: !AppRuntime.isRunningTests)
+    #endif
 
     private(set) var status = Status.unknown
     @ObservationIgnored private let readStatus: @Sendable (Status) -> Status
@@ -48,6 +52,7 @@ final class FanHelperService {
     /// Shows the macOS admin password prompt and installs the helper. Returns an error message, or nil on success.
     func install() async -> String? {
         guard !AppRuntime.isRunningTests else { return "Tests never install the fan helper." }
+        if DemoMode.blocks("fan.helper.install") { return nil }
         guard status != .unsupported else { return Self.unsupportedMessage }
         statusGeneration &+= 1
         let message = await Task.detached(priority: .userInitiated) { Self.bless() }.value
@@ -92,6 +97,7 @@ final class FanHelperService {
     // SMJobBless is deprecated since macOS 13 but still installs helpers; SMAppService needs a Login Items trip.
     // Touch ID: SecurityAgent allows biometry only for a notarized requester (`make install NOTARIZE=1`).
     nonisolated private static func bless() -> String? {
+        if DemoMode.blocks("fan.helper.bless") { return "The demo build does not install the fan helper." }
         var authorization: AuthorizationRef?
         guard AuthorizationCreate(nil, nil, [], &authorization) == errAuthorizationSuccess, let authorization else {
             return "macOS could not start the fan helper install."
@@ -130,6 +136,7 @@ final class FanHelperService {
     /// once, so only the blessed daemon runs. Safe to call on every launch.
     nonisolated static func retireLegacyRegistrations() async {
         guard !AppRuntime.isRunningTests else { return }
+        if DemoMode.blocks("fan.helper.retire") { return }
         let items = [SMAppService.daemon(plistName: MacPowerToysHelperContract.legacyDaemonPlistName),
                      SMAppService.loginItem(identifier: legacyLoginItemIdentifier)]
         for item in items where item.status == .enabled || item.status == .requiresApproval {

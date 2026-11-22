@@ -345,6 +345,7 @@ final class InputDevicesManager {
     }
 
     private func followPermission() {
+        if DemoMode.isActive { return }
         let granted = PermissionCenter.shared.isGranted(.accessibility)
         guard granted != permissionGranted else { return }
         permissionGranted = granted
@@ -359,6 +360,7 @@ final class InputDevicesManager {
     }
 
     func refresh() {
+        if DemoMode.blocks("input-devices.hardware-scan") { return }
         permissionGranted = PermissionCenter.shared.isGranted(.accessibility)
         applyInterceptionState()
         guard refreshTask == nil else { return }
@@ -409,6 +411,10 @@ final class InputDevicesManager {
         }
         stopInterception()
         errorMessage = nil
+        if DemoMode.blocks("input-devices.scroll-tap") {
+            interceptionActive = true
+            return
+        }
 
         let mask = CGEventMask(1) << CGEventType.scrollWheel.rawValue
         guard let tap = CGEvent.tapCreate(
@@ -775,3 +781,14 @@ nonisolated final class ScrollEventTap: NSObject, @unchecked Sendable {
         }
     }
 }
+
+#if MPT_DEMO
+extension InputDevicesManager {
+    func demoSeed(devices: [InputDeviceDescriptor], settings: InputDevicesSettings) {
+        self.devices = devices
+        self.settings = settings
+        permissionGranted = true
+        applyInterceptionState()
+    }
+}
+#endif

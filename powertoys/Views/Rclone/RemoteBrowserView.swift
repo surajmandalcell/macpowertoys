@@ -580,6 +580,7 @@ nonisolated struct RemoteFileDragItem: Sendable {
         guard hasValidFileName else {
             throw RcloneRCError.decoding("Invalid download file name")
         }
+        if DemoMode.blocks("rclone.download") { throw RcloneRCError.notReachable }
         try FileManager.default.createDirectory(at: directory, withIntermediateDirectories: true)
         let group = "drag/\(UUID().uuidString)"
         var jobid: Int?

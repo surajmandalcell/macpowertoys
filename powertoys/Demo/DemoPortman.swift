@@ -1,0 +1,126 @@
+//
+//  DemoPortman.swift
+//  powertoys
+//
+
+#if MPT_DEMO
+import Foundation
+
+@MainActor
+enum DemoPortman {
+    private struct Server {
+        let name: String
+        let port: UInt16
+        let branch: String
+        let uptime: String
+        let upSeconds: Double
+        let memoryMB: Double
+        let cpuPercent: Double
+        let pid: Int32
+    }
+
+    private static let servers = [
+        Server(name: "admin", port: 4200, branch: "main", uptime: "1h 07m", upSeconds: 4_020,
+               memoryMB: 212.4, cpuPercent: 3.1, pid: 48_112),
+        Server(name: "docs", port: 4321, branch: "pricing", uptime: "26m", upSeconds: 1_560,
+               memoryMB: 96.8, cpuPercent: 0.8, pid: 51_907),
+        Server(name: "storefront", port: 5173, branch: "cart", uptime: "2h 14m", upSeconds: 8_040,
+               memoryMB: 168.3, cpuPercent: 4.6, pid: 44_386),
+        Server(name: "api", port: 8080, branch: "main", uptime: "5h 02m", upSeconds: 18_120,
+               memoryMB: 38.6, cpuPercent: 1.2, pid: 39_254),
+        Server(name: "web", port: webPort, branch: "main", uptime: "1m", upSeconds: 60,
+               memoryMB: webPeakMB, cpuPercent: webPeakCPU, pid: 53_640),
+    ]
+
+    private static let webPort: UInt16 = 3000
+    private static let webStartMB = 142.0
+    private static let webPeakMB = 781.4
+    private static let webStartCPU = 6.0
+    private static let webPeakCPU = 38.5
+    private static let bytesPerMB = 1_048_576.0
+    private static let historySamples = 12
+    private static let historySpacing: TimeInterval = 50
+    private static let historyWobble = 0.03
+    private static let climbStart = 0.6
+    private static let climbDuration = 2.6
+    private static let climbSteps = 14
+    private static let stopAt = 4.4
+    private static let forwardHost = "build-box"
+    private static let forwardPort: UInt16 = 5432
+    private static let otherHosts = ["gpu-lab", "staging-eu"]
+
+    static func seed() { seed(webMB: webPeakMB, webCPU: webPeakCPU) }
+
+    static var scene: DemoScene {
+        DemoScene(
+            open: {
+                seed(webMB: webStartMB, webCPU: webStartCPU)
+                ToolActionRouter.shared.open(toolID: "portman", activateApp: false)
+            },
+            steps: climb + [DemoStep(at: stopAt) { stopWeb() }]
+        )
+    }
+
+    private static var climb: [DemoStep] {
+        (1...climbSteps).map { step in
+            let progress = Double(step) / Double(climbSteps)
+            let eased = 1 - (1 - progress) * (1 - progress)
+            return DemoStep(at: climbStart + climbDuration * progress) {
+                PortmanService.shared.demoSetUsage(
+                    port: webPort,
+                    memoryBytes: bytes(webStartMB + (webPeakMB - webStartMB) * eased),
+                    cpuPercent: webStartCPU + (webPeakCPU - webStartCPU) * eased
+                )
+            }
+        }
+    }
+
+    /// Goes through the real Stop entry point; its demo guard only drops the row from memory.
+    private static func stopWeb() {
+        guard let web = PortmanService.shared.localPorts.first(where: { $0.port == webPort }) else { return }
+        PortmanService.shared.stopLocal(web)
+    }
+
+    private static func seed(webMB: Double, webCPU: Double) {
+        let now = Date()
+        let ports = servers.map { server in
+            let isWeb = server.port == webPort
+            return PortmanLocalPort(
+                pid: server.pid, port: server.port, address: "127.0.0.1", command: "node",
+                launchCommand: "node", memoryBytes: bytes(isWeb ? webMB : server.memoryMB),
+                cpuPercent: isWeb ? webCPU : server.cpuPercent, uptime: server.uptime,
+                started: UInt64((now.timeIntervalSince1970 - server.upSeconds) * 1_000_000),
+                userID: geteuid(), hasConnections: true
+            )
+        }
+        let metadata = Dictionary(uniqueKeysWithValues: zip(ports, servers).map { port, server in
+            (port.id, PortmanMetadata(folder: NSHomeDirectory(), project: server.name, branch: server.branch, root: nil))
+        })
+        let history = Dictionary(uniqueKeysWithValues: ports.map { ($0.id, samples(for: $0, now: now)) })
+        PortmanService.shared.demoSeed(
+            ports: ports, metadata: metadata, history: history,
+            tunnels: [PortmanTunnel(id: UUID(), host: forwardHost, remotePort: forwardPort,
+                                    localPort: forwardPort, state: .running)]
+        )
+        PortmanHostList.shared.demoSeed(
+            [PortmanHost(destination: forwardHost, mode: .forward,
+                         forwards: [PortmanForwardSpec(remotePort: forwardPort, localPort: forwardPort)])]
+                + otherHosts.map { PortmanHost(destination: $0, mode: .forward) }
+        )
+    }
+
+    private static func samples(for port: PortmanLocalPort, now: Date) -> [PortmanSample] {
+        let count = port.port == webPort ? 2 : historySamples
+        return (0..<count).map { index in
+            let wobble = 1 + historyWobble * sin(Double(index + Int(port.port)))
+            return PortmanSample(
+                date: now.addingTimeInterval(-historySpacing * Double(count - 1 - index)),
+                memoryBytes: Int64(Double(port.memoryBytes) * wobble),
+                cpuPercent: port.cpuPercent * wobble
+            )
+        }
+    }
+
+    private static func bytes(_ megabytes: Double) -> Int64 { Int64(megabytes * bytesPerMB) }
+}
+#endif

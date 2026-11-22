@@ -33,6 +33,7 @@ nonisolated enum AppDataLocation {
     }
 
     static func migrateLegacyStoreIfNeeded() {
+        guard !DemoMode.isActive else { return }
         let fm = FileManager.default
         guard !fm.fileExists(atPath: storeURL.path) else { return }
 
@@ -51,8 +52,13 @@ nonisolated enum AppDataLocation {
     @discardableResult
     static func prepareDirectory(at root: URL, isTest: Bool) -> URL {
         let fm = FileManager.default
+        #if MPT_DEMO
+        let destinationName = "MacPowerToys-Demo"
+        let legacyName = "MacPowerToys-Demo-Legacy-None"
+        #else
         let destinationName = isTest ? "MacPowerToys-Tests" : "MacPowerToys"
         let legacyName = isTest ? "PowerToys-Tests" : "PowerToys"
+        #endif
         let destination = root.appendingPathComponent(destinationName, isDirectory: true)
         let legacy = root.appendingPathComponent(legacyName, isDirectory: true)
 
@@ -74,7 +80,11 @@ nonisolated enum AppDataLocation {
 
 enum AppIdentity {
     static let displayName = "MacPowerToys"
+    #if MPT_DEMO
+    nonisolated static let bundleIdentifier = "com.surajmandal.macpowertoys.demo"
+    #else
     nonisolated static let bundleIdentifier = "com.surajmandal.macpowertoys"
+    #endif
     nonisolated static let legacyBundleIdentifier = "com.surajmandal.powertoys"
     nonisolated private static let defaultsMigrationKey = "app.identityMigratedFromPowerToys"
 
@@ -93,7 +103,7 @@ enum AppIdentity {
 
     nonisolated static func migrateLegacyPreferences() {
         let defaults = UserDefaults.standard
-        guard !defaults.bool(forKey: defaultsMigrationKey) else { return }
+        guard !DemoMode.isActive, !defaults.bool(forKey: defaultsMigrationKey) else { return }
         let legacy = defaults.persistentDomain(forName: legacyBundleIdentifier) ?? [:]
         _ = migrateLegacyDefaults(legacy, into: defaults)
         defaults.set(true, forKey: defaultsMigrationKey)

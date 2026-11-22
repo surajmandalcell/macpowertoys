@@ -103,6 +103,7 @@ final class SleepTimerService {
 
 enum SystemSleep {
     static func now() {
+        if DemoMode.blocks("power.sleep") { return }
         let port = IOPMFindPowerManagement(mach_port_t(MACH_PORT_NULL))
         if port != 0 {
             let result = IOPMSleepSystem(port)
@@ -118,6 +119,7 @@ enum SystemSleep {
 
 enum SleepTimerNotice {
     static func postWarning() {
+        if DemoMode.blocks("notification.post") { return }
         Task {
             guard await PermissionCenter.allowNotifications() else { return }
             let content = UNMutableNotificationContent()

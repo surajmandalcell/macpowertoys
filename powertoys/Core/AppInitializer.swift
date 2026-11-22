@@ -57,6 +57,18 @@ final class AppInitializer {
             await withCheckedContinuation { initializationWaiter = $0 }
         }
         _ = SettingsManager.shared
+        #if MPT_DEMO
+        // Fake data only: no service that reads or changes the Mac starts in the demo build.
+        DemoDirector.prepare()
+        IndividualMenuBarController.shared.start()
+        PortmanMenuController.shared.start()
+        applyStoredTheme()
+        state = .ready
+        routesReady()
+        await openStorage()
+        DemoDirector.playRequestedScene()
+        return
+        #endif
         if SettingsManager.shared.isToolEnabled("awake") { _ = AwakeService.shared }
         _ = ColorPickerService.shared
         let textExtractor = TextExtractorService.shared
@@ -121,6 +133,9 @@ final class AppInitializer {
         restoration?.cancel()
         let reason = systemQuit ? "logout, restart, or shutdown" : "user quit"
         LogManager.shared.info("App shutting down (\(reason))...", source: "AppInitializer")
+        #if MPT_DEMO
+        return
+        #endif
         InputDevicesManager.disableScrollTap()
         do {
             try await runShutdownStep(.fan, on: fanShutdown, timeout: .seconds(20), systemQuit: systemQuit) {

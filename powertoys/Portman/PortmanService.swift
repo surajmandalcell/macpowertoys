@@ -734,6 +734,7 @@ final class PortmanService {
 
     func beginMonitoring() {
         monitoringCount += 1
+        if DemoMode.isActive { return }
         if monitoringCount == 2 {
             monitoringTask?.cancel()
             monitoringTask = nil
@@ -759,7 +760,7 @@ final class PortmanService {
 
     func endMonitoring() {
         monitoringCount = max(0, monitoringCount - 1)
-        guard monitoringCount == 0 else { return }
+        guard monitoringCount == 0, !DemoMode.isActive else { return }
         monitoringTask?.cancel()
         monitoringTask = nil
         lastScanAt = .distantPast
@@ -777,6 +778,7 @@ final class PortmanService {
     }
 
     func refreshLocal() async {
+        if DemoMode.blocks("portman.scan") { return }
         while isScanningLocal {
             guard !Task.isCancelled else { return }
             try? await Task.sleep(for: .milliseconds(50))
@@ -862,7 +864,7 @@ final class PortmanService {
     }
 
     func loadMetadata(for port: PortmanLocalPort) async {
-        guard metadata[port.id] == nil else { return }
+        guard metadata[port.id] == nil, !DemoMode.isActive else { return }
         let details = await Task.detached(priority: .utility) {
             PortmanScanner.metadata(pid: port.pid)
         }.value
@@ -872,6 +874,7 @@ final class PortmanService {
     }
 
     func loadSession(for port: PortmanLocalPort) async {
+        if DemoMode.isActive { return }
         guard UserDefaults.standard.bool(forKey: "portman.sessionLinksEnabled") else {
             sessions.removeValue(forKey: port.id)
             return
@@ -887,6 +890,7 @@ final class PortmanService {
     }
 
     func loadGitHubLinks(for port: PortmanLocalPort) async {
+        if DemoMode.blocks("portman.github-lookup") { return }
         guard UserDefaults.standard.bool(forKey: "portman.publicGitHubLinksEnabled") else {
             githubLinks.removeValue(forKey: port.id)
             return
@@ -901,6 +905,7 @@ final class PortmanService {
     }
 
     func loadRestartAvailability(for port: PortmanLocalPort) async {
+        if DemoMode.isActive { return }
         guard let folder = metadata[port.id]?.folder else { return }
         let available = await Task.detached(priority: .utility) {
             PortmanLaunch.capture(port, folder: folder) != nil
@@ -911,6 +916,7 @@ final class PortmanService {
     }
 
     func restartLocal(_ port: PortmanLocalPort) {
+        if DemoMode.blocks("portman.restart") { return }
         guard let folder = metadata[port.id]?.folder,
               restartableIDs.contains(port.id),
               restartingIDs.insert(port.id).inserted else { return }
@@ -928,6 +934,7 @@ final class PortmanService {
     }
 
     func refreshRemote(host: String, password: String? = nil, configurationFile: URL? = nil) async {
+        if DemoMode.blocks("portman.remote-scan") { return }
         let requestID = UUID()
         remoteRequestID = requestID
         isLoadingRemote = true
@@ -961,6 +968,7 @@ final class PortmanService {
     }
 
     func loadRemoteDetails(host: String, port: UInt16, password: String? = nil) async {
+        if DemoMode.blocks("portman.remote-scan") { return }
         guard let detail = remoteDetails[port], detail.command == nil,
               detail.pid != nil else { return }
         let process = try? await PortmanScanner.remoteProcessDetails(
@@ -974,6 +982,7 @@ final class PortmanService {
     @discardableResult
     func forward(host: String, remotePort: UInt16, localPort: UInt16,
                  password: String? = nil, configurationFile: URL? = nil) -> Bool {
+        if DemoMode.blocks("portman.forward") { return false }
         let arguments: [String]
         do {
             arguments = try PortmanScanner.tunnelArguments(
@@ -1072,6 +1081,7 @@ final class PortmanService {
     }
 
     func stopLocal(_ port: PortmanLocalPort) {
+        if DemoMode.blocks("portman.stop") { forgetStopped([port]); return }
         do {
             try PortmanScanner.stop(port)
             controlError = nil
@@ -1099,6 +1109,7 @@ final class PortmanService {
     }
 
     func stopLocalProcesses(_ ports: [PortmanLocalPort]) {
+        if DemoMode.blocks("portman.stop") { forgetStopped(ports); return }
         var stopped = Set<Int32>()
         var failures: [String] = []
         for port in ports where stopped.insert(port.pid).inserted {
@@ -1110,6 +1121,13 @@ final class PortmanService {
         }
         controlError = failures.isEmpty ? nil : failures.joined(separator: "\n")
         Task { await refreshLocal() }
+    }
+
+    /// Demo only: drops stopped servers from the list without touching any process.
+    private func forgetStopped(_ ports: [PortmanLocalPort]) {
+        let pids = Set(ports.map(\.pid))
+        localPorts.removeAll { pids.contains($0.pid) }
+        NotificationCenter.default.post(name: .portmanSnapshotChanged, object: nil)
     }
 
     private func scheduleForceStop(_ port: PortmanLocalPort) {
@@ -1152,3 +1170,28 @@ private extension PortmanTunnel {
         return false
     }
 }
+
+#if MPT_DEMO
+extension PortmanService {
+    func demoSeed(ports: [PortmanLocalPort], metadata: [String: PortmanMetadata],
+                  history: [String: [PortmanSample]], tunnels: [PortmanTunnel]) {
+        localPorts = ports
+        self.metadata = metadata
+        self.history = history
+        self.tunnels = tunnels
+        let now = Date()
+        lastConnectionAt = Dictionary(ports.map { ($0.processID, now) }, uniquingKeysWith: { first, _ in first })
+        localError = nil
+        NotificationCenter.default.post(name: .portmanSnapshotChanged, object: nil)
+    }
+
+    func demoSetUsage(port: UInt16, memoryBytes: Int64, cpuPercent: Double) {
+        guard let index = localPorts.firstIndex(where: { $0.port == port }) else { return }
+        localPorts[index].memoryBytes = memoryBytes
+        localPorts[index].cpuPercent = cpuPercent
+        history[localPorts[index].id, default: []].append(
+            PortmanSample(date: Date(), memoryBytes: memoryBytes, cpuPercent: cpuPercent))
+        NotificationCenter.default.post(name: .portmanSnapshotChanged, object: nil)
+    }
+}
+#endif

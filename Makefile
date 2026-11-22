@@ -40,6 +40,16 @@ test:
 	@test "$(TEST_SESSION)" = "isolated" || (echo "Xcode tests launch MacPowerToys on the desktop. Use make build-for-testing here; run TEST_SESSION=isolated make test in a separate macOS account or VM." && exit 1)
 	$(XCODEBUILD) -scheme $(TEST_SCHEME) test -destination 'platform=macOS' -parallel-testing-enabled NO $(TEST_ARGS) -skip-testing:powertoysUITests $(TEST_SIGNING)
 
+# make demo: "MacPowerToys Demo" for site captures. Fake data, every side effect stubbed, its own bundle id,
+# data folder, and URL schemes. MPT_DEMO is set only here, so the shipped build carries none of the demo code.
+DEMO_DERIVED_DATA ?= $(CURDIR)/build/DemoDerivedData
+DEMO_APP := $(DEMO_DERIVED_DATA)/Build/Products/Release/MacPowerToys Demo.app
+
+demo:
+	taskpolicy -c utility nice -n 10 xcodebuild -project $(PROJECT) -jobs 4 -derivedDataPath "$(DEMO_DERIVED_DATA)" MPT_SOURCE_COMMIT=$(SOURCE_COMMIT) \
+		-scheme $(SCHEME) -configuration Release $(SIGNING) MPT_DEMO_CONDITION=MPT_DEMO MPT_DEMO_BUNDLE_SUFFIX=.demo 'MPT_DEMO_NAME_SUFFIX= Demo' build
+	zsh scripts/demo-safety.sh "$(DEMO_APP)"
+
 raycast-assets:
 	sh raycast/sync-icons.sh
 
@@ -63,6 +73,7 @@ verify-app:
 	@test -z "$$(git status --porcelain)" || (echo "Refusing to install because the worktree changed during the build." && exit 1)
 	@CURRENT_COMMIT="$$(git rev-parse HEAD)"; BUILT_COMMIT="$$(plutil -extract MPTSourceCommit raw "$(INSTALL_APP)/Contents/Info.plist" 2>/dev/null)"; test "$(SOURCE_COMMIT)" = "$$CURRENT_COMMIT" && test "$$BUILT_COMMIT" = "$$CURRENT_COMMIT" || (echo "Refusing to install a stale build. Re-run make install from the current HEAD." && exit 1)
 	@codesign --verify --deep --strict "$(INSTALL_APP)"
+	@! strings "$(INSTALL_APP)/Contents/MacOS/MacPowerToys" | grep -q 'macpowertoys\.demo' || (echo "Refusing to install a build that contains demo code." && exit 1)
 	@test "$$(codesign -dv --verbose=4 "$(INSTALL_APP)" 2>&1 | sed -n 's/^TeamIdentifier=//p')" = "GF57JXJF5A" || (echo "Refusing to install an app without the configured signing team." && exit 1)
 	@HELPER="$(INSTALL_APP)/Contents/Library/LaunchServices/com.surajmandal.macpowertoys.helper"; launchctl plist __TEXT,__info_plist "$$HELPER" 2>/dev/null | grep -q "\"MPTSourceCommit\" = \"$(SOURCE_COMMIT)\"" && codesign --verify --strict -R='identifier "com.surajmandal.macpowertoys.helper" and anchor apple generic and certificate leaf[subject.OU] = "GF57JXJF5A"' "$$HELPER" && codesign --verify --strict -R='identifier "com.surajmandal.macpowertoys" and anchor apple generic and certificate leaf[subject.OU] = "GF57JXJF5A"' "$(INSTALL_APP)" || (echo "Refusing to install a stale helper or one whose signature does not match SMPrivilegedExecutables and SMAuthorizedClients." && exit 1)
 ifneq ($(ADHOC),1)
@@ -116,4 +127,4 @@ release: release-preflight build verify-app notarize-app
 	cd "$(RELEASE_DIR)" && shasum -a 256 "MacPowerToys-$$VERSION.dmg" | tee "MacPowerToys-$$VERSION.dmg.sha256"; \
 	printf '{"version":"%s","notarized":true}\n' "$$VERSION" > release.json
 
-.PHONY: build build-for-testing test raycast-assets raycast raycast-install install install-preflight verify-app notarize-app release release-preflight
+.PHONY: build build-for-testing test demo raycast-assets raycast raycast-install install install-preflight verify-app notarize-app release release-preflight

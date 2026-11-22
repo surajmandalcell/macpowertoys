@@ -62,6 +62,7 @@ final class MicLockService {
     }
 
     func startIfNeeded() {
+        if DemoMode.blocks("mic-lock.start") { return }
         guard SettingsManager.shared.isToolEnabled("mac-tweaks"), isEnabled || windowIsOpen else { return }
         if systemListener == nil {
             let listener: AudioObjectPropertyListenerBlock = { @Sendable [weak self] _, _ in

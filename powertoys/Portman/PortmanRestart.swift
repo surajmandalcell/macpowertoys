@@ -89,6 +89,7 @@ nonisolated enum PortmanRestart {
     }
 
     static func run(_ port: PortmanLocalPort, folder: String) async throws {
+        if DemoMode.blocks("portman.restart") { throw Failure.unavailable }
         guard let launch = PortmanLaunch.capture(port, folder: folder) else { throw Failure.unavailable }
         let logs = FileManager.default.homeDirectoryForCurrentUser
             .appendingPathComponent("Library/Logs/MacPowerToys/Portman")

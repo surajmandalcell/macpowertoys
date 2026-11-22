@@ -370,6 +370,7 @@ final class MarketplaceManager {
     // MARK: Installed tools
 
     func installTool(_ manifest: MarketplaceToolManifest, from source: MarketplaceSource) async throws {
+        if DemoMode.blocks("marketplace.install") { throw CocoaError(.featureUnsupported) }
         guard manifest.isCompatible(with: hostEnvironment) else {
             throw MarketplaceInstallError.incompatible
         }
@@ -413,6 +414,7 @@ final class MarketplaceManager {
     }
 
     func uninstall(_ receipt: MarketplaceReceipt) async throws {
+        if DemoMode.blocks("marketplace.uninstall") { throw CocoaError(.featureUnsupported) }
         if let uninstallHandler {
             try await uninstallHandler(receipt)
         } else {

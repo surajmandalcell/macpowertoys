@@ -44,6 +44,7 @@ nonisolated enum SSHProcessRunner {
         maximumOutputBytes: Int = 4 * 1_024 * 1_024,
         timeout: TimeInterval
     ) async throws -> SSHProcessResult {
+        if DemoMode.blocks("ssh.run") { throw SSHKeyAccessError.processLaunchFailed("The demo build does not run SSH.") }
         guard maximumOutputBytes > 0 else { throw SSHKeyAccessError.outputLimit }
         let cancellation = ProcessCancellation()
         // Blocking waits and pipe reads run on dispatch threads, never on the Swift cooperative pool.
@@ -186,6 +187,7 @@ nonisolated final class SSHAskpassChannel: @unchecked Sendable {
     let environment: [String: String]
 
     init() throws {
+        if DemoMode.blocks("ssh.askpass") { throw POSIXError(.EPERM) }
         let fileManager = FileManager.default
         directoryURL = fileManager.temporaryDirectory
             .appendingPathComponent("macpowertoys-ssh-\(UUID().uuidString)", isDirectory: true)

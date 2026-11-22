@@ -225,6 +225,9 @@ nonisolated final class TweakPreferenceStore {
     /// `userChanged`: the user changed this tweak here (it has a backup), so a privacy-prompt domain may be read.
     /// Until then such a field shows Default.
     nonisolated static func readSelectedChoice(for field: TweakPreferenceField, userChanged: Bool = false) -> Int {
+        #if MPT_DEMO
+        if let demo = demoSelections[field.identity] { return demo }
+        #endif
         guard userChanged || !field.readNeedsUserAction else { return -1 }
         guard let current = CFPreferencesCopyValue(
             field.key as CFString,
@@ -266,6 +269,11 @@ nonisolated final class TweakPreferenceStore {
     }
 
     func apply(_ fields: [TweakPreferenceField], selections: [String: Int]) throws {
+        #if MPT_DEMO
+        DemoSafety.record("preferences.apply")
+        Self.demoSelections.merge(selections) { $1 }
+        return
+        #endif
         guard !backupIsUnreadable else { throw TweakPreferenceError.unreadableBackup }
         for field in fields { try reconcilePendingWrite(for: field) }
         let originalRecords = records
@@ -332,6 +340,11 @@ nonisolated final class TweakPreferenceStore {
     }
 
     func restore(_ fields: [TweakPreferenceField], includingUntracked: Bool = false) throws {
+        #if MPT_DEMO
+        DemoSafety.record("preferences.restore")
+        for field in fields { Self.demoSelections[field.identity] = nil }
+        return
+        #endif
         guard !backupIsUnreadable else { throw TweakPreferenceError.unreadableBackup }
         for field in fields { try reconcilePendingWrite(for: field) }
         var writes: [(TweakPreferenceField, Any?)] = []
@@ -428,6 +441,7 @@ nonisolated final class TweakPreferenceStore {
     }
 
     private func persist(_ records: [String: Record]) throws {
+        if DemoMode.blocks("preferences.backup") { return }
         guard let data = try? PropertyListEncoder().encode(records) else {
             throw TweakPreferenceError.writeFailed("Mac Tweaks backup")
         }
@@ -435,3 +449,10 @@ nonisolated final class TweakPreferenceStore {
         guard defaults.synchronize() else { throw TweakPreferenceError.writeFailed("Mac Tweaks backup") }
     }
 }
+
+#if MPT_DEMO
+extension TweakPreferenceStore {
+    // shortcut: unlocked; the demo writes on the main thread before it bumps the revision that triggers reads.
+    nonisolated(unsafe) static var demoSelections: [String: Int] = [:]
+}
+#endif

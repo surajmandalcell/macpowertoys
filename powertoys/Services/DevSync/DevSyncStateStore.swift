@@ -48,6 +48,7 @@ actor DevSyncStateStore {
     private static let dateFormatter = DevSyncISO8601Formatter(options: [.withInternetDateTime])
 
     nonisolated private static var defaultRootURL: URL {
+        if DemoMode.isActive { return AppDataLocation.directory.appendingPathComponent("DevSync", isDirectory: true) }
         let applicationSupport = FileManager.default.urls(for: .applicationSupportDirectory, in: .userDomainMask)[0]
         let applicationDirectory = AppRuntime.isRunningTests ? "MacPowerToys-Tests" : "MacPowerToys"
         return applicationSupport

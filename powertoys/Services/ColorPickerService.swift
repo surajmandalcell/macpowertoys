@@ -68,6 +68,7 @@ final class ColorPickerService {
     }
 
     func pick() {
+        if DemoMode.blocks("color-picker.sampler") { return }
         guard !isPicking else { return }
         isPicking = true
         NSApp.activate(ignoringOtherApps: true)
@@ -99,6 +100,7 @@ final class ColorPickerService {
     }
 
     func copy(_ sample: ColorSample, as format: ColorCopyFormat) {
+        if DemoMode.blocks("color-picker.clipboard") { return }
         pasteboard.clearContents()
         pasteboard.setString(sample.string(format), forType: .string)
     }
@@ -228,6 +230,7 @@ final class ColorPickerService {
     }
 
     func export(_ project: ColorProject, from window: NSWindow? = nil) {
+        if DemoMode.blocks("color-picker.export") { return }
         let content = Self.css(for: samples(in: project.id))
         let panel = NSSavePanel()
         panel.allowedContentTypes = [.css]
@@ -295,3 +298,17 @@ final class ColorPickerService {
 
     private func saveProjects() { save() }
 }
+
+#if MPT_DEMO
+extension ColorPickerService {
+    func demoSeed(_ samples: [ColorSample]) {
+        history = samples
+        projects = []
+        selectedProjectID = nil
+    }
+
+    func demoSetPicking(_ picking: Bool) {
+        isPicking = picking
+    }
+}
+#endif

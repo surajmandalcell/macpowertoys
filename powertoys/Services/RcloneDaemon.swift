@@ -130,6 +130,7 @@ final class RcloneDaemon {
     func ensureRunning(binaryPath: String) async throws -> RcloneRCClient {
         try Task.checkCancellation()
         if isRunning, let client { return client }
+        if DemoMode.blocks("rclone.daemon") { throw RcloneRCError.notReachable }
         stop()
         return try await startDaemon(binaryPath: binaryPath)
     }

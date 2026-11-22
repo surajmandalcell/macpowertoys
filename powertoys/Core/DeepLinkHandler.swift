@@ -35,6 +35,8 @@ final class DeepLinkHandler {
     }
 
     func handle(url: URL) {
+        // Links can write diagnostics, change the fan, and open windows; the demo plays only its own scenes.
+        if DemoMode.blocks("deep-link") { return }
         LogManager.shared.debug(
             "Handling deep link: \(url.scheme ?? "unknown")://\(url.host ?? "")\(url.path)",
             source: "DeepLinkHandler"
