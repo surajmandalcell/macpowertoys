@@ -43,6 +43,7 @@ enum DemoDirector {
 
     /// Fills every service with the site's fake values before any window opens.
     static func prepare() {
+        if DemoStill.directory != nil { DemoStill.forceActiveLook() }
         DemoFan.seed()
         DemoMenuPanel.seed()
         DemoAwake.seed()
@@ -75,10 +76,21 @@ enum DemoDirector {
             writeSceneFile(name: name, windows: windows, leadIn: leadIn)
             try? await Task.sleep(for: .seconds(max(0, leadIn - 0.6)))
             var elapsed = 0.0
+            let stillAt = DemoStill.stopAt
             for step in scene.steps.sorted(by: { $0.at < $1.at }) {
+                if let stillAt, step.at > stillAt { break }
                 try? await Task.sleep(for: .seconds(max(0, step.at - elapsed)))
                 elapsed = max(elapsed, step.at)
                 step.run()
+            }
+            if let directory = DemoStill.directory {
+                // Lets SwiftUI and the services settle so no half-drawn frame is drawn.
+                try? await Task.sleep(for: .seconds(max(0, (stillAt ?? elapsed) - elapsed) + 1))
+                DemoStill.write(scene: name, windows: DemoStill.sceneWindows(excluding: windowsBefore), to: directory)
+                markSceneDone()
+                // Keeps the windows up for a one-shot reference screenshot, then quits.
+                try? await Task.sleep(for: .seconds(4))
+                exit(0)
             }
             // The recording starts about 1 s after launch; this keeps every site clip at 6 s or more.
             try? await Task.sleep(for: .seconds(max(scene.tail, 7.5 - leadIn - elapsed)))

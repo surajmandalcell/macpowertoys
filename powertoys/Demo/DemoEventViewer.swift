@@ -31,7 +31,7 @@ enum DemoEventViewer {
     ]
 
     private static let warningAt = 1.6
-    private static let warning = "web on :3000 uses 781 MB, up 639 MB in 2 minutes"
+    private static let warning = "web on :3000 uses 781 MB, up 639 MB"
 
     static func seed() {
         let now = Date()
