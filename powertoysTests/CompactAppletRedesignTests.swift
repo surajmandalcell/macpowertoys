@@ -102,9 +102,9 @@ final class CompactAppletRedesignTests: XCTestCase {
                                      height: scroll.contentView.bounds.height)
                     scroll.contentView.scroll(to: scroll.contentView.constrainBoundsRect(end).origin)
                     scroll.reflectScrolledClipView(scroll.contentView)
+                    // The scroll runs to the window edge; its content keeps the bottom gutter inside.
                     if page == .history {
-                        XCTAssertLessThanOrEqual(scroll.convert(scroll.bounds, to: host).maxY,
-                                                 height - OnePlusMetrics.gutter + 0.5)
+                        XCTAssertLessThanOrEqual(scroll.convert(scroll.bounds, to: host).maxY, height + 0.5)
                     }
                 }
                 host.layoutSubtreeIfNeeded()

@@ -24,9 +24,9 @@ final class FocusEffectTests: XCTestCase {
     }
 
     @MainActor
-    func testSharedRootUsesAccessibilityFocusPolicy() {
+    func testSharedRootTurnsOffFocusEffect() {
         OnePlusFocusPolicy.shared.refresh()
-        let expected = NSApp.isFullKeyboardAccessEnabled || NSWorkspace.shared.isVoiceOverEnabled
+        let expected = false
         var focusEffectEnabled: Bool?
         let host = NSHostingView(rootView: FocusEffectProbe { focusEffectEnabled = $0 }
             .utilityMotionPolicy())
