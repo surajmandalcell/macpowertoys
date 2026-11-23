@@ -129,7 +129,7 @@ nonisolated struct FanCurve: Codable, Equatable, Sendable {
     }
 }
 
-/// The fixed Cool curves on the CPU-average scale (owner, 2026-11-21: "less full fan spin-ups"). Silent and Quiet are
+/// The fixed Cool curves on the CPU-average scale. Silent and Quiet are
 /// by sound: they leave the minimum early, at 50 and 48 °C, and climb gently, so heat never builds to a loud spin-up;
 /// full speed comes only from the locked end or the hottest-core safety. Steady is the aggressive curve. Custom is the
 /// user's own curve.
@@ -222,7 +222,7 @@ nonisolated struct FanHold: Equatable, Sendable {
     }
 }
 
-/// What Cool follows (owner pick "CPU and GPU averages, 20 s", 2026-11-21): the CPU die average and the GPU die
+/// What Cool follows: the CPU die average and the GPU die
 /// average, each over a 20 s average, so one busy core never spins the fans up. Each goes through the curve and the
 /// higher request wins. The hottest single core only guards the chip: 10 s in a row at 90 °C or more forces full
 /// speed until it reads below 85 °C.

@@ -1,7 +1,7 @@
 import OnePlusUI
 import SwiftUI
 
-/// The Fan page (owner pick "Big chart", 2026-11-20): the Cool curve as one large chart. Drag a point to move it,
+/// The Fan page: the Cool curve as one large chart. Drag a point to move it,
 /// double-click a point to type exact values, double-click empty space to add a point.
 struct FanPageView: View {
     static let pageID = "fan"
@@ -78,7 +78,7 @@ private struct FanHintRow<Trailing: View>: View {
     }
 }
 
-/// The five picks under the chart (owner picks "Curve cards" and "By sound", 2026-11-20), each with a small picture
+/// The five picks under the chart, each with a small picture
 /// of what it does. A curve card picks its curve and turns Hold off; Hold sets its target.
 private struct FanPresetCards: View {
     let preset: FanCurvePreset
@@ -178,7 +178,7 @@ private struct FanPlot {
     }
 }
 
-/// The "Heat line" colors (owner pick, 2026-11-20): cool blue through the `CPUHeat` steps to very hot red. The stops
+/// The "Heat line" colors: cool blue through the `CPUHeat` steps to very hot red. The stops
 /// sit where those steps fall on the 30-90 °C average scale.
 enum FanHeat {
     static func color(_ celsius: Double) -> Color {
@@ -272,7 +272,7 @@ private struct FanHoldBand: View {
     }
 }
 
-/// The page icon (owner pick "Neutral fan", 2026-11-20): Midnight in Light, Porcelain in Dark, like Portman.
+/// The page icon: Midnight in Light, Porcelain in Dark, like Portman.
 struct FanPageIcon: View {
     let size: CGFloat
 
@@ -564,7 +564,7 @@ private struct FanCurveLine: View {
     }
 }
 
-/// The fixed end of every curve (owner, 2026-11-20): full speed from an 80 °C CPU average. An ink dot with a lock, unlike the
+/// The fixed end of every curve: full speed from an 80 °C CPU average. An ink dot with a lock, unlike the
 /// user's white points, and its label to the left above the plot; it never moves.
 private struct FanLockedEnd: View {
     let point: CGPoint

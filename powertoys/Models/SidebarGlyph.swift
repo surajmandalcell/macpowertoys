@@ -5,9 +5,9 @@ import SwiftUI
 /// Template SVG assets `SidebarGlyph<Name>`; the sidebar tints them `secondary`, `ink` when selected.
 enum SidebarGlyph {
     static let allTools = "SidebarGlyphAllTools"
-    /// The Fan row's glyph (owner pick "Open blades", 2026-11-20).
+    /// The Fan row's glyph.
     static let fan = "SidebarGlyphFan"
-    /// The Apps by Sam row's SF Symbol (owner pick "Heart", 2026-11-19).
+    /// The Apps by Sam row's SF Symbol.
     static let appsBySam = "heart"
 
     /// The template glyph for a built-in tool; marketplace tools have none and keep their artwork.

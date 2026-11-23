@@ -19,7 +19,7 @@ struct ToolSidebarView: View {
             .accessibilityIdentifier("main.sidebar.all-tools")
             ForEach(groups) { group in
                 OnePlusLinearNavCaption(group.category.rawValue)
-                // Owner, 2026-11-21: Fan is the first item in System.
+                // Fan is the first item in System.
                 if group.category == .system, searchText.isEmpty || FanPageView.title.localizedCaseInsensitiveContains(searchText) {
                     OnePlusLinearNavRow(FanPageView.title, glyph: Image(SidebarGlyph.fan),
                                         selected: selectedTool == FanPageView.pageID) {

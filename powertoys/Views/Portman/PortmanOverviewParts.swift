@@ -2,7 +2,7 @@ import AppKit
 import OnePlusUI
 import SwiftUI
 
-/// The Portman Servers page parts (DESIGN.md "Portman", owner picks 2026-11-19): the hero ring and the two-line rows.
+/// The Portman Servers page parts (DESIGN.md "Portman"): the hero ring and the two-line rows.
 enum PortmanOverviewMetrics {
     static let rowHeight: CGFloat = 40
     static let ringSize: CGFloat = 132
@@ -111,7 +111,7 @@ struct PortmanHeroRing: View {
     }
 }
 
-/// The port in its data color in a sunken badge well (owner pick 2026-11-21), on every Portman list.
+/// The port in its data color in a sunken badge well, on every Portman list.
 struct PortmanPortChip: View {
     let port: UInt16
     var body: some View { OnePlusLinearBadge(":\(String(port))", color: portmanPortColor(port)) }

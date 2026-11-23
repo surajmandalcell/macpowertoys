@@ -59,7 +59,7 @@ nonisolated struct SamApp: Identifiable, Sendable {
     }
 }
 
-/// The Apps by Sam page (owner picks, rounds 3-5, 2026-11-19): the Pro banner, the Hushpen and Switch cover cards,
+/// The Apps by Sam page: the Pro banner, the Hushpen and Switch cover cards,
 /// then the list of the other apps.
 struct AppsBySamView: View {
     static let pageID = "apps-by-sam"

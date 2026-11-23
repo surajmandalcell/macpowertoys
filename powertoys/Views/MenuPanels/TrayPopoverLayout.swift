@@ -2,7 +2,7 @@ import OnePlusUI
 import SwiftUI
 
 enum TrayPopoverLayout {
-    /// The combined panel's surface style (owner pick "Fill steps", 2026-11-19).
+    /// The combined panel's surface style.
     static let style = OnePlusLinearPanelStyle.fillSteps
     static let width = OnePlusLinearMetrics.panelWidth
     static let bodyWidth = OnePlusLinearMetrics.panelWidth - 2 * style.bodyInset

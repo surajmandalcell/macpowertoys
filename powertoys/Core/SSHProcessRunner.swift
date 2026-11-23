@@ -1,8 +1,7 @@
 import Darwin
 import Foundation
 
-// Taken from NetToysCore (samhqapp/nettoys, MIT) when NetToys left MacPowerToys.
-// Portman and the process sampler still run bounded child processes and SSH with it.
+// Taken from NetToysCore (MIT). Portman and the process sampler run bounded child processes and SSH with it.
 
 nonisolated enum SSHKeyAccessError: LocalizedError {
     case timeout

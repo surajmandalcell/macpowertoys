@@ -551,8 +551,8 @@ struct PortmanPanelView: View {
         await processIcons.load(bundlePaths: Set(presentation.rows.compactMap(\.appBundlePath)))
     }
 
-    /// Servers page (owner picks 2026-11-19): the hero ring, then the two-line rows. Sort, Refresh, and Clean up live
-    /// in the right-click menu of the body and the rows until the owner picks their placement.
+    /// Servers page: the hero ring, then the two-line rows. Sort, Refresh, and Clean up live
+    /// in the right-click menu of the body and the rows.
     private var localOverview: some View {
         VStack(alignment: .leading, spacing: TrayPopoverLayout.style.blockGap) {
             if !overviewPresentation.rows.isEmpty {
