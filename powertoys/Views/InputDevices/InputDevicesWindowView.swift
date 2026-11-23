@@ -148,9 +148,7 @@ struct InputDevicesWindowView: View {
     }
 
     private var appVersion: String {
-        let short = Bundle.main.object(forInfoDictionaryKey: "CFBundleShortVersionString") as? String ?? "—"
-        let build = Bundle.main.object(forInfoDictionaryKey: "CFBundleVersion") as? String ?? "—"
-        return "Version \(short) (\(build))"
+        "Version \(Bundle.main.object(forInfoDictionaryKey: "CFBundleShortVersionString") as? String ?? "—")"
     }
 
     private func profile(for kind: InputDeviceDescriptor.Kind) -> InputScrollProfile {

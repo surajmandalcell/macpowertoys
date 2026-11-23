@@ -4,7 +4,11 @@ TEST_SCHEME := powertoys-desktop-tests
 TEST_ARGS ?= -only-testing:powertoysTests
 DERIVED_DATA ?= $(CURDIR)/build/DerivedData
 SOURCE_COMMIT := $(shell git rev-parse HEAD)
-XCODEBUILD := taskpolicy -c utility nice -n 10 xcodebuild -project $(PROJECT) -jobs 4 -derivedDataPath $(DERIVED_DATA) MPT_SOURCE_COMMIT=$(SOURCE_COMMIT)
+# The app version comes only from VERSION; the build number is X*10000 + Y*100 + Z. Both override the project.
+# The helper keeps its own CFBundleVersion in NetToysHelper/Info.plist.
+VERSION := $(shell cat VERSION)
+BUILD_NUMBER := $(shell awk -F. '{print $$1 * 10000 + $$2 * 100 + $$3}' VERSION)
+XCODEBUILD := taskpolicy -c utility nice -n 10 xcodebuild -project $(PROJECT) -jobs 4 -derivedDataPath $(DERIVED_DATA) MPT_SOURCE_COMMIT=$(SOURCE_COMMIT) MARKETING_VERSION=$(VERSION) CURRENT_PROJECT_VERSION=$(BUILD_NUMBER)
 LOCAL_ENTITLEMENTS := $(abspath powertoys/Local.entitlements)
 PREBUILT_APP ?=
 ifeq ($(PREBUILT_APP),)
@@ -100,6 +104,7 @@ release-preflight:
 	@test "$(ADHOC)" != "1" || (echo "A release needs the Developer ID signature, not ADHOC=1." && exit 1)
 	@test -z "$(PREBUILT_APP)" || (echo "A release builds its own app; drop PREBUILT_APP." && exit 1)
 	@test -z "$$(git status --porcelain)" || (echo "Refusing to release from a dirty worktree. Commit the complete source state first." && exit 1)
+	@git tag --points-at HEAD | grep -qx "v$(VERSION)" || (echo "Release only from the tag v$(VERSION)." && exit 1)
 	@xcrun notarytool history --keychain-profile $(NOTARY_PROFILE) >/dev/null 2>&1 || (echo "No notary profile. Run once: xcrun notarytool store-credentials $(NOTARY_PROFILE)" && exit 1)
 
 release: release-preflight build verify-app notarize-app
