@@ -10,7 +10,7 @@ enum MainPaneMetrics {
 
 extension OnePlusWindowCanvas {
     // shortcut: `isApplet` is the only 1.1.0 way to center the traffic lights on C = 22 for the 44 pt v15 toolbar; use a v15 canvas flag when OnePlusUI adds one.
-    static let mainWindow = Self(width: 820, height: 660, sidebarWidth: OnePlusLinearMetrics.sidebarWidth, isApplet: true)
+    static let mainWindow = Self(width: 820 + DemoMode.mainWindowExtraWidth, height: 660, sidebarWidth: OnePlusLinearMetrics.sidebarWidth, isApplet: true)
 }
 
 struct MainPageHistory: Equatable {
