@@ -31,7 +31,7 @@ nonisolated struct SamApp: Identifiable, Sendable {
              summary: "Find caches and leftovers to move to Trash", icon: "AppBySamSystemCleaner"),
         Self(name: "Sam's Partition Manager", bundleID: "com.surajmandal.samspartitionmanager",
              summary: "Format and check external drives and SD cards", icon: "AppBySamPartitionManager"),
-        Self(name: "Sam's NetToys", bundleID: "com.surajmandal.nettoys",
+        Self(name: "Sam's Network Utilities", bundleID: "com.surajmandal.nettoys",
              summary: "Scan networks and keep SSH hosts reachable", icon: "AppBySamNetToys",
              download: URL(string: "https://github.com/samhqapp/nettoys/releases/latest")),
         Self(name: "ThrottleControl", bundleID: "io.github.surajmandalcell.ThrottleControl",
