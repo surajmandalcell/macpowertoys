@@ -85,7 +85,7 @@ final class FanHoldInteractionTests: XCTestCase {
         guard let dir = ProcessInfo.processInfo.environment["FAN_SHOT_DIR"] else { throw XCTSkip("FAN_SHOT_DIR not set") }
         let size = CGSize(width: 760, height: 620)
         for (name, appearance) in [("light", NSAppearance.Name.aqua), ("dark", .darkAqua)] {
-            for (mode, hold) in [("cool", Optional(FanHold.coolTarget)), ("hold", 55)] {
+            for (mode, hold) in [("cool", Optional(FanHold.coolTarget)), ("balanced", FanHold.balancedTarget), ("hold", 55)] {
                 let view = VStack(spacing: 12) {
                     FanCurveEditor(curve: FanHold.displayCurve(target: hold ?? 62), nowCelsius: 51, nowChip: "CPU avg 51 °C · 2,840 RPM",
                                    hold: hold, setHold: { _ in }) { _ in }

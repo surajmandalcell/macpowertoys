@@ -76,7 +76,7 @@ nonisolated enum FanCommand {
         }
     }
 
-    /// Called on the control queue when Cool or Max ends without a request (macOS took control, the helper stopped).
+    /// Called on the control queue when Curve or Max ends without a request (macOS took control, the helper stopped).
     static func setManualLostHandler(_ handler: @escaping @Sendable (String) -> Void) {
         controlQueue.async { FanDriver.onManualLost = handler }
     }
@@ -252,7 +252,7 @@ nonisolated struct FanControlPresentation: Equatable, Sendable {
         }
         switch selectedPreset {
         case .auto: return "Controlled by macOS"
-        case .cool: return "Cool · fans follow the chip temperature"
+        case .curve: return "Curve · fans follow the Fan page pick"
         case .max: return "Maximum cooling"
         case nil: return "Manual control active"
         }
@@ -296,7 +296,7 @@ final class FanControlService {
     nonisolated static let savedPresetKey = "fan.savedPreset"
     /// The mode the owner last chose. Launch and wake apply it again; the helper's safety reset may have set Auto.
     static var savedPreset: FanPreset {
-        FanPreset(rawValue: UserDefaults.standard.string(forKey: savedPresetKey) ?? "") ?? .auto
+        FanPreset(name: UserDefaults.standard.string(forKey: savedPresetKey) ?? "") ?? .auto
     }
     @ObservationIgnored private var wakeObserver: NSObjectProtocol?
 
@@ -323,7 +323,7 @@ final class FanControlService {
         #endif
     }
 
-    /// Applies the saved Cool or Max with no prompt. A missing or outdated helper leaves Auto and shows the bell item.
+    /// Applies the saved Curve or Max with no prompt. A missing or outdated helper leaves Auto and shows the bell item.
     func restoreSavedPreset(afterWake: Bool = false) async {
         if DemoMode.blocks("fan.restore-saved") { return }
         let saved = Self.savedPreset

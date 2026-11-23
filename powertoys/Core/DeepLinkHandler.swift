@@ -63,10 +63,10 @@ final class DeepLinkHandler {
                 LogManager.shared.warning("Fan link ignored: MPTAllowFanLinks is off.", source: "DeepLinkHandler")
                 return
             }
-            if let preset = FanPreset.allCases.first(where: { "/" + $0.rawValue.lowercased() == url.path.lowercased() }) {
+            if let preset = FanPreset(name: String(url.path.dropFirst()).capitalized) {
                 Task { await FanControlService.shared.selectFromLink(preset) }
             } else {
-                LogManager.shared.warning("Unknown fan route: \(url.path). Use fan/auto, fan/cool, or fan/max.",
+                LogManager.shared.warning("Unknown fan route: \(url.path). Use fan/auto, fan/curve, or fan/max.",
                                           source: "DeepLinkHandler")
             }
             return

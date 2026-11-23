@@ -153,7 +153,7 @@ final class FanControlTests: XCTestCase {
             try await Task.sleep(for: .milliseconds(5))
         }
         XCTAssertTrue(service.isChanging)
-        service.select(.cool)
+        service.select(.curve)
         XCTAssertEqual(service.selectedPreset, .max)
         await writes.finishAuto(failing: true)
         do { try await first.value; XCTFail("Quit must receive the restore error") }
@@ -216,7 +216,7 @@ final class FanControlTests: XCTestCase {
         XCTAssertEqual(data.status, 3_472.formatted() + " RPM · 60%")
         XCTAssertNil(data.activePreset)
         XCTAssertTrue(data.canSelect(.auto))
-        XCTAssertFalse(data.canSelect(.cool))
+        XCTAssertFalse(data.canSelect(.curve))
         XCTAssertFalse(data.canSelect(.max))
         for canControl in [false, true] {
             for canRestore in [false, true] {
@@ -318,7 +318,7 @@ final class FanControlTests: XCTestCase {
         for modes in cases {
             XCTAssertNil(FanControlView.reportedPreset(snapshot(modes), selectedPreset: nil))
         }
-        XCTAssertEqual(FanControlView.reportedPreset(snapshot(["manual"]), selectedPreset: .cool), .cool)
+        XCTAssertEqual(FanControlView.reportedPreset(snapshot(["manual"]), selectedPreset: .curve), .curve)
         XCTAssertNil(FanControlView.reportedPreset(nil, selectedPreset: nil))
     }
 
@@ -389,9 +389,10 @@ final class FanControlTests: XCTestCase {
 
     func testHoldDisplayCurveRisesThroughTheBand() {
         let curve = FanHold.displayCurve(target: 62)
-        XCTAssertEqual(curve.speed(at: 58), 0, accuracy: 1e-9)
+        XCTAssertEqual(curve.speed(at: 56), 0, accuracy: 1e-9)
         XCTAssertEqual(curve.speed(at: 62), 0.5, accuracy: 1e-9)
-        XCTAssertEqual(curve.speed(at: 66), 1, accuracy: 1e-9)
+        XCTAssertEqual(curve.speed(at: 70), 1, accuracy: 1e-9)
+        XCTAssertLessThan(curve.speed(at: 58), 0.1, "Eased: still low 4 °C under the target")
         XCTAssertEqual(curve.speed(at: 40), 0, accuracy: 1e-9, "Flat below the band")
         XCTAssertEqual(curve.speed(at: 75), 1, accuracy: 1e-9, "Flat above the band")
         let speeds = stride(from: 30.0, through: 90.0, by: 0.25).map(curve.speed(at:))
@@ -448,7 +449,7 @@ final class FanControlTests: XCTestCase {
     }
 
     func testCoolHoldsFortyEightAndRetiredPicksMove() throws {
-        XCTAssertEqual(FanCurvePreset.allCases, [.quiet, .cool, .custom], "Silent and Steady are gone")
+        XCTAssertEqual(FanCurvePreset.allCases, [.quiet, .balanced, .cool, .custom], "Silent and Steady are gone")
         let name = "FanPresetTests.\(UUID().uuidString)"
         let defaults = try XCTUnwrap(UserDefaults(suiteName: name))
         defer { defaults.removePersistentDomain(forName: name) }
@@ -456,6 +457,9 @@ final class FanControlTests: XCTestCase {
         XCTAssertNil(FanHold.activeTarget(defaults), "A curve pick holds nothing")
         FanCurvePreset.cool.pick(defaults)
         XCTAssertEqual(FanHold.activeTarget(defaults), 48, "Cool holds a 48 °C average, the value the chart shows")
+        FanCurvePreset.balanced.pick(defaults)
+        XCTAssertEqual(FanHold.activeTarget(defaults), 58, "Balanced holds a 58 °C average on the same scale")
+        FanCurvePreset.cool.pick(defaults)
         XCTAssertNil(FanHold.savedTarget(defaults), "Cool is its own pick, not a saved Hold")
         FanHold.save(55, defaults)
         XCTAssertEqual(FanHold.activeTarget(defaults), 55, "A Hold the user sets wins over Cool")
@@ -471,6 +475,9 @@ final class FanControlTests: XCTestCase {
             XCTAssertEqual(FanCurvePreset.saved(defaults), new, "\(old) moves to \(new.name)")
             XCTAssertNil(FanCurvePreset.migrateRetired(defaults), "Runs once")
         }
+        XCTAssertEqual(FanPreset.allCases.map(\.rawValue), ["Auto", "Curve", "Max"])
+        XCTAssertEqual(FanPreset(name: "Cool"), .curve, "A saved Cool or a fan/cool link means Curve")
+        XCTAssertEqual(FanPreset(name: "Max"), .max)
     }
 
     func testFanInputFiltersDropoutsTakesTheHigherRequestAndForcesFullOnlyAfterTenHotSeconds() {

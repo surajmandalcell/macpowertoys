@@ -4,7 +4,7 @@ import Foundation
 /// helper. Runs only on `FanCommand.controlQueue`.
 ///
 /// Both manual presets start from the fans' current speed and move the target once per second. Max climbs at most
-/// 1500 RPM a second. Cool follows `FanInput`, the CPU and GPU die averages over 20 s, along the saved `FanCurve`
+/// 1500 RPM a second. Curve follows `FanInput`, the CPU and GPU die averages over 20 s, along the saved `FanCurve`
 /// (by default Mn at a 50 °C average or less, Mx at 80 °C or more); the higher request wins, and 10 s with the hottest
 /// core at 90 °C or more forces full speed. It rises at most 300 RPM and falls at most 150 RPM a second. When a Keep
 /// target is saved (`FanHold`) or the Cool pick is on (48 °C), it holds that average with a PI loop instead of the curve.
@@ -59,14 +59,14 @@ nonisolated enum FanDriver {
         startTimer(preset, fans: fans)
     }
 
-    /// One tick of Cool: the speed (0-1) `FanInput` asks for, reached in limited steps.
+    /// One tick of Curve: the speed (0-1) `FanInput` asks for, reached in limited steps.
     static func coolTarget(speed: Double, previous: Double?, minimum: Double, maximum: Double) -> Double {
         step(toward: (minimum + (maximum - minimum) * speed).rounded(), from: previous ?? minimum, rise: coolRise,
              fall: coolFall, minimum: minimum, maximum: maximum)
     }
 
     /// One tick of Keep for one fan: the controller's speed, with full speed at the locked end or while the
-    /// hottest-core safety holds, in Cool's steps.
+    /// hottest-core safety holds, in Curve's steps.
     static func keepTarget(speed: Double, celsius: Double, forced: Bool = false, previous: Double?, minimum: Double,
                            maximum: Double) -> Double {
         coolTarget(speed: forced || celsius >= FanCurve.lockedEnd.celsius ? 1 : speed, previous: previous,
@@ -125,7 +125,7 @@ nonisolated enum FanDriver {
     }
 
     private static func writeTargets(_ preset: FanPreset, fans: [Fan], keys: HelperFanKeys, smc: SMCSession) throws {
-        let input: (celsius: Double, forced: Bool, speed: Double)? = if preset == .cool {
+        let input: (celsius: Double, forced: Bool, speed: Double)? = if preset == .curve {
             try readInput(smc)
         } else { nil }
         let holdSpeed = input.flatMap { keepSpeed($0.celsius, fans: fans) }

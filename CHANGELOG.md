@@ -9,6 +9,10 @@ Notable changes are documented here. The project follows semantic versioning aft
 - Fan page: Silent and Steady are gone; a saved Silent moves to Quiet and Steady
   to the new Cool, which holds the CPU near 48 °C. Hold now takes 40-70 °C, and
   its target moves by dragging on the chart or typing a value and Return.
+- Menu panel: the fan mode Cool is now Curve (Auto, Curve, Max); it follows the
+  Fan page pick. The chart title names the pick, such as Hold 56 °C. New
+  Balanced pick holds the CPU near 58 °C; the cards are Quiet, Balanced, Cool,
+  Hold, Custom, with eased S pictures for the Hold picks.
 
 ## [2.0.0] - 2026-11-23
 

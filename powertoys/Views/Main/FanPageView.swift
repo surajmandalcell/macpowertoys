@@ -1,7 +1,7 @@
 import OnePlusUI
 import SwiftUI
 
-/// The Fan page: the Cool curve as one large chart. Drag a point to move it,
+/// The Fan page: the picked fan curve as one large chart. Drag a point to move it,
 /// double-click a point to type exact values, double-click empty space to add a point.
 struct FanPageView: View {
     static let pageID = "fan"
@@ -16,9 +16,14 @@ struct FanPageView: View {
     private var preset: FanCurvePreset { FanCurvePreset(rawValue: presetName ?? "") ?? .custom }
     private var custom: FanCurve { curveData.flatMap { try? JSONDecoder().decode(FanCurve.self, from: $0) } ?? .standard }
     private var curve: FanCurve { preset.curve ?? custom }
-    /// The target the chart shows: the user's Hold, else Cool's fixed 48 °C.
+    /// The target the chart shows: the user's Hold, else Balanced's or Cool's fixed target.
     private var hold: Double? {
-        (holdCelsius ?? (preset == .cool ? FanHold.coolTarget : nil)).map { min(max($0, FanHold.range.lowerBound), FanHold.range.upperBound) }
+        (holdCelsius ?? preset.holdTarget).map { min(max($0, FanHold.range.lowerBound), FanHold.range.upperBound) }
+    }
+    /// The chart title: the picked card's name, such as "Hold 56 °C" or "Cool".
+    private var pickName: String {
+        if let hold, holdCelsius != nil { return "Hold \(Int(hold)) °C" }
+        return preset.name
     }
     private var holdRange: String { "\(Int(FanHold.range.lowerBound))-\(Int(FanHold.range.upperBound)) °C" }
     private var nowCelsius: Double? { service.display.cpuCelsius.map(Double.init) }
@@ -26,16 +31,16 @@ struct FanPageView: View {
 
     var body: some View {
         OnePlusLinearEditorialBody {
-            OnePlusLinearToolHeader(Self.title, detail: "Set how fast the fans spin in Cool as the CPU heats up.") {
+            OnePlusLinearToolHeader(Self.title, detail: "Set how fast the fans spin as the CPU heats up.") {
                 FanPageIcon(size: OnePlusLinearEditorialMetrics.headerTileIcon)
             } actions: { EmptyView() }
-            OnePlusLinearAppletSection("Cool curve") {
+            OnePlusLinearAppletSection(pickName) {
                 VStack(spacing: 0) {
                     if let hold {
                         FanCurveEditor(curve: FanHold.displayCurve(target: hold), nowCelsius: nowCelsius, nowChip: nowChip,
                                        hold: hold, setHold: { FanHold.save($0) }) { _ in }.padding(.top, 12)
                         FanHintRow(text: holdCelsius == nil
-                                   ? "Cool keeps the CPU near \(Int(hold)) °C · drag the line or type \(holdRange) to hold another"
+                                   ? "\(preset.name) keeps the CPU near \(Int(hold)) °C · drag the line or type \(holdRange) to hold another"
                                    : "Holds \(Int(hold)) °C, give or take \(Int(FanHold.band)) °C · drag the line or type \(holdRange)") {
                             OnePlusStepperField("Hold at", value: Binding(get: { Int(hold) }, set: { FanHold.save(Double($0)) }),
                                                 in: Int(FanHold.range.lowerBound)...Int(FanHold.range.upperBound), unit: "°C")
@@ -96,8 +101,10 @@ private struct FanPresetCards: View {
         HStack(spacing: Self.gap) {
             card(FanCurvePreset.quiet.name, selected: hold == nil && preset == .quiet,
                  shape: .curve(FanCurvePreset.quiet.curve ?? custom)) { FanCurvePreset.quiet.pick() }
-            card("\(FanCurvePreset.cool.name) \(Int(FanHold.coolTarget)) °C", selected: hold == nil && preset == .cool,
-                 shape: .hold(FanHold.coolTarget)) { FanCurvePreset.cool.pick() }
+            ForEach([FanCurvePreset.balanced, .cool], id: \.self) { pick in
+                card(pick.name, selected: hold == nil && preset == pick, shape: .hold(pick.holdTarget ?? FanHold.defaultTarget),
+                     help: "Keeps the CPU near \(Int(pick.holdTarget ?? 0)) °C") { pick.pick() }
+            }
             let target = hold ?? FanHold.savedTarget() ?? FanHold.defaultTarget
             card("Hold \(Int(target)) °C", selected: hold != nil, shape: .hold(target)) { FanHold.save(target) }
             card(FanCurvePreset.custom.name, selected: hold == nil && preset == .custom, shape: .curve(custom)) {
@@ -106,7 +113,8 @@ private struct FanPresetCards: View {
         }
     }
 
-    private func card(_ name: String, selected: Bool, shape: FanMiniChart.Shape, pick: @escaping () -> Void) -> some View {
+    private func card(_ name: String, selected: Bool, shape: FanMiniChart.Shape, help: String = "",
+                      pick: @escaping () -> Void) -> some View {
         Button(action: pick) {
             VStack(alignment: .leading, spacing: 6) {
                 FanMiniChart(shape: shape, tint: selected ? OnePlusLinearColor.accent : OnePlusLinearColor.secondary)
@@ -125,6 +133,7 @@ private struct FanPresetCards: View {
         .overlay(RoundedRectangle(cornerRadius: OnePlusLinearMetrics.appletGroupRadius)
             .strokeBorder(selected ? OnePlusLinearColor.accent : OnePlusLinearColor.line, lineWidth: selected ? 1.5 : 1))
         .focusEffectDisabled()
+        .help(help)
         .accessibilityLabel(name)
         .accessibilityAddTraits(selected ? .isSelected : [])
     }
@@ -257,7 +266,7 @@ private struct FanChip: View {
 private struct FanHoldBand: View {
     let plot: FanPlot
     let target: Double
-    private static let labelWidth: CGFloat = 72
+    private static let labelWidth: CGFloat = 84
 
     /// Where the label sits, so the now chip can avoid it.
     static func labelRect(_ plot: FanPlot, target: Double) -> CGRect {
@@ -271,7 +280,7 @@ private struct FanHoldBand: View {
                 .position(x: plot.x(target), y: plot.rect.midY)
             Path { $0.move(to: plot.point(target, 0)); $0.addLine(to: plot.point(target, 1)) }
                 .stroke(OnePlusLinearColor.ink.opacity(0.32), style: StrokeStyle(lineWidth: 1, dash: [2, 3]))
-            Text("Hold \(Int(target)) °C").linearText(OnePlusLinearMetrics.caption, weight: .semibold)
+            Text("Target \(Int(target)) °C").linearText(OnePlusLinearMetrics.caption, weight: .semibold)
                 .fixedSize().frame(width: 0, alignment: .trailing)
                 .position(x: plot.x(target - FanHold.band) - 8, y: plot.rect.minY + 10)
         }
@@ -431,7 +440,7 @@ struct FanCurveEditor: View {
             selected = nil
         }
         .accessibilityElement(children: .contain)
-        .accessibilityLabel(hold.map { "Hold \(Int($0)) °C, give or take \(Int(FanHold.band)) °C" } ?? "Cool curve")
+        .accessibilityLabel(hold.map { "Hold \(Int($0)) °C, give or take \(Int(FanHold.band)) °C" } ?? "Fan curve")
     }
 
     private var editingBinding: Binding<Bool> {

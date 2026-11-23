@@ -22,7 +22,7 @@ final class TrayFanUITests: XCTestCase {
         tray.click()
         app.buttons["tray.tab.home"].click()
         XCTAssertTrue(app.buttons["Auto"].waitForExistence(timeout: 10))
-        XCTAssertTrue(app.buttons["Cool"].exists)
+        XCTAssertTrue(app.buttons["Curve"].exists)
         XCTAssertTrue(app.buttons["Max"].exists)
 
         let homeCapture = XCTAttachment(screenshot: app.screenshot())

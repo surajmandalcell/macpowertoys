@@ -5,10 +5,13 @@ import os
 
 nonisolated enum FanPreset: String, CaseIterable, Identifiable, Sendable {
     case auto = "Auto"
-    case cool = "Cool"
+    case curve = "Curve"
     case max = "Max"
 
     var id: String { rawValue }
+
+    /// Curve was called Cool before the Fan page got its own Cool pick; old saves and fan/cool links mean Curve.
+    init?(name: String) { self.init(rawValue: name == "Cool" ? "Curve" : name) }
 }
 
 nonisolated struct FanReading: Decodable, Sendable {

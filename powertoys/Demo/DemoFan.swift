@@ -52,7 +52,7 @@ enum DemoFan {
     static func seed() {
         DemoFanState.set(celsius: 52, rpm: 2_140)
         curve(lastSpeed: startSpeed).save()
-        FanControlService.shared.showDemoPreset(.cool)
+        FanControlService.shared.showDemoPreset(.curve)
     }
 
     /// The last curve point rises over 2 s, and the fans follow it at a steady 72 °C.

@@ -102,8 +102,8 @@ struct FanControlView: View {
 
 }
 
-/// The Fan row: RPM, the CPU thermometer, and the Auto, Cool, Max control. Cool reads "Custom" while the Fan page
-/// follows the user's own edited curve. Only a click on a choice changes `selection`.
+/// The Fan row: RPM, the CPU thermometer, and the Auto, Curve, Max control. Curve follows the Fan page pick.
+/// Only a click on a choice changes `selection`.
 struct MainPanelFanRow<Setup: View>: View {
     let status: String
     var cpuCelsius: Int?
@@ -111,9 +111,6 @@ struct MainPanelFanRow<Setup: View>: View {
     @Binding var selection: FanPreset?
     let isChoiceEnabled: (FanPreset) -> Bool
     @ViewBuilder let setup: Setup
-    @AppStorage(FanCurve.storageKey) private var curveData: Data?
-    @AppStorage(FanCurvePreset.storageKey) private var presetName: String?
-    @AppStorage(FanHold.storageKey) private var holdCelsius: Double?
     /// The clicked choice, shown at once while the helper applies it; cleared when the service reports back.
     @State private var requested: FanPreset?
 
@@ -121,11 +118,7 @@ struct MainPanelFanRow<Setup: View>: View {
         Binding(get: { requested ?? selection }, set: { requested = $0; selection = $0 })
     }
 
-    private var isCustom: Bool { curveData != nil && presetName == nil && holdCelsius == nil }
-
-    private var choices: [(FanPreset?, String)] {
-        FanPreset.allCases.map { (Optional($0), $0 == .cool && isCustom ? "Custom" : $0.rawValue) }
-    }
+    private var choices: [(FanPreset?, String)] { FanPreset.allCases.map { (Optional($0), $0.rawValue) } }
 
     var body: some View {
         // No fixed title width: "Fan" is short, and the room keeps the RPM whole beside the fitted segments.
@@ -142,9 +135,7 @@ struct MainPanelFanRow<Setup: View>: View {
                         try? await Task.sleep(for: .seconds(3))
                         requested = nil
                     }
-                    .help(isCustom
-                          ? "Auto follows macOS. Custom follows your curve on the Fan page. Max runs fans at their hardware maximum."
-                          : "Auto follows macOS. Cool follows the pick on the Fan page, full speed at an 80 °C CPU average. Max runs fans at their hardware maximum.")
+                    .help("Auto follows macOS. Curve follows the pick on the Fan page, full speed at an 80 °C CPU average. Max runs fans at their hardware maximum.")
             }
         }
     }

@@ -130,10 +130,10 @@ nonisolated struct FanCurve: Codable, Equatable, Sendable {
 }
 
 /// The fixed picks on the CPU-average scale. Quiet is by sound: it leaves the minimum early, at 48 °C, and climbs
-/// gently, so heat never builds to a loud spin-up. Cool is Hold at a fixed `FanHold.coolTarget`: the PI loop keeps the
-/// average near 48 °C, not a curve. Custom is the user's own curve.
+/// gently, so heat never builds to a loud spin-up. Balanced and Cool are Hold at a fixed target (58 °C and 48 °C):
+/// the PI loop keeps the average there, not a curve. Custom is the user's own curve.
 nonisolated enum FanCurvePreset: String, CaseIterable, Sendable {
-    case quiet, cool, custom
+    case quiet, balanced, cool, custom
 
     static let storageKey = "fan.curvePreset"
     /// Picks the owner removed on 2026-11-23, and the pick that replaces each.
@@ -145,7 +145,16 @@ nonisolated enum FanCurvePreset: String, CaseIterable, Sendable {
         switch self {
         case .quiet: FanCurve(points: [.init(celsius: 48, speed: 0), .init(celsius: 58, speed: 0.15),
                                        .init(celsius: 66, speed: 0.32), .init(celsius: 73, speed: 0.5)])
-        case .cool, .custom: nil
+        case .balanced, .cool, .custom: nil
+        }
+    }
+
+    /// The CPU average a Hold pick keeps, on the scale the chart shows.
+    var holdTarget: Double? {
+        switch self {
+        case .balanced: FanHold.balancedTarget
+        case .cool: FanHold.coolTarget
+        case .quiet, .custom: nil
         }
     }
 
@@ -178,16 +187,17 @@ nonisolated struct FanHold: Equatable, Sendable {
     static let range = 40.0...70.0
     static let defaultTarget = 62.0
     static let coolTarget = 48.0
+    static let balancedTarget = 58.0
     static let band = 2.0
     static let gain = 0.05
     static let reset = 0.002
     static let ramp = 0.03
 
-    /// The picture of what Hold does, for the charts and the website demo: minimum fan up to 4 °C under the target,
-    /// half speed at it, full speed from 4 °C over. The PI loop, not this curve, drives the fans.
+    /// The picture of what Hold does, for the charts: an eased S, minimum fan up to 6 °C under the target, half speed
+    /// at it, full speed 8 °C over (Balanced: 52, 58, 66 °C). The PI loop, not this curve, drives the fans.
     static func displayCurve(target: Double) -> FanCurve {
-        FanCurve(points: [.init(celsius: target - 4, speed: 0), .init(celsius: target, speed: 0.5),
-                          .init(celsius: target + 4, speed: 1)])
+        let rise: [(Double, Double)] = [(-6, 0), (-4, 0.5 / 9), (-2, 2 / 9), (0, 0.5), (2, 0.71875), (4, 0.875), (8, 1)]
+        return FanCurve(points: rise.map { .init(celsius: target + $0.0, speed: $0.1) })
     }
 
     private(set) var target: Double
@@ -221,9 +231,9 @@ nonisolated struct FanHold: Equatable, Sendable {
         (defaults.object(forKey: storageKey) as? Double).map(clamped)
     }
 
-    /// The target the fans hold now: the user's Hold, else Cool's fixed 48 °C, else nil (a curve drives them).
+    /// The target the fans hold now: the user's Hold, else Balanced's or Cool's fixed target, else nil (a curve drives them).
     static func activeTarget(_ defaults: UserDefaults = .standard) -> Double? {
-        savedTarget(defaults) ?? (FanCurvePreset.saved(defaults) == .cool ? coolTarget : nil)
+        savedTarget(defaults) ?? FanCurvePreset.saved(defaults).holdTarget
     }
 
     /// Picks Keep; the saved curve stays as Custom but is not used while Keep is on.
