@@ -115,7 +115,7 @@ struct MacPowerToysApp: App {
             OnePlusWindowContent {
                 LogsWindowView()
                     .utilityMotionPolicy()
-                    .onePlusFixedCanvas(.logs)
+                    .onePlusFixedCanvas(.logs.linear)
                     .onToolWindowURL("logs")
             }
         case "color-picker":
@@ -138,14 +138,14 @@ struct MacPowerToysApp: App {
             OnePlusWindowContent {
                 InputDevicesWindowView()
                     .utilityMotionPolicy()
-                    .onePlusFixedCanvas(.macTweaks)
+                    .onePlusFixedCanvas(.inputDevicesWindow)
                     .onToolWindowURL("input-devices")
             }
         case "mac-tweaks":
             OnePlusWindowContent {
                 MacTweaksWindowView()
                     .utilityMotionPolicy()
-                    .onePlusFixedCanvas(.macTweaks)
+                    .onePlusFixedCanvas(.macTweaks.linear)
                     .onToolWindowURL("mac-tweaks")
             }
         default: EmptyView()
@@ -357,7 +357,7 @@ private struct AppStorageContent<Content: View>: View {
             }
         }
         .modifier(AppStorageRecovery())
-        .onePlusFixedCanvas(.rclone)
+        .onePlusFixedCanvas(.rclone.linear)
     }
 }
 

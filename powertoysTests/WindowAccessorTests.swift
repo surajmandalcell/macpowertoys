@@ -45,6 +45,9 @@ final class WindowAccessorTests: XCTestCase {
             XCTAssertEqual(try XCTUnwrap(OnePlusWindowCanvas.appTool(identifier)?.size), size, identifier)
         }
         XCTAssertNil(OnePlusWindowCanvas.appTool("unknown"))
+        for identifier in ["main", "rclone", "logs", "input-devices", "mac-tweaks"] {
+            XCTAssertEqual(OnePlusWindowCanvas.appTool(identifier)?.centerline, OnePlusLinearMetrics.sidebarTop / 2, identifier)
+        }
     }
 
     func testSceneContentUsesTheSameCanvasAsTheWindowLookup() throws {

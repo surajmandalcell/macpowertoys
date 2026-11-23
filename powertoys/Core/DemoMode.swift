@@ -22,6 +22,15 @@ nonisolated enum DemoMode {
         #endif
     }
 
+    /// Site stills only: `-MPTDemoInputDevicesSize "{600,860}"` gives Input Devices a tall tile shape.
+    static var inputDevicesSize: CGSize? {
+        #if MPT_DEMO
+        UserDefaults.standard.string(forKey: "MPTDemoInputDevicesSize").map { NSSizeFromString($0) }
+        #else
+        nil
+        #endif
+    }
+
     /// True when the demo build must skip this side effect. Use as `if DemoMode.blocks("x") { return }`.
     @inline(__always)
     static func blocks(_ effect: String) -> Bool {

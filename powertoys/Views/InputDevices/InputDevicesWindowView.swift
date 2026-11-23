@@ -34,7 +34,7 @@ struct InputDevicesWindowView: View {
     }
 
     var body: some View {
-        LinearToolWindow(canvas: .macTweaks) {
+        LinearToolWindow(canvas: .inputDevicesWindow) {
             sidebar
         } content: {
             LinearToolPane(page: $page, title: page.title) { toolbarActions } content: { pageContent }
