@@ -1,0 +1,28 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512" width="512" height="512">
+  <defs>
+    <clipPath id="tile"><rect width="512" height="512" rx="112"/></clipPath>
+    <radialGradient id="ground" cx="50%" cy="18%" r="95%"><stop offset="0" stop-color="#434345"/><stop offset="0.6" stop-color="#333335"/><stop offset="1" stop-color="#29292A"/></radialGradient>
+    <linearGradient id="face" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#FAF8F3"/><stop offset="0.55" stop-color="#ECE8E0"/><stop offset="1" stop-color="#DDD7CD"/></linearGradient>
+    <linearGradient id="side" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#ABA59A"/><stop offset="1" stop-color="#8C877D"/></linearGradient>
+    <radialGradient id="vface" cx="35%" cy="28%" r="80%"><stop offset="0" stop-color="#DCC6FC"/><stop offset="0.6" stop-color="#AA89E0"/><stop offset="1" stop-color="#8A68C3"/></radialGradient>
+    <linearGradient id="vline" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#CDB2F6"/><stop offset="1" stop-color="#9A79D2"/></linearGradient>
+    <linearGradient id="vflat" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#C9AEF4"/><stop offset="1" stop-color="#9676CE"/></linearGradient>
+    <filter id="soft" x="-30%" y="-30%" width="160%" height="190%"><feDropShadow dx="0" dy="9" stdDeviation="9" flood-color="#000" flood-opacity="0.45"/></filter>
+    <filter id="deep" x="-30%" y="-40%" width="160%" height="200%"><feDropShadow dx="0" dy="16" stdDeviation="14" flood-color="#000" flood-opacity="0.5"/></filter>
+    <filter id="blur6"><feGaussianBlur stdDeviation="6"/></filter>
+    <linearGradient id="groove" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#4C4945"/><stop offset="1" stop-color="#7A766F"/></linearGradient>
+  <linearGradient id="vgroove" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#8F6FC8"/><stop offset="1" stop-color="#B597EA"/></linearGradient>
+  </defs>
+  <g clip-path="url(#tile)">
+    <rect width="512" height="512" fill="url(#ground)"/>
+    <g transform="translate(6 34)">
+    <g filter="url(#soft)"><g fill="url(#side)"><rect x="72" y="91" width="84" height="40" rx="20.0"/><rect x="172" y="91" width="108" height="40" rx="20.0"/><rect x="296" y="91" width="64" height="40" rx="20.0"/><rect x="376" y="91" width="64" height="40" rx="20.0"/><rect x="72" y="271" width="120" height="40" rx="20.0"/><rect x="208" y="271" width="96" height="40" rx="20.0"/><rect x="320" y="271" width="124" height="40" rx="20.0"/><rect x="72" y="349" width="132" height="40" rx="20.0"/><rect x="220" y="349" width="80" height="40" rx="20.0"/></g><g fill="url(#face)"><rect x="72" y="84" width="84" height="40" rx="20.0"/><rect x="172" y="84" width="108" height="40" rx="20.0"/><rect x="296" y="84" width="64" height="40" rx="20.0"/><rect x="376" y="84" width="64" height="40" rx="20.0"/><rect x="72" y="264" width="120" height="40" rx="20.0"/><rect x="208" y="264" width="96" height="40" rx="20.0"/><rect x="320" y="264" width="124" height="40" rx="20.0"/><rect x="72" y="342" width="132" height="40" rx="20.0"/><rect x="220" y="342" width="80" height="40" rx="20.0"/></g></g>
+    <rect x="52" y="164" width="408" height="82" rx="22" fill="#000" fill-opacity="0.35" filter="url(#blur6)"/>
+    <rect x="52" y="154" width="408" height="82" rx="22" fill="#3A3442"/>
+    <g filter="url(#soft)"><g fill="#6B4FA3"><rect x="76" y="181" width="132" height="40" rx="20.0"/><rect x="224" y="181" width="88" height="40" rx="20.0"/><rect x="328" y="181" width="96" height="40" rx="20.0"/></g><g fill="url(#vline)"><rect x="76" y="174" width="132" height="40" rx="20.0"/><rect x="224" y="174" width="88" height="40" rx="20.0"/><rect x="328" y="174" width="96" height="40" rx="20.0"/></g></g>
+    <rect x="52" y="154" width="408" height="82" rx="22" fill="none" stroke="#C3A6F0" stroke-width="10" stroke-linecap="round" stroke-dasharray="30 22" stroke-dashoffset="-40"/>
+    <g filter="url(#soft)"><g fill="#5E4396"><circle cx="52" cy="159" r="24"/><circle cx="460" cy="159" r="24"/><circle cx="52" cy="241" r="24"/></g><g fill="url(#vface)"><circle cx="52" cy="154" r="24"/><circle cx="460" cy="154" r="24"/><circle cx="52" cy="236" r="24"/></g><g fill="#F8F6F1"><circle cx="52" cy="154" r="9"/><circle cx="460" cy="154" r="9"/><circle cx="52" cy="236" r="9"/></g></g>
+    <g transform="translate(430 208) scale(0.62)"><path filter="url(#deep)" d="M0 0 L0 116 L29 89 L50 134 L73 124 L53 80 L90 78 Z" fill="url(#face)" stroke="#232327" stroke-width="16.1" stroke-linejoin="round"/></g>
+    </g>
+  </g>
+</svg>
