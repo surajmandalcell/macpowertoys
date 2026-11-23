@@ -19,7 +19,12 @@ struct MenuBarAttentionBudget {
         case error
     }
 
+    /// `.transfer` sizes the window from the ETA and plays a finish cycle; `.awake` pulses a fixed short window on
+    /// turn-on and holds still when it turns off.
+    enum Policy { case transfer, awake }
+
     static let cooldown: TimeInterval = 15 * 60
+    static let awakeWindow: TimeInterval = 6
     static let noEtaWindow: TimeInterval = 45
     static let shortWindow: TimeInterval = 20
     static let longWindow: TimeInterval = 4 * 60
@@ -28,6 +33,9 @@ struct MenuBarAttentionBudget {
     private var lastTrigger: Date?
     private var lastFinish: Date?
     private var previous: Activity = .idle
+    let policy: Policy
+
+    init(policy: Policy = .transfer) { self.policy = policy }
 
     /// 8% of the ETA, between 20 s and 4 min; 45 s without an ETA. A job under 20 s plays to its end.
     static func windowLength(eta: TimeInterval?) -> TimeInterval {
@@ -48,7 +56,7 @@ struct MenuBarAttentionBudget {
         case .idle:
             let wasRunning = if case .running = previous { true } else { false }
             windowEnd = nil
-            guard wasRunning, motionAllowed, lastFinish.map({ now.timeIntervalSince($0) >= Self.cooldown }) ?? true
+            guard policy == .transfer, wasRunning, motionAllowed, lastFinish.map({ now.timeIntervalSince($0) >= Self.cooldown }) ?? true
             else { return .idle }
             lastFinish = now
             return .finishing
@@ -56,7 +64,7 @@ struct MenuBarAttentionBudget {
             let started = if case .running = previous { false } else { true }
             if started, lastTrigger.map({ now.timeIntervalSince($0) >= Self.cooldown }) ?? true {
                 lastTrigger = now
-                let length = Self.windowLength(eta: eta)
+                let length = policy == .awake ? Self.awakeWindow : Self.windowLength(eta: eta)
                 windowEnd = length.isFinite ? now.addingTimeInterval(length) : .distantFuture
             }
             guard let end = windowEnd, now < end else {

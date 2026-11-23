@@ -131,7 +131,7 @@ enum IndividualMenuBarTool: String, CaseIterable, Identifiable {
     }
 }
 
-/// Awake's menu bar symbol, chosen on the Awake page. The accent pulses while Awake is on.
+/// Awake's menu bar symbol, chosen on the Awake page. The accent pulses briefly when Awake turns on.
 enum AwakeMenuBarStyle: String, CaseIterable {
     case eye
     case cup
@@ -156,6 +156,8 @@ final class IndividualMenuBarController: NSObject {
     private var pulseRays: NSImageView?
     private var pulseStyle: AwakeMenuBarStyle?
     private var cloudBudget = MenuBarAttentionBudget()
+    private var awakeBudget = MenuBarAttentionBudget(policy: .awake)
+    private var awakeTimer: Timer?
     private var cloudDraw: NSImageView?
     private var cloudTimer: Timer?
     private var screensAsleep = false
@@ -223,6 +225,8 @@ final class IndividualMenuBarController: NSObject {
             NSWorkspace.shared.notificationCenter.removeObserver($0)
         }
         observers.removeAll()
+        awakeTimer?.invalidate()
+        awakeTimer = nil
         stopPulse()
         stopCloudDraw()
         popovers.values.forEach { $0.performClose(nil) }
@@ -386,21 +390,26 @@ final class IndividualMenuBarController: NSObject {
     }
 
     /// Open eye with rays (or cup with steam) while Awake holds the Mac awake, closed eye (or plain cup)
-    /// otherwise. The pulse runs only while it is on, motion is on, and the status item is on screen.
+    /// otherwise. The accent pulses only inside the attention budget's short window after Awake turns on.
     private func updateAwakeIcon() {
-        guard let button = statusItems[.awake]?.button else { return stopPulse() }
-        let tool = IndividualMenuBarTool.awake
+        awakeTimer?.invalidate()
+        awakeTimer = nil
+        let button = statusItems[.awake]?.button
+        let active = AwakeService.shared.isActive
+        let visible = !screensAsleep && button?.window?.occlusionState.contains(.visible) ?? false
+        let motion = animates(.awake) && visible && !NSWorkspace.shared.accessibilityDisplayShouldReduceMotion
+        let glyph = awakeBudget.update(active ? .running(eta: nil) : .idle, now: Date(), motionAllowed: motion)
+        guard let button else { return stopPulse() }
         let style = AwakeMenuBarStyle(rawValue: defaults.string(forKey: AwakeMenuBarStyle.key) ?? "") ?? .eye
-        guard AwakeService.shared.isActive else {
+        guard glyph == .animating else {
             stopPulse()
-            button.image = StatusItemIcon.glyph(style.off)
+            button.image = active ? StatusItemIcon.glyph(style.on, accent: style.accent, opacity: 1) : StatusItemIcon.glyph(style.off)
             return
         }
-        let visible = !screensAsleep && button.window?.occlusionState.contains(.visible) ?? false
-        guard animates(tool), visible else {
-            stopPulse()
-            button.image = StatusItemIcon.glyph(style.on, accent: style.accent, opacity: 1)
-            return
+        if let end = awakeBudget.windowEnd {
+            awakeTimer = Timer.scheduledTimer(withTimeInterval: end.timeIntervalSinceNow, repeats: false) { [weak self] _ in
+                MainActor.assumeIsolated { self?.updateAwakeIcon() }
+            }
         }
         guard pulseRays == nil || pulseStyle != style else { return }
         stopPulse()

@@ -271,9 +271,9 @@ struct IndividualToolMenuPanel: View {
     var body: some View {
         OnePlusLinearMenuPanel {
             HStack(spacing: OnePlusLinearMetrics.rowGap) {
-                OnePlusLinearIconTabs(tabs: [OnePlusMenuTab(tool, tool.title, systemImage: tool.symbol,
-                                                            image: ToolGlyph(rawValue: tool.id)?.assetImage)],
-                                      selection: .constant(tool))
+                if let logo = ToolRegistry.builtInTools.first(where: { $0.id == tool.id }) {
+                    ToolIconView(tool: logo, size: OnePlusLinearMetrics.iconTab).accessibilityHidden(true)
+                }
                 Text(tool.title).linearText(weight: .semibold).lineLimit(1)
             }
             .accessibilityElement(children: .combine)

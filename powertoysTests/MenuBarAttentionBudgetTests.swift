@@ -62,6 +62,26 @@ final class MenuBarAttentionBudgetTests: XCTestCase {
         XCTAssertNil(RcloneJobManager.unseenFailure(in: jobs + [job(.completed, finished: 20)], acknowledged: nil))
     }
 
+    func testAwakePulsesBrieflyOnTurnOnThenHoldsStill() {
+        var budget = MenuBarAttentionBudget(policy: .awake)
+        XCTAssertEqual(budget.update(.running(eta: nil), now: at(0), motionAllowed: true), .animating)
+        XCTAssertEqual(budget.update(.running(eta: nil), now: at(5), motionAllowed: true), .animating)
+        XCTAssertEqual(budget.update(.running(eta: nil), now: at(6), motionAllowed: true), .working)
+        XCTAssertEqual(budget.update(.running(eta: nil), now: at(3600), motionAllowed: true), .working)
+        XCTAssertEqual(budget.update(.idle, now: at(3601), motionAllowed: true), .idle)
+    }
+
+    func testAwakeRetriggerPlaysAtMostOncePer15MinutesAndMotionOffStaysStill() {
+        var budget = MenuBarAttentionBudget(policy: .awake)
+        _ = budget.update(.running(eta: nil), now: at(0), motionAllowed: true)
+        _ = budget.update(.idle, now: at(60), motionAllowed: true)
+        XCTAssertEqual(budget.update(.running(eta: nil), now: at(120), motionAllowed: true), .working)
+        _ = budget.update(.idle, now: at(130), motionAllowed: true)
+        XCTAssertEqual(budget.update(.running(eta: nil), now: at(15 * 60), motionAllowed: false), .working)
+        _ = budget.update(.idle, now: at(16 * 60), motionAllowed: true)
+        XCTAssertEqual(budget.update(.running(eta: nil), now: at(31 * 60), motionAllowed: true), .animating)
+    }
+
     func testErrorIsStaticAndMotionOffShowsWorkingGlyph() {
         var budget = MenuBarAttentionBudget()
         XCTAssertEqual(budget.update(.running(eta: nil), now: at(0), motionAllowed: false), .working)
