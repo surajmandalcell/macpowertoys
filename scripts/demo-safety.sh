@@ -39,7 +39,7 @@ done
 for line in ${(f)"$(sites 'NSWorkspace\.shared\.[a-zA-Z]+')"}; do
   method=$(print -r -- "$line" | grep -oE 'NSWorkspace\.shared\.[a-zA-Z]+' | head -1)
   case ${method##*.} in
-    open|openApplication|selectFile|activateFileViewerSelecting|notificationCenter|runningApplications|frontmostApplication|urlForApplication|icon) ;;
+    open|openApplication|selectFile|activateFileViewerSelecting|notificationCenter|runningApplications|frontmostApplication|urlForApplication|icon|accessibilityDisplayShouldReduceMotion) ;;
     *) bad "NSWorkspace method with no demo stub: $line" ;;
   esac
 done
