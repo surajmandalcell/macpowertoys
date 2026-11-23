@@ -10,6 +10,8 @@
 		B30000000000000000000001 /* OnePlusUI in Frameworks */ = {isa = PBXBuildFile; productRef = B30000000000000000000003 /* OnePlusUI */; };
 		B30000000000000000000011 /* IndieCrumbCore in Frameworks */ = {isa = PBXBuildFile; productRef = B30000000000000000000013 /* IndieCrumbCore */; };
 		B30000000000000000000014 /* IndieCrumbUsage in Frameworks */ = {isa = PBXBuildFile; productRef = B30000000000000000000015 /* IndieCrumbUsage */; };
+		B30000000000000000000016 /* IndieCrumbCrash in Frameworks */ = {isa = PBXBuildFile; productRef = B30000000000000000000017 /* IndieCrumbCrash */; };
+		B30000000000000000000018 /* IndieCrumbCrashUI in Frameworks */ = {isa = PBXBuildFile; productRef = B30000000000000000000019 /* IndieCrumbCrashUI */; };
 		C40000000000000000000004 /* MacPowerToysHelperXPC.swift in Sources */ = {isa = PBXBuildFile; fileRef = C40000000000000000000014 /* MacPowerToysHelperXPC.swift */; };
 		A10000000000000000000005 /* com.surajmandal.macpowertoys.helper in Copy LaunchServices */ = {isa = PBXBuildFile; fileRef = A10000000000000000000006 /* com.surajmandal.macpowertoys.helper */; settings = {ATTRIBUTES = (CodeSignOnCopy, ); }; };
 		A10000000000000000000021 /* com.surajmandal.macpowertoys.nettoys-neighbor.plist in Copy LaunchDaemons */ = {isa = PBXBuildFile; fileRef = A10000000000000000000022 /* com.surajmandal.macpowertoys.nettoys-neighbor.plist */; };
@@ -112,6 +114,8 @@
 				B30000000000000000000001 /* OnePlusUI in Frameworks */,
 				B30000000000000000000011 /* IndieCrumbCore in Frameworks */,
 				B30000000000000000000014 /* IndieCrumbUsage in Frameworks */,
+				B30000000000000000000016 /* IndieCrumbCrash in Frameworks */,
+				B30000000000000000000018 /* IndieCrumbCrashUI in Frameworks */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -209,6 +213,8 @@
 				B30000000000000000000003 /* OnePlusUI */,
 				B30000000000000000000013 /* IndieCrumbCore */,
 				B30000000000000000000015 /* IndieCrumbUsage */,
+				B30000000000000000000017 /* IndieCrumbCrash */,
+				B30000000000000000000019 /* IndieCrumbCrashUI */,
 			);
 			productName = powertoys;
 			productReference = 1BDFA94E2F08A44C009A9009 /* powertoys.app */;
@@ -814,7 +820,7 @@
 			repositoryURL = "https://github.com/samhqapp/indiecrumb-swift";
 			requirement = {
 				kind = upToNextMinorVersion;
-				minimumVersion = 0.1.0;
+				minimumVersion = 0.2.0;
 			};
 		};
 /* End XCRemoteSwiftPackageReference section */
@@ -834,6 +840,16 @@
 			isa = XCSwiftPackageProductDependency;
 			package = B30000000000000000000012 /* XCRemoteSwiftPackageReference "indiecrumb-swift" */;
 			productName = IndieCrumbUsage;
+		};
+		B30000000000000000000017 /* IndieCrumbCrash */ = {
+			isa = XCSwiftPackageProductDependency;
+			package = B30000000000000000000012 /* XCRemoteSwiftPackageReference "indiecrumb-swift" */;
+			productName = IndieCrumbCrash;
+		};
+		B30000000000000000000019 /* IndieCrumbCrashUI */ = {
+			isa = XCSwiftPackageProductDependency;
+			package = B30000000000000000000012 /* XCRemoteSwiftPackageReference "indiecrumb-swift" */;
+			productName = IndieCrumbCrashUI;
 		};
 /* End XCSwiftPackageProductDependency section */
 	};

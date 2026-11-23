@@ -1,5 +1,7 @@
 import Foundation
 import IndieCrumbCore
+import IndieCrumbCrash
+import IndieCrumbCrashUI
 import IndieCrumbUsage
 
 /// The opt-in daily count to IndieCrumb: Settings > General "Share anonymous daily counts", off by default.
@@ -10,9 +12,13 @@ enum DailyCounts {
                                          key: "ic_pub_c72a4c8bc723ee3f44cc057c104e94e2",
                                          enabled: UserDefaults.standard.bool(forKey: storageKey))
     private static let usage = Usage(core)
+    private static let crashes = CrashReporter(core)
 
     /// Pings when due and checks every hour; sends nothing while the switch is off.
     static func start() { usage.start() }
+
+    /// After a crash, the next launch asks; a report is sent only when the person presses Send.
+    @MainActor static func askAboutCrashes() { CrashAsk.start(crashes, core: core) }
 
     static func setEnabled(_ on: Bool) { core.isEnabled = on }
 }
