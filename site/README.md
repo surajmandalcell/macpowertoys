@@ -21,7 +21,7 @@ The owner picked these from real renders. Change them only with a new pick.
 - Tile: icon, the tool name in white and one line in gray, then a real capture of the window. Captures are `assets/captures/<tool>/still@2x.webp` (WebP q90, density 2). `CUT` in `bento.js` sets where each window is cut by the tile edge; cuts land in empty space, never on text, a time, or a number.
 - Card tone "Darker still": a solid fill (`#1e1e21` to `#151517`) with a blue-noise grain tile made by `grain()` in `bento.js`, an inset hairline on all four sides, and a soft dark shadow. Hover shows only a soft tinted light under the pointer; nothing moves.
 - More coming soon: "Slots", a grid of empty app slots where the tool icons fade in and out, never two of the same icon at once, cycling through all of them. Reduced motion shows a few icons still.
-- Tool icons are `assets/tools/<tool>.webp` (128 px). The Text Extractor icon is the "Tucked" cursor version for now.
+- Tool icons are `assets/tools/<tool>.webp` (128 px, WebP q92, made from the 512 px app icon).
 - Text: one short line per text blob, plain words. Headlines say what a tool does.
 - Footer: brand, the brew command, and two link columns, then the giant "MacPowerToys" wordmark cut by the page bottom.
 - Scroll bar: a thin custom knob over a hidden native bar, shown while scrolling or on hover.
