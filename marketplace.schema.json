@@ -65,7 +65,7 @@
       "properties": {
         "id": { "$ref": "#/$defs/identifier" },
         "name": { "type": "string", "minLength": 1, "maxLength": 100 },
-        "summary": { "type": "string", "minLength": 1, "maxLength": 300 },
+        "summary": { "type": "string", "minLength": 1, "maxLength": 70, "description": "One line shown under the tool name. At most 70 characters, so it fits 2 lines beside the Open tile." },
         "category": { "enum": ["developer", "text", "files", "system"] },
         "manual": {
           "type": "array",
@@ -142,7 +142,7 @@
         {
           "id": "window-snapper",
           "name": "Window Snapper",
-          "summary": "Snap windows into halves, thirds, and custom grids with keyboard shortcuts.",
+          "summary": "Snap windows into halves, thirds, and grids with keyboard shortcuts.",
           "category": "system",
           "manual": [
             {

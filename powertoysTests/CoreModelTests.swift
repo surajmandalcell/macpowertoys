@@ -4,6 +4,12 @@ import CoreImage
 
 @MainActor
 final class CoreModelTests: XCTestCase {
+    func testBuiltInToolDescriptionsFitTwoHeaderLines() {
+        for tool in ToolRegistry.builtInTools {
+            XCTAssertLessThanOrEqual(tool.description.count, ToolRegistry.maxDescriptionLength, tool.id)
+        }
+    }
+
     func testTextExtractorSettingsAndRecognitionTitles() {
         XCTAssertEqual(TextRecognitionSpeed.allCases.map(\.title), ["Accurate", "Fast"])
         let settings = TextExtractorSettings()

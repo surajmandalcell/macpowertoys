@@ -75,7 +75,7 @@ struct RcloneTool: Tool {
     let id = "rclone"
     let name = "RSync UI"
     let summary = "Sync folders to cloud and remote storage"
-    let description = "Move files between your Mac and cloud storage with live progress, automatic retries, and ignore rules."
+    let description = "Sync folders to the cloud with live progress and automatic retries."
     let icon = ToolGlyph.cloudSync.symbol
     let logoAsset = "CloudSyncLogo"
     let category = ToolCategory.files
@@ -115,7 +115,7 @@ struct LogsTool: Tool {
     let id = "logs"
     let name = "Event Viewer"
     let summary = "Read app and system logs in one place"
-    let description = "Inspect MacPowerToys activity and recent macOS errors and faults in clearly separated views."
+    let description = "See MacPowerToys activity and recent macOS errors and faults."
     let icon = ToolGlyph.logs.symbol
     let logoAsset = "LogsLogo"
     let category = ToolCategory.system
@@ -141,7 +141,7 @@ struct RulerTool: Tool {
     let id = "ruler"
     let name = "Ruler"
     let summary = "Measure on-screen distances in px, mm, or in"
-    let description = "Measure the screen with movable, resizable rulers in pixels, millimeters, or inches."
+    let description = "Measure the screen with rulers in pixels, millimeters, or inches."
     let icon = ToolGlyph.ruler.symbol
     let logoAsset = "RulerLogo"
     let category = ToolCategory.dev
@@ -170,7 +170,7 @@ struct AwakeTool: Tool {
     let id = "awake"
     let name = "Awake"
     let summary = "Keep your Mac awake for a set time"
-    let description = "Keep your Mac awake indefinitely, for a duration, or until a chosen time without changing Energy settings."
+    let description = "Keep your Mac awake for good, for a while, or until a set time."
     let icon = ToolGlyph.awake.symbol
     let logoAsset = "AwakeLogo"
     let category = ToolCategory.system
@@ -198,7 +198,7 @@ struct ColorPickerTool: Tool {
     let id = "color-picker"
     let name = "Color Picker"
     let summary = "Pick and save colors from anywhere on screen"
-    let description = "Pick any onscreen color, copy it instantly, and keep a compact searchable history of useful values."
+    let description = "Pick any color on screen, copy it, and keep a searchable history."
     let icon = ToolGlyph.colorPicker.symbol
     let logoAsset = "ColorPickerLogo"
     let category = ToolCategory.dev
@@ -224,7 +224,7 @@ struct TextExtractorTool: Tool {
     let id = "text-extractor"
     let name = "Text Extractor"
     let summary = "Copy text from any part of the screen"
-    let description = "Select text anywhere on screen and copy it using private, fully on-device Apple Vision recognition."
+    let description = "Select text anywhere on screen and copy it. Runs fully on your Mac."
     let icon = ToolGlyph.textExtractor.symbol
     let logoAsset = "TextExtractorLogo"
     let category = ToolCategory.text
@@ -252,7 +252,7 @@ struct InputDevicesTool: Tool {
     let id = "input-devices"
     let name = "Input Devices"
     let summary = "Separate mouse and trackpad scrolling"
-    let description = "Tune mouse and trackpad scrolling independently, including direction, speed, horizontal movement, and wheel smoothing."
+    let description = "Tune mouse and trackpad scrolling: direction, speed, and smoothing."
     let icon = ToolGlyph.inputDevices.symbol
     let logoAsset = "InputDevicesLogoA"
     let category = ToolCategory.system
@@ -276,7 +276,7 @@ struct PortmanTool: Tool {
     let id = "portman"
     let name = "Portman"
     let summary = "See and stop processes that hold ports"
-    let description = "See local development servers and forward private SSH ports to this Mac."
+    let description = "See local dev servers and forward private SSH ports to this Mac."
     let icon = ToolGlyph.portman.symbol
     let logoAsset = "PortmanLogo"
     let category = ToolCategory.dev
@@ -306,7 +306,7 @@ struct MacTweaksTool: Tool {
     let id = "mac-tweaks"
     let name = "Mac Tweaks"
     let summary = "Hidden macOS settings with one switch each"
-    let description = "Find and control small Mac settings, starting with Mic Lock for Bluetooth headphone sound."
+    let description = "Small Mac settings in one place, like Mic Lock for Bluetooth sound."
     let icon = ToolGlyph.macTweaks.symbol
     let logoAsset = "MacTweaksLogo"
     let category = ToolCategory.system
@@ -357,6 +357,9 @@ struct MarketplaceTool: Tool {
 // MARK: - Available Tools
 
 struct ToolRegistry {
+    /// Fits 2 lines beside the Open tile at the minimum window width; marketplace.schema.json caps `summary` the same.
+    static let maxDescriptionLength = 70
+
     static let builtInTools: [any Tool] = [
         RcloneTool.shared,
         LogsTool.shared,
