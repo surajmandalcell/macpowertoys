@@ -134,14 +134,9 @@ final class IndividualMenuBarController: NSObject {
     private var statusItems: [IndividualMenuBarTool: NSStatusItem] = [:]
     private var popovers: [IndividualMenuBarTool: OnePlusMenuPresenter] = [:]
     private var observers: [NSObjectProtocol] = []
-    private var pulseTimer: Timer?
-    private var pulseFrame = 0
+    private var pulseRays: NSImageView?
     private var screensAsleep = false
     static let animatedIconsKey = "menuBar.animatedIcons"
-    // Rays pulse: 4 opacity steps at 1 frame a second, a slow 4 s breath. Each image change makes macOS re-snapshot
-    // the item for every menu bar (about 9 ms on two displays), so frames stay few.
-    private static let pulseOpacity: [CGFloat] = [1, 0.6, 0.3, 0.6]
-    private static let pulseInterval: TimeInterval = 1
 
     var statusItemOwnerCount: Int { statusItems.count }
     var observerOwnerCount: Int { observers.count }
@@ -263,29 +258,33 @@ final class IndividualMenuBarController: NSObject {
             button.image = awakeFrame(0)
             return
         }
-        guard pulseTimer == nil else { return }
-        pulseFrame = 0
-        button.image = awakeFrame(0)
-        let timer = Timer(timeInterval: Self.pulseInterval, repeats: true) { [weak self] _ in
-            MainActor.assumeIsolated {
-                guard let self, let button = self.statusItems[.awake]?.button else { return }
-                self.pulseFrame = (self.pulseFrame + 1) % Self.pulseOpacity.count
-                button.image = self.awakeFrame(self.pulseFrame)
-            }
-        }
-        timer.tolerance = Self.pulseInterval / 2
-        RunLoop.main.add(timer, forMode: .common)
-        pulseTimer = timer
+        guard pulseRays == nil else { return }
+        button.image = StatusItemIcon.glyph(tool.menuBarGlyph)
+        button.wantsLayer = true
+        let rays = NSImageView(image: StatusItemIcon.glyph("MenuBarGlyphAwakeRays") ?? NSImage())
+        rays.imageScaling = .scaleNone
+        rays.frame = button.bounds
+        rays.autoresizingMask = [.width, .height]
+        rays.wantsLayer = true
+        button.addSubview(rays)
+        let pulse = CABasicAnimation(keyPath: "opacity")
+        pulse.fromValue = 1
+        pulse.toValue = 0.3
+        pulse.duration = 1
+        pulse.autoreverses = true
+        pulse.repeatCount = .infinity
+        pulse.timingFunction = CAMediaTimingFunction(name: .easeInEaseOut)
+        rays.layer?.add(pulse, forKey: "pulse")
+        pulseRays = rays
     }
 
     private func awakeFrame(_ index: Int) -> NSImage? {
-        StatusItemIcon.glyph(IndividualMenuBarTool.awake.menuBarGlyph, accent: "MenuBarGlyphAwakeRays",
-                             opacity: Self.pulseOpacity[index])
+        StatusItemIcon.glyph(IndividualMenuBarTool.awake.menuBarGlyph, accent: "MenuBarGlyphAwakeRays", opacity: 1)
     }
 
     private func stopPulse() {
-        pulseTimer?.invalidate()
-        pulseTimer = nil
+        pulseRays?.removeFromSuperview()
+        pulseRays = nil
     }
 
     private func makeStatusItem(for tool: IndividualMenuBarTool) -> NSStatusItem {
