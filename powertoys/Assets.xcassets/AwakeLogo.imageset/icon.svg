@@ -5,9 +5,9 @@
   <g clip-path="url(#tile)">
     <rect width="512" height="512" fill="#F5B71E"/>
     <g fill="none" stroke="#F7F5F0" stroke-width="34" stroke-linecap="round">
-      <path d="M220-24l32 116"/>
-      <path d="M286-28v116"/>
-      <path d="M352-24 320 92"/>
+      <path d="M218 70l22 62"/>
+      <path d="M286 58v74"/>
+      <path d="M354 70l-22 62"/>
     </g>
     <path d="M58 272C112 148 390 148 454 272 390 396 112 396 58 272Z" fill="#23272E"/>
     <path d="M90 272c52-88 270-88 332 0-62 88-280 88-332 0Z" fill="#F7F5F0"/>
