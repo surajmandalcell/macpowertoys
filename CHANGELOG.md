@@ -4,15 +4,19 @@ Notable changes are documented here. The project follows semantic versioning aft
 
 ## [Unreleased]
 
-## [2.0.0] - 2026-11-20
+## [2.0.0] - 2026-11-23
 
 ### Added
 
-- Install with Homebrew: `brew install --cask surajmandalcell/tap/macpowertoys`.
+- Install with Homebrew: `brew install --cask samhqapp/tap/macpowertoys`.
 - Releases are signed with Developer ID and notarized by Apple, so macOS
   opens them without a Gatekeeper warning.
 - Fan control in the menu bar panel, with presets, a ramp from the current
   speed, and the chosen mode kept across relaunch and wake.
+- A Fan page with a heat chart, Silent, Quiet, Steady, Hold, and Custom modes,
+  and a curve editor.
+- Portman shows forwards as host cards, watches hosts over SSH, scans ports
+  from a host card, and reorders hosts and forwards by drag.
 - An attention bell in the panel bars and an Apps by Sam page.
 
 ### Changed
