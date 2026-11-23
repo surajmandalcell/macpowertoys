@@ -51,6 +51,36 @@ enum DemoPortman {
 
     static func seed() { seed(webMB: webPeakMB, webCPU: webPeakCPU) }
 
+    static let scanPortsNotification = Notification.Name("MPTDemoPortmanScanPorts")
+    static let remotePorts = [
+        PortmanRemotePort(port: 22, processName: "sshd", pid: 812),
+        PortmanRemotePort(port: 80, processName: "nginx", pid: 1_204),
+        PortmanRemotePort(port: 3000, processName: "node", pid: 2_311),
+        PortmanRemotePort(port: forwardPort, processName: "postgres", pid: 977),
+        PortmanRemotePort(port: 6379, processName: "redis-server", pid: 1_018),
+        PortmanRemotePort(port: 9090, processName: "prometheus", pid: 1_466),
+    ]
+
+    /// Forward page stills: `portman-hosts` opens the Hosts select, `portman-menu` right-clicks a host card,
+    /// `portman-scan` opens that card's Scan ports sheet. Clicks go to the panel window in-process; the pointer never moves.
+    static func forwardScene(_ action: @escaping @MainActor () -> Void) -> DemoScene {
+        DemoScene(
+            open: {
+                seed()
+                PortmanMenuController.shared.demoAnchor = menuBarAnchor()
+                PortmanMenuController.shared.show(initialPage: .forward, activateApp: false)
+            },
+            steps: [DemoStep(at: 0.5, run: action)]
+        )
+    }
+
+    static var hostsScene: DemoScene { forwardScene { DemoClick.element(labeled: "Choose an SSH host") } }
+    static var modeScene: DemoScene { forwardScene { DemoClick.element(labeled: "What to do with this host") } }
+    static var menuScene: DemoScene { forwardScene { DemoClick.element(labeled: "\(forwardHost), 1 forward", right: true) } }
+    static var scanScene: DemoScene {
+        forwardScene { NotificationCenter.default.post(name: scanPortsNotification, object: forwardHost) }
+    }
+
     static var scene: DemoScene {
         DemoScene(
             open: {

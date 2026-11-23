@@ -934,7 +934,13 @@ final class PortmanService {
     }
 
     func refreshRemote(host: String, password: String? = nil, configurationFile: URL? = nil) async {
-        if DemoMode.blocks("portman.remote-scan") { return }
+        if DemoMode.blocks("portman.remote-scan") {
+            #if MPT_DEMO
+            remotePorts = DemoPortman.remotePorts.map(\.port)
+            remoteDetails = Dictionary(uniqueKeysWithValues: DemoPortman.remotePorts.map { ($0.port, $0) })
+            #endif
+            return
+        }
         let requestID = UUID()
         remoteRequestID = requestID
         isLoadingRemote = true

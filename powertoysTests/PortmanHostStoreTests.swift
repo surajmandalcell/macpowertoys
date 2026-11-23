@@ -316,4 +316,13 @@ final class PortmanHostStoreTests: XCTestCase {
     func testNoHostsAndNoTunnelsGivesNoGroups() {
         XCTAssertTrue(PortmanForwardTree.groups(hosts: [], tunnels: []).isEmpty)
     }
+
+    func testScanMarksSavedForwardsAndLiveTunnelsOfThatHostOnly() {
+        let hosts = [PortmanHost(destination: "oci2", mode: .both, forwards: [PortmanForwardSpec(remotePort: 5432, localPort: 15432)]),
+                     PortmanHost(destination: "oci1", mode: .monitor, forwards: [PortmanForwardSpec(remotePort: 80, localPort: 8080)])]
+        let tunnels = [PortmanTunnel(id: UUID(), host: "oci2", remotePort: 6379, localPort: 6379, state: .running),
+                       PortmanTunnel(id: UUID(), host: "oci1", remotePort: 22, localPort: 2222, state: .running)]
+        XCTAssertEqual(PortmanForwardTree.addedRemotePorts(host: "oci2", hosts: hosts, tunnels: tunnels), [5432, 6379])
+        XCTAssertEqual(PortmanForwardTree.addedRemotePorts(host: "lab", hosts: hosts, tunnels: tunnels), [])
+    }
 }

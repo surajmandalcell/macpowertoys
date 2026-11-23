@@ -182,6 +182,10 @@ struct PortmanPanelView: View {
     @State private var passwordPromptError: String?
     @State private var retryAfterPassword: PortmanTunnel?
     @State private var expandedRemotePort: UInt16?
+    /// The host whose "Scan ports" sheet is open, and a scan that waits for `host` to settle on it.
+    @State private var scanSheetHost: String?
+    @State private var pendingScanHost: String?
+    @State private var panelHeight: CGFloat = 0
     @State private var panelOwnsMonitoring = false
     @State private var cleanupMode = false
     @State private var selectedCleanupProcesses = Set<String>()
@@ -253,6 +257,11 @@ struct PortmanPanelView: View {
             .onOpenToolPage("portman") { id in
                 if let destination = Page(panelID: id) { navigate(to: destination) }
             }
+            #if MPT_DEMO
+            .onReceive(NotificationCenter.default.publisher(for: DemoPortman.scanPortsNotification)) {
+                if let destination = $0.object as? String { scanPorts(on: destination) }
+            }
+            #endif
     }
 
     /// The v15 Fill steps shell shared with the combined panel: tabs, gear, and the Open key in the top bar.
@@ -300,7 +309,7 @@ struct PortmanPanelView: View {
         .onePlusAppAppearance()
         .onePlusLiveUpdates()
         .onGeometryChange(for: CGFloat.self, of: { $0.size.height }) { height in
-            if height > 0 { PortmanMenuController.shared.setHeight(height) }
+            if height > 0 { PortmanMenuController.shared.setHeight(height); panelHeight = height }
         }
         .onePlusPanelTimings(panel: "portman", tab: page.panelID)
     }
@@ -399,6 +408,14 @@ struct PortmanPanelView: View {
             service.forwardingError = nil
             sshPassword = nil
             expandedRemotePort = nil
+            if pendingScanHost == host {
+                pendingScanHost = nil
+                scanRemote()
+            }
+        }
+        .onChange(of: passwordPromptHost) {
+            // shortcut: a password scan reopens in the inline scan group, not the sheet; keep the sheet if owners ask.
+            if passwordPromptHost != nil { scanSheetHost = nil }
         }
         .onChange(of: service.localPorts.map(\.processID)) {
             selectedCleanupProcesses.formIntersection(Set(service.localPorts.map(\.processID)))
@@ -451,6 +468,9 @@ struct PortmanPanelView: View {
                                      onCancel: { self.passwordPromptHost = nil; retryAfterPassword = nil },
                                      onContinue: { password in submitPassword(password, for: passwordPromptHost) })
             }
+        }
+        .sheet(isPresented: Binding(get: { scanSheetHost != nil }, set: { if !$0 { closeScanSheet() } })) {
+            if let scanSheetHost { scanSheet(scanSheetHost) }
         }
     }
 
@@ -763,7 +783,7 @@ struct PortmanPanelView: View {
     private var forwardResults: some View {
         VStack(alignment: .leading, spacing: OnePlusLinearPanelStyle.fillSteps.blockGap) {
             let scanned = !host.isEmpty && discoveredHost == host
-            if scanned || !manualRemotePorts.isEmpty {
+            if scanSheetHost == nil, scanned || !manualRemotePorts.isEmpty {
                 OnePlusLinearList(style: .panel) {
                     PortmanForwardRow {
                         let ports = (scanned ? service.remotePorts : []) + manualRemotePorts
@@ -845,6 +865,7 @@ struct PortmanPanelView: View {
             move: { child, index in hostList.moveForward(host: destination, localPort: child.spec.localPort, to: index) }
         ))
             .contextMenu {
+                Button("Scan ports") { scanPorts(on: destination) }
                 Button("Use this host") { host = group.host.destination }
                 ForEach(PortmanHostMode.allCases, id: \.self) { mode in
                     Button(group.saved && group.host.mode == mode ? "✓ \(mode.title)" : mode.title) {
@@ -885,12 +906,13 @@ struct PortmanPanelView: View {
         selectedRemotePorts.sorted().filter { !service.remotePorts.contains($0) || discoveredHost != host }
     }
 
-    private func remoteRow(_ port: UInt16) -> some View {
+    /// `added` marks a port already on the host's card: its box stays checked and off, and "Added" takes the local port field.
+    private func remoteRow(_ port: UInt16, added: Bool = false) -> some View {
         let detail = service.remoteDetails[port]
         return VStack(alignment: .leading, spacing: 0) {
             PortmanForwardRow {
                 Toggle(isOn: Binding(
-                    get: { selectedRemotePorts.contains(port) },
+                    get: { added || selectedRemotePorts.contains(port) },
                     set: { selected in
                         selectedRemotePorts = Self.remoteSelection(
                             selectedRemotePorts, port: port, selecting: selected,
@@ -902,6 +924,7 @@ struct PortmanPanelView: View {
                 )) { EmptyView() }
                 .labelsHidden()
                 .toggleStyle(OnePlusCheckboxStyle())
+                .disabled(added)
                 .accessibilityLabel("Select remote port \(String(port))")
                 Button {
                     expandedRemotePort = expandedRemotePort == port ? nil : port
@@ -931,13 +954,19 @@ struct PortmanPanelView: View {
                 }
                 .buttonStyle(.plain)
                 .accessibilityLabel("Details for remote port \(String(port))")
-                OnePlusLinearTextField(String(port), text: Binding(
-                    get: { localPortInputs[port] ?? String(port) },
-                    set: { localPortInputs[port] = $0; selectedRemotePorts.insert(port) }
-                ), onSubmit: forwardSelected)
-                .frame(width: PortmanForwardMetrics.column)
-                .accessibilityLabel("Local port for remote port \(String(port))")
-                .help("Local port")
+                if added {
+                    Text("Added").linearText(OnePlusLinearMetrics.control, color: OnePlusLinearColor.secondary)
+                        .frame(width: PortmanForwardMetrics.column)
+                        .help("Already on this host's card")
+                } else {
+                    OnePlusLinearTextField(String(port), text: Binding(
+                        get: { localPortInputs[port] ?? String(port) },
+                        set: { localPortInputs[port] = $0; selectedRemotePorts.insert(port) }
+                    ), onSubmit: forwardSelected)
+                    .frame(width: PortmanForwardMetrics.column)
+                    .accessibilityLabel("Local port for remote port \(String(port))")
+                    .help("Local port")
+                }
             }
             if expandedRemotePort == port {
                 HStack(alignment: .firstTextBaseline, spacing: OnePlusMetrics.actionSpacing) {
@@ -1028,6 +1057,55 @@ struct PortmanPanelView: View {
         expandedRemotePort = nil
     }
 
+    /// Right-click "Scan ports" on a host card: scans that host with the Forward scan and lists its ports in a sheet.
+    private func scanPorts(on destination: String) {
+        scanSheetHost = destination
+        if host == destination { clearRemoteScan(); scanRemote() }
+        else { pendingScanHost = destination; host = destination }
+    }
+
+    private func closeScanSheet() {
+        scanSheetHost = nil
+        clearRemoteScan()
+    }
+
+    private func scanSheet(_ destination: String) -> some View {
+        let added = PortmanForwardTree.addedRemotePorts(host: destination, hosts: hostList.hosts, tunnels: service.tunnels)
+        let ready = discoveredHost == destination && !service.isLoadingRemote
+        let rows = ready ? service.remotePorts : []
+        let sheetChrome: CGFloat = 140
+        let listCap = max(PortmanForwardMetrics.rowHeight * 3, panelHeight * OnePlusMenuMetrics.heightFraction - sheetChrome)
+        return OnePlusLinearSheet("Ports on \(destination)", width: .panel, close: closeScanSheet) {
+            VStack(alignment: .leading, spacing: OnePlusLinearPanelStyle.fillSteps.blockGap) {
+                if rows.isEmpty {
+                    OnePlusLinearList(style: .panel) {
+                        PortmanForwardRow {
+                            PortmanForwardStatus(ready ? "No listening ports found" : "Scanning \(destination)…")
+                        }
+                    }
+                } else {
+                    OnePlusLinearList(style: .panel, maxHeight: listCap) {
+                        ForEach(rows, id: \.self) { remoteRow($0, added: added.contains($0)) }
+                    }
+                }
+                if let error = service.forwardingError { errorText(error) }
+            }
+        } footer: {
+            Button("Cancel", action: closeScanSheet)
+                .keyboardShortcut(.cancelAction)
+                .buttonStyle(OnePlusLinearButtonStyle(.soft))
+            Button(selectedRemotePorts.isEmpty ? "Add" : "Add \(selectedRemotePorts.count)") {
+                forwardSelected()
+                if selectedRemotePorts.isEmpty, service.forwardingError == nil { closeScanSheet() }
+            }
+            .keyboardShortcut(.defaultAction)
+            .buttonStyle(OnePlusLinearButtonStyle(.soft))
+            .disabled(selectedRemotePorts.isEmpty)
+        }
+        .fixedSize(horizontal: false, vertical: true)
+        .portmanForwardLook()
+    }
+
     private func addManualPort() {
         guard !host.isEmpty else {
             service.forwardingError = "Enter an SSH host first."
@@ -1106,7 +1184,7 @@ private struct PortmanPasswordSheet: View {
     @State private var password = ""
 
     var body: some View {
-        OnePlusSheet("SSH password for \(host)", width: .small, close: onCancel) {
+        OnePlusSheet("SSH password for \(host)", width: .panel, close: onCancel) {
             VStack(alignment: .leading, spacing: OnePlusMetrics.actionSpacing) {
             HStack(spacing: OnePlusMetrics.actionSpacing) {
                 OnePlusLinearTextField("Password", text: $password, secure: true, onSubmit: submit)

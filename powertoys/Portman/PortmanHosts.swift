@@ -186,6 +186,11 @@ nonisolated enum PortmanForwardTree {
         }
         return groups
     }
+
+    /// Remote ports already on a host's card (saved forwards and live tunnels), so a scan marks them as added.
+    static func addedRemotePorts(host: String, hosts: [PortmanHost], tunnels: [PortmanTunnel]) -> Set<UInt16> {
+        Set(groups(hosts: hosts, tunnels: tunnels).first { $0.host.destination == host }?.children.map(\.spec.remotePort) ?? [])
+    }
 }
 
 /// The saved host list. Every change saves and tells the server monitor which hosts to watch.
