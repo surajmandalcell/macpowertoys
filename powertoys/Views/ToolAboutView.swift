@@ -57,7 +57,7 @@ struct ToolAboutView: View {
 
     private func header(_ tool: any Tool) -> some View {
         OnePlusLinearToolHeader(tool.name, detail: tool.description) {
-            ToolIconView(tool: tool, size: OnePlusLinearEditorialMetrics.headerIcon)
+            ToolIconView(tool: tool, size: OnePlusLinearEditorialMetrics.headerTileIcon)
         } actions: {
             MainLaunchTile(tool: tool)
         }

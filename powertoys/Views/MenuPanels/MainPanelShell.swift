@@ -272,7 +272,7 @@ struct IndividualToolMenuPanel: View {
         OnePlusLinearMenuPanel {
             HStack(spacing: OnePlusLinearMetrics.rowGap) {
                 if let logo = ToolRegistry.builtInTools.first(where: { $0.id == tool.id }) {
-                    ToolIconView(tool: logo, size: OnePlusLinearMetrics.iconTab).accessibilityHidden(true)
+                    ToolIconView(tool: logo, size: OnePlusLinearMetrics.navIcon).accessibilityHidden(true)
                 }
                 Text(tool.title).linearText(weight: .semibold).lineLimit(1)
             }
