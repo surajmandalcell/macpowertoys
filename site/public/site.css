@@ -90,6 +90,21 @@ header.nav,.hero,.foot{zoom:var(--z,1)}
 
 /* Tools */
 
+/* Text pages: privacy, terms, 404 */
+.doc{max-width:760px;padding:var(--s5) 0 var(--s6)}
+.doc h1{font-size:var(--t-h2)}
+.doc .lead{margin-top:var(--s2)}
+.doc .fine{margin-top:var(--s1)}
+.doc h2{margin-top:var(--s5);font-size:24px;line-height:1.2;letter-spacing:-.02em}
+.doc p,.doc li{font-size:17px;color:#c7c7cc}
+.doc p{margin-top:var(--s1)}
+.doc ul{margin:var(--s1) 0 0;padding-left:20px}
+.doc li+li{margin-top:var(--s1)}
+.doc b{color:var(--ink);font-weight:600}
+.doc a:not(.dl){color:var(--ink);text-decoration:underline;text-decoration-color:rgba(255,255,255,.3);text-underline-offset:3px;transition:text-decoration-color .15s;overflow-wrap:anywhere}
+.doc a:not(.dl):hover{text-decoration-color:var(--ink)}
+.doc .get{margin-top:var(--s4)}
+
 /* Footer: static large wordmark */
 .foot{max-width:1336px;margin:0 auto;padding:0 var(--g);overflow:hidden}
 .foot-top{position:relative;display:grid;grid-template-columns:minmax(0,1fr) auto;gap:var(--s4);margin-top:var(--s5);padding-top:var(--s5)}
@@ -97,7 +112,7 @@ header.nav,.hero,.foot{zoom:var(--z,1)}
 .brand{display:flex;flex-direction:column;align-items:flex-start}
 .brand .id{display:flex;align-items:center;gap:12px;font-weight:600;font-size:19px;letter-spacing:-.02em}
 .brand .cmd{margin-top:var(--s2)}
-.cols{display:grid;grid-template-columns:repeat(2,minmax(0,160px));gap:var(--s3)}
+.cols{display:grid;grid-template-columns:repeat(3,minmax(0,160px));gap:var(--s3)}
 .cols ul{list-style:none;margin:0;padding:0}
 .cols h4{margin:0 0 var(--s1);font-size:13px}
 .ln{display:inline-flex;align-items:center;min-height:32px;margin:0 -8px;padding:0 8px;border-radius:8px;font-size:15px;color:var(--muted);text-decoration:none;transition:color .15s}
