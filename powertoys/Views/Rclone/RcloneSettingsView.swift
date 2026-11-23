@@ -17,6 +17,7 @@ nonisolated enum RcloneBandwidthInput {
 struct RcloneSettingsView: View {
     @AppStorage("tool.rclone.startAtLaunch") private var startAtLaunch = false
     @AppStorage("app.showTray") private var showTray = true
+    @AppStorage("tool.rclone.animatedMenuBarIcon") private var animatedIcon = true
     @AppStorage(RcloneDefaults.ignorePatternsKey) private var ignorePatterns = RcloneDefaults.ignorePatterns
     @AppStorage(RcloneDefaults.transfersKey) private var transfers = RcloneDefaults.transfers
     @AppStorage(RcloneDefaults.checkersKey) private var checkers = RcloneDefaults.checkers
@@ -48,6 +49,9 @@ struct RcloneSettingsView: View {
             }
             OnePlusLinearAppletRow("Show transfer status", detail: "In the MacPowerToys menu bar.", systemImage: "menubar.rectangle") {
                 Toggle("Show transfer status", isOn: $showTray).labelsHidden().toggleStyle(OnePlusLinearSwitchStyle())
+            }
+            OnePlusLinearAppletRow("Animate menu bar icon", detail: "Briefly, when a transfer starts.", systemImage: "sparkles") {
+                Toggle("Animate menu bar icon", isOn: $animatedIcon).labelsHidden().toggleStyle(OnePlusLinearSwitchStyle())
             }
             OnePlusLinearAppletRow("Retry interrupted transfers", value: "On", systemImage: "arrow.clockwise")
                 .help("Always on; unfinished transfers resume.")

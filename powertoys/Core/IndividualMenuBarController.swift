@@ -100,7 +100,13 @@ enum IndividualMenuBarTool: String, CaseIterable, Identifiable {
     }
 
     /// The tool's own "Animate menu bar icon" switch; only tools with a motion have one.
-    var animationPreferenceKey: String? { self == .awake ? "tool.awake.animatedMenuBarIcon" : nil }
+    var animationPreferenceKey: String? {
+        switch self {
+        case .awake: "tool.awake.animatedMenuBarIcon"
+        case .cloudSync: "tool.rclone.animatedMenuBarIcon"
+        default: nil
+        }
+    }
 
     /// On/off tools run their action on left click and open the panel on right click (DESIGN.md "Status icon").
     var quickAction: ToolActionID? {
@@ -135,6 +141,9 @@ final class IndividualMenuBarController: NSObject {
     private var popovers: [IndividualMenuBarTool: OnePlusMenuPresenter] = [:]
     private var observers: [NSObjectProtocol] = []
     private var pulseRays: NSImageView?
+    private var cloudBudget = MenuBarAttentionBudget()
+    private var cloudDraw: NSImageView?
+    private var cloudTimer: Timer?
     private var screensAsleep = false
     static let animatedIconsKey = "menuBar.animatedIcons"
 
@@ -185,10 +194,12 @@ final class IndividualMenuBarController: NSObject {
                 MainActor.assumeIsolated {
                     self?.screensAsleep = asleep
                     self?.updateAwakeIcon()
+                    self?.updateCloudIcon()
                 }
             })
         }
         trackAwake()
+        trackCloud()
         refresh()
     }
 
@@ -199,6 +210,7 @@ final class IndividualMenuBarController: NSObject {
         }
         observers.removeAll()
         stopPulse()
+        stopCloudDraw()
         popovers.values.forEach { $0.performClose(nil) }
         popovers.removeAll()
         statusItems.values.forEach(NSStatusBar.system.removeStatusItem)
@@ -224,6 +236,124 @@ final class IndividualMenuBarController: NSObject {
             }
         }
         updateAwakeIcon()
+        updateCloudIcon()
+    }
+
+    private func trackCloud() {
+        withObservationTracking { _ = RcloneJobManager.shared.jobs.map(\.state) } onChange: { [weak self] in
+            Task { @MainActor in
+                guard let self, !self.observers.isEmpty else { return }
+                self.updateCloudIcon()
+                self.trackCloud()
+            }
+        }
+    }
+
+    private func cloudActivity() -> MenuBarAttentionBudget.Activity {
+        let jobs = RcloneJobManager.shared.jobs
+        let moving = jobs.filter { $0.state.isActive && $0.state != .paused }
+        if !moving.isEmpty { return .running(eta: moving.compactMap(\.displayEta).max()) }
+        if jobs.contains(where: { $0.state == .paused }) { return .paused }
+        let last = jobs.filter(\.state.isTerminal).max { ($0.finishedAt ?? .distantPast) < ($1.finishedAt ?? .distantPast) }
+        return last?.state == .failed ? .failed : .idle
+    }
+
+    /// RSync UI's cloud draws and erases only inside the attention budget's play window (DESIGN.md "Motion").
+    private func updateCloudIcon() {
+        cloudTimer?.invalidate()
+        cloudTimer = nil
+        let motion = animates(.cloudSync) && !screensAsleep && !NSWorkspace.shared.accessibilityDisplayShouldReduceMotion
+        let glyph = cloudBudget.update(cloudActivity(), now: Date(), motionAllowed: motion)
+        guard let button = statusItems[.cloudSync]?.button else { return stopCloudDraw() }
+        switch glyph {
+        case .idle, .working:
+            stopCloudDraw()
+            button.image = StatusItemIcon.glyph("MenuBarGlyphCloud")
+        case .error:
+            stopCloudDraw()
+            button.image = StatusItemIcon.glyph("MenuBarGlyphCloudError")
+        case .animating:
+            if cloudDraw == nil { startCloudDraw(in: button, loop: true) }
+            if let end = cloudBudget.windowEnd, end != .distantFuture {
+                cloudTimer = Timer.scheduledTimer(withTimeInterval: end.timeIntervalSinceNow, repeats: false) { [weak self] _ in
+                    MainActor.assumeIsolated { self?.updateCloudIcon() }
+                }
+            }
+        case .finishing:
+            startCloudDraw(in: button, loop: false)
+            cloudTimer = Timer.scheduledTimer(withTimeInterval: Self.cloudCycle / 2, repeats: false) { [weak self] _ in
+                MainActor.assumeIsolated { self?.updateCloudIcon() }
+            }
+        }
+    }
+
+    private static let cloudCycle: CFTimeInterval = 3.2
+
+    /// The cloud outline revealed by a stroked mask on the glyph's own path: strokeEnd draws it, strokeStart
+    /// erases it. Masking the template image keeps the menu bar's own tint.
+    private func startCloudDraw(in button: NSStatusBarButton, loop: Bool) {
+        stopCloudDraw()
+        guard let cloud = StatusItemIcon.glyph("MenuBarGlyphCloud") else { return }
+        button.image = NSImage(size: cloud.size, flipped: false) { _ in true }
+        button.image?.isTemplate = true
+        button.wantsLayer = true
+        let view = NSImageView(image: cloud)
+        view.imageScaling = .scaleNone
+        view.frame = button.bounds
+        view.wantsLayer = true
+        let origin = CGPoint(x: (button.bounds.width - cloud.size.width) / 2, y: (button.bounds.height - cloud.size.height) / 2)
+        let mask = CAShapeLayer()
+        mask.frame = view.bounds
+        mask.path = Self.cloudPath(origin: origin, height: cloud.size.height)
+        mask.fillColor = nil
+        mask.strokeColor = NSColor.black.cgColor
+        mask.lineWidth = 2.4
+        mask.lineCap = .round
+        mask.lineJoin = .round
+        mask.strokeEnd = loop ? 0 : 1
+        view.layer?.mask = mask
+        button.addSubview(view)
+        let ease = CAMediaTimingFunction(name: .easeInEaseOut)
+        if loop {
+            let draw = CAKeyframeAnimation(keyPath: "strokeEnd")
+            draw.values = [0, 1, 1]
+            draw.keyTimes = [0, 0.5, 1]
+            draw.timingFunctions = [ease, ease]
+            let erase = CAKeyframeAnimation(keyPath: "strokeStart")
+            erase.values = [0, 0, 1]
+            erase.keyTimes = [0, 0.5, 1]
+            erase.timingFunctions = [ease, ease]
+            let group = CAAnimationGroup()
+            group.animations = [draw, erase]
+            group.duration = Self.cloudCycle
+            group.repeatCount = .infinity
+            mask.add(group, forKey: "draw")
+        } else {
+            let draw = CABasicAnimation(keyPath: "strokeEnd")
+            draw.fromValue = 0
+            draw.toValue = 1
+            draw.duration = Self.cloudCycle / 2
+            draw.timingFunction = ease
+            mask.add(draw, forKey: "draw")
+        }
+        cloudDraw = view
+    }
+
+    /// `MenuBarGlyphCloud.svg`'s path (SVG units, y down) placed in the layer (y up).
+    private static func cloudPath(origin: CGPoint, height: CGFloat) -> CGPath {
+        let path = CGMutablePath()
+        path.move(to: CGPoint(x: 4.5, y: 12.75))
+        path.addLine(to: CGPoint(x: 11.5, y: 12.75))
+        path.addArc(center: CGPoint(x: 11.5, y: 9.75), radius: 3, startAngle: .pi / 2, endAngle: -1.370, clockwise: true)
+        path.addArc(center: CGPoint(x: 8.059, y: 9.008), radius: 4.6, startAngle: -0.4975, endAngle: -2.9429, clockwise: true)
+        path.addArc(center: CGPoint(x: 4.377, y: 10.353), radius: 2.4, startAngle: -1.9234, endAngle: -4.7631, clockwise: true)
+        var transform = CGAffineTransform(translationX: origin.x - 0.7, y: origin.y + height + 1.35).scaledBy(x: 1, y: -1)
+        return path.copy(using: &transform) ?? path
+    }
+
+    private func stopCloudDraw() {
+        cloudDraw?.removeFromSuperview()
+        cloudDraw = nil
     }
 
     private func trackAwake() {
