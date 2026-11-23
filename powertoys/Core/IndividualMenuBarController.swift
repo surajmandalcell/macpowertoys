@@ -137,9 +137,10 @@ final class IndividualMenuBarController: NSObject {
     private var pulseTimer: Timer?
     private var pulseFrame = 0
     static let animatedIconsKey = "menuBar.animatedIcons"
-    // Rays pulse: 8 opacity steps at 5 frames a second, a 1.6 s loop.
-    private static let pulseOpacity: [CGFloat] = [1, 0.8, 0.55, 0.35, 0.35, 0.55, 0.8, 1]
-    private static let pulseInterval: TimeInterval = 0.2
+    // Rays pulse: 4 opacity steps at 2 frames a second, a 2 s loop. Each image change makes macOS re-snapshot
+    // the item for every menu bar (about 9 ms on two displays), so frames stay few.
+    private static let pulseOpacity: [CGFloat] = [1, 0.6, 0.3, 0.6]
+    private static let pulseInterval: TimeInterval = 0.5
 
     var statusItemOwnerCount: Int { statusItems.count }
     var observerOwnerCount: Int { observers.count }
