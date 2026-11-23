@@ -40,6 +40,7 @@ struct CloudSyncTrayView: View {
         .modifier(MainPanelReveal(.cloudSync))
         .onChange(of: manager.jobs.map { TrayTransferOrderKey(id: $0.id, state: $0.state) }, initial: true) {
             guard isVisible else { return }
+            manager.acknowledgeFailures()
             jobs = TrayPopoverLayout.visibleTransferJobs(manager.jobs)
             remoteTransfers = TrayPopoverLayout.latestTransfersByRemote(manager.jobs)
         }

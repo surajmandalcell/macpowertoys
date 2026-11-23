@@ -233,7 +233,26 @@ final class RcloneJobManager {
         windowVisible || backgroundEnabled || hasActivePairs || jobs.contains { $0.state.isActive || $0.continuousSync }
     }
 
+    static let acknowledgedFailureKey = "tool.rclone.acknowledgedFailure"
+
+    /// The newest finished job's id when it failed and the user has not opened RSync UI since.
+    static func unseenFailure(in jobs: [TransferJob], acknowledged: String?) -> UUID? {
+        let newest = jobs.filter(\.state.isTerminal).max { ($0.finishedAt ?? .distantPast) < ($1.finishedAt ?? .distantPast) }
+        guard let newest, newest.state == .failed, newest.id.uuidString != acknowledged else { return nil }
+        return newest.id
+    }
+
+    var hasUnseenFailure: Bool {
+        Self.unseenFailure(in: jobs, acknowledged: UserDefaults.standard.string(forKey: Self.acknowledgedFailureKey)) != nil
+    }
+
+    func acknowledgeFailures() {
+        guard let id = Self.unseenFailure(in: jobs, acknowledged: UserDefaults.standard.string(forKey: Self.acknowledgedFailureKey)) else { return }
+        UserDefaults.standard.set(id.uuidString, forKey: Self.acknowledgedFailureKey)
+    }
+
     func windowDidOpen(owner: UUID) async {
+        acknowledgeFailures()
         guard windowOwners.insert(owner).inserted else { return }
         await start()
     }

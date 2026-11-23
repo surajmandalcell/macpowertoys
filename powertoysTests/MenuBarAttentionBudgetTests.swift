@@ -47,6 +47,21 @@ final class MenuBarAttentionBudgetTests: XCTestCase {
         XCTAssertEqual(budget.update(.running(eta: nil), now: at(16 * 60), motionAllowed: true), .animating)
     }
 
+    func testErrorGlyphShowsOnlyAnUnseenNewestFailure() {
+        func job(_ state: TransferState, finished seconds: TimeInterval) -> TransferJob {
+            let job = TransferJob(operation: .copy, kind: .directory, sourceFs: "/source", destinationFs: "remote:backup",
+                                  sourceDisplay: "source", destinationDisplay: "backup", excludePatterns: [], maxRetries: 3)
+            job.state = state
+            job.finishedAt = at(seconds)
+            return job
+        }
+        let failed = job(.failed, finished: 10)
+        let jobs = [job(.completed, finished: 5), failed]
+        XCTAssertEqual(RcloneJobManager.unseenFailure(in: jobs, acknowledged: nil), failed.id)
+        XCTAssertNil(RcloneJobManager.unseenFailure(in: jobs, acknowledged: failed.id.uuidString))
+        XCTAssertNil(RcloneJobManager.unseenFailure(in: jobs + [job(.completed, finished: 20)], acknowledged: nil))
+    }
+
     func testErrorIsStaticAndMotionOffShowsWorkingGlyph() {
         var budget = MenuBarAttentionBudget()
         XCTAssertEqual(budget.update(.running(eta: nil), now: at(0), motionAllowed: false), .working)

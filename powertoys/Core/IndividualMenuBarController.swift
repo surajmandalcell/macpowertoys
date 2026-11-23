@@ -250,12 +250,11 @@ final class IndividualMenuBarController: NSObject {
     }
 
     private func cloudActivity() -> MenuBarAttentionBudget.Activity {
-        let jobs = RcloneJobManager.shared.jobs
-        let moving = jobs.filter { $0.state.isActive && $0.state != .paused }
+        let manager = RcloneJobManager.shared
+        let moving = manager.jobs.filter { $0.state.isActive && $0.state != .paused }
         if !moving.isEmpty { return .running(eta: moving.compactMap(\.displayEta).max()) }
-        if jobs.contains(where: { $0.state == .paused }) { return .paused }
-        let last = jobs.filter(\.state.isTerminal).max { ($0.finishedAt ?? .distantPast) < ($1.finishedAt ?? .distantPast) }
-        return last?.state == .failed ? .failed : .idle
+        if manager.jobs.contains(where: { $0.state == .paused }) { return .paused }
+        return manager.hasUnseenFailure ? .failed : .idle
     }
 
     /// RSync UI's cloud draws and erases only inside the attention budget's play window (DESIGN.md "Motion").
