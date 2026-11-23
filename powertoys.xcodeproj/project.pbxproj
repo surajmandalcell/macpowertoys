@@ -8,6 +8,8 @@
 
 /* Begin PBXBuildFile section */
 		B30000000000000000000001 /* OnePlusUI in Frameworks */ = {isa = PBXBuildFile; productRef = B30000000000000000000003 /* OnePlusUI */; };
+		B30000000000000000000011 /* IndieCrumbCore in Frameworks */ = {isa = PBXBuildFile; productRef = B30000000000000000000013 /* IndieCrumbCore */; };
+		B30000000000000000000014 /* IndieCrumbUsage in Frameworks */ = {isa = PBXBuildFile; productRef = B30000000000000000000015 /* IndieCrumbUsage */; };
 		C40000000000000000000004 /* MacPowerToysHelperXPC.swift in Sources */ = {isa = PBXBuildFile; fileRef = C40000000000000000000014 /* MacPowerToysHelperXPC.swift */; };
 		A10000000000000000000005 /* com.surajmandal.macpowertoys.helper in Copy LaunchServices */ = {isa = PBXBuildFile; fileRef = A10000000000000000000006 /* com.surajmandal.macpowertoys.helper */; settings = {ATTRIBUTES = (CodeSignOnCopy, ); }; };
 		A10000000000000000000021 /* com.surajmandal.macpowertoys.nettoys-neighbor.plist in Copy LaunchDaemons */ = {isa = PBXBuildFile; fileRef = A10000000000000000000022 /* com.surajmandal.macpowertoys.nettoys-neighbor.plist */; };
@@ -108,6 +110,8 @@
 			buildActionMask = 2147483647;
 			files = (
 				B30000000000000000000001 /* OnePlusUI in Frameworks */,
+				B30000000000000000000011 /* IndieCrumbCore in Frameworks */,
+				B30000000000000000000014 /* IndieCrumbUsage in Frameworks */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -203,6 +207,8 @@
 			name = powertoys;
 			packageProductDependencies = (
 				B30000000000000000000003 /* OnePlusUI */,
+				B30000000000000000000013 /* IndieCrumbCore */,
+				B30000000000000000000015 /* IndieCrumbUsage */,
 			);
 			productName = powertoys;
 			productReference = 1BDFA94E2F08A44C009A9009 /* powertoys.app */;
@@ -291,6 +297,7 @@
 			minimizedProjectReferenceProxies = 1;
 			packageReferences = (
 				B30000000000000000000002 /* XCRemoteSwiftPackageReference "OnePlusUI" */,
+				B30000000000000000000012 /* XCRemoteSwiftPackageReference "indiecrumb-swift" */,
 			);
 			preferredProjectObjectVersion = 77;
 			productRefGroup = 1BDFA94F2F08A44C009A9009 /* Products */;
@@ -802,6 +809,14 @@
 				version = 1.4.7;
 			};
 		};
+		B30000000000000000000012 /* XCRemoteSwiftPackageReference "indiecrumb-swift" */ = {
+			isa = XCRemoteSwiftPackageReference;
+			repositoryURL = "https://github.com/samhqapp/indiecrumb-swift";
+			requirement = {
+				kind = upToNextMinorVersion;
+				minimumVersion = 0.1.0;
+			};
+		};
 /* End XCRemoteSwiftPackageReference section */
 
 /* Begin XCSwiftPackageProductDependency section */
@@ -809,6 +824,16 @@
 			isa = XCSwiftPackageProductDependency;
 			package = B30000000000000000000002 /* XCRemoteSwiftPackageReference "OnePlusUI" */;
 			productName = OnePlusUI;
+		};
+		B30000000000000000000013 /* IndieCrumbCore */ = {
+			isa = XCSwiftPackageProductDependency;
+			package = B30000000000000000000012 /* XCRemoteSwiftPackageReference "indiecrumb-swift" */;
+			productName = IndieCrumbCore;
+		};
+		B30000000000000000000015 /* IndieCrumbUsage */ = {
+			isa = XCSwiftPackageProductDependency;
+			package = B30000000000000000000012 /* XCRemoteSwiftPackageReference "indiecrumb-swift" */;
+			productName = IndieCrumbUsage;
 		};
 /* End XCSwiftPackageProductDependency section */
 	};

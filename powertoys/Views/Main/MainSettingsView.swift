@@ -25,6 +25,7 @@ private struct MainGeneralSettings: View {
     @AppStorage("app.closeMainWindowAfterOpeningTool") private var closeMainAfterOpen = false
     @AppStorage("app.showTray") private var showTray = true
     @AppStorage(IndividualMenuBarController.animatedIconsKey) private var animatedIcons = true
+    @AppStorage(DailyCounts.storageKey) private var shareDailyCounts = false
     @State private var sync = SettingsSyncManager.shared
     @State private var shortcuts = GlobalShortcutManager.shared
     @State private var showSyncConflict = false
@@ -36,8 +37,10 @@ private struct MainGeneralSettings: View {
             appearanceCard
             launchCard
             shortcutCard
+            privacyCard
         }
         .onChange(of: appearance) { _, value in value.apply() }
+        .onChange(of: shareDailyCounts) { _, value in DailyCounts.setEnabled(value) }
         .onReceive(NotificationCenter.default.publisher(for: NSApplication.didBecomeActiveNotification)) { _ in
             loginStatus = SMAppService.mainApp.status
         }
@@ -127,6 +130,17 @@ private struct MainGeneralSettings: View {
                     ShortcutRecorderField(action: .mainPanel).disabled(!shortcuts.isEnabled(.mainPanel))
                 }
                 ShortcutPermissionNotice(action: .mainPanel)
+            }
+        }
+    }
+
+    private var privacyCard: some View {
+        MainSection(title: "Privacy") {
+            OnePlusSettingRow("Share anonymous daily counts",
+                              help: "Once a day, sends the app version, macOS version, and chip to crumb.samhq.app. No name, email, files, or IP address.",
+                              separator: false) {
+                Toggle("Share anonymous daily counts", isOn: $shareDailyCounts)
+                    .labelsHidden().toggleStyle(OnePlusSwitchStyle())
             }
         }
     }

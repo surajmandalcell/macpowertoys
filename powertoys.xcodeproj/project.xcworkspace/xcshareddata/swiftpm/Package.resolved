@@ -1,6 +1,15 @@
 {
-  "originHash" : "1eb54eb5e3ee5f598f6578a0b20c73d82fd0dc5c7e21ebbd5441c220de07345a",
+  "originHash" : "0f929050a0afa42dd4c38cc88280793fdacd1cdca2d7d38f28cf273339fb732b",
   "pins" : [
+    {
+      "identity" : "indiecrumb-swift",
+      "kind" : "remoteSourceControl",
+      "location" : "https://github.com/samhqapp/indiecrumb-swift",
+      "state" : {
+        "revision" : "ea746f2e3e994ba382262107a6d07acfe19c816b",
+        "version" : "0.1.0"
+      }
+    },
     {
       "identity" : "oneplus-ui",
       "kind" : "remoteSourceControl",
