@@ -71,7 +71,7 @@ final class CompactAppletRedesignTests: XCTestCase {
         }
         defaults.set(try JSONEncoder().encode(samples), forKey: "color-picker.history.v1")
         let service = ColorPickerService(defaults: defaults, pasteboard: NSPasteboard(name: NSPasteboard.Name(suite)))
-        let directory = URL(fileURLWithPath: "/Volumes/External1TB/dev/personal/powertoys/tmp/redesign/captures")
+        let directory = URL(fileURLWithPath: "/Volumes/External1TB/dev/organization/samhq/macpowertoys/tmp/redesign/captures")
         try FileManager.default.createDirectory(at: directory, withIntermediateDirectories: true)
         func descendants(_ view: NSView) -> [NSView] { [view] + view.subviews.flatMap(descendants) }
         for page in [ColorPickerPage.history, .projects] {
@@ -118,7 +118,7 @@ final class CompactAppletRedesignTests: XCTestCase {
 
     @MainActor
     func testAppletTitlebarGearRendersForTextExtractor() async throws {
-        let directory = URL(fileURLWithPath: "/Volumes/External1TB/dev/personal/powertoys/tmp/redesign/captures")
+        let directory = URL(fileURLWithPath: "/Volumes/External1TB/dev/organization/samhq/macpowertoys/tmp/redesign/captures")
         try FileManager.default.createDirectory(at: directory, withIntermediateDirectories: true)
         let width = OnePlusWindowCanvas.textExtractor.size.width
         let applets: [(String, AnyView)] = [

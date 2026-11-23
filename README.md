@@ -10,7 +10,7 @@
 </p>
 
 <p align="center">
-  <a href="https://macpowertoys.samhq.app/">Website</a> · <a href="https://github.com/surajmandalcell/macpowertoys/releases/latest">Download for macOS</a> · Apple Silicon and Intel · macOS 26.2+ · MIT
+  <a href="https://macpowertoys.samhq.app/">Website</a> · <a href="https://github.com/samhqapp/macpowertoys/releases/latest">Download for macOS</a> · Apple Silicon and Intel · macOS 26.2+ · MIT
 </p>
 
 <p align="center">
@@ -47,7 +47,7 @@ Partition Manager, System Cleaner, and NetToys are separate apps now.
 1. Install with Homebrew:
 
    ```bash
-   brew install --cask surajmandalcell/tap/macpowertoys
+   brew install --cask samhqapp/tap/macpowertoys
    ```
 
    Or download the latest DMG, move **MacPowerToys** to Applications, and
@@ -99,8 +99,8 @@ histories, or logs. Read the
 
 ## Related projects
 
-- [Switch](https://github.com/surajmandalcell/switch): the standalone Switch app and terminal tool for Codex and Grok CLI accounts.
-- [OnePlusUI](https://github.com/surajmandalcell/oneplus-ui): the SwiftUI component package behind every window and popup.
+- [Switch](https://github.com/samhqapp/switch): the standalone Switch app and terminal tool for Codex and Grok CLI accounts.
+- [OnePlusUI](https://github.com/samhqapp/oneplus-ui): the SwiftUI component package behind every window and popup.
 
 You can also [build and share your own tool](docs/MARKETPLACE_TOOLS.md) through
 a Marketplace catalog.
@@ -109,7 +109,7 @@ a Marketplace catalog.
 
 ```bash
 brew install rclone
-git clone https://github.com/surajmandalcell/macpowertoys.git
+git clone https://github.com/samhqapp/macpowertoys.git
 cd macpowertoys
 make build          # or: make build ADHOC=1 without an Apple Development identity
 ```

@@ -2,7 +2,7 @@
 // [data-version] span, the release's DMG into every [data-download] link, and the star count into [data-stars].
 // The HTML keeps the last known release and the word "Star", so a GitHub outage changes nothing.
 // Visitors never call api.github.com; the worker does, at most twice an hour.
-const REPO = 'surajmandalcell/macpowertoys';
+const REPO = 'samhqapp/macpowertoys';
 const TTL = 3600;
 const MIN_STARS = 25;
 const GH = { headers: { 'User-Agent': 'macpowertoys-site', Accept: 'application/vnd.github+json' } };

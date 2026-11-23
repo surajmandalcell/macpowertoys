@@ -23,7 +23,7 @@ Each command opens the matching utility or menu-bar panel through the local
 
 ## Local installation
 
-1. [Install MacPowerToys](https://github.com/surajmandalcell/macpowertoys/releases/latest) and open it once.
+1. [Install MacPowerToys](https://github.com/samhqapp/macpowertoys/releases/latest) and open it once.
 2. Build the extension from this directory:
 
    ```bash

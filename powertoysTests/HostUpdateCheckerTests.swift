@@ -3,7 +3,7 @@ import XCTest
 
 final class HostUpdateCheckerTests: XCTestCase {
     func testReleaseComparisonUsesNumericVersionsAndRejectsUnsafeMetadata() throws {
-        let releaseURL = "https://github.com/surajmandalcell/macpowertoys/releases/tag/v1.8.10"
+        let releaseURL = "https://github.com/samhqapp/macpowertoys/releases/tag/v1.8.10"
         func release(_ version: String, url: String = releaseURL, prerelease: Bool = false) throws -> Data {
             try JSONSerialization.data(withJSONObject: ["tag_name": version, "html_url": url,
                                                        "draft": false, "prerelease": prerelease])
@@ -16,8 +16,9 @@ final class HostUpdateCheckerTests: XCTestCase {
         for version in ["v1.9-beta", "latest", "", "1..2", "999999999999999999999"] {
             XCTAssertThrowsError(try HostUpdateChecker.result(for: release(version), installedVersion: "1.8.1"))
         }
-        for url in ["http://github.com/surajmandalcell/macpowertoys/releases/tag/v2", "https://example.com/release",
-                    "https://github.com/other/repo/releases/tag/v2", "https://user@github.com/surajmandalcell/macpowertoys/releases/tag/v2"] {
+        for url in ["http://github.com/samhqapp/macpowertoys/releases/tag/v2", "https://example.com/release",
+                    "https://github.com/other/repo/releases/tag/v2", "https://github.com/surajmandalcell/macpowertoys/releases/tag/v2",
+                    "https://user@github.com/samhqapp/macpowertoys/releases/tag/v2"] {
             XCTAssertThrowsError(try HostUpdateChecker.result(for: release("2", url: url), installedVersion: "1.8.1"))
         }
         XCTAssertThrowsError(try HostUpdateChecker.result(for: release("2", prerelease: true), installedVersion: "1.8.1"))

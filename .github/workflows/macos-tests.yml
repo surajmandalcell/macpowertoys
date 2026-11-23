@@ -63,7 +63,7 @@ jobs:
     steps:
       - uses: actions/checkout@v4
         with:
-          repository: surajmandalcell/oneplus-ui
+          repository: samhqapp/oneplus-ui
           ref: 1.0.1
           path: tmp/oneplus-ui
       - name: Test the component package and build its showcase

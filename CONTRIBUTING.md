@@ -14,7 +14,7 @@ Requirements are macOS 26.2, Xcode 26.2, and rclone for RSync UI integration tes
 
 ```bash
 brew install rclone
-git clone https://github.com/surajmandalcell/macpowertoys.git
+git clone https://github.com/samhqapp/macpowertoys.git
 cd macpowertoys
 make build-for-testing DERIVED_DATA=/tmp/macpowertoys-build-tests
 ```

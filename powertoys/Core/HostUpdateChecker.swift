@@ -3,7 +3,7 @@ import Observation
 
 nonisolated struct HostAppMetadata {
     static let current = HostAppMetadata(bundle: .main)
-    static let repository = URL(string: "https://github.com/surajmandalcell/macpowertoys")!
+    static let repository = URL(string: "https://github.com/samhqapp/macpowertoys")!
     static let releases = repository.appendingPathComponent("releases")
     static let developer = "Suraj Mandal"
     static let contact = "surajmandalcell@gmail.com"
@@ -58,7 +58,7 @@ final class HostUpdateChecker {
     }
 
     nonisolated static func fetchRelease() async throws -> Data {
-        let url = URL(string: "https://api.github.com/repos/surajmandalcell/macpowertoys/releases/latest")!
+        let url = URL(string: "https://api.github.com/repos/samhqapp/macpowertoys/releases/latest")!
         var request = URLRequest(url: url, cachePolicy: .reloadIgnoringLocalCacheData, timeoutInterval: 30)
         request.setValue("application/vnd.github+json", forHTTPHeaderField: "Accept")
         let (data, response) = try await URLSession.shared.data(for: request)

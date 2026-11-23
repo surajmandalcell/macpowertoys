@@ -21,7 +21,7 @@ nonisolated struct SamApp: Identifiable, Sendable {
               download: URL(string: "https://hushpen.mandalsuraj.com/")), "AppBySamHushpenCover"),
         (Self(name: "Switch", bundleID: "com.mandalsuraj.ai-manager",
               summary: "Coding accounts and usage in your menu bar", icon: "AppBySamSwitch",
-              download: URL(string: "https://github.com/surajmandalcell/switch/releases/latest")), "AppBySamSwitchCover"),
+              download: URL(string: "https://github.com/samhqapp/switch/releases/latest")), "AppBySamSwitchCover"),
     ]
     // shortcut: only Hushpen, Switch, and NetToys have a public download page; add each app's link when it ships one.
     static let listed: [Self] = [
@@ -33,7 +33,7 @@ nonisolated struct SamApp: Identifiable, Sendable {
              summary: "Format and check external drives and SD cards", icon: "AppBySamPartitionManager"),
         Self(name: "Sam's NetToys", bundleID: "com.surajmandal.nettoys",
              summary: "Scan networks and keep SSH hosts reachable", icon: "AppBySamNetToys",
-             download: URL(string: "https://github.com/surajmandalcell/nettoys/releases/latest")),
+             download: URL(string: "https://github.com/samhqapp/nettoys/releases/latest")),
         Self(name: "ThrottleControl", bundleID: "io.github.surajmandalcell.ThrottleControl",
              summary: "Share a background traffic budget and keep games unthrottled", icon: "AppBySamThrottleControl"),
     ]
