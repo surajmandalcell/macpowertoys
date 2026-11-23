@@ -129,31 +129,35 @@ nonisolated struct FanCurve: Codable, Equatable, Sendable {
     }
 }
 
-/// The fixed Cool curves on the CPU-average scale. Silent and Quiet are
-/// by sound: they leave the minimum early, at 50 and 48 °C, and climb gently, so heat never builds to a loud spin-up;
-/// full speed comes only from the locked end or the hottest-core safety. Steady is the aggressive curve. Custom is the
-/// user's own curve.
+/// The fixed picks on the CPU-average scale. Quiet is by sound: it leaves the minimum early, at 48 °C, and climbs
+/// gently, so heat never builds to a loud spin-up. Cool is Hold at a fixed `FanHold.coolTarget`: the PI loop keeps the
+/// average near 48 °C, not a curve. Custom is the user's own curve.
 nonisolated enum FanCurvePreset: String, CaseIterable, Sendable {
-    case silent, quiet, steady, custom
+    case quiet, cool, custom
 
     static let storageKey = "fan.curvePreset"
+    /// Picks the owner removed on 2026-11-23, and the pick that replaces each.
+    static let retired = ["silent": FanCurvePreset.quiet, "steady": .cool]
 
     var name: String { rawValue.capitalized }
 
     var curve: FanCurve? {
         switch self {
-        case .silent: FanCurve(points: [.init(celsius: 50, speed: 0), .init(celsius: 60, speed: 0.12),
-                                        .init(celsius: 68, speed: 0.25), .init(celsius: 74, speed: 0.4)])
         case .quiet: FanCurve(points: [.init(celsius: 48, speed: 0), .init(celsius: 58, speed: 0.15),
                                        .init(celsius: 66, speed: 0.32), .init(celsius: 73, speed: 0.5)])
-        case .steady: FanCurve(points: [.init(celsius: 45, speed: 0), .init(celsius: 55, speed: 0.25),
-                                        .init(celsius: 63, speed: 0.5), .init(celsius: 70, speed: 0.75)])
-        case .custom: nil
+        case .cool, .custom: nil
         }
     }
 
     static func saved(_ defaults: UserDefaults = .standard) -> FanCurvePreset {
         FanCurvePreset(rawValue: defaults.string(forKey: storageKey) ?? "") ?? .custom
+    }
+
+    /// Moves a saved Silent or Steady pick to its replacement, so nobody lands on a pick that no longer exists.
+    static func migrateRetired(_ defaults: UserDefaults = .standard) -> String? {
+        guard let old = defaults.string(forKey: storageKey), let new = retired[old] else { return nil }
+        defaults.set(new.rawValue, forKey: storageKey)
+        return "Fan pick \(old.capitalized) is gone: moved to \(new.name)"
     }
 
     /// Picks this curve and turns Keep off.
@@ -169,10 +173,11 @@ nonisolated enum FanCurvePreset: String, CaseIterable, Sendable {
 /// the target ± `band` nothing changes, so the fans hold one steady speed.
 nonisolated struct FanHold: Equatable, Sendable {
     static let storageKey = "fan.keepCelsius"
-    /// The old 70-85 °C hottest-core range through the trace fit (56.5-68.4 °C average). In normal desktop use the
-    /// hottest die read median 67 °C (about 54 °C average); a target below that would hold the fans high all day.
-    static let range = 56.0...70.0
+    /// On the CPU-average scale the chart shows. Normal desktop use averages about 54 °C, so a target below that keeps
+    /// the fans up all day; the owner asked for that (Cool holds 48 °C), so the floor is 40.
+    static let range = 40.0...70.0
     static let defaultTarget = 62.0
+    static let coolTarget = 48.0
     static let band = 2.0
     static let gain = 0.05
     static let reset = 0.002
@@ -214,6 +219,11 @@ nonisolated struct FanHold: Equatable, Sendable {
 
     static func savedTarget(_ defaults: UserDefaults = .standard) -> Double? {
         (defaults.object(forKey: storageKey) as? Double).map(clamped)
+    }
+
+    /// The target the fans hold now: the user's Hold, else Cool's fixed 48 °C, else nil (a curve drives them).
+    static func activeTarget(_ defaults: UserDefaults = .standard) -> Double? {
+        savedTarget(defaults) ?? (FanCurvePreset.saved(defaults) == .cool ? coolTarget : nil)
     }
 
     /// Picks Keep; the saved curve stays as Custom but is not used while Keep is on.

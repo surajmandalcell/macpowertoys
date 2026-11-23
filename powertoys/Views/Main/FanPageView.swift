@@ -16,7 +16,11 @@ struct FanPageView: View {
     private var preset: FanCurvePreset { FanCurvePreset(rawValue: presetName ?? "") ?? .custom }
     private var custom: FanCurve { curveData.flatMap { try? JSONDecoder().decode(FanCurve.self, from: $0) } ?? .standard }
     private var curve: FanCurve { preset.curve ?? custom }
-    private var hold: Double? { holdCelsius.map { min(max($0, FanHold.range.lowerBound), FanHold.range.upperBound) } }
+    /// The target the chart shows: the user's Hold, else Cool's fixed 48 °C.
+    private var hold: Double? {
+        (holdCelsius ?? (preset == .cool ? FanHold.coolTarget : nil)).map { min(max($0, FanHold.range.lowerBound), FanHold.range.upperBound) }
+    }
+    private var holdRange: String { "\(Int(FanHold.range.lowerBound))-\(Int(FanHold.range.upperBound)) °C" }
     private var nowCelsius: Double? { service.display.cpuCelsius.map(Double.init) }
     private var nowChip: String? { service.display.cpuCelsius.map { "\(service.display.inputName) \($0) °C · \(service.display.rpm)" } }
 
@@ -29,8 +33,10 @@ struct FanPageView: View {
                 VStack(spacing: 0) {
                     if let hold {
                         FanCurveEditor(curve: FanHold.displayCurve(target: hold), nowCelsius: nowCelsius, nowChip: nowChip,
-                                       hold: hold) { _ in }.padding(.top, 12)
-                        FanHintRow(text: "Holds \(Int(hold)) °C, give or take \(Int(FanHold.band)) °C, with a steady fan speed") {
+                                       hold: hold, setHold: { FanHold.save($0) }) { _ in }.padding(.top, 12)
+                        FanHintRow(text: holdCelsius == nil
+                                   ? "Cool keeps the CPU near \(Int(hold)) °C · drag the line or type \(holdRange) to hold another"
+                                   : "Holds \(Int(hold)) °C, give or take \(Int(FanHold.band)) °C · drag the line or type \(holdRange)") {
                             OnePlusStepperField("Hold at", value: Binding(get: { Int(hold) }, set: { FanHold.save(Double($0)) }),
                                                 in: Int(FanHold.range.lowerBound)...Int(FanHold.range.upperBound), unit: "°C")
                                 .fixedSize()
@@ -47,7 +53,7 @@ struct FanPageView: View {
                 }
                 OnePlusLinearAppletRow("Now", value: nowText, systemImage: "thermometer.medium")
             }
-            FanPresetCards(preset: preset, hold: hold, custom: custom)
+            FanPresetCards(preset: preset, hold: holdCelsius == nil ? nil : hold, custom: custom)
         } footer: { EmptyView() }
         .transformEnvironment(\.onePlusLinearControlLook) { if $0 == nil { $0 = .quietRaised } }
         .onAppear { service.start(owner: Self.owner) }
@@ -88,9 +94,10 @@ private struct FanPresetCards: View {
 
     var body: some View {
         HStack(spacing: Self.gap) {
-            ForEach([FanCurvePreset.silent, .quiet, .steady], id: \.self) { item in
-                card(item.name, selected: hold == nil && preset == item, shape: .curve(item.curve ?? custom)) { item.pick() }
-            }
+            card(FanCurvePreset.quiet.name, selected: hold == nil && preset == .quiet,
+                 shape: .curve(FanCurvePreset.quiet.curve ?? custom)) { FanCurvePreset.quiet.pick() }
+            card("\(FanCurvePreset.cool.name) \(Int(FanHold.coolTarget)) °C", selected: hold == nil && preset == .cool,
+                 shape: .hold(FanHold.coolTarget)) { FanCurvePreset.cool.pick() }
             let target = hold ?? FanHold.savedTarget() ?? FanHold.defaultTarget
             card("Hold \(Int(target)) °C", selected: hold != nil, shape: .hold(target)) { FanHold.save(target) }
             card(FanCurvePreset.custom.name, selected: hold == nil && preset == .custom, shape: .curve(custom)) {
@@ -263,7 +270,7 @@ private struct FanHoldBand: View {
                 .frame(width: plot.x(target + FanHold.band) - plot.x(target - FanHold.band), height: plot.rect.height)
                 .position(x: plot.x(target), y: plot.rect.midY)
             Path { $0.move(to: plot.point(target, 0)); $0.addLine(to: plot.point(target, 1)) }
-                .stroke(OnePlusLinearColor.ink, style: StrokeStyle(lineWidth: 1.5, dash: [4, 3]))
+                .stroke(OnePlusLinearColor.ink.opacity(0.32), style: StrokeStyle(lineWidth: 1, dash: [2, 3]))
             Text("Hold \(Int(target)) °C").linearText(OnePlusLinearMetrics.caption, weight: .semibold)
                 .fixedSize().frame(width: 0, alignment: .trailing)
                 .position(x: plot.x(target - FanHold.band) - 8, y: plot.rect.minY + 10)
@@ -291,9 +298,12 @@ struct FanCurveEditor: View {
     let nowCelsius: Double?
     let nowChip: String?
     var hold: Double?
+    /// Saves a Hold target picked by a click or drag on the chart.
+    var setHold: ((Double) -> Void)?
     let save: (FanCurve) -> Void
 
     @State private var draft: FanCurve?
+    @State private var holdDraft: Double?
     @State private var dragging: Int?
     @State private var hovered: Int?
     @State private var editing: Int?
@@ -339,7 +349,16 @@ struct FanCurveEditor: View {
             ZStack(alignment: .topLeading) {
                 FanCurveGrid(plot: FanPlot(rect: plot))
                 if let hold {
-                    FanHoldBand(plot: FanPlot(rect: plot), target: hold)
+                    FanHoldBand(plot: FanPlot(rect: plot), target: holdDraft ?? hold)
+                    // The whole chart moves the target: press or drag anywhere, release to save.
+                    Color.clear.contentShape(Rectangle())
+                        .gesture(DragGesture(minimumDistance: 0, coordinateSpace: .named(Self.space))
+                            .onChanged { holdDraft = holdTarget(at: $0.location, plot: plot) }
+                            .onEnded { _ in
+                                if let holdDraft { setHold?(holdDraft) }
+                                holdDraft = nil
+                            })
+                        .help("Drag to set the temperature to hold, \(Int(FanHold.range.lowerBound))-\(Int(FanHold.range.upperBound)) °C")
                 } else {
                     Color.clear.contentShape(Rectangle())
                         .onContinuousHover(coordinateSpace: .named(Self.space)) {
@@ -351,8 +370,18 @@ struct FanCurveEditor: View {
                                 .disabled(pointer.map { !canAdd(at: $0, plot: plot) } ?? true)
                         }
                 }
-                FanCurveLine(plot: FanPlot(rect: plot), curve: shown)
-                if hold == nil {
+                FanCurveLine(plot: FanPlot(rect: plot), curve: holdDraft.map { FanHold.displayCurve(target: $0) } ?? shown)
+                if let hold {
+                    let target = holdDraft ?? hold, at = position(.init(celsius: target, speed: 0.5), plot)
+                    holdKnob(at: at)
+                    if holdDraft != nil {
+                        FanChip(text: "Hold \(Int(target)) °C")
+                            .onGeometryChange(for: CGSize.self, of: { $0.size }) { dragChipSize = $0 }
+                            .position(FanChipPlacement.center(size: dragChipSize, dot: at, dotRadius: Self.knob / 2,
+                                                              avoiding: Self.obstacles(plot: plot, knobs: [], captionWidth: 0),
+                                                              in: CGRect(origin: .zero, size: geo.size).insetBy(dx: Self.chipMargin, dy: 0)))
+                    }
+                } else {
                     ForEach(shown.points.indices, id: \.self) { index in knob(index, plot: plot) }
                 }
                 // Hold reaches full speed at target + 4 °C, so the "Full speed from 80 °C" caption would mislead there.
@@ -360,7 +389,7 @@ struct FanCurveEditor: View {
                 let bounds = CGRect(origin: .zero, size: geo.size).insetBy(dx: Self.chipMargin, dy: 0)
                 if let now = nowPoint(plot), let nowCelsius {
                     FanCurveNow(point: now, color: FanHeat.color(nowCelsius))
-                    if let nowChip, dragging == nil {
+                    if let nowChip, dragging == nil, holdDraft == nil {
                         let obstacles = hold.map { [FanHoldBand.labelRect(FanPlot(rect: plot), target: $0)] + Self.obstacles(
                             plot: plot, knobs: [], captionWidth: 0) }
                             ?? Self.obstacles(plot: plot, knobs: shown.points.map { position($0, plot) }, captionWidth: captionWidth)
@@ -464,6 +493,21 @@ struct FanCurveEditor: View {
     }
 
     private static let space = "fan-curve"
+
+    /// Hold's handle at the target, 50%: the same white knob as a curve point, drawn only; the chart takes the drag.
+    private func holdKnob(at point: CGPoint) -> some View {
+        Circle().fill(OnePlusLinearColor.window)
+            .overlay(Circle().strokeBorder(FanHeat.color(holdDraft ?? hold ?? 0), lineWidth: 2.5))
+            .frame(width: holdDraft == nil ? Self.knob : Self.knob + 2, height: holdDraft == nil ? Self.knob : Self.knob + 2)
+            .position(point)
+            .allowsHitTesting(false)
+            .accessibilityHidden(true)
+    }
+
+    /// The whole degree under the pointer, kept inside `FanHold.range`.
+    private func holdTarget(at location: CGPoint, plot: CGRect) -> Double {
+        min(max(value(at: location, plot).celsius, FanHold.range.lowerBound), FanHold.range.upperBound)
+    }
 
     /// A dragged point stays between its neighbors: at least 1 °C apart, below the locked end, and never faster than
     /// the next point or slower than the one before, so the curve keeps rising.

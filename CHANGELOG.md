@@ -4,6 +4,12 @@ Notable changes are documented here. The project follows semantic versioning aft
 
 ## [Unreleased]
 
+### Changed
+
+- Fan page: Silent and Steady are gone; a saved Silent moves to Quiet and Steady
+  to the new Cool, which holds the CPU near 48 °C. Hold now takes 40-70 °C, and
+  its target moves by dragging on the chart or typing a value and Return.
+
 ## [2.0.0] - 2026-11-23
 
 ### Added

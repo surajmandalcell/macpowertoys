@@ -7,7 +7,7 @@ import Foundation
 /// 1500 RPM a second. Cool follows `FanInput`, the CPU and GPU die averages over 20 s, along the saved `FanCurve`
 /// (by default Mn at a 50 °C average or less, Mx at 80 °C or more); the higher request wins, and 10 s with the hottest
 /// core at 90 °C or more forces full speed. It rises at most 300 RPM and falls at most 150 RPM a second. When a Keep
-/// target is saved (`FanHold`), Cool holds that average with a PI loop instead of the curve, in the same steps.
+/// target is saved (`FanHold`) or the Cool pick is on (48 °C), it holds that average with a PI loop instead of the curve.
 ///
 /// SMC reads lag a write by up to about 0.7 s, so every check reads keys written at least one tick earlier.
 nonisolated enum FanDriver {
@@ -76,7 +76,7 @@ nonisolated enum FanDriver {
     /// Advances the Keep controller once per tick, or returns nil when no Keep target is saved. It starts from the
     /// first fan's current speed and keeps its learned speed when only the target changes.
     private static func keepSpeed(_ celsius: Double, fans: [Fan]) -> Double? {
-        guard let target = FanHold.savedTarget() else { hold = nil; return nil }
+        guard let target = FanHold.activeTarget() else { hold = nil; return nil }
         if hold == nil, let fan = fans.first {
             let current = targets[fan.index] ?? fan.minimum
             hold = FanHold(target: target, speed: (current - fan.minimum) / max(fan.maximum - fan.minimum, 1))

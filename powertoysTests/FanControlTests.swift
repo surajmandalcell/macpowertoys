@@ -431,7 +431,7 @@ final class FanControlTests: XCTestCase {
         XCTAssertEqual(FanCurve.load(defaults), FanCurvePreset.quiet.curve, "Cool follows the picked preset")
         FanCurve(points: [.init(celsius: 55, speed: 0.2)]).save(defaults)
         XCTAssertEqual(FanCurvePreset.saved(defaults), .custom, "Editing a point turns the pick into Custom")
-        FanCurvePreset.silent.pick(defaults)
+        FanCurvePreset.cool.pick(defaults)
         FanCurvePreset.custom.pick(defaults)
         XCTAssertEqual(FanCurve.load(defaults).points.first?.celsius, 55, "Custom keeps the user's own curve")
     }
@@ -442,12 +442,35 @@ final class FanControlTests: XCTestCase {
             XCTAssertEqual(curve.speed(at: 45), 0, "\(preset.name) rests at the minimum at idle")
             XCTAssertGreaterThan(curve.speed(at: 75), 0.25, "\(preset.name) is well up before the locked end")
         }
-        for preset in [FanCurvePreset.silent, .quiet] {
-            XCTAssertGreaterThan(preset.curve?.speed(at: 55) ?? 0, 0, "\(preset.name) starts the fans early")
-            XCTAssertLessThan(preset.curve?.speed(at: 70) ?? 1, 0.5, "\(preset.name) stays under half speed at 70 °C")
+        let quiet = try XCTUnwrap(FanCurvePreset.quiet.curve)
+        XCTAssertGreaterThan(quiet.speed(at: 55), 0, "Quiet starts the fans early")
+        XCTAssertLessThan(quiet.speed(at: 70), 0.5, "Quiet stays under half speed at 70 °C")
+    }
+
+    func testCoolHoldsFortyEightAndRetiredPicksMove() throws {
+        XCTAssertEqual(FanCurvePreset.allCases, [.quiet, .cool, .custom], "Silent and Steady are gone")
+        let name = "FanPresetTests.\(UUID().uuidString)"
+        let defaults = try XCTUnwrap(UserDefaults(suiteName: name))
+        defer { defaults.removePersistentDomain(forName: name) }
+
+        XCTAssertNil(FanHold.activeTarget(defaults), "A curve pick holds nothing")
+        FanCurvePreset.cool.pick(defaults)
+        XCTAssertEqual(FanHold.activeTarget(defaults), 48, "Cool holds a 48 °C average, the value the chart shows")
+        XCTAssertNil(FanHold.savedTarget(defaults), "Cool is its own pick, not a saved Hold")
+        FanHold.save(55, defaults)
+        XCTAssertEqual(FanHold.activeTarget(defaults), 55, "A Hold the user sets wins over Cool")
+
+        FanHold.save(48, defaults)
+        XCTAssertEqual(FanHold.savedTarget(defaults), 48, "Hold accepts 48 °C")
+        XCTAssertEqual(FanHold(target: 48).target, 48)
+        XCTAssertTrue(FanHold.range.contains(48))
+
+        for (old, new) in [("silent", FanCurvePreset.quiet), ("steady", .cool)] {
+            defaults.set(old, forKey: FanCurvePreset.storageKey)
+            XCTAssertNotNil(FanCurvePreset.migrateRetired(defaults))
+            XCTAssertEqual(FanCurvePreset.saved(defaults), new, "\(old) moves to \(new.name)")
+            XCTAssertNil(FanCurvePreset.migrateRetired(defaults), "Runs once")
         }
-        XCTAssertGreaterThan(FanCurvePreset.steady.curve?.speed(at: 65) ?? 0, FanCurvePreset.quiet.curve?.speed(at: 65) ?? 1,
-                             "Steady is the aggressive curve")
     }
 
     func testFanInputFiltersDropoutsTakesTheHigherRequestAndForcesFullOnlyAfterTenHotSeconds() {

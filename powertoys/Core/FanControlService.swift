@@ -309,6 +309,7 @@ final class FanControlService {
         self.init(readSnapshot: FanCommand.read, readTemperature: CPUTemperatureSensor.read)
         Self.current = self
         if let moved = FanCurve.migrateToAverageScale() { LogManager.shared.info(moved, source: "Fan") }
+        if let moved = FanCurvePreset.migrateRetired() { LogManager.shared.info(moved, source: "Fan") }
         FanCommand.setManualLostHandler { reason in
             Task { @MainActor in FanControlService.shared.manualControlLost(reason) }
         }
