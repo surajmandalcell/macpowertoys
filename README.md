@@ -92,7 +92,9 @@ Change or turn off the global shortcuts in each tool's settings.
 MacPowerToys has no analytics, ads, or telemetry. Text recognition runs on the
 Mac. rclone keeps provider credentials in its own configuration. Optional
 iCloud settings sync uses an allowlist and never syncs credentials, paths,
-histories, or logs. Read the [Privacy Policy](PRIVACY.md) and
+histories, or logs. Read the
+[Privacy Policy](https://macpowertoys.samhq.app/privacy),
+[Terms and license](https://macpowertoys.samhq.app/terms), and
 [Security Policy](SECURITY.md).
 
 ## Related projects

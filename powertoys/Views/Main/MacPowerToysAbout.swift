@@ -12,7 +12,7 @@ enum MacPowerToysAbout {
             releaseNotes: OnePlusAboutLink("Release notes", title: "Changelog", url: HostAppMetadata.releases),
             support: HostAppMetadata.contact,
             license: OnePlusAboutLink("License and privacy", title: "MIT license",
-                                      url: repository.appendingPathComponent("blob/main/LICENSE")),
+                                      url: URL(string: "https://macpowertoys.samhq.app/terms")!),
             credits: [OnePlusAboutLink("RSync UI engine", title: "Powered by rclone", url: URL(string: "https://rclone.org/")!)])
     }()
 
