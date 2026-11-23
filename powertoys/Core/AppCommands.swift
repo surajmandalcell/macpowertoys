@@ -288,7 +288,7 @@ struct AppCommands: Commands {
         }
 
         CommandGroup(replacing: .appInfo) {
-            Button("About MacPowerToys") { openAbout() }
+            Button("About MacPowerToys") { MacPowerToysAbout.show() }
         }
 
         CommandGroup(after: .appInfo) {

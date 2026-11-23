@@ -253,15 +253,16 @@ final class AppDelegateTests: XCTestCase {
     }
 
     @MainActor
-    func testStatusItemContextMenuContainsOnlyOpenAndQuit() {
+    func testStatusItemContextMenuContainsOpenAboutAndQuit() {
         let menu = AppDelegate().statusItemContextMenu()
 
-        XCTAssertEqual(menu.items.map(\.title), ["Open MacPowerToys", "Quit"])
+        XCTAssertEqual(menu.items.map(\.title), ["Open MacPowerToys", "About MacPowerToys", "Quit"])
         XCTAssertTrue(menu.items.allSatisfy { $0.image != nil })
         XCTAssertEqual(
             menu.items.map(\.action),
             [
                 #selector(AppDelegate.openMainWindowFromStatusItem),
+                #selector(AppDelegate.openAboutFromStatusItem),
                 #selector(AppDelegate.quitFromStatusItem)
             ]
         )

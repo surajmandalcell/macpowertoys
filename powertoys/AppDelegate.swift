@@ -262,6 +262,11 @@ class AppDelegate: NSObject, NSApplicationDelegate {
             action: #selector(openMainWindowFromStatusItem)
         ))
         menu.addItem(statusItemMenuItem(
+            title: "About MacPowerToys",
+            symbol: "info.circle",
+            action: #selector(openAboutFromStatusItem)
+        ))
+        menu.addItem(statusItemMenuItem(
             title: "Quit",
             symbol: "power",
             action: #selector(quitFromStatusItem)
@@ -287,6 +292,11 @@ class AppDelegate: NSObject, NSApplicationDelegate {
     @MainActor
     @objc func openMainWindowFromStatusItem() {
         ToolActionRouter.shared.open(toolID: "main")
+    }
+
+    @MainActor
+    @objc func openAboutFromStatusItem() {
+        MacPowerToysAbout.show()
     }
 
     @MainActor

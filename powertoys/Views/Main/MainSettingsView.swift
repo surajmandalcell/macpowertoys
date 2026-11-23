@@ -146,37 +146,9 @@ private struct MainGeneralSettings: View {
 private struct MainAboutSettings: View {
     let showManual: (String) -> Void
     @State private var updates = HostUpdateChecker.shared
-    private let metadata = HostAppMetadata.current
-    private var repository: String { HostAppMetadata.repository.absoluteString }
 
     var body: some View {
-        VStack(alignment: .leading, spacing: OnePlusLinearMetrics.sectionGap) {
-            MainPageHeader(title: "MacPowerToys", subtitle: updateStatus) {
-                MainToolIcon.app.resizable().scaledToFit()
-            } controls: {
-                if updates.isChecking { ProgressView().controlSize(.small).accessibilityLabel("Checking for updates") }
-                Button(updates.isChecking ? "Checking..." : "Check for Updates", action: updates.check)
-                    .buttonStyle(OnePlusLinearButtonStyle(.raised)).disabled(updates.isChecking)
-            }
-            updateResult
-            MainSection {
-                metadataRow("Version", value: metadata.version)
-                metadataRow("Build", value: metadata.build)
-                metadataRow("Source commit", value: metadata.sourceCommit)
-                metadataRow("Developer", value: HostAppMetadata.developer, monospaced: false)
-                linkRow("Contact", title: HostAppMetadata.contact, url: "mailto:" + HostAppMetadata.contact,
-                        separator: false)
-            }
-            MainSection(title: "Links") {
-                linkRow("Repository", title: "GitHub", url: repository)
-                linkRow("Privacy", title: "Privacy policy", url: repository + "/blob/main/PRIVACY.md")
-                linkRow("License", title: "MIT license", url: repository + "/blob/main/LICENSE", separator: false)
-            }
-            MainSection(title: "Acknowledgements") {
-                linkRow("RSync UI engine", help: "By Nick Craig-Wood and contributors",
-                        title: "Powered by rclone", url: "https://rclone.org/")
-                linkRow("rclone license", title: "MIT license", url: "https://rclone.org/licence/", separator: false)
-            }
+        OnePlusAboutSettingsSection(info: MacPowerToysAbout.info, update: MacPowerToysAbout.update(updates)) {
             MainSection(title: "Using MacPowerToys") {
                 OnePlusSettingRow("Tool manuals", controlWidth: OnePlusCatalogMetrics.placementWidth, separator: false) {
                     OnePlusMenuButton("Open a manual", variant: .raised, items: ToolRegistry.allTools.map { tool in
@@ -186,43 +158,6 @@ private struct MainAboutSettings: View {
             }
             Text("Closing a window leaves enabled background tools running. Choose Quit MacPowerToys to stop them. Each tool's How to use section explains its actions and background work.")
                 .onePlusText(.caption)
-        }
-    }
-
-    private var updateStatus: String {
-        switch updates.state {
-        case .checking: "Checking for updates..."
-        case .current: "MacPowerToys is up to date."
-        case .available(let version, _): "Version \(version) is available."
-        case .idle, .failed: "A collection of tools for your Mac."
-        }
-    }
-
-    @ViewBuilder private var updateResult: some View {
-        switch updates.state {
-        case .available(_, let url):
-            Link("Release notes and download", destination: url).buttonStyle(OnePlusButtonStyle(.link))
-        case .failed(let message):
-            OnePlusBanner(message, tone: .error) {
-                Button("Retry", action: updates.check).buttonStyle(OnePlusButtonStyle())
-            }
-        default: EmptyView()
-        }
-    }
-
-    private func metadataRow(_ label: String, value: String, monospaced: Bool = true) -> some View {
-        OnePlusSettingRow(label, controlWidth: OnePlusCatalogMetrics.placementWidth) {
-            Text(value).onePlusText(monospaced ? .mono : .row).lineLimit(1)
-                .truncationMode(.middle).help(value).textSelection(.enabled)
-        }
-    }
-
-    private func linkRow(_ label: String, help: String? = nil, title: String, url: String, separator: Bool = true) -> some View {
-        OnePlusSettingRow(label, help: help, controlWidth: OnePlusCatalogMetrics.placementWidth, separator: separator) {
-            if let destination = URL(string: url) {
-                Link(title, destination: destination)
-                    .buttonStyle(OnePlusButtonStyle(.link, horizontalPadding: 0))
-            }
         }
     }
 }
