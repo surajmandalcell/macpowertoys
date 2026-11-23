@@ -422,8 +422,7 @@ private struct LogsSidebar: View {
 private struct LogsPageView: View {
     private static let columns: [OnePlusGridColumn] = [
         OnePlusGridColumn("Time", width: 168, textRole: .mono),
-        OnePlusGridColumn("Level", width: 96, textColor: OnePlusLinearColor.secondary,
-                          headerLabelInset: OnePlusLinearMetrics.navIcon + OnePlusLinearSpace.tight),
+        OnePlusGridColumn("Level", width: 96, textColor: OnePlusLinearColor.secondary),
         OnePlusGridColumn("Source", width: 215),
         OnePlusGridColumn("Message", width: 500)
     ]
@@ -524,7 +523,7 @@ private struct LogsPageView: View {
                                 Image(systemName: row.symbol)
                                     .foregroundStyle(levelGlyphColor(row))
                                     .accessibilityHidden(true)
-                                    .frame(width: OnePlusLinearMetrics.navIcon)
+                                    .frame(width: OnePlusLinearMetrics.navIcon, alignment: .leading)
                                 Text(row.level)
                                     .lineLimit(1)
                             }
