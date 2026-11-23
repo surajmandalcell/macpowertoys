@@ -38,10 +38,7 @@ final class WindowStateManagerTests: XCTestCase {
     }
 
     func testWindowInstancesShareStableStorageIdentifiers() {
-        for identifier in [
-            "main", "rclone", "logs", "awake",
-            "color-picker", "text-extractor", "input-devices", "mac-tweaks"
-        ] {
+        for identifier in ToolActionRouter.windowIDs {
             XCTAssertEqual(
                 WindowStateManager.storageIdentifier(for: "\(identifier)-AppWindow-2"),
                 identifier

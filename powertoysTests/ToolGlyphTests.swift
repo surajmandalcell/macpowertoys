@@ -21,16 +21,19 @@ final class ToolGlyphTests: XCTestCase {
         for tool in IndividualMenuBarTool.allCases {
             XCTAssertEqual(tool.symbol, try XCTUnwrap(ToolGlyph(rawValue: tool.rawValue)).symbol)
         }
-        let images = try ToolGlyph.allCases.map { try XCTUnwrap(StatusItemIcon.symbol($0.symbol)) }            + [StatusItemIcon.main]
-        for image in images {
+        // Tool glyphs use the shared status tokens; the main icon is a 16 pt canvas with 13.6 pt ink (DESIGN.md).
+        let images = try ToolGlyph.allCases.map {
+            (try XCTUnwrap(StatusItemIcon.symbol($0.symbol)), OnePlusMenuMetrics.statusIconSize, OnePlusMenuMetrics.statusIconInkSize)
+        } + [(StatusItemIcon.main, CGFloat(16), CGFloat(13.6))]
+        for (image, side, ink) in images {
             XCTAssertTrue(image.isTemplate)
-            XCTAssertEqual(image.size, NSSize(width: 14, height: 14))
+            XCTAssertEqual(image.size, NSSize(width: side, height: side))
             for scale in [CGFloat(1), 2, 4] {
                 let bounds = try inkBounds(image, scale: scale)
                 // Allow one antialiased edge pixel on each side.
-                XCTAssertEqual(max(bounds.width, bounds.height), 11.2, accuracy: max(0.5, 2 / scale))
-                XCTAssertEqual(bounds.midX, 7, accuracy: 0.5)
-                XCTAssertEqual(bounds.midY, 7, accuracy: 0.5)
+                XCTAssertEqual(max(bounds.width, bounds.height), ink, accuracy: max(0.5, 2 / scale))
+                XCTAssertEqual(bounds.midX, side / 2, accuracy: 0.5)
+                XCTAssertEqual(bounds.midY, side / 2, accuracy: 0.5)
             }
         }
         XCTAssertTrue(StatusItemIcon.symbol("eye") === StatusItemIcon.symbol("eye"))
@@ -64,7 +67,7 @@ final class ToolGlyphTests: XCTestCase {
     }
 
     private func raster(_ image: NSImage, scale: CGFloat) throws -> NSBitmapImageRep {
-        let side = Int(14 * scale)
+        let side = Int(image.size.width * scale)
         let bitmap = try XCTUnwrap(NSBitmapImageRep(bitmapDataPlanes: nil, pixelsWide: side, pixelsHigh: side,
             bitsPerSample: 8, samplesPerPixel: 4, hasAlpha: true, isPlanar: false,
             colorSpaceName: .deviceRGB, bytesPerRow: 0, bitsPerPixel: 0))

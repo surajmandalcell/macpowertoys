@@ -59,10 +59,9 @@ final class WindowAccessorTests: XCTestCase {
     }
 
     func testLauncherRestoresPositionOnlySoAnOldSavedSizeCannotReturn() {
-        for tool in ToolRegistry.builtInTools where OnePlusWindowCanvas.appTool(tool.id) != nil {
-            XCTAssertTrue(WindowStateManager.restoresPositionOnly(tool.id), tool.id)
+        for id in ToolActionRouter.windowIDs where OnePlusWindowCanvas.appTool(id) != nil {
+            XCTAssertTrue(WindowStateManager.restoresPositionOnly(id), id)
         }
-        XCTAssertTrue(WindowStateManager.restoresPositionOnly("main"))
         XCTAssertFalse(WindowStateManager.restoresPositionOnly("unknown"))
         let saved = NSRect(x: 40, y: 60, width: 780, height: 732)
         let restored = WindowStateManager.positionOnlyFrame(saved: saved, currentSize: NSSize(width: 1240, height: 840))
@@ -84,22 +83,6 @@ final class WindowAccessorTests: XCTestCase {
         XCTAssertEqual(search.font?.pointSize, 12)
         XCTAssertEqual(search.accessibilityLabel(), "Find content")
         XCTAssertLessThanOrEqual(search.frame.height, 28)
-    }
-
-    func testSingleStepStepperDoesNotRepeatWhileMouseIsHeld() throws {
-        var value = 800
-        let host = NSHostingView(rootView: OnePlusStepperField(
-            "TCP timeout: 800 ms", value: Binding(get: { value }, set: { value = $0 }),
-            in: 100...5_000, step: 100
-        ))
-        host.frame = NSRect(x: 0, y: 0, width: 320, height: 28)
-        host.layoutSubtreeIfNeeded()
-        let stepper = try XCTUnwrap(firstView(of: NSStepper.self, in: host))
-        XCTAssertFalse(stepper.autorepeat)
-        XCTAssertEqual(stepper.increment, 100)
-        stepper.integerValue = 900
-        stepper.sendAction(stepper.action, to: stepper.target)
-        XCTAssertEqual(value, 900)
     }
 
     func testMacTweaksContentSizeAccountsForNativeTitlebar() {

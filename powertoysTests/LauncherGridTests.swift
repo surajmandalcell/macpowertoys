@@ -58,13 +58,9 @@ final class LauncherGridTests: XCTestCase {
         }, size: CGSize(width: Self.paneWidth - 2 * OnePlusLinearMetrics.gutter, height: OnePlusLinearMetrics.toolRow))
         XCTAssertEqual(try XCTUnwrap(Self.element(in: host, label: "Open Color Picker")).accessibilityPerformPress?(), true)
         XCTAssertEqual(opened, 1)
-        let row = try XCTUnwrap(Self.element(in: host, label: "\(tool.name), \(tool.summary)"))
-        let actions = ((row.accessibilityCustomActions?() ?? nil) ?? []) as [NSAccessibilityCustomAction]
-        let star = try XCTUnwrap(actions.first { $0.name == "Add to Favorites" })
-        if let handler = star.handler { XCTAssertTrue(handler()) } else {
-            let target = try XCTUnwrap(star.target as? NSObject)
-            _ = target.perform(try XCTUnwrap(star.selector), with: star)
-        }
+        // The row reads name, state, summary, and shortcut; its star is a "Favorite" toggle inside it.
+        let row = try XCTUnwrap(Self.element(in: host) { $0.hasPrefix("\(tool.name), ") && $0.contains(tool.summary) })
+        XCTAssertEqual(try XCTUnwrap(Self.element(in: row, label: "Favorite")).accessibilityPerformPress?(), true)
         XCTAssertTrue(favorite)
         host.window?.close()
     }
@@ -157,11 +153,15 @@ final class LauncherGridTests: XCTestCase {
 
     /// SwiftUI's accessibility nodes are private NSObject types, so the walk uses dynamic dispatch.
     private static func element(in root: Any, label: String) -> AnyObject? {
+        element(in: root) { $0 == label }
+    }
+
+    private static func element(in root: Any, matching: (String) -> Bool) -> AnyObject? {
         let children: [Any] = ((root as AnyObject).accessibilityChildren?() ?? nil) ?? []
         for child in children {
             let object = child as AnyObject
-            if (object.accessibilityLabel?() ?? nil) == label { return object }
-            if let found = element(in: child, label: label) { return found }
+            if let label = object.accessibilityLabel?() ?? nil, matching(label) { return object }
+            if let found = element(in: child, matching: matching) { return found }
         }
         return nil
     }

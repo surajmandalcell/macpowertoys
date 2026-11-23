@@ -95,7 +95,7 @@ final class TrayPopoverLayoutTests: XCTestCase {
         let source = try sourceFile("Views/MenuPanels")
 
         XCTAssertEqual(TrayPopoverLayout.width, OnePlusLinearMetrics.panelWidth)
-        XCTAssertTrue(source.contains("OnePlusLinearPanel {"))
+        XCTAssertTrue(source.contains("OnePlusLinearPanel(style: TrayPopoverLayout.style) {"))
         XCTAssertTrue(source.contains("OnePlusLinearPanelFooter"))
         XCTAssertTrue(source.contains("OnePlusLinearIconTabs(tabs: menuTabs"))
         XCTAssertTrue(source.contains("OnePlusLinearIconButton(systemImage: \"gearshape\""))
@@ -111,7 +111,8 @@ final class TrayPopoverLayoutTests: XCTestCase {
         XCTAssertFalse(source.contains("ToolSettingsContent"))
         XCTAssertFalse(source.contains("ToolIconColor.major"))
         XCTAssertFalse(source.contains("accessibilityReduceTransparency"))
-        XCTAssertFalse(source.contains("withAnimation"))
+        // Only the first-open reveal animates, through the shared motion tokens (DESIGN.md "Panel motion").
+        XCTAssertTrue(source.components(separatedBy: "withAnimation(").dropFirst().allSatisfy { $0.hasPrefix("OnePlusMotion.") })
     }
 
     func testTrayCorrectionPassKeepsGroupsAlignedAndErrorsOnDemand() throws {
@@ -126,7 +127,7 @@ final class TrayPopoverLayoutTests: XCTestCase {
         let input = try sourceFile("Views/InputDevices/InputDevicesSettingsView.swift")
         let launcher = try sourceFile("Views/AllToolsGridView.swift")
 
-        XCTAssertTrue(input.contains("OnePlusSettingRow"))
+        XCTAssertTrue(input.contains("OnePlusLinearAppletRow"))
         XCTAssertFalse(input.contains(".frame(width: 160, alignment: .trailing)"))
         XCTAssertFalse(input.contains(".frame(maxWidth: .infinity, alignment: .trailing)"))
         XCTAssertFalse(launcher.contains(".buttonStyle(UtilityInteractionButtonStyle(cornerRadius: 8))"))
