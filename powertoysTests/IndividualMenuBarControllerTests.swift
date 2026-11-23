@@ -48,7 +48,7 @@ final class IndividualMenuBarControllerTests: XCTestCase {
         ])
         XCTAssertEqual(tools.map(\.activation), [
             .openTool("rclone"),
-            .openTool("awake"),
+            .execute(.awakeToggle),
             .execute(.colorPickerPick),
             .execute(.textExtractorCapture),
             .openTool("input-devices")

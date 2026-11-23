@@ -88,8 +88,24 @@ enum IndividualMenuBarTool: String, CaseIterable, Identifiable {
         }
     }
 
+    /// Traced `MenuBarGlyph*` asset; Awake swaps between its open and closed eye.
+    var menuBarGlyph: String {
+        switch self {
+        case .cloudSync: "MenuBarGlyphCloud"
+        case .awake: "MenuBarGlyphAwakeOpen"
+        case .colorPicker: "MenuBarGlyphColorPicker"
+        case .textExtractor: "MenuBarGlyphTextExtractor"
+        case .inputDevices: "MenuBarGlyphInputDevices"
+        }
+    }
+
+    /// The tool's own "Animate menu bar icon" switch; only tools with a motion have one.
+    var animationPreferenceKey: String? { self == .awake ? "tool.awake.animatedMenuBarIcon" : nil }
+
+    /// On/off tools run their action on left click and open the panel on right click (DESIGN.md "Status icon").
     var quickAction: ToolActionID? {
         switch self {
+        case .awake: .awakeToggle
         case .colorPicker: .colorPickerPick
         case .textExtractor: .textExtractorCapture
         default: nil
@@ -118,6 +134,12 @@ final class IndividualMenuBarController: NSObject {
     private var statusItems: [IndividualMenuBarTool: NSStatusItem] = [:]
     private var popovers: [IndividualMenuBarTool: OnePlusMenuPresenter] = [:]
     private var observers: [NSObjectProtocol] = []
+    private var pulseTimer: Timer?
+    private var pulseFrame = 0
+    static let animatedIconsKey = "menuBar.animatedIcons"
+    // Rays pulse: 8 opacity steps at 5 frames a second, a 1.6 s loop.
+    private static let pulseOpacity: [CGFloat] = [1, 0.8, 0.55, 0.35, 0.35, 0.55, 0.8, 1]
+    private static let pulseInterval: TimeInterval = 0.2
 
     var statusItemOwnerCount: Int { statusItems.count }
     var observerOwnerCount: Int { observers.count }
@@ -148,14 +170,26 @@ final class IndividualMenuBarController: NSObject {
                 queue: .main
             ) { [weak self] _ in
                 MainActor.assumeIsolated { self?.refresh() }
+            },
+            center.addObserver(
+                forName: NSWindow.didChangeOcclusionStateNotification,
+                object: nil,
+                queue: .main
+            ) { [weak self] note in
+                MainActor.assumeIsolated {
+                    guard let self, (note.object as? NSWindow) === self.statusItems[.awake]?.button?.window else { return }
+                    self.updateAwakeIcon()
+                }
             }
         ]
+        trackAwake()
         refresh()
     }
 
     func stop() {
         observers.forEach(NotificationCenter.default.removeObserver)
         observers.removeAll()
+        stopPulse()
         popovers.values.forEach { $0.performClose(nil) }
         popovers.removeAll()
         statusItems.values.forEach(NSStatusBar.system.removeStatusItem)
@@ -180,15 +214,72 @@ final class IndividualMenuBarController: NSObject {
                 NSStatusBar.system.removeStatusItem(item)
             }
         }
+        updateAwakeIcon()
+    }
+
+    private func trackAwake() {
+        withObservationTracking { _ = AwakeService.shared.isActive } onChange: { [weak self] in
+            Task { @MainActor in
+                guard let self, !self.observers.isEmpty else { return }
+                self.updateAwakeIcon()
+                self.trackAwake()
+            }
+        }
+    }
+
+    private func animates(_ tool: IndividualMenuBarTool) -> Bool {
+        func flag(_ key: String) -> Bool { defaults.object(forKey: key) as? Bool ?? true }
+        guard let key = tool.animationPreferenceKey else { return false }
+        return flag(Self.animatedIconsKey) && flag(key)
+    }
+
+    /// Open eye with rays while Awake holds the Mac awake, closed eye otherwise. The pulse timer runs only
+    /// while the eye is open, motion is on, and the status item is on screen.
+    private func updateAwakeIcon() {
+        guard let button = statusItems[.awake]?.button else { return stopPulse() }
+        let tool = IndividualMenuBarTool.awake
+        guard AwakeService.shared.isActive else {
+            stopPulse()
+            button.image = StatusItemIcon.glyph("MenuBarGlyphAwakeClosed")
+            return
+        }
+        let visible = button.window?.occlusionState.contains(.visible) ?? false
+        guard animates(tool), visible else {
+            stopPulse()
+            button.image = awakeFrame(0)
+            return
+        }
+        guard pulseTimer == nil else { return }
+        pulseFrame = 0
+        button.image = awakeFrame(0)
+        let timer = Timer(timeInterval: Self.pulseInterval, repeats: true) { [weak self] _ in
+            MainActor.assumeIsolated {
+                guard let self, let button = self.statusItems[.awake]?.button else { return }
+                self.pulseFrame = (self.pulseFrame + 1) % Self.pulseOpacity.count
+                button.image = self.awakeFrame(self.pulseFrame)
+            }
+        }
+        timer.tolerance = Self.pulseInterval / 2
+        RunLoop.main.add(timer, forMode: .common)
+        pulseTimer = timer
+    }
+
+    private func awakeFrame(_ index: Int) -> NSImage? {
+        StatusItemIcon.glyph(IndividualMenuBarTool.awake.menuBarGlyph, accent: "MenuBarGlyphAwakeRays",
+                             opacity: Self.pulseOpacity[index])
+    }
+
+    private func stopPulse() {
+        pulseTimer?.invalidate()
+        pulseTimer = nil
     }
 
     private func makeStatusItem(for tool: IndividualMenuBarTool) -> NSStatusItem {
-        let item = NSStatusBar.system.statusItem(withLength: NSStatusItem.squareLength)
+        let item = NSStatusBar.system.statusItem(withLength: NSStatusItem.variableLength)
         item.autosaveName = tool.autosaveName
         guard let button = item.button else { return item }
 
-        let image = StatusItemIcon.symbol(tool.symbol)
-        button.image = image
+        button.image = StatusItemIcon.glyph(tool.menuBarGlyph)
         button.imagePosition = .imageOnly
         button.identifier = NSUserInterfaceItemIdentifier("individual-menu.\(tool.id)")
         button.setAccessibilityIdentifier("individual-menu.\(tool.id)")

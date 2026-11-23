@@ -26,6 +26,30 @@ enum StatusItemIcon {
         return image
     }
 
+    /// A traced menu bar glyph asset (`MenuBarGlyph*`), drawn at its own optical size; see spec/icons.md.
+    static func glyph(_ name: String) -> NSImage? {
+        if let image = symbols[name] { return image }
+        guard let image = NSImage(named: name) else { return nil }
+        image.isTemplate = true
+        symbols[name] = image
+        return image
+    }
+
+    /// The base glyph with an accent layer (such as Awake's rays) at one opacity step of a pulse.
+    static func glyph(_ base: String, accent: String, opacity: CGFloat) -> NSImage? {
+        let key = "\(base)+\(accent)@\(opacity)"
+        if let image = symbols[key] { return image }
+        guard let baseImage = glyph(base), let accentImage = glyph(accent) else { return nil }
+        let image = NSImage(size: baseImage.size, flipped: false) { bounds in
+            baseImage.draw(in: bounds)
+            accentImage.draw(in: bounds, from: .zero, operation: .sourceOver, fraction: opacity)
+            return true
+        }
+        image.isTemplate = true
+        symbols[key] = image
+        return image
+    }
+
     static func attachmentSymbol(_ name: String) -> NSImage? {
         let key = "attachment." + name
         if let image = symbols[key] { return image }

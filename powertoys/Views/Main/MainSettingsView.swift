@@ -24,6 +24,7 @@ private struct MainGeneralSettings: View {
     @AppStorage(AppAppearance.storageKey) private var appearance = AppAppearance.dark
     @AppStorage("app.closeMainWindowAfterOpeningTool") private var closeMainAfterOpen = false
     @AppStorage("app.showTray") private var showTray = true
+    @AppStorage(IndividualMenuBarController.animatedIconsKey) private var animatedIcons = true
     @State private var sync = SettingsSyncManager.shared
     @State private var shortcuts = GlobalShortcutManager.shared
     @State private var showSyncConflict = false
@@ -59,6 +60,11 @@ private struct MainGeneralSettings: View {
                 }
                 OnePlusSettingRow("Close after opening a tool") {
                     Toggle("Close main window after opening a tool", isOn: $closeMainAfterOpen)
+                        .labelsHidden().toggleStyle(OnePlusSwitchStyle())
+                }
+                OnePlusSettingRow("Animated menu bar icons",
+                                  help: "Lets a tool's menu bar icon move while it works, such as Awake's rays while it keeps the Mac awake. Each tool also has its own switch.") {
+                    Toggle("Animated menu bar icons", isOn: $animatedIcons)
                         .labelsHidden().toggleStyle(OnePlusSwitchStyle())
                 }
                 OnePlusSettingRow("Show the menu-bar icon",
