@@ -125,6 +125,7 @@ struct AwakeSettingsView: View {
     @State private var presetToRemove: TimeInterval?
     @State private var presetMinutes = 30
     @AppStorage("tool.awake.animatedMenuBarIcon") private var animatedIcon = true
+    @AppStorage(AwakeMenuBarStyle.key) private var menuBarStyle = AwakeMenuBarStyle.eye
 
     private var duration: TimeInterval { TimeInterval(hours * 3600 + minutes * 60) }
 
@@ -168,6 +169,11 @@ struct AwakeSettingsView: View {
                     get: { service.configuration.keepDisplayOn }, set: service.setKeepDisplayOn
                 )).toggleStyle(OnePlusLinearSwitchStyle())
                 .accessibilityIdentifier("awake.keep-display-on")
+            }
+            OnePlusLinearAppletRow("Menu bar symbol", systemImage: "eye") {
+                OnePlusLinearSegmented(choices: AwakeMenuBarStyle.allCases.map { ($0, $0.title) },
+                                       selection: $menuBarStyle, accessibilityLabel: "Menu bar symbol", sizing: .fitted)
+                    .accessibilityIdentifier("awake.menu-bar-symbol")
             }
             OnePlusLinearAppletRow("Animate menu bar icon", systemImage: "sparkles") {
                 Toggle("Animate menu bar icon", isOn: $animatedIcon).toggleStyle(OnePlusLinearSwitchStyle())

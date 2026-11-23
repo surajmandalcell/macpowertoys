@@ -131,6 +131,19 @@ enum IndividualMenuBarTool: String, CaseIterable, Identifiable {
     }
 }
 
+/// Awake's menu bar symbol, chosen on the Awake page. The accent pulses while Awake is on.
+enum AwakeMenuBarStyle: String, CaseIterable {
+    case eye
+    case cup
+
+    static let key = "tool.awake.menuBarStyle"
+
+    var title: String { self == .eye ? "Eye" : "Cup" }
+    var on: String { self == .eye ? "MenuBarGlyphAwakeOpen" : "MenuBarGlyphAwakeCup" }
+    var accent: String { self == .eye ? "MenuBarGlyphAwakeRays" : "MenuBarGlyphAwakeSteam" }
+    var off: String { self == .eye ? "MenuBarGlyphAwakeClosed" : "MenuBarGlyphAwakeCup" }
+}
+
 @MainActor
 final class IndividualMenuBarController: NSObject {
     static let shared = IndividualMenuBarController()
@@ -141,6 +154,7 @@ final class IndividualMenuBarController: NSObject {
     private var popovers: [IndividualMenuBarTool: OnePlusMenuPresenter] = [:]
     private var observers: [NSObjectProtocol] = []
     private var pulseRays: NSImageView?
+    private var pulseStyle: AwakeMenuBarStyle?
     private var cloudBudget = MenuBarAttentionBudget()
     private var cloudDraw: NSImageView?
     private var cloudTimer: Timer?
@@ -371,26 +385,28 @@ final class IndividualMenuBarController: NSObject {
         return flag(Self.animatedIconsKey) && flag(key)
     }
 
-    /// Open eye with rays while Awake holds the Mac awake, closed eye otherwise. The pulse timer runs only
-    /// while the eye is open, motion is on, and the status item is on screen.
+    /// Open eye with rays (or cup with steam) while Awake holds the Mac awake, closed eye (or plain cup)
+    /// otherwise. The pulse runs only while it is on, motion is on, and the status item is on screen.
     private func updateAwakeIcon() {
         guard let button = statusItems[.awake]?.button else { return stopPulse() }
         let tool = IndividualMenuBarTool.awake
+        let style = AwakeMenuBarStyle(rawValue: defaults.string(forKey: AwakeMenuBarStyle.key) ?? "") ?? .eye
         guard AwakeService.shared.isActive else {
             stopPulse()
-            button.image = StatusItemIcon.glyph("MenuBarGlyphAwakeClosed")
+            button.image = StatusItemIcon.glyph(style.off)
             return
         }
         let visible = !screensAsleep && button.window?.occlusionState.contains(.visible) ?? false
         guard animates(tool), visible else {
             stopPulse()
-            button.image = awakeFrame(0)
+            button.image = StatusItemIcon.glyph(style.on, accent: style.accent, opacity: 1)
             return
         }
-        guard pulseRays == nil else { return }
-        button.image = StatusItemIcon.glyph(tool.menuBarGlyph)
+        guard pulseRays == nil || pulseStyle != style else { return }
+        stopPulse()
+        button.image = StatusItemIcon.glyph(style.on)
         button.wantsLayer = true
-        let rays = NSImageView(image: StatusItemIcon.glyph("MenuBarGlyphAwakeRays") ?? NSImage())
+        let rays = NSImageView(image: StatusItemIcon.glyph(style.accent) ?? NSImage())
         rays.imageScaling = .scaleNone
         rays.frame = button.bounds
         rays.autoresizingMask = [.width, .height]
@@ -405,10 +421,7 @@ final class IndividualMenuBarController: NSObject {
         pulse.timingFunction = CAMediaTimingFunction(name: .easeInEaseOut)
         rays.layer?.add(pulse, forKey: "pulse")
         pulseRays = rays
-    }
-
-    private func awakeFrame(_ index: Int) -> NSImage? {
-        StatusItemIcon.glyph(IndividualMenuBarTool.awake.menuBarGlyph, accent: "MenuBarGlyphAwakeRays", opacity: 1)
+        pulseStyle = style
     }
 
     private func stopPulse() {
