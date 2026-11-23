@@ -206,12 +206,25 @@ final class IndividualMenuBarController: NSObject {
                   identifier == "individual-menu.\($0.id)"
               }) else { return }
 
-        if let popover = popovers[tool], popover.isShown {
+        let controlClick = NSApp.currentEvent?.modifierFlags.contains(.control) == true
+        if case .execute(let action) = tool.activation, !controlClick {
+            popovers[tool]?.performClose(nil)
+            OnePlusPanelTimings.shared.cancel(panel: tool.id)
+            ToolActionRouter.shared.execute(ToolActionRequest(action: action))
+        } else if let popover = popovers[tool], popover.isShown {
             popover.performClose(nil)
             OnePlusPanelTimings.shared.cancel(panel: tool.id)
         } else {
             show(tool: tool)
         }
+    }
+
+    /// Right click on a one-action item opens its panel; other items keep the app menu.
+    func handleSecondaryClick(on button: NSStatusBarButton) -> Bool {
+        guard let tool = statusItems.first(where: { $0.value.button === button })?.key,
+              case .execute = tool.activation else { return false }
+        show(tool: tool)
+        return true
     }
 
     func show(tool: IndividualMenuBarTool, diagnostic: Bool = false) {

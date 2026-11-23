@@ -167,6 +167,7 @@ class AppDelegate: NSObject, NSApplicationDelegate {
             guard let statusButton = Self.statusItemButton(containing: hitView) else {
                 return event
             }
+            if IndividualMenuBarController.shared.handleSecondaryClick(on: statusButton) { return nil }
 
             let menu = PortmanMenuController.shared.owns(button: statusButton)
                 ? PortmanMenuController.shared.contextMenu()
