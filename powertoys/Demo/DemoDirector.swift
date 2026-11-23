@@ -34,10 +34,12 @@ enum DemoDirector {
         "portman": { DemoPortman.scene },
         "event-viewer": { DemoEventViewer.scene },
         "rsync": { DemoRSync.scene },
+        "rsync-menu": { DemoRSync.menuScene },
         "mac-tweaks": { DemoMacTweaks.scene },
         "color-picker": { DemoColorPicker.scene },
         "text-extractor": { DemoTextExtractor.scene },
         "ruler": { DemoRuler.scene },
+        "ruler-design": { DemoRuler.designScene },
         "input-devices": { DemoInputDevices.scene },
     ]
 

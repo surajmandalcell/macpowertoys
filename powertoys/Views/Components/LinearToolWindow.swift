@@ -18,7 +18,7 @@ struct LinearToolWindow<Sidebar: View, Content: View>: View {
 
     var body: some View {
         HStack(spacing: 0) {
-            sidebar.frame(maxHeight: .infinity).clipped()
+            if !DemoMode.hidesToolSidebar { sidebar.frame(maxHeight: .infinity).clipped() }
             pane.frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topLeading).clipped()
         }
         .background(OnePlusLinearColor.window)
@@ -44,6 +44,7 @@ struct LinearToolPane<Page: Hashable, Trailing: View, Content: View>: View {
     @State private var back: [Page] = []
     @State private var forward: [Page] = []
     @State private var traversing = false
+    @Environment(\.onePlusZoomTrailingX) private var zoomTrailingX
 
     init(page: Binding<Page>, title: String, @ViewBuilder trailing: () -> Trailing, @ViewBuilder content: () -> Content) {
         _page = page; self.title = title; self.trailing = trailing(); self.content = content()
@@ -55,6 +56,9 @@ struct LinearToolPane<Page: Hashable, Trailing: View, Content: View>: View {
                                      back: goBack, forward: goForward) {
                 HStack(spacing: OnePlusLinearMetrics.appletActionGap) { trailing }
             }
+            .padding(.leading, DemoMode.hidesToolSidebar
+                     ? zoomTrailingX + OnePlusMetrics.sidebarTitleGapAfterZoom - OnePlusLinearMetrics.toolbarLeading : 0)
+            .background(alignment: .bottom) { if DemoMode.hidesToolSidebar { OnePlusLinearColor.line.frame(height: 1) } }
             content.frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topLeading)
         }
         .onChange(of: page) { old, _ in

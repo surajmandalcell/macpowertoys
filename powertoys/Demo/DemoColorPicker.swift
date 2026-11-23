@@ -25,8 +25,17 @@ enum DemoColorPicker {
             sample(0x4F5BD5, minutesAgo: 26),
             sample(0x1F2A37, minutesAgo: 48),
             sample(0xE9E4DA, minutesAgo: 95),
+            sample(0xC2410C, minutesAgo: 130),
+            sample(0x0EA5E9, minutesAgo: 170),
+            sample(0x7C3AED, minutesAgo: 215),
+            sample(0x16A34A, minutesAgo: 260),
+            sample(0xF43F5E, minutesAgo: 330),
+            sample(0x94A3B8, minutesAgo: 410),
         ])
     }
+
+    /// The color the scene picks, shown as the newest history row.
+    static func addLatest() { ColorPickerService.shared.add(sample(0xE8563F, minutesAgo: 0)) }
 
     static var scene: DemoScene {
         DemoScene(
@@ -35,7 +44,7 @@ enum DemoColorPicker {
                 DemoStep(at: 0.8) { ColorPickerService.shared.demoSetPicking(true) },
                 DemoStep(at: 3.2) {
                     ColorPickerService.shared.demoSetPicking(false)
-                    ColorPickerService.shared.add(sample(0xE8563F, minutesAgo: 0))
+                    addLatest()
                 },
             ],
             tail: 2.5

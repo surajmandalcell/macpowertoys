@@ -5,6 +5,7 @@
 
 #if MPT_DEMO
 import AppKit
+import OnePlusUI
 
 /// The ruler measures a real demo window: Mac Tweaks opens, the ruler's zero corner snaps to its top left,
 /// and the ruler grows to the window's size while the mouse ticks follow the growing corner and read out width
@@ -63,6 +64,34 @@ enum DemoRuler {
                 }
             },
             steps: grow,
+            tail: 2.5
+        )
+    }
+
+    /// Top of the first Color Picker history row, from the window top: titlebar, tab strip, search, and gaps.
+    private static let firstRowTop = 130.0
+    /// Row inset: the 16 pt card inset plus the 12 pt row padding, where the swatch starts.
+    private static let swatchInset = 28.0
+
+    /// A designer checking spacing, laid out tall: the vertical rule runs down beside the Color Picker history,
+    /// zero on the first row's top, and the tick reads the 36 pt row height and the 28 pt swatch inset.
+    static var designScene: DemoScene {
+        DemoScene(
+            open: {
+                DemoColorPicker.addLatest()
+                ToolActionRouter.shared.open(toolID: "color-picker", activateApp: false)
+                ToolActionRouter.shared.open(toolID: "ruler", activateApp: false)
+                Task { @MainActor in
+                    try? await Task.sleep(for: .seconds(arrangeDelay))
+                    arrange()
+                    let row = NSPoint(x: measured.minX, y: measured.maxY - firstRowTop)
+                    controller?.align(at: row)
+                    controller?.updateDimensions(horizontalLength: 200, verticalLength: 520)
+                    controller?.drawMouseTick(at: NSPoint(x: row.x + swatchInset + 1,
+                                                          y: row.y - OnePlusLinearMetrics.appletRow - 1))
+                }
+            },
+            steps: [],
             tail: 2.5
         )
     }

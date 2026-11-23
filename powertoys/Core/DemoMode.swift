@@ -22,12 +22,23 @@ nonisolated enum DemoMode {
         #endif
     }
 
-    /// Site stills only: `-MPTDemoInputDevicesSize "{600,860}"` gives Input Devices a tall tile shape.
+    /// Site stills only: `-MPTDemoInputDevicesWidth 640 -MPTDemoInputDevicesHeight 880` gives Input Devices a tall tile shape.
     static var inputDevicesSize: CGSize? {
         #if MPT_DEMO
-        UserDefaults.standard.string(forKey: "MPTDemoInputDevicesSize").map { NSSizeFromString($0) }
+        let width = UserDefaults.standard.double(forKey: "MPTDemoInputDevicesWidth")
+        let height = UserDefaults.standard.double(forKey: "MPTDemoInputDevicesHeight")
+        return width > 0 && height > 0 ? CGSize(width: width, height: height) : nil
         #else
         nil
+        #endif
+    }
+
+    /// Site stills only: `-MPTDemoHideSidebar YES` collapses a tool window's sidebar for a narrow tile.
+    static var hidesToolSidebar: Bool {
+        #if MPT_DEMO
+        UserDefaults.standard.bool(forKey: "MPTDemoHideSidebar")
+        #else
+        false
         #endif
     }
 

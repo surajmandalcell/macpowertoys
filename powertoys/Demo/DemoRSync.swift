@@ -32,6 +32,19 @@ enum DemoRSync {
              fileName: "IMG_7304.HEIC", fileSize: 3_600_000),
     ]
 
+    /// Finished earlier today, so the window and panel also show completed rows.
+    private static let done: [(Plan, Double)] = [
+        (Plan(source: "Documents/Taxes 2025", remote: "wasabi", destination: "archive/Taxes 2025",
+              totalBytes: 1_240_000_000, startBytes: 0, files: 318, speed: 64_000_000,
+              fileName: "", fileSize: 1), 1.5),
+        (Plan(source: "Movies/Iceland Trip", remote: "backblaze", destination: "video/Iceland Trip",
+              totalBytes: 42_600_000_000, startBytes: 0, files: 96, speed: 121_000_000,
+              fileName: "", fileSize: 1), 3.2),
+        (Plan(source: "Projects/storefront", remote: "gdrive", destination: "Backups/storefront",
+              totalBytes: 860_000_000, startBytes: 0, files: 4_812, speed: 38_000_000,
+              fileName: "", fileSize: 1), 5.8),
+    ]
+
     private static var jobs: [(TransferJob, Plan)] = []
 
     static func seed() {
@@ -48,7 +61,27 @@ enum DemoRSync {
             job.state = .running
             job.startedAt = Date().addingTimeInterval(-Double(plan.startBytes) / plan.speed)
             job.stats = stats(for: plan, bytes: plan.startBytes)
+            job.refreshDisplayEta()
             return (job, plan)
+        }
+        let finished = done.map { plan, hoursAgo in
+            let job = TransferJob(
+                operation: .copy,
+                sourceFs: "/Users/sam/\(plan.source)",
+                destinationFs: "\(plan.remote):\(plan.destination)",
+                sourceDisplay: plan.source,
+                destinationDisplay: "\(plan.remote):\(plan.destination)",
+                excludePatterns: [],
+                maxRetries: 3
+            )
+            job.state = .completed
+            job.finishedAt = Date().addingTimeInterval(-hoursAgo * 3600)
+            job.startedAt = job.finishedAt?.addingTimeInterval(-Double(plan.totalBytes) / plan.speed)
+            var stats = stats(for: plan, bytes: plan.totalBytes)
+            stats.transferring = []
+            stats.eta = 0
+            job.stats = stats
+            return job
         }
         RcloneJobManager.shared.applyDemo(
             remotes: [
@@ -56,8 +89,10 @@ enum DemoRSync {
                 RcloneRemote(name: "gdrive", type: "drive"),
                 RcloneRemote(name: "wasabi", type: "s3"),
             ],
-            jobs: jobs.map(\.0)
+            jobs: jobs.map(\.0) + finished
         )
+        // A still holds the numbers, so no digit is caught mid-roll.
+        guard DemoStill.directory == nil else { return }
         Task { @MainActor in
             while true {
                 try? await Task.sleep(for: .seconds(tick))
@@ -100,6 +135,11 @@ enum DemoRSync {
             ],
             tail: 2.0
         )
+    }
+
+    /// The menu bar panel on its RSync UI tab, with the same two transfers running.
+    static var menuScene: DemoScene {
+        DemoScene(open: { DiagnosticsMenuPanels.shared.open(.main, tab: "cloud-sync") }, steps: [], tail: 3.0)
     }
 }
 #endif

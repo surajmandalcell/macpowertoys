@@ -171,6 +171,7 @@ final class RcloneJobManager {
     }
 
     var daemonIsHealthy: Bool {
+        if DemoMode.isActive { return true }
         if case .running = daemon.state { return true }
         return false
     }
