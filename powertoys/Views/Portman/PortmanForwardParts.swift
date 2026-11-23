@@ -7,8 +7,13 @@ enum PortmanForwardMetrics {
     /// Raised keys pad their label 12 pt on each side, so a 64 pt label makes the 88 pt column.
     static let keyLabel: CGFloat = 64
     static let column: CGFloat = keyLabel + 24
-    static let hostSelect: CGFloat = 76
+    static let hostSelect: CGFloat = 112
     static let rowHeight: CGFloat = 40
+    /// The job switch card (owner pick "5 then 1", 2026-11-23): the one filled key and the full-row switch.
+    static let jobKey: CGFloat = 108
+    static let fullRow: CGFloat = TrayPopoverLayout.bodyWidth - 2 * OnePlusLinearMetrics.panelRowInset
+    static let captionPad: CGFloat = 2
+    static let emptyCaptionBottom: CGFloat = 6
     /// Host card parts (owner picks 2026-11-21, DESIGN.md "Portman").
     static let badgeColumn: CGFloat = 50
     static let memoryColumn: CGFloat = 52
@@ -67,55 +72,239 @@ struct PortmanForwardStatus: View {
     }
 }
 
-/// The input group: the SSH host with its saved hosts and Scan, then a manual remote port and Add port.
-/// While a scan runs, Scan becomes Cancel in the same column; the spinner lives on the top-bar gear.
-struct PortmanForwardInputs: View {
+/// Which first card the Forward page shows (owner pick "5 then 1", 2026-11-23): the empty state until a server
+/// exists, the Add a server dialog while it is open, then the job switch.
+enum PortmanForwardFirstCard: Equatable {
+    case empty, adding, jobSwitch
+
+    static func resolve(hasServers: Bool, adding: Bool) -> Self {
+        adding ? .adding : hasServers ? .jobSwitch : .empty
+    }
+}
+
+/// The two screens of the Add a server dialog.
+enum PortmanAddServerStep: Equatable { case pick, setup }
+
+extension PortmanHostMode {
+    /// One plain line under the Forward / Monitor / Both switch.
+    func meaning(_ host: String) -> String {
+        let server = host.isEmpty ? "the server" : host
+        return switch self {
+        case .forward: "Forward opens \(server)'s ports on this Mac, so localhost:3000 reaches \(server)."
+        case .monitor: "Monitor shows \(server)'s CPU, memory and disk here. No ports are opened."
+        case .both: "Both forwards the ticked ports and shows \(server)'s CPU, memory and disk here."
+        }
+    }
+
+    var switchTitle: String {
+        switch self {
+        case .forward: "Forward"
+        case .monitor: "Monitor"
+        case .both: "Both"
+        }
+    }
+}
+
+/// Forward / Monitor / Both across the full row.
+struct PortmanJobPicker: View {
+    @Binding var mode: PortmanHostMode
+    var body: some View {
+        PortmanForwardRow {
+            OnePlusLinearSegmented(choices: PortmanHostMode.allCases.map { ($0, $0.switchTitle) }, selection: $mode,
+                                   accessibilityLabel: "What to do with this server", width: PortmanForwardMetrics.fullRow)
+        }
+    }
+}
+
+/// A muted line of plain text on the row inset.
+struct PortmanForwardCaption: View {
+    private let text: String
+    init(_ text: String) { self.text = text }
+    var body: some View {
+        Text(text).linearText(OnePlusLinearMetrics.control, color: OnePlusLinearColor.appletSecondary)
+            .fixedSize(horizontal: false, vertical: true)
+            .frame(maxWidth: .infinity, alignment: .leading)
+            .padding(.horizontal, OnePlusLinearMetrics.panelRowInset)
+            .padding(.vertical, PortmanForwardMetrics.captionPad)
+    }
+}
+
+/// The first card once a server exists: the server, the job, then one key that says what will happen.
+/// While a scan runs the key reads Cancel; the spinner lives on the top-bar gear.
+struct PortmanJobSwitch: View {
     @Binding var host: String
-    @Binding var manualPort: String
+    @Binding var port: String
     @Binding var mode: PortmanHostMode
     let aliases: [String]
     let scanning: Bool
-    let scan: () -> Void
+    let findPorts: () -> Void
+    let forwardPort: () -> Void
+    let watch: () -> Void
     let cancel: () -> Void
-    let addPort: () -> Void
-    let addHost: () -> Void
 
     var body: some View {
         OnePlusLinearList(style: .panel) {
             PortmanForwardRow {
-                OnePlusLinearTextField("alias or user@IP", text: $host, onSubmit: scan)
+                OnePlusLinearTextField("Server, such as oci1 or user@IP", text: $host, onSubmit: run)
                     .accessibilityLabel("SSH alias or username at IP address")
                     .help(host.isEmpty ? "SSH alias or username at IP address" : host)
                 if !aliases.isEmpty {
                     OnePlusLinearSelect(
                         choices: aliases.map { ($0, $0) },
-                        // A picker that fills the field: it always reads "Hosts", so the chosen name shows once, uncut.
+                        // A picker that fills the field: it always reads "SSH hosts", so the chosen name shows once, uncut.
                         selection: Binding(get: { "" }, set: { host = $0 }),
                         accessibilityLabel: "Choose an SSH host",
                         width: PortmanForwardMetrics.hostSelect,
-                        placeholder: "Hosts"
+                        placeholder: "SSH hosts"
                     )
                 }
-                if scanning {
-                    PortmanForwardKey("Cancel", action: cancel)
-                } else {
-                    PortmanForwardKey("Scan", action: scan).disabled(host.isEmpty)
+            }
+            PortmanJobPicker(mode: $mode)
+            PortmanForwardCaption(mode.meaning(""))
+            PortmanForwardRow {
+                OnePlusLinearTextField("Port, or leave empty", text: $port, onSubmit: run)
+                    .accessibilityLabel("Remote port to forward")
+                    .disabled(mode == .monitor)
+                Button(action: scanning ? cancel : run) {
+                    Text(title).lineLimit(1).frame(width: PortmanForwardMetrics.jobKey)
                 }
+                .buttonStyle(OnePlusLinearButtonStyle(.filled))
+                .disabled(host.isEmpty && !scanning)
             }
-            PortmanForwardRow {
-                OnePlusLinearTextField("Remote port", text: $manualPort, onSubmit: addPort)
-                    .accessibilityLabel("Remote port to add")
-                PortmanForwardKey("Add port", action: addPort).disabled(host.isEmpty)
+        }
+    }
+
+    private var trimmedPort: String { port.trimmingCharacters(in: .whitespaces) }
+
+    private var title: String {
+        if scanning { return "Cancel" }
+        if mode == .monitor { return "Watch" }
+        return trimmedPort.isEmpty ? "Find ports" : "Forward \(trimmedPort)"
+    }
+
+    private func run() {
+        guard !host.isEmpty, !scanning else { return }
+        if mode == .monitor { watch() } else if trimmedPort.isEmpty { findPorts() } else { forwardPort() }
+    }
+}
+
+/// The first card before any server exists: what Portman does, one Add a server key, and the hosts it found.
+struct PortmanForwardEmpty: View {
+    let aliases: [String]
+    let add: () -> Void
+
+    var body: some View {
+        OnePlusLinearList(style: .panel) {
+            OnePlusLinearEmptyState("Use a server's ports on this Mac", systemImage: "arrow.left.arrow.right",
+                                    message: "Open a remote port as localhost, or watch the server's CPU and memory.") {
+                Button("Add a server", action: add).buttonStyle(OnePlusLinearButtonStyle(.filled))
             }
-            PortmanForwardRow {
-                OnePlusLinearSelect(
-                    choices: PortmanHostMode.allCases.map { ($0, $0.title) },
-                    selection: $mode,
-                    accessibilityLabel: "What to do with this host"
-                )
+            if !aliases.isEmpty {
+                Text("Found \(aliases.count) \(aliases.count == 1 ? "server" : "servers") in ~/.ssh/config: \(aliases.joined(separator: ", ")).")
+                    .linearText(OnePlusLinearMetrics.control, color: OnePlusLinearColor.appletSecondary)
+                    .lineLimit(2).truncationMode(.tail).multilineTextAlignment(.center)
+                    .frame(maxWidth: .infinity)
+                    .padding(.horizontal, OnePlusLinearMetrics.panelRowInset)
+                    .padding(.bottom, PortmanForwardMetrics.emptyCaptionBottom)
+            }
+        }
+    }
+}
+
+/// The dialog's top row: back, the title, and "Step 1 of 2".
+struct PortmanAddServerHeader: View {
+    let title: String
+    let step: PortmanAddServerStep
+    let back: () -> Void
+
+    var body: some View {
+        PortmanForwardRow {
+            OnePlusLinearIconButton(systemImage: "chevron.left", help: "Back", action: back)
+            Text(title).linearText(weight: .medium).lineLimit(1).truncationMode(.middle)
                 .frame(maxWidth: .infinity, alignment: .leading)
-                PortmanForwardKey("Add host", action: addHost).disabled(host.isEmpty)
+            Text(step == .pick ? "Step 1 of 2" : "Step 2 of 2")
+                .linearText(OnePlusLinearMetrics.caption, color: OnePlusLinearColor.panelMuted)
+        }
+    }
+}
+
+/// Step 1: the hosts from ~/.ssh/config, one click each, or a typed user@IP.
+struct PortmanAddServerPick: View {
+    let hosts: [(alias: String, hostName: String)]
+    let pick: (String) -> Void
+    let back: () -> Void
+    @State private var other = ""
+
+    var body: some View {
+        OnePlusLinearList(style: .panel) {
+            PortmanAddServerHeader(title: "Add a server", step: .pick, back: back)
+            PortmanForwardCaption(hosts.isEmpty ? "Type user@IP, or a Host from ~/.ssh/config."
+                                                : "Pick one from ~/.ssh/config, or type user@IP.")
+            ForEach(hosts, id: \.alias) { host in
+                Button { pick(host.alias) } label: {
+                    HStack(spacing: OnePlusLinearMetrics.rowGap) {
+                        OnePlusLinearHostIcon(online: nil)
+                        Text(host.alias).linearText().lineLimit(1)
+                        Text(host.hostName).linearText(OnePlusLinearMetrics.caption, color: OnePlusLinearColor.panelMuted)
+                            .lineLimit(1).truncationMode(.middle)
+                            .frame(maxWidth: .infinity, alignment: .leading)
+                        Image(systemName: "chevron.right").font(.system(size: 10, weight: .semibold))
+                            .foregroundStyle(OnePlusLinearColor.panelMuted)
+                    }
+                    .padding(.horizontal, OnePlusLinearMetrics.panelRowInset)
+                    .frame(minHeight: PortmanForwardMetrics.rowHeight)
+                    .contentShape(Rectangle())
+                }
+                .buttonStyle(.plain).focusEffectDisabled()
+                .accessibilityLabel(host.alias)
             }
+            PortmanForwardRow {
+                OnePlusLinearTextField("Other: user@IP", text: $other, onSubmit: next)
+                    .accessibilityLabel("Other server, user at IP address")
+                PortmanForwardKey("Next", action: next).disabled(!PortmanSSHHost.isValid(other.trimmingCharacters(in: .whitespaces)))
+            }
+        }
+    }
+
+    private func next() {
+        let destination = other.trimmingCharacters(in: .whitespaces)
+        if PortmanSSHHost.isValid(destination) { pick(destination) }
+    }
+}
+
+/// Step 2 when the connection fails: one plain line, then Back and Retry.
+struct PortmanAddServerError: View {
+    let message: String
+    let back: () -> Void
+    let retry: () -> Void
+
+    var body: some View {
+        PortmanForwardRow {
+            Image(systemName: "exclamationmark.triangle.fill").foregroundStyle(OnePlusLinearColor.destructiveText)
+            Text("Could not connect: \(message)").linearText(OnePlusLinearMetrics.control, weight: .medium)
+                .lineLimit(1).truncationMode(.tail).textSelection(.enabled)
+                .frame(maxWidth: .infinity, alignment: .leading)
+                .help(message)
+        }
+        PortmanForwardRow {
+            Spacer(minLength: 0)
+            PortmanForwardKey("Back", action: back)
+            PortmanForwardKey("Retry", action: retry)
+        }
+    }
+}
+
+/// Step 2's status line: a check once connected, plain text while it works.
+struct PortmanAddServerStatus: View {
+    let text: String
+    let connected: Bool
+    var body: some View {
+        PortmanForwardRow {
+            if connected { Image(systemName: "checkmark.circle.fill").foregroundStyle(OnePlusColor.ok) }
+            Text(text).linearText(OnePlusLinearMetrics.control, weight: .medium,
+                                  color: connected ? OnePlusLinearColor.ink : OnePlusLinearColor.secondary)
+                .lineLimit(1).truncationMode(.middle)
+                .frame(maxWidth: .infinity, alignment: .leading)
         }
     }
 }

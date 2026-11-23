@@ -45,9 +45,9 @@ final class PortmanForwardRenderTests: XCTestCase {
         ]
         let groups = PortmanForwardTree.groups(hosts: hosts, tunnels: tunnels)
         return VStack(spacing: OnePlusLinearPanelStyle.fillSteps.blockGap) {
-            PortmanForwardInputs(host: .constant("build-box"), manualPort: .constant(""), mode: .constant(.both),
-                                 aliases: ["build-box", "staging-eu", "gpu-lab"], scanning: false,
-                                 scan: {}, cancel: {}, addPort: {}, addHost: {})
+            PortmanJobSwitch(host: .constant("build-box"), port: .constant(""), mode: .constant(.both),
+                             aliases: ["build-box", "staging-eu", "gpu-lab"], scanning: false,
+                             findPorts: {}, forwardPort: {}, watch: {}, cancel: {})
             ForEach(groups) { group in
                 PortmanHostCard(group: group, model: PortmanHostCardModel(monitors: true, forwards: group.children.count,
                                                                            state: states[group.id], now: self.now),
@@ -60,6 +60,12 @@ final class PortmanForwardRenderTests: XCTestCase {
         .portmanForwardLook()
         .environment(\.onePlusLinearPanelStyle, .fillSteps)
         .onePlusDensity(.compact)
+    }
+
+    func testFirstCardIsEmptyUntilAServerExists() {
+        XCTAssertEqual(PortmanForwardFirstCard.resolve(hasServers: false, adding: false), .empty)
+        XCTAssertEqual(PortmanForwardFirstCard.resolve(hasServers: false, adding: true), .adding)
+        XCTAssertEqual(PortmanForwardFirstCard.resolve(hasServers: true, adding: false), .jobSwitch)
     }
 
     func testForwardCardsRenderInBothAppearances() throws {

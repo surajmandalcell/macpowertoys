@@ -936,6 +936,7 @@ final class PortmanService {
     func refreshRemote(host: String, password: String? = nil, configurationFile: URL? = nil) async {
         if DemoMode.blocks("portman.remote-scan") {
             #if MPT_DEMO
+            if host == DemoPortman.offlineHost { forwardingError = DemoPortman.offlineMessage; return }
             remotePorts = DemoPortman.remotePorts.map(\.port)
             remoteDetails = Dictionary(uniqueKeysWithValues: DemoPortman.remotePorts.map { ($0.port, $0) })
             #endif

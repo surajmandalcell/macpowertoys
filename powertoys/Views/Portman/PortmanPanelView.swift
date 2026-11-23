@@ -163,7 +163,10 @@ struct PortmanPanelView: View {
     @State private var service = PortmanService.shared
     @State private var hostList = PortmanHostList.shared
     @State private var serverMonitor = PortmanServerMonitor.shared
-    @State private var newHostMode = PortmanHostMode.both
+    @State private var newHostMode = PortmanHostMode.forward
+    /// The open Add a server step, nil when the dialog is closed.
+    @State private var addStep: PortmanAddServerStep?
+    @State private var sshHostNames: [String: String] = [:]
     @State private var page = Page.local
     @State private var selectedPortID: String?
     @State private var host = ""
@@ -322,12 +325,20 @@ struct PortmanPanelView: View {
     @ViewBuilder private var fixedRegion: some View {
         if page == .local, let selectedPort {
             localDetailHeader(selectedPort)
-        } else if page == .forward {
-            PortmanForwardInputs(host: $host, manualPort: $manualPort, mode: $newHostMode, aliases: aliases,
-                                 scanning: service.isLoadingRemote, scan: scanRemote,
-                                 cancel: clearRemoteScan, addPort: addManualPort, addHost: addHost)
+        } else if page == .forward, firstCard == .jobSwitch {
+            PortmanJobSwitch(host: $host, port: $manualPort, mode: $newHostMode, aliases: aliases,
+                             scanning: service.isLoadingRemote, findPorts: scanRemote,
+                             forwardPort: { addManualPort(); forwardAndSave() }, watch: addHost, cancel: clearRemoteScan)
                 .portmanForwardLook()
         }
+    }
+
+    private var forwardGroups: [PortmanHostGroup] {
+        PortmanForwardTree.groups(hosts: hostList.hosts, tunnels: service.tunnels)
+    }
+
+    private var firstCard: PortmanForwardFirstCard {
+        .resolve(hasServers: !forwardGroups.isEmpty, adding: addStep != nil)
     }
 
     private var panelWithLifecycle: some View {
@@ -344,12 +355,23 @@ struct PortmanPanelView: View {
             let load = Task.detached(priority: .utility) {
                 let url = FileManager.default.homeDirectoryForCurrentUser.appendingPathComponent(".ssh/config")
                 let data = (try? Data(contentsOf: url)) ?? Data()
-                let names = SSHConfigEditor.entries(in: data).flatMap(\.aliases)
-                    .filter(PortmanSSHHost.isValid)
-                return Array(Set(names)).sorted()
+                var hostNames: [String: String] = [:]
+                for entry in SSHConfigEditor.entries(in: data) {
+                    for alias in entry.aliases where PortmanSSHHost.isValid(alias) && hostNames[alias] == nil {
+                        hostNames[alias] = entry.hostName
+                    }
+                }
+                return hostNames
             }
-            let names = await withTaskCancellationHandler { await load.value } onCancel: { load.cancel() }
-            if !Task.isCancelled { aliases = names }
+            #if MPT_DEMO
+            let hostNames = DemoPortman.sshHostNames
+            #else
+            let hostNames = await withTaskCancellationHandler { await load.value } onCancel: { load.cancel() }
+            #endif
+            if !Task.isCancelled {
+                sshHostNames = hostNames
+                aliases = hostNames.keys.sorted()
+            }
         }
         .task(id: overviewRequest) { await prepareOverview() }
         .onReceive(NotificationCenter.default.publisher(for: .portmanSnapshotChanged)) { _ in
@@ -379,6 +401,7 @@ struct PortmanPanelView: View {
                 panelOwnsMonitoring = false
             }
             if page != .forward {
+                addStep = nil
                 remoteScanTask?.cancel()
                 remoteDetailTask?.cancel()
                 service.clearRemoteScan()
@@ -782,6 +805,16 @@ struct PortmanPanelView: View {
     /// Scan results and added ports in one group (status, rows, Forward), then the forwarded ports in another.
     private var forwardResults: some View {
         VStack(alignment: .leading, spacing: OnePlusLinearPanelStyle.fillSteps.blockGap) {
+            switch firstCard {
+            case .empty: PortmanForwardEmpty(aliases: aliases) { addStep = .pick }
+            case .adding: addServerDialog
+            case .jobSwitch: forwardWork
+            }
+        }
+    }
+
+    /// The job switch's results: the inline scan group, the host cards, and the last error.
+    @ViewBuilder private var forwardWork: some View {
             let scanned = !host.isEmpty && discoveredHost == host
             if scanSheetHost == nil, scanned || !manualRemotePorts.isEmpty {
                 OnePlusLinearList(style: .panel) {
@@ -814,12 +847,12 @@ struct PortmanPanelView: View {
                         Text(selectedRemotePorts.isEmpty ? "No ports selected" : "\(selectedRemotePorts.count) selected")
                             .linearText(OnePlusLinearMetrics.control, color: OnePlusLinearColor.secondary)
                             .frame(maxWidth: .infinity, alignment: .leading)
-                        PortmanForwardKey("Forward", action: forwardSelected)
+                        PortmanForwardKey("Forward", action: forwardAndSave)
                             .disabled(host.isEmpty || selectedRemotePorts.isEmpty)
                     }
                 }
             }
-            let groups = PortmanForwardTree.groups(hosts: hostList.hosts, tunnels: service.tunnels)
+            let groups = forwardGroups
             if !groups.isEmpty {
                 TimelineView(.periodic(from: .now, by: 30)) { context in
                     PortmanReorderStack(items: groups, movable: groups.filter(\.saved).count,
@@ -831,7 +864,79 @@ struct PortmanPanelView: View {
                 }
             }
             if passwordPromptHost == nil, let error = service.forwardingError { errorText(error) }
+    }
+
+    /// Add a server, two steps in the panel: pick a host, then it connects, finds the ports, and asks for the job.
+    @ViewBuilder private var addServerDialog: some View {
+        if addStep == .pick {
+            PortmanAddServerPick(hosts: aliases.map { ($0, sshHostNames[$0] ?? "") }, pick: { destination in
+                service.forwardingError = nil
+                addStep = .setup
+                rescan(destination)
+            }, back: closeAddServer)
+        } else {
+            let scanning = service.isLoadingRemote || pendingScanHost != nil
+            let ready = !scanning && discoveredHost == host
+            OnePlusLinearList(style: .panel) {
+                PortmanAddServerHeader(title: host, step: .setup, back: backToPick)
+                if ready {
+                    let count = service.remotePorts.count
+                    PortmanAddServerStatus(text: "Connected · \(count) \(count == 1 ? "port" : "ports") open", connected: true)
+                    ForEach(service.remotePorts, id: \.self) { remoteRow($0, compact: true) }
+                    PortmanJobPicker(mode: $newHostMode)
+                    PortmanForwardCaption(newHostMode.meaning(host))
+                    PortmanForwardRow {
+                        Button(action: finishAddServer) { Text(addServerTitle).lineLimit(1).frame(maxWidth: .infinity) }
+                            .buttonStyle(OnePlusLinearButtonStyle(.filled))
+                            .disabled(newHostMode.forwards && selectedRemotePorts.isEmpty)
+                    }
+                } else if !scanning, let error = service.forwardingError, passwordPromptHost == nil {
+                    PortmanAddServerError(message: error, back: backToPick, retry: { service.forwardingError = nil; rescan(host) })
+                } else {
+                    PortmanAddServerStatus(text: "Connecting to \(host) and finding ports…", connected: false)
+                }
+            }
         }
+    }
+
+    private var addServerTitle: String {
+        let count = selectedRemotePorts.count
+        let ports = "\(count) \(count == 1 ? "port" : "ports")"
+        return switch newHostMode {
+        case .forward: "Forward \(ports)"
+        case .monitor: "Watch \(host)"
+        case .both: "Forward \(ports) and watch"
+        }
+    }
+
+    private func finishAddServer() {
+        service.forwardingError = nil
+        if newHostMode.forwards { forwardSelected() }
+        guard service.forwardingError == nil, hostList.add(host, mode: newHostMode) else { return }
+        closeAddServer()
+    }
+
+    private func backToPick() {
+        clearRemoteScan()
+        service.forwardingError = nil
+        pendingScanHost = nil
+        addStep = .pick
+    }
+
+    private func closeAddServer() {
+        clearRemoteScan()
+        service.forwardingError = nil
+        pendingScanHost = nil
+        addStep = nil
+        host = ""
+    }
+
+    /// Forwards the ticked ports and keeps the host on the job picked in the job switch.
+    private func forwardAndSave() {
+        service.forwardingError = nil
+        forwardSelected()
+        guard service.forwardingError == nil, newHostMode == .both else { return }
+        hostList.setMode(.both, for: host)
     }
 
     nonisolated static let firstHostOpen = "\u{1}first"
@@ -907,7 +1012,8 @@ struct PortmanPanelView: View {
     }
 
     /// `added` marks a port already on the host's card: its box stays checked and off, and "Added" takes the local port field.
-    private func remoteRow(_ port: UInt16, added: Bool = false) -> some View {
+    /// `compact` (Add a server step 2) shows only the checkbox, port, and name; ports forward to the same local port.
+    private func remoteRow(_ port: UInt16, added: Bool = false, compact: Bool = false) -> some View {
         let detail = service.remoteDetails[port]
         return VStack(alignment: .leading, spacing: 0) {
             PortmanForwardRow {
@@ -944,10 +1050,12 @@ struct PortmanPanelView: View {
                             .linearText(OnePlusLinearMetrics.control)
                             .lineLimit(1)
                         Spacer(minLength: 0)
-                        Image(systemName: "chevron.right")
-                            .font(.system(size: 9, weight: .semibold))
-                            .rotationEffect(.degrees(expandedRemotePort == port ? 90 : 0))
-                            .foregroundStyle(OnePlusLinearColor.secondary)
+                        if !compact {
+                            Image(systemName: "chevron.right")
+                                .font(.system(size: 9, weight: .semibold))
+                                .rotationEffect(.degrees(expandedRemotePort == port ? 90 : 0))
+                                .foregroundStyle(OnePlusLinearColor.secondary)
+                        }
                     }
                     .frame(maxWidth: .infinity, minHeight: PortmanForwardMetrics.rowHeight)
                     .contentShape(Rectangle())
@@ -958,7 +1066,7 @@ struct PortmanPanelView: View {
                     Text("Added").linearText(OnePlusLinearMetrics.control, color: OnePlusLinearColor.secondary)
                         .frame(width: PortmanForwardMetrics.column)
                         .help("Already on this host's card")
-                } else {
+                } else if !compact {
                     OnePlusLinearTextField(String(port), text: Binding(
                         get: { localPortInputs[port] ?? String(port) },
                         set: { localPortInputs[port] = $0; selectedRemotePorts.insert(port) }
@@ -1060,6 +1168,11 @@ struct PortmanPanelView: View {
     /// Right-click "Scan ports" on a host card: scans that host with the Forward scan and lists its ports in a sheet.
     private func scanPorts(on destination: String) {
         scanSheetHost = destination
+        rescan(destination)
+    }
+
+    /// Scans `destination`; when the host field changes first, the scan waits for it to settle.
+    private func rescan(_ destination: String) {
         if host == destination { clearRemoteScan(); scanRemote() }
         else { pendingScanHost = destination; host = destination }
     }

@@ -81,6 +81,43 @@ enum DemoPortman {
         forwardScene { NotificationCenter.default.post(name: scanPortsNotification, object: forwardHost) }
     }
 
+    /// Stand-in ~/.ssh/config hosts, so stills never show the real file.
+    static let sshHostNames = [forwardHost: "10.0.4.12", "gpu-lab": "gpu-lab.internal", offlineHost: "203.0.113.40"]
+    /// The scan of this host fails, for the Add a server error still.
+    static let offlineHost = "staging-eu"
+    static let offlineMessage = "ssh: connect to host 203.0.113.40 port 22: Operation timed out"
+
+    /// `portman-forward`: the job switch over the host cards. `portman-empty`: no servers yet.
+    /// `portman-add`: Add a server step 2 with two ports ticked. `portman-add-error`: step 2 when the host does not answer.
+    static var jobSwitchScene: DemoScene { forwardScene {} }
+    static var emptyScene: DemoScene { emptyForwardScene([]) }
+    static var addScene: DemoScene {
+        emptyForwardScene([
+            DemoStep(at: 0.3) { DemoClick.element(labeled: "Add a server") },
+            DemoStep(at: 0.7) { DemoClick.element(labeled: forwardHost) },
+            DemoStep(at: 1.1) { DemoClick.element(labeled: "Select remote port 3000") },
+            DemoStep(at: 1.3) { DemoClick.element(labeled: "Select remote port \(String(forwardPort))") },
+            DemoStep(at: 1.5) { DemoClick.element(labeled: "Both") },
+        ])
+    }
+    static var addErrorScene: DemoScene {
+        emptyForwardScene([
+            DemoStep(at: 0.3) { DemoClick.element(labeled: "Add a server") },
+            DemoStep(at: 0.7) { DemoClick.element(labeled: offlineHost) },
+        ])
+    }
+
+    private static func emptyForwardScene(_ steps: [DemoStep]) -> DemoScene {
+        DemoScene(
+            open: {
+                seed(webMB: webPeakMB, webCPU: webPeakCPU, hosts: false)
+                PortmanMenuController.shared.demoAnchor = menuBarAnchor()
+                PortmanMenuController.shared.show(initialPage: .forward, activateApp: false)
+            },
+            steps: steps
+        )
+    }
+
     static var scene: DemoScene {
         DemoScene(
             open: {
@@ -127,7 +164,7 @@ enum DemoPortman {
         PortmanService.shared.stopLocal(web)
     }
 
-    private static func seed(webMB: Double, webCPU: Double) {
+    private static func seed(webMB: Double, webCPU: Double, hosts: Bool = true) {
         let now = Date()
         let ports = servers.map { server in
             let isWeb = server.port == webPort
@@ -145,13 +182,13 @@ enum DemoPortman {
         let history = Dictionary(uniqueKeysWithValues: ports.map { ($0.id, samples(for: $0, now: now)) })
         PortmanService.shared.demoSeed(
             ports: ports, metadata: metadata, history: history,
-            tunnels: [PortmanTunnel(id: UUID(), host: forwardHost, remotePort: forwardPort,
-                                    localPort: forwardPort, state: .running)]
+            tunnels: hosts ? [PortmanTunnel(id: UUID(), host: forwardHost, remotePort: forwardPort,
+                                              localPort: forwardPort, state: .running)] : []
         )
-        PortmanHostList.shared.demoSeed(
+        PortmanHostList.shared.demoSeed(hosts ?
             [PortmanHost(destination: forwardHost, mode: .forward,
                          forwards: [PortmanForwardSpec(remotePort: forwardPort, localPort: forwardPort)])]
-                + otherHosts.map { PortmanHost(destination: $0, mode: .forward) }
+                + otherHosts.map { PortmanHost(destination: $0, mode: .forward) } : []
         )
     }
 
