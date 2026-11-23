@@ -363,6 +363,9 @@ final class RulerQuietRaisedStepperField: NSTextField {
         alignment = .right
     }
 
+    // The well fills the whole frame, so the label's default 2 pt side insets would push it past the row inset.
+    override var alignmentRectInsets: NSEdgeInsets { NSEdgeInsetsZero }
+
     private var fieldRect: NSRect { RulerQuietRaised.controlRect(in: bounds) }
 
     private var keyRect: NSRect {

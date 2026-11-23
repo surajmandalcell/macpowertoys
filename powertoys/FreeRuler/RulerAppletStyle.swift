@@ -88,6 +88,15 @@ final class RulerAppletGroupView: NSView {
             NSRect(x: RulerAppletMetrics.rowPadding, y: bounds.maxY - offset, width: width, height: 1).fill()
         }
     }
+
+    /// Every trailing control sits one row inset from the group edge, whatever the nib says.
+    override func awakeFromNib() {
+        super.awakeFromNib()
+        for constraint in constraints where constraint.firstItem === self && constraint.firstAttribute == .trailing
+            && constraint.secondAttribute == .trailing && constraint.relation == .equal {
+            constraint.constant = RulerAppletMetrics.rowPadding
+        }
+    }
 }
 
 /// The window body: the applet body color runs under a transparent title area with no separator.
@@ -104,6 +113,8 @@ final class RulerAppletWindowView: NSView {
 
     override func awakeFromNib() {
         super.awakeFromNib()
+        // The nib's window template resets the separator after viewDidMoveToWindow; awakeFromNib runs last.
+        window?.titlebarSeparatorStyle = .none
         titleLabel.font = .systemFont(ofSize: RulerAppletMetrics.body, weight: .semibold)
         titleLabel.textColor = RulerAppletColor.ink
         titleLabel.lineBreakMode = .byTruncatingTail
