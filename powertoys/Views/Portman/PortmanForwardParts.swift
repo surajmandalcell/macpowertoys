@@ -145,7 +145,7 @@ struct PortmanJobSwitch: View {
     var body: some View {
         OnePlusLinearList(style: .panel) {
             PortmanForwardRow {
-                OnePlusLinearTextField("Server, such as oci1 or user@IP", text: $host, onSubmit: run)
+                OnePlusLinearTextField("Server or user@IP", text: $host, onSubmit: run)
                     .accessibilityLabel("SSH alias or username at IP address")
                     .help(host.isEmpty ? "SSH alias or username at IP address" : host)
                 if !aliases.isEmpty {

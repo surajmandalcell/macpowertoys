@@ -40,6 +40,7 @@ enum DemoDirector {
         "portman-empty": { DemoPortman.emptyScene },
         "portman-add": { DemoPortman.addScene },
         "portman-add-error": { DemoPortman.addErrorScene },
+        "portman-pick": { DemoPortman.pickScene },
         "event-viewer": { DemoEventViewer.scene },
         "rsync": { DemoRSync.scene },
         "rsync-menu": { DemoRSync.menuScene },

@@ -70,10 +70,10 @@ final class PortmanTests: XCTestCase {
     }
 
     func testGitHubLinksAcceptOnlyPlainGitHubRemotes() {
-        let https = PortmanGitHubLookup.repository(from: "https://github.com/surajmandalcell/macpowertoys.git")
-        XCTAssertEqual(https?.owner, "surajmandalcell")
+        let https = PortmanGitHubLookup.repository(from: "https://github.com/samhqapp/macpowertoys.git")
+        XCTAssertEqual(https?.owner, "samhqapp")
         XCTAssertEqual(https?.name, "macpowertoys")
-        let ssh = PortmanGitHubLookup.repository(from: "git@github.com:surajmandalcell/macpowertoys.git")
+        let ssh = PortmanGitHubLookup.repository(from: "git@github.com:samhqapp/macpowertoys.git")
         XCTAssertEqual(ssh?.name, "macpowertoys")
         XCTAssertNil(PortmanGitHubLookup.repository(from: "https://other.example/owner/repo.git"))
         XCTAssertNil(PortmanGitHubLookup.repository(from: "https://token:secret@github.com/owner/repo.git"))

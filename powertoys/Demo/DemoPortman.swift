@@ -100,6 +100,9 @@ enum DemoPortman {
             DemoStep(at: 1.5) { DemoClick.element(labeled: "Both") },
         ])
     }
+    static var pickScene: DemoScene {
+        emptyForwardScene([DemoStep(at: 0.3) { DemoClick.element(labeled: "Add a server") }])
+    }
     static var addErrorScene: DemoScene {
         emptyForwardScene([
             DemoStep(at: 0.3) { DemoClick.element(labeled: "Add a server") },
