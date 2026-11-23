@@ -1,11 +1,12 @@
-// The live panel demo and the Fan page demo. Each renders in its own shadow root on a .demo host.
-(() => {
+// The live menu panel demo in the hero. It renders in its own shadow root on the .demo host.
+(async () => {
+const [css, html] = await Promise.all(['demo.css', 'panel.html'].map(f => fetch(f).then(r => r.text())));
 const sheet = new CSSStyleSheet();
-sheet.replaceSync(document.getElementById('demo-css').content.textContent);
+sheet.replaceSync(css);
 function mount(name) {
   const host = document.querySelector('[data-demo=' + name + ']'), R = host.attachShadow({ mode: 'open' });
   R.adoptedStyleSheets = [sheet];
-  R.append(host.querySelector('template').content.cloneNode(true));
+  R.innerHTML = html;
   return R;
 }
 function engine(R) {
@@ -53,7 +54,7 @@ return (() => {
     if (v) {
       paused.forEach(a => { try { a.play(); } catch {} });
       paused = [];
-      if (!started) { started = true; enter(); api.onStart && api.onStart(); }
+      if (!started) { started = true; api.onStart && api.onStart(); }
       requestAnimationFrame(tick);
     } else {
       paused = R.getAnimations().filter(a => a.playState === 'running');
@@ -69,30 +70,10 @@ return (() => {
     });
   }
 
-  // Digits roll like SwiftUI .numericText: each changed character slides out and the new one springs in.
-  function roll(el, text, resp = .45) {
-    if (!el) return;
-    const prev = el.dataset.v ?? el.textContent;
-    if (prev === text) return;
-    el.dataset.v = text;
-    if (!on) { el.textContent = text; return; }
-    const num = s => parseFloat(s.replace(/[^\d.-]/g, '')) || 0;
-    const dy = num(text) >= num(prev) ? 1.1 : -1.1, sp = spring(resp);
-    const n = Math.max(prev.length, text.length), a = prev.padStart(n), b = text.padStart(n);
-    el.textContent = '';
-    for (let i = 0; i < n; i++) {
-      const c = D.createElement('span'); c.className = 'rc';
-      const nw = D.createElement('span'); nw.textContent = b[i] === ' ' ? '' : b[i]; nw.style.display = 'inline-block';
-      c.appendChild(nw);
-      if (a[i] !== b[i]) {
-        if (b[i] !== ' ') nw.animate([{ transform: `translateY(${dy}em)`, opacity: 0 }, { transform: 'none', opacity: 1 }], { ...sp, delay: i * 18, fill: 'backwards' });
-        if (a[i] !== ' ') {
-          const o = D.createElement('span'); o.className = 'ro'; o.textContent = a[i]; c.appendChild(o);
-          o.animate([{ transform: 'none', opacity: 1 }, { transform: `translateY(${-dy}em)`, opacity: 0 }], { ...sp, delay: i * 18, fill: "both" }).onfinish = () => o.remove();
-        }
-      }
-      el.appendChild(c);
-    }
+  // Numbers change in place; nothing slides.
+  function roll(el, text) {
+    if (!el || (el.dataset.v ?? el.textContent) === text) return;
+    el.dataset.v = text; el.textContent = text;
   }
 
   const bytes = (b, f = 1) => {
@@ -206,24 +187,19 @@ return (() => {
       const r = rowEl(k), y = 4 + 30 * i, old = r._y;
       if (!r.parentNode) list.appendChild(r);
       r._y = y; r.style.transform = `translateY(${y}px)`;
-      if (anim && old != null && old !== y && on) r.animate([{ transform: `translateY(${old}px)` }, { transform: `translateY(${y}px)` }], spring(.42, .74));
     });
   }
   function removeRow(k) {
     const r = PROCS[k].el;
     order = order.filter(x => x !== k);
     r.classList.remove('hov');
-    if (on) {
-      r.animate([{ transform: `translateY(${r._y}px)`, opacity: 1 }, { transform: `translate(-14px,${r._y}px)`, opacity: 0 }], { duration: 200, easing: 'cubic-bezier(.4,0,1,1)', fill: 'forwards' }).onfinish = () => { r.remove(); r.getAnimations().forEach(a => a.cancel()); };
-      after(110, () => placeRows(true));
-    } else { r.remove(); placeRows(false); }
+    r.remove(); placeRows(false);
     r._y = null;
   }
   function addRow(k, at = order.length) {
     order.splice(at, 0, k);
     placeRows(true);
     const r = PROCS[k].el, y = r._y;
-    if (on) r.animate([{ transform: `translateY(${y + (at === 0 ? -8 : 8)}px)`, opacity: 0 }, { transform: `translateY(${y}px)`, opacity: 1 }], { ...spring(.45, .8), delay: 60, fill: 'backwards' });
   }
 
   function seedCharts() {
@@ -295,24 +271,20 @@ return (() => {
   function layout() {
     const vw = R.host.clientWidth, vh = R.host.clientHeight, phone = vw < 640;
     const stack = phone || vw / clamp(Math.min(1.3, vh / 693), .55, 1.3) < (api.sideMin || 554);
-    const extra = stack ? (api.below || 0) : 0, need = 29 + 642 + 22 + extra;
+    // On a phone a demo may crop off the panel above its own part (cropTop), so that part reads at full size.
+    const top = phone && api.cropTop || 0, cut = top ? api.cropBottom || 0 : 0;
+    const extra = stack ? (api.below || 0) : 0, need = 29 + 642 + 22 + extra - top - cut;
     const z = phone ? Math.min(1, vh / need) : clamp(Math.min(1.3, vh / need), .55, 1.3);
-    const W = vw / z, H = Math.max(vh / z, need);
-    Object.assign(deskIn.style, { width: W + 'px', height: H + 'px', transform: `scale(${z})` });
-    desk.style.height = H * z + 'px';
+    const W = vw / z, H = Math.max(vh / z, need) + top;
+    Object.assign(deskIn.style, { width: W + 'px', height: H + 'px', transform: `scale(${z}) translateY(${-top}px)` });
+    desk.style.height = (H - top) * z + 'px';
+    deskIn.classList.toggle("crop", !!top);
     const mbi = $('.mbi'), mx = mbi.offsetLeft + mbi.offsetWidth / 2;
     const x = phone ? (W - 356) / 2 : clamp(mx - 178, 14, W - 356 - 14);
     panel.style.left = x + 'px';
     Object.assign(api, { z, W, H, phone, stack, px: x });
     api.onLayout && api.onLayout();
     cursor.place(cur.x, cur.y);
-  }
-
-  function enter() {
-    panel.style.transformOrigin = '50% 0';
-    panel.animate([{ opacity: 0, transform: 'translateY(-5px) scale(.985)' }, { opacity: 1, transform: 'none' }], spring(.36, .9));
-    $$('[data-in]', panel).forEach((el, i) => el.animate([{ opacity: 0, transform: 'translateY(8px)' }, { opacity: 1, transform: 'none' }], { ...spring(.5, .8), delay: 70 + i * 30, fill: 'backwards' }));
-    for (const k in charts) { charts[k].reveal(0); after(220, () => tween(450, e => charts[k].reveal(e), t => 1 - Math.pow(1 - t, 3))); }
   }
 
   // Cursor in panel coordinates.
@@ -372,262 +344,6 @@ const E = engine(mount('live'));
 E.onStart = () => {
   E.every(14000, () => { E.S.burst = 1; E.after(4200, () => { E.S.burst = 0; }); }, 6000);
 };
-E.init();
-}
-{
-const E = engine(mount('fan'));
-(() => {
-  const { $, $$, sleep, after, tween, cursor, rel, clamp, lerp } = E;
-  // FanCurve.swift: user points plus the locked end (an 80 °C CPU average, full speed), monotone cubic, flat below the
-  // first point, on the 30-90 °C average scale. EDITED is a hottest-core Custom curve moved through averageScale.
-  const LOCK = [80, 1], TOP = 90, MIN_RPM = 1350, MAX_RPM = 5777;
-  const EDITED = [[49, .32], [61, .53], [67, .59]], STANDARD = [[50, 0]];
-  const PRESETS = { silent: [[50, 0], [60, .12], [68, .25], [74, .4]], quiet: [[48, 0], [58, .15], [66, .32], [73, .5]], steady: [[45, 0], [55, .25], [63, .5], [70, .75]] };
-  function speedAt(pts, c) {
-    const p = [...pts, LOCK];
-    if (c <= p[0][0]) return p[0][1];
-    if (c >= LOCK[0]) return 1;
-    const s = [];
-    for (let i = 0; i < p.length - 1; i++) s.push((p[i + 1][1] - p[i][1]) / (p[i + 1][0] - p[i][0]));
-    const m = [s[0]];
-    for (let i = 1; i < s.length; i++) m.push(s[i - 1] * s[i] <= 0 ? 0 : (s[i - 1] + s[i]) / 2);
-    m.push(s[s.length - 1]);
-    s.forEach((d, k) => {
-      if (d === 0) { m[k] = 0; m[k + 1] = 0; return; }
-      const a = m[k] / d, b = m[k + 1] / d, l = a * a + b * b;
-      if (l > 9) { const t = 3 / Math.sqrt(l); m[k] = t * a * d; m[k + 1] = t * b * d; }
-    });
-    const u = p.findIndex(q => q[0] >= c), k = u - 1, lo = p[k], hi = p[u], w = hi[0] - lo[0], t = (c - lo[0]) / w, t2 = t * t, t3 = t2 * t;
-    const v = (2 * t3 - 3 * t2 + 1) * lo[1] + (t3 - 2 * t2 + t) * w * m[k] + (-2 * t3 + 3 * t2) * hi[1] + (t3 - t2) * w * m[u];
-    return clamp(v, lo[1], hi[1]);
-  }
-  console.assert(speedAt(EDITED, 80) === 1 && speedAt(EDITED, 90) === 1 && speedAt(EDITED, 40) === .32, "curve must be flat below the first point and full from 80 °C");
-  console.assert(speedAt([[58, 0], [62, .5], [66, 1]], 50) === 0 && speedAt([[58, 0], [62, .5], [66, 1]], 62) === .5 && speedAt([[58, 0], [62, .5], [66, 1]], 72) === 1, "Hold curve must be flat outside target ± 4 °C");
-  // FanHold.next: PI loop on 1 s ticks, nothing changes inside target ± 2 °C.
-  class Hold {
-    constructor(target, speed) { this.target = target; this.speed = clamp(speed, 0, 1); this.integral = this.speed; }
-    next(c) {
-      const e = c - this.target;
-      if (Math.abs(e) <= 2) return this.speed;
-      const learned = this.integral + .002 * e, raw = .05 * e + learned;
-      if ((raw < 1 || e < 0) && (raw > 0 || e > 0)) this.integral = clamp(learned, 0, 1);
-      const want = clamp(.05 * e + this.integral, 0, 1);
-      this.speed += clamp(want - this.speed, -.03, .03);
-      return this.speed;
-    }
-  }
-  // CPUHeat.swift steps on the average scale.
-  const step = c => c < 46 ? 0 : c < 57 ? 1 : c < 68 ? 2 : c < 76 ? 3 : 4;
-  const heatVar = c => ['--t-cool', '--t-warm', '--t-hot', '--t-very-hot', '--t-near-the-limit'][step(c)];
-  const heatWord = c => ['normal', 'warm', 'hot', 'very hot', 'near the limit'][step(c)];
-  const panelHeat = c => ['normal', 'warm', 'hot', 'very-hot', 'near-the-limit'][step(c)];
-  const rpmText = s => Math.round(MIN_RPM + s * (MAX_RPM - MIN_RPM)).toLocaleString('en-US');
-  const springF = (t, resp = .55, damp = .78) => {
-    if (t <= 0) return 0;
-    const w = 2 * Math.PI / resp, a = damp * w, wd = w * Math.sqrt(1 - damp * damp);
-    return 1 - Math.exp(-a * t) * (Math.cos(wd * t) + a / wd * Math.sin(wd * t));
-  };
-
-  const fp = $('#fp'), fg = $('#fg'), fch = $('#fch'), svg = $('#cv'), chip = $('#chip'), panel = $('#panel');
-  const fanG = $('.g[data-g=fan]', panel);
-  const N = (TOP - 30) * 2 + 1, cAt = i => 30 + i / 2;
-  const samples = pts => Array.from({ length: N }, (_, i) => speedAt(pts, cAt(i)));
-  let custom = EDITED, pick = 'custom', temp = 64, holdT = 62, hold = null, sim = false, manual = false;
-  let disp = samples(EDITED), from = null, to = null, m0 = 0, shown = speedAt(EDITED, 64), angle = 0, token = 0, idle = null;
-  let CW = 540, CH = 240;
-  const PT = 22, PB = 22;
-  const X = c => CW * (c - 30) / (TOP - 30), Y = s => PT + (CH - PT - PB) * (1 - s);
-  // FanHold.displayCurve: minimum fan 4 °C under the target, half speed at it, full speed 4 °C over.
-  const holdPts = () => [[holdT - 4, 0], [holdT, .5], [holdT + 4, 1]];
-  const curvePts = () => hold ? holdPts() : PRESETS[pick] || custom;
-  const dispAt = c => { const f = clamp((c - 30) * 2, 0, N - 1), i = Math.min(N - 2, Math.floor(f)); return lerp(disp[i], disp[i + 1], f - i); };
-  const NS = 'http://www.w3.org/2000/svg';
-  let knobs = [];
-
-  function buildGrid() {
-    let h = '';
-    for (const s of [0, .5, 1]) h += `<path class="gl" d="M0 ${Y(s)}H${CW}"/><text class="glab" x="12" y="${Y(s) - 4.5}">${s * 100}%</text>`;
-    for (let c = 40; c <= LOCK[0]; c += 10) h += `<text class="glab" x="${X(c)}" y="${CH - PB + 15.5}" text-anchor="middle">${c === LOCK[0] ? c + ' °C' : c}</text>`;
-    $('#grid').innerHTML = h;
-    $('#hg').setAttribute('x2', CW);
-    Object.entries({ x: 0, y: PT - 4, width: CW, height: CH - PT - PB + 4 }).forEach(([k, v]) => $('#hmr').setAttribute(k, v));
-    $('#lkd').setAttribute('transform', `translate(${X(LOCK[0])} ${Y(1)})`);
-    Object.entries({ x: X(LOCK[0]) - 16, y: PT - 7 }).forEach(([k, v]) => $('#lkt').setAttribute(k, v));
-  }
-  function setKnobs(pts) {
-    knobs.forEach(k => { if (E.on) k.el.animate([{ opacity: 1 }, { opacity: 0 }], { duration: 220, fill: 'forwards' }).onfinish = () => k.el.remove(); else k.el.remove(); });
-    knobs = pts.map(([c]) => {
-      const el = document.createElementNS(NS, 'circle');
-      el.setAttribute('r', 4.75); el.setAttribute('class', 'kn'); el.style.stroke = `var(${heatVar(c)})`;
-      $('#kns').appendChild(el);
-      if (E.on) el.animate([{ opacity: 0 }, { opacity: 1 }], { duration: 260, delay: 120, fill: 'backwards' });
-      return { c, el };
-    });
-  }
-  function drawHold() {
-    const x0 = X(holdT - 2), x1 = X(holdT + 2);
-    Object.entries({ x: x0, y: PT, width: x1 - x0, height: CH - PT - PB }).forEach(([k, v]) => $('#hb').setAttribute(k, v));
-    Object.entries({ x1: X(holdT), y1: Y(0), x2: X(holdT), y2: Y(1) }).forEach(([k, v]) => $('#hl').setAttribute(k, v));
-    Object.entries({ x: x0 - 8, y: PT + 14 }).forEach(([k, v]) => $('#ht').setAttribute(k, v));
-    $('#ht').textContent = `Hold ${holdT} °C`;
-    $('#pkh').textContent = `Hold ${holdT} °C`;
-    $('#hht').textContent = holdT; $('#hv2').textContent = holdT;
-    drawMini($('.pk[data-p=hold] svg'), holdPts(), true);
-    if (hold) { to = samples(holdPts()); if (!from) disp = to; }
-  }
-  function drawMini(el, pts, band) {
-    const w = el.clientWidth || 80, x = c => 2 + (w - 4) * (c - 30) / (TOP - 30), y = s => 2 + 26 * (1 - s);
-    let d = '';
-    for (let c = 30; c <= TOP; c += .5) d += (c === 30 ? 'M' : 'L') + x(c).toFixed(1) + ' ' + y(speedAt(pts, c)).toFixed(1);
-    el.innerHTML = (band ? `<rect x="${x(holdT - 2)}" y="2" width="${x(holdT + 2) - x(holdT - 2)}" height="26" fill="currentColor" fill-opacity=".12"/>` : '') + `<path d="${d}L${x(TOP)} 28L${x(30)} 28Z" fill="currentColor" fill-opacity=".12"/><path d="${d}" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/>`;
-  }
-  function drawMinis() { for (const p in PRESETS) drawMini($(`.pk[data-p=${p}] svg`), PRESETS[p]); drawMini($('.pk[data-p=custom] svg'), custom); drawHold(); }
-
-  const targetSpeed = () => E.mode === 'auto' ? 0 : E.mode === 'max' ? 1 : hold ? hold.speed : speedAt(curvePts(), temp);
-  function render() {
-    let d = '';
-    for (let i = 0; i < N; i++) d += (i ? 'L' : 'M') + X(cAt(i)).toFixed(1) + ' ' + Y(clamp(disp[i], -.03, 1.03)).toFixed(1);
-    $('#cl').setAttribute('d', d);
-    $('#ca').setAttribute('d', d + `L${CW} ${Y(0)}L0 ${Y(0)}Z`);
-    knobs.forEach(k => { k.el.setAttribute('cx', X(k.c)); k.el.setAttribute('cy', Y(clamp(dispAt(k.c), 0, 1))); });
-    const x = X(clamp(temp, 30, TOP)), hv = `var(${heatVar(temp)})`;
-    const nd = $('#nd');
-    nd.setAttribute('cx', x); nd.setAttribute('cy', Y(clamp(dispAt(temp), 0, 1))); nd.style.fill = hv;
-    nd.style.filter = `drop-shadow(0 0 4px color-mix(in srgb, ${hv} 50%, transparent))`;
-    const t = Math.round(temp), r = rpmText(shown);
-    chip.textContent = `CPU avg ${t} °C · ${r} RPM`;
-    // In Hold the chip sits off the rising curve: below-right at or over the target, above-left under it.
-    if (hold) {
-      const away = temp >= holdT;
-      chip.style.transform = `translate(${x + (away ? 8 : -8)}px,${12 + Y(clamp(dispAt(temp), 0, 1)) + (away ? 22 : -22)}px) translate(${away ? 0 : -100}%,-50%)`;
-    } else chip.style.transform = `translate(${x}px,${12 + Y(clamp(dispAt(temp), 0, 1)) - 22}px) translate(-50%,-50%)`;
-    $('#now').textContent = `CPU avg ${t} °C · ${heatWord(t)} · ${r} RPM`;
-  }
-  let lastPanel = '';
-  function paintPanel() {
-    const r = rpmText(shown);
-    if (r !== lastPanel) { E.roll($('#v-rpm'), r, .5); lastPanel = r; }
-    $('#therm').style.setProperty('--heat', `var(--t-${panelHeat(temp)})`);
-    E.S.cpuBias = (temp - 44) * 1.3;
-  }
-  function snap() { if (from) { disp = to; from = null; } shown = targetSpeed(); render(); paintPanel(); }
-
-  function choose(p) {
-    $$('.pk').forEach(k => k.classList.toggle('on', k.dataset.p === p));
-    if (p === 'hold') {
-      temp = holdT; hold = new Hold(holdT, speedAt(curvePts(), holdT));
-      $('#hc').classList.add('off'); $('#hh').classList.remove('off');
-    } else {
-      hold = null; pick = p;
-      $('#hc').classList.remove('off'); $('#hh').classList.add('off');
-    }
-    $('#L-hold').style.opacity = hold ? 1 : 0;
-    $('#lkt').style.opacity = hold ? 0 : 1;
-    const pts = curvePts();
-    from = disp.slice(); to = samples(pts); m0 = E.vt;
-    setKnobs(hold ? [] : pts);
-    $('#rst').disabled = !(pick === 'custom' && !hold && custom !== STANDARD);
-    coolLabel();
-    if (!E.on) snap();
-  }
-  // FanControlView.isCustom: the Cool segment reads "Custom" only while the owner's own curve is the pick.
-  function coolLabel() {
-    $('[data-m=custom]').textContent = pick === 'custom' && !hold ? 'Custom' : 'Cool';
-    if (E.mode) E.setMode(E.mode);
-  }
-  coolLabel();
-  function mode(m) {
-    E.setMode(m);
-    fg.classList.toggle('dim', m !== 'custom');
-    $('#fmo').textContent = m === 'auto' ? 'Auto follows macOS' : 'Max runs fans at their hardware maximum';
-    if (!E.on) snap();
-  }
-
-  E.below = 450;
-  E.sideMin = 14 + 568 + 20 + 356 + 14;
-  E.onLayout = () => {
-    const sm = E.stack;
-    fp.classList.toggle('sm', sm);
-    if (sm) { fp.style.left = E.px + 'px'; fp.style.top = (29 + 642 + 16) + 'px'; }
-    else {
-      let px = E.px;
-      if (px < 14 + 568 + 20) { px = Math.min(E.W - 356 - 14, 14 + 568 + 20); panel.style.left = px + 'px'; E.px = px; }
-      fp.style.left = (px - 20 - 568) + 'px'; fp.style.top = (29 + 70) + 'px';
-    }
-    CW = fch.clientWidth; CH = sm ? 200 : 240;
-    svg.setAttribute('width', CW); svg.setAttribute('height', CH);
-    buildGrid(); drawMinis(); render();
-  };
-
-  async function click(el) {
-    const r = rel(el);
-    await cursor.move(r.x + r.w / 2, r.y + r.h * .55, 700);
-    await sleep(160); await cursor.click();
-  }
-  async function loop(t) {
-    const alive = () => t === token;
-    manual = false;
-    if (E.mode !== 'custom') mode('custom');
-    if (custom !== EDITED) { custom = EDITED; drawMinis(); }
-    if (hold || pick !== 'custom') choose('custom');
-    else { from = disp.slice(); to = samples(EDITED); m0 = E.vt; setKnobs(EDITED); }
-    const p0 = rel($('.pk[data-p=steady]'));
-    cursor.place(p0.x + 30, p0.y + 90); cursor.show();
-    while (alive()) {
-      await sleep(700); if (!alive()) return;
-      const t0 = temp;
-      await tween(3200, e => alive() && (temp = lerp(t0, 64, e)));
-      if (!alive()) return;
-      for (const p of ['silent', 'steady']) {
-        await click($(`.pk[data-p=${p}]`)); if (!alive()) return;
-        choose(p);
-        await sleep(2200); if (!alive()) return;
-      }
-      await click($('.pk[data-p=hold]')); if (!alive()) return;
-      choose('hold'); sim = true;
-      await sleep(10000); sim = false; if (!alive()) return;
-      await click($('.pk[data-p=custom]')); if (!alive()) return;
-      choose('custom');
-      await sleep(1200); if (!alive()) return;
-      const t1 = temp;
-      await tween(3600, e => alive() && (temp = lerp(t1, 50, e)));
-      if (!alive()) return;
-      await sleep(600);
-    }
-  }
-  function takeOver() {
-    token++; sim = false; manual = true; cursor.hide();
-    if (idle) idle.t = Infinity;
-    idle = after(8000, () => loop(++token));
-  }
-
-  let dragging = false;
-  const tempFrom = e => { const b = svg.getBoundingClientRect(); return clamp(30 + (TOP - 30) * (e.clientX - b.left) / b.width, 30, TOP); };
-  fch.addEventListener('pointerdown', e => { takeOver(); dragging = true; fch.setPointerCapture(e.pointerId); temp = tempFrom(e); if (!E.on) snap(); });
-  fch.addEventListener('pointermove', e => { if (!dragging) return; temp = tempFrom(e); if (!E.on) snap(); });
-  fch.addEventListener('pointerup', () => { dragging = false; });
-  $$('.pk').forEach(k => k.addEventListener('click', () => { takeOver(); if (E.mode !== 'custom') mode('custom'); choose(k.dataset.p); }));
-  $$('.stp button').forEach(b => b.addEventListener('click', () => { takeOver(); holdT = clamp(holdT + +b.dataset.d, 56, 70); if (hold) hold.target = holdT; drawHold(); if (!E.on) snap(); }));
-  $('#rst').addEventListener('click', () => { takeOver(); custom = STANDARD; drawMini($('.pk[data-p=custom] svg'), custom); choose('custom'); });
-  $$('[data-m]', panel).forEach(s => s.addEventListener('click', () => { takeOver(); mode(s.dataset.m); }));
-
-  E.onReady = () => { setKnobs(EDITED); drawMinis(); snap(); };
-  E.onStart = () => {
-    temp = 50;
-    E.frames.add((t, dt) => {
-      if (from) { const k = (t - m0) / 1000; const e = springF(k); disp = from.map((v, i) => v + (to[i] - v) * e); if (k > 1.3) { disp = to; from = null; } }
-      if (sim) temp += (72 - 18 * shown + .6 * Math.sin(t / 1500) - temp) * Math.min(1, dt / 3000);
-      shown += (targetSpeed() - shown) * Math.min(1, dt / 1000 * 2.5);
-      angle = (angle + dt / 1000 * (0.4 + shown * 3) * 360) % 360;
-      fanG.style.transform = `rotate(${angle.toFixed(1)}deg)`;
-      render();
-    });
-    E.every(1000, () => { if (hold && E.mode === 'custom') hold.next(temp); });
-    E.every(400, paintPanel);
-    loop(token);
-  };
-})();
-E.init();
 E.init();
 }
 })();

@@ -1,0 +1,56 @@
+/* The middle section: a static bento of tool tiles, the samhq.app tile system with no tilt, press, click, or motion. */
+.mid{zoom:var(--z,1);padding-top:var(--gap)}
+.bento{--row:569px;--bgap:16px;--r:28px;--p:28px;--gapshot:24px;--sub:#8e8e93;
+  display:grid;grid-template-columns:repeat(6,minmax(0,1fr));grid-template-rows:repeat(4,var(--row)) auto var(--row);gap:var(--bgap);margin-top:48px;
+  grid-template-areas:"fan fan fan fan ru ru" "pm pm in in cp cp" "tw tw tw tw tx tx" "rs rs rs rs rs rs" "aw aw aw aw aw aw" "ev ev ev ev mo mo"}
+/* A solid card: a lifted fill that darkens a little toward the bottom, its own fine grain, a light top edge, and a soft
+   shadow that sets it off the page. The page shows only in the gaps, never through a card. */
+.t{position:relative;isolation:isolate;display:flex;flex-direction:column;align-items:flex-start;min-width:0;padding:var(--p);border-radius:var(--r);overflow:hidden;color:var(--ink);
+  background:var(--grain,none) 0 0/var(--gs,auto) repeat,linear-gradient(#1e1e21,#151517);
+  box-shadow:0 1px 2px rgba(0,0,0,.5),0 12px 32px -8px rgba(0,0,0,.55),0 32px 64px -24px rgba(0,0,0,.6);--mx:50%;--my:50%}
+/* The hairline sits above the screenshot, so it shows on all four sides; the top edge catches a little more light. */
+.t .hl{position:absolute;inset:0;z-index:2;border-radius:inherit;box-shadow:inset 0 0 0 1px rgba(255,255,255,.08),inset 0 1px 0 rgba(255,255,255,.1);pointer-events:none}
+/* Cursor light: a soft tinted glow with a faint white core on the surface, and a brighter spot on the hairline */
+.t::before,.t::after{content:"";position:absolute;inset:0;border-radius:inherit;pointer-events:none;opacity:0;transition:opacity .5s}
+.t::before{z-index:-1;background:radial-gradient(180px circle at var(--mx) var(--my),rgba(255,255,255,.05),transparent 70%),
+  radial-gradient(560px circle at var(--mx) var(--my),color-mix(in srgb,var(--tint) 22%,transparent),transparent 64%)}
+.t::after{z-index:3;padding:1px;background:radial-gradient(280px circle at var(--mx) var(--my),rgba(255,255,255,.5),transparent 70%);
+  -webkit-mask:linear-gradient(#000 0 0) content-box exclude,linear-gradient(#000 0 0);mask:linear-gradient(#000 0 0) content-box exclude,linear-gradient(#000 0 0)}
+.t:hover::before,.t:hover::after{opacity:1}
+.t .ic{display:block;width:56px;height:56px;flex:none;filter:drop-shadow(0 6px 14px rgba(0,0,0,.45))}
+.t .txt{margin:16px 0 0;font-size:24px;font-weight:600;letter-spacing:-.018em;line-height:1.2;max-width:15em;text-wrap:balance;color:var(--sub)}
+.t .txt b{font-weight:inherit;color:var(--ink)}
+.t-soon{justify-content:flex-end}
+.t-soon .txt{margin:0}
+/* Screenshot: the window sits one gap under the text. It bleeds off the right and bottom edges, or the bottom only, or
+   sits inside with even side margins; bento.js picks which and sets left and width. */
+.shot{position:relative;display:block;align-self:stretch;flex:1;min-height:0;margin:var(--gapshot) calc(-1 * var(--p)) calc(-1 * var(--p)) 0}
+.shot img{position:absolute;left:0;top:0;display:block;max-width:none;height:auto;filter:drop-shadow(0 0 .5px rgba(0,0,0,.85)) drop-shadow(0 10px 18px rgba(0,0,0,.32)) drop-shadow(0 24px 48px rgba(0,0,0,.42))}
+
+@media (max-width:900px){
+  .bento{--bgap:12px;--r:24px;--p:20px;--gapshot:20px;grid-template-columns:1fr 1fr;grid-template-rows:none;grid-auto-rows:auto;
+    grid-template-areas:"fan fan" "ru ru" "pm pm" "in in" "cp cp" "tw tw" "tx tx" "rs rs" "aw aw" "ev ev" "mo mo"}
+  .t .ic{width:48px;height:48px}
+  .t .txt{margin-top:12px;font-size:19px}
+  .t-soon{min-height:340px}
+  .t-s .shot{flex:none;height:280px}
+  .t[data-tool=portman] .shot{height:380px}
+  .t[data-tool=fan] .shot{height:330px}
+  .t[data-tool=ruler] .shot{height:352px}
+}
+/* Awake: one short full-width row, icon and line side by side. */
+.t[data-tool=awake]{flex-direction:row;align-items:center;gap:20px}
+.t[data-tool=awake] .txt{margin:0;max-width:none}
+
+/* "More coming soon": faded tool slots fill the card above the line; real tool icons fade in and out of a few. */
+.t-soon .art{position:absolute;inset:0 0 96px;z-index:0;overflow:hidden;pointer-events:none}
+.t-soon .txt{position:relative;z-index:1}
+.art .ico{display:block;width:100%;height:100%;border-radius:22%}
+.art-slots{display:grid;grid-template-columns:repeat(auto-fill,64px);grid-auto-rows:64px;gap:18px;justify-content:center;align-content:center;padding:28px;height:100%;box-sizing:border-box;
+  -webkit-mask:radial-gradient(closest-side,#000 55%,transparent);mask:radial-gradient(closest-side,#000 55%,transparent)}
+.art-slots i{border-radius:16px;border:1px dashed rgba(255,255,255,.1);background:rgba(255,255,255,.015)}
+.art-slots i img{opacity:0;animation:slotfade 12s ease-in-out infinite;animation-delay:var(--dl)}
+@keyframes slotfade{0%,62%,100%{opacity:0}18%,44%{opacity:.5}}
+@media (prefers-reduced-motion:reduce){.t::before,.t::after{transition:none}
+  .art-slots i img{animation:none}
+  .art-slots i:nth-child(5n+2) img{opacity:.4}}
