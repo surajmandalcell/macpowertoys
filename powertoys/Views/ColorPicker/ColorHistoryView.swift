@@ -74,7 +74,8 @@ nonisolated func colorPickerPresentation(
             sample: $0,
             value: $0.string(format),
             accessibilityValue: $0.string(.hex),
-            timestamp: dateFormatter.localizedString(for: $0.createdAt, relativeTo: now)
+            timestamp: abs($0.createdAt.timeIntervalSince(now)) < 60
+                ? "Just now" : dateFormatter.localizedString(for: $0.createdAt, relativeTo: now)
         )
     }
     return ColorPickerPresentation(
