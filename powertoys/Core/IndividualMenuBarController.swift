@@ -136,6 +136,7 @@ final class IndividualMenuBarController: NSObject {
     private var observers: [NSObjectProtocol] = []
     private var pulseTimer: Timer?
     private var pulseFrame = 0
+    private var screensAsleep = false
     static let animatedIconsKey = "menuBar.animatedIcons"
     // Rays pulse: 4 opacity steps at 1 frame a second, a slow 4 s breath. Each image change makes macOS re-snapshot
     // the item for every menu bar (about 9 ms on two displays), so frames stay few.
@@ -183,12 +184,24 @@ final class IndividualMenuBarController: NSObject {
                 }
             }
         ]
+        let workspace = NSWorkspace.shared.notificationCenter
+        for (name, asleep) in [(NSWorkspace.screensDidSleepNotification, true), (NSWorkspace.screensDidWakeNotification, false)] {
+            observers.append(workspace.addObserver(forName: name, object: nil, queue: .main) { [weak self] _ in
+                MainActor.assumeIsolated {
+                    self?.screensAsleep = asleep
+                    self?.updateAwakeIcon()
+                }
+            })
+        }
         trackAwake()
         refresh()
     }
 
     func stop() {
-        observers.forEach(NotificationCenter.default.removeObserver)
+        observers.forEach {
+            NotificationCenter.default.removeObserver($0)
+            NSWorkspace.shared.notificationCenter.removeObserver($0)
+        }
         observers.removeAll()
         stopPulse()
         popovers.values.forEach { $0.performClose(nil) }
@@ -244,7 +257,7 @@ final class IndividualMenuBarController: NSObject {
             button.image = StatusItemIcon.glyph("MenuBarGlyphAwakeClosed")
             return
         }
-        let visible = button.window?.occlusionState.contains(.visible) ?? false
+        let visible = !screensAsleep && button.window?.occlusionState.contains(.visible) ?? false
         guard animates(tool), visible else {
             stopPulse()
             button.image = awakeFrame(0)
