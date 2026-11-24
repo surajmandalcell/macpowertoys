@@ -40,7 +40,7 @@ Each tool opens in its own window and does no work while it is closed.
 Turn tools on or off from the launcher. Tools with menu bar content can
 appear in the shared popup, as their own menu bar item, or not at all.
 
-Partition Manager, System Cleaner, and NetToys are separate apps now.
+Partition Manager, System Cleaner, and Sam's Network Utilities are separate apps now.
 
 ## Setup
 
