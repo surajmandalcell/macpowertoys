@@ -130,6 +130,12 @@ release: release-preflight build verify-app notarize-app
 	xcrun stapler validate "$$DMG"; \
 	spctl -a -vv -t open --context context:primary-signature "$$DMG"; \
 	cd "$(RELEASE_DIR)" && shasum -a 256 "MacPowerToys-$$VERSION.dmg" | tee "MacPowerToys-$$VERSION.dmg.sha256"; \
-	printf '{"version":"%s","notarized":true}\n' "$$VERSION" > release.json
+	printf '{"version":"%s","notarized":true}\n' "$$VERSION" > release.json; \
+	REL="$(CURDIR)/../samhq_backend/releases.json"; test -f "$$REL" || exit 0; \
+	jq --arg v "$$VERSION" --argjson b $(BUILD_NUMBER) --arg u "https://github.com/samhqapp/macpowertoys/releases/download/v$$VERSION/MacPowerToys-$$VERSION.dmg" \
+		'.macpowertoys.macos |= (.version = $$v | .build = $$b | .url = $$u | .known_versions = [$$v] + (.known_versions - [$$v]))' "$$REL" > "$$REL.tmp"; \
+	mv "$$REL.tmp" "$$REL"; \
+	echo "Updated samhq_backend/releases.json. After the GitHub release, publish it (a push to main deploys api.samhq.app):"; \
+	echo "  git -C $(CURDIR)/../samhq_backend commit --only releases.json -m \"Release MacPowerToys $$VERSION\" && git -C $(CURDIR)/../samhq_backend push"
 
 .PHONY: build build-for-testing test demo raycast-assets raycast raycast-install install install-preflight verify-app notarize-app release release-preflight
