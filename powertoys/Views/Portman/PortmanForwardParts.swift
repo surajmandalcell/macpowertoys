@@ -86,16 +86,6 @@ enum PortmanForwardFirstCard: Equatable {
 enum PortmanAddServerStep: Equatable { case pick, setup }
 
 extension PortmanHostMode {
-    /// One plain line under the Forward / Monitor / Both switch.
-    func meaning(_ host: String) -> String {
-        let server = host.isEmpty ? "the server" : host
-        return switch self {
-        case .forward: "Forward opens \(server)'s ports on this Mac, so localhost:3000 reaches \(server)."
-        case .monitor: "Monitor shows \(server)'s CPU, memory and disk here. No ports are opened."
-        case .both: "Both forwards the ticked ports and shows \(server)'s CPU, memory and disk here."
-        }
-    }
-
     var switchTitle: String {
         switch self {
         case .forward: "Forward"
@@ -160,7 +150,6 @@ struct PortmanJobSwitch: View {
                 }
             }
             PortmanJobPicker(mode: $mode)
-            PortmanForwardCaption(mode.meaning(""))
             PortmanForwardRow {
                 OnePlusLinearTextField("Port, or leave empty", text: $port, onSubmit: run)
                     .accessibilityLabel("Remote port to forward")

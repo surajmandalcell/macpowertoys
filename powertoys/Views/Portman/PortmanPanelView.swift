@@ -383,9 +383,11 @@ struct PortmanPanelView: View {
             if panelOwnsMonitoring { service.endMonitoring() }
             panelOwnsMonitoring = false
             refreshTask?.cancel()
-            remoteScanTask?.cancel()
-            remoteDetailTask?.cancel()
-            service.clearRemoteScan()
+            // The scan dies with the panel, so close every view that shows it, or it reopens empty.
+            clearRemoteScan()
+            scanSheetHost = nil
+            pendingScanHost = nil
+            if addStep == .setup { addStep = .pick }
             sshPassword = nil
             passwordPromptHost = nil
             retryAfterPassword = nil
@@ -884,7 +886,6 @@ struct PortmanPanelView: View {
                     PortmanAddServerStatus(text: "Connected · \(count) \(count == 1 ? "port" : "ports") open", connected: true)
                     ForEach(service.remotePorts, id: \.self) { remoteRow($0, compact: true) }
                     PortmanJobPicker(mode: $newHostMode)
-                    PortmanForwardCaption(newHostMode.meaning(host))
                     PortmanForwardRow {
                         Button(action: finishAddServer) { Text(addServerTitle).lineLimit(1).frame(maxWidth: .infinity) }
                             .buttonStyle(OnePlusLinearButtonStyle(.filled))
