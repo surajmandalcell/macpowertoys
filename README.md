@@ -24,7 +24,7 @@
 <p align="center">
   <picture>
     <source media="(prefers-color-scheme: dark)" srcset="docs/readme/bento-dark.webp">
-    <img src="docs/readme/bento-light.webp" alt="Four tiles with a caption under each: RSync UI, Color Picker, Text Extractor, and Mac Tweaks" width="880">
+    <img src="docs/readme/bento-light.webp" alt="Four tiles with a caption under each: RSync UI, the menu panel, Portman, and Mac Tweaks" width="880">
   </picture>
 </p>
 
@@ -42,12 +42,12 @@ MacPowerToys puts the small tools macOS is missing in one menu bar app.
 
 | | Tool | What it does |
 |:--:|---|---|
-| <img src="site/public/assets/tools/fan.webp" width="28" alt=""> | **Fan** | Set fan curves that keep your Mac quiet, or run the fans at full speed. |
+| <img src="site/public/assets/tools/fan.webp" width="28" alt=""> | **Fan** | Pick Quiet, Balanced, or Cool, draw your own curve, or run the fans at full speed. |
 | <img src="site/public/assets/tools/ruler.webp" width="28" alt=""> | **Ruler** | Measure anything on screen in pixels, millimeters, or inches. |
 | <img src="site/public/assets/tools/awake.webp" width="28" alt=""> | **Awake** | Keep the Mac awake for a time, until a time, or while an app runs. |
 | <img src="site/public/assets/tools/color-picker.webp" width="28" alt=""> | **Color Picker** | Pick any pixel, copy it in nine formats, and keep colors in projects. |
 | <img src="site/public/assets/tools/text-extractor.webp" width="28" alt=""> | **Text Extractor** | Select part of the screen and copy its text. |
-| <img src="site/public/assets/tools/portman.webp" width="28" alt=""> | **Portman** | See your local dev servers and forward ports from an SSH server. |
+| <img src="site/public/assets/tools/portman.webp" width="28" alt=""> | **Portman** | See your local dev servers, the tool each one runs, and who started it. Forward ports from an SSH server. |
 | <img src="site/public/assets/tools/rsync.webp" width="28" alt=""> | **RSync UI** | Plan and run rclone copies that pause and resume. |
 | <img src="site/public/assets/tools/input-devices.webp" width="28" alt=""> | **Input Devices** | Set scroll direction, speed, and smoothing for mouse and trackpad. |
 | <img src="site/public/assets/tools/mac-tweaks.webp" width="28" alt=""> | **Mac Tweaks** | Change hidden Dock, Finder, and window settings. Every original value is kept. |
@@ -92,11 +92,14 @@ Then:
 
 ## Screenshots
 
-RSync UI, Color Picker, Text Extractor, Mac Tweaks, Input Devices, Event Viewer, and Ruler. Click one to see it full size.
+The menu panel, Portman, Fan, RSync UI, Color Picker, Text Extractor, Mac Tweaks, Input Devices, Event Viewer, and Ruler. Click one to see it full size.
 
 <sub>Every shot uses made-up sample data.</sub>
 
 <p>
+<a href="docs/readme/shots/menu-panel.webp"><img src="docs/readme/shots/menu-panel.webp" alt="Menu panel" width="120"></a>
+<a href="docs/readme/shots/portman.webp"><img src="docs/readme/shots/portman.webp" alt="Portman server details" width="120"></a>
+<a href="docs/readme/shots/fan.webp"><img src="docs/readme/shots/fan.webp" alt="Fan" width="120"></a>
 <a href="docs/readme/shots/rsync.webp"><img src="docs/readme/shots/rsync.webp" alt="RSync UI" width="120"></a>
 <a href="docs/readme/shots/color-picker.webp"><img src="docs/readme/shots/color-picker.webp" alt="Color Picker" width="120"></a>
 <a href="docs/readme/shots/text-extractor.webp"><img src="docs/readme/shots/text-extractor.webp" alt="Text Extractor" width="120"></a>
