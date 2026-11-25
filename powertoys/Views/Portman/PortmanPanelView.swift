@@ -8,7 +8,7 @@ nonisolated struct PortmanOverviewRow: Identifiable, Sendable {
     let canStop: Bool
     let title: String
     let subtitle: String
-    let appBundlePath: String?
+    let iconPath: String?
     let processSymbol: String
     let memoryText: String
     let sparklineValues: [Double]
@@ -96,14 +96,14 @@ nonisolated func portmanOverviewPresentation(
         let title = portmanServerName(project: details?.project,
                                       processName: port.launchCommand.isEmpty ? port.command : port.launchCommand)
         let branch = details?.branch.flatMap { $0.isEmpty || $0 == title ? nil : $0 }
-        let appBundlePath = port.appBundlePath
+        let iconPath = port.origin.iconPath ?? port.appBundlePath
         return PortmanOverviewRow(
             port: port,
             canStop: port.canStop,
             title: title,
             subtitle: branch ?? "",
-            appBundlePath: appBundlePath,
-            processSymbol: appBundlePath == nil && port.executablePath.hasPrefix("/") ? "terminal" : "",
+            iconPath: iconPath,
+            processSymbol: iconPath == nil && port.executablePath.hasPrefix("/") ? PortmanRowIcon.fallbackSymbol : "",
             memoryText: portmanMemoryString(port.memoryBytes),
             sparklineValues: values,
             sparklineRange: (values.min() ?? 0)...max(1, values.max() ?? 1)
@@ -573,7 +573,8 @@ struct PortmanPanelView: View {
         }
         guard !Task.isCancelled, overviewRequest == request else { return }
         overviewPresentation = presentation
-        await processIcons.load(bundlePaths: Set(presentation.rows.compactMap(\.appBundlePath)))
+        await processIcons.load(bundlePaths: Set(presentation.rows.compactMap(\.iconPath)
+            + presentation.rows.compactMap(\.port.origin.startedByAppPath)))
     }
 
     /// Servers page: the hero ring, then the two-line rows. Sort, Refresh, and Clean up live
@@ -656,7 +657,7 @@ struct PortmanPanelView: View {
     private func serverRow(_ row: PortmanOverviewRow) -> some View {
         let port = row.port
         return PortmanServerRow(
-            row: row, icon: row.appBundlePath.flatMap { processIcons.images[$0] }, cleanupMode: cleanupMode,
+            row: row, icon: row.iconPath.flatMap { processIcons.images[$0] }, cleanupMode: cleanupMode,
             selected: Binding(get: { selectedCleanupProcesses.contains(port.processID) },
                               set: { if $0 { selectedCleanupProcesses.insert(port.processID) } else { selectedCleanupProcesses.remove(port.processID) } }),
             open: { showDetail(port.id) }, openLocal: { openLocal(port.port) }, stop: { ask(.stop, port) })
@@ -860,6 +861,15 @@ struct PortmanPanelView: View {
             if showingMore {
                 PortmanDetailRow("Process", "\(port.pid)")
                 PortmanDetailRow("Address", port.address)
+                if let startedBy = port.origin.startedBy {
+                    PortmanDetailRow("Started by", startedBy) {
+                        if let icon = port.origin.startedByAppPath.flatMap({ processIcons.images[$0] }) {
+                            Image(nsImage: icon).resizable().scaledToFit()
+                                .frame(width: OnePlusLinearMetrics.processIcon, height: OnePlusLinearMetrics.processIcon)
+                                .accessibilityHidden(true)
+                        }
+                    }
+                }
                 if let metadata {
                     PortmanDetailRow("Project", metadata.project)
                     PortmanDetailRow("Folder", metadata.folder)

@@ -1,3 +1,4 @@
+import AppKit
 import Darwin
 import Foundation
 import Observation
@@ -23,6 +24,7 @@ nonisolated struct PortmanLocalPort: Identifiable, Sendable {
     var executablePath = ""
     /// The .app of the listener or its nearest ancestor below launchd, for the row icon.
     var appBundlePath: String?
+    var origin = PortmanOrigin()
 
     var processID: String { "\(pid):\(started)" }
     var id: String { "\(processID):\(port)" }
@@ -394,14 +396,14 @@ nonisolated enum PortmanScanner {
         let table = (try? run("/bin/ps", ["-A", "-o", "pid=,ppid=,rss=,%cpu=,comm="])) ?? ""
         let processes = parseProcessTable(table)
         let parents = Dictionary(processes.map { ($0.pid, $0.parentPID) }, uniquingKeysWith: { first, _ in first })
-        appBundleCache.withLock { cache in
-            var fresh: [String: String?] = [:]
+        originCache.withLock { cache in
+            var fresh: [String: PortmanOrigin] = [:]
             for index in ports.indices {
                 let key = ports[index].processID
-                let bundle = cache[key] ?? appBundlePath(from: ports[index].pid, parents: parents,
-                                                         path: executablePath(of:))
-                fresh[key] = bundle
-                ports[index].appBundlePath = bundle
+                let origin = cache[key] ?? origin(of: ports[index], parents: parents)
+                fresh[key] = origin
+                ports[index].appBundlePath = origin.appBundlePath
+                ports[index].origin = origin
             }
             cache = fresh
         }
@@ -451,7 +453,16 @@ nonisolated enum PortmanScanner {
         return true
     }
 
-    private static let appBundleCache = OSAllocatedUnfairLock(initialState: [String: String?]())
+    /// Keyed by pid and start time, so each listener's argv and environment are read once.
+    private static let originCache = OSAllocatedUnfairLock(initialState: [String: PortmanOrigin]())
+
+    private static func origin(of port: PortmanLocalPort, parents: [Int32: Int32]) -> PortmanOrigin {
+        let ancestor = appBundlePath(from: port.pid, parents: parents, path: executablePath(of:))
+        let environment = port.userID == geteuid() ? PortmanProcessArguments.read(pid: port.pid)?.environment : nil
+        let app = environment?.bundleID.flatMap { NSWorkspace.shared.urlForApplication(withBundleIdentifier: $0) }
+        return PortmanOrigin.resolve(ancestor: ancestor, environment: environment,
+                                     startedByApp: app.map { ($0.path, $0.deletingPathExtension().lastPathComponent) })
+    }
 
     static func appBundlePath(from pid: Int32, parents: [Int32: Int32], path: (Int32) -> String?) -> String? {
         var current = pid

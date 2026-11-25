@@ -186,7 +186,7 @@ struct PortmanServerRow: View {
         Group {
             if let icon { Image(nsImage: icon).resizable().scaledToFit() }
             else {
-                Image(systemName: "terminal").font(.system(size: 8)).foregroundStyle(OnePlusLinearColor.secondary)
+                Image(systemName: PortmanRowIcon.fallbackSymbol).font(.system(size: 8)).foregroundStyle(OnePlusLinearColor.secondary)
                     .frame(maxWidth: .infinity, maxHeight: .infinity)
                     .overlay { RoundedRectangle(cornerRadius: 4).strokeBorder(OnePlusLinearColor.iconOutline, lineWidth: 1) }
             }

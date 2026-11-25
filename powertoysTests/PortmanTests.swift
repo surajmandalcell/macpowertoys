@@ -208,6 +208,36 @@ final class PortmanTests: XCTestCase {
         XCTAssertNil(walk(40))
     }
 
+    func testLaunchEnvironmentKeepsOnlyAllowListedKeys() throws {
+        let strings = ["node", "/opt/homebrew/bin/vite", "--port", "5173",
+                       "ORCA_AGENT_HOOK_TOKEN=secret-token-123", "__CFBundleIdentifier=com.stablyai.orca",
+                       "TERM_PROGRAM=Orca", "CLAUDECODE=1", "CODEX_API_KEY=secret-token-456",
+                       "npm_lifecycle_event=dev", "", "executable_path=/opt/homebrew/bin/node"]
+        var buffer: [UInt8] = [4, 0, 0, 0] + Array("/opt/homebrew/bin/node".utf8) + [0, 0, 0]
+        for string in strings { buffer += Array(string.utf8) + [0] }
+        let parsed = try XCTUnwrap(PortmanProcessArguments.parse(buffer[...]))
+        XCTAssertEqual(parsed.argv, ["node", "/opt/homebrew/bin/vite", "--port", "5173"])
+        XCTAssertEqual(parsed.environment, PortmanLaunchEnvironment(
+            bundleID: "com.stablyai.orca", termProgram: "Orca", claudeCode: true, codex: true, npmEvent: "dev"))
+        XCTAssertFalse(String(describing: parsed).contains("secret-token"))
+        XCTAssertEqual(parsed.environment.startedBy(appName: "Orca"), "Orca · Claude Code · Codex · npm run dev")
+        XCTAssertEqual(PortmanLaunchEnvironment(termProgram: "Apple_Terminal").startedBy(appName: nil), "Terminal")
+        XCTAssertNil(PortmanLaunchEnvironment().startedBy(appName: nil))
+        XCTAssertEqual(PortmanLaunchEnvironment(npmEvent: "npx").startedBy(appName: "Orca"), "Orca")
+        XCTAssertNil(PortmanProcessArguments.parse([1, 0][...]))
+    }
+
+    func testOriginIconFallsBackToStartedByApp() {
+        let orca = (path: "/Applications/Orca.app", name: "Orca")
+        let orphan = PortmanOrigin.resolve(ancestor: nil, environment: PortmanLaunchEnvironment(bundleID: "x"),
+                                           startedByApp: orca)
+        XCTAssertEqual(orphan.iconPath, orca.path)
+        XCTAssertEqual(orphan.iconSource, .startedBy)
+        let child = PortmanOrigin.resolve(ancestor: "/Applications/Ghostty.app", environment: nil, startedByApp: orca)
+        XCTAssertEqual(child.iconSource, .app)
+        XCTAssertEqual(PortmanOrigin.resolve(ancestor: nil, environment: nil, startedByApp: nil).iconSource, .fallback)
+    }
+
     func testListenerIconsUseExecutableIdentityAndKeepUnknownSlotsBlank() throws {
         for (path, bundle, symbol) in [
             ("/Applications/Raycast.app/Contents/MacOS/Raycast", "/Applications/Raycast.app", ""),
@@ -228,7 +258,7 @@ final class PortmanTests: XCTestCase {
             )
             let row = try XCTUnwrap(presentation.rows.first)
             XCTAssertEqual(row.port.executablePath, path)
-            XCTAssertEqual(row.appBundlePath, bundle)
+            XCTAssertEqual(row.iconPath, bundle)
             XCTAssertEqual(row.processSymbol, symbol)
             XCTAssertEqual(row.title, "node server.js")
             XCTAssertEqual(row.memoryText, "1 MB")
