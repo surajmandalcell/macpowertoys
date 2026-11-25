@@ -19,11 +19,11 @@ document.addEventListener('DOMContentLoaded', function () {
   //   a number: bleed off the right and bottom at that cut line (source px), with at least 48 px of window past the edge;
   //   "in": inside the tile at the shared density, with even side margins; "fit": as wide as the tile minus even margins;
   //   {bot: y}: centered, bleeding off the bottom only at source line y, with at least 24 px of window below the edge.
-  // Cut lines go through empty space or icon buttons only. Fan: the flat full-speed line past the tooltip. Ruler: the copy icons
+  // Cut lines go through empty space or icon buttons only. Fan: the whole width; on a phone the gap between the Balanced and Cool cards. Ruler: the copy icons
   // of the window it measures. Input Devices and Mac Tweaks: the empty space between row names and controls. RSync UI: past the
   // names, before the sizes; on a phone just past the names. Event Viewer: the gap between Source and Message, before the
   // "13 entries" line, past the Source names. Color Picker: between the pin and trash icons. Text Extractor: the copy icons.
-  var CUT = { fan: [1885, 946], ruler: [905], input: ["fit"], rsync: ["fit", 940], tweaks: ["fit"], events: [1836, 830], portman: ["fit"], color: [744, 715], text: ["in", 830] };
+  var CUT = { fan: ["fit", 926], ruler: [905], input: ["fit"], rsync: ["fit", 940], tweaks: ["fit"], events: [1836, 830], portman: ["fit"], color: [744, 715], text: ["in", 830] };
   // Source px per CSS px: 2 is 1:1 on a Retina screen, up to 2.8 still looks sharp for cut lines ("fit" may go higher). SHARED is the one density the
   // windows use wherever their cut lines allow. MIND allows 1 % above 1:1 so Color Picker can cut between its pin and trash icons.
   var MIND = 1.98, MAXD = 2.8, MAXCUT = 3, SHARED = 2.1036;
