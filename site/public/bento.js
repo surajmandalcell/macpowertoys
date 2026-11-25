@@ -90,7 +90,7 @@ document.addEventListener('DOMContentLoaded', function () {
     var c = TOOLS[t.dataset.tool];
     var ic = c[1] ? '<img class="ic" src="' + IC + c[1] + '" alt="" width="64" height="64">' : '';
     var txt = '<p class="txt"><b>' + c[0] + '.</b>' + (c[2] ? ' ' + c[2] : '') + '</p>';
-    var shot = c[3] ? '<span class="shot"><img src="' + CAP + c[3] + '/still@2x.webp" alt="' + c[0] + ' window"></span>' : '';
+    var shot = c[3] ? '<span class="shot"><img src="' + CAP + c[3] + '/still@2x.webp?v=2.1.0" alt="' + c[0] + ' window"></span>' : '';
     var art = t.classList.contains('t-soon') ? '<div class="art" aria-hidden="true">' + slots() + '</div>' : '';
     t.innerHTML = art + ic + txt + shot + '<i class="hl" aria-hidden="true"></i>';
     if (art) cycleSlots(t.querySelector('.art'));
