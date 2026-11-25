@@ -29,9 +29,11 @@ SIGNING := CODE_SIGNING_ALLOWED=YES CODE_SIGN_IDENTITY=- CODE_SIGN_ENTITLEMENTS=
 TEST_SIGNING := $(SIGNING)
 endif
 # NOTARIZE=1 also notarizes and staples before install, so macOS offers Touch ID for the helper install.
-# It needs the notarytool profile the owner stores once with
-# `xcrun notarytool store-credentials MacPowerToysNotary`.
-NOTARY_PROFILE := MacPowerToysNotary
+# It uses the team's App Store Connect API key from ASC_ENV (ASC_KEY_ID, ASC_ISSUER_ID, ASC_KEY_PATH), never the Keychain.
+ASC_ENV ?= $(HOME)/Desktop/dev/cloud/appl/asc.env
+NOTARY := . "$(ASC_ENV)" && xcrun notarytool
+NOTARY_KEY := --key "$$ASC_KEY_PATH" --key-id "$$ASC_KEY_ID" --issuer "$$ASC_ISSUER_ID"
+NOTARY_HINT := Read the log with notarytool log <id> and the key in $(ASC_ENV).
 NOTARY_ZIP := $(DERIVED_DATA)/MacPowerToys-notarize.zip
 
 build:
@@ -70,7 +72,7 @@ install-preflight:
 	@test -z "$$(git status --porcelain)" || (echo "Refusing to install from a dirty worktree. Commit the complete source state first." && exit 1)
 	@zsh scripts/live-transfers.sh
 ifeq ($(NOTARIZE),1)
-	@xcrun notarytool history --keychain-profile $(NOTARY_PROFILE) >/dev/null 2>&1 || (echo "No notary profile. Run once: xcrun notarytool store-credentials $(NOTARY_PROFILE)" && exit 1)
+	@($(NOTARY) history $(NOTARY_KEY)) >/dev/null 2>&1 || (echo "Notarization needs a working App Store Connect key in $(ASC_ENV)." && exit 1)
 endif
 
 verify-app:
@@ -86,7 +88,7 @@ endif
 
 notarize-app:
 	ditto -c -k --keepParent "$(INSTALL_APP)" "$(NOTARY_ZIP)"
-	xcrun notarytool submit "$(NOTARY_ZIP)" --keychain-profile $(NOTARY_PROFILE) --wait 2>&1 | tee "$(NOTARY_ZIP).log"; grep -q 'status: Accepted' "$(NOTARY_ZIP).log" || (echo "Notarization was not accepted. Read the log with: xcrun notarytool log <id> --keychain-profile $(NOTARY_PROFILE)" && exit 1)
+	($(NOTARY) submit "$(NOTARY_ZIP)" $(NOTARY_KEY) --wait) 2>&1 | tee "$(NOTARY_ZIP).log"; grep -q 'status: Accepted' "$(NOTARY_ZIP).log" || (echo "Notarization was not accepted. $(NOTARY_HINT)" && exit 1)
 	xcrun stapler staple "$(INSTALL_APP)"
 	xcrun stapler validate "$(INSTALL_APP)"
 	rm -f "$(NOTARY_ZIP)" "$(NOTARY_ZIP).log"
@@ -105,7 +107,7 @@ release-preflight:
 	@test -z "$(PREBUILT_APP)" || (echo "A release builds its own app; drop PREBUILT_APP." && exit 1)
 	@test -z "$$(git status --porcelain)" || (echo "Refusing to release from a dirty worktree. Commit the complete source state first." && exit 1)
 	@git tag --points-at HEAD | grep -qx "v$(VERSION)" || (echo "Release only from the tag v$(VERSION)." && exit 1)
-	@xcrun notarytool history --keychain-profile $(NOTARY_PROFILE) >/dev/null 2>&1 || (echo "No notary profile. Run once: xcrun notarytool store-credentials $(NOTARY_PROFILE)" && exit 1)
+	@($(NOTARY) history $(NOTARY_KEY)) >/dev/null 2>&1 || (echo "Notarization needs a working App Store Connect key in $(ASC_ENV)." && exit 1)
 
 release: release-preflight build verify-app notarize-app
 	@set -e; \
@@ -123,8 +125,8 @@ release: release-preflight build verify-app notarize-app
 		|| (echo "The DMG must hold only MacPowerToys.app and the Applications link; it holds: $$(ls -A "$$MOUNT" | tr '\n' ' ')" && exit 1); \
 	hdiutil detach -quiet "$$MOUNT"; MOUNT=; \
 	codesign --sign "$$IDENTITY" --timestamp "$$DMG"; \
-	xcrun notarytool submit "$$DMG" --keychain-profile $(NOTARY_PROFILE) --wait 2>&1 | tee "$$DMG.log"; \
-	grep -q 'status: Accepted' "$$DMG.log" || (echo "The DMG was not notarized. Read the log with: xcrun notarytool log <id> --keychain-profile $(NOTARY_PROFILE)" && exit 1); \
+	($(NOTARY) submit "$$DMG" $(NOTARY_KEY) --wait) 2>&1 | tee "$$DMG.log"; \
+	grep -q 'status: Accepted' "$$DMG.log" || (echo "The DMG was not notarized. $(NOTARY_HINT)" && exit 1); \
 	rm -f "$$DMG.log"; \
 	xcrun stapler staple "$$DMG"; \
 	xcrun stapler validate "$$DMG"; \
