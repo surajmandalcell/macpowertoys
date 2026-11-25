@@ -462,8 +462,9 @@ nonisolated enum PortmanScanner {
         let arguments = port.userID == geteuid() ? PortmanProcessArguments.read(pid: port.pid) : nil
         let environment = arguments?.environment
         let app = environment?.bundleID.flatMap { NSWorkspace.shared.urlForApplication(withBundleIdentifier: $0) }
-        let context = arguments.map { PortmanCommandContext(argv: $0.argv, executablePath: port.executablePath) }
-            ?? PortmanCommandContext(argv: PortmanCommandContext.split(port.launchCommand), executablePath: port.executablePath)
+        let context = arguments.map { PortmanCommandContext(argv: $0.argv, title: port.launchCommand, executablePath: port.executablePath) }
+            ?? PortmanCommandContext(argv: PortmanCommandContext.split(port.launchCommand), title: port.launchCommand,
+                                     executablePath: port.executablePath)
         return PortmanOrigin.resolve(context, catalog: .bundled, ancestor: ancestor, environment: environment,
                                      startedByApp: app.map { ($0.path, $0.deletingPathExtension().lastPathComponent) })
     }

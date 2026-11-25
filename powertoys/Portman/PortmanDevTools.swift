@@ -21,12 +21,15 @@ nonisolated struct PortmanCommandContext {
     let name: String
     let executable: String
     let title: String
+    /// The first word of an explicit process title, such as a ps line.
+    let titleName: String
     private(set) var module: String?
     private(set) var script: String?
     private(set) var following: [String] = []
 
-    private static let takesValue: Set<String> = ["-W", "-X", "-r", "-d", "--require", "--import", "--loader",
-                                                  "--experimental-loader", "--env-file", "--conditions", "-I", "-C", "-F"]
+    private static let pythonOptionValues: Set<String> = ["-W", "-X", "--check-hash-based-pycs"]
+    private static let otherOptionValues: Set<String> = ["-r", "-d", "--require", "--import", "--loader",
+                                                         "--experimental-loader", "--env-file", "--conditions", "-I", "-C", "-F"]
 
     init(argv: [String], title: String? = nil, executablePath: String? = nil) {
         self.argv = argv
@@ -34,9 +37,11 @@ nonisolated struct PortmanCommandContext {
         name = Self.basename(argv.first ?? "").lowercased()
         executable = Self.basename(executablePath ?? "").lowercased()
         self.title = (title ?? argv.joined(separator: " ")).trimmingCharacters(in: .whitespacesAndNewlines).lowercased()
+        titleName = title.map { Self.basename(Self.split($0).first ?? "").lowercased() } ?? ""
         let isPython = Self.matches(name, #"^(?:pythonw?|pypy)(?:\d+(?:\.\d+){0,2})?[td]?$"#)
         guard isPython || Self.matches(name, #"^(?:node(?:js)?|bun|deno|ruby(?:\d+(?:\.\d+)*)?|php(?:\d+(?:\.\d+)*)?|perl|lua|bash|sh|zsh)$"#)
         else { return }
+        let takesValue = isPython ? Self.pythonOptionValues : Self.otherOptionValues
         var index = 0
         while index < args.count {
             let arg = args[index]
@@ -48,7 +53,7 @@ nonisolated struct PortmanCommandContext {
                 following = Array(args.dropFirst(scriptIndex + 1))
                 return
             }
-            index += Self.takesValue.contains(arg) ? 2 : 1
+            index += takesValue.contains(arg) ? 2 : 1
         }
     }
 
@@ -93,9 +98,13 @@ nonisolated struct PortmanCommandContext {
         text.range(of: pattern, options: [.regularExpression, .caseInsensitive]) != nil
     }
 
-    private static func isWordCharacter(_ character: Character?) -> Bool {
+    static func isWordCharacter(_ character: Character?) -> Bool {
         guard let character else { return false }
-        return character.isLetter || character.isNumber || "_.$@+-".contains(character)
+        return isLetterOrNumber(character) || "_.$@+-".contains(character)
+    }
+
+    static func isLetterOrNumber(_ character: Character) -> Bool {
+        character.isLetter || character.isNumber
     }
 
     /// `signature` occurs in `arg` and does not run into a longer word on either side.
@@ -106,7 +115,7 @@ nonisolated struct PortmanCommandContext {
         while let found = haystack.range(of: signature, range: searchStart..<haystack.endIndex) {
             let before = found.lowerBound > haystack.startIndex ? haystack[haystack.index(before: found.lowerBound)] : nil
             let after = found.upperBound < haystack.endIndex ? haystack[found.upperBound] : nil
-            if (!isWordCharacter(first) || !isWordCharacter(before)) && (!isWordCharacter(last) || !isWordCharacter(after)) {
+            if (!isWordCharacter(first) || !isWordCharacter(before)) && (!isLetterOrNumber(last) || !isWordCharacter(after)) {
                 return true
             }
             searchStart = haystack.index(after: found.lowerBound)
@@ -149,19 +158,19 @@ nonisolated struct PortmanDevTool: Decodable, Sendable {
     var isRuntime: Bool { kind == "runtime" }
 
     func matches(_ context: PortmanCommandContext) -> Bool {
-        if match.titlePrefix.contains(where: { context.title.hasPrefix($0.lowercased()) }) { return true }
-        if match.argvPrefix?.contains(where: { prefix in
+        if match.titlePrefix.contains(where: { Self.titleStarts(context.title, with: $0.lowercased()) }) { return true }
+        let flagsMatch = match.argFlags.map { flags in flags.contains { flag in context.args.contains { arg in
+            arg == flag || flag.count == 2 && flag.hasPrefix("-") && arg.hasPrefix(flag)
+                || flag.hasSuffix("=") && arg.hasPrefix(flag) } } } ?? true
+        if flagsMatch, match.argvPrefix?.contains(where: { prefix in
             guard let head = prefix.first, head.lowercased() == context.name else { return false }
             return prefix.dropFirst().enumerated().allSatisfy { offset, expected in
                 Self.sameCommandArg(expected, offset < context.args.count ? context.args[offset] : nil)
             }
         }) == true { return true }
-        if match.exec.contains(where: { $0.lowercased() == context.name || $0.lowercased() == context.executable }),
-           match.argFlags.map({ flags in flags.contains { flag in context.args.contains { arg in
-               arg == flag || flag.count == 2 && flag.hasPrefix("-") && arg.hasPrefix(flag)
-                   || flag.hasSuffix("=") && arg.hasPrefix(flag) } } }) ?? true {
-            return true
-        }
+        if flagsMatch, match.exec.contains(where: {
+            [context.name, context.executable, context.titleName].contains($0.lowercased())
+        }) { return true }
         if let module = context.module, match.pythonModule.contains(module) { return true }
         if !match.scriptArg.isEmpty {
             guard let script = context.script,
@@ -176,6 +185,14 @@ nonisolated struct PortmanDevTool: Decodable, Sendable {
         return match.argContains.contains { signature in
             context.argv.contains { PortmanCommandContext.contains($0, signature: signature) }
         }
+    }
+
+    /// The prefix ends at a word boundary, or a trailing "v" runs into a version number ("next-server (v15").
+    private static func titleStarts(_ title: String, with prefix: String) -> Bool {
+        guard title.hasPrefix(prefix), let last = prefix.last else { return false }
+        let next = title.dropFirst(prefix.count).first
+        return !PortmanCommandContext.isLetterOrNumber(last) || !PortmanCommandContext.isWordCharacter(next)
+            || last == "v" && next?.isNumber == true
     }
 
     private static func sameCommandArg(_ expected: String, _ actual: String?) -> Bool {
