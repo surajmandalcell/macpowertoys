@@ -2,17 +2,45 @@
 
 Notable changes are documented here. The project follows semantic versioning after its first stable release.
 
-## [Unreleased]
+## [2.1.0] - 2026-11-25
+
+### Added
+
+- Portman shows the icon of the app that runs each server. It knows 466
+  dev tools and runtimes, such as Node, Python, Postgres, and ComfyUI, and
+  shows their icons.
+- Portman rows have a "Started by" line that says which app or terminal
+  started the server, and a "Tool" line that names the dev tool.
+- Portman has kill keys: Stop quits a server the normal way, Force Kill
+  ends it and its child processes at once, and Kill Parent quits the app
+  that started it.
+- The Portman Forward tab shows a placeholder while it loads, so it is
+  never blank.
+- New fan presets on the Fan page: Quiet, Balanced (holds the CPU near
+  58 °C), Cool (holds it near 48 °C), and Hold (pick a target from 40 to
+  70 °C by dragging on the chart or typing a value).
+- The menu panel fan modes are now Auto, Curve, and Max. Curve follows the
+  preset you picked on the Fan page, and the chart title names it, such as
+  "Hold 56 °C".
+- MacPowerToys checks for updates at launch and once a day.
+- After a crash, the next launch shows the report with a Send button.
+  Nothing is sent unless you press Send.
+- Settings > General > Privacy has a "Share anonymous usage" switch. When
+  on, the app sends one anonymous count a day. It is on by default; turn it
+  off there.
 
 ### Changed
 
-- Fan page: Silent and Steady are gone; a saved Silent moves to Quiet and Steady
-  to the new Cool, which holds the CPU near 48 °C. Hold now takes 40-70 °C, and
-  its target moves by dragging on the chart or typing a value and Return.
-- Menu panel: the fan mode Cool is now Curve (Auto, Curve, Max); it follows the
-  Fan page pick. The chart title names the pick, such as Hold 56 °C. New
-  Balanced pick holds the CPU near 58 °C; the cards are Quiet, Balanced, Cool,
-  Hold, Custom, with eased S pictures for the Hold picks.
+- Portman rows use short app names instead of full file paths.
+- New look for menus, from OnePlusUI 1.5.0.
+- Silent and Steady fan presets are gone. A saved Silent moves to Quiet,
+  and a saved Steady moves to Cool.
+
+### Fixed
+
+- Five-digit port numbers now fit in the Portman port chip.
+- The Ports sheet is no longer empty after you close and reopen the menu
+  panel, and it now closes with the panel.
 
 ## [2.0.0] - 2026-11-23
 
