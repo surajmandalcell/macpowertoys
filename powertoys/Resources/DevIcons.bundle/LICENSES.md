@@ -61,7 +61,8 @@ ANY THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT
 (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS
 SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
-## Not shipped
+## ComfyUI
 
-The ComfyUI icon is GPL-3.0-only, so MacPowerToys (MIT) does not ship it.
-ComfyUI rows use the next icon in the row order.
+`comfyui.png` is a redrawn trace of the ComfyUI logo by Comfy Org
+(https://github.com/Comfy-Org/ComfyUI_frontend, GPL-3.0-only). It is used
+only to name ComfyUI servers. ComfyUI and its logo belong to Comfy Org.

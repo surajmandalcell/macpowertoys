@@ -1675,8 +1675,8 @@
       "scriptArg": []
     },
     "priority": 50,
-    "icon": null,
-    "iconSource": "https://github.com/Comfy-Org/ComfyUI_frontend/blob/main/public/assets/images/comfy-logo-single.svg",
+    "icon": "comfyui.png",
+    "iconSource": "Redrawn by MacPowerToys from the ComfyUI logo (comfy-logo-single.svg)",
     "iconLicense": "GPL-3.0-only",
     "examples": [
       "python /opt/ComfyUI/main.py --listen 127.0.0.1",
