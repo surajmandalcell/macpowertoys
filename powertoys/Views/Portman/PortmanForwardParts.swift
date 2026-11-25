@@ -15,7 +15,7 @@ enum PortmanForwardMetrics {
     static let captionPad: CGFloat = 2
     static let emptyCaptionBottom: CGFloat = 6
     /// Host card parts (owner picks 2026-11-21, DESIGN.md "Portman").
-    static let badgeColumn: CGFloat = 50
+    static let badgeColumn: CGFloat = 52
     static let memoryColumn: CGFloat = 52
     static let chevron: CGFloat = 12
     static let sparkline = CGSize(width: 32, height: 14)

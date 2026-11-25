@@ -7,7 +7,7 @@ enum PortmanOverviewMetrics {
     static let rowHeight: CGFloat = 40
     static let ringSize: CGFloat = 132
     static let ringWidth: CGFloat = 9
-    static let chipColumn: CGFloat = 50
+    static let chipColumn: CGFloat = 52
     static let memoryColumn: CGFloat = 52
     static let ringToStats: CGFloat = 20
     static let statDividerHeight: CGFloat = 30
@@ -111,10 +111,10 @@ struct PortmanHeroRing: View {
     }
 }
 
-/// The port in its data color in a sunken badge well, on every Portman list.
+/// The port in its data color in a sunken badge well, on every Portman list. The 52 pt columns fit ":65535".
 struct PortmanPortChip: View {
     let port: UInt16
-    var body: some View { OnePlusLinearBadge(":\(String(port))", color: portmanPortColor(port)) }
+    var body: some View { OnePlusLinearBadge(":\(String(port))", color: portmanPortColor(port)).fixedSize() }
 }
 
 /// A 40 pt server row: port chip, app icon, name over branch and uptime, then a sparkline and memory. On hover the
