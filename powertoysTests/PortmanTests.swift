@@ -185,7 +185,7 @@ final class PortmanTests: XCTestCase {
         )
 
         XCTAssertEqual(presentation.rows.map(\.port.port), [8000, 3000])
-        XCTAssertEqual(presentation.rows.map(\.title), ["python3 app.py", "node server.js"])
+        XCTAssertEqual(presentation.rows.map(\.title), ["python3", "node"])
         XCTAssertEqual(presentation.rows.map(\.subtitle), ["", ""])
         XCTAssertEqual(presentation.rows.map(\.port.uptime), ["2m", "1m"])
         XCTAssertEqual(presentation.uniquePortCount, 2)
@@ -302,7 +302,7 @@ final class PortmanTests: XCTestCase {
             XCTAssertEqual(row.port.executablePath, path)
             XCTAssertEqual(row.iconPath, bundle)
             XCTAssertEqual(row.processSymbol, symbol)
-            XCTAssertEqual(row.title, "node server.js")
+            XCTAssertEqual(row.title, bundle.map { URL(fileURLWithPath: $0).deletingPathExtension().lastPathComponent } ?? "node")
             XCTAssertEqual(row.memoryText, "1 MB")
         }
     }
@@ -325,7 +325,7 @@ final class PortmanTests: XCTestCase {
         for (project, branch, command, title, subtitle) in [
             ("Project", "main", "node server.js", "Project", "main"),
             ("Project", "Project", "node server.js", "Project", ""),
-            ("/", "", "node server.js", "node server.js", ""),
+            ("/", "", "node server.js", "node", ""),
             ("", "", "", "node", "")
         ] {
             let port = PortmanLocalPort(
@@ -335,7 +335,8 @@ final class PortmanTests: XCTestCase {
             )
             let presentation = portmanOverviewPresentation(
                 ports: [port], history: [:],
-                metadata: [port.id: PortmanMetadata(folder: "/", project: project, branch: branch, root: nil)],
+                metadata: [port.id: PortmanMetadata(folder: "/", project: project, branch: branch,
+                                                    root: project.count > 1 ? "/x/\(project)" : nil)],
                 lastConnectionAt: [:], sort: .port, selectedProcessIDs: [], cleanupMode: false,
                 idleHours: 4, runningDays: 3, policyMode: .off,
                 includeDeletedFolders: false, scanRange: 3000...9999
@@ -400,7 +401,7 @@ final class PortmanTests: XCTestCase {
                              uptime: "1m", started: 1, userID: geteuid())
         }
         let metadata = Dictionary(uniqueKeysWithValues: zip(ports, ["Alpha", "Alpha", "Zebra"]).map {
-            ($0.0.id, PortmanMetadata(folder: "/", project: $0.1, branch: nil, root: nil))
+            ($0.0.id, PortmanMetadata(folder: "/", project: $0.1, branch: nil, root: "/x/\($0.1)"))
         })
         let presentation = portmanOverviewPresentation(
             ports: ports, history: [:], metadata: metadata, lastConnectionAt: [:],
