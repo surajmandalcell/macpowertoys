@@ -8,10 +8,17 @@ import AppKit
 
 @MainActor
 enum DemoPortman {
+    /// `project` nil means no git project: the row is named by its app or bare command.
     private struct Server {
-        let name: String
+        let project: String?
+        let branch: String?
         let port: UInt16
-        let branch: String
+        let argv: [String]
+        var title: String?
+        var executable = ""
+        var app: String?
+        var environment: PortmanLaunchEnvironment?
+        var startedByApp: String?
         let uptime: String
         let upSeconds: Double
         let memoryMB: Double
@@ -19,17 +26,37 @@ enum DemoPortman {
         let pid: Int32
     }
 
+    private static let orca = "/Applications/Orca.app"
+    private static let iTerm = "/Applications/iTerm.app"
+    private static let raycast = "/Applications/Raycast.app"
+
     private static let servers = [
-        Server(name: "admin", port: 4200, branch: "main", uptime: "1h 07m", upSeconds: 4_020,
-               memoryMB: 212.4, cpuPercent: 3.1, pid: 48_112),
-        Server(name: "docs", port: 4321, branch: "pricing", uptime: "26m", upSeconds: 1_560,
-               memoryMB: 96.8, cpuPercent: 0.8, pid: 51_907),
-        Server(name: "storefront", port: 5173, branch: "cart", uptime: "2h 14m", upSeconds: 8_040,
-               memoryMB: 168.3, cpuPercent: 4.6, pid: 44_386),
-        Server(name: "api", port: 8080, branch: "main", uptime: "5h 02m", upSeconds: 18_120,
-               memoryMB: 38.6, cpuPercent: 1.2, pid: 39_254),
-        Server(name: "web", port: webPort, branch: "main", uptime: "1m", upSeconds: 60,
-               memoryMB: webPeakMB, cpuPercent: webPeakCPU, pid: 53_640),
+        Server(project: "storefront", branch: "cart", port: 5173,
+               argv: ["node", "/Users/demo/dev/storefront/node_modules/.bin/vite"],
+               environment: PortmanLaunchEnvironment(claudeCode: true, npmEvent: "dev"), startedByApp: orca,
+               uptime: "2h 14m", upSeconds: 8_040, memoryMB: 168.3, cpuPercent: 4.6, pid: 44_386),
+        Server(project: "web", branch: "main", port: webPort,
+               argv: ["node", "/Users/demo/dev/web/node_modules/.bin/next", "dev"],
+               environment: PortmanLaunchEnvironment(npmEvent: "dev"), startedByApp: iTerm,
+               uptime: "1m", upSeconds: 60, memoryMB: webPeakMB, cpuPercent: webPeakCPU, pid: 53_640),
+        Server(project: "docs", branch: "pricing", port: 4321,
+               argv: ["node", "/Users/demo/dev/docs/node_modules/.bin/astro", "dev"],
+               environment: PortmanLaunchEnvironment(codex: true), startedByApp: orca,
+               uptime: "26m", upSeconds: 1_560, memoryMB: 96.8, cpuPercent: 0.8, pid: 51_907),
+        Server(project: "api", branch: "main", port: 8080, argv: ["node", "--watch", "server.js"],
+               environment: PortmanLaunchEnvironment(termProgram: "Apple_Terminal"),
+               uptime: "5h 02m", upSeconds: 18_120, memoryMB: 38.6, cpuPercent: 1.2, pid: 39_254),
+        Server(project: nil, branch: nil, port: 6379, argv: ["redis-server", "/opt/homebrew/etc/redis.conf"],
+               uptime: "3d 4h", upSeconds: 274_000, memoryMB: 12.9, cpuPercent: 0.3, pid: 1_018),
+        Server(project: "ml", branch: "eval", port: 8000, argv: ["python3", "-m", "uvicorn", "app:main", "--reload"],
+               environment: PortmanLaunchEnvironment(codex: true), startedByApp: orca,
+               uptime: "6h 40m", upSeconds: 24_000, memoryMB: 412.7, cpuPercent: 0.4, pid: 2_207),
+        Server(project: nil, branch: nil, port: forwardPort,
+               argv: ["ssh", "-N", "-L", "\(forwardPort):localhost:\(forwardPort)", forwardHost],
+               uptime: "48m", upSeconds: 2_880, memoryMB: 7.4, cpuPercent: 0.1, pid: 50_311),
+        Server(project: nil, branch: nil, port: 7265, argv: ["Raycast Backend"], title: "Raycast Backend",
+               executable: "\(raycast)/Contents/MacOS/Raycast Backend", app: raycast,
+               uptime: "1d 2h", upSeconds: 93_600, memoryMB: 84.1, cpuPercent: 0.6, pid: 712),
     ]
 
     private static let webPort: UInt16 = 3000
@@ -132,6 +159,19 @@ enum DemoPortman {
         )
     }
 
+    /// `portman-detail`: the Vite row's Details page with its Tool and Started by rows.
+    static var detailScene: DemoScene {
+        DemoScene(
+            open: {
+                seed()
+                PortmanMenuController.shared.demoAnchor = menuBarAnchor()
+                ToolActionRouter.shared.open(toolID: "portman", activateApp: false)
+            },
+            steps: [DemoStep(at: 0.8) { DemoClick.press(labeled: "Show port 5173 details") },
+                    DemoStep(at: 1.8) { DemoClick.element(labeled: "Details") }]
+        )
+    }
+
     private static var climb: [DemoStep] {
         (1...climbSteps).map { step in
             let progress = Double(step) / Double(climbSteps)
@@ -171,16 +211,30 @@ enum DemoPortman {
         let now = Date()
         let ports = servers.map { server in
             let isWeb = server.port == webPort
-            return PortmanLocalPort(
-                pid: server.pid, port: server.port, address: "127.0.0.1", command: "node",
-                launchCommand: "node", memoryBytes: bytes(isWeb ? webMB : server.memoryMB),
+            let title = server.title ?? server.argv.joined(separator: " ")
+            var port = PortmanLocalPort(
+                pid: server.pid, port: server.port, address: "127.0.0.1",
+                command: server.executable.isEmpty ? server.argv[0] : URL(fileURLWithPath: server.executable).lastPathComponent,
+                launchCommand: title,
+                memoryBytes: bytes(isWeb ? webMB : server.memoryMB),
                 cpuPercent: isWeb ? webCPU : server.cpuPercent, uptime: server.uptime,
                 started: UInt64((now.timeIntervalSince1970 - server.upSeconds) * 1_000_000),
                 userID: geteuid(), hasConnections: true
             )
+            port.executablePath = server.executable
+            port.appBundlePath = server.app
+            port.origin = PortmanOrigin.resolve(
+                PortmanCommandContext(argv: server.argv, title: title, executablePath: server.executable),
+                catalog: .bundled, ancestor: server.app, environment: server.environment,
+                startedByApp: server.startedByApp.map { ($0, URL(fileURLWithPath: $0).deletingPathExtension().lastPathComponent) }
+            )
+            return port
         }
-        let metadata = Dictionary(uniqueKeysWithValues: zip(ports, servers).map { port, server in
-            (port.id, PortmanMetadata(folder: NSHomeDirectory(), project: server.name, branch: server.branch, root: nil))
+        let metadata = Dictionary(uniqueKeysWithValues: zip(ports, servers).compactMap { port, server in
+            server.project.map { project in
+                let folder = "/Users/demo/dev/\(project)"
+                return (port.id, PortmanMetadata(folder: folder, project: project, branch: server.branch, root: folder))
+            }
         })
         let history = Dictionary(uniqueKeysWithValues: ports.map { ($0.id, samples(for: $0, now: now)) })
         PortmanService.shared.demoSeed(

@@ -32,6 +32,7 @@ enum DemoDirector {
         "menu-panel": { DemoMenuPanel.scene },
         "awake": { DemoAwake.scene },
         "portman": { DemoPortman.scene },
+        "portman-detail": { DemoPortman.detailScene },
         "portman-hosts": { DemoPortman.hostsScene },
         "portman-mode": { DemoPortman.modeScene },
         "portman-menu": { DemoPortman.menuScene },

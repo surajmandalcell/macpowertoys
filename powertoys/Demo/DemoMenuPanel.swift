@@ -85,7 +85,7 @@ enum DemoMenuPanel {
 
     /// The main panel opens and its readings tick once a second from the fake sampler.
     static var scene: DemoScene {
-        DemoScene(open: { DiagnosticsMenuPanels.shared.open(.main, tab: nil) }, steps: [], tail: 7)
+        DemoScene(open: { DiagnosticsMenuPanels.shared.open(.main, tab: TrayTab.home.panelID) }, steps: [], tail: 7)
     }
 }
 #endif
