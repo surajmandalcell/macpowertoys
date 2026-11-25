@@ -420,7 +420,7 @@ struct FanCurveEditor: View {
             .coordinateSpace(name: Self.space)
             .popover(isPresented: editingBinding, attachmentAnchor: .rect(.rect(anchor(plot))), arrowEdge: .top) {
                 if let editing, curve.points.indices.contains(editing) {
-                    FanPointEditor(curve: curve, index: editing, save: save) { self.editing = nil }
+                    FanPointEditor(curve: curve, index: editing, save: save) { self.editing = nil }.onePlusOpaquePopover()
                 }
             }
         }

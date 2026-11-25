@@ -264,7 +264,7 @@ struct TransferInfoSheet: View {
                             .linearText(OnePlusLinearMetrics.control, color: OnePlusLinearColor.secondary)
                             .frame(width: 220, alignment: .leading)
                             .padding(12)
-                            .onePlusFocusPolicy()
+                            .onePlusFocusPolicy().onePlusOpaquePopover()
                     }
                 }
                 Spacer(minLength: 12)

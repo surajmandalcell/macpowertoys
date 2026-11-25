@@ -65,7 +65,7 @@ struct AttentionBell: View {
         }
         .accessibilityIdentifier("panel.attention")
         .popover(isPresented: $isOpen, arrowEdge: .bottom) {
-            AttentionList(items: items) { isOpen = false }.onePlusFocusPolicy()
+            AttentionList(items: items) { isOpen = false }.onePlusFocusPolicy().onePlusOpaquePopover()
         }
         .onReceive(NotificationCenter.default.publisher(for: Self.openNotification)) { _ in isOpen = true }
         .onChange(of: isOpen) { if !isOpen { Self.diagnosticSample = false } }

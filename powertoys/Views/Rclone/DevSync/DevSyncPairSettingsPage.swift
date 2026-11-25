@@ -30,7 +30,7 @@ struct DevSyncRulesSection: View {
                             "Extra skip patterns",
                             patterns: $configuration.policy.explicitExcludes,
                             help: "One glob per line. A trailing slash matches a folder anywhere. The built-in list already covers node_modules, caches, build outputs, and tmp."
-                        )
+                        ).onePlusOpaquePopover()
                     }
                 Toggle("Skip caches, dependencies, build outputs, and tmp", isOn: $configuration.policy.skipCommonCaches)
                     .labelsHidden().toggleStyle(OnePlusLinearSwitchStyle())
@@ -40,7 +40,7 @@ struct DevSyncRulesSection: View {
                 Button("Edit patterns…") { isEditingPatterns = true }
                     .buttonStyle(OnePlusLinearButtonStyle(.soft))
                     .popover(isPresented: $isEditingPatterns, arrowEdge: .bottom) {
-                        patternEditor("Sensitive patterns", patterns: $configuration.policy.sensitivePatterns, help: "One glob per line.")
+                        patternEditor("Sensitive patterns", patterns: $configuration.policy.sensitivePatterns, help: "One glob per line.").onePlusOpaquePopover()
                     }
                 Toggle("Back up ignored sensitive and local files", isOn: $configuration.policy.includeIgnoredSensitiveFiles)
                     .labelsHidden().toggleStyle(OnePlusLinearSwitchStyle())
