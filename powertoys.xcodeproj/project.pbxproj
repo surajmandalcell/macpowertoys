@@ -809,10 +809,10 @@
 /* Begin XCRemoteSwiftPackageReference section */
 		B30000000000000000000002 /* XCRemoteSwiftPackageReference "OnePlusUI" */ = {
 			isa = XCRemoteSwiftPackageReference;
-			repositoryURL = "https://github.com/surajmandalcell/oneplus-ui.git";
+			repositoryURL = "https://github.com/samhqapp/oneplus-ui.git";
 			requirement = {
 				kind = exactVersion;
-				version = 1.4.11;
+				version = 1.5.0;
 			};
 		};
 		B30000000000000000000012 /* XCRemoteSwiftPackageReference "indiecrumb-swift" */ = {

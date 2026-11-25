@@ -13,10 +13,10 @@
     {
       "identity" : "oneplus-ui",
       "kind" : "remoteSourceControl",
-      "location" : "https://github.com/surajmandalcell/oneplus-ui.git",
+      "location" : "https://github.com/samhqapp/oneplus-ui.git",
       "state" : {
-        "revision" : "8bd5e30f532d52b8f28e01757c5abcaac72b7b12",
-        "version" : "1.4.11"
+        "revision" : "021da244349855b99fe83eea63e547bd81bdb5ba",
+        "version" : "1.5.0"
       }
     }
   ],
