@@ -34,6 +34,7 @@ final class HostUpdateChecker {
     private let installedVersion: String
     private let fetch: @Sendable () async throws -> Data
     private var task: Task<Void, Never>?
+    private var daily: Task<Void, Never>?
 
     init(installedVersion: String = HostAppMetadata.current.version,
          fetch: @escaping @Sendable () async throws -> Data = { try await HostUpdateChecker.fetchRelease() }) {
@@ -41,10 +42,23 @@ final class HostUpdateChecker {
         self.fetch = fetch
     }
 
-    func check() {
+    /// The check always runs: once at launch and once a day while the app is open. No setting stops it.
+    func startAutomaticChecks() {
+        guard daily == nil else { return }
+        daily = Task(priority: .utility) { [weak self] in
+            while !Task.isCancelled {
+                self?.check(quiet: true)
+                try? await Task.sleep(for: .seconds(86_400))
+            }
+        }
+    }
+
+    /// A quiet (automatic) check that fails leaves the last result instead of showing an error.
+    func check(quiet: Bool = false) {
         guard !isChecking else { return }
+        let previous = state
         state = .checking
-        task = Task {
+        task = Task(priority: quiet ? .utility : nil) {
             do {
                 let data = try await fetch()
                 let version = installedVersion
@@ -52,7 +66,7 @@ final class HostUpdateChecker {
                     try Self.result(for: data, installedVersion: version)
                 }.value
             }
-            catch { state = .failed("Could not check for updates. \(error.localizedDescription) Try again.") }
+            catch { state = quiet ? previous : .failed("Could not check for updates. \(error.localizedDescription) Try again.") }
             task = nil
         }
     }

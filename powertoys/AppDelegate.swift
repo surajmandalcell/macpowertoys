@@ -146,6 +146,7 @@ class AppDelegate: NSObject, NSApplicationDelegate {
         ActivationDiagnostics.install()
         DailyCounts.start()
         DailyCounts.askAboutCrashes()
+        HostUpdateChecker.shared.startAutomaticChecks()
         dockIconAppearanceObservation = NSApp.observe(
             \.effectiveAppearance,
             options: [.new]

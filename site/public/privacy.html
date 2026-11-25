@@ -5,7 +5,7 @@
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <meta name="color-scheme" content="dark">
 <title>Privacy policy · MacPowerToys</title>
-<meta name="description" content="MacPowerToys keeps your data on your Mac. No accounts, no tracking, and daily counts only if you turn them on.">
+<meta name="description" content="MacPowerToys keeps your data on your Mac. No accounts, no tracking, and anonymous daily counts you can turn off.">
 <link rel="icon" href="/assets/icons/appicon.svg" type="image/svg+xml">
 <link rel="stylesheet" href="/site.css">
 <script src="/site.js" defer></script>
@@ -15,7 +15,7 @@
 <meta property="og:type" content="website">
 <meta property="og:site_name" content="MacPowerToys">
 <meta property="og:title" content="Privacy policy · MacPowerToys">
-<meta property="og:description" content="MacPowerToys keeps your data on your Mac. No accounts, no tracking, and daily counts only if you turn them on.">
+<meta property="og:description" content="MacPowerToys keeps your data on your Mac. No accounts, no tracking, and anonymous daily counts you can turn off.">
 <meta property="og:url" content="https://macpowertoys.samhq.app/privacy">
 <meta property="og:image" content="https://macpowertoys.samhq.app/og.png">
 <meta property="og:image:width" content="1200">
@@ -42,13 +42,13 @@
 <article class="doc">
   <h1>Privacy policy</h1>
   <p class="lead">MacPowerToys keeps your data on your Mac.</p>
-  <p class="fine">Last updated November 23, 2026</p>
+  <p class="fine">Last updated November 25, 2026</p>
 
   <h2>The short version</h2>
   <ul>
     <li>There are no accounts and no sign-in.</li>
     <li>The app has no ads or tracking.</li>
-    <li>Anonymous daily counts (app version, macOS version, and chip) are sent to crumb.samhq.app only if you turn them on in Settings. They are off by default.</li>
+    <li>Anonymous daily counts (app version, macOS version, and chip) are sent to crumb.samhq.app once a day. They are on by default; turn off "Share anonymous usage" in Settings to stop them.</li>
     <li>Crash reports are sent only when you press Send. After a crash, the next launch shows the report and a Send button; closing the window deletes it.</li>
     <li>Apart from those counts and the crash reports you send, the app never sends anything to us.</li>
     <li>We do not sell or share data.</li>
@@ -64,7 +64,7 @@
   <h2>What leaves your Mac, and only when you use it</h2>
   <p>Each of these goes straight from your Mac to the service named. That service's own privacy policy applies.</p>
   <ul>
-    <li><b>Check for Updates:</b> when you click it, the app asks GitHub for the latest release. GitHub sees your IP address, like any web request.</li>
+    <li><b>Update check:</b> at launch, once a day while the app is open, and when you click Check for Updates, the app asks GitHub for the latest release. GitHub sees your IP address, like any web request.</li>
     <li><b>RSync UI:</b> rclone talks to the storage you add, such as Google Drive or an SSH server. Your logins stay in rclone's config file on your Mac.</li>
     <li><b>Portman:</b> connects over SSH to the servers you add, with your own SSH setup.</li>
     <li><b>Portman GitHub links:</b> off by default. When on, it sends a local project's repository name and branch to GitHub to find its pull request.</li>

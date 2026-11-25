@@ -4,13 +4,13 @@ import IndieCrumbCrash
 import IndieCrumbCrashUI
 import IndieCrumbUsage
 
-/// The opt-in daily count to IndieCrumb: Settings > General "Share anonymous daily counts", off by default.
+/// The daily count to IndieCrumb: Settings "Share anonymous usage", on by default. The update check never reads it.
 enum DailyCounts {
     static let storageKey = "app.shareDailyCounts"
 
     private static let core = IndieCrumb(endpoint: URL(string: "https://crumb.samhq.app")!,
                                          key: "ic_pub_c72a4c8bc723ee3f44cc057c104e94e2",
-                                         enabled: UserDefaults.standard.bool(forKey: storageKey))
+                                         enabled: UserDefaults.standard.object(forKey: storageKey) as? Bool ?? true)
     private static let usage = Usage(core)
     private static let crashes = CrashReporter(core)
 

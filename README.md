@@ -137,7 +137,7 @@ Change or turn off the global shortcuts in each tool's settings.
 
 <br>
 
-MacPowerToys has no accounts, no ads, and no tracking. Text recognition runs on your Mac. Anonymous daily counts (app version, macOS version, and chip) are sent only if you turn them on in Settings. rclone keeps your cloud logins in its own settings file. Optional iCloud settings sync never syncs logins, paths, histories, or logs.
+MacPowerToys has no accounts, no ads, and no tracking. Text recognition runs on your Mac. Anonymous daily counts (app version, macOS version, and chip) are sent once a day. They are on by default; turn off "Share anonymous usage" in Settings to stop them. rclone keeps your cloud logins in its own settings file. Optional iCloud settings sync never syncs logins, paths, histories, or logs.
 
 [Privacy Policy](https://macpowertoys.samhq.app/privacy) · [Terms and license](https://macpowertoys.samhq.app/terms) · [Security Policy](SECURITY.md)
 
