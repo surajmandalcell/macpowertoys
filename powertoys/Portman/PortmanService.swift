@@ -1,6 +1,7 @@
 import Darwin
 import Foundation
 import Observation
+import os
 
 extension Notification.Name {
     static let portmanSnapshotChanged = Notification.Name("portmanSnapshotChanged")
@@ -20,6 +21,8 @@ nonisolated struct PortmanLocalPort: Identifiable, Sendable {
     var processes: [PortmanProcess] = []
     var hasConnections = false
     var executablePath = ""
+    /// The .app of the listener or its nearest ancestor below launchd, for the row icon.
+    var appBundlePath: String?
 
     var processID: String { "\(pid):\(started)" }
     var id: String { "\(processID):\(port)" }
@@ -350,7 +353,8 @@ nonisolated enum PortmanScanner {
                     memoryBytes: detail?.0 ?? 0, cpuPercent: detail?.1 ?? 0,
                     uptime: detail?.2 ?? "", started: identities[pid]?.0 ?? 0,
                     userID: identities[pid]?.1 ?? UInt32.max,
-                    executablePath: executablePaths[pid] ?? ""
+                    executablePath: executablePaths[pid] ?? "",
+                    appBundlePath: SystemMonitorProcessHierarchy.appBundlePath(for: executablePaths[pid] ?? "")
                 ))
             default: break
             }
@@ -389,6 +393,18 @@ nonisolated enum PortmanScanner {
             .filter { $0.first == "p" }.compactMap { Int32($0.dropFirst()) })
         let table = (try? run("/bin/ps", ["-A", "-o", "pid=,ppid=,rss=,%cpu=,comm="])) ?? ""
         let processes = parseProcessTable(table)
+        let parents = Dictionary(processes.map { ($0.pid, $0.parentPID) }, uniquingKeysWith: { first, _ in first })
+        appBundleCache.withLock { cache in
+            var fresh: [String: String?] = [:]
+            for index in ports.indices {
+                let key = ports[index].processID
+                let bundle = cache[key] ?? appBundlePath(from: ports[index].pid, parents: parents,
+                                                         path: executablePath(of:))
+                fresh[key] = bundle
+                ports[index].appBundlePath = bundle
+            }
+            cache = fresh
+        }
         let children = Dictionary(grouping: processes, by: \.parentPID)
         for index in ports.indices {
             var tree = [PortmanProcess]()
@@ -433,6 +449,24 @@ nonisolated enum PortmanScanner {
                 .contains(command)
         }
         return true
+    }
+
+    private static let appBundleCache = OSAllocatedUnfairLock(initialState: [String: String?]())
+
+    static func appBundlePath(from pid: Int32, parents: [Int32: Int32], path: (Int32) -> String?) -> String? {
+        var current = pid
+        for _ in 0..<16 {
+            guard current > 1 else { return nil }
+            if let bundle = path(current).flatMap(SystemMonitorProcessHierarchy.appBundlePath(for:)) { return bundle }
+            guard let parent = parents[current] else { return nil }
+            current = parent
+        }
+        return nil
+    }
+
+    static func executablePath(of pid: Int32) -> String? {
+        var path = [CChar](repeating: 0, count: Int(MAXPATHLEN))
+        return proc_pidpath(pid, &path, UInt32(path.count)) > 0 ? String(cString: path) : nil
     }
 
     static func parseProcessTable(_ output: String) -> [PortmanProcess] {

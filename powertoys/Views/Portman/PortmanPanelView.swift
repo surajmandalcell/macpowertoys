@@ -96,7 +96,7 @@ nonisolated func portmanOverviewPresentation(
         let title = portmanServerName(project: details?.project,
                                       processName: port.launchCommand.isEmpty ? port.command : port.launchCommand)
         let branch = details?.branch.flatMap { $0.isEmpty || $0 == title ? nil : $0 }
-        let appBundlePath = SystemMonitorProcessHierarchy.appBundlePath(for: port.executablePath)
+        let appBundlePath = port.appBundlePath
         return PortmanOverviewRow(
             port: port,
             canStop: port.canStop,

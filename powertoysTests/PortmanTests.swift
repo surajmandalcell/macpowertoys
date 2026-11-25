@@ -194,6 +194,20 @@ final class PortmanTests: XCTestCase {
         XCTAssertEqual(presentation.scanRangeText, "3000–9999")
     }
 
+    func testListenerIconComesFromNearestAppAncestorBelowLaunchd() {
+        let paths: [Int32: String] = [
+            10: "/opt/homebrew/bin/node", 9: "/bin/zsh", 8: "/Applications/Orca.app/Contents/MacOS/Orca",
+            20: "/usr/bin/ssh", 30: "/usr/local/bin/daemon", 1: "/sbin/launchd"
+        ]
+        let parents: [Int32: Int32] = [10: 9, 9: 8, 8: 1, 20: 1, 30: 1, 40: 40]
+        let walk = { PortmanScanner.appBundlePath(from: $0, parents: parents, path: { paths[$0] }) }
+        XCTAssertEqual(walk(10), "/Applications/Orca.app")
+        XCTAssertEqual(walk(8), "/Applications/Orca.app")
+        XCTAssertNil(walk(20))
+        XCTAssertNil(walk(30))
+        XCTAssertNil(walk(40))
+    }
+
     func testListenerIconsUseExecutableIdentityAndKeepUnknownSlotsBlank() throws {
         for (path, bundle, symbol) in [
             ("/Applications/Raycast.app/Contents/MacOS/Raycast", "/Applications/Raycast.app", ""),
