@@ -148,10 +148,22 @@ struct PortmanPanelView: View {
         }
     }
 
+    static let lastClosedKey = "portman.lastClosedAt"
+    /// A panel closed longer ago than this opens on Servers, not on the page it was left on.
+    static let homeAfterClosed: TimeInterval = 5 * 60
+    /// The Forward placeholder waits at most this long for hosts with no recent answer.
+    static let forwardPlaceholderLimit: Duration = .seconds(3)
+
+    static func startPage(saved: Page?, lastClosed: Date?, now: Date) -> Page {
+        guard let saved, let lastClosed, now.timeIntervalSince(lastClosed) <= homeAfterClosed else { return .local }
+        return saved
+    }
+
     init(initialPage: Page? = nil, initialHost: String? = nil, initialPortID: String? = nil,
          initialCleanupProcessID: String? = nil) {
-        let savedPage = UserDefaults.standard.string(forKey: Self.selectedPageKey)
-            .flatMap(Page.init(rawValue:)) ?? .local
+        let defaults = UserDefaults.standard
+        let savedPage = Self.startPage(saved: defaults.string(forKey: Self.selectedPageKey).flatMap(Page.init(rawValue:)),
+                                       lastClosed: defaults.object(forKey: Self.lastClosedKey) as? Date, now: Date())
         _page = State(initialValue: initialPage
                       ?? (initialPortID != nil || initialCleanupProcessID != nil ? .local : savedPage))
         _selectedPortID = State(initialValue: initialPortID)
@@ -193,12 +205,17 @@ struct PortmanPanelView: View {
     @State private var cleanupMode = false
     @State private var selectedCleanupProcesses = Set<String>()
     @State private var pendingCleanupPorts: [PortmanLocalPort] = []
-    @State private var pendingStop: PortmanLocalPort?
+    @State private var pendingKill: KillRequest?
     @State private var pendingRestart: PortmanLocalPort?
     @State private var reveal: Double = PortmanEntrance.pending && !OnePlusMotion.reducesMotion ? 0 : 1
     @Environment(\.onePlusMenuMaximumHeight) private var suppliedCeiling
-    @State private var showingMore = false
-    @State private var showingProcesses = false
+    @AppStorage("portman.detail.showDetails") private var showingMore = false
+    @AppStorage("portman.detail.showProcesses") private var showingProcesses = false
+    /// Bumped by every list to detail move; drives the push. Tab switches and vanished servers do not push.
+    @State private var pushCount = 0
+    @State private var pushEdge = OnePlusPushEdge.trailing
+    /// Set once Forward has waited `forwardPlaceholderLimit` for its hosts to answer.
+    @State private var forwardWaitOver = false
     @State private var overviewGeneration = 0
     @State private var overviewPresentation = PortmanOverviewPresentation.empty
     @State private var processIcons = SystemMonitorProcessIcons()
@@ -231,8 +248,15 @@ struct PortmanPanelView: View {
         service.localPorts.first { $0.id == selectedPortID }
     }
 
-    private var showingStopConfirmation: Binding<Bool> {
-        Binding(get: { pendingStop != nil }, set: { if !$0 { pendingStop = nil } })
+    private struct KillRequest {
+        let action: PortmanKill.Action
+        let port: PortmanLocalPort
+        let parent: PortmanKill.Target?
+        let blocked: String?
+    }
+
+    private var showingKillConfirmation: Binding<Bool> {
+        Binding(get: { pendingKill != nil }, set: { if !$0 { pendingKill = nil } })
     }
 
     private var showingRestartConfirmation: Binding<Bool> {
@@ -298,12 +322,13 @@ struct PortmanPanelView: View {
                         case .local:
                             if let selectedPort { localDetail(selectedPort) }
                             else { localOverview }
-                        case .forward: forwardResults.portmanForwardLook()
+                        case .forward: forwardBody
                         }
                     }
                     .frame(maxWidth: .infinity, alignment: .topLeading)
                 }
             }
+            .onePlusPush(trigger: pushCount, from: pushEdge)
         }
         .fixedSize(horizontal: false, vertical: true)
         .onePlusDensity(.compact)
@@ -418,10 +443,6 @@ struct PortmanPanelView: View {
                 retryAfterPassword = nil
             }
         }
-        .onChange(of: selectedPortID) {
-            showingMore = false
-            showingProcesses = false
-        }
         .onChange(of: host) {
             remoteScanTask?.cancel()
             remoteDetailTask?.cancel()
@@ -464,11 +485,13 @@ struct PortmanPanelView: View {
 
     private var panelDialogs: some View {
         panelWithLifecycle
-        .confirmationDialog("Stop this server process?", isPresented: showingStopConfirmation,
-                            presenting: pendingStop) { port in
-            Button("Stop PID \(String(port.pid))", role: .destructive) { service.stopLocal(port) }
-        } message: { port in
-            Text("Port \(String(port.port)) and eligible children will stop. Any still running after the grace period will be force quit.")
+        .confirmationDialog(pendingKill.map(killTitle) ?? "", isPresented: showingKillConfirmation,
+                            titleVisibility: .visible, presenting: pendingKill) { request in
+            Button(killButton(request), role: .destructive) {
+                PortmanKill.run(request.action, port: request.port, parent: request.parent, service: service)
+            }
+        } message: { request in
+            Text(killMessage(request))
         }
         .confirmationDialog("Restart this server?", isPresented: showingRestartConfirmation,
                             presenting: pendingRestart) { port in
@@ -636,17 +659,94 @@ struct PortmanPanelView: View {
             row: row, icon: row.appBundlePath.flatMap { processIcons.images[$0] }, cleanupMode: cleanupMode,
             selected: Binding(get: { selectedCleanupProcesses.contains(port.processID) },
                               set: { if $0 { selectedCleanupProcesses.insert(port.processID) } else { selectedCleanupProcesses.remove(port.processID) } }),
-            open: { selectedPortID = port.id }, openLocal: { openLocal(port.port) }, stop: { pendingStop = port })
+            open: { showDetail(port.id) }, openLocal: { openLocal(port.port) }, stop: { ask(.stop, port) })
         .accessibilityAction(named: "Open localhost:\(String(port.port))") { openLocal(port.port) }
         .task(id: port.id) { await service.loadMetadata(for: port) }
         .contextMenu {
             Button("Open localhost:\(String(port.port))") { openLocal(port.port) }
-            Button("Show Details") { selectedPortID = port.id }
-            if row.canStop {
-                Button("Stop Process Tree…", role: .destructive) { pendingStop = port }
+            Button("Show Details") { showDetail(port.id) }
+            Divider()
+            ForEach(killActions, id: \.self) { action in
+                let request = killRequest(action, port)
+                Button("\(killKeyTitle(action))…", role: action == .forceKill ? .destructive : nil) { pendingKill = request }
+                    .disabled(request.blocked != nil)
+                    .help(request.blocked ?? killHelp(request))
             }
             Divider()
             overviewMenu
+        }
+    }
+
+    private var killActions: [PortmanKill.Action] { [.stop, .forceKill, .killParent] }
+
+    private func showDetail(_ id: String?) {
+        pushEdge = id == nil ? .leading : .trailing
+        pushCount &+= 1
+        selectedPortID = id
+    }
+
+    private func killRequest(_ action: PortmanKill.Action, _ port: PortmanLocalPort) -> KillRequest {
+        guard action == .killParent else {
+            return KillRequest(action: action, port: port, parent: nil, blocked: PortmanKill.blockReason(port))
+        }
+        let parent = PortmanKill.parent(of: port.pid)
+        return KillRequest(action: action, port: port, parent: parent,
+                           blocked: parent.map(PortmanKill.blockReason) ?? "The parent process is gone")
+    }
+
+    private func ask(_ action: PortmanKill.Action, _ port: PortmanLocalPort) {
+        let request = killRequest(action, port)
+        if request.blocked == nil { pendingKill = request }
+    }
+
+    private func killKeyTitle(_ action: PortmanKill.Action) -> String {
+        switch action {
+        case .stop: "Stop"
+        case .forceKill: "Force Kill"
+        case .killParent: "Kill Parent"
+        }
+    }
+
+    private func killHelp(_ request: KillRequest) -> String {
+        let name = request.port.command
+        switch request.action {
+        case .stop: return request.port.canStop ? "Stop port \(String(request.port.port)) process tree" : "Ask \(name) to quit"
+        case .forceKill: return "Kill \(name) and its child processes at once"
+        case .killParent:
+            return request.parent.map { "Ask \($0.command) (PID \(String($0.pid))), which started \(name), to quit" } ?? ""
+        }
+    }
+
+    private func killTitle(_ request: KillRequest) -> String {
+        let name = request.port.command
+        switch request.action {
+        case .stop: return "Stop \(name)?"
+        case .forceKill: return "Force kill \(name)?"
+        case .killParent: return "Stop \(request.parent?.command ?? "the parent"), the parent of \(name)?"
+        }
+    }
+
+    private func killButton(_ request: KillRequest) -> String {
+        switch request.action {
+        case .stop: "Stop PID \(String(request.port.pid))"
+        case .forceKill: "Force Kill PID \(String(request.port.pid))"
+        case .killParent: "Stop PID \(String(request.parent?.pid ?? 0))"
+        }
+    }
+
+    private func killMessage(_ request: KillRequest) -> String {
+        let port = request.port, name = port.command
+        switch request.action {
+        case .stop where port.canStop:
+            return "\(name) (PID \(String(port.pid))) on port \(String(port.port)) and eligible children will stop. Any still running after the grace period will be force quit."
+        case .stop:
+            return "\(name) (PID \(String(port.pid))) gets the normal quit request, like Quit in the Dock. If it keeps running, use Force Kill."
+        case .forceKill:
+            let children = port.processes.count
+            return "\(name) (PID \(String(port.pid))) and its \(children) child \(children == 1 ? "process" : "processes") stop at once. Unsaved work in them is lost."
+        case .killParent:
+            let parent = request.parent
+            return "\(parent?.command ?? "The parent") (PID \(String(parent?.pid ?? 0))) started \(name). It gets the normal quit request, and its other child processes may stop too."
         }
     }
 
@@ -661,7 +761,7 @@ struct PortmanPanelView: View {
     /// The detail header row: back, server name and port, and the open-in-browser key.
     private func localDetailHeader(_ port: PortmanLocalPort) -> some View {
         HStack(spacing: OnePlusLinearMetrics.rowGap) {
-            OnePlusLinearIconButton(systemImage: "chevron.left", help: "Back to Servers") { selectedPortID = nil }
+            OnePlusLinearIconButton(systemImage: "chevron.left", help: "Back to Servers") { showDetail(nil) }
                 .accessibilityIdentifier("portman.detail.back")
             Text(portmanServerName(project: service.metadata[port.id]?.project, processName: port.command))
                 .linearText(weight: .semibold).lineLimit(1).truncationMode(.middle)
@@ -723,16 +823,23 @@ struct PortmanPanelView: View {
         return OnePlusLinearList(style: .panel) {
             OnePlusLinearControlRow("Server", systemImage: "server.rack", status: "up \(port.uptime)", titleWidth: nil) {
                 if canStop {
-                    HStack(spacing: OnePlusLinearMetrics.rowGap / 2) {
-                        Button("Restart") { pendingRestart = port }
+                    Button("Restart") { pendingRestart = port }
+                        .buttonStyle(OnePlusLinearKeyButtonStyle.compact)
+                        .disabled(!service.restartableIDs.contains(port.id) || service.restartingIDs.contains(port.id))
+                        .help(service.restartableIDs.contains(port.id)
+                              ? "Restart with the original command and environment"
+                              : "Restart requires the original command, environment, and folder")
+                }
+            }
+            OnePlusLinearControlRow("Process", systemImage: "xmark.octagon", titleWidth: nil) {
+                HStack(spacing: OnePlusLinearMetrics.rowGap / 2) {
+                    ForEach(killActions, id: \.self) { action in
+                        let request = killRequest(action, port)
+                        Button(killKeyTitle(action)) { pendingKill = request }
                             .buttonStyle(OnePlusLinearKeyButtonStyle.compact)
-                            .disabled(!service.restartableIDs.contains(port.id) || service.restartingIDs.contains(port.id))
-                            .help(service.restartableIDs.contains(port.id)
-                                  ? "Restart with the original command and environment"
-                                  : "Restart requires the original command, environment, and folder")
-                        Button("Stop") { pendingStop = port }
-                            .buttonStyle(OnePlusLinearKeyButtonStyle.compact)
-                            .help("Stop port \(String(port.port)) process tree")
+                            .disabled(request.blocked != nil)
+                            .help(request.blocked ?? killHelp(request))
+                            .accessibilityIdentifier("portman.detail.\(action)")
                     }
                 }
             }
@@ -802,6 +909,37 @@ struct PortmanPanelView: View {
             actions.append(OnePlusLinearAction("Preview", systemImage: "safari") { NSWorkspace.shared.open(preview) })
         }
         return actions
+    }
+
+    /// A monitored host whose card would show "Connecting" or old numbers. It answers within a second or two
+    /// once the panel asks every 2 s, so Forward shows placeholders shaped like its cards until then.
+    private func awaitsAnswer(_ group: PortmanHostGroup) -> Bool {
+        guard group.host.monitors else { return false }
+        let health = PortmanHostCardModel(monitors: true, forwards: 0, state: serverMonitor.states[group.host.destination],
+                                          now: Date()).health
+        return health == .waiting || health == .stale
+    }
+
+    private var forwardBody: some View {
+        let groups = forwardGroups
+        let ready = firstCard != .jobSwitch || forwardWaitOver || !groups.contains(where: awaitsAnswer)
+        return ZStack(alignment: .top) {
+            if ready {
+                forwardResults.transition(.opacity)
+            } else {
+                VStack(spacing: OnePlusLinearPanelStyle.fillSteps.blockGap) {
+                    ForEach(groups) { OnePlusLinearTreeCardPlaceholder(children: $0.children.count) }
+                }
+                .transition(.opacity)
+            }
+        }
+        .animation(OnePlusMotion.reducesMotion ? nil : OnePlusMotion.animation(OnePlusMotion.placeholderFade), value: ready)
+        .portmanForwardLook()
+        .task {
+            forwardWaitOver = false
+            try? await Task.sleep(for: Self.forwardPlaceholderLimit)
+            if !Task.isCancelled { forwardWaitOver = true }
+        }
     }
 
     /// Scan results and added ports in one group (status, rows, Forward), then the forwarded ports in another.
@@ -1675,6 +1813,7 @@ final class PortmanMenuController: NSObject {
     }
 
     private func panelDidClose() {
+        UserDefaults.standard.set(Date(), forKey: PortmanPanelView.lastClosedKey)
         OnePlusPanelTimings.shared.cancel(panel: "portman")
         popover.contentViewController = nil
         MenuPanelRelease.shared.schedule("portman") { [weak self] in
