@@ -24,7 +24,7 @@ enum MacPowerToysAbout {
         case .available(let version, _): .available(version)
         case .failed: .failed
         }
-        return OnePlusAboutUpdate(state, check: checker.check)
+        return OnePlusAboutUpdate(state, check: { checker.check() })
     }
 
     static func show() {
