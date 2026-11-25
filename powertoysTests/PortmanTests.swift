@@ -456,10 +456,25 @@ final class PortmanTests: XCTestCase {
         }
     }
 
-    func testServerNameFallsBackFromTheRootFolderToTheProcess() {
-        XCTAssertEqual(portmanServerName(project: "macpowertoys", processName: "node"), "macpowertoys")
-        XCTAssertEqual(portmanServerName(project: "/", processName: "node"), "node")
-        XCTAssertEqual(portmanServerName(project: nil, processName: "python3"), "python3")
+    func testServerNameUsesProjectThenAppThenShortCommand() {
+        func name(_ command: String, _ launch: String, path: String = "", folder: String? = nil, root: String? = nil) -> String {
+            var port = PortmanLocalPort(pid: 42, port: 3000, address: "*:3000", command: command, launchCommand: launch,
+                                        memoryBytes: 0, cpuPercent: 0, uptime: "", started: 1, userID: 501)
+            port.executablePath = path
+            let metadata = folder.map {
+                PortmanMetadata(folder: $0, project: URL(fileURLWithPath: root ?? $0).lastPathComponent, branch: nil, root: root)
+            }
+            return portmanServerName(port: port, metadata: metadata)
+        }
+        XCTAssertEqual(name("node", "node vite", folder: "/x/app/web", root: "/x/app"), "app")
+        XCTAssertEqual(name("Pumble", "/Applications/Pumble.app/Contents/MacOS/Pumble --flag", folder: "/"), "Pumble")
+        XCTAssertEqual(name("webdav-engine", "/Applications/WebDAV Lite.app/Contents/Resources/webdav-engine -p 8088",
+                            path: "/Applications/WebDAV Lite.app/Contents/Resources/webdav-engine",
+                            folder: "/Users/a/Library/Containers/app.tapfun.webdavlite/Data"), "WebDAV Lite")
+        XCTAssertEqual(name("ssh", "/usr/bin/ssh -N -T -L 6768:localhost:6768 oci2", folder: "/"), "ssh")
+        XCTAssertEqual(name("python3", "python3 -m http.server", folder: "/x/site"), "site")
+        XCTAssertEqual(name("node", "node server.js", folder: NSHomeDirectory()), "node")
+        XCTAssertEqual(name("node", "Raycast Backend"), "Raycast Backend")
     }
 
     func testRemotePortsAndTunnelStayOnLoopback() throws {

@@ -42,9 +42,21 @@ nonisolated func portmanMemoryString(_ bytes: Int64) -> String {
     bytes == 0 ? "0 KB" : ByteCountFormatter.string(fromByteCount: bytes, countStyle: .memory)
 }
 
-nonisolated func portmanServerName(project: String?, processName: String) -> String {
-    guard let project, !project.isEmpty, project != "/" else { return processName }
-    return project
+/// Row name: the git project, else the process's own app, else its working folder, else the bare command name.
+nonisolated func portmanServerName(port: PortmanLocalPort, metadata: PortmanMetadata?) -> String {
+    if let metadata, metadata.root != nil, !metadata.project.isEmpty { return metadata.project }
+    let line = port.launchCommand.isEmpty ? port.command : port.launchCommand
+    if let app = SystemMonitorProcessHierarchy.appBundlePath(for: port.executablePath.isEmpty ? line : port.executablePath) {
+        return URL(fileURLWithPath: app).deletingPathExtension().lastPathComponent
+    }
+    if let metadata, !metadata.project.isEmpty, metadata.folder != "/", metadata.folder != NSHomeDirectory(),
+       !metadata.folder.contains("/Library/") {
+        return metadata.project
+    }
+    let first = line.split(separator: " ").first.map(String.init) ?? line
+    // A custom process title such as "Raycast Backend" stays whole; a path or "node server.js" becomes its name.
+    guard first.hasPrefix("/") || first == port.command else { return line }
+    return URL(fileURLWithPath: first).lastPathComponent
 }
 
 nonisolated func portmanOverviewPresentation(
@@ -93,8 +105,7 @@ nonisolated func portmanOverviewPresentation(
     var rows = (sort == .name ? ports : sort.sorted(ports)).map { port in
         let values = (history[port.id] ?? []).map { Double($0.memoryBytes) }
         let details = metadata[port.id]
-        let title = portmanServerName(project: details?.project,
-                                      processName: port.launchCommand.isEmpty ? port.command : port.launchCommand)
+        let title = portmanServerName(port: port, metadata: details)
         let branch = details?.branch.flatMap { $0.isEmpty || $0 == title ? nil : $0 }
         let iconPath = port.origin.iconPath ?? port.appBundlePath
         return PortmanOverviewRow(
@@ -764,7 +775,7 @@ struct PortmanPanelView: View {
         HStack(spacing: OnePlusLinearMetrics.rowGap) {
             OnePlusLinearIconButton(systemImage: "chevron.left", help: "Back to Servers") { showDetail(nil) }
                 .accessibilityIdentifier("portman.detail.back")
-            Text(portmanServerName(project: service.metadata[port.id]?.project, processName: port.command))
+            Text(portmanServerName(port: port, metadata: service.metadata[port.id]))
                 .linearText(weight: .semibold).lineLimit(1).truncationMode(.middle)
             Text(":\(String(port.port))").linearText(weight: .semibold, color: portColor(port)).fixedSize()
             Spacer(minLength: 0)
