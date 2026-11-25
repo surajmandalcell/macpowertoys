@@ -227,23 +227,65 @@ final class PortmanTests: XCTestCase {
         XCTAssertNil(PortmanProcessArguments.parse([1, 0][...]))
     }
 
-    func testOriginIconFallsBackToStartedByApp() {
+    private static let devIcons = URL(fileURLWithPath: #filePath).deletingLastPathComponent()
+        .deletingLastPathComponent().appendingPathComponent("powertoys/Resources/DevIcons.bundle")
+
+    func testDevToolMatcherReadsRealCommandLines() throws {
+        let catalog = try PortmanDevToolCatalog.load(Self.devIcons)
+        let identify = { (argv: [String]) in catalog.matching(PortmanCommandContext(argv: argv)).first?.id }
+        XCTAssertEqual(identify(["node", "/Volumes/External1TB/dev/organization/samhq/indiecrumb/site/dashboard/node_modules/.bin/vite"]), "vite")
+        XCTAssertEqual(identify(["node", "server.js"]), "node")
+        XCTAssertEqual(identify(["next-server (v15.1.0)"]), "next")
+        XCTAssertEqual(identify(["/usr/bin/ssh", "-N", "-T", "-L", "6768:localhost:6768", "oci2"]), "ssh")
+        XCTAssertNil(identify(["/System/Library/CoreServices/ControlCenter.app/Contents/MacOS/ControlCenter"]))
+        XCTAssertEqual(PortmanCommandContext.split(#"node "my app/server.js" --name='a b' x\ y"#),
+                       ["node", "my app/server.js", "--name=a b", "x y"])
+    }
+
+    func testEveryCatalogExampleIdentifiesItsOwnItem() throws {
+        let catalog = try PortmanDevToolCatalog.load(Self.devIcons)
+        for item in catalog.items {
+            for example in item.examples ?? [] {
+                XCTAssertEqual(catalog.matching(PortmanCommandContext(command: example)).first?.id, item.id, example)
+            }
+        }
+    }
+
+    func testOriginIconOrder() throws {
+        let folder = FileManager.default.temporaryDirectory.appendingPathComponent("portman-devicons-\(UUID().uuidString)")
+        defer { try? FileManager.default.removeItem(at: folder) }
+        try FileManager.default.createDirectory(at: folder.appendingPathComponent("png"), withIntermediateDirectories: true)
+        try Data(#"""
+        [{"id": "vite", "name": "Vite", "kind": "tool", "match": {"scriptArg": ["vite"]}, "priority": 50, "icon": "vite.png"},
+         {"id": "node", "name": "Node.js", "kind": "runtime", "match": {"exec": ["node"]}, "priority": 10, "icon": "node.png"},
+         {"id": "ssh", "name": "SSH", "kind": "tool", "match": {"exec": ["ssh"]}, "priority": 50, "icon": null}]
+        """#.utf8).write(to: folder.appendingPathComponent("catalog.json"))
+        for name in ["vite.png", "node.png"] { try Data().write(to: folder.appendingPathComponent("png/\(name)")) }
+        let catalog = try PortmanDevToolCatalog.load(folder)
         let orca = (path: "/Applications/Orca.app", name: "Orca")
-        let orphan = PortmanOrigin.resolve(ancestor: nil, environment: PortmanLaunchEnvironment(bundleID: "x"),
-                                           startedByApp: orca)
-        XCTAssertEqual(orphan.iconPath, orca.path)
-        XCTAssertEqual(orphan.iconSource, .startedBy)
-        let child = PortmanOrigin.resolve(ancestor: "/Applications/Ghostty.app", environment: nil, startedByApp: orca)
-        XCTAssertEqual(child.iconSource, .app)
-        XCTAssertEqual(PortmanOrigin.resolve(ancestor: nil, environment: nil, startedByApp: nil).iconSource, .fallback)
+        let resolve = { (argv: [String], ancestor: String?, app: (path: String, name: String)?) in
+            PortmanOrigin.resolve(PortmanCommandContext(argv: argv), catalog: catalog, ancestor: ancestor,
+                                  environment: PortmanLaunchEnvironment(bundleID: "x"), startedByApp: app)
+        }
+        let vite = resolve(["node", "/x/node_modules/.bin/vite"], "/Applications/Ghostty.app", orca)
+        XCTAssertEqual(vite.iconSource, .tool)
+        XCTAssertEqual(vite.toolName, "Vite")
+        XCTAssertEqual(vite.startedBy, "Orca")
+        XCTAssertEqual(resolve(["node", "server.js"], "/Applications/Ghostty.app", orca).iconSource, .app)
+        XCTAssertEqual(resolve(["node", "server.js"], nil, orca).iconSource, .runtime)
+        XCTAssertEqual(resolve(["deno", "run", "main.ts"], nil, orca).iconPath, orca.path)
+        XCTAssertEqual(resolve(["deno"], nil, nil).iconSource, .fallback)
+        let ssh = resolve(["/usr/bin/ssh", "-N", "oci2"], "/Applications/Ghostty.app", orca)
+        XCTAssertEqual(ssh.symbol, PortmanRowIcon.sshSymbol)
+        XCTAssertNil(ssh.iconPath)
     }
 
     func testListenerIconsUseExecutableIdentityAndKeepUnknownSlotsBlank() throws {
         for (path, bundle, symbol) in [
             ("/Applications/Raycast.app/Contents/MacOS/Raycast", "/Applications/Raycast.app", ""),
             ("/Applications/My App.app/Contents/Frameworks/Helper.app/Contents/MacOS/Helper", "/Applications/My App.app", ""),
-            ("/opt/homebrew/bin/node", nil, "terminal"),
-            ("/usr/bin/python3", nil, "terminal"),
+            ("/opt/homebrew/bin/node", nil, ""),
+            ("/usr/bin/python3", nil, ""),
             ("", nil, ""),
             ("node", nil, ""),
             ("Unavailable", nil, "")

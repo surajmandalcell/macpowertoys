@@ -185,10 +185,10 @@ struct PortmanServerRow: View {
     private var serverIcon: some View {
         Group {
             if let icon { Image(nsImage: icon).resizable().scaledToFit() }
-            else {
-                Image(systemName: PortmanRowIcon.fallbackSymbol).font(.system(size: 8)).foregroundStyle(OnePlusLinearColor.secondary)
-                    .frame(maxWidth: .infinity, maxHeight: .infinity)
-                    .overlay { RoundedRectangle(cornerRadius: 4).strokeBorder(OnePlusLinearColor.iconOutline, lineWidth: 1) }
+            else if !row.processSymbol.isEmpty {
+                Image(systemName: row.processSymbol).resizable().scaledToFit().foregroundStyle(OnePlusLinearColor.secondary)
+            } else if let fallback = PortmanRowIcon.fallbackImage {
+                Image(nsImage: fallback).resizable().scaledToFit()
             }
         }
         .frame(width: OnePlusLinearMetrics.processIcon, height: OnePlusLinearMetrics.processIcon)
@@ -240,6 +240,35 @@ struct PortmanRowPresence: ViewModifier, Animatable {
 }
 
 /// The server detail parts (DESIGN.md "Portman"): Home's floating groups, label-value rows, and process rows.
+extension PortmanRowIcon {
+    /// Built once, on first use from the background scan. Immutable afterwards.
+    nonisolated(unsafe) static let fallbackImage: NSImage? = {
+        let app = NSWorkspace.shared.urlForApplication(withBundleIdentifier: fallbackBundleID)?.path
+            ?? (FileManager.default.fileExists(atPath: fallbackAppPath) ? fallbackAppPath : nil)
+        return app.flatMap(trimmedIcon(ofApp:)).map { NSImage(cgImage: $0, size: NSSize(width: OnePlusLinearMetrics.processIcon, height: OnePlusLinearMetrics.processIcon)) }
+    }()
+
+    /// The app icon cut to the square around its pixels above half alpha, so the soft shadow is skipped.
+    nonisolated static func trimmedIcon(ofApp path: String) -> CGImage? {
+        let side = 256
+        var rect = NSRect(x: 0, y: 0, width: side, height: side)
+        guard let source = NSWorkspace.shared.icon(forFile: path).cgImage(forProposedRect: &rect, context: nil, hints: nil),
+              let context = CGContext(data: nil, width: side, height: side, bitsPerComponent: 8, bytesPerRow: side * 4,
+                                      space: CGColorSpaceCreateDeviceRGB(),
+                                      bitmapInfo: CGImageAlphaInfo.premultipliedLast.rawValue),
+              let pixels = context.data?.bindMemory(to: UInt8.self, capacity: side * side * 4) else { return nil }
+        context.draw(source, in: CGRect(x: 0, y: 0, width: side, height: side))
+        var minX = side, minY = side, maxX = -1, maxY = -1
+        for y in 0..<side { for x in 0..<side where pixels[(y * side + x) * 4 + 3] > 128 {
+            minX = min(minX, x); maxX = max(maxX, x); minY = min(minY, y); maxY = max(maxY, y)
+        } }
+        guard maxX >= minX else { return context.makeImage() }
+        let width = maxX - minX + 1, height = maxY - minY + 1, square = max(width, height)
+        return context.makeImage()?.cropping(to: CGRect(x: minX - (square - width) / 2, y: minY - (square - height) / 2,
+                                                         width: square, height: square))
+    }
+}
+
 enum PortmanDetailMetrics {
     static let label: CGFloat = 72
     static let rowPadding: CGFloat = 7

@@ -149,11 +149,11 @@ final class SystemMonitorProcessIcons {
                 guard !Task.isCancelled else { break }
                 autoreleasepool {
                     var isDirectory: ObjCBool = false
-                    if FileManager.default.fileExists(atPath: path, isDirectory: &isDirectory), isDirectory.boolValue {
-                        var pixels = NSRect(x: 0, y: 0, width: 64, height: 64)
-                        images[path] = SystemMonitorProcessIcons.icon(forBundle: path)
-                            .cgImage(forProposedRect: &pixels, context: nil, hints: nil)
-                    }
+                    guard FileManager.default.fileExists(atPath: path, isDirectory: &isDirectory) else { return }
+                    var pixels = NSRect(x: 0, y: 0, width: 64, height: 64)
+                    let image = isDirectory.boolValue ? SystemMonitorProcessIcons.icon(forBundle: path)
+                        : NSImage(contentsOfFile: path)
+                    images[path] = image?.cgImage(forProposedRect: &pixels, context: nil, hints: nil)
                 }
             }
             return images

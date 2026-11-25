@@ -1,16 +1,6 @@
 import Darwin
 import Foundation
 
-/// Where a listener's row icon comes from, in the order Portman tries them.
-nonisolated enum PortmanIconSource: String, Sendable {
-    case app, startedBy, fallback
-}
-
-/// The one place for the generic row glyph, so a new pick is a one-line swap.
-nonisolated enum PortmanRowIcon {
-    static let fallbackSymbol = "terminal"
-}
-
 /// The allow-listed launch hints from a process environment. Values of every other key, tokens included,
 /// are never copied out of the kernel buffer.
 nonisolated struct PortmanLaunchEnvironment: Equatable, Sendable {
@@ -92,28 +82,5 @@ nonisolated enum PortmanProcessArguments {
         case "CURSOR_AGENT": environment.cursorAgent = true
         default: if key.hasPrefix("CODEX_") { environment.codex = true }
         }
-    }
-}
-
-/// Who runs a listener: the app that started it and the row icon.
-nonisolated struct PortmanOrigin: Sendable, Equatable {
-    var appBundlePath: String?
-    var startedBy: String?
-    var startedByAppPath: String?
-    var iconPath: String?
-    var iconSource = PortmanIconSource.fallback
-
-    /// Icon order: the .app ancestor, the app from the environment, then the glyph.
-    static func resolve(ancestor: String?, environment: PortmanLaunchEnvironment?,
-                        startedByApp: (path: String, name: String)?) -> PortmanOrigin {
-        var origin = PortmanOrigin(appBundlePath: ancestor,
-                                   startedBy: environment?.startedBy(appName: startedByApp?.name),
-                                   startedByAppPath: startedByApp?.path)
-        let candidates: [(String?, PortmanIconSource)] = [(ancestor, .app), (startedByApp?.path, .startedBy)]
-        if let found = candidates.first(where: { $0.0 != nil }) {
-            origin.iconPath = found.0
-            origin.iconSource = found.1
-        }
-        return origin
     }
 }

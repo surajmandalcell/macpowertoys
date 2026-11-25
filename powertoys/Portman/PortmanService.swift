@@ -396,6 +396,7 @@ nonisolated enum PortmanScanner {
         let table = (try? run("/bin/ps", ["-A", "-o", "pid=,ppid=,rss=,%cpu=,comm="])) ?? ""
         let processes = parseProcessTable(table)
         let parents = Dictionary(processes.map { ($0.pid, $0.parentPID) }, uniquingKeysWith: { first, _ in first })
+        _ = PortmanRowIcon.fallbackImage
         originCache.withLock { cache in
             var fresh: [String: PortmanOrigin] = [:]
             for index in ports.indices {
@@ -458,9 +459,12 @@ nonisolated enum PortmanScanner {
 
     private static func origin(of port: PortmanLocalPort, parents: [Int32: Int32]) -> PortmanOrigin {
         let ancestor = appBundlePath(from: port.pid, parents: parents, path: executablePath(of:))
-        let environment = port.userID == geteuid() ? PortmanProcessArguments.read(pid: port.pid)?.environment : nil
+        let arguments = port.userID == geteuid() ? PortmanProcessArguments.read(pid: port.pid) : nil
+        let environment = arguments?.environment
         let app = environment?.bundleID.flatMap { NSWorkspace.shared.urlForApplication(withBundleIdentifier: $0) }
-        return PortmanOrigin.resolve(ancestor: ancestor, environment: environment,
+        let context = arguments.map { PortmanCommandContext(argv: $0.argv, executablePath: port.executablePath) }
+            ?? PortmanCommandContext(argv: PortmanCommandContext.split(port.launchCommand), executablePath: port.executablePath)
+        return PortmanOrigin.resolve(context, catalog: .bundled, ancestor: ancestor, environment: environment,
                                      startedByApp: app.map { ($0.path, $0.deletingPathExtension().lastPathComponent) })
     }
 

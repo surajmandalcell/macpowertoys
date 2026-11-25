@@ -103,7 +103,7 @@ nonisolated func portmanOverviewPresentation(
             title: title,
             subtitle: branch ?? "",
             iconPath: iconPath,
-            processSymbol: iconPath == nil && port.executablePath.hasPrefix("/") ? PortmanRowIcon.fallbackSymbol : "",
+            processSymbol: port.origin.symbol ?? "",
             memoryText: portmanMemoryString(port.memoryBytes),
             sparklineValues: values,
             sparklineRange: (values.min() ?? 0)...max(1, values.max() ?? 1)
@@ -861,6 +861,7 @@ struct PortmanPanelView: View {
             if showingMore {
                 PortmanDetailRow("Process", "\(port.pid)")
                 PortmanDetailRow("Address", port.address)
+                if let tool = port.origin.toolName { PortmanDetailRow("Tool", tool) }
                 if let startedBy = port.origin.startedBy {
                     PortmanDetailRow("Started by", startedBy) {
                         if let icon = port.origin.startedByAppPath.flatMap({ processIcons.images[$0] }) {
