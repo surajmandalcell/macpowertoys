@@ -10,8 +10,8 @@
 </p>
 
 <p align="center">
-  <b>Your Mac's stats, fans, and tools, in the menu bar.</b><br>
-  Ten small tools in one native app. Free and open source.
+  <b>Ten handy Mac tools in one menu bar app.</b><br>
+  Free and open source.
 </p>
 
 <p align="center">
@@ -24,19 +24,19 @@
 <p align="center">
   <picture>
     <source media="(prefers-color-scheme: dark)" srcset="docs/readme/bento-dark.webp">
-    <img src="docs/readme/bento-light.webp" alt="Four tiles with a caption under each: RSync UI, the menu panel, Portman, and Mac Tweaks" width="880">
+    <img src="docs/readme/bento-light.webp" alt="Four tools: RSync UI copies files to Google Drive, S3 and other clouds. The menu panel shows CPU, memory, network and fan speed. Portman shows every open port and lets you stop it. Mac Tweaks changes hidden Mac settings without Terminal." width="880">
   </picture>
 </p>
 
 ## Why MacPowerToys
 
-MacPowerToys puts the small tools macOS is missing in one menu bar app.
+MacPowerToys gives you small tools that macOS does not have, all in one menu bar app.
 
-- **One place.** CPU, memory, network, battery, and fan speed sit in one menu bar panel.
-- **Light.** Each tool opens in its own window and does no work while it is closed.
-- **Yours.** Turn each tool on or off. Show it in the shared panel, as its own menu bar item, or not at all.
-- **Private.** No ads, no tracking. Text recognition runs on your Mac.
-- **Native.** A small SwiftUI app, signed and notarized by Apple.
+- **One place.** See CPU, memory, network, battery and fan speed in one menu bar panel.
+- **Fast.** A tool uses no CPU or memory until you open it.
+- **Your choice.** Turn each tool on or off. Show it in the main panel, as its own menu bar icon, or hide it.
+- **Private.** No ads and no tracking. Reading text from the screen happens on your Mac.
+- **Made for Mac.** A small native app, signed and checked by Apple.
 
 ## Tools
 
@@ -47,10 +47,10 @@ MacPowerToys puts the small tools macOS is missing in one menu bar app.
 | <img src="site/public/assets/tools/awake.webp" width="28" alt=""> | **Awake** | Keep the Mac awake for a time, until a time, or while an app runs. |
 | <img src="site/public/assets/tools/color-picker.webp" width="28" alt=""> | **Color Picker** | Pick any pixel, copy it in nine formats, and keep colors in projects. |
 | <img src="site/public/assets/tools/text-extractor.webp" width="28" alt=""> | **Text Extractor** | Select part of the screen and copy its text. |
-| <img src="site/public/assets/tools/portman.webp" width="28" alt=""> | **Portman** | See your local dev servers, the tool each one runs, and who started it. Forward ports from an SSH server. |
-| <img src="site/public/assets/tools/rsync.webp" width="28" alt=""> | **RSync UI** | Plan and run rclone copies that pause and resume. |
+| <img src="site/public/assets/tools/portman.webp" width="28" alt=""> | **Portman** | See every port open on your Mac, which app or project started it, and stop it. Also forwards ports from an SSH server. |
+| <img src="site/public/assets/tools/rsync.webp" width="28" alt=""> | **RSync UI** | Copy files to Google Drive, S3 and other clouds with rclone. Big copies can pause and continue later. |
 | <img src="site/public/assets/tools/input-devices.webp" width="28" alt=""> | **Input Devices** | Set scroll direction, speed, and smoothing for mouse and trackpad. |
-| <img src="site/public/assets/tools/mac-tweaks.webp" width="28" alt=""> | **Mac Tweaks** | Change hidden Dock, Finder, and window settings. Every original value is kept. |
+| <img src="site/public/assets/tools/mac-tweaks.webp" width="28" alt=""> | **Mac Tweaks** | Change hidden Dock, Finder and window settings without Terminal. Undo any time. |
 | <img src="site/public/assets/tools/event-viewer.webp" width="28" alt=""> | **Event Viewer** | Read app activity and recent macOS errors. |
 
 ## Installation
@@ -185,7 +185,7 @@ Ruler includes [Free Ruler](https://github.com/pascalpp/FreeRuler) by Pascal Bal
 <br>
 
 <p align="center">
-  Open source apps can look this good. If you agree, a star on GitHub helps more people find MacPowerToys.<br>
+  If you like MacPowerToys, please give it a star on GitHub. It helps more people find it.<br>
   <a href="https://github.com/samhqapp/macpowertoys"><b>⭐ Star MacPowerToys on GitHub</b></a>
 </p>
 
