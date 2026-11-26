@@ -139,6 +139,7 @@ class AppDelegate: NSObject, NSApplicationDelegate {
     }
 
     func applicationDidFinishLaunching(_ notification: Notification) {
+        NSApplication.handleQuitAppleEvent()
         if !ownsInstance {
             NSApp.terminate(nil)
             return
@@ -483,7 +484,8 @@ class AppDelegate: NSObject, NSApplicationDelegate {
         // The test host shares the bundle ID, so a quit meant for the installed app must not end a test run.
         guard !AppRuntime.isRunningUnitTests else { return .terminateCancel }
         guard terminationTask == nil else { return .terminateLater }
-        let systemQuit = Self.isSystemQuit(NSAppleEventManager.shared().currentAppleEvent)
+        let systemQuit = Self.isSystemQuit(NSAppleEventManager.shared().currentAppleEvent ?? NSApplication.pendingQuitEvent)
+        NSApplication.pendingQuitEvent = nil
         terminationTask = Task { @MainActor in
             do {
                 try await AppInitializer.shared.shutdown(systemQuit: systemQuit)

@@ -6,7 +6,8 @@
 # 2. NSApp.terminate called from a Task (here: outside AppDelegate.swift and Views/). Its wait loop blocks the
 #    main actor, so the quit steps never run and the app hangs.
 #    Use NSApp.perform(#selector(NSApplication.terminate(_:)), with: nil, afterDelay: 0).
-# 3. An app folder (Info.plist beside Swift files) that never calls NSApplication.endSheetsBeforeQuit().
+# 3. An app folder (Info.plist beside Swift files) that never calls NSApplication.endSheetsBeforeQuit()
+#    and handleQuitAppleEvent() (AppKit's quit Apple Event checks sheets before terminate: runs).
 #    AppKit silently refuses every quit while a sheet is open, before the delegate runs, so the permission
 #    reopen hangs. SwiftUI ignores NSPrincipalClass, so a subclass does not help. Use QuitWithSheets.swift.
 # Usage: zsh scripts/check-relaunch-pitfalls.sh [swift files or folders, default powertoys]
@@ -14,8 +15,9 @@
 for dir in "$@"; do
   [[ -d $dir && -f $dir/Info.plist ]] || continue
   if ! grep -rq --include='*.swift' 'NSApplication\.endSheetsBeforeQuit()' "$dir" \
+     || ! grep -rq --include='*.swift' 'NSApplication\.handleQuitAppleEvent()' "$dir" \
      || ! grep -rq --include='*.swift' 'method_exchangeImplementations' "$dir"; then
-    print -r -- "$dir: call NSApplication.endSheetsBeforeQuit() at launch (see QuitWithSheets.swift)"
+    print -r -- "$dir: call NSApplication.endSheetsBeforeQuit() and handleQuitAppleEvent() at launch (see QuitWithSheets.swift)"
     failed=1
   fi
 done
@@ -27,8 +29,8 @@ found=$(find "$@" -name '*.swift' -print0 | xargs -0 awk '
     depth += gsub(/\{/, "{"); depth -= gsub(/\}/, "}")
     if (depth <= 0 && FNR > start) infunc = 0
   }
-  # Menu, button, and AppDelegate handlers run from an event; any other caller may be inside a Task.
-  /NSApp(lication\.shared)?\.terminate\(/ && FILENAME !~ /(AppDelegate\.swift|\/Views\/)/ {
+  # Menu, button, Apple Event, and AppDelegate handlers run from an event; any other caller may be inside a Task.
+  /NSApp(lication\.shared)?\.terminate\(/ && FILENAME !~ /(AppDelegate\.swift|QuitWithSheets\.swift|\/Views\/)/ {
     print FILENAME ":" FNR ": direct NSApp.terminate outside an event handler"
   }
 ')
