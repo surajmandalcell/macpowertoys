@@ -64,6 +64,14 @@ final class TextExtractorService {
             guard let self, let action = note.object as? ToolActionID, action == .textExtractorCapture else { return }
             Task { @MainActor [self] in self.begin() }
         }
+        NotificationCenter.default.addObserver(forName: .permissionsChanged, object: nil, queue: .main) { [weak self] _ in
+            Task { @MainActor in self?.clearPermissionDeniedIfGranted() }
+        }
+    }
+
+    private func clearPermissionDeniedIfGranted() {
+        guard case .permissionDenied = state, PermissionCenter.shared.isGranted(.screenRecording) else { return }
+        state = .idle
     }
 
     func begin() {
@@ -81,9 +89,7 @@ final class TextExtractorService {
             state = .idle
             return
         case .denied:
-            state = .permissionDenied(
-                "Allow MacPowerToys in System Settings > Privacy & Security > Screen & System Audio Recording, then try again."
-            )
+            state = .permissionDenied("macOS blocks screen capture. Click Fix to ask again.")
             openTextExtractor()
             return
         }

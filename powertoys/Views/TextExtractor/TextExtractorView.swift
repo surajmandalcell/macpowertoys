@@ -118,7 +118,10 @@ struct TextExtractorView: View {
             }.modifier(AppletBannerInset())
         case .permissionDenied(let message):
             OnePlusLinearBanner(.warning, title: message) {
-                Button("Privacy Settings", action: openPrivacySettings)
+                HStack(spacing: OnePlusLinearMetrics.appletRowGap) {
+                    Button("Open Settings", action: openPrivacySettings)
+                    Button("Fix") { PermissionCenter.shared.fixScreenRecording() }
+                }
             }.modifier(AppletBannerInset())
         case .failed(let message): OnePlusBanner(message, tone: .error).modifier(AppletBannerInset())
         default: EmptyView()

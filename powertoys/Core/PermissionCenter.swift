@@ -95,6 +95,17 @@ final class PermissionCenter {
         }
     }
 
+    /// Fix: drops this app's Screen Recording rows (a 1.x Apple Development signature keeps the switch on but
+    /// denies the Developer ID build), then asks again so macOS writes a row for this signature. Call only from a click.
+    func fixScreenRecording() {
+        Task {
+            let bundleID = Bundle.main.bundleIdentifier ?? "com.surajmandal.macpowertoys"
+            _ = try? await Task.detached { try FanCommand.run("/usr/bin/tccutil", ["reset", "ScreenCapture", bundleID]) }.value
+            _ = CGRequestScreenCaptureAccess()
+            await refresh()
+        }
+    }
+
     nonisolated static let accessibilityWasGrantedKey = "permissions.accessibilityWasGranted"
 
     /// Call only from an explicit user action or when the user turns on a tool that needs `kind`.
