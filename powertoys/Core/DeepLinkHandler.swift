@@ -210,6 +210,10 @@ final class DeepLinkHandler {
             openTool(id: toolId)
         }
 
+        if args.contains(PermissionCenter.requestScreenCaptureArgument) {
+            PermissionCenter.shared.requestScreenRecording()
+        }
+
         if let actionIndex = args.firstIndex(of: "--action"), args.count > actionIndex + 1,
            let action = ToolActionID(rawValue: args[actionIndex + 1]) {
             ToolActionRouter.shared.execute(ToolActionRequest(action: action, activateApp: false))

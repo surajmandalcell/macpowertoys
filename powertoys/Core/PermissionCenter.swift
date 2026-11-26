@@ -95,15 +95,39 @@ final class PermissionCenter {
         }
     }
 
+    nonisolated static let requestScreenCaptureArgument = "--request-screen-capture"
+
     /// Fix: drops this app's Screen Recording rows (a 1.x Apple Development signature keeps the switch on but
-    /// denies the Developer ID build), then asks again so macOS writes a row for this signature. Call only from a click.
+    /// denies the Developer ID build), then reopens the app, which asks again at launch so macOS writes a row for
+    /// this signature. CoreGraphics caches the answer per process: a request in this process never reaches macOS.
+    /// Call only from a click.
     func fixScreenRecording() {
         Task {
             let bundleID = Bundle.main.bundleIdentifier ?? "com.surajmandal.macpowertoys"
             _ = try? await Task.detached { try FanCommand.run("/usr/bin/tccutil", ["reset", "ScreenCapture", bundleID]) }.value
-            _ = CGRequestScreenCaptureAccess()
-            await refresh()
+            relaunch(arguments: ["--open", "text-extractor", Self.requestScreenCaptureArgument])
         }
+    }
+
+    /// Runs at launch after Fix. macOS shows its prompt and lists this signature in Screen & System Audio Recording.
+    func requestScreenRecording() {
+        _ = CGRequestScreenCaptureAccess()
+        Task { await refresh() }
+    }
+
+    /// Starts a new copy once this one has quit (the instance lock lets only one run), then quits.
+    private func relaunch(arguments: [String]) {
+        if DemoMode.blocks("app.relaunch") { return }
+        let script = """
+        pid=$1; app=$2; shift 2; i=0
+        while /bin/kill -0 "$pid" 2>/dev/null; do i=$((i+1)); [ $i -gt 150 ] && exit 1; sleep 0.2; done
+        exec /usr/bin/open -a "$app" --args "$@"
+        """
+        let process = Process()
+        process.executableURL = URL(fileURLWithPath: "/bin/sh")
+        process.arguments = ["-c", script, "relaunch", String(getpid()), Bundle.main.bundlePath] + arguments
+        do { try process.run() } catch { return }
+        NSApp.terminate(nil)
     }
 
     nonisolated static let accessibilityWasGrantedKey = "permissions.accessibilityWasGranted"
