@@ -106,7 +106,7 @@ struct PortmanHeroRing: View {
 
     /// A faint divider that fades out at both ends, like the soft-key dividers.
     private var statDivider: some View {
-        LinearGradient(colors: [.clear, OnePlusLinearColor.line, .clear], startPoint: .top, endPoint: .bottom)
+        LinearGradient(colors: [.clear, OnePlusLinearColor.panelLine, .clear], startPoint: .top, endPoint: .bottom)
             .frame(width: 1, height: PortmanOverviewMetrics.statDividerHeight)
     }
 }
