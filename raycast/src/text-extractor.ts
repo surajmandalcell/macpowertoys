@@ -1,2 +1,2 @@
-import { openTool } from "./run";
-export default openTool("text-extractor");
+import { runAction } from "./run";
+export default runAction("text-extractor.capture");

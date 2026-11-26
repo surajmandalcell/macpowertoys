@@ -1,2 +1,2 @@
-import { openTool } from "./run";
-export default openTool("color-picker");
+import { runAction } from "./run";
+export default runAction("color-picker.pick");

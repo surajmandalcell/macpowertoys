@@ -6,7 +6,9 @@
 
 Launch MacPowerToys or its built-in tools from Raycast Root Search.
 Each command opens the matching utility or menu-bar panel through the local
-`macpowertoys://` URL scheme. The extension runs no background service.
+`macpowertoys://` URL scheme. Color Picker and Text Extractor start picking
+or capturing right away, with no window. The extension runs no background
+service.
 
 <p align="center">
   <img src="../docs/screenshots/macpowertoys-launcher.png" width="900" alt="MacPowerToys launcher">

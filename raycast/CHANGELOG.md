@@ -2,6 +2,8 @@
 
 ## Unreleased
 
+- Color Picker now starts picking and Text Extractor starts a region capture,
+  with no window. Ruler opens only the ruler.
 - Removed the Partition Manager, System Cleaner, and NetToys launchers. These
   tools are separate apps now.
 - Reduced Root Search to MacPowerToys and built-in app launchers only.

@@ -204,16 +204,42 @@ class AppDelegate: NSObject, NSApplicationDelegate {
     }
 
     static let launchActivationWindow: TimeInterval = 3
+    // Raycast launches the app as a default launch and sends its link about 80 ms after activation.
+    var launchLinkGrace: Duration = .milliseconds(400)
     var openMainWindowAfterLaunch: @MainActor () -> Void = { ToolActionRouter.shared.open(toolID: "main") }
     private(set) var opensMainWindowOnLaunchActivation = false
+    private var launchWaitsForLinks = false
+    private var launchMainWindowOpen: Task<Void, Never>?
 
     // `open -g` and login items are default launches too; only a launch macOS activates may open Main.
     @MainActor
     func beginLaunchMainWindow(userInfo: [AnyHashable: Any]?, isActive: Bool,
                                isRunningUnitTests: Bool = AppRuntime.isRunningUnitTests) {
         guard Self.shouldOpenMainWindowAfterLaunch(userInfo: userInfo, isRunningUnitTests: isRunningUnitTests) else { return }
-        guard !isActive else { openMainWindowAfterLaunch(); return }
+        launchWaitsForLinks = true
+        guard !isActive else { openLaunchMainWindowAfterLinkGrace(); return }
         openMainWindowOnNextActivation()
+    }
+
+    @MainActor
+    private func openLaunchMainWindowAfterLinkGrace() {
+        launchWaitsForLinks = false
+        let grace = launchLinkGrace
+        launchMainWindowOpen = Task { @MainActor [weak self] in
+            try? await Task.sleep(for: grace)
+            guard !Task.isCancelled, let self else { return }
+            self.launchMainWindowOpen = nil
+            self.openMainWindowAfterLaunch()
+        }
+    }
+
+    /// A link shows its own tool, so it cancels the main window a launch or reopen was about to open.
+    @MainActor
+    func cancelAutomaticMainWindow() {
+        opensMainWindowOnLaunchActivation = false
+        launchWaitsForLinks = false
+        launchMainWindowOpen?.cancel()
+        launchMainWindowOpen = nil
     }
 
     // `open -g -a` on a running app sends a reopen without activation; only a reopen macOS activates (Dock click) opens Main.
@@ -236,13 +262,15 @@ class AppDelegate: NSObject, NSApplicationDelegate {
     @MainActor
     func endLaunchActivationWindow() {
         opensMainWindowOnLaunchActivation = false
+        launchWaitsForLinks = false
     }
 
     @MainActor
     func openMainWindowIfLaunchActivated() {
         guard opensMainWindowOnLaunchActivation else { return }
         opensMainWindowOnLaunchActivation = false
-        openMainWindowAfterLaunch()
+        guard launchWaitsForLinks else { openMainWindowAfterLaunch(); return }
+        openLaunchMainWindowAfterLinkGrace()
     }
 
     func applicationWillTerminate(_ notification: Notification) {
@@ -454,6 +482,7 @@ class AppDelegate: NSObject, NSApplicationDelegate {
     }
 
     func application(_ application: NSApplication, open urls: [URL]) {
+        cancelAutomaticMainWindow()
         for url in urls {
             MacPowerToysApp.handleIncomingURL(url)
         }

@@ -35,15 +35,52 @@ final class AppDelegateTests: XCTestCase {
         XCTAssertEqual(sceneOpens, 0)
 
         // Finder, Dock, or Spotlight: macOS activates the app right after launch.
+        delegate.launchLinkGrace = .zero
         delegate.beginLaunchMainWindow(userInfo: defaultLaunch, isActive: false, isRunningUnitTests: false)
         delegate.openMainWindowIfLaunchActivated()
         delegate.openMainWindowIfLaunchActivated()
+        settleMainQueue()
         XCTAssertEqual(activations, 1)
         XCTAssertEqual(sceneOpens, 1)
 
         delegate.beginLaunchMainWindow(userInfo: defaultLaunch, isActive: true, isRunningUnitTests: false)
+        settleMainQueue()
         XCTAssertEqual(activations, 2)
         XCTAssertFalse(delegate.opensMainWindowOnLaunchActivation)
+    }
+
+    // Raycast launches MacPowerToys as a default launch, activates it, then sends macpowertoys://open/ruler.
+    func testLinkDuringLaunchKeepsMainWindowClosed() {
+        let delegate = AppDelegate()
+        var opens = 0
+        delegate.openMainWindowAfterLaunch = { opens += 1 }
+        delegate.launchLinkGrace = .milliseconds(50)
+        let defaultLaunch: [AnyHashable: Any] = [NSApplication.launchIsDefaultUserInfoKey: true]
+
+        delegate.beginLaunchMainWindow(userInfo: defaultLaunch, isActive: true, isRunningUnitTests: false)
+        delegate.cancelAutomaticMainWindow()
+        settleMainQueue()
+        XCTAssertEqual(opens, 0, "Active launch, then a link.")
+
+        delegate.beginLaunchMainWindow(userInfo: defaultLaunch, isActive: false, isRunningUnitTests: false)
+        delegate.openMainWindowIfLaunchActivated()
+        delegate.cancelAutomaticMainWindow()
+        settleMainQueue()
+        XCTAssertEqual(opens, 0, "Launch, activation, then a link.")
+
+        delegate.beginLaunchMainWindow(userInfo: defaultLaunch, isActive: false, isRunningUnitTests: false)
+        delegate.cancelAutomaticMainWindow()
+        delegate.openMainWindowIfLaunchActivated()
+        settleMainQueue()
+        XCTAssertEqual(opens, 0, "Link before activation.")
+
+        delegate.beginLaunchMainWindow(userInfo: defaultLaunch, isActive: true, isRunningUnitTests: false)
+        settleMainQueue()
+        XCTAssertEqual(opens, 1, "A launch without a link still opens Main.")
+    }
+
+    private func settleMainQueue() {
+        RunLoop.main.run(until: Date().addingTimeInterval(0.2))
     }
 
     func testBackgroundReopenNeverOpensMainUntilMacOSActivatesTheApp() {

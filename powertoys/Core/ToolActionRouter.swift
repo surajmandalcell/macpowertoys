@@ -349,12 +349,14 @@ final class ToolActionRouter {
               let action = ToolActionID(rawValue: value)
         else { return nil }
 
-        let parameters = URLComponents(url: url, resolvingAgainstBaseURL: false)?
+        var parameters = URLComponents(url: url, resolvingAgainstBaseURL: false)?
             .queryItems?
             .reduce(into: [String: String]()) { result, item in
                 if let value = item.value { result[item.name] = value }
             } ?? [:]
-        return ToolActionRequest(action: action, parameters: parameters, activateApp: false)
+        // A launcher (Raycast) asks for the picker or capture itself; plain background links only open the applet.
+        let activateApp = parameters.removeValue(forKey: "activate") == "1"
+        return ToolActionRequest(action: action, parameters: parameters, activateApp: activateApp)
     }
 }
 

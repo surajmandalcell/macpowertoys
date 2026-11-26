@@ -52,14 +52,14 @@
     {
       "name": "color-picker",
       "title": "Color Picker",
-      "description": "Open Color Picker",
+      "description": "Pick a color on screen",
       "icon": "color-picker.png",
       "mode": "no-view"
     },
     {
       "name": "text-extractor",
       "title": "Text Extractor",
-      "description": "Open Text Extractor",
+      "description": "Capture text from a screen region",
       "icon": "text-extractor.png",
       "mode": "no-view"
     },

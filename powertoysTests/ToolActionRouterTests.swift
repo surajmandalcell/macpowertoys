@@ -172,6 +172,16 @@ final class ToolActionRouterTests: XCTestCase {
                       "Explicit launcher and panel actions still activate.")
     }
 
+    func testLauncherLinkStartsSelectorOnlyWhenItAsksForActivation() throws {
+        for action in [ToolActionID.colorPickerPick, .textExtractorCapture] {
+            let background = try XCTUnwrap(ToolActionRouter.request(from: XCTUnwrap(URL(string: "macpowertoys://run/\(action.rawValue)"))))
+            XCTAssertFalse(background.activateApp, action.rawValue)
+            let launcher = try XCTUnwrap(ToolActionRouter.request(from: XCTUnwrap(URL(string: "macpowertoys://run/\(action.rawValue)?activate=1"))))
+            XCTAssertTrue(launcher.activateApp, action.rawValue)
+            XCTAssertEqual(launcher.parameters, [:], action.rawValue)
+        }
+    }
+
     @MainActor
     func testRemovedTaskManagerLinkIsAnUnknownRoute() throws {
         for id in ["system-monitor", "power-stats"] {
