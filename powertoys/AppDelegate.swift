@@ -128,6 +128,7 @@ class AppDelegate: NSObject, NSApplicationDelegate {
     ]
 
     func applicationWillFinishLaunching(_ notification: Notification) {
+        NSApplication.endSheetsBeforeQuit()
         if AppRuntime.isRunningUnitTests {
             NSApp.setActivationPolicy(.prohibited)
         }
