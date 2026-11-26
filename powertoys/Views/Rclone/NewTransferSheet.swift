@@ -45,10 +45,10 @@ struct NewTransferSheet: View {
         } footer: {
             Button("Cancel") { dismiss() }
                 .keyboardShortcut(.cancelAction)
-                .buttonStyle(OnePlusLinearButtonStyle(.soft))
+                .buttonStyle(OnePlusLinearButtonStyle(.push))
             Button("Start Transfer") { start() }
                 .keyboardShortcut(.defaultAction)
-                .buttonStyle(OnePlusLinearButtonStyle(.soft))
+                .buttonStyle(OnePlusLinearButtonStyle(.push))
                 .disabled(!canStart)
         }
         .onAppear {

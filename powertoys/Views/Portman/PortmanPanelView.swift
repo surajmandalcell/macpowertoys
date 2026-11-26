@@ -1367,13 +1367,13 @@ struct PortmanPanelView: View {
         } footer: {
             Button("Cancel", action: closeScanSheet)
                 .keyboardShortcut(.cancelAction)
-                .buttonStyle(OnePlusLinearButtonStyle(.soft))
+                .buttonStyle(OnePlusLinearButtonStyle(.push))
             Button(selectedRemotePorts.isEmpty ? "Add" : "Add \(selectedRemotePorts.count)") {
                 forwardSelected()
                 if selectedRemotePorts.isEmpty, service.forwardingError == nil { closeScanSheet() }
             }
             .keyboardShortcut(.defaultAction)
-            .buttonStyle(OnePlusLinearButtonStyle(.soft))
+            .buttonStyle(OnePlusLinearButtonStyle(.push))
             .disabled(selectedRemotePorts.isEmpty)
         }
         .fixedSize(horizontal: false, vertical: true)
@@ -1471,8 +1471,8 @@ private struct PortmanPasswordSheet: View {
             }
             }
         } footer: {
-            Button("Cancel", action: onCancel).buttonStyle(OnePlusButtonStyle(.ghost))
-            Button("Continue", action: submit).buttonStyle(OnePlusButtonStyle(.primary)).disabled(password.isEmpty)
+            Button("Cancel", action: onCancel).buttonStyle(OnePlusLinearButtonStyle(.push))
+            Button("Continue", action: submit).buttonStyle(OnePlusLinearButtonStyle(.pushProminent)).disabled(password.isEmpty)
         }
         .onDisappear { password = "" }
         .onExitCommand(perform: onCancel)

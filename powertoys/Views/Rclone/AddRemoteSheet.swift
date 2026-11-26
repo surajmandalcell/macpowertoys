@@ -87,12 +87,12 @@ struct AddRemoteSheet: View {
                     let supplied = parameters.filter { !$0.value.isEmpty }
                     manager.beginAddRemote(named: name, provider: provider, parameters: supplied)
                 }
-                .buttonStyle(OnePlusLinearButtonStyle(.soft))
+                .buttonStyle(OnePlusLinearButtonStyle(.push))
                 .keyboardShortcut(.defaultAction)
                 .disabled(!canConnect)
             }
             Button(closeButtonTitle, action: close)
-                .buttonStyle(OnePlusLinearButtonStyle(.soft))
+                .buttonStyle(OnePlusLinearButtonStyle(.push))
                 .keyboardShortcut(.cancelAction)
         }
         .task {

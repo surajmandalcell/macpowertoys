@@ -31,7 +31,7 @@ struct RemoteSettingsSheet: View {
         } footer: {
             Button("Done") { dismiss() }
                 .keyboardShortcut(.defaultAction)
-                .buttonStyle(OnePlusLinearButtonStyle(.soft))
+                .buttonStyle(OnePlusLinearButtonStyle(.push))
         }
         .onAppear {
             transfers = UserDefaults.standard.integer(forKey: RcloneDefaults.remoteTransfersKey(remote.name))

@@ -231,10 +231,10 @@ struct DevSyncSetupSheet: View {
         } footer: {
             if let model {
                 Button("Back") { model.back() }
-                    .buttonStyle(OnePlusLinearButtonStyle(.soft))
+                    .buttonStyle(OnePlusLinearButtonStyle(.push))
                     .disabled(model.step == .roots || model.isWorking)
                 Button("Cancel") { dismiss() }
-                    .buttonStyle(OnePlusLinearButtonStyle(.soft))
+                    .buttonStyle(OnePlusLinearButtonStyle(.push))
                     .keyboardShortcut(.cancelAction)
                 Button(model.primaryActionTitle) {
                     Task {
@@ -245,7 +245,7 @@ struct DevSyncSetupSheet: View {
                     }
                 }
                 .keyboardShortcut(.defaultAction)
-                .buttonStyle(OnePlusLinearButtonStyle(.soft))
+                .buttonStyle(OnePlusLinearButtonStyle(.push))
                 .disabled(!model.canContinue)
             }
         }

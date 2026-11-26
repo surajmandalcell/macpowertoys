@@ -75,7 +75,7 @@ struct CleanupRemoteSheet: View {
             if phase == .review {
                 Button("Cancel") { dismiss() }
                     .keyboardShortcut(.cancelAction)
-                    .buttonStyle(OnePlusLinearButtonStyle(.soft))
+                    .buttonStyle(OnePlusLinearButtonStyle(.push))
             }
         }
         .confirmationDialog("Delete \(checked.count) selected items?", isPresented: $isConfirmingDeletion) {

@@ -278,7 +278,7 @@ private struct TextExtractionDetailView: View {
                     .frame(maxWidth: .infinity, alignment: .leading)
             }.onePlusScrollIndicators().frame(height: OnePlusWindowCanvas.textExtractor.size.height)
         } footer: {
-            Button("Copy") { service.copy(extraction) }.buttonStyle(OnePlusButtonStyle(.primary))
+            Button("Copy") { service.copy(extraction) }.buttonStyle(OnePlusLinearButtonStyle(.pushProminent))
         }
         .onExitCommand { dismiss() }
     }

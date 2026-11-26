@@ -159,7 +159,7 @@ struct DevSyncPage: View {
                 .frame(height: OnePlusLinearSpace.page * 12)
             } footer: {
                 Button("Done") { manager.previewPlan = nil }
-                    .buttonStyle(OnePlusLinearButtonStyle(.soft))
+                    .buttonStyle(OnePlusLinearButtonStyle(.push))
                     .keyboardShortcut(.defaultAction)
             }
         }

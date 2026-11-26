@@ -771,10 +771,10 @@ struct LogDetailSheet: View {
                 NSPasteboard.general.clearContents()
                 NSPasteboard.general.setString(row.message, forType: .string)
             }
-            .buttonStyle(OnePlusLinearButtonStyle(.soft))
+            .buttonStyle(OnePlusLinearButtonStyle(.push))
             Button("Done", action: close)
                 .keyboardShortcut(.defaultAction)
-                .buttonStyle(OnePlusLinearButtonStyle(.soft))
+                .buttonStyle(OnePlusLinearButtonStyle(.push))
         }
     }
 

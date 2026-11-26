@@ -122,8 +122,8 @@ struct RemoteBrowserView: View {
                 Text(newFolderMessage).linearText(OnePlusLinearMetrics.caption, color: OnePlusLinearColor.secondary)
             }
         } footer: {
-            Button("Cancel", action: cancel).buttonStyle(OnePlusButtonStyle(.ghost))
-            Button("Create", action: create).buttonStyle(OnePlusButtonStyle(.primary))
+            Button("Cancel", action: cancel).buttonStyle(OnePlusLinearButtonStyle(.push))
+            Button("Create", action: create).buttonStyle(OnePlusLinearButtonStyle(.pushProminent))
                 .keyboardShortcut(.defaultAction).disabled(!canCreate)
         }
         .focusEffectDisabled()

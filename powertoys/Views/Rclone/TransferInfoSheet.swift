@@ -80,7 +80,7 @@ struct TransferInfoSheet: View {
         } footer: {
             Button("Done") { dismiss() }
                 .keyboardShortcut(.defaultAction)
-                .buttonStyle(OnePlusLinearButtonStyle(.soft))
+                .buttonStyle(OnePlusLinearButtonStyle(.push))
         }
     }
 
