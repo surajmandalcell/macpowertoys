@@ -39,7 +39,7 @@ final class MarketplaceManagerTests: XCTestCase {
         let url = URL(fileURLWithPath: #filePath)
             .deletingLastPathComponent()
             .deletingLastPathComponent()
-            .appendingPathComponent("spec/marketplace/valid-catalog.json")
+            .appendingPathComponent("docs/marketplace/valid-catalog.json")
         return try Data(contentsOf: url)
     }
 

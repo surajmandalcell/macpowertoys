@@ -3,7 +3,7 @@
 # requires-python = ">=3.11"
 # dependencies = ["jsonschema==4.25.1"]
 # ///
-"""Validate marketplace.schema.json and the spec/marketplace fixtures.
+"""Validate marketplace.schema.json and the docs/marketplace fixtures.
 
 Fixtures named invalid-*.json must fail schema validation; every other
 fixture must pass. Host-level rules (duplicate and reserved tool IDs) are
@@ -33,7 +33,7 @@ def main() -> int:
             return 1
 
     failures = 0
-    for path in sorted(glob.glob(os.path.join(ROOT, "spec/marketplace/*.json"))):
+    for path in sorted(glob.glob(os.path.join(ROOT, "docs/marketplace/*.json"))):
         name = os.path.basename(path)
         with open(path) as fh:
             document = json.load(fh)

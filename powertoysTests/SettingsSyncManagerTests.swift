@@ -59,7 +59,7 @@ final class SettingsSyncManagerTests: XCTestCase {
         let url = URL(fileURLWithPath: #filePath)
             .deletingLastPathComponent()
             .deletingLastPathComponent()
-            .appendingPathComponent("spec/marketplace/valid-catalog.json")
+            .appendingPathComponent("docs/marketplace/valid-catalog.json")
         let catalog = try MarketplaceCatalog.decode(Data(contentsOf: url), reservedToolIDs: [])
         return MarketplaceReceipt(
             manifest: catalog.tools[0],

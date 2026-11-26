@@ -10,7 +10,7 @@ final class MarketplaceModelTests: XCTestCase {
         let url = URL(fileURLWithPath: #filePath)
             .deletingLastPathComponent()
             .deletingLastPathComponent()
-            .appendingPathComponent("spec/marketplace/\(name)")
+            .appendingPathComponent("docs/marketplace/\(name)")
         return try Data(contentsOf: url)
     }
 

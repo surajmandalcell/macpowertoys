@@ -1,0 +1,30 @@
+{
+  "formatVersion": 1,
+  "source": {
+    "id": "acme-tools",
+    "name": "Acme Tools",
+    "updated": "2026-07-01T12:00:00Z"
+  },
+  "tools": [
+    {
+      "id": "window-snapper",
+      "name": "Window Snapper",
+      "summary": "Snap windows into halves, thirds, and custom grids with keyboard shortcuts, plus saved layouts.",
+      "category": "system",
+      "manual": [],
+      "iconURL": "https://raw.githubusercontent.com/acme/tools/main/window-snapper/icon.png",
+      "version": "2.1.0",
+      "build": 34,
+      "minHostVersion": "1.6.0",
+      "minHostBuild": 10,
+      "minMacOSVersion": "26.0",
+      "artifact": {
+        "url": "https://github.com/acme/tools/releases/download/v2.1.0/WindowSnapper.zip",
+        "sha256": "9f2c1a4be0d5c6a7b8e9f0a1b2c3d4e5f60718293a4b5c6d7e8f9a0b1c2d3e4f",
+        "bundleID": "com.acme.window-snapper",
+        "teamID": "ABCDE12345",
+        "architectures": ["arm64", "x86_64"]
+      }
+    }
+  ]
+}

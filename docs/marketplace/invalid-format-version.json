@@ -1,0 +1,9 @@
+{
+  "formatVersion": 2,
+  "source": {
+    "id": "acme-tools",
+    "name": "Acme Tools",
+    "updated": "2026-07-01T12:00:00Z"
+  },
+  "tools": []
+}

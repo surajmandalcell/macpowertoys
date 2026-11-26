@@ -11,7 +11,7 @@ bundle. MacPowerToys does not load tool code or metric plugins.
    `.app` at the root of a ZIP archive and publish the ZIP over HTTPS, such as
    a GitHub Release asset.
 3. Calculate the archive SHA-256 and create a catalog from
-   [the valid example](../spec/marketplace/valid-catalog.json). Replace its
+   [the valid example](marketplace/valid-catalog.json). Replace its
    example values with your tool's ID, name, description, icon URL, version,
    build, minimum versions, archive URL, SHA-256, bundle ID, signing Team ID,
    and architectures. The [schema](../marketplace.schema.json) defines every
