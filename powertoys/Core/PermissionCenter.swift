@@ -116,18 +116,20 @@ final class PermissionCenter {
     }
 
     /// Starts a new copy once this one has quit (the instance lock lets only one run), then quits.
+    /// Quit can take over a minute (fan, Color Picker, RSync, and log steps), so the new copy waits up to 120 s.
     private func relaunch(arguments: [String]) {
         if DemoMode.blocks("app.relaunch") { return }
         let script = """
         pid=$1; app=$2; shift 2; i=0
-        while /bin/kill -0 "$pid" 2>/dev/null; do i=$((i+1)); [ $i -gt 150 ] && exit 1; sleep 0.2; done
+        while /bin/kill -0 "$pid" 2>/dev/null; do i=$((i+1)); [ $i -gt 600 ] && exit 1; sleep 0.2; done
         exec /usr/bin/open -a "$app" --args "$@"
         """
         let process = Process()
         process.executableURL = URL(fileURLWithPath: "/bin/sh")
         process.arguments = ["-c", script, "relaunch", String(getpid()), Bundle.main.bundlePath] + arguments
         do { try process.run() } catch { return }
-        NSApp.terminate(nil)
+        // Not from this Task: terminate's wait loop would block the main actor, and the quit steps need it.
+        NSApp.perform(#selector(NSApplication.terminate(_:)), with: nil, afterDelay: 0)
     }
 
     nonisolated static let accessibilityWasGrantedKey = "permissions.accessibilityWasGranted"

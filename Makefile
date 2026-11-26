@@ -71,7 +71,7 @@ install-preflight:
 	@test "$(ALLOW_INSTALL)" = "1" || (echo "Refusing to install. Re-run with ALLOW_INSTALL=1 after all RSync UI transfers finish." && exit 1)
 	@test -z "$$(git status --porcelain)" || (echo "Refusing to install from a dirty worktree. Commit the complete source state first." && exit 1)
 	@zsh scripts/live-transfers.sh
-	@zsh scripts/check-screen-capture-reset.sh
+	@zsh scripts/check-relaunch-pitfalls.sh
 ifeq ($(NOTARIZE),1)
 	@($(NOTARY) history $(NOTARY_KEY)) >/dev/null 2>&1 || (echo "Notarization needs a working App Store Connect key in $(ASC_ENV)." && exit 1)
 endif
