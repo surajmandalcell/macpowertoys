@@ -1,4 +1,7 @@
 import AppKit
+import os
+
+private let quitLog = Logger(subsystem: "com.surajmandal.macpowertoys", category: "quit")
 
 /// AppKit refuses every quit (menu, Apple Event, our permission reopen) while a window shows a sheet,
 /// before the delegate's shutdown steps run, and tells no one. SwiftUI ignores NSPrincipalClass, so
@@ -32,7 +35,8 @@ extension NSApplication {
 
     /// After the swap, calling `mptTerminate` runs AppKit's own terminate. `dynamic` keeps the call on objc_msgSend.
     @objc dynamic private func mptTerminate(_ sender: Any?) {
-        NSLog("MacPowerToys quit: %d sheet(s) open", openSheets.count)
+        let state = windows.map { "\(type(of: $0)) sheet=\($0.isSheet) parent=\($0.sheetParent != nil) attached=\($0.attachedSheet != nil) vis=\($0.isVisible)" }
+        quitLog.notice("quit: modal=\(String(describing: self.modalWindow), privacy: .public) \(state.joined(separator: " | "), privacy: .public)")
         guard hasSheets else { return mptTerminate(sender) }
         windows.forEach(Self.endSheets(on:))
         openSheets.forEach { $0.sheetParent?.endSheet($0, returnCode: .cancel) }
@@ -45,7 +49,10 @@ extension NSApplication {
 
     // A sheet stays attached until its close animation ends, and AppKit still refuses until then.
     private func terminateWhenSheetsClose(_ sender: Any?, tries: Int) {
-        guard tries > 0, hasSheets else { return mptTerminate(sender) }
+        guard tries > 0, hasSheets else {
+            quitLog.notice("quit: wait ended tries=\(tries, privacy: .public) sheets=\(self.hasSheets, privacy: .public)")
+            return mptTerminate(sender)
+        }
         DispatchQueue.main.asyncAfter(deadline: .now() + 0.1) { [self] in
             terminateWhenSheetsClose(sender, tries: tries - 1)
         }
@@ -63,7 +70,7 @@ final class QuitAppleEventHandler: NSObject {
     static let shared = QuitAppleEventHandler()
 
     @objc func handle(_ event: NSAppleEventDescriptor, reply: NSAppleEventDescriptor) {
-        NSLog("MacPowerToys quit: Apple Event")
+        quitLog.notice("quit: Apple Event")
         NSApplication.pendingQuitEvent = event
         NSApp.terminate(nil)
     }
