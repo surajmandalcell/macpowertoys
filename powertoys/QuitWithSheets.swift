@@ -8,11 +8,19 @@ extension NSApplication {
     /// The quit Apple Event, kept for its logout or shutdown reason while sheets close.
     static var pendingQuitEvent: NSAppleEventDescriptor?
 
+    /// Swaps on the live class: SwiftUI's `AppKitApplication` overrides `terminate:`, so a swap on NSApplication never runs.
     static func endSheetsBeforeQuit() {
-        guard let original = class_getInstanceMethod(NSApplication.self, #selector(terminate(_:))),
-              let replacement = class_getInstanceMethod(NSApplication.self, #selector(mptTerminate(_:)))
+        guard let app = NSApp, let appClass = object_getClass(app),
+              let original = class_getInstanceMethod(appClass, #selector(terminate(_:))),
+              let replacement = class_getInstanceMethod(appClass, #selector(mptTerminate(_:)))
         else { return }
-        method_exchangeImplementations(original, replacement)
+        if class_addMethod(appClass, #selector(terminate(_:)), method_getImplementation(replacement),
+                           method_getTypeEncoding(replacement)) {
+            class_replaceMethod(appClass, #selector(mptTerminate(_:)), method_getImplementation(original),
+                                method_getTypeEncoding(original))
+        } else {
+            method_exchangeImplementations(original, replacement)
+        }
     }
 
     /// AppKit's own quit Apple Event handler checks for sheets before `terminate:`, so it never reaches the swap.
@@ -55,6 +63,7 @@ final class QuitAppleEventHandler: NSObject {
     static let shared = QuitAppleEventHandler()
 
     @objc func handle(_ event: NSAppleEventDescriptor, reply: NSAppleEventDescriptor) {
+        NSLog("MacPowerToys quit: Apple Event")
         NSApplication.pendingQuitEvent = event
         NSApp.terminate(nil)
     }
