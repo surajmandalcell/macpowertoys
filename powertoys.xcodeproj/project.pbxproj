@@ -12,6 +12,8 @@
 		B30000000000000000000014 /* IndieCrumbUsage in Frameworks */ = {isa = PBXBuildFile; productRef = B30000000000000000000015 /* IndieCrumbUsage */; };
 		B30000000000000000000016 /* IndieCrumbCrash in Frameworks */ = {isa = PBXBuildFile; productRef = B30000000000000000000017 /* IndieCrumbCrash */; };
 		B30000000000000000000018 /* IndieCrumbCrashUI in Frameworks */ = {isa = PBXBuildFile; productRef = B30000000000000000000019 /* IndieCrumbCrashUI */; };
+		B3000000000000000000001A /* IndieCrumbFeedback in Frameworks */ = {isa = PBXBuildFile; productRef = B3000000000000000000001B /* IndieCrumbFeedback */; };
+		B3000000000000000000001C /* SamPermissions in Frameworks */ = {isa = PBXBuildFile; productRef = B3000000000000000000001E /* SamPermissions */; };
 		C40000000000000000000004 /* MacPowerToysHelperXPC.swift in Sources */ = {isa = PBXBuildFile; fileRef = C40000000000000000000014 /* MacPowerToysHelperXPC.swift */; };
 		A10000000000000000000005 /* com.surajmandal.macpowertoys.helper in Copy LaunchServices */ = {isa = PBXBuildFile; fileRef = A10000000000000000000006 /* com.surajmandal.macpowertoys.helper */; settings = {ATTRIBUTES = (CodeSignOnCopy, ); }; };
 		A10000000000000000000021 /* com.surajmandal.macpowertoys.nettoys-neighbor.plist in Copy LaunchDaemons */ = {isa = PBXBuildFile; fileRef = A10000000000000000000022 /* com.surajmandal.macpowertoys.nettoys-neighbor.plist */; };
@@ -116,6 +118,8 @@
 				B30000000000000000000014 /* IndieCrumbUsage in Frameworks */,
 				B30000000000000000000016 /* IndieCrumbCrash in Frameworks */,
 				B30000000000000000000018 /* IndieCrumbCrashUI in Frameworks */,
+				B3000000000000000000001A /* IndieCrumbFeedback in Frameworks */,
+				B3000000000000000000001C /* SamPermissions in Frameworks */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -215,6 +219,8 @@
 				B30000000000000000000015 /* IndieCrumbUsage */,
 				B30000000000000000000017 /* IndieCrumbCrash */,
 				B30000000000000000000019 /* IndieCrumbCrashUI */,
+				B3000000000000000000001B /* IndieCrumbFeedback */,
+				B3000000000000000000001E /* SamPermissions */,
 			);
 			productName = powertoys;
 			productReference = 1BDFA94E2F08A44C009A9009 /* powertoys.app */;
@@ -304,6 +310,7 @@
 			packageReferences = (
 				B30000000000000000000002 /* XCRemoteSwiftPackageReference "OnePlusUI" */,
 				B30000000000000000000012 /* XCRemoteSwiftPackageReference "indiecrumb-swift" */,
+				B3000000000000000000001D /* XCRemoteSwiftPackageReference "sam-permissions" */,
 			);
 			preferredProjectObjectVersion = 77;
 			productRefGroup = 1BDFA94F2F08A44C009A9009 /* Products */;
@@ -823,6 +830,14 @@
 				minimumVersion = 0.3.0;
 			};
 		};
+		B3000000000000000000001D /* XCRemoteSwiftPackageReference "sam-permissions" */ = {
+			isa = XCRemoteSwiftPackageReference;
+			repositoryURL = "https://github.com/samhqapp/sam-permissions";
+			requirement = {
+				kind = exactVersion;
+				version = 0.1.1;
+			};
+		};
 /* End XCRemoteSwiftPackageReference section */
 
 /* Begin XCSwiftPackageProductDependency section */
@@ -850,6 +865,16 @@
 			isa = XCSwiftPackageProductDependency;
 			package = B30000000000000000000012 /* XCRemoteSwiftPackageReference "indiecrumb-swift" */;
 			productName = IndieCrumbCrashUI;
+		};
+		B3000000000000000000001B /* IndieCrumbFeedback */ = {
+			isa = XCSwiftPackageProductDependency;
+			package = B30000000000000000000012 /* XCRemoteSwiftPackageReference "indiecrumb-swift" */;
+			productName = IndieCrumbFeedback;
+		};
+		B3000000000000000000001E /* SamPermissions */ = {
+			isa = XCSwiftPackageProductDependency;
+			package = B3000000000000000000001D /* XCRemoteSwiftPackageReference "sam-permissions" */;
+			productName = SamPermissions;
 		};
 /* End XCSwiftPackageProductDependency section */
 	};

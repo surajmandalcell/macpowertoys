@@ -7,6 +7,7 @@ import Foundation
 import SwiftUI
 import Darwin
 import OnePlusUI
+import SamPermissions
 
 @Observable
 @MainActor
@@ -210,9 +211,7 @@ final class DeepLinkHandler {
             openTool(id: toolId)
         }
 
-        if args.contains(PermissionCenter.requestScreenCaptureArgument) {
-            PermissionCenter.shared.requestScreenRecording()
-        }
+        SamPermissions.shared.handleLaunch(args)
 
         if let actionIndex = args.firstIndex(of: "--action"), args.count > actionIndex + 1,
            let action = ToolActionID(rawValue: args[actionIndex + 1]) {

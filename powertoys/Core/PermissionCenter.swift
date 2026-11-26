@@ -4,6 +4,7 @@ import AVFoundation
 import CoreGraphics
 import Observation
 import OnePlusUI
+import SamPermissions
 import SwiftUI
 import UserNotifications
 
@@ -41,6 +42,7 @@ final class PermissionCenter {
         self.pollInterval = pollInterval
         granted = observesSystem ? Self.readGrantedWithoutWaiting() : []
         guard observesSystem else { return }
+        Self.connectSamPermissions()
         refreshMicrophone()
         NotificationCenter.default.addObserver(forName: NSApplication.didBecomeActiveNotification,
                                                object: nil, queue: .main) { _ in
@@ -82,54 +84,24 @@ final class PermissionCenter {
             : "MacPowerToys needs Accessibility to change scrolling. Click Fix, then switch MacPowerToys on."
     }
 
-    /// Fix: drops this app's Accessibility rows (stale signatures included), asks again so macOS lists the current
-    /// build, and opens the Accessibility pane. Call only from a click.
-    func fixAccessibility() {
-        Task {
-            let bundleID = Bundle.main.bundleIdentifier ?? "com.surajmandal.macpowertoys"
-            _ = try? await Task.detached { try FanCommand.run("/usr/bin/tccutil", ["reset", "Accessibility", bundleID]) }.value
-            requestAccessibility()
-            if let url = URL(string: "x-apple.systempreferences:com.apple.preference.security?Privacy_Accessibility") {
-                NSWorkspace.shared.open(url)
-            }
+    /// Fix buttons. SamPermissions picks the step: guide, ask, reset an old-signature row, or reopen. Click only.
+    func fixAccessibility() { SamPermissions.shared.resolve(.accessibility) }
+
+    func fixScreenRecording() { SamPermissions.shared.resolve(.screenRecording) }
+
+    private static func connectSamPermissions() {
+        let permissions = SamPermissions.shared
+        permissions.reopenArguments = { $0 == .screenRecording ? ["--open", "text-extractor"] : [] }
+        permissions.canReopen = { !DemoMode.blocks("app.relaunch") }
+        permissions.onChange = { _ in Task { await PermissionCenter.shared.refresh() } }
+        permissions.onLoop = { _, report in
+            let alert = NSAlert()
+            alert.messageText = "Permission fix is not working"
+            alert.informativeText = "macOS keeps refusing the permission. Send a short report? It holds the macOS and app version only."
+            alert.addButton(withTitle: "Send Report")
+            alert.addButton(withTitle: "Not Now")
+            if alert.runModal() == .alertFirstButtonReturn { DailyCounts.sendReport(report) }
         }
-    }
-
-    nonisolated static let requestScreenCaptureArgument = "--request-screen-capture"
-
-    /// Fix: drops this app's Screen Recording rows (a 1.x Apple Development signature keeps the switch on but
-    /// denies the Developer ID build), then reopens the app, which asks again at launch so macOS writes a row for
-    /// this signature. CoreGraphics caches the answer per process: a request in this process never reaches macOS.
-    /// Call only from a click.
-    func fixScreenRecording() {
-        Task {
-            let bundleID = Bundle.main.bundleIdentifier ?? "com.surajmandal.macpowertoys"
-            _ = try? await Task.detached { try FanCommand.run("/usr/bin/tccutil", ["reset", "ScreenCapture", bundleID]) }.value
-            relaunch(arguments: ["--open", "text-extractor", Self.requestScreenCaptureArgument])
-        }
-    }
-
-    /// Runs at launch after Fix. macOS shows its prompt and lists this signature in Screen & System Audio Recording.
-    func requestScreenRecording() {
-        _ = CGRequestScreenCaptureAccess()
-        Task { await refresh() }
-    }
-
-    /// Starts a new copy once this one has quit (the instance lock lets only one run), then quits.
-    /// Quit can take over a minute (fan, Color Picker, RSync, and log steps), so the new copy waits up to 120 s.
-    private func relaunch(arguments: [String]) {
-        if DemoMode.blocks("app.relaunch") { return }
-        let script = """
-        pid=$1; app=$2; shift 2; i=0
-        while /bin/kill -0 "$pid" 2>/dev/null; do i=$((i+1)); [ $i -gt 600 ] && exit 1; sleep 0.2; done
-        exec /usr/bin/open -a "$app" --args "$@"
-        """
-        let process = Process()
-        process.executableURL = URL(fileURLWithPath: "/bin/sh")
-        process.arguments = ["-c", script, "relaunch", String(getpid()), Bundle.main.bundlePath] + arguments
-        do { try process.run() } catch { return }
-        // Not from this Task: terminate's wait loop would block the main actor, and the quit steps need it.
-        NSApp.perform(#selector(NSApplication.terminate(_:)), with: nil, afterDelay: 0)
     }
 
     nonisolated static let accessibilityWasGrantedKey = "permissions.accessibilityWasGranted"

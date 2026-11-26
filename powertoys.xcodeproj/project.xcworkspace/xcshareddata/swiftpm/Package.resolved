@@ -1,5 +1,5 @@
 {
-  "originHash" : "0f929050a0afa42dd4c38cc88280793fdacd1cdca2d7d38f28cf273339fb732b",
+  "originHash" : "4a3c3def5a813cb34f17e802b68c7d3e6949d99cfadb6734edc76a4b690be63d",
   "pins" : [
     {
       "identity" : "indiecrumb-swift",
@@ -17,6 +17,24 @@
       "state" : {
         "revision" : "944a51c3b742725da920a1ff0e16393a8518dff6",
         "version" : "1.6.0"
+      }
+    },
+    {
+      "identity" : "permissionflow",
+      "kind" : "remoteSourceControl",
+      "location" : "https://github.com/jaywcjlove/PermissionFlow.git",
+      "state" : {
+        "revision" : "65434c9ae04dba97cf52c1dffbe3e4e62b547c82",
+        "version" : "2.11.4"
+      }
+    },
+    {
+      "identity" : "sam-permissions",
+      "kind" : "remoteSourceControl",
+      "location" : "https://github.com/samhqapp/sam-permissions",
+      "state" : {
+        "revision" : "ea9230dbeebb55e79624b3d5b0d63372294eb39b",
+        "version" : "0.1.1"
       }
     }
   ],

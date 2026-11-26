@@ -2,6 +2,7 @@ import Foundation
 import IndieCrumbCore
 import IndieCrumbCrash
 import IndieCrumbCrashUI
+import IndieCrumbFeedback
 import IndieCrumbUsage
 
 /// The daily count to IndieCrumb: Settings "Share anonymous usage", on by default. The update check never reads it.
@@ -21,4 +22,7 @@ enum DailyCounts {
     @MainActor static func askAboutCrashes() { CrashAsk.start(crashes, core: core) }
 
     static func setEnabled(_ on: Bool) { core.isEnabled = on }
+
+    /// Sent only after the person pressed Send Report.
+    static func sendReport(_ text: String) { Task { _ = try? await core.sendFeedback(kind: .bug, text: text) } }
 }
