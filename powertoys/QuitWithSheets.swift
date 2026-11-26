@@ -35,8 +35,7 @@ extension NSApplication {
 
     /// After the swap, calling `mptTerminate` runs AppKit's own terminate. `dynamic` keeps the call on objc_msgSend.
     @objc dynamic private func mptTerminate(_ sender: Any?) {
-        let state = windows.map { "\(type(of: $0)) sheet=\($0.isSheet) parent=\($0.sheetParent != nil) attached=\($0.attachedSheet != nil) vis=\($0.isVisible)" }
-        quitLog.notice("quit: modal=\(String(describing: self.modalWindow), privacy: .public) \(state.joined(separator: " | "), privacy: .public)")
+        quitLog.notice("quit: start \(self.windowReport, privacy: .public)")
         guard hasSheets else { return mptTerminate(sender) }
         windows.forEach(Self.endSheets(on:))
         openSheets.forEach { $0.sheetParent?.endSheet($0, returnCode: .cancel) }
@@ -45,12 +44,20 @@ extension NSApplication {
 
     // A SwiftUI sheet can show as a centered window whose parent reports no `attachedSheet`; its `sheetParent` is set.
     private var openSheets: [NSWindow] { windows.filter { $0.sheetParent != nil } }
+    private var windowReport: String {
+        let visible = windows.filter { $0.isVisible && !"\(type(of: $0))".contains("StatusBar") }
+        return "modal=\(modalWindow != nil) " + visible.map {
+            "\(type(of: $0)) id=\($0.identifier?.rawValue ?? "-") \(Int($0.frame.width))x\(Int($0.frame.height)) "
+                + "sheet=\($0.isSheet) parent=\($0.sheetParent != nil) attached=\($0.attachedSheet != nil) "
+                + "children=\($0.childWindows?.count ?? 0)"
+        }.joined(separator: " | ")
+    }
     private var hasSheets: Bool { windows.contains { $0.attachedSheet != nil || $0.sheetParent != nil } }
 
     // A sheet stays attached until its close animation ends, and AppKit still refuses until then.
     private func terminateWhenSheetsClose(_ sender: Any?, tries: Int) {
         guard tries > 0, hasSheets else {
-            quitLog.notice("quit: wait ended tries=\(tries, privacy: .public) sheets=\(self.hasSheets, privacy: .public)")
+            quitLog.notice("quit: wait ended tries=\(tries, privacy: .public) \(self.windowReport, privacy: .public)")
             return mptTerminate(sender)
         }
         DispatchQueue.main.asyncAfter(deadline: .now() + 0.1) { [self] in
