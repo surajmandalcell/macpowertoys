@@ -89,7 +89,7 @@ final class TextExtractorService {
             state = .idle
             return
         case .denied:
-            state = .permissionDenied("macOS blocks screen capture. Click Fix to ask again.")
+            state = .permissionDenied("macOS kept an old approval.")
             openTextExtractor()
             return
         }
@@ -586,5 +586,7 @@ extension TextExtractorService {
         history.insert(TextExtraction(text: text), at: 0)
         state = .copied(text)
     }
+
+    func demoDeny() { state = .permissionDenied("macOS kept an old approval.") }
 }
 #endif

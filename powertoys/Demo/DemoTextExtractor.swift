@@ -36,5 +36,13 @@ enum DemoTextExtractor {
             tail: 3
         )
     }
+
+    static var deniedScene: DemoScene {
+        DemoScene(
+            open: { ToolActionRouter.shared.open(toolID: "text-extractor", activateApp: false) },
+            steps: [DemoStep(at: 0.5) { TextExtractorService.shared.demoDeny() }],
+            tail: 3
+        )
+    }
 }
 #endif

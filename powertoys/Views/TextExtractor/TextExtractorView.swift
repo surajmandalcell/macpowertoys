@@ -117,10 +117,10 @@ struct TextExtractorView: View {
                 ProgressView().controlSize(.small).accessibilityLabel("Recognizing text")
             }.modifier(AppletBannerInset())
         case .permissionDenied(let message):
-            OnePlusLinearBanner(.warning, title: message) {
-                HStack(spacing: OnePlusLinearMetrics.appletRowGap) {
-                    Button("Open Settings", action: openPrivacySettings)
-                    Button("Fix") { PermissionCenter.shared.fixScreenRecording() }
+            OnePlusLinearBanner(.warning, title: "Screen capture is blocked", message: message) {
+                HStack(spacing: OnePlusLinearMetrics.pushButtonGap) {
+                    Button("Open Settings", action: openPrivacySettings).buttonStyle(OnePlusLinearButtonStyle(.push))
+                    Button("Fix") { PermissionCenter.shared.fixScreenRecording() }.buttonStyle(OnePlusLinearButtonStyle(.pushProminent))
                 }
             }.modifier(AppletBannerInset())
         case .failed(let message): OnePlusBanner(message, tone: .error).modifier(AppletBannerInset())

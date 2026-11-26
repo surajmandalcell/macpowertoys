@@ -48,6 +48,7 @@ enum DemoDirector {
         "mac-tweaks": { DemoMacTweaks.scene },
         "color-picker": { DemoColorPicker.scene },
         "text-extractor": { DemoTextExtractor.scene },
+        "text-extractor-denied": { DemoTextExtractor.deniedScene },
         "ruler": { DemoRuler.scene },
         "ruler-design": { DemoRuler.designScene },
         "input-devices": { DemoInputDevices.scene },
