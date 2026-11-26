@@ -36,8 +36,13 @@ extension NSApplication {
     /// After the swap, calling `mptTerminate` runs AppKit's own terminate. `dynamic` keeps the call on objc_msgSend.
     @objc dynamic private func mptTerminate(_ sender: Any?) {
         guard hasSheets else { return mptTerminate(sender) }
-        quitLog.notice("quit: ending open sheets first")
-        windows.forEach(Self.endSheets(on:))
+        quitLog.notice("quit: closing windows with open sheets first")
+        // SwiftUI shows an ended sheet again while its binding is still true, so the parent window closes too.
+        WindowStateManager.shared.saveOpenWindows()
+        for parent in windows where parent.attachedSheet != nil {
+            Self.endSheets(on: parent)
+            parent.close()
+        }
         terminateWhenSheetsClose(sender, tries: Self.sheetWaitTries)
     }
 
