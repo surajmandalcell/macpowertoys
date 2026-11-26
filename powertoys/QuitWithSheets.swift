@@ -24,12 +24,16 @@ extension NSApplication {
 
     /// After the swap, calling `mptTerminate` runs AppKit's own terminate. `dynamic` keeps the call on objc_msgSend.
     @objc dynamic private func mptTerminate(_ sender: Any?) {
+        NSLog("MacPowerToys quit: %d sheet(s) open", openSheets.count)
         guard hasSheets else { return mptTerminate(sender) }
         windows.forEach(Self.endSheets(on:))
+        openSheets.forEach { $0.sheetParent?.endSheet($0, returnCode: .cancel) }
         terminateWhenSheetsClose(sender, tries: Self.sheetWaitTries)
     }
 
-    private var hasSheets: Bool { windows.contains { $0.attachedSheet != nil } }
+    // A SwiftUI sheet can show as a centered window whose parent reports no `attachedSheet`; its `sheetParent` is set.
+    private var openSheets: [NSWindow] { windows.filter { $0.sheetParent != nil } }
+    private var hasSheets: Bool { windows.contains { $0.attachedSheet != nil || $0.sheetParent != nil } }
 
     // A sheet stays attached until its close animation ends, and AppKit still refuses until then.
     private func terminateWhenSheetsClose(_ sender: Any?, tries: Int) {
