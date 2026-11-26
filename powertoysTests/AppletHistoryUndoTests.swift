@@ -96,7 +96,7 @@ final class AppletHistoryUndoTests: XCTestCase {
         XCTAssertTrue(restored.history == color.history && restored.projects == color.projects)
         XCTAssertTrue(restored.selectedProjectID == color.selectedProjectID)
 
-        let text = TextExtractorService(defaults: defaults, playCompletionCue: {}, screenCapturePermission: { .cancelled }, openTextExtractor: {})
+        let text = TextExtractorService(defaults: defaults, screenCapturePermission: { .cancelled }, openTextExtractor: {})
         text.record("First"); text.record("Second"); text.record("Third")
         let original = text.history
         perform { text.remove(original[1].id, undoManager: manager) }
@@ -111,7 +111,7 @@ final class AppletHistoryUndoTests: XCTestCase {
         XCTAssertTrue(text.history.map(\.text) == ["After clear", "New arrival", "Third", "First"])
         manager.redo()
         XCTAssertTrue(text.history.map(\.text) == ["After clear"])
-        let reopened = TextExtractorService(defaults: defaults, playCompletionCue: {}, screenCapturePermission: { .cancelled }, openTextExtractor: {})
+        let reopened = TextExtractorService(defaults: defaults, screenCapturePermission: { .cancelled }, openTextExtractor: {})
         XCTAssertTrue(reopened.history == text.history)
     }
 }

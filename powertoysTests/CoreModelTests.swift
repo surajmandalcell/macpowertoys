@@ -1,9 +1,18 @@
 import XCTest
 import CoreImage
+import SamPermissions
 @testable import powertoys
 
 @MainActor
 final class CoreModelTests: XCTestCase {
+    func testScreenCaptureDeniedMessageFollowsReason() {
+        XCTAssertEqual(TextExtractorService.deniedMessage(.staleGrant), "macOS kept an old approval.")
+        XCTAssertEqual(TextExtractorService.deniedMessage(.notAllowed), "MacPowerToys isn't allowed to record the screen yet.")
+        XCTAssertEqual(TextExtractorService.deniedMessage(nil), "MacPowerToys isn't allowed to record the screen yet.")
+        XCTAssertEqual(TextExtractorService.deniedMessage(.needsRelaunch),
+                       "Restart MacPowerToys to finish allowing screen recording.")
+    }
+
     func testBuiltInToolDescriptionsFitTwoHeaderLines() {
         for tool in ToolRegistry.builtInTools {
             XCTAssertLessThanOrEqual(tool.description.count, ToolRegistry.maxDescriptionLength, tool.id)
@@ -97,7 +106,6 @@ final class CoreModelTests: XCTestCase {
         defer { defaults.removePersistentDomain(forName: suiteName) }
         let service = TextExtractorService(
             defaults: defaults,
-            playCompletionCue: {},
             screenCapturePermission: { .granted },
             openTextExtractor: {},
             selectionScreens: { [] }
@@ -114,7 +122,7 @@ final class CoreModelTests: XCTestCase {
         XCTAssertEqual(service.state, .idle)
     }
 
-    func testRecognitionCopiesOnlyTextBeforePlayingCompletionCue() {
+    func testRecognitionCopiesOnlyText() {
         let suiteName = "TextExtractorCompletionTests.\(UUID().uuidString)"
         let defaults = UserDefaults(suiteName: suiteName)!
         let pasteboard = NSPasteboard(name: NSPasteboard.Name(suiteName))
@@ -122,18 +130,12 @@ final class CoreModelTests: XCTestCase {
             defaults.removePersistentDomain(forName: suiteName)
             pasteboard.clearContents()
         }
-        var cueText: String?
-        let service = TextExtractorService(
-            defaults: defaults,
-            pasteboard: pasteboard,
-            playCompletionCue: { cueText = pasteboard.string(forType: .string) }
-        )
+        let service = TextExtractorService(defaults: defaults, pasteboard: pasteboard)
 
         service.finishRecognition("Recognized text")
 
         XCTAssertEqual(pasteboard.string(forType: .string), "Recognized text")
         XCTAssertNil(pasteboard.data(forType: .tiff))
-        XCTAssertEqual(cueText, "Recognized text")
         XCTAssertEqual(service.history.map(\.text), ["Recognized text"])
         XCTAssertEqual(service.state, .copied("Recognized text"))
     }

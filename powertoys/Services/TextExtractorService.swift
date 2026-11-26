@@ -3,6 +3,7 @@ import CoreImage
 import CoreGraphics
 import CoreText
 import Observation
+import SamPermissions
 import ScreenCaptureKit
 import Vision
 
@@ -26,7 +27,6 @@ final class TextExtractorService {
     private let maximumHistoryCount = 50
     private let defaults: UserDefaults
     private let pasteboard: NSPasteboard
-    private let playCompletionCue: () -> Void
     private let screenCapturePermission: () -> ScreenCapturePermissionDecision
     private let openTextExtractor: () -> Void
     private let selectionScreens: () -> [NSScreen]
@@ -38,16 +38,12 @@ final class TextExtractorService {
     init(
         defaults: UserDefaults = .standard,
         pasteboard: NSPasteboard = .general,
-        playCompletionCue: @escaping () -> Void = {
-            NSSound(contentsOfFile: "/System/Library/Sounds/Tink.aiff", byReference: true)?.play()
-        },
         screenCapturePermission: (() -> ScreenCapturePermissionDecision)? = nil,
         openTextExtractor: (() -> Void)? = nil,
         selectionScreens: @escaping () -> [NSScreen] = { NSScreen.screens }
     ) {
         self.defaults = defaults
         self.pasteboard = pasteboard
-        self.playCompletionCue = playCompletionCue
         self.selectionScreens = selectionScreens
         self.screenCapturePermission = screenCapturePermission ?? Self.requestScreenCapturePermission
         self.openTextExtractor = openTextExtractor ?? {
@@ -66,6 +62,14 @@ final class TextExtractorService {
         }
         NotificationCenter.default.addObserver(forName: .permissionsChanged, object: nil, queue: .main) { [weak self] _ in
             Task { @MainActor in self?.clearPermissionDeniedIfGranted() }
+        }
+    }
+
+    static func deniedMessage(_ reason: Reason?) -> String {
+        switch reason {
+        case .staleGrant: "macOS kept an old approval."
+        case .needsRelaunch: "Restart MacPowerToys to finish allowing screen recording."
+        case .notAllowed, nil: "MacPowerToys isn't allowed to record the screen yet."
         }
     }
 
@@ -89,7 +93,7 @@ final class TextExtractorService {
             state = .idle
             return
         case .denied:
-            state = .permissionDenied("macOS kept an old approval.")
+            state = .permissionDenied(Self.deniedMessage(SamPermissions.shared.reason(.screenRecording)))
             openTextExtractor()
             return
         }
@@ -146,7 +150,6 @@ final class TextExtractorService {
         }
         record(text)
         state = .copied(text)
-        playCompletionCue()
     }
 
     func remove(_ id: UUID, undoManager: UndoManager? = nil) {
@@ -587,6 +590,6 @@ extension TextExtractorService {
         state = .copied(text)
     }
 
-    func demoDeny() { state = .permissionDenied("macOS kept an old approval.") }
+    func demoDeny() { state = .permissionDenied(Self.deniedMessage(.notAllowed)) }
 }
 #endif
