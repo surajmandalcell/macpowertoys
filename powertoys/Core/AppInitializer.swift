@@ -211,8 +211,9 @@ nonisolated enum AppShutdownStep: String {
     case rsync = "Saving RSync UI and stopping its engine"
     case logs = "Saving logs"
 
-    // Fan state, Color Picker colors, and RSync transfers are lost or left forced if quit continues; logs are not.
-    var holdsUserState: Bool { self != .logs }
+    // Color Picker colors and RSync transfers are lost if quit continues. Fans are not left forced: the root
+    // helper restores Auto when this app's connection ends (FanManualLease.clientEnded).
+    var holdsUserState: Bool { self == .colorPicker || self == .rsync }
 }
 
 nonisolated enum QuitDecision: Equatable {

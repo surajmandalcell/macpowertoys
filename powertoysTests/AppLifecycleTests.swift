@@ -62,9 +62,11 @@ final class AppLifecycleTests: XCTestCase {
             XCTAssertEqual(QuitDecision.after(failed: step, systemQuit: true, appIsActive: true), .terminate)
             XCTAssertEqual(QuitDecision.after(failed: step, systemQuit: true, appIsActive: false), .terminate)
         }
-        XCTAssertEqual(QuitDecision.after(failed: .logs, systemQuit: false, appIsActive: true), .terminate)
-        XCTAssertEqual(QuitDecision.after(failed: .logs, systemQuit: false, appIsActive: false), .terminate)
-        for step in [AppShutdownStep.fan, .colorPicker, .rsync] {
+        for step in [AppShutdownStep.fan, .logs] {
+            XCTAssertEqual(QuitDecision.after(failed: step, systemQuit: false, appIsActive: true), .terminate)
+            XCTAssertEqual(QuitDecision.after(failed: step, systemQuit: false, appIsActive: false), .terminate)
+        }
+        for step in [AppShutdownStep.colorPicker, .rsync] {
             XCTAssertEqual(QuitDecision.after(failed: step, systemQuit: false, appIsActive: true), .ask)
             XCTAssertEqual(QuitDecision.after(failed: step, systemQuit: false, appIsActive: false), .cancel)
         }

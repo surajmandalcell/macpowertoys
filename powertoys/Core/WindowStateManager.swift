@@ -59,6 +59,15 @@ final class WindowStateManager {
         }
     }
 
+    /// A move saves only after `saveDelay`, so a quit or a permission reopen right after it would lose the place.
+    func saveOpenWindows() {
+        guard screenChangeAllowsSave else { return }
+        for window in NSApp.windows where window.isVisible {
+            pendingSaves.removeValue(forKey: ObjectIdentifier(window))?.cancel()
+            saveState(for: window)
+        }
+    }
+
     private func flushPendingSave(for window: NSWindow) {
         guard let task = pendingSaves.removeValue(forKey: ObjectIdentifier(window)) else { return }
         task.cancel()

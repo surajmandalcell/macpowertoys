@@ -7,6 +7,7 @@ import Foundation
 import AppKit
 import CoreServices
 import OnePlusUI
+import SamPermissions
 import Darwin
 import UserNotifications
 
@@ -488,18 +489,24 @@ class AppDelegate: NSObject, NSApplicationDelegate {
                 prepareFreeRulerForTermination()
                 AwakeService.shared.shutdown()
                 GlobalShortcutManager.shared.shutdown()
+                WindowStateManager.shared.saveOpenWindows()
                 terminationTask = nil
                 sender.reply(toApplicationShouldTerminate: true)
             } catch {
                 terminationTask = nil
                 sender.reply(toApplicationShouldTerminate: false)
+                var message = error.localizedDescription
+                if let pane = SamPermissions.shared.cancelReopen() {
+                    let name = pane == .screenRecording ? "Screen Recording" : "Accessibility"
+                    message = "MacPowerToys could not reopen to finish the \(name) fix. \(message) Quit MacPowerToys and open it again."
+                }
                 // A modal behind a game or another app is never seen; notify without taking focus instead.
                 let decision: QuitDecision = (error as? QuitRefusal)?.decision ?? (sender.isActive ? .ask : .cancel)
                 guard decision == .ask else {
-                    await reportBackgroundQuitRefusal(error.localizedDescription)
+                    await reportBackgroundQuitRefusal(message)
                     return
                 }
-                showQuitRefusedAlert(error.localizedDescription)
+                showQuitRefusedAlert(message)
             }
         }
         return .terminateLater
