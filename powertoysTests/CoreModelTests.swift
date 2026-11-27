@@ -79,7 +79,12 @@ final class CoreModelTests: XCTestCase {
         guard case .permissionDenied(let message) = service.state else {
             return XCTFail("Expected the Screen Recording recovery state")
         }
-        XCTAssertTrue(message.contains("Privacy & Security"))
+        let reasonMessages = [
+            TextExtractorService.deniedMessage(.staleGrant),
+            TextExtractorService.deniedMessage(.needsRelaunch),
+            TextExtractorService.deniedMessage(.notAllowed)
+        ]
+        XCTAssertTrue(reasonMessages.contains(message), message)
         XCTAssertEqual(openCount, 1)
     }
 
