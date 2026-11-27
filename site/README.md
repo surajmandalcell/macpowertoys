@@ -4,7 +4,7 @@ Static site for macpowertoys.samhq.app. No build step and no dependencies.
 
 - `public/` is the whole site: `index.html`, `site.css` (page, hero, footer), `mid.css` (tool tiles), `site.js` (grain, scroll bar, copy, clock), `bento.js` (tool tiles), `demos.js` with `demo.css` and `panel.html` (the hero's live panel), `privacy.html` and `terms.html` (text pages, `.doc` in `site.css`), `404.html`, `_headers`, and `assets/`.
 - Preview: `python3 site/preview.py` and open http://127.0.0.1:4831.
-- Deploy: `cd site/worker && npx wrangler deploy`. Cloudflare serves `public/` as static assets.
+- Deploy: commit, then run the samhq website deploy (`samhq_backend/web/deploy.zsh`), after the owner approves. It ships the committed `public/` and runs `worker/src/index.js`.
 - Version: the worker (`worker/src/index.js`) writes the latest GitHub release into every `[data-version]` span and its `.dmg` asset into every `a[data-download]` link, cached for an hour. It also fills the star count into `[data-stars]`, so no visitor calls api.github.com. The HTML keeps the last known release as the fallback, so a release needs no site edit. The site goes live only with a notarized release; the page does not mention notarization.
 
 Every tool tile has a stable id for links, such as `/#portman`, `/#fan`, and `/#mac-tweaks`. Keep the ids when you edit a tile.
