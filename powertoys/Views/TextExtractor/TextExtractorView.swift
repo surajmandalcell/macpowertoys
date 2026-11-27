@@ -119,7 +119,7 @@ struct TextExtractorView: View {
         case .permissionDenied(let message):
             OnePlusLinearBanner(.warning, title: "Screen capture is blocked", message: message) {
                 HStack(spacing: OnePlusLinearMetrics.pushButtonGap) {
-                    Button("Open Settings", action: openPrivacySettings).buttonStyle(OnePlusLinearButtonStyle(.push))
+                    Button("Open Settings") { PermissionCenter.shared.openScreenRecordingSettings() }.buttonStyle(OnePlusLinearButtonStyle(.push))
                     Button("Fix") { PermissionCenter.shared.fixScreenRecording() }.buttonStyle(OnePlusLinearButtonStyle(.pushProminent))
                 }
             }.modifier(AppletBannerInset())
@@ -133,11 +133,6 @@ struct TextExtractorView: View {
         case .selecting, .recognizing: true
         default: false
         }
-    }
-
-    private func openPrivacySettings() {
-        guard let url = URL(string: "x-apple.systempreferences:com.apple.preference.security?Privacy_ScreenCapture") else { return }
-        NSWorkspace.shared.open(url)
     }
 }
 

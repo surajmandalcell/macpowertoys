@@ -88,9 +88,23 @@ final class PermissionCenter {
     }
 
     /// Fix buttons. SamPermissions picks the step: guide, ask, reset an old-signature row, or reopen. Click only.
-    func fixAccessibility() { SamPermissions.shared.resolve(.accessibility) }
+    func fixAccessibility() { SamPermissions.shared.resolve(.accessibility, from: Self.clickFrame) }
 
-    func fixScreenRecording() { SamPermissions.shared.resolve(.screenRecording) }
+    func fixScreenRecording() { SamPermissions.shared.resolve(.screenRecording, from: Self.clickFrame) }
+
+    func fixMicrophone() { SamPermissions.shared.resolve(.microphone, from: Self.clickFrame) }
+
+    /// Settings buttons: the page plus the SamPermissions guide panel beside System Settings.
+    func openScreenRecordingSettings() { SamPermissions.shared.guide(.permission(.screenRecording), from: Self.clickFrame) }
+
+    func openLoginItems() { SamPermissions.shared.guide(.loginItems, from: Self.clickFrame) }
+
+    /// The click that pressed the button, in screen coordinates, so the panel flies out of the button.
+    private static var clickFrame: CGRect? {
+        guard let event = NSApp.currentEvent, let window = event.window,
+              [.leftMouseUp, .leftMouseDown].contains(event.type) else { return nil }
+        return window.convertToScreen(NSRect(origin: event.locationInWindow, size: .zero)).insetBy(dx: -12, dy: -12)
+    }
 
     private static func connectSamPermissions() {
         let permissions = SamPermissions.shared
@@ -109,24 +123,15 @@ final class PermissionCenter {
 
     nonisolated static let accessibilityWasGrantedKey = "permissions.accessibilityWasGranted"
 
-    /// Call only from an explicit user action or when the user turns on a tool that needs `kind`.
-    func requestAccessibility() {
-        let options = [kAXTrustedCheckOptionPrompt.takeUnretainedValue() as String: true] as CFDictionary
-        _ = AXIsProcessTrustedWithOptions(options)
-        Task { await refresh() }
-    }
-
     /// Prompt-free; updates the microphone status at once.
     func refreshMicrophone() {
         let status = AVCaptureDevice.authorizationStatus(for: .audio)
         if microphoneStatus != status { microphoneStatus = status }
     }
 
-    /// Call only from an explicit user action. macOS shows the prompt only while undetermined.
+    /// Call only from an explicit user action. Only the first call reaches macOS; later ones show Settings.
     func requestMicrophone() async {
-        if AVCaptureDevice.authorizationStatus(for: .audio) == .notDetermined {
-            _ = await AVCaptureDevice.requestAccess(for: .audio)
-        }
+        _ = await SamPermissions.shared.requestAccess(.microphone) { true }
         refreshMicrophone()
         await refresh()
     }

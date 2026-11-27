@@ -871,7 +871,7 @@ struct MacTweaksWindowView: View {
                 } else if meter.permission == .notDetermined {
                     MacTweaksBorderedButton("Test") { Task { await meter.requestAndStart() } }
                 } else {
-                    MacTweaksBorderedButton("Settings") { meter.openMicrophoneSettings() }
+                    MacTweaksBorderedButton("Settings") { PermissionCenter.shared.fixMicrophone() }
                         .accessibilityLabel("Microphone Settings")
                 }
             }

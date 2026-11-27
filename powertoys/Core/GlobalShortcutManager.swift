@@ -292,10 +292,6 @@ final class GlobalShortcutManager {
             && reservedShortcutTap == nil)
     }
 
-    func requestAccessibilityPermission() {
-        PermissionCenter.shared.requestAccessibility()
-    }
-
     func shutdown() {
         hotKeys.values.forEach { _ = UnregisterEventHotKey($0) }
         hotKeys.removeAll()

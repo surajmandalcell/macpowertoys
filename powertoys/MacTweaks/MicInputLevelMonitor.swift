@@ -74,9 +74,4 @@ final class MicInputLevelMonitor {
         engine = nil
         level = 0
     }
-
-    func openMicrophoneSettings() {
-        guard let url = URL(string: "x-apple.systempreferences:com.apple.preference.security?Privacy_Microphone") else { return }
-        NSWorkspace.shared.open(url)
-    }
 }

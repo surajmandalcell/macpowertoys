@@ -98,7 +98,7 @@ private struct MainGeneralSettings: View {
                 }
                 if loginStatus == .requiresApproval {
                     OnePlusBanner("Allow MacPowerToys in Login Items to finish setup.", tone: .warning) {
-                        Button("Open Login Items") { SMAppService.openSystemSettingsLoginItems() }
+                        Button("Open Login Items") { PermissionCenter.shared.openLoginItems() }
                     }.padding(OnePlusMetrics.cardPadding)
                 }
                 if let loginError {

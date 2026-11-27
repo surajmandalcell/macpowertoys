@@ -147,7 +147,7 @@ struct ShortcutPermissionNotice: View {
                 Text("Accessibility access needed")
                     .onePlusText(.caption, color: OnePlusColor.warn)
                 Spacer(minLength: OnePlusMetrics.actionSpacing)
-                Button("Allow Access…") { shortcuts.requestAccessibilityPermission() }
+                Button("Allow Access…") { PermissionCenter.shared.fixAccessibility() }
                     .buttonStyle(OnePlusButtonStyle(.ghost))
             }
             .help("macOS reserves screenshot shortcuts. Accessibility access lets MacPowerToys use them.")
