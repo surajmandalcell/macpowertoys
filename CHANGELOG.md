@@ -2,6 +2,34 @@
 
 Notable changes are documented here. The project follows semantic versioning after its first stable release.
 
+## [2.2.0] - 2026-11-27
+
+### Added
+
+- The Raycast Color Picker command starts picking a color right away, and
+  the Text Extractor command starts a capture right away.
+- When Text Extractor has no Screen Recording access, its notice says why
+  in plain words, such as "never asked" or "turned off", and its Fix button
+  picks the right step for you.
+
+### Changed
+
+- New look in Light mode: a gray window with flat controls and thin lines.
+- Each tool page has a bigger header, as tall as its Open card.
+- Sheets have the standard macOS look, with a red close button and the
+  usual keys for their buttons.
+- Warning notices use the macOS 15 notice look.
+- Popups and popovers are fully solid, never see-through.
+- Text Extractor copies text without a sound.
+
+### Fixed
+
+- Quitting MacPowerToys works while a sheet is open.
+- Windows keep their place when you close and open them again.
+- Raycast commands open only the tool you picked, never the main window.
+- Text Extractor works again after an update that left an old Screen
+  Recording approval behind. Fix resets it and reopens the app.
+
 ## [2.1.0] - 2026-11-25
 
 ### Added
