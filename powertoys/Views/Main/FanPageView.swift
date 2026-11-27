@@ -31,8 +31,8 @@ struct FanPageView: View {
 
     var body: some View {
         OnePlusLinearEditorialBody {
-            OnePlusLinearToolHeader(Self.title, detail: "Set how fast the fans spin as the CPU heats up.") {
-                FanPageIcon(size: OnePlusLinearEditorialMetrics.headerTileIcon)
+            OnePlusLinearToolHeader(Self.title, detail: "Set how fast the fans spin as the CPU heats up.") { size in
+                FanPageIcon(size: size)
             } actions: { EmptyView() }
             OnePlusLinearAppletSection(pickName) {
                 VStack(spacing: 0) {

@@ -84,7 +84,6 @@ struct MainLaunchTile: View {
         }
         .disabled(!settings.isToolEnabled(tool.id) || settings.isToolTransitioning(tool.id))
         .accessibilityIdentifier("tool.\(tool.id).launch")
-        .help("Open \(tool.name)")
     }
 }
 
