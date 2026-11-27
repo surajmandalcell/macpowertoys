@@ -182,14 +182,8 @@ final class TextExtractorService {
     }
 
     private static func requestScreenCapturePermission() -> ScreenCapturePermissionDecision {
-        SamPermissions.shared.request(.screenRecording) {
-            let alert = NSAlert()
-            alert.messageText = "Screen Recording Permission"
-            alert.informativeText = "Text Extractor needs access to capture the region you select. Recognition stays on this Mac and captured pixels are discarded immediately."
-            alert.addButton(withTitle: "Continue")
-            alert.addButton(withTitle: "Cancel")
-            return alert.runModal() == .alertFirstButtonReturn
-        }
+        // The macOS prompt is the only ask; no app dialog before it.
+        SamPermissions.shared.request(.screenRecording) { true }
     }
 
     private func captureAndRecognize(selection: CGRect, screen: NSScreen) async {

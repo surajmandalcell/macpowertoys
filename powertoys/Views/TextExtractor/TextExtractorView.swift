@@ -118,10 +118,7 @@ struct TextExtractorView: View {
             }.modifier(AppletBannerInset())
         case .permissionDenied(let message):
             OnePlusLinearBanner(.warning, title: "Screen capture is blocked", message: message) {
-                HStack(spacing: OnePlusLinearMetrics.pushButtonGap) {
-                    Button("Open Settings") { PermissionCenter.shared.openScreenRecordingSettings() }.buttonStyle(OnePlusLinearButtonStyle(.push))
-                    Button("Fix") { PermissionCenter.shared.fixScreenRecording() }.buttonStyle(OnePlusLinearButtonStyle(.pushProminent))
-                }
+                Button("Fix") { PermissionCenter.shared.fixScreenRecording() }.buttonStyle(OnePlusLinearButtonStyle(.pushProminent))
             }.modifier(AppletBannerInset())
         case .failed(let message): OnePlusBanner(message, tone: .error).modifier(AppletBannerInset())
         default: EmptyView()

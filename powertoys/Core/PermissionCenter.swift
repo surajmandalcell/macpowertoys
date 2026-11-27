@@ -94,9 +94,7 @@ final class PermissionCenter {
 
     func fixMicrophone() { SamPermissions.shared.resolve(.microphone, from: Self.clickFrame) }
 
-    /// Settings buttons: the page plus the SamPermissions guide panel beside System Settings.
-    func openScreenRecordingSettings() { SamPermissions.shared.guide(.permission(.screenRecording), from: Self.clickFrame) }
-
+    /// Login Items: the page plus the SamPermissions guide panel beside System Settings.
     func openLoginItems() { SamPermissions.shared.guide(.loginItems, from: Self.clickFrame) }
 
     /// The click that pressed the button, in screen coordinates, so the panel flies out of the button.

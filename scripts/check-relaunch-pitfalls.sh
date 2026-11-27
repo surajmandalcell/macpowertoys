@@ -14,7 +14,7 @@
 #    A direct request skips SamPermissions, so a Deny is not remembered and Fix picks the wrong step.
 #    Use SamPermissions.shared.request(.screenRecording, confirm:) or PermissionCenter.canCaptureScreen.
 # 5. A raw x-apple.systempreferences URL, openSystemSettingsLoginItems, or a direct macOS permission ask
-#    (AXIsProcessTrustedWithOptions, IOHIDRequestAccess, AVCaptureDevice.requestAccess, CLLocationManager
+#    (AXIsProcessTrustedWithOptions, IOHIDRequestAccess, AVCaptureDevice.requestAccess, any .requestAuthorization(, CLLocationManager
 #    requests, AEDeterminePermissionToAutomateTarget) outside PermissionCenter.swift. It skips the SamPermissions
 #    panel beside System Settings. Add a PermissionCenter method that calls SamPermissions request, resolve,
 #    or guide(_:from:).
@@ -40,7 +40,7 @@ found=$(find "$@" -name '*.swift' -print0 | xargs -0 awk '
   /CG(Request|Preflight)ScreenCaptureAccess\(/ && FILENAME !~ /PermissionCenter\.swift$/ {
     print FILENAME ":" FNR ": Screen Recording asked outside SamPermissions; use SamPermissions.shared.request(.screenRecording, confirm:) or PermissionCenter.canCaptureScreen"
   }
-  /x-apple\.systempreferences|openSystemSettingsLoginItems|AXIsProcessTrustedWithOptions|IOHIDRequestAccess|AVCaptureDevice\.requestAccess|request(WhenInUse|Always)Authorization|AEDeterminePermissionToAutomateTarget/ && FILENAME !~ /PermissionCenter\.swift$/ {
+  /x-apple\.systempreferences|openSystemSettingsLoginItems|AXIsProcessTrustedWithOptions|IOHIDRequestAccess|AVCaptureDevice\.requestAccess|request(WhenInUse|Always)Authorization|AEDeterminePermissionToAutomateTarget|\.requestAuthorization\(/ && FILENAME !~ /PermissionCenter\.swift$/ {
     print FILENAME ":" FNR ": permission asked or Settings opened outside SamPermissions; use a PermissionCenter method that calls SamPermissions request, resolve, or guide(_:from:)"
   }
   # Menu, button, Apple Event, and AppDelegate handlers run from an event; any other caller may be inside a Task.

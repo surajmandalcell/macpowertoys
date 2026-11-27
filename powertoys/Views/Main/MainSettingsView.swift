@@ -75,6 +75,7 @@ private struct MainGeneralSettings: View {
                                   separator: false) {
                     HStack(spacing: OnePlusMetrics.actionSpacing) {
                         Button("System Settings") {
+                            // settings-link: not a permission (Menu Bar page)
                             if let url = NSWorkspace.shared.urlForApplication(withBundleIdentifier: "com.apple.systempreferences") {
                                 NSWorkspace.shared.open(url)
                             }

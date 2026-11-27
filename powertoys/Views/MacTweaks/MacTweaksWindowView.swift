@@ -936,9 +936,11 @@ struct MacTweaksWindowView: View {
         do {
             if enabled { try SMAppService.mainApp.register() } else { try SMAppService.mainApp.unregister() }
             opensAtLogin = SMAppService.mainApp.status == .enabled
-            let message = SMAppService.mainApp.status == .requiresApproval
-                ? "Allow MacPowerToys in Login Items to finish setup." : "Login setting saved."
-            showNotice(.init(message: message))
+            if SMAppService.mainApp.status == .requiresApproval {
+                PermissionCenter.shared.openLoginItems()
+            } else {
+                showNotice(.init(message: "Login setting saved."))
+            }
         } catch {
             opensAtLogin = SMAppService.mainApp.status == .enabled
             showError("Could not change Login Items: \(error.localizedDescription)")
