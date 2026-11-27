@@ -61,6 +61,9 @@ final class PermissionCenter {
 
     func isGranted(_ kind: PermissionKind) -> Bool { granted.contains(kind) }
 
+    /// A fresh read with no prompt, for warm-up work.
+    nonisolated static var canCaptureScreen: Bool { CGPreflightScreenCaptureAccess() }
+
     func isMissing(_ kind: PermissionKind) -> Bool { !granted.contains(kind) }
 
     func refresh() async {

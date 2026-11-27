@@ -7,11 +7,7 @@ import SamPermissions
 import ScreenCaptureKit
 import Vision
 
-enum ScreenCapturePermissionDecision {
-    case granted
-    case cancelled
-    case denied
-}
+typealias ScreenCapturePermissionDecision = Answer
 
 @Observable
 @MainActor
@@ -98,7 +94,7 @@ final class TextExtractorService {
             return
         }
         state = .selecting
-        if shareableContentTask == nil, CGPreflightScreenCaptureAccess() { prepareShareableContent() }
+        if shareableContentTask == nil { prepareShareableContent() }
         let selector = TextRegionSelector()
         self.selector = selector
         selector.begin(screens: selectionScreens()) { [weak self] selection, screen in
@@ -121,7 +117,7 @@ final class TextExtractorService {
         recognitionWarmupTask = Task.detached(priority: .userInitiated) {
             Self.prewarmRecognition(settings: settings)
         }
-        if CGPreflightScreenCaptureAccess() { prepareShareableContent() }
+        if PermissionCenter.canCaptureScreen { prepareShareableContent() }
     }
 
     func reset() {
@@ -186,14 +182,14 @@ final class TextExtractorService {
     }
 
     private static func requestScreenCapturePermission() -> ScreenCapturePermissionDecision {
-        if CGPreflightScreenCaptureAccess() { return .granted }
-        let alert = NSAlert()
-        alert.messageText = "Screen Recording Permission"
-        alert.informativeText = "Text Extractor needs access to capture the region you select. Recognition stays on this Mac and captured pixels are discarded immediately."
-        alert.addButton(withTitle: "Continue")
-        alert.addButton(withTitle: "Cancel")
-        guard alert.runModal() == .alertFirstButtonReturn else { return .cancelled }
-        return CGRequestScreenCaptureAccess() ? .granted : .denied
+        SamPermissions.shared.request(.screenRecording) {
+            let alert = NSAlert()
+            alert.messageText = "Screen Recording Permission"
+            alert.informativeText = "Text Extractor needs access to capture the region you select. Recognition stays on this Mac and captured pixels are discarded immediately."
+            alert.addButton(withTitle: "Continue")
+            alert.addButton(withTitle: "Cancel")
+            return alert.runModal() == .alertFirstButtonReturn
+        }
     }
 
     private func captureAndRecognize(selection: CGRect, screen: NSScreen) async {

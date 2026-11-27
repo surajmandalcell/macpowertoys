@@ -1,4 +1,5 @@
 import AppKit
+import SamPermissions
 import XCTest
 @testable import powertoys
 

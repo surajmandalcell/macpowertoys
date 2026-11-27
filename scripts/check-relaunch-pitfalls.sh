@@ -10,6 +10,9 @@
 #    and handleQuitAppleEvent() (AppKit's quit Apple Event checks sheets before terminate: runs).
 #    AppKit silently refuses every quit while a sheet is open, before the delegate runs, so the permission
 #    reopen hangs. SwiftUI ignores NSPrincipalClass, so a subclass does not help. Use QuitWithSheets.swift.
+# 4. CGRequestScreenCaptureAccess or CGPreflightScreenCaptureAccess outside PermissionCenter.swift.
+#    A direct request skips SamPermissions, so a Deny is not remembered and Fix picks the wrong step.
+#    Use SamPermissions.shared.request(.screenRecording, confirm:) or PermissionCenter.canCaptureScreen.
 # Usage: zsh scripts/check-relaunch-pitfalls.sh [swift files or folders, default powertoys]
 (( $# )) || set -- "${0:A:h:h}/powertoys"
 for dir in "$@"; do
@@ -28,6 +31,9 @@ found=$(find "$@" -name '*.swift' -print0 | xargs -0 awk '
     if (reset && $0 ~ /CG(Request|Preflight)ScreenCaptureAccess/) { print FILENAME ":" FNR ": Screen Recording request after tccutil reset"; reset = 0 }
     depth += gsub(/\{/, "{"); depth -= gsub(/\}/, "}")
     if (depth <= 0 && FNR > start) infunc = 0
+  }
+  /CG(Request|Preflight)ScreenCaptureAccess\(/ && FILENAME !~ /PermissionCenter\.swift$/ {
+    print FILENAME ":" FNR ": Screen Recording asked outside SamPermissions; use SamPermissions.shared.request(.screenRecording, confirm:) or PermissionCenter.canCaptureScreen"
   }
   # Menu, button, Apple Event, and AppDelegate handlers run from an event; any other caller may be inside a Task.
   /NSApp(lication\.shared)?\.terminate\(/ && FILENAME !~ /(AppDelegate\.swift|QuitWithSheets\.swift|\/Views\/)/ {
