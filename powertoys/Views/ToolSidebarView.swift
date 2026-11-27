@@ -57,6 +57,13 @@ struct ToolSidebarView: View {
                                     dimmed: !settings.isToolEnabled(tool.id)) { selectedTool = tool.id }
             }
         }
+        .overlay(alignment: .trailing) {
+            if ProPackage.tools.contains(where: { $0.id == tool.id }) {
+                Text("Pro").linearText(OnePlusLinearMetrics.caption, color: OnePlusLinearColor.muted)
+                    .padding(.trailing, OnePlusLinearMetrics.navPadding)
+                    .allowsHitTesting(false)
+            }
+        }
         .accessibilityIdentifier("main.sidebar.\(tool.id)")
         .accessibilityValue(settings.isToolEnabled(tool.id) ? "Enabled" : "Disabled")
         .simultaneousGesture(TapGesture(count: 2).onEnded {
