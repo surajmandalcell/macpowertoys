@@ -74,6 +74,7 @@ final class AwakeService {
 
     static func isValidDuration(_ seconds: TimeInterval) -> Bool {
         // ponytail: cap timed intervals at 68 years; use Indefinite for longer sessions.
+        // Raise it only when a user asks for a timed session longer than Int32.max seconds.
         seconds.isFinite && (0...TimeInterval(Int32.max)).contains(seconds)
     }
 

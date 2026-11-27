@@ -453,6 +453,7 @@ nonisolated final class TweakPreferenceStore {
 #if MPT_DEMO
 extension TweakPreferenceStore {
     // shortcut: unlocked; the demo writes on the main thread before it bumps the revision that triggers reads.
+    // Add a lock when any demo write moves off the main thread.
     nonisolated(unsafe) static var demoSelections: [String: Int] = [:]
 }
 #endif
