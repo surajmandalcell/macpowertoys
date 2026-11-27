@@ -370,7 +370,7 @@ struct ToolRegistry {
         InputDevicesTool.shared,
         PortmanTool.shared,
         MacTweaksTool.shared
-    ]
+    ] + ProPackage.tools
 
     static var allTools: [any Tool] {
         builtInTools + MarketplaceManager.shared.installedTools

@@ -36,8 +36,19 @@ NOTARY_KEY := --key "$$ASC_KEY_PATH" --key-id "$$ASC_KEY_ID" --issuer "$$ASC_ISS
 NOTARY_HINT := Read the log with notarytool log <id> and the key in $(ASC_ENV).
 NOTARY_ZIP := $(DERIVED_DATA)/MacPowerToys-notarize.zip
 
-build:
-	$(XCODEBUILD) -scheme $(SCHEME) -configuration Release $(SIGNING) build
+# MacPowerToys Pro: with the private ../macpowertoys-pro checkout here, its sources are copied into the ignored
+# powertoys/Pro folder and MPT_PRO turns on the hook in Core/ProPackage.swift. A public clone builds the free app.
+# A release stays free until Pro has its license gate (spec/notes-request-list.md); PRO=1 forces it in.
+PRO_SOURCES := $(abspath ../macpowertoys-pro/Sources/MacPowerToysPro)
+PRO ?= $(if $(wildcard $(PRO_SOURCES)),1,0)
+release: PRO = 0
+
+pro-sources:
+	@if [ "$(PRO)" = 1 ]; then rsync -a --delete "$(PRO_SOURCES)/" "$(CURDIR)/powertoys/Pro/"; \
+	else rm -rf "$(CURDIR)/powertoys/Pro"; fi
+
+build: pro-sources
+	$(XCODEBUILD) -scheme $(SCHEME) -configuration Release $(SIGNING) $(if $(filter 1,$(PRO)),MPT_PRO_CONDITION=MPT_PRO) build
 
 build-for-testing:
 	$(XCODEBUILD) -scheme $(TEST_SCHEME) -configuration Debug CODE_SIGNING_ALLOWED=NO build-for-testing
@@ -142,4 +153,4 @@ release: release-preflight build verify-app notarize-app
 		--url "https://github.com/samhqapp/macpowertoys/releases/download/v$$VERSION/MacPowerToys-$$VERSION.dmg" \
 		macpowertoys "$$VERSION" $(BUILD_NUMBER) macpowertoys
 
-.PHONY: build build-for-testing test demo raycast-assets raycast raycast-install install install-preflight verify-app notarize-app release release-preflight
+.PHONY: pro-sources build build-for-testing test demo raycast-assets raycast raycast-install install install-preflight verify-app notarize-app release release-preflight

@@ -83,6 +83,7 @@ final class AppInitializer {
         if SettingsManager.shared.isToolEnabled("mac-tweaks") {
             MicLockService.shared.startIfNeeded()
         }
+        ProPackage.start()
 
         applyStoredTheme()
 

@@ -17,7 +17,9 @@ struct ToolSettingsContent: View {
         case "input-devices": InputDevicesSettingsContent()
         case "portman": PortmanSettingsView()
         case "logs": LogsSettingsView()
-        default: OnePlusEmptyState("No settings available", systemImage: "slider.horizontal.3")
+        default:
+            if let settings = ProPackage.settingsView(for: toolID) { settings }
+            else { OnePlusEmptyState("No settings available", systemImage: "slider.horizontal.3") }
         }
     }
 }

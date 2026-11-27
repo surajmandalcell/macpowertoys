@@ -154,7 +154,7 @@ final class SettingsManager {
                 transitioningToolIDs.remove(toolID)
             }
         default:
-            break
+            ProPackage.setEnabled(enabled, toolID: toolID)
         }
     }
 }

@@ -123,6 +123,7 @@ final class ToolActionRouter {
         switch resolved {
         case "ruler": return .ruler
         case "awake": return .mainPage("tool/awake")
+        case _ where ProPackage.tools.contains { $0.id == resolved }: return .mainPage("tool/\(resolved)")
         case "portman": return .portmanPanel
         case _ where windowIDs.contains(resolved): return .window(resolved)
         default: return .marketplace(resolved)

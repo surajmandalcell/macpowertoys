@@ -41,6 +41,9 @@ npm-debug.log*
 /goals.md
 /goals.archive.md
 
+# MacPowerToys Pro sources, copied from the private ../macpowertoys-pro checkout by the Makefile
+/powertoys/Pro/
+
 # Generated release artifacts
 /release/
 *.dmg
