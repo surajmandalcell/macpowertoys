@@ -15,8 +15,8 @@
       "kind" : "remoteSourceControl",
       "location" : "https://github.com/samhqapp/oneplus-ui.git",
       "state" : {
-        "revision" : "d6f5264dca4b955d1e42dd163fa39bca1fa1e7d8",
-        "version" : "1.9.7"
+        "revision" : "92a3f8fe24d0b68216e40947aae26584c67f8f6b",
+        "version" : "1.9.8"
       }
     },
     {
