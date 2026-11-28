@@ -819,7 +819,7 @@
 			repositoryURL = "https://github.com/samhqapp/oneplus-ui.git";
 			requirement = {
 				kind = exactVersion;
-				version = 1.9.10;
+				version = 1.9.11;
 			};
 		};
 		B30000000000000000000012 /* XCRemoteSwiftPackageReference "indiecrumb-swift" */ = {
