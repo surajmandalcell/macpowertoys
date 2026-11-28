@@ -19,6 +19,7 @@ struct MarketplaceSettingsView: View {
 
     var body: some View {
         VStack(alignment: .leading, spacing: OnePlusMetrics.cardGap) {
+            if let proCard = ProPackage.marketplaceCard() { proCard }
             sourceEntry
             sourcesCard
             toolCards

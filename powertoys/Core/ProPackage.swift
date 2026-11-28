@@ -8,5 +8,6 @@ enum ProPackage {
     static func start() {}
     static func setEnabled(_ enabled: Bool, toolID: String) {}
     static func settingsView(for toolID: String) -> AnyView? { nil }
+    static func marketplaceCard() -> AnyView? { nil }
 }
 #endif
